@@ -60,8 +60,8 @@ See the
 "Package 'fiftyone' requires a different Python"
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This error occurs when attempting to install FiftyOne with an unsupported Python
-version (either too old or too new). See the
+This error occurs when attempting to install FiftyOne with an unsupported
+Python version (either too old or too new). See the
 :ref:`installation guide <install-prereqs>` for details on which versions of
 Python are supported by FiftyOne.
 
@@ -165,7 +165,7 @@ then FiftyOne's database service will attempt to start up on import using the
 MongoDB distribution provided by `fiftyone-db`. If the database fails to start,
 importing `fiftyone` will result in exceptions being raised.
 
-.. _troubleshooting-mongodb-exits
+.. _troubleshooting-mongodb-exits:
 
 Database exits
 --------------

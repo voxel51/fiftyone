@@ -186,6 +186,62 @@ store an arbitrary list of string tags.
     the dataset's :meth:`tags <fiftyone.core.dataset.Dataset.tags>` property
     in-place to save the changes to the database.
 
+.. _dataset-stats:
+
+Dataset stats
+-------------
+
+You can use the :meth:`stats() <fiftyone.core.dataset.Dataset.stats>` method on
+a dataset to obtain information about the size of the dataset on disk,
+including its metadata in the database and optionally the size of the physical
+media on disk:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    fo.pprint(dataset.stats(include_media=True))
+
+.. code-block:: text
+
+    {
+        'samples_count': 200,
+        'samples_bytes': 1290762,
+        'samples_size': '1.2MB',
+        'media_bytes': 24412374,
+        'media_size': '23.3MB',
+        'total_bytes': 25703136,
+        'total_size': '24.5MB',
+    }
+
+You can also invoke
+:meth:`stats() <fiftyone.core.collections.SampleCollection.stats>` on a
+:ref:`dataset view <using-views>` to retrieve stats for a specific subset of
+the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    view = dataset[:10].select_fields("ground_truth")
+
+    fo.pprint(view.stats(include_media=True))
+
+.. code-block:: text
+
+    {
+        'samples_count': 10,
+        'samples_bytes': 10141,
+        'samples_size': '9.9KB',
+        'media_bytes': 1726296,
+        'media_size': '1.6MB',
+        'total_bytes': 1736437,
+        'total_size': '1.7MB',
+    }
+
 .. _storing-info:
 
 Storing info
@@ -601,7 +657,7 @@ or in batches via
     # equivalent to above
     del dataset[sample_id]
 
-    dataset.delete_samples([sample_id2, sample_id3])
+    dataset.delete_samples([sample_id1, sample_id2])
 
 Samples can also be removed from a |Dataset| by passing |Sample| instance(s)
 or |DatasetView| instances:
@@ -858,6 +914,45 @@ You can make any edits you wish to the fields of an existing |Sample|:
     You must call :meth:`sample.save() <fiftyone.core.sample.Sample.save>` in
     order to persist changes to the database when editing samples that are in
     datasets.
+
+A common workflow is to iterate over a dataset
+:ref:`or view <editing-view-fields>` and edit each sample:
+
+.. code-block:: python
+    :linenos:
+
+    for sample in dataset:
+        sample["new_field"] = ...
+        sample.save()
+
+The :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>` method
+is an equivalent way to iterate over a dataset that provides a
+``progress=True`` option that prints a progress bar tracking the status of the
+iteration:
+
+.. code-block:: python
+    :linenos:
+
+    # Prints a progress bar tracking the status of the iteration
+    for sample in dataset.iter_samples(progress=True):
+        sample["new_field"] = ...
+        sample.save()
+
+The :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>` method
+also provides an ``autosave=True`` option that causes all changes to samples
+emitted by the iterator to be automatically saved using efficient batch
+updates:
+
+.. code-block:: python
+    :linenos:
+
+    # Automatically saves sample edits in efficient batches
+    for sample in dataset.iter_samples(autosave=True):
+        sample["new_field"] = ...
+
+Using ``autosave=True`` can significantly improve performance when editing
+large datasets. See :ref:`this section <batch-updates>` for more information
+on batch update patterns.
 
 .. _removing-sample-fields:
 
@@ -3099,6 +3194,36 @@ which samples to merge:
     :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` to
     perform the merge.
 
+.. _cloning-datasets:
+
+Cloning datasets
+________________
+
+You can use :meth:`clone() <fiftyone.core.dataset.Dataset.clone>` to create a
+copy of a dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    dataset2 = dataset.clone()
+    dataset2.add_sample_field("new_field", fo.StringField)
+
+    # The source dataset is unaffected
+    assert "new_field" not in dataset.get_field_schema()
+
+Dataset clones contain deep copies of all samples and dataset-level information
+in the source dataset. The source *media files*, however, are not copied.
+
+.. note::
+
+    Did you know? You can also
+    :ref:`clone specific subsets <saving-and-cloning-views>` of your datasets.
+
 .. _batch-updates:
 
 Batch updates
@@ -3206,7 +3331,56 @@ its contents and editing the samples directly:
     print(dataset.count("random"))  # 200
     print(dataset.bounds("random")) # (0.0007, 0.9987)
 
-Alternatively, you can use
+However, the above pattern can be inefficient for large datasets because each
+:meth:`sample.save() <fiftyone.core.sample.Sample.save>` call makes a new
+connection to the database.
+
+The :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>` method
+provides an ``autosave=True`` option that causes all changes to samples
+emitted by the iterator to be automatically saved using an efficient batch
+update strategy:
+
+.. code-block:: python
+    :linenos:
+
+    # Automatically saves sample edits in efficient batches
+    for sample in dataset.select_fields().iter_samples(autosave=True):
+        sample["random"] = random.random()
+
+.. note::
+
+    As the above snippet shows, you should also optimize your iteration by
+    :ref:`selecting only <efficient-iteration-views>` the required fields.
+
+By default, updates are batched and submitted every 0.2 seconds, but you can
+configure the batching strategy by passing the optional ``batch_size`` argument
+to :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>`.
+
+You can also use the
+:meth:`save_context() <fiftyone.core.collections.SampleCollection.save_context>`
+method to perform batched edits using the pattern below:
+
+.. code-block:: python
+    :linenos:
+
+    # Use a context to save sample edits in efficient batches
+    with dataset.save_context() as context:
+        for sample in dataset.select_fields():
+            sample["random"] = random.random()
+            context.save(sample)
+
+The benefit of the above approach versus passing ``autosave=True`` to
+:meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>` is that
+:meth:`context.save() <fiftyone.core.collections.SaveContext.save>` allows you
+to be explicit about which samples you are editing, which avoids unnecessary
+computations if your loop only edits certain samples.
+
+.. _set-values:
+
+Setting values
+--------------
+
+Another strategy for performing efficient batch edits is to use
 :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>` to
 set a field (or embedded field) on each sample in the dataset in a single
 batch operation:
@@ -3214,10 +3388,10 @@ batch operation:
 .. code-block:: python
     :linenos:
 
-    # Delete the field we added in the previous variation
+    # Delete the field we added earlier
     dataset.delete_sample_field("random")
 
-    # Equivalent way to populate a new field on each sample in a view
+    # Equivalent way to populate the field on each sample in the dataset
     values = [random.random() for _ in range(len(dataset))]
     dataset.set_values("random", values)
 
@@ -3230,7 +3404,7 @@ batch operation:
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     is often more efficient than performing the equivalent operation via an
     explicit iteration over the |Dataset| because it avoids the need to read
-    the entire |Sample| instances into memory and then save them.
+    |Sample| instances into memory and sequentially save them.
 
 Similarly, you can edit nested sample fields of a |Dataset| by iterating over
 the dataset and editing the necessary data:

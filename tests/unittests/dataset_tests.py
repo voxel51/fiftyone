@@ -9,6 +9,7 @@ from datetime import date, datetime
 import gc
 import os
 
+from bson import ObjectId
 import numpy as np
 import pytz
 import unittest
@@ -19,7 +20,7 @@ import fiftyone as fo
 from fiftyone import ViewField as F
 import fiftyone.core.odm as foo
 
-from decorators import drop_datasets
+from decorators import drop_datasets, skip_windows
 
 
 class DatasetTests(unittest.TestCase):
@@ -219,11 +220,29 @@ class DatasetTests(unittest.TestCase):
             [fo.Sample(filepath="image%d.jpg" % i) for i in range(50)]
         )
 
-        for sample in dataset:
-            pass
+        for idx, sample in enumerate(dataset):
+            sample["int"] = idx + 1
+            sample.save()
 
-        for sample in dataset.iter_samples(progress=True):
-            pass
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+
+        for idx, sample in enumerate(dataset.iter_samples(progress=True)):
+            sample["int"] = idx + 2
+            sample.save()
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+
+        for idx, sample in enumerate(dataset.iter_samples(autosave=True)):
+            sample["int"] = idx + 3
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+
+        with dataset.save_context() as context:
+            for idx, sample in enumerate(dataset):
+                sample["int"] = idx + 4
+                context.save(sample)
+
+        self.assertTupleEqual(dataset.bounds("int"), (4, 53))
 
     @drop_datasets
     def test_date_fields(self):
@@ -288,6 +307,286 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(int((sample1.date - date1).total_seconds()), 0)
         self.assertEqual(int((sample1.date - sample2.date).total_seconds()), 0)
         self.assertEqual(int((sample1.date - sample3.date).total_seconds()), 0)
+
+    @drop_datasets
+    def test_get_field(self):
+        dataset = fo.Dataset()
+
+        dataset.add_sample_field("list_field", fo.ListField)
+        dataset.add_sample_field(
+            "list_str_field", fo.ListField, subfield=fo.StringField
+        )
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            int_field=1,
+            classification_field=fo.Classification(label="cat", foo="bar"),
+            classifications_field=fo.Classifications(
+                classifications=[fo.Classification(label="cat", foo="bar")]
+            ),
+        )
+        dataset.add_sample(sample)
+
+        id_field1 = dataset.get_field("id")
+        self.assertIsInstance(id_field1, fo.ObjectIdField)
+        self.assertEqual(id_field1.name, "id")
+        self.assertEqual(id_field1.db_field, "_id")
+        self.assertIsNone(dataset.get_field("_id"))
+        self.assertIsInstance(
+            dataset.get_field("_id", include_private=True),
+            fo.ObjectIdField,
+        )
+
+        self.assertIsInstance(dataset.get_field("int_field"), fo.IntField)
+
+        self.assertIsInstance(dataset.get_field("list_field"), fo.ListField)
+        self.assertIsNone(dataset.get_field("list_field").field)
+
+        self.assertIsInstance(
+            dataset.get_field("list_str_field"),
+            fo.ListField,
+        )
+        self.assertIsInstance(
+            dataset.get_field("list_str_field").field,
+            fo.StringField,
+        )
+
+        self.assertIsInstance(
+            dataset.get_field("classification_field"),
+            fo.EmbeddedDocumentField,
+        )
+        self.assertEqual(
+            dataset.get_field("classification_field").document_type,
+            fo.Classification,
+        )
+        id_field2 = dataset.get_field("classification_field.id")
+        self.assertIsInstance(id_field2, fo.ObjectIdField)
+        self.assertEqual(id_field2.name, "id")
+        self.assertEqual(id_field2.db_field, "_id")
+        self.assertIsNone(dataset.get_field("classification_field.foo"))
+
+        self.assertIsInstance(
+            dataset.get_field("classifications_field"),
+            fo.EmbeddedDocumentField,
+        )
+        self.assertEqual(
+            dataset.get_field("classifications_field").document_type,
+            fo.Classifications,
+        )
+        self.assertIsInstance(
+            dataset.get_field("classifications_field.classifications"),
+            fo.ListField,
+        )
+        self.assertIsInstance(
+            dataset.get_field("classifications_field.classifications").field,
+            fo.EmbeddedDocumentField,
+        )
+        self.assertEqual(
+            dataset.get_field(
+                "classifications_field.classifications"
+            ).field.document_type,
+            fo.Classification,
+        )
+        self.assertIsInstance(
+            dataset.get_field("classifications_field.classifications.label"),
+            fo.StringField,
+        )
+        id_field3 = dataset.get_field(
+            "classifications_field.classifications.id"
+        )
+        self.assertIsInstance(id_field3, fo.ObjectIdField)
+        self.assertEqual(id_field3.name, "id")
+        self.assertEqual(id_field3.db_field, "_id")
+        self.assertIsNone(
+            dataset.get_field("classifications_field.classifications._id")
+        )
+        self.assertIsInstance(
+            dataset.get_field(
+                "classifications_field.classifications._id",
+                include_private=True,
+            ),
+            fo.ObjectIdField,
+        )
+        self.assertIsNone(
+            dataset.get_field("classifications_field.classifications.foo")
+        )
+
+    @drop_datasets
+    def test_get_field_frames(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+
+        dataset.add_frame_field("list_field", fo.ListField)
+        dataset.add_frame_field(
+            "list_str_field", fo.ListField, subfield=fo.StringField
+        )
+
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(
+            int_field=1,
+            classification_field=fo.Classification(label="cat", foo="bar"),
+            classifications_field=fo.Classifications(
+                classifications=[fo.Classification(label="cat", foo="bar")]
+            ),
+        )
+        dataset.add_sample(sample)
+
+        id_field1 = dataset.get_field("frames.id")
+        self.assertIsInstance(id_field1, fo.ObjectIdField)
+        self.assertEqual(id_field1.name, "id")
+        self.assertEqual(id_field1.db_field, "_id")
+        self.assertIsNone(dataset.get_field("frames._id"))
+        self.assertIsInstance(
+            dataset.get_field("frames._id", include_private=True),
+            fo.ObjectIdField,
+        )
+
+        self.assertIsInstance(
+            dataset.get_field("frames.int_field"),
+            fo.IntField,
+        )
+
+        self.assertIsInstance(
+            dataset.get_field("frames.list_field"),
+            fo.ListField,
+        )
+        self.assertIsNone(dataset.get_field("frames.list_field").field)
+
+        self.assertIsInstance(
+            dataset.get_field("frames.list_str_field"),
+            fo.ListField,
+        )
+        self.assertIsInstance(
+            dataset.get_field("frames.list_str_field").field,
+            fo.StringField,
+        )
+
+        self.assertIsInstance(
+            dataset.get_field("frames.classification_field"),
+            fo.EmbeddedDocumentField,
+        )
+        self.assertEqual(
+            dataset.get_field("frames.classification_field").document_type,
+            fo.Classification,
+        )
+        id_field2 = dataset.get_field("frames.classification_field.id")
+        self.assertIsInstance(id_field2, fo.ObjectIdField)
+        self.assertEqual(id_field2.name, "id")
+        self.assertEqual(id_field2.db_field, "_id")
+        self.assertIsNone(dataset.get_field("frames.classification_field.foo"))
+
+        self.assertIsInstance(
+            dataset.get_field("frames.classifications_field"),
+            fo.EmbeddedDocumentField,
+        )
+        self.assertEqual(
+            dataset.get_field("frames.classifications_field").document_type,
+            fo.Classifications,
+        )
+        self.assertIsInstance(
+            dataset.get_field("frames.classifications_field.classifications"),
+            fo.ListField,
+        )
+        self.assertIsInstance(
+            dataset.get_field(
+                "frames.classifications_field.classifications"
+            ).field,
+            fo.EmbeddedDocumentField,
+        )
+        self.assertEqual(
+            dataset.get_field(
+                "frames.classifications_field.classifications"
+            ).field.document_type,
+            fo.Classification,
+        )
+        self.assertIsInstance(
+            dataset.get_field(
+                "frames.classifications_field.classifications.label"
+            ),
+            fo.StringField,
+        )
+        id_field3 = dataset.get_field(
+            "frames.classifications_field.classifications.id"
+        )
+        self.assertIsInstance(id_field3, fo.ObjectIdField)
+        self.assertEqual(id_field3.name, "id")
+        self.assertEqual(id_field3.db_field, "_id")
+        self.assertIsNone(
+            dataset.get_field(
+                "frames.classifications_field.classifications._id"
+            )
+        )
+        self.assertIsInstance(
+            dataset.get_field(
+                "frames.classifications_field.classifications._id",
+                include_private=True,
+            ),
+            fo.ObjectIdField,
+        )
+        self.assertIsNone(
+            dataset.get_field(
+                "frames.classifications_field.classifications.foo"
+            )
+        )
+
+    @drop_datasets
+    def test_field_names(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field("foo", fo.StringField)
+
+        # Field names cannot be empty
+
+        with self.assertRaises(ValueError):
+            dataset.add_sample_field("", fo.StringField)
+
+        with self.assertRaises(ValueError):
+            dataset.rename_sample_field("foo", "")
+
+        with self.assertRaises(ValueError):
+            dataset.clone_sample_field("foo", "")
+
+        # Field names cannot be private
+
+        with self.assertRaises(ValueError):
+            dataset.add_sample_field("_private", fo.StringField)
+
+        with self.assertRaises(ValueError):
+            dataset.rename_sample_field("foo", "_private")
+
+        with self.assertRaises(ValueError):
+            dataset.clone_sample_field("foo", "_private")
+
+    @drop_datasets
+    def test_frame_field_names(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+        dataset.add_frame_field("foo", fo.StringField)
+
+        # "frames" is a reserved keyword
+        with self.assertRaises(ValueError):
+            dataset.add_sample_field("frames", fo.StringField)
+
+        # Field names cannot be empty
+
+        with self.assertRaises(ValueError):
+            dataset.add_frame_field("", fo.StringField)
+
+        with self.assertRaises(ValueError):
+            dataset.rename_frame_field("foo", "")
+
+        with self.assertRaises(ValueError):
+            dataset.clone_frame_field("foo", "")
+
+        # Field names cannot be private
+
+        with self.assertRaises(ValueError):
+            dataset.add_frame_field("_private", fo.StringField)
+
+        with self.assertRaises(ValueError):
+            dataset.rename_frame_field("foo", "_private")
+
+        with self.assertRaises(ValueError):
+            dataset.clone_frame_field("foo", "_private")
 
     @drop_datasets
     def test_merge_samples1(self):
@@ -843,6 +1142,57 @@ class DatasetTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_add_collection(self):
+        sample1 = fo.Sample(filepath="image.jpg", foo="bar")
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1)
+
+        sample2 = fo.Sample(filepath="image.jpg", spam="eggs")
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample2)
+
+        # Merge dataset
+        dataset = dataset1.clone()
+        dataset.add_collection(dataset2)
+
+        self.assertEqual(len(dataset), 2)
+        self.assertTrue("spam" in dataset.get_field_schema())
+        self.assertIsNone(dataset.first()["spam"])
+        self.assertEqual(dataset.last()["spam"], "eggs")
+
+        # Merge view
+        dataset = dataset1.clone()
+        dataset.add_collection(dataset2.exclude_fields("spam"))
+
+        self.assertEqual(len(dataset), 2)
+        self.assertTrue("spam" not in dataset.get_field_schema())
+        self.assertIsNone(dataset.last()["foo"])
+
+    @drop_datasets
+    def test_add_collection_new_ids(self):
+        sample1 = fo.Sample(filepath="image.jpg", foo="bar")
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1)
+
+        # Merge dataset
+        dataset = dataset1.clone()
+        dataset.add_collection(dataset, new_ids=True)
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(len(set(dataset.values("id"))), 2)
+        self.assertEqual(dataset.first()["foo"], "bar")
+        self.assertEqual(dataset.last()["foo"], "bar")
+
+        # Merge view
+        dataset = dataset1.clone()
+        dataset.add_collection(dataset.exclude_fields("foo"), new_ids=True)
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(len(set(dataset.values("id"))), 2)
+        self.assertEqual(dataset.first()["foo"], "bar")
+        self.assertIsNone(dataset.last()["foo"])
+
+    @drop_datasets
     def test_expand_schema(self):
         # None-valued new fields are ignored for schema expansion
 
@@ -874,13 +1224,13 @@ class DatasetTests(unittest.TestCase):
             filepath="image.jpg",
             bool_field=True,
             int_field=1,
-            str_field="hi",
             float_field=1.0,
+            str_field="hi",
             date_field=date.today(),
             datetime_field=datetime.utcnow(),
             list_bool_field=[False, True],
-            list_float_field=[1.0, 2, 4.1],
             list_int_field=[1, 2, 3],
+            list_float_field=[1.0, 2, 4.1],
             list_str_field=["one", "two", "three"],
             list_date_field=[date.today(), date.today()],
             list_datetime_field=[datetime.utcnow(), datetime.utcnow()],
@@ -890,14 +1240,29 @@ class DatasetTests(unittest.TestCase):
             array_field=np.random.randn(3, 4),
         )
 
+        d = sample.to_mongo_dict()
+
+        self.assertIsInstance(d["bool_field"], bool)
+        self.assertIsInstance(d["int_field"], int)
+        self.assertIsInstance(d["float_field"], float)
+        self.assertIsInstance(d["str_field"], str)
+        self.assertIsInstance(d["date_field"], datetime)
+        self.assertIsInstance(d["datetime_field"], datetime)
+        self.assertIsInstance(d["list_bool_field"][0], bool)
+        self.assertIsInstance(d["list_int_field"][0], int)
+        self.assertIsInstance(d["list_float_field"][0], float)
+        self.assertIsInstance(d["list_str_field"][0], str)
+        self.assertIsInstance(d["list_date_field"][0], datetime)
+        self.assertIsInstance(d["list_datetime_field"][0], datetime)
+
         dataset.add_sample(sample)
         schema = dataset.get_field_schema()
 
         # Scalars
         self.assertIsInstance(schema["bool_field"], fo.BooleanField)
         self.assertIsInstance(schema["int_field"], fo.IntField)
-        self.assertIsInstance(schema["str_field"], fo.StringField)
         self.assertIsInstance(schema["float_field"], fo.FloatField)
+        self.assertIsInstance(schema["str_field"], fo.StringField)
         self.assertIsInstance(schema["date_field"], fo.DateField)
         self.assertIsInstance(schema["datetime_field"], fo.DateTimeField)
 
@@ -1034,6 +1399,7 @@ class DatasetTests(unittest.TestCase):
         self.assertIsNone(sample["int1"])
         self.assertIsNone(sample["list_int1"])
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_rename_fields(self):
         dataset = fo.Dataset()
@@ -1048,8 +1414,8 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             sample["field"]
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_rename_embedded_fields(self):
         dataset = fo.Dataset()
         sample = fo.Sample(
@@ -1090,8 +1456,8 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             sample.predictions.detections[0].new_field
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields(self):
         dataset = fo.Dataset()
         sample = fo.Sample(filepath="image.jpg", field=1)
@@ -1124,8 +1490,195 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             sample.field_copy
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
+    def test_object_id_fields1(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath="image.jpg")
+        dataset.add_sample(sample)
+
+        # Clone field
+
+        dataset.clone_sample_field("id", "sample_id")
+
+        schema = dataset.get_field_schema()
+        self.assertIn("sample_id", schema)
+
+        self.assertIsInstance(sample.sample_id, str)
+
+        ids = dataset.values("sample_id")
+        self.assertIsInstance(ids[0], str)
+
+        oids = dataset.values("_sample_id")
+        self.assertIsInstance(oids[0], ObjectId)
+
+        view = dataset.select_fields("sample_id")
+        sample_view = view.first()
+
+        self.assertIsInstance(sample_view.sample_id, str)
+
+        ids = view.values("sample_id")
+        self.assertIsInstance(ids[0], str)
+
+        oids = view.values("_sample_id")
+        self.assertIsInstance(oids[0], ObjectId)
+
+        # Rename field
+
+        dataset.rename_sample_field("sample_id", "still_sample_id")
+
+        schema = dataset.get_field_schema()
+        self.assertIn("still_sample_id", schema)
+        self.assertNotIn("sample_id", schema)
+
+        self.assertIsInstance(sample.still_sample_id, str)
+
+        with self.assertRaises(AttributeError):
+            sample.sample_id
+
+        ids = dataset.values("still_sample_id")
+        self.assertIsInstance(ids[0], str)
+
+        oids = dataset.values("_still_sample_id")
+        self.assertIsInstance(oids[0], ObjectId)
+
+        # Clear field
+
+        dataset.clone_sample_field("still_sample_id", "also_sample_id")
+        dataset.clear_sample_field("also_sample_id")
+
+        self.assertIsNone(sample.also_sample_id)
+
+        ids = dataset.values("also_sample_id")
+        self.assertIsNone(ids[0])
+
+        oids = dataset.values("_also_sample_id")
+        self.assertIsNone(oids[0])
+
+        # Delete field
+
+        dataset.delete_sample_field("still_sample_id")
+
+        schema = dataset.get_field_schema()
+        self.assertNotIn("still_sample_id", schema)
+
+        with self.assertRaises(AttributeError):
+            sample.still_sample_id
+
+        sample_view = dataset.view().first()
+
+        with self.assertRaises(AttributeError):
+            sample_view.still_sample_id
+
+    @drop_datasets
+    def test_object_id_fields2(self):
+        #
+        # In order to add custom ObjectId fields to a dataset, you must first
+        # declare them
+        #
+
+        dataset = fo.Dataset()
+        dataset.add_sample_field("other_id", fo.ObjectIdField)
+
+        # ObjectIds are presented to user as strings
+        sample = fo.Sample(filepath="image.jpg", other_id=ObjectId())
+        self.assertIsInstance(sample.other_id, str)
+
+        # But they are correctly serialized as private ObjectId values
+        d = sample.to_mongo_dict()
+        self.assertIsInstance(d["_other_id"], ObjectId)
+
+        dataset.add_sample(sample)
+
+        # Verify that serialization still works when sample is in dataset
+        d = sample.to_mongo_dict()
+        self.assertIsInstance(d["_other_id"], ObjectId)
+
+        #
+        # ObjectId fields can be selected and excluded as usual
+        #
+
+        view = dataset.select_fields("other_id")
+        sample_view = view.first()
+
+        self.assertIsInstance(sample_view.other_id, str)
+
+        d = sample_view.to_mongo_dict()
+        self.assertIsInstance(d["_other_id"], ObjectId)
+
+        view = dataset.exclude_fields("other_id")
+        sample_view = view.first()
+
+        with self.assertRaises(AttributeError):
+            sample_view.other_id
+
+        d = sample_view.to_mongo_dict()
+        self.assertNotIn("other_id", d)
+        self.assertNotIn("_other_id", d)
+
+        #
+        # You cannot dynamically add ObjectId fields because they are presented
+        # as strings and thus the wrong field type will be inferred
+        #
+
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(filepath="image.jpg", other_id=ObjectId())
+
+        # ValidationError: StringField cannot except ObjectId values
+        with self.assertRaises(Exception):
+            dataset.add_sample(sample)
+
+    @drop_datasets
+    def test_embedded_document_fields1(self):
+        sample = fo.Sample(
+            "image.jpg",
+            detection=fo.Detection(
+                polylines=fo.Polylines(polylines=[fo.Polyline()])
+            ),
+        )
+
+        self.assertEqual(len(sample.detection.polylines.polylines), 1)
+
+        d = sample.to_dict()
+        sample2 = fo.Sample.from_dict(d)
+
+        self.assertEqual(len(sample2.detection.polylines.polylines), 1)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        view = dataset.view()
+        sample_view = view.first()
+
+        self.assertEqual(len(sample_view.detection.polylines.polylines), 1)
+
+    @drop_datasets
+    def test_embedded_document_fields2(self):
+        sample = fo.Sample(filepath="image.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        sample["detection"] = fo.Detection(
+            polylines=fo.Polylines(polylines=[fo.Polyline()])
+        )
+        sample.save()
+
+        self.assertEqual(len(sample.detection.polylines.polylines), 1)
+
+        d = sample.to_dict()
+        sample2 = fo.Sample.from_dict(d)
+
+        self.assertEqual(len(sample2.detection.polylines.polylines), 1)
+
+        view = dataset.view()
+        sample_view = view.first()
+
+        self.assertEqual(len(sample_view.detection.polylines.polylines), 1)
+
+    @skip_windows  # TODO: don't skip on Windows
+    @drop_datasets
     def test_clone_embedded_fields(self):
         dataset = fo.Dataset()
         sample = fo.Sample(
@@ -1165,8 +1718,8 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             sample.predictions.detections[0].field_copy
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_frame_fields(self):
         dataset = fo.Dataset()
         sample = fo.Sample(filepath="video.mp4")
@@ -1201,8 +1754,8 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             frame.field_copy
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_embedded_frame_fields(self):
         dataset = fo.Dataset()
         sample = fo.Sample(filepath="video.mp4")
@@ -1472,6 +2025,206 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(
                 dataset3.default_skeleton, dataset.default_skeleton
             )
+
+
+class DatasetSerializationTests(unittest.TestCase):
+    @drop_datasets
+    def test_serialize_sample(self):
+        sample = fo.Sample(filepath="image.jpg", foo="bar")
+
+        d = sample.to_dict()
+        self.assertNotIn("id", d)
+        self.assertNotIn("_id", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertEqual(sample2["foo"], "bar")
+
+        d = sample.to_dict(include_private=True)
+        self.assertIn("_id", d)
+        self.assertIn("_media_type", d)
+        self.assertIn("_rand", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertEqual(sample2["foo"], "bar")
+
+    @drop_datasets
+    def test_serialize_video_sample(self):
+        sample = fo.Sample(filepath="video.mp4", foo="bar")
+        frame = fo.Frame(foo="bar")
+        sample.frames[1] = frame
+
+        d = sample.to_dict()
+        self.assertNotIn("frames", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertEqual(sample2["foo"], "bar")
+        self.assertEqual(len(sample2.frames), 0)
+
+        d = sample.to_dict(include_frames=True)
+        self.assertIn("frames", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertEqual(len(sample2.frames), 1)
+        self.assertEqual(sample2.frames[1]["foo"], "bar")
+
+        d = sample.to_dict(include_frames=True, include_private=True)
+        self.assertIn("frames", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertEqual(len(sample2.frames), 1)
+        self.assertEqual(sample2.frames[1]["foo"], "bar")
+
+        d = frame.to_dict()
+        self.assertNotIn("id", d)
+        self.assertNotIn("_id", d)
+
+        frame2 = fo.Frame.from_dict(d)
+        self.assertEqual(frame2["foo"], "bar")
+
+        d = frame.to_dict(include_private=True)
+        self.assertIn("_id", d)
+        self.assertIn("_sample_id", d)
+
+        frame2 = fo.Frame.from_dict(d)
+        self.assertEqual(frame2["foo"], "bar")
+
+    @drop_datasets
+    def test_serialize_dataset(self):
+        sample = fo.Sample(filepath="image.jpg", foo="bar")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        d = dataset.to_dict()
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertEqual(len(dataset2), 1)
+        self.assertEqual(sample2["foo"], "bar")
+
+        d = dataset.to_dict(include_private=True)
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertEqual(len(dataset2), 1)
+        self.assertEqual(sample2["foo"], "bar")
+
+    @drop_datasets
+    def test_serialize_video_dataset(self):
+        sample = fo.Sample(filepath="video.mp4", foo="bar")
+        frame = fo.Frame(foo="bar")
+        sample.frames[1] = frame
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        d = dataset.to_dict()
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertEqual(len(dataset2), 1)
+        self.assertEqual(dataset2.count("frames"), 0)
+        self.assertEqual(len(sample2.frames), 0)
+
+        d = dataset.to_dict(include_frames=True)
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertEqual(len(dataset2), 1)
+        self.assertEqual(dataset2.count("frames"), 1)
+        self.assertEqual(len(sample2.frames), 1)
+
+        d = dataset.to_dict(include_frames=True, include_private=True)
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertEqual(len(dataset2), 1)
+        self.assertEqual(dataset2.count("frames"), 1)
+        self.assertEqual(len(sample2.frames), 1)
+
+    @drop_datasets
+    def test_serialize_view(self):
+        sample = fo.Sample(filepath="image.jpg", foo="bar")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        view = dataset.select_fields()
+        sample_view = view.first()
+
+        d = sample_view.to_dict()
+        self.assertNotIn("foo", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertNotIn("foo", sample2)
+
+        d = view.to_dict()
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertNotIn("foo", dataset2.get_field_schema())
+        self.assertNotIn("foo", sample2)
+
+        d = view.to_dict(include_private=True)
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertNotIn("foo", dataset2.get_field_schema())
+        self.assertNotIn("foo", sample2)
+
+    @drop_datasets
+    def test_serialize_video_view(self):
+        sample = fo.Sample(filepath="video.mp4", foo="bar")
+        frame = fo.Frame(foo="bar")
+        sample.frames[1] = frame
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        view = dataset.select_fields()
+        sample_view = view.first()
+        frame_view = sample_view.frames.first()
+
+        d = frame_view.to_dict()
+        self.assertNotIn("foo", d)
+
+        frame2 = fo.Frame.from_dict(d)
+        self.assertNotIn("foo", frame2)
+
+        d = sample_view.to_dict()
+        self.assertNotIn("foo", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertEqual(len(sample2.frames), 0)
+
+        d = sample_view.to_dict(include_frames=True)
+        sample2 = fo.Sample.from_dict(d)
+        frame2 = sample2.frames.first()
+        self.assertNotIn("foo", frame2)
+
+        d = view.to_dict()
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertNotIn("foo", dataset2.get_frame_field_schema())
+        self.assertEqual(dataset2.count("frames"), 0)
+        self.assertEqual(len(sample2.frames), 0)
+
+        d = view.to_dict(include_frames=True)
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+        frame2 = sample2.frames.first()
+
+        self.assertNotIn("foo", dataset2.get_frame_field_schema())
+        self.assertNotIn("foo", frame2)
+
+        d = view.to_dict(include_frames=True, include_private=True)
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+        frame2 = sample2.frames.first()
+
+        self.assertNotIn("foo", dataset2.get_frame_field_schema())
+        self.assertNotIn("foo", frame2)
 
 
 class DatasetDeletionTests(unittest.TestCase):

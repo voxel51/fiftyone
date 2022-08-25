@@ -749,7 +749,7 @@ FiftyOne deployments.
 
 .. code-block:: shell
 
-    # Migrate the database and all datasets to the current package version
+    # Migrate the database and all datasets to the current client version
     fiftyone migrate --all
 
 .. code-block:: shell
@@ -841,9 +841,11 @@ Transforms the images in a dataset per the specified parameters.
 
 .. code-block:: text
 
-    fiftyone utils transform-images [-h] [--size SIZE]
-                                    [--min-size MIN_SIZE]
+    fiftyone utils transform-images [-h] [--size SIZE] [--min-size MIN_SIZE]
                                     [--max-size MAX_SIZE] [-e EXT] [-f]
+                                    [--media-field MEDIA_FIELD]
+                                    [--output-field OUTPUT_FIELD]
+                                    [-o OUTPUT_DIR] [-r REL_DIR]
                                     [-d] [-n NUM_WORKERS] [-s]
                                     DATASET_NAME
 
@@ -865,6 +867,22 @@ Transforms the images in a dataset per the specified parameters.
       -e EXT, --ext EXT     an image format to convert to (e.g., '.png' or '.jpg')
       -f, --force-reencode  whether to re-encode images whose parameters already
                             meet the specified values
+      --media-field MEDIA_FIELD
+                            the input field containing the image paths to
+                            transform
+      --output-field OUTPUT_FIELD
+                            an optional field in which to store the paths to
+                            the transformed images. By default, `media_field`
+                            is updated in-place
+      -o OUTPUT_DIR, --output-dir OUTPUT_DIR
+                            an optional output directory in which to write the
+                            transformed images. If none is provided, the images
+                            are updated in-place
+      -r REL_DIR, --rel-dir REL_DIR
+                            an optional relative directory to strip from each
+                            input filepath to generate a unique identifier that
+                            is joined with `output_dir` to generate an output
+                            path for each image
       -d, --delete-originals
                             whether to delete the original images after transforming
       -n NUM_WORKERS, --num-workers NUM_WORKERS
@@ -894,11 +912,16 @@ Transforms the videos in a dataset per the specified parameters.
 
 .. code-block:: text
 
+
     fiftyone utils transform-videos [-h] [--fps FPS] [--min-fps MIN_FPS]
                                     [--max-fps MAX_FPS] [--size SIZE]
-                                    [--min-size MIN_SIZE]
-                                    [--max-size MAX_SIZE] [-r] [-f] [-d]
-                                    [-s] [-v]
+                                    [--min-size MIN_SIZE] [--max-size MAX_SIZE]
+                                    [-r] [-f]
+                                    [--media-field MEDIA_FIELD]
+                                    [--output-field OUTPUT_FIELD]
+                                    [--output-dir OUTPUT_DIR]
+                                    [--rel-dir REL_DIR]
+                                    [-d] [-s] [-v]
                                     DATASET_NAME
 
 **Arguments**
@@ -924,6 +947,21 @@ Transforms the videos in a dataset per the specified parameters.
       -r, --reencode        whether to re-encode the videos as H.264 MP4s
       -f, --force-reencode  whether to re-encode videos whose parameters already
                             meet the specified values
+      --media-field MEDIA_FIELD
+                            the input field containing the video paths to
+                            transform
+      --output-field OUTPUT_FIELD
+                            an optional field in which to store the paths to
+                            the transformed videos. By default, `media_field`
+                            is updated in-place
+      --output-dir OUTPUT_DIR
+                            an optional output directory in which to write the
+                            transformed videos. If none is provided, the videos
+                            are updated in-place
+      --rel-dir REL_DIR     an optional relative directory to strip from each
+                            input filepath to generate a unique identifier that
+                            is joined with `output_dir` to generate an output
+                            path for each video
       -d, --delete-originals
                             whether to delete the original videos after transforming
       -s, --skip-failures   whether to gracefully continue without raising an

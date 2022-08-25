@@ -973,8 +973,8 @@ class UniqueFilenameMaker(object):
             output paths
         ignore_exts (False): whether to omit file extensions when checking for
             duplicate filenames
-        ignore_existing (False): whether to take existing files into account
-            when generating unqiue filenames
+        ignore_existing (False): whether to ignore existing files in
+            ``output_dir`` for output filename generation purposes
     """
 
     def __init__(
@@ -1006,14 +1006,26 @@ class UniqueFilenameMaker(object):
 
         fos.ensure_dir(self.output_dir)
 
-        if not self.ignore_existing:
-            filenames = fos.list_files(self.output_dir)
-        else:
-            filenames = []
+        if self.ignore_existing:
+            return
+
+        abs_paths = self.rel_dir is not None
+        filenames = fos.list_files(self.output_dir, abs_paths=abs_paths)
 
         self._idx = len(filenames)
         for filename in filenames:
             self._filename_counts[filename] += 1
+
+    def seen_input_path(self, input_path):
+        """Checks whether we've already seen the given input path.
+
+        Args:
+            input_path: an input path
+
+        Returns:
+            True/False
+        """
+        return input_path in self._filepath_map
 
     def get_output_path(self, input_path=None, output_ext=None):
         """Returns a unique output path.

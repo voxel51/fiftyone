@@ -371,6 +371,12 @@ export const count = selectorFamily<
       if (!result) {
         const split = path.split(".");
 
+        if (split[0] === "tags") {
+          return get(counts({ extended, path: "tags", modal }))[
+            split.slice(1).join(".")
+          ];
+        }
+
         if (split.length < 2) {
           throw new Error(`invalid path ${path}`);
         }

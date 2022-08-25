@@ -73,6 +73,11 @@ class PatchesTests(unittest.TestCase):
             },
         )
 
+        self.assertEqual(
+            view.get_field("metadata").document_type,
+            fo.ImageMetadata,
+        )
+
         self.assertSetEqual(
             set(view.select_fields().get_field_schema().keys()),
             {"id", "filepath", "tags", "metadata", "sample_id"},
