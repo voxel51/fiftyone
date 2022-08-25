@@ -4913,6 +4913,25 @@ def _load_dataset(name, virtual=False):
         fomi.migrate_dataset_if_necessary(name)
 
     try:
+        return _do_load_dataset(name, virtual=virtual)
+    except Exception as e:
+        try:
+            version = fomi.get_dataset_revision(name)
+        except:
+            raise e
+
+        if version != focn.VERSION:
+            raise ValueError(
+                "Failed to load dataset '%s' from v%s using client v%s. "
+                "You may need to upgrade your client"
+                % (name, version, focn.VERSION)
+            ) from e
+
+        raise e
+
+
+def _do_load_dataset(name, virtual=False):
+    try:
         # pylint: disable=no-member
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
     except moe.DoesNotExist:
@@ -4970,6 +4989,7 @@ def _load_dataset(name, virtual=False):
             ]
 
     dataset_doc.save()
+
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
 

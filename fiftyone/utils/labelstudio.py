@@ -231,7 +231,6 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         ids, mime_types, filepaths = samples.values(
             ["id", "metadata.mime_type", media_field]
         )
-
         filepaths = foc.media_cache.get_local_paths(filepaths)
 
         tasks = [
