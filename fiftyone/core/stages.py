@@ -69,6 +69,9 @@ class ViewStage(object):
         kwargs_str = ", ".join(kwargs_list)
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
+    def __eq__(self, other):
+        return type(self) == type(other) and self._kwargs() == other._kwargs()
+
     @property
     def has_view(self):
         """Whether this stage's output view should be loaded via
@@ -210,8 +213,8 @@ class ViewStage(object):
         """Returns a JSON dict representation of the :class:`ViewStage`.
 
         Args:
-            include_uuid (True): whether to include the stage's UUID in the JSON
-                representation
+            include_uuid (True): whether to include the stage's UUID in the
+                JSON representation
 
         Returns:
             a JSON dict
@@ -260,9 +263,8 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        uuid = d.get("_uuid", None)
-        stage = view_stage_cls(**{k: v for (k, v) in d["kwargs"]})
-        stage._uuid = uuid
+        stage = view_stage_cls(**dict(d["kwargs"]))
+        stage._uuid = d.get("_uuid", None)
         return stage
 
 
@@ -628,17 +630,26 @@ class ExcludeFields(ViewStage):
         excluded_fields = self.get_excluded_fields(
             sample_collection, frames=False
         )
+        excluded_fields = sample_collection._handle_db_fields(excluded_fields)
 
-        excluded_frame_fields = [
-            sample_collection._FRAMES_PREFIX + f
-            for f in self.get_excluded_fields(sample_collection, frames=True)
-        ]
+        if sample_collection.media_type == fom.VIDEO:
+            excluded_frame_fields = self.get_excluded_fields(
+                sample_collection, frames=True
+            )
+            excluded_frame_fields = sample_collection._handle_db_fields(
+                excluded_frame_fields, frames=True
+            )
 
-        if excluded_frame_fields:
-            # Don't project on root `frames` and embedded fields
-            # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
-            excluded_fields = [f for f in excluded_fields if f != "frames"]
-            excluded_fields += excluded_frame_fields
+            excluded_frame_fields = [
+                sample_collection._FRAMES_PREFIX + f
+                for f in excluded_frame_fields
+            ]
+
+            if excluded_frame_fields:
+                # Don't project on root `frames` and embedded fields
+                # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
+                excluded_fields = [f for f in excluded_fields if f != "frames"]
+                excluded_fields += excluded_frame_fields
 
         if not excluded_fields:
             return []
@@ -698,7 +709,7 @@ class ExcludeFields(ViewStage):
                 )
             )
 
-            defaults = [f for f in fields if f in default_frame_fields]
+            defaults = [f for f in frame_fields if f in default_frame_fields]
             if defaults:
                 raise ValueError(
                     "Cannot exclude default frame fields %s" % defaults
@@ -4561,43 +4572,12 @@ class SelectFields(ViewStage):
         return self._field_names or []
 
     def get_selected_fields(self, sample_collection, frames=False):
-        return self._get_selected_fields(
-            sample_collection, frames=frames, use_db_fields=False
-        )
-
-    def to_mongo(self, sample_collection):
-        selected_fields = self._get_selected_fields(
-            sample_collection, frames=False, use_db_fields=True
-        )
-
-        if sample_collection.media_type == fom.VIDEO:
-            selected_frame_fields = [
-                sample_collection._FRAMES_PREFIX + field
-                for field in self._get_selected_fields(
-                    sample_collection, frames=True, use_db_fields=True
-                )
-            ]
-
-            if selected_frame_fields:
-                # Don't project on root `frames` and embedded fields
-                # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
-                selected_fields = [f for f in selected_fields if f != "frames"]
-                selected_fields += selected_frame_fields
-
-        if not selected_fields:
-            return []
-
-        return [{"$project": {fn: True for fn in selected_fields}}]
-
-    def _get_selected_fields(
-        self, sample_collection, frames=False, use_db_fields=False
-    ):
         if frames:
             if sample_collection.media_type != fom.VIDEO:
                 return None
 
             default_fields = sample_collection._get_default_frame_fields(
-                include_private=True, use_db_fields=use_db_fields
+                include_private=True
             )
 
             selected_fields = []
@@ -4610,8 +4590,9 @@ class SelectFields(ViewStage):
                     selected_fields.append(field_name)
         else:
             default_fields = sample_collection._get_default_sample_fields(
-                include_private=True, use_db_fields=use_db_fields
+                include_private=True
             )
+
             if sample_collection.media_type == fom.VIDEO:
                 default_fields += ("frames",)
 
@@ -4621,6 +4602,38 @@ class SelectFields(ViewStage):
                     selected_fields.append(field)
 
         return list(set(selected_fields) | set(default_fields))
+
+    def to_mongo(self, sample_collection):
+        selected_fields = self.get_selected_fields(
+            sample_collection, frames=False
+        )
+        selected_fields = sample_collection._handle_db_fields(
+            selected_fields, frames=False
+        )
+
+        if sample_collection.media_type == fom.VIDEO:
+            selected_frame_fields = self.get_selected_fields(
+                sample_collection, frames=True
+            )
+            selected_frame_fields = sample_collection._handle_db_fields(
+                selected_frame_fields, frames=True
+            )
+
+            selected_frame_fields = [
+                sample_collection._FRAMES_PREFIX + f
+                for f in selected_frame_fields
+            ]
+
+            if selected_frame_fields:
+                # Don't project on root `frames` and embedded fields
+                # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
+                selected_fields = [f for f in selected_fields if f != "frames"]
+                selected_fields += selected_frame_fields
+
+        if not selected_fields:
+            return []
+
+        return [{"$project": {fn: True for fn in selected_fields}}]
 
     def _needs_frames(self, sample_collection):
         return any(
@@ -6160,14 +6173,11 @@ class ToFrames(ViewStage):
     to each frame image. Any frames without a ``filepath`` populated will be
     omitted from the returned view.
 
-    When ``sample_frames`` is True, this method samples each video in the input
-    collection into a directory of per-frame images with the same basename as
-    the input video with frame numbers/format specified by ``frames_patt``, and
-    stores the resulting frame paths in a ``filepath`` field of the input
-    collection.
-
-    For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
-    following paths::
+    When ``sample_frames`` is True, this method samples each video in the
+    collection into a directory of per-frame images with filenames specified by
+    ``frames_patt``. By default, each folder of images is written using the
+    same basename as the input video. For example, if
+    ``frames_patt = "%%06d.jpg"``, then videos with the following paths::
 
         /path/to/video1.mp4
         /path/to/video2.mp4
@@ -6183,6 +6193,33 @@ class ToFrames(ViewStage):
             000001.jpg
             000002.jpg
             ...
+
+    However, you can use the optional ``output_dir`` and ``rel_dir`` parameters
+    to customize the location and shape of the sampled frame folders. For
+    example, if ``output_dir = "/tmp"`` and ``rel_dir = "/path/to"``, then
+    videos with the following paths::
+
+        /path/to/folderA/video1.mp4
+        /path/to/folderA/video2.mp4
+        /path/to/folderB/video3.mp4
+        ...
+
+    would be sampled as follows::
+
+        /tmp/folderA/
+            video1/
+                000001.jpg
+                000002.jpg
+                ...
+            video2/
+                000001.jpg
+                000002.jpg
+                ...
+        /tmp/folderB/
+            video3/
+                000001.jpg
+                000002.jpg
+                ...
 
     By default, samples will be generated for every video frame at full
     resolution, but this method provides a variety of parameters that can be

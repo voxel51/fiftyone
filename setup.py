@@ -48,7 +48,7 @@ INSTALL_REQUIRES = [
     "packaging",
     "pandas",
     "Pillow>=6.2",
-    "plotly>=4.14,<5",
+    "plotly>=4.14",
     "pprintpp",
     "psutil",
     "pymongo>=3.11,<4",
@@ -76,9 +76,9 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.8,<0.9",
+    "fiftyone-brain>=0.9,<0.10",
     "fiftyone-db>=0.3,<0.4",
-    "voxel51-eta>=0.7.1,<0.8",
+    "voxel51-eta>=0.8,<0.9",
 ]
 
 

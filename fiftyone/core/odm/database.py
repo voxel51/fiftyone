@@ -31,7 +31,7 @@ import fiftyone.core.service as fos
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 
-from .document import DynamicDocument
+from .document import Document
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
@@ -53,17 +53,18 @@ _db_service = None
 # wrong version or type of client.
 #
 # This is currently guaranteed because:
-#   - `DatabaseConfigDocument` is a dynamic document, so any future fields that
-#     are added will not cause an error
+#   - `DatabaseConfigDocument` is declared as non-strict, so any past or future
+#     fields that are not currently defined will not cause an error
 #   - All declared fields are optional and we have promised ourselves that
 #     their type and meaning will never change
 #
 
 
-class DatabaseConfigDocument(DynamicDocument):
+class DatabaseConfigDocument(Document):
     """Backing document for the database config."""
 
-    meta = {"collection": "config"}
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"collection": "config", "strict": False}
 
     version = fof.StringField()
     type = fof.StringField()
@@ -428,8 +429,7 @@ def drop_orphan_collections(dry_run=False):
     _logger = _get_logger(dry_run=dry_run)
 
     colls_in_use = set()
-    for name in list_datasets():
-        dataset_dict = conn.datasets.find_one({"name": name})
+    for dataset_dict in conn.datasets.find({}):
         sample_coll_name = dataset_dict.get("sample_collection_name", None)
         if sample_coll_name:
             colls_in_use.add(sample_coll_name)

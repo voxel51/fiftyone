@@ -32,10 +32,23 @@ BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 TEAMS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "teams.json")
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 
+#
+# The compatible OSS versions for this client
+#
+# RULES: Datasets from all compatible versions must be...
+#   - Loadable by this client without error
+#   - Editable by this client without causing any database edits that would
+#     break the original client's ability to work with the dataset
+#
+# This setting may be ``None`` if this client has no compatibility with other
+# versions
+#
+COMPATIBLE_VERSIONS = ">=0.16.3,<0.17"
+
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
-VERSION = "0.16.5"  # open source compatibility version
+VERSION = "0.16.6"  # open source compatibility version
 TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]

@@ -494,7 +494,8 @@ class YOLOv5DatasetImporter(
                 % (self.yaml_path, self.split)
             )
 
-        data = d[self.split]
+        dataset_path = d.get("path", "")
+        data = fos.normpath(fos.join(dataset_path, d[self.split]))
         classes = d.get("names", None)
 
         if etau.is_str(data) and data.endswith(".txt"):
@@ -952,11 +953,20 @@ class YOLOv5DatasetExporter(
         if self._dynamic_classes:
             classes = _to_classes(self._labels_map_rev)
         else:
-            classes = self.classes
+            classes = list(self.classes)
+
+        if "names" in d and classes != d["names"]:
+            raise ValueError(
+                "Aborting export of YOLOv5 split '%s' because its class list "
+                "does not match the existing class list in '%s'.\nIf you are "
+                "exporting multiple splits, you must provide a common class "
+                "list via the `classes` argument"
+                % (self.split, self.yaml_path)
+            )
 
         d[self.split] = _make_yolo_v5_path(self.data_path, self.yaml_path)
         d["nc"] = len(classes)
-        d["names"] = list(classes)
+        d["names"] = classes
 
         fos.write_yaml(d, self.yaml_path, default_flow_style=False)
 

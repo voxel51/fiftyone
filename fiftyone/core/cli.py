@@ -2644,7 +2644,7 @@ class MigrateCommand(Command):
         # Print information about the current revisions of all datasets
         fiftyone migrate --info
 
-        # Migrate the database and all datasets to the current package version
+        # Migrate the database and all datasets to the current client version
         fiftyone migrate --all
 
         # Migrate to a specific revision
@@ -2726,7 +2726,13 @@ class MigrateCommand(Command):
 
 def _print_migration_table(db_ver, dataset_vers):
     print("FiftyOne Teams version: %s" % foc.TEAMS_VERSION)
+
+    print("")
     print("FiftyOne compatibility version: %s" % foc.VERSION)
+    if foc.COMPATIBLE_VERSIONS:
+        print("Other compatible versions: %s" % foc.COMPATIBLE_VERSIONS)
+
+    print("")
     print("Database version: %s" % db_ver)
 
     if dataset_vers:
@@ -2868,6 +2874,39 @@ class TransformImagesCommand(Command):
             ),
         )
         parser.add_argument(
+            "--media-field",
+            metavar="MEDIA_FIELD",
+            default="filepath",
+            help="the input field containing the image paths to transform",
+        )
+        parser.add_argument(
+            "--output-field",
+            metavar="OUTPUT_FIELD",
+            help=(
+                "an optional field in which to store the paths to the "
+                "transformed images. By default, `media_field` is updated "
+                "in-place"
+            ),
+        )
+        parser.add_argument(
+            "--output-dir",
+            metavar="OUTPUT_DIR",
+            help=(
+                "an optional output directory in which to write the "
+                "transformed images. If none is provided, the images are "
+                "updated in-place"
+            ),
+        )
+        parser.add_argument(
+            "--rel-dir",
+            metavar="REL_DIR",
+            help=(
+                "an optional relative directory to strip from each input "
+                "filepath to generate a unique identifier that is joined with "
+                "`output_dir` to generate an output path for each image"
+            ),
+        )
+        parser.add_argument(
             "-d",
             "--delete-originals",
             action="store_true",
@@ -2903,6 +2942,10 @@ class TransformImagesCommand(Command):
             max_size=args.max_size,
             ext=args.ext,
             force_reencode=args.force_reencode,
+            media_field=args.media_field,
+            output_field=args.output_field,
+            output_dir=args.output_dir,
+            rel_dir=args.rel_dir,
             delete_originals=args.delete_originals,
             num_workers=args.num_workers,
             skip_failures=args.skip_failures,
@@ -2997,6 +3040,39 @@ class TransformVideosCommand(Command):
             ),
         )
         parser.add_argument(
+            "--media-field",
+            metavar="MEDIA_FIELD",
+            default="filepath",
+            help="the input field containing the video paths to transform",
+        )
+        parser.add_argument(
+            "--output-field",
+            metavar="OUTPUT_FIELD",
+            help=(
+                "an optional field in which to store the paths to the "
+                "transformed videos. By default, `media_field` is updated "
+                "in-place"
+            ),
+        )
+        parser.add_argument(
+            "--output-dir",
+            metavar="OUTPUT_DIR",
+            help=(
+                "an optional output directory in which to write the "
+                "transformed videos. If none is provided, the videos are "
+                "updated in-place"
+            ),
+        )
+        parser.add_argument(
+            "--rel-dir",
+            metavar="REL_DIR",
+            help=(
+                "an optional relative directory to strip from each input "
+                "filepath to generate a unique identifier that is joined with "
+                "`output_dir` to generate an output path for each video"
+            ),
+        )
+        parser.add_argument(
             "-d",
             "--delete-originals",
             action="store_true",
@@ -3031,6 +3107,10 @@ class TransformVideosCommand(Command):
             max_size=args.max_size,
             reencode=args.reencode,
             force_reencode=args.force_reencode,
+            media_field=args.media_field,
+            output_field=args.output_field,
+            output_dir=args.output_dir,
+            rel_dir=args.rel_dir,
             delete_originals=args.delete_originals,
             skip_failures=args.skip_failures,
             verbose=args.verbose,

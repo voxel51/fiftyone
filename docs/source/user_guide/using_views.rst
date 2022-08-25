@@ -1830,7 +1830,51 @@ contents and editing the samples directly:
     print(dataset.count("random"))  # 50
     print(dataset.bounds("random")) # (0.0005, 0.9928)
 
-Alternatively, you can use
+However, the above pattern can be inefficient for large views because each
+:meth:`sample.save() <fiftyone.core.sample.SampleView.save>` call makes a new
+connection to the database.
+
+The :meth:`iter_samples() <fiftyone.core.view.DatasetView.iter_samples>` method
+provides an ``autosave=True`` option that causes all changes to samples
+emitted by the iterator to be automatically saved using an efficient batch
+update strategy:
+
+.. code-block:: python
+    :linenos:
+
+    # Automatically saves sample edits in efficient batches
+    for sample in view.select_fields().iter_samples(autosave=True):
+        sample["random"] = random.random()
+
+.. note::
+
+    As the above snippet shows, you should also optimize your iteration by
+    :ref:`selecting only <efficient-iteration-views>` the required fields.
+
+By default, updates are batched and submitted every 0.2 seconds, but you can
+configure the batching strategy by passing the optional ``batch_size`` argument
+to :meth:`iter_samples() <fiftyone.core.view.DatasetView.iter_samples>`.
+
+You can also use the
+:meth:`save_context() <fiftyone.core.collections.SampleCollection.save_context>`
+method to perform batched edits using the pattern below:
+
+.. code-block:: python
+    :linenos:
+
+    # Use a context to save sample edits in efficient batches
+    with view.save_context() as context:
+        for sample in view.select_fields():
+            sample["random"] = random.random()
+            context.save(sample)
+
+The benefit of the above approach versus passing ``autosave=True`` to
+:meth:`iter_samples() <fiftyone.core.view.DatasetView.iter_samples>` is that
+:meth:`context.save() <fiftyone.core.collections.SaveContext.save>` allows you
+to be explicit about which samples you are editing, which avoids unnecessary
+computations if your loop only edits certain samples.
+
+Another strategy for performing efficient batch edits is to use
 :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>` to
 set a field (or embedded field) on each sample in the collection in a single
 batch operation:
@@ -1838,7 +1882,7 @@ batch operation:
 .. code-block:: python
     :linenos:
 
-    # Delete the field we added in the previous variation
+    # Delete the field we added earlier
     dataset.delete_sample_field("random")
 
     # Equivalent way to populate a new field on each sample in a view
@@ -1854,7 +1898,7 @@ batch operation:
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     is often more efficient than performing the equivalent operation via an
     explicit iteration over the |DatasetView| because it avoids the need to
-    read the entire |SampleView| instances into memory and then save them.
+    read |SampleView| instances into memory and sequentially save them.
 
 Naturally, you can edit nested sample fields of a |DatasetView| by iterating
 over the view and editing the necessary data:
@@ -2086,7 +2130,7 @@ excluded from a view you created:
 
 Alternatively, you can use
 :meth:`clone() <fiftyone.core.view.DatasetView.clone>` to create a new
-|Dataset| that contains only the contents of a |DatasetView|:
+|Dataset| that contains a copy of (only) the contents of a |DatasetView|:
 
 .. code-block:: python
     :linenos:
@@ -2202,6 +2246,8 @@ dataset as follows:
 
     dataset.delete_samples(unlucky_samples)
 
+.. _efficient-iteration-views:
+
 Efficiently iterating samples
 -----------------------------
 
@@ -2245,11 +2291,17 @@ to load only the ``open_images_id`` field speeds up the operation below by
     import time
 
     start = time.time()
-    oiids = [s.open_images_id for s in dataset]
+    oids = []
+    for sample in dataset:
+        oids.append(sample.open_images_id)
+
     print(time.time() - start)
     # 38.212332010269165
 
     start = time.time()
-    oiids = [s.open_images_id for s in dataset.select_fields("open_images_id")]
+    oids = []
+    for sample in dataset.select_fields("open_images_id"):
+        oids.append(sample.open_images_id)
+
     print(time.time() - start)
     # 0.20824909210205078

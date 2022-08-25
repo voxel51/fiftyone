@@ -18,16 +18,19 @@ _foo.establish_db_conn(config)
 _foca.init_media_cache(media_cache_config)
 
 from .core.aggregations import (
+    Aggregation,
     Bounds,
     Count,
     CountValues,
     Distinct,
     HistogramValues,
     Mean,
+    Quantiles,
     Std,
     Sum,
     Values,
 )
+from .core.collections import SaveContext
 from .core.config import AppConfig
 from .core.dataset import (
     Dataset,
@@ -98,6 +101,10 @@ from .core.labels import (
     TemporalDetections,
     GeoLocation,
     GeoLocations,
+)
+from .core.logging import (
+    get_logging_level,
+    set_logging_level,
 )
 from .core.metadata import (
     Metadata,

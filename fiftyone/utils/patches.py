@@ -80,7 +80,7 @@ class ImagePatchesExtractor(object):
                         alpha=self.alpha,
                     )
                     if self.include_labels:
-                        yield patch, detection.label
+                        yield patch, _to_classification(detection)
                     else:
                         yield patch
 
@@ -167,3 +167,14 @@ def _load_image(image_path, force_rgb=False):
     # pylint: disable=no-member
     flag = cv2.IMREAD_COLOR if force_rgb else cv2.IMREAD_UNCHANGED
     return etai.read(image_path, flag=flag)
+
+
+def _to_classification(label):
+    if label is None:
+        return label
+
+    return fol.Classification(
+        label=label.label,
+        confidence=label.confidence,
+        **dict(label.iter_attributes()),
+    )

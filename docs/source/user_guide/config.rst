@@ -76,6 +76,9 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `do_not_track`                | `FIFTYONE_DO_NOT_TRACK`             | `False`                       | Controls whether UUID based import and App usage events are tracked.                   |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `logging_level`               | `FIFTYONE_LOGGING_LEVEL`            | `INFO`                        | Controls FiftyOne's package-wide logging level. Can be any valid ``logging`` level as  |
+|                               |                                     |                               | a string: ``DEBUG, INFO, WARNING, ERROR, CRITICAL``.                                   |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `model_zoo_dir`               | `FIFTYONE_MODEL_ZOO_DIR`            | `~/fiftyone/__models__`       | The default directory in which to store models that are downloaded from the            |
 |                               |                                     |                               | :ref:`FiftyOne Model Zoo <model-zoo>`.                                                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -138,6 +141,7 @@ and the CLI:
             "default_video_ext": ".mp4",
             "desktop_app": false,
             "do_not_track": false,
+            "logging_level": "INFO",
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,
@@ -179,6 +183,7 @@ and the CLI:
             "default_video_ext": ".mp4",
             "desktop_app": false,
             "do_not_track": false,
+            "logging_level": "INFO",
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,
@@ -412,7 +417,7 @@ New FiftyOne versions occasionally introduce data model changes that require
 database migrations when you :ref:`upgrade <upgrading-fiftyone>` or
 :ref:`downgrade <downgrading-fiftyone>`.
 
-Database upgrades happen automatically in two steps:
+By default, database upgrades happen automatically in two steps:
 
 -   **Database**: when you import FiftyOne for the first time using a newer
     version of the Python package, the database's version is automatically
@@ -425,15 +430,25 @@ Database downgrades must be manually performed. See
 :ref:`this page <downgrading-fiftyone>` for instructions.
 
 You can use the :ref:`fiftyone migrate <cli-fiftyone-migrate>` command to view
-the current versions of your database and datasets:
+the current versions of your client, database, and datasets:
 
 .. code-block:: shell
 
-    # View your client version
-    fiftyone --version
-
-    # View your database and dataset versions
+    # View your client, database, and dataset versions
     fiftyone migrate --info
+
+.. code-block:: text
+
+    Client version: 0.16.6
+    Compatible versions: >=0.16.3,<0.17
+
+    Database version: 0.16.6
+
+    dataset                      version
+    ---------------------------  ---------
+    bdd100k-validation           0.16.5
+    quickstart                   0.16.5
+    ...
 
 Restricting migrations
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -443,10 +458,14 @@ allowed to upgrade/downgrade your FiftyOne database. The default is `True`,
 which means that upgrades are automatically peformed when you connect to your
 database with newer Python client versions.
 
-If you set `database_admin` to `False`, your database will refuse connections
-from your FiftyOne client if its version does not match the database's current
-version, and datasets will refuse migrations to versions other than the
-database's current version.
+If you set `database_admin` to `False`, your client will **never** cause the
+database to be migrated to a new version. Instead, you'll see the following
+behavior:
+
+-   If your client is compatible with the current database version, you will be
+    allowed to connect to the database and use FiftyOne
+-   If your client is not compatible with the current database version, you
+    will see an informative error message when you import the library
 
 You can restrict migrations by adding the following entry to your
 `~/.fiftyone/config.json` file:
@@ -471,6 +490,70 @@ or by setting the following environment variable:
     `database_admin` config setting to `False` to ensure that they cannot
     trigger automatic database upgrades by connecting to the database with
     newer Python client versions.
+
+Coordinating a migration
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are working in an environment where multiple services are connecting to
+your MongoDB database at any given time, use this strategy to upgrade your
+deployment:
+
+1.  Ensure that all clients are running without database admin privileges,
+    e.g., by adding this to their `~/.fiftyone/config.json`:
+
+.. code-block:: json
+
+    {
+        "database_admin": false
+    }
+
+2.  Perform a test upgrade of one client and ensure that it is compatible with
+    your current database version:
+
+.. code-block:: shell
+
+    # In a test environment
+    pip install --upgrade fiftyone
+
+    # View client's compatibility info
+    fiftyone migrate --info
+
+.. code-block:: python
+
+    import fiftyone as fo
+
+    # Convince yourself that the new client can load a dataset
+    dataset = fo.load_dataset(...)
+
+3.  Now upgrade the client version used by all services:
+
+.. code-block:: shell
+
+    # In all client environments
+    pip install --upgrade fiftyone
+
+4.  Once all services are running the new client version, upgrade the database
+    with admin privileges:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATABASE_ADMIN=true
+
+    pip install --upgrade fiftyone
+    fiftyone migrate --all
+
+.. note::
+
+    Newly created datasets will always bear the
+    :meth:`version <fiftyone.core.dataset.Dataset.version>` of the Python
+    client that created them, which may differ from your database's version
+    if you are undergoing a migration.
+
+    If the new client's version is not in the compatibility range for the old
+    clients that are still in use, the old clients will not be able to load
+    the new datasets.
+
+    Therefore, it is recommended to upgrade all clients as soon as possible!
 
 .. _configuring-timezone:
 

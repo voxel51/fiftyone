@@ -384,23 +384,24 @@ class _SampleMixin(object):
                 expand_schema=expand_schema,
             )
 
-    def to_dict(self, include_frames=False):
+    def to_dict(self, include_frames=False, include_private=False):
         """Serializes the sample to a JSON dictionary.
-
-        Sample IDs and private fields are excluded in this representation.
 
         Args:
             include_frames (False): whether to include the frame labels for
                 video samples
+            include_private (False): whether to include private fields
 
         Returns:
             a JSON dict
         """
-        d = super().to_dict()
+        d = super().to_dict(include_private=include_private)
 
         if self.media_type == fomm.VIDEO:
             if include_frames:
-                d["frames"] = self.frames._to_frames_dict()
+                d["frames"] = self.frames._to_frames_dict(
+                    include_private=include_private
+                )
             else:
                 d.pop("frames", None)
 
@@ -538,33 +539,44 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
     def save(self):
         """Saves the sample to the database."""
+        super().save()
+
+    def _save(self, deferred=False):
         if not self._in_db:
             raise ValueError(
                 "Cannot save a sample that has not been added to a dataset"
             )
 
         if self.media_type == fomm.VIDEO:
-            self.frames.save()
+            frame_ops = self.frames._save(deferred=deferred)
+        else:
+            frame_ops = []
 
-        super().save()
+        sample_op = super()._save(deferred=deferred)
+
+        return sample_op, frame_ops
 
     @classmethod
-    def from_frame(cls, frame, filepath):
-        """Creates an image :class:`Sample` from the given
-        :class:`fiftyone.core.frame.Frame`.
+    def from_frame(cls, frame, filepath=None):
+        """Creates a sample from the given frame.
 
         Args:
             frame: a :class:`fiftyone.core.frame.Frame`
-            filepath: the path to the corresponding image frame on disk
+            filepath (None): the path to the corresponding image frame on disk,
+                if not available
 
         Returns:
             a :class:`Sample`
         """
-        return cls(filepath=filepath, **{k: v for k, v in frame.iter_fields()})
+        kwargs = {k: v for k, v in frame.iter_fields()}
+        if filepath is not None:
+            kwargs["filepath"] = filepath
+
+        return cls(**kwargs)
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
-        """Creates a :class:`Sample` backed by the given document.
+        """Creates a sample backed by the given document.
 
         Args:
             doc: a :class:`fiftyone.core.odm.sample.DatasetSampleDocument` or
@@ -579,6 +591,30 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
         if sample.media_type == fomm.VIDEO:
             sample._frames = fofr.Frames(sample)
+
+        return sample
+
+    @classmethod
+    def from_dict(cls, d):
+        """Loads the sample from a JSON dictionary.
+
+        The returned sample will not belong to a dataset.
+
+        Returns:
+            a :class:`Sample`
+        """
+        media_type = d.pop("_media_type", None)
+        if media_type is None:
+            media_type = fomm.get_media_type(d.get("filepath", ""))
+
+        if media_type == fomm.VIDEO:
+            frames = d.pop("frames", {})
+
+        sample = super().from_dict(d)
+
+        if sample.media_type == fomm.VIDEO:
+            for fn, fd in frames.items():
+                sample.frames[int(fn)] = fofr.Frame.from_dict(fd)
 
         return sample
 
@@ -642,7 +678,7 @@ class SampleView(_SampleMixin, DocumentView):
 
     def __repr__(self):
         if self._selected_fields is not None:
-            select_fields = ("id", "media_type") + tuple(self._selected_fields)
+            select_fields = ("media_type",) + tuple(self._selected_fields)
         else:
             select_fields = None
 
@@ -657,22 +693,33 @@ class SampleView(_SampleMixin, DocumentView):
             **kwargs,
         )
 
-    def to_dict(self, include_frames=False):
+    def to_dict(self, include_frames=False, include_private=False):
         """Serializes the sample view to a JSON dictionary.
-
-        The sample ID and private fields are excluded in this representation.
 
         Args:
             include_frames (False): whether to include the frame labels for
                 video samples
+            include_private (False): whether to include private fields
 
         Returns:
             a JSON dict
         """
-        d = super().to_dict(include_frames=include_frames)
+        d = super().to_dict(
+            include_frames=include_frames, include_private=include_private
+        )
 
         if self.selected_field_names or self.excluded_field_names:
-            d = {k: v for k, v in d.items() if k in self.field_names}
+            field_names = set(
+                self._get_field_names(
+                    include_private=include_private,
+                    use_db_fields=True,
+                )
+            )
+
+            if include_frames and self.media_type == fomm.VIDEO:
+                field_names.add("frames")
+
+            d = {k: v for k, v in d.items() if k in field_names}
 
         return d
 
@@ -684,10 +731,17 @@ class SampleView(_SampleMixin, DocumentView):
             This will permanently delete any omitted or filtered contents from
             the source dataset.
         """
-        if self.media_type == fomm.VIDEO:
-            self.frames.save()
-
         super().save()
+
+    def _save(self, deferred=False):
+        if self.media_type == fomm.VIDEO:
+            frame_ops = self.frames._save(deferred=deferred)
+        else:
+            frame_ops = []
+
+        sample_op = super()._save(deferred=deferred)
+
+        return sample_op, frame_ops
 
 
 def _apply_confidence_thresh(label, confidence_thresh):
