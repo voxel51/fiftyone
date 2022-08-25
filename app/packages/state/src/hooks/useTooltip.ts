@@ -16,7 +16,6 @@ export default function useTooltip() {
   function getMeshProps(label) {
     return {
       onPointerOver: () => {
-        console.log("over");
         setState((s) => ({
           ...s,
           hovering: true,
@@ -24,7 +23,6 @@ export default function useTooltip() {
         }));
       },
       onPointerOut: () => {
-        console.log("out");
         removeListener();
         setState((s) => ({ ...s, hovering: false, detail: null }));
       },
@@ -46,7 +44,6 @@ export default function useTooltip() {
   }
   function setCoords(coordinates) {
     const coords = computeCoordinates(coordinates);
-    console.log({ coords });
     setState((s) => ({ ...s, coords }));
   }
 
