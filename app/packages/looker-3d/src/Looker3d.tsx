@@ -202,6 +202,7 @@ function Polyline({
   selected,
   onClick,
   tooltip,
+  label
 }) {
   if (filled) {
     // filled not yet supported
@@ -291,7 +292,9 @@ function Looker3dCore({ sampleOverride: sample }) {
   // @ts-ignore
   const src = fos.getSampleSrc(sample[mediaField]);
   const points = useLoader(PCDLoader, src);
-  const selectedLabels = recoil.useRecoilValue(fos.selectedLabels);
+  const [selectedLabels, setSelectedLabels] = recoil.useRecoilState(
+    fos.selectedLabels
+  );
   const pathFilter = usePathFilter();
   const labelAlpha = recoil.useRecoilValue(fos.alpha(modal));
   const onSelectLabel = fos.useOnSelectLabel();
@@ -330,36 +333,45 @@ function Looker3dCore({ sampleOverride: sample }) {
 
   const colorBy = recoil.useRecoilValue(pcState.colorBy);
 
-  function onChangeView(view) {
-    const camera = cameraRef.current as any;
-    const controls = controlsRef.current as any;
-    if (camera) {
-      if (controls) {
+  const onChangeView = useCallback(
+    (view) => {
+      const camera = cameraRef.current as any;
+      const controls = controlsRef.current as any;
+      if (camera && controls) {
+        const origTarget = controls.target.clone();
+        const origCamPos = camera.position.clone();
         controls.target.set(0, 0, 0);
-      }
-      switch (view) {
-        case "top":
-          if (settings.defaultCameraPosition) {
-            camera.position.set(
-              settings.defaultCameraPosition.x,
-              settings.defaultCameraPosition.y,
-              settings.defaultCameraPosition.z
-            );
-          } else {
-            const maxZ = pointCloudBounds ? pointCloudBounds.max.z : null;
-            if (maxZ !== null) {
-              camera.position.set(0, 0, 20 * maxZ);
+        switch (view) {
+          case "top":
+            if (settings.defaultCameraPosition) {
+              camera.position.set(
+                settings.defaultCameraPosition.x,
+                settings.defaultCameraPosition.y,
+                settings.defaultCameraPosition.z
+              );
+            } else {
+              const maxZ = pointCloudBounds ? pointCloudBounds.max.z : null;
+              if (maxZ !== null) {
+                camera.position.set(0, 0, 20 * maxZ);
+              }
             }
-          }
-          break;
-        case "pov":
-          camera.position.set(0, -10, 1);
-          break;
+            break;
+          case "pov":
+            camera.position.set(0, -10, 1);
+            break;
+        }
+        controls.update();
+        camera.updateProjectionMatrix();
+        return (
+          origTarget.equals(controls.target) &&
+          origCamPos.equals(camera.position)
+        );
       }
-      controls.update();
-      camera.updateProjectionMatrix();
-    }
-  }
+    },
+    [cameraRef, controlsRef, settings, pointCloudBounds]
+  );
+
+  const jsonPanel = fos.useJSONPanel();
 
   const pcRotationSetting = _.get(settings, "pointCloud.rotation", [0, 0, 0]);
   const pcRotation = toEulerFromDegreesArray(pcRotationSetting);
@@ -392,6 +404,28 @@ function Looker3dCore({ sampleOverride: sample }) {
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
   const tooltip = fos.useTooltip();
+  useHotkey("KeyT", () => onChangeView("top"));
+  useHotkey("KeyE", () => onChangeView("pov"));
+  useHotkey(
+    "Escape",
+    ({ get, set }) => {
+      const changed = onChangeView("top");
+      if (changed) return;
+
+      const selectedLabels = get(fos.selectedLabels);
+      if (selectedLabels && Object.keys(selectedLabels).length > 0) {
+        set(fos.selectedLabels, {});
+        return;
+      }
+      if (jsonPanel.isOpen) return;
+      set(fos.modal, null);
+    },
+    [jsonPanel.isOpen, selectedLabels, hovering]
+  );
+
+  useEffect(() => {
+    onChangeView("top");
+  }, [cameraRef, controlsRef]);
 
   return (
     <Container onMouseOver={update} onMouseMove={update} onMouseOut={clear}>
@@ -440,29 +474,31 @@ function Looker3dCore({ sampleOverride: sample }) {
         />
         <axesHelper />
       </Canvas>
-      {(hoveringRef.current || hovering) && (
-        <ActionBarContainer
-          onMouseOver={() => (hoveringRef.current = true)}
-          onMouseOut={() => (hoveringRef.current = false)}
-        >
-          <ActionsBar>
-            <ChooseColorSpace />
-            <SetViewButton
-              onChangeView={onChangeView}
-              view={"top"}
-              label={"T"}
-              hint="Top View"
-            />
-            <SetViewButton
-              onChangeView={onChangeView}
-              view={"pov"}
-              label={"E"}
-              hint="Ego View"
-            />
-            <ViewJSON sample={sample} />
-          </ActionsBar>
-        </ActionBarContainer>
-      )}
+      {
+        /*(hoveringRef.current || hovering)*/ true && (
+          <ActionBarContainer
+            onMouseEnter={() => (hoveringRef.current = true)}
+            onMouseLeave={() => (hoveringRef.current = false)}
+          >
+            <ActionsBar>
+              <ChooseColorSpace />
+              <SetViewButton
+                onChangeView={onChangeView}
+                view={"top"}
+                label={"T"}
+                hint="Top View"
+              />
+              <SetViewButton
+                onChangeView={onChangeView}
+                view={"pov"}
+                label={"E"}
+                hint="Ego View"
+              />
+              <ViewJSON jsonPanel={jsonPanel} sample={sample} />
+            </ActionsBar>
+          </ActionBarContainer>
+        )
+      }
     </Container>
   );
 }
@@ -618,8 +654,7 @@ function Choice({ label, value }) {
   );
 }
 
-function ViewJSON({ sample }) {
-  const jsonPanel = fos.useJSONPanel();
+function ViewJSON({ sample, jsonPanel }) {
   const [currentAction, setAction] = recoil.useRecoilState(
     pcState.currentAction
   );
@@ -724,4 +759,21 @@ class ErrorBoundary extends React.Component<
 
     return this.props.children;
   }
+}
+function useHotkey(code, fn, deps) {
+  const EVENT_NAME = "keydown";
+  const cb = recoil.useRecoilTransaction_UNSTABLE((ctx) => () => fn(ctx), deps);
+  function handle(e) {
+    if (e.code === code) {
+      cb();
+    }
+  }
+  function unlisten() {
+    window.removeEventListener(EVENT_NAME, handle);
+  }
+  useEffect(() => {
+    window.addEventListener(EVENT_NAME, handle);
+
+    return unlisten;
+  }, []);
 }
