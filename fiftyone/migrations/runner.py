@@ -65,9 +65,9 @@ def migrate_all(destination=None, verbose=False):
     """Migrates the database and all datasets to the specified destination
     revision.
 
-    If no ``destination`` is provided, the database and each dataset will only
-    be migrated if their current versions are not compatible with the client's
-    version.
+    If ``fiftyone.config.database_admin`` is ``False`` and no ``destination``
+    is provided, the database and each dataset will only be migrated if their
+    current versions are not compatible with the client's version.
 
     Args:
         destination (None): the destination revision. By default, the
@@ -85,8 +85,9 @@ def migrate_all(destination=None, verbose=False):
 def migrate_database_if_necessary(destination=None, verbose=False):
     """Migrates the database to the specified revision, if necessary.
 
-    If no ``destination`` is provided, the database will only be migrated if
-    its current version is not compatible with the client's version.
+    If ``fiftyone.config.database_admin`` is ``False`` and no ``destination``
+    is provided, the database will only be migrated if its current version is
+    not compatible with the client's version.
 
     Args:
         destination (None): the destination revision. By default, the
@@ -102,7 +103,7 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     default_destination = destination is None
 
     if default_destination:
-        if _is_compatible_version(head):
+        if not fo.config.database_admin and _is_compatible_version(head):
             return
 
         destination = foc.VERSION
@@ -147,9 +148,9 @@ def needs_migration(name=None, head=None, destination=None):
     To use this method, specify either the ``name`` of an existing dataset or
     provide the ``head`` revision of the dataset.
 
-    If no ``destination`` is provided, a dataset will always be deemed to
-    require no migration if its current version if compatible with the client's
-    version.
+    If ``fiftyone.config.database_admin`` is ``False`` and no ``destination``
+    is provided, a dataset will be deemed to require no migration if its
+    current version if compatible with the client's version.
 
     Args:
         name (None): the name of the dataset
@@ -167,7 +168,7 @@ def needs_migration(name=None, head=None, destination=None):
         head = "0.0"
 
     if destination is None:
-        if _is_compatible_version(head):
+        if not fo.config.database_admin and _is_compatible_version(head):
             return False
 
         destination = get_database_revision()
@@ -183,8 +184,9 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
     """Migrates the dataset from its current revision to the specified
     destination revision.
 
-    If no ``destination`` is provided, the dataset will only be migrated if
-    its current version is not compatible with the client's version.
+    If ``fiftyone.config.database_admin`` is ``False`` and no ``destination``
+    is provided, the dataset will only be migrated if its current version is
+    not compatible with the client's version.
 
     Args:
         name: the name of the dataset
@@ -204,7 +206,7 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
     default_destination = destination is None
 
     if default_destination:
-        if _is_compatible_version(head):
+        if not fo.config.database_admin and _is_compatible_version(head):
             return
 
         destination = db_version
