@@ -417,7 +417,7 @@ New FiftyOne versions occasionally introduce data model changes that require
 database migrations when you :ref:`upgrade <upgrading-fiftyone>` or
 :ref:`downgrade <downgrading-fiftyone>`.
 
-Database upgrades happen automatically in two steps:
+By default, database upgrades happen automatically in two steps:
 
 -   **Database**: when you import FiftyOne for the first time using a newer
     version of the Python package, the database's version is automatically
@@ -430,15 +430,25 @@ Database downgrades must be manually performed. See
 :ref:`this page <downgrading-fiftyone>` for instructions.
 
 You can use the :ref:`fiftyone migrate <cli-fiftyone-migrate>` command to view
-the current versions of your database and datasets:
+the current versions of your client, database, and datasets:
 
 .. code-block:: shell
 
-    # View your client version
-    fiftyone --version
-
-    # View your database and dataset versions
+    # View your client, database, and dataset versions
     fiftyone migrate --info
+
+.. code-block:: text
+
+    Client version: 0.16.6
+    Compatible versions: >=0.16.3,<0.17
+
+    Database version: 0.16.6
+
+    dataset                      version
+    ---------------------------  ---------
+    bdd100k-validation           0.16.5
+    quickstart                   0.16.5
+    ...
 
 Restricting migrations
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -448,10 +458,14 @@ allowed to upgrade/downgrade your FiftyOne database. The default is `True`,
 which means that upgrades are automatically peformed when you connect to your
 database with newer Python client versions.
 
-If you set `database_admin` to `False`, your database will refuse connections
-from your FiftyOne client if its version does not match the database's current
-version, and datasets will refuse migrations to versions other than the
-database's current version.
+If you set `database_admin` to `False`, your client will **never** cause the
+database to be migrated to a new version. Instead, you'll see the following
+behavior:
+
+-   If your client is compatible with the current database version, you will be
+    allowed to connect to the database and use FiftyOne
+-   If your client is not compatible with the current database version, you
+    will see an informative error message when you import the library
 
 You can restrict migrations by adding the following entry to your
 `~/.fiftyone/config.json` file:
@@ -476,6 +490,57 @@ or by setting the following environment variable:
     `database_admin` config setting to `False` to ensure that they cannot
     trigger automatic database upgrades by connecting to the database with
     newer Python client versions.
+
+Coordinating a migration
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are working in an environment where multiple services are connecting to
+your MongoDB database at any given time, use this strategy to upgrade your
+deployment:
+
+1.  Ensure that all clients are running without database admin privileges,
+    e.g., by adding this to their `~/.fiftyone/config.json`:
+
+.. code-block:: json
+
+    {
+        "database_admin": false
+    }
+
+2.  Perform a test upgrade of one client and ensure that it is compatible with
+    your current database version:
+
+.. code-block:: shell
+
+    # In a test environment
+    pip install --upgrade fiftyone
+
+    # View client's compatibility info
+    fiftyone migrate --info
+
+.. code-block:: python
+
+    import fiftyone as fo
+
+    # Convince yourself that the new client can load a dataset
+    dataset = fo.load_dataset(...)
+
+3.  Now upgrade the client version used by all services:
+
+.. code-block:: shell
+
+    # In all client environments
+    pip install --upgrade fiftyone
+
+4.  Once all services are running the new client version, upgrade the database
+    with admin privileges:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATABASE_ADMIN=true
+
+    pip install --upgrade fiftyone
+    fiftyone migrate --all
 
 .. _configuring-timezone:
 
