@@ -2728,9 +2728,9 @@ def _print_migration_table(db_ver, dataset_vers):
     print("FiftyOne Teams version: %s" % foc.TEAMS_VERSION)
 
     print("")
-    print("FiftyOne version: %s" % foc.VERSION)
+    print("FiftyOne compatibility version: %s" % foc.VERSION)
     if foc.COMPATIBLE_VERSIONS:
-        print("Compatible versions: %s" % foc.COMPATIBLE_VERSIONS)
+        print("Other compatible versions: %s" % foc.COMPATIBLE_VERSIONS)
 
     print("")
     print("Database version: %s" % db_ver)

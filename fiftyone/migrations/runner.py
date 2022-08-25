@@ -262,7 +262,6 @@ class MigrationRunner(object):
         _revisions=None,
         _admin_revisions=None,
     ):
-        pkg_ver = Version(foc.VERSION)
         head_ver = Version(head)
         dest_ver = Version(destination)
         pkg_ver = Version(foc.VERSION)

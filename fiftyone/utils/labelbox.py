@@ -20,6 +20,7 @@ import numpy as np
 import eta.core.image as etai
 import eta.core.utils as etau
 
+import fiftyone.core.cache as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
@@ -473,6 +474,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 media files on disk to upload
         """
         media_paths, sample_ids = samples.values([media_field, "id"])
+        media_paths = foc.media_cache.get_local_paths(media_paths)
 
         upload_info = []
         for media_path, sample_id in zip(media_paths, sample_ids):

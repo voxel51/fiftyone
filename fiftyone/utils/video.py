@@ -381,11 +381,11 @@ def sample_videos(
             the same basename of each video
         rel_dir (None): a relative directory to remove from the filepath of
             each video, if possible. The path is converted to an absolute path
-            (if necessary) via :func:`fiftyone.core.utils.normalize_path`. This
-            argument can be used in conjunction with ``output_dir`` to cause
-            the sampled frames to be written in a nested directory structure
-            within ``output_dir`` matching the shape of the input video's
-            folder structure
+            (if necessary) via :func:`fiftyone.core.storage.normalize_path`.
+            This argument can be used in conjunction with ``output_dir`` to
+            cause the sampled frames to be written in a nested directory
+            structure within ``output_dir`` matching the shape of the input
+            video's folder structure
         delete_originals (False): whether to delete the original videos after
             sampling
         skip_failures (False): whether to gracefully continue without raising
