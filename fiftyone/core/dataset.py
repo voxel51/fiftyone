@@ -6347,7 +6347,7 @@ def _add_collection_with_new_ids(
         overwrite_info=overwrite_info,
     )
 
-    if sample_collection.media_type != fom.VIDEO:
+    if not sample_collection._contains_videos():
         pipeline = sample_collection._pipeline() + [
             {"$unset": "_id"},
             {
@@ -6367,9 +6367,18 @@ def _add_collection_with_new_ids(
     # used as foreign keys in the frame documents
     #
 
-    old_ids = sample_collection.values("_id")
+    if sample_collection.media_type == fom.GROUP:
+        samples = sample_collection.select_group_slice(_allow_mixed=True)
+        videos = sample_collection._select_group_slices(fom.VIDEO)
+    else:
+        samples = sample_collection
+        videos = sample_collection
 
-    sample_pipeline = sample_collection._pipeline(detach_frames=True) + [
+    old_ids = samples.values("_id")
+
+    sample_pipeline = samples._pipeline(
+        detach_frames=True, detach_groups=True
+    ) + [
         {"$unset": "_id"},
         {
             "$merge": {
@@ -6379,9 +6388,9 @@ def _add_collection_with_new_ids(
             }
         },
     ]
-    sample_collection._dataset._aggregate(pipeline=sample_pipeline)
+    samples._dataset._aggregate(pipeline=sample_pipeline)
 
-    frame_pipeline = sample_collection._pipeline(frames_only=True) + [
+    frame_pipeline = videos._pipeline(frames_only=True) + [
         {"$set": {"_tmp": "$_sample_id", "_sample_id": {"$rand": {}}}},
         {"$unset": "_id"},
         {
@@ -6392,7 +6401,7 @@ def _add_collection_with_new_ids(
             }
         },
     ]
-    sample_collection._dataset._aggregate(pipeline=frame_pipeline)
+    samples._dataset._aggregate(pipeline=frame_pipeline)
 
     new_ids = dataset[-len(old_ids) :].values("_id")
 
