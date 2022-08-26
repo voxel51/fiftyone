@@ -10,7 +10,7 @@ import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
 import { lookerPanelOverlayContainer } from "./Group.module.css";
-import { JSONPanel } from "@fiftyone/components";
+import { HelpPanel, JSONPanel } from "@fiftyone/components";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -185,6 +185,7 @@ const SampleModal = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isGroup = useRecoilValue(fos.isGroup);
   const jsonPanel = fos.useJSONPanel();
+  const helpPanel = fos.useHelpPanel();
 
   return ReactDOM.createPortal(
     <Fragment>
@@ -200,6 +201,12 @@ const SampleModal = () => {
                 jsonHTML={jsonPanel.jsonHTML}
                 onClose={() => jsonPanel.close()}
                 onCopy={() => jsonPanel.copy()}
+              />
+            )}
+            {helpPanel.isOpen && (
+              <HelpPanel
+                onClose={() => helpPanel.close()}
+                items={helpPanel.items}
               />
             )}
           </ContentColumn>

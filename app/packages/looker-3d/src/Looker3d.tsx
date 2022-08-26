@@ -31,6 +31,7 @@ import {
   PopoutSectionTitle,
   TabOption,
   jsonIcon,
+  helpIcon,
 } from "@fiftyone/components";
 import { colorMap } from "@fiftyone/state";
 import { removeListener } from "process";
@@ -372,6 +373,7 @@ function Looker3dCore({ sampleOverride: sample }) {
   );
 
   const jsonPanel = fos.useJSONPanel();
+  const helpPanel = fos.useHelpPanel();
 
   const pcRotationSetting = _.get(settings, "pointCloud.rotation", [0, 0, 0]);
   const pcRotation = toEulerFromDegreesArray(pcRotationSetting);
@@ -495,6 +497,7 @@ function Looker3dCore({ sampleOverride: sample }) {
               hint="Ego View"
             />
             <ViewJSON jsonPanel={jsonPanel} sample={sample} />
+            <ViewHelp helpPanel={helpPanel} />
           </ActionsBar>
         </ActionBarContainer>
       )}
@@ -669,6 +672,47 @@ function ViewJSON({ sample, jsonPanel }) {
               currentAction === targetAction ? null : targetAction;
             setAction(nextAction);
             jsonPanel.toggle(sample);
+            e.stopPropagation();
+            e.preventDefault();
+            return false;
+          }}
+        />
+      </ActionItem>
+    </Fragment>
+  );
+}
+
+const LOOKER3D_HELP_ITEMS = [
+  { shortcut: "Wheel", title: "Zoom", detail: "Zoom in and out" },
+  { shortcut: "Drag", title: "Rotate", detail: "Rotate the camera" },
+  {
+    shortcut: "Shift + drag",
+    title: "Translate",
+    detail: "Translate the camera",
+  },
+  { shortcut: "T", title: "Top-down", detail: "Reset camera to top-down view" },
+  { shortcut: "E", title: "Ego-view", detail: "Reset the camera to ego view" },
+  { shortcut: "C", title: "Controls", detail: "Toggle controls" },
+  { shortcut: "?", title: "Display help", detail: "Display this help window" },
+  { shortcut: "ESC", title: "Escape ", detail: "Escape the current context" },
+];
+
+function ViewHelp({ helpPanel }) {
+  const [currentAction, setAction] = recoil.useRecoilState(
+    pcState.currentAction
+  );
+
+  return (
+    <Fragment>
+      <ActionItem>
+        <img
+          src={helpIcon}
+          onClick={(e) => {
+            const targetAction = "help";
+            const nextAction =
+              currentAction === targetAction ? null : targetAction;
+            setAction(nextAction);
+            helpPanel.toggle(LOOKER3D_HELP_ITEMS);
             e.stopPropagation();
             e.preventDefault();
             return false;
