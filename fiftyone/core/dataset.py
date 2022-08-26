@@ -6075,7 +6075,7 @@ def _merge_dataset_doc(
 
     if src_media_type != dataset.media_type and src_media_type is not None:
         raise ValueError(
-            "Cannot merge a dataset with media_type='%s' into a dataset "
+            "Cannot merge a collection with media_type='%s' into a dataset "
             "with media_type='%s'" % (src_media_type, dataset.media_type)
         )
 
@@ -6097,6 +6097,23 @@ def _merge_dataset_doc(
         schema = {f.name: f.to_field() for f in doc.sample_fields}
         if contains_videos:
             frame_schema = {f.name: f.to_field() for f in doc.frame_fields}
+
+    if curr_doc.media_type == fom.GROUP:
+        if curr_doc.group_field != doc.group_field:
+            raise ValueError(
+                "Cannot merge a collection with group field '%s' into a "
+                "dataset with group field '%s'"
+                % (doc.group_field, curr_doc.group_field)
+            )
+
+        for name, media_type in doc.group_media_types.items():
+            curr_media_type = curr_doc.group_media_types.get(name, None)
+            if curr_media_type is not None and curr_media_type != media_type:
+                raise ValueError(
+                    "Cannot merge a collection whose '%s' slice has media "
+                    "type '%s' into a dataset whose '%s' slice has media type "
+                    "'%s'" % (name, media_type, name, curr_media_type)
+                )
 
     # Omit fields first in case `fields` is a dict that changes field names
     if omit_fields is not None:
