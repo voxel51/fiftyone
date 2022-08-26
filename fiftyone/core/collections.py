@@ -810,12 +810,17 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    def iter_groups(self):
+    def iter_groups(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the groups in the collection.
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
 
         Returns:
             an iterator that emits dicts mapping group slice names to

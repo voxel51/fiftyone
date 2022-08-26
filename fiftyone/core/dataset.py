@@ -1781,12 +1781,52 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return make_sample
 
-    def iter_groups(self, progress=False):
+    def iter_groups(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the groups in the dataset.
+
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for group in dataset.iter_groups(progress=True):
+                for sample in group.values():
+                    sample["test"] = make_label()
+                    sample.save()
+
+            # Save in batches of 10
+            for group in dataset.iter_groups(
+                progress=True, autosave=True, batch_size=10
+            ):
+                for sample in group.values():
+                    sample["test"] = make_label()
+                    sample.save()
+
+            # Save every 0.5 seconds
+            for group in dataset.iter_groups(
+                progress=True, autosave=True, batch_size=0.5
+            ):
+                for sample in group.values():
+                    sample["test"] = make_label()
+                    sample.save()
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
 
         Returns:
             an iterator that emits dicts mapping group slice names to
@@ -1795,13 +1835,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type != fom.GROUP:
             raise ValueError("%s does not contain groups" % type(self))
 
-        if progress:
-            with fou.ProgressBar(total=len(self)) as pb:
-                for group in pb(self._iter_groups()):
-                    yield group
-        else:
-            for group in self._iter_groups():
+        with contextlib.ExitStack() as exit_context:
+            groups = self._iter_groups()
+
+            if progress:
+                pb = fou.ProgressBar(total=len(self))
+                exit_context.enter_context(pb)
+                groups = pb(groups)
+
+            if autosave:
+                save_context = foc.SaveContext(self, batch_size=batch_size)
+                exit_context.enter_context(save_context)
+
+            for group in groups:
                 yield group
+
+                if autosave:
+                    for sample in group.values():
+                        save_context.save(sample)
 
     def _iter_groups(self, pipeline=None):
         make_sample = self._make_sample_fcn()
