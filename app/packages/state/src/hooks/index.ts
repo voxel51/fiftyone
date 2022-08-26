@@ -1,6 +1,7 @@
 export { default as useClearModal } from "./useClearModal";
 export { default as useCreateLooker } from "./useCreateLooker";
 export { default as useExpandSample } from "./useExpandSample";
+export { default as useHelpPanel } from "./useHelpPanel";
 export { default as useJSONPanel } from "./useJSONPanel";
 export { default as useLookerStore } from "./useLookerStore";
 export * from "./useLookerStore";

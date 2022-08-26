@@ -2,6 +2,7 @@ export { default as Bar } from "./Bar";
 export { default as Button } from "./Button";
 export { default as ErrorBoundary } from "./ErrorBoundary";
 export { default as Header } from "./Header";
+export { default as HelpPanel } from "./HelpPanel";
 export * from "./Icons";
 export { default as JSONPanel } from "./JSONPanel";
 export { default as Link } from "./Link";
