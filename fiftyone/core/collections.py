@@ -519,24 +519,34 @@ class SampleCollection(object):
                 "Compressed stats are only available for entire datasets"
             )
 
+        contains_videos = self._contains_videos()
+        if self.media_type == fom.GROUP:
+            samples = self.select_group_slice(_allow_mixed=True)
+            if contains_videos:
+                videos = self._select_group_slices(fom.VIDEO)
+        else:
+            samples = self
+            if contains_videos:
+                videos = self
+
         stats = {}
 
-        samples_bytes = self._get_samples_bytes()
-        stats["samples_count"] = self.count()
+        samples_bytes = samples._get_samples_bytes()
+        stats["samples_count"] = samples.count()
         stats["samples_bytes"] = samples_bytes
         stats["samples_size"] = etau.to_human_bytes_str(samples_bytes)
         total_bytes = samples_bytes
 
-        if self.media_type == fom.VIDEO:
-            frames_bytes = self._get_frames_bytes()
-            stats["frames_count"] = self.count("frames")
+        if contains_videos:
+            frames_bytes = videos._get_frames_bytes()
+            stats["frames_count"] = videos.count("frames")
             stats["frames_bytes"] = frames_bytes
             stats["frames_size"] = etau.to_human_bytes_str(frames_bytes)
             total_bytes += frames_bytes
 
         if include_media:
             self.compute_metadata()
-            media_bytes = self.sum("metadata.size_bytes")
+            media_bytes = samples.sum("metadata.size_bytes")
             stats["media_bytes"] = media_bytes
             stats["media_size"] = etau.to_human_bytes_str(media_bytes)
             total_bytes += media_bytes
