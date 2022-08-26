@@ -1524,16 +1524,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
         batcher = fou.DynamicBatcher(
-            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
+            samples,
+            target_latency=0.2,
+            init_batch_size=1,
+            max_batch_beta=2.0,
+            progress=True,
+            total=num_samples,
         )
 
         sample_ids = []
-        with fou.ProgressBar(total=num_samples) as pb:
+        with batcher:
             for batch in batcher:
-                sample_ids.extend(
-                    self._add_samples_batch(batch, expand_schema, validate)
-                )
-                pb.update(count=len(batch))
+                _ids = self._add_samples_batch(batch, expand_schema, validate)
+                sample_ids.extend(_ids)
 
         return sample_ids
 
@@ -1625,13 +1628,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
         batcher = fou.DynamicBatcher(
-            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
+            samples,
+            target_latency=0.2,
+            init_batch_size=1,
+            max_batch_beta=2.0,
+            progress=True,
         )
 
-        with fou.ProgressBar(total=num_samples) as pb:
+        with batcher:
             for batch in batcher:
                 self._upsert_samples_batch(batch, expand_schema, validate)
-                pb.update(count=len(batch))
 
     def _upsert_samples_batch(self, samples, expand_schema, validate):
         if self.media_type is None and samples:
