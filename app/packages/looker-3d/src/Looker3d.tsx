@@ -360,11 +360,11 @@ function Looker3dCore({ sampleOverride: sample }) {
             camera.position.set(0, -10, 1);
             break;
         }
-        controls.update();
+
         camera.updateProjectionMatrix();
-        return (
+        return !(
           origTarget.equals(controls.target) &&
-          origCamPos.equals(camera.position)
+          origCamPos.distanceTo(camera.position) < 1
         );
       }
     },
@@ -409,14 +409,15 @@ function Looker3dCore({ sampleOverride: sample }) {
   useHotkey(
     "Escape",
     ({ get, set }) => {
-      const changed = onChangeView("top");
-      if (changed) return;
-
       const selectedLabels = get(fos.selectedLabels);
       if (selectedLabels && Object.keys(selectedLabels).length > 0) {
         set(fos.selectedLabels, {});
         return;
       }
+
+      const changed = onChangeView("top");
+      if (changed) return;
+
       if (jsonPanel.isOpen) return;
       set(fos.modal, null);
     },
@@ -474,31 +475,29 @@ function Looker3dCore({ sampleOverride: sample }) {
         />
         <axesHelper />
       </Canvas>
-      {
-        /*(hoveringRef.current || hovering)*/ true && (
-          <ActionBarContainer
-            onMouseEnter={() => (hoveringRef.current = true)}
-            onMouseLeave={() => (hoveringRef.current = false)}
-          >
-            <ActionsBar>
-              <ChooseColorSpace />
-              <SetViewButton
-                onChangeView={onChangeView}
-                view={"top"}
-                label={"T"}
-                hint="Top View"
-              />
-              <SetViewButton
-                onChangeView={onChangeView}
-                view={"pov"}
-                label={"E"}
-                hint="Ego View"
-              />
-              <ViewJSON jsonPanel={jsonPanel} sample={sample} />
-            </ActionsBar>
-          </ActionBarContainer>
-        )
-      }
+      {(hoveringRef.current || hovering) && (
+        <ActionBarContainer
+          onMouseEnter={() => (hoveringRef.current = true)}
+          onMouseLeave={() => (hoveringRef.current = false)}
+        >
+          <ActionsBar>
+            <ChooseColorSpace />
+            <SetViewButton
+              onChangeView={onChangeView}
+              view={"top"}
+              label={"T"}
+              hint="Top View"
+            />
+            <SetViewButton
+              onChangeView={onChangeView}
+              view={"pov"}
+              label={"E"}
+              hint="Ego View"
+            />
+            <ViewJSON jsonPanel={jsonPanel} sample={sample} />
+          </ActionsBar>
+        </ActionBarContainer>
+      )}
     </Container>
   );
 }
