@@ -53,9 +53,13 @@ class FrameView(fos.SampleView):
     def _sample_id(self):
         return ObjectId(self._doc.sample_id)
 
-    def save(self):
-        """Saves the frame to the database."""
-        super().save()
+    def _save(self, deferred=False):
+        if deferred:
+            raise NotImplementedError(
+                "Frames views do not support save contexts"
+            )
+
+        super()._save(deferred=deferred)
         self._view._sync_source_sample(self)
 
 

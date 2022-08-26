@@ -60,8 +60,8 @@ See the
 "Package 'fiftyone' requires a different Python"
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This error occurs when attempting to install FiftyOne with an unsupported Python
-version (either too old or too new). See the
+This error occurs when attempting to install FiftyOne with an unsupported
+Python version (either too old or too new). See the
 :ref:`installation guide <install-prereqs>` for details on which versions of
 Python are supported by FiftyOne.
 
@@ -165,7 +165,33 @@ then FiftyOne's database service will attempt to start up on import using the
 MongoDB distribution provided by `fiftyone-db`. If the database fails to start,
 importing `fiftyone` will result in exceptions being raised.
 
-.. _troubleshooting-mongodb-exits
+.. _troubleshooting-downgrades:
+
+Downgrading to old versions
+---------------------------
+
+The :ref:`fiftyone migrate <cli-fiftyone-migrate>` command was introduced in
+FiftyOne v0.7.3. If you would like to downgrade from a FiftyOne version
+prior to v0.7.3 (to a yet older version), then you will first need to
+:ref:`upgrade <upgrading-fiftyone>` to v0.7.3 or later and then
+:ref:`downgrade <downgrading-fiftyone>`:
+
+.. code-block:: shell
+
+  # The version that you wish to downgrade to
+  VERSION=0.7.0
+
+  pip install fiftyone==0.7.3
+  fiftyone migrate --all -v $VERSION
+  pip install fiftyone==$VERSION
+
+To install a FiftyOne version prior to v0.7.0, you must add ``--index``:
+
+.. code-block:: shell
+
+    pip install --index https://pypi.voxel51.com fiftyone==<version>
+
+.. _troubleshooting-mongodb-exits:
 
 Database exits
 --------------
@@ -175,7 +201,6 @@ FiftyOne's MongoDB connection. The database service will exit in this case.
 Running `ulimit -n 64000` should resolve the issue. 64,000 is the recommended
 open file limit.  MongoDB has full documentation on the issue
 `here <https://docs.mongodb.com/manual/reference/ulimit/>`_. 
-
 
 .. _troubleshooting-mongodb-linux:
 

@@ -36,7 +36,7 @@ def reencode_images(
     .. note::
 
         This method will not update the ``metadata`` field of the collection
-        after transforming. You can repopulate the ``metadata` field if needed
+        after transforming. You can repopulate the ``metadata`` field if needed
         by calling::
 
             sample_collection.compute_metadata(overwrite=True)
@@ -105,7 +105,7 @@ def transform_images(
     .. note::
 
         This method will not update the ``metadata`` field of the collection
-        after transforming. You can repopulate the ``metadata` field if needed
+        after transforming. You can repopulate the ``metadata`` field if needed
         by calling::
 
             sample_collection.compute_metadata(overwrite=True)

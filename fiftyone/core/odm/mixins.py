@@ -1203,6 +1203,9 @@ class NoDatasetMixin(object):
     def save(self):
         pass
 
+    def _save(self, deferred=False):
+        pass
+
     def reload(self):
         pass
 
