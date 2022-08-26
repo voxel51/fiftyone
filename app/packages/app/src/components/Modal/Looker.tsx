@@ -107,7 +107,6 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
 
   onNext && useEventHandler(looker, "next", onNext);
   onPrevious && useEventHandler(looker, "previous", onPrevious);
-  onClose && useEventHandler(looker, "close", onClose);
   useEventHandler(looker, "select", useOnSelectLabel());
   useEventHandler(looker, "error", (event) => handleError(event.detail));
   const jsonPanel = fos.useJSONPanel();
@@ -120,6 +119,8 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
       jsonPanel.close();
     }
   });
+
+  onClose && useEventHandler(looker, "close", onClose);
 
   useEffect(() => {
     initialRef.current = false;
