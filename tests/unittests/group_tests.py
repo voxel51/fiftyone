@@ -410,7 +410,7 @@ class GroupTests(unittest.TestCase):
         stats = dataset.stats(include_media=True)
 
         self.assertEqual(stats["samples_count"], 6)
-        self.assertTrue(stats["media_bytes"] > 0)
+        self.assertIn("media_bytes", stats)
 
         view = dataset.limit(1).select_fields()
 
@@ -422,7 +422,7 @@ class GroupTests(unittest.TestCase):
         stats = view.stats(include_media=True)
 
         self.assertEqual(stats["samples_count"], 3)
-        self.assertTrue(stats["media_bytes"] > 0)
+        self.assertIn("media_bytes", stats)
 
     @drop_datasets
     def test_aggregations(self):
