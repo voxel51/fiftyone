@@ -6079,8 +6079,6 @@ def _merge_dataset_doc(
     # Merge schemas
     #
 
-    curr_doc = dataset._doc
-    has_frame_fields = dataset._has_frame_fields()
     src_media_type = collection_or_doc.media_type
 
     if dataset.media_type is None:
@@ -6088,6 +6086,9 @@ def _merge_dataset_doc(
             dataset.media_type = fom.GROUP
         elif src_media_type is not None:
             dataset.media_type = src_media_type
+
+    curr_doc = dataset._doc
+    has_frame_fields = dataset._has_frame_fields()
 
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
