@@ -49,13 +49,13 @@ def validate_video_sample(sample):
         )
 
 
-def validate_collection(sample_collection, media_types=None):
+def validate_collection(sample_collection, media_type=None):
     """Validates that the provided samples are a
     :class:`fiftyone.core.collections.SampleCollection`.
 
     Args:
         sample_collection: a sample collection
-        media_types (None): an optional media type or iterable of media types
+        media_type (None): an optional media type or iterable of media types
             that the collection must have
 
     Raises:
@@ -68,18 +68,24 @@ def validate_collection(sample_collection, media_types=None):
             % (foc.SampleCollection, sample_collection.__class__)
         )
 
-    if etau.is_container(media_types):
-        media_types = set(media_types)
+    if etau.is_container(media_type):
+        media_types = set(media_type)
         if sample_collection.media_type not in media_types:
+            if sample_collection.media_type == fom.GROUP:
+                raise fom.SelectGroupSlicesError(media_types)
+
             raise ValueError(
                 "Expected a collection with media type in %s; found '%s'"
                 % (media_types, sample_collection.media_type)
             )
-    elif media_types is not None:
-        if sample_collection.media_type != media_types:
+    elif media_type is not None:
+        if sample_collection.media_type != media_type:
+            if sample_collection.media_type == fom.GROUP:
+                raise fom.SelectGroupSlicesError(media_type)
+
             raise ValueError(
                 "Expected a collection with media type '%s'; found '%s'"
-                % (media_types, sample_collection.media_type)
+                % (media_type, sample_collection.media_type)
             )
 
 
@@ -105,6 +111,8 @@ def validate_image_collection(sample_collection):
             % (fom.IMAGE, sample_collection.media_type)
         )
 
+    # Ensure that the frames view has image filepaths, since the caller may
+    # want to directly access the images
     if sample_collection._dataset._is_frames:
         try:
             filepath = sample_collection[:1].values("filepath")[0]

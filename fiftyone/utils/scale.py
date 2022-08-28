@@ -186,7 +186,7 @@ def import_from_scale(
         scale_id_field ("scale_id"): the sample field to use to associate Scale
             task IDs with FiftyOne samples
     """
-    fov.validate_collection(dataset, media_types=(fomm.IMAGE, fomm.VIDEO))
+    fov.validate_collection(dataset, media_type=(fomm.IMAGE, fomm.VIDEO))
     is_video = dataset.media_type == fomm.VIDEO
 
     # Load labels
@@ -394,7 +394,7 @@ def export_to_scale(
             By default, no frame labels are exported
     """
     fov.validate_collection(
-        sample_collection, media_types=(fomm.IMAGE, fomm.VIDEO)
+        sample_collection, media_type=(fomm.IMAGE, fomm.VIDEO)
     )
     is_video = sample_collection.media_type == fomm.VIDEO
 

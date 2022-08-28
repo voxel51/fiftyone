@@ -1457,7 +1457,7 @@ def import_from_labelbox(
         labelbox_id_field ("labelbox_id"): the sample field to lookup/store the
             IDs of the Labelbox DataRows
     """
-    fov.validate_collection(dataset, media_types=(fomm.IMAGE, fomm.VIDEO))
+    fov.validate_collection(dataset, media_type=(fomm.IMAGE, fomm.VIDEO))
     is_video = dataset.media_type == fomm.VIDEO
 
     if download_dir:
@@ -1602,7 +1602,7 @@ def export_to_labelbox(
             By default, no frame labels are exported
     """
     fov.validate_collection(
-        sample_collection, media_types=(fomm.IMAGE, fomm.VIDEO)
+        sample_collection, media_type=(fomm.IMAGE, fomm.VIDEO)
     )
     is_video = sample_collection.media_type == fomm.VIDEO
 

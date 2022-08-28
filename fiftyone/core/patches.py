@@ -502,7 +502,7 @@ def make_patches_dataset(
             "convert your video dataset to frames via `to_frames()`"
         )
 
-    fova.validate_image_collection(sample_collection)
+    fova.validate_collection(sample_collection, media_type=fom.IMAGE)
 
     if etau.is_str(other_fields):
         other_fields = [other_fields]
