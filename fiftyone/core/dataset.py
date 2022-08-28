@@ -350,24 +350,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @media_type.setter
     def media_type(self, media_type):
-        if len(self) > 0:
-            raise ValueError("Cannot set media type of a non-empty dataset")
+        if media_type == self._doc.media_type:
+            return
 
-        if media_type not in fom.MEDIA_TYPES:
+        if media_type not in fom.MEDIA_TYPES and media_type != fom.GROUP:
             raise ValueError(
                 "Invalid media_type '%s'. Supported values are %s"
                 % (media_type, fom.MEDIA_TYPES)
             )
 
-        if media_type == self._doc.media_type:
-            return
-
-        if media_type == fom.GROUP:
-            raise ValueError(
-                "You cannot directly set a dataset's media type to 'group'. "
-                "Instead, use add_group_field() or just add a sample with a "
-                "group field to the dataset"
-            )
+        if len(self) > 0:
+            raise ValueError("Cannot set media type of a non-empty dataset")
 
         self._set_media_type(media_type)
 
@@ -1650,6 +1643,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type != fom.GROUP:
             raise ValueError("Dataset has no groups")
 
+        if name not in self._doc.group_media_types:
+            raise ValueError("Dataset has no group slice '%s'" % name)
+
         group_path = self.group_field + ".name"
         self.select_group_slice(name).set_field(group_path, new_name).save()
 
@@ -1909,6 +1905,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type != fom.GROUP:
             raise ValueError("%s does not contain groups" % type(self))
 
+        if self.group_field is None:
+            raise ValueError("%s has no group field" % type(self))
+
         group_field = self.group_field
         id_field = group_field + "._id"
 
@@ -2046,8 +2045,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         samples = [s.copy() if s._in_db else s for s in samples]
 
         if self.media_type is None and samples:
-            media_type = _get_media_type(samples[0])
-            self._set_media_type(media_type)
+            self.media_type = _get_media_type(samples[0])
 
         if expand_schema:
             self._expand_schema(samples)
@@ -2819,6 +2817,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._clear_frames(sample_ids=sample_ids)
 
     def _clear_groups(self, view=None, group_ids=None):
+        if self.group_field is None:
+            raise ValueError("%s has no group field" % type(self))
+
         if view is not None:
             if view.media_type != fom.GROUP:
                 raise ValueError("DatasetView is not grouped")
@@ -3023,7 +3024,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ]
         )
 
-        self._aggregate(pipeline=pipeline)
+        self._aggregate(pipeline=pipeline, manual_group_select=True)
 
     def delete(self):
         """Deletes the dataset.
@@ -5085,6 +5086,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """A pipeline that selects only ``group_slice`` documents from the
         pipeline.
         """
+        if self.group_field is None:
+            return []
+
         name_field = self.group_field + ".name"
         return [
             {
@@ -5098,6 +5102,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """A pipeline that attaches the reuested group slice(s) for each
         document and stores them in under ``groups.<slice>`` keys.
         """
+        if self.group_field is None:
+            return []
+
         id_field = self.group_field + "._id"
         name_field = self.group_field + ".name"
 
@@ -5136,6 +5143,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """A pipeline that looks up the requested group slices for each
         document and returns (only) the unwound group slices.
         """
+        if self.group_field is None:
+            return []
+
         id_field = self.group_field + "._id"
         name_field = self.group_field + ".name"
 
@@ -6066,25 +6076,18 @@ def _merge_dataset_doc(
     overwrite_info=False,
 ):
     #
-    # Merge media type
-    #
-
-    src_media_type = collection_or_doc.media_type
-    if dataset.media_type is None:
-        dataset.media_type = src_media_type
-
-    if src_media_type != dataset.media_type and src_media_type is not None:
-        raise ValueError(
-            "Cannot merge a collection with media_type='%s' into a dataset "
-            "with media_type='%s'" % (src_media_type, dataset.media_type)
-        )
-
-    #
     # Merge schemas
     #
 
     curr_doc = dataset._doc
     contains_videos = dataset._contains_videos()
+    src_media_type = collection_or_doc.media_type
+
+    if dataset.media_type is None:
+        if src_media_type == fom.MIXED:
+            dataset._set_media_type(fom.GROUP)
+        elif src_media_type is not None:
+            dataset._set_media_type(src_media_type)
 
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
@@ -6099,21 +6102,55 @@ def _merge_dataset_doc(
             frame_schema = {f.name: f.to_field() for f in doc.frame_fields}
 
     if curr_doc.media_type == fom.GROUP:
-        if curr_doc.group_field != doc.group_field:
+        # Get the group field this way because a view might omit the field
+        src_group_field = _get_group_field(schema)
+
+        if src_group_field is None:
             raise ValueError(
-                "Cannot merge a collection with group field '%s' into a "
-                "dataset with group field '%s'"
-                % (doc.group_field, curr_doc.group_field)
+                "Cannot merge samples with no group field into a grouped "
+                "dataset"
             )
 
-        for name, media_type in doc.group_media_types.items():
-            curr_media_type = curr_doc.group_media_types.get(name, None)
-            if curr_media_type is not None and curr_media_type != media_type:
-                raise ValueError(
-                    "Cannot merge a collection whose '%s' slice has media "
-                    "type '%s' into a dataset whose '%s' slice has media type "
-                    "'%s'" % (name, media_type, name, curr_media_type)
-                )
+        if curr_doc.group_field is None:
+            curr_doc.group_field = doc.group_field
+        elif src_group_field != curr_doc.group_field:
+            raise ValueError(
+                "Cannot merge samples with group field '%s' into a "
+                "dataset with group field '%s'"
+                % (src_group_field, curr_doc.group_field)
+            )
+
+        if src_media_type == fom.GROUP:
+            src_group_media_types = doc.group_media_types
+            src_default_group_slice = doc.default_group_slice
+        else:
+            src_group_media_types = collection_or_doc._get_group_media_types()
+            src_default_group_slice = next(
+                iter(src_group_media_types.keys()), None
+            )
+
+        for name, media_type in src_group_media_types.items():
+            if name not in curr_doc.group_media_types:
+                curr_doc.group_media_types[name] = media_type
+            else:
+                curr_media_type = curr_doc.group_media_types[name]
+                if curr_media_type != media_type:
+                    raise ValueError(
+                        "Cannot merge a collection whose '%s' slice has media "
+                        "type '%s' into a dataset whose '%s' slice has media "
+                        "type '%s'" % (name, media_type, name, curr_media_type)
+                    )
+
+        if curr_doc.default_group_slice is None:
+            curr_doc.default_group_slice = src_default_group_slice
+
+        if dataset._group_slice is None:
+            dataset._group_slice = src_default_group_slice
+    elif src_media_type not in (None, dataset.media_type):
+        raise ValueError(
+            "Cannot merge a collection with media_type='%s' into a dataset "
+            "with media_type='%s'" % (src_media_type, dataset.media_type)
+        )
 
     # Omit fields first in case `fields` is a dict that changes field names
     if omit_fields is not None:
@@ -6282,13 +6319,13 @@ def _clone_runs(dst_dataset, src_doc):
     dst_doc.save()
 
 
-def _ensure_index(sample_collection, db_field, unique=False):
+def _ensure_index(dataset, db_field, unique=False):
     # For some reason the ID index is not reported by `index_information()` as
     # being unique like other manually created indexes, but it is
     if db_field == "_id":
         return False, False
 
-    coll = sample_collection._dataset._sample_collection
+    coll = dataset._sample_collection
 
     # db_field -> (name, unique)
     index_map = _get_single_index_map(coll)
@@ -6312,8 +6349,8 @@ def _ensure_index(sample_collection, db_field, unique=False):
     return new, dropped
 
 
-def _cleanup_index(sample_collection, db_field, new_index, dropped_index):
-    coll = sample_collection._dataset._sample_collection
+def _cleanup_index(dataset, db_field, new_index, dropped_index):
+    coll = dataset._sample_collection
 
     if new_index:
         # db_field -> (name, unique)
@@ -6347,8 +6384,18 @@ def _add_collection_with_new_ids(
         overwrite_info=overwrite_info,
     )
 
-    if not sample_collection._contains_videos():
-        pipeline = sample_collection._pipeline() + [
+    contains_groups = sample_collection.media_type == fom.GROUP
+    contains_videos = sample_collection._contains_videos()
+
+    if contains_groups:
+        src_samples = sample_collection.select_group_slice(_allow_mixed=True)
+    else:
+        src_samples = sample_collection
+
+    src_dataset = sample_collection._dataset
+
+    if not contains_videos:
+        pipeline = src_samples._pipeline(detach_groups=True) + [
             {"$unset": "_id"},
             {
                 "$merge": {
@@ -6358,7 +6405,7 @@ def _add_collection_with_new_ids(
                 }
             },
         ]
-        sample_collection._dataset._aggregate(pipeline=pipeline)
+        src_dataset._aggregate(pipeline=pipeline, manual_group_select=True)
 
         return
 
@@ -6367,16 +6414,14 @@ def _add_collection_with_new_ids(
     # used as foreign keys in the frame documents
     #
 
-    if sample_collection.media_type == fom.GROUP:
-        samples = sample_collection.select_group_slice(_allow_mixed=True)
-        videos = sample_collection._select_group_slices(fom.VIDEO)
+    if contains_groups:
+        src_videos = sample_collection._select_group_slices(fom.VIDEO)
     else:
-        samples = sample_collection
-        videos = sample_collection
+        src_videos = sample_collection
 
-    old_ids = samples.values("_id")
+    old_ids = src_samples.values("_id")
 
-    sample_pipeline = samples._pipeline(
+    sample_pipeline = src_samples._pipeline(
         detach_frames=True, detach_groups=True
     ) + [
         {"$unset": "_id"},
@@ -6388,9 +6433,9 @@ def _add_collection_with_new_ids(
             }
         },
     ]
-    samples._dataset._aggregate(pipeline=sample_pipeline)
+    src_dataset._aggregate(pipeline=sample_pipeline, manual_group_select=True)
 
-    frame_pipeline = videos._pipeline(frames_only=True) + [
+    frame_pipeline = src_videos._pipeline(frames_only=True) + [
         {"$set": {"_tmp": "$_sample_id", "_sample_id": {"$rand": {}}}},
         {"$unset": "_id"},
         {
@@ -6401,7 +6446,7 @@ def _add_collection_with_new_ids(
             }
         },
     ]
-    samples._dataset._aggregate(pipeline=frame_pipeline)
+    src_dataset._aggregate(pipeline=frame_pipeline, manual_group_select=True)
 
     new_ids = dataset[-len(old_ids) :].values("_id")
 
@@ -6431,6 +6476,15 @@ def _merge_samples_python(
     expand_schema=True,
     num_samples=None,
 ):
+    if (
+        isinstance(samples, foc.SampleCollection)
+        and samples.media_type == fom.GROUP
+    ):
+        samples = samples.select_group_slice(_allow_mixed=True)
+        dst = dataset.select_group_slice(_allow_mixed=True)
+    else:
+        dst = dataset
+
     if num_samples is None:
         try:
             num_samples = len(samples)
@@ -6438,12 +6492,12 @@ def _merge_samples_python(
             pass
 
     if key_fcn is None:
-        id_map = {k: v for k, v in zip(*dataset.values([key_field, "_id"]))}
+        id_map = {k: v for k, v in zip(*dst.values([key_field, "_id"]))}
         key_fcn = lambda sample: sample[key_field]
     else:
         id_map = {}
         logger.info("Indexing dataset...")
-        for sample in dataset.iter_samples(progress=True):
+        for sample in dst.iter_samples(progress=True):
             id_map[key_fcn(sample)] = sample._id
 
     _samples = _make_merge_samples_generator(
@@ -6542,7 +6596,24 @@ def _merge_samples_pipeline(
     db_fields_map = src_collection._get_db_fields_map()
     key_field = db_fields_map.get(key_field, key_field)
 
-    contains_videos = dst_dataset._contains_videos()
+    contains_groups = src_collection.media_type == fom.GROUP
+    if contains_groups:
+        src_samples = src_collection.select_group_slice(_allow_mixed=True)
+    else:
+        src_samples = src_collection
+
+    contains_videos = src_collection._contains_videos()
+    if contains_videos:
+        if contains_groups:
+            src_videos = src_collection._select_group_slices(fom.VIDEO)
+        else:
+            src_videos = src_collection
+
+        if dst_dataset._contains_videos():
+            dst_videos = dst_dataset._select_group_slices(fom.VIDEO)
+        else:
+            dst_videos = dst_dataset
+
     src_dataset = src_collection._dataset
 
     new_src_index, dropped_src_index = _ensure_index(
@@ -6605,8 +6676,8 @@ def _merge_samples_pipeline(
 
     if contains_videos:
         frame_key_field = "_merge_key"
-        _index_frames(dst_dataset, key_field, frame_key_field)
-        _index_frames(src_collection, key_field, frame_key_field)
+        _index_frames(dst_videos, key_field, frame_key_field)
+        _index_frames(src_videos, key_field, frame_key_field)
 
         # Must create unique indexes in order to use `$merge`
         frame_index_spec = [(frame_key_field, 1), ("frame_number", 1)]
@@ -6626,7 +6697,7 @@ def _merge_samples_pipeline(
     )
     default_fields.discard("id")
 
-    sample_pipeline = src_collection._pipeline(
+    sample_pipeline = src_samples._pipeline(
         detach_frames=True, detach_groups=True
     )
 
@@ -6715,10 +6786,10 @@ def _merge_samples_pipeline(
     )
 
     # Merge samples
-    src_dataset._aggregate(pipeline=sample_pipeline)
+    src_dataset._aggregate(pipeline=sample_pipeline, manual_group_select=True)
 
     # Cleanup indexes
-    _cleanup_index(src_collection, key_field, new_src_index, dropped_src_index)
+    _cleanup_index(src_dataset, key_field, new_src_index, dropped_src_index)
     _cleanup_index(dst_dataset, key_field, new_dst_index, dropped_dst_index)
 
     #
@@ -6728,13 +6799,13 @@ def _merge_samples_pipeline(
     if contains_videos:
         # @todo this there a cleaner way to avoid this? we have to be sure that
         # `frame_key_field` is not excluded by a user's view here...
-        _src_collection = _always_select_field(
-            src_collection, "frames." + frame_key_field
+        _src_videos = _always_select_field(
+            src_videos, "frames." + frame_key_field
         )
 
         db_fields_map = src_collection._get_db_fields_map(frames=True)
 
-        frame_pipeline = _src_collection._pipeline(frames_only=True)
+        frame_pipeline = _src_videos._pipeline(frames_only=True)
 
         if frame_fields is not None:
             project = {}
@@ -6786,14 +6857,16 @@ def _merge_samples_pipeline(
         )
 
         # Merge frames
-        src_dataset._aggregate(pipeline=frame_pipeline)
+        src_dataset._aggregate(
+            pipeline=frame_pipeline, manual_group_select=True
+        )
 
         # Drop indexes
         dst_dataset._frame_collection.drop_index(dst_frame_index)
         src_dataset._frame_collection.drop_index(src_frame_index)
 
         # Finalize IDs
-        _finalize_frames(dst_dataset, key_field, frame_key_field)
+        _finalize_frames(dst_videos, key_field, frame_key_field)
 
         # Cleanup merge key
         cleanup_op = {"$unset": {frame_key_field: ""}}
@@ -7088,7 +7161,7 @@ def _finalize_frames(sample_collection, key_field, frame_key_field):
     results = sample_collection.values([key_field, "_id"])
     ids_map = {k: v for k, v in zip(*results)}
 
-    frame_coll = sample_collection._frame_collection
+    frame_coll = sample_collection._dataset._frame_collection
 
     ops = [
         UpdateMany(
@@ -7108,8 +7181,8 @@ def _get_media_type(sample):
     return sample.media_type
 
 
-def _get_group_field(dataset):
-    for field_name, field in dataset.get_field_schema().items():
+def _get_group_field(schema):
+    for field_name, field in schema.items():
         if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
             field.document_type, fog.Group
         ):

@@ -8143,6 +8143,12 @@ class SampleCollection(object):
         ]
         return self.select_group_slice(slice_names)
 
+    def _get_group_media_types(self):
+        if self.media_type != fom.GROUP:
+            return None
+
+        return self._dataset._doc.group_media_types
+
     def _contains_videos(self, only_active_slice=False):
         if self.media_type == fom.VIDEO:
             return True
@@ -8157,6 +8163,12 @@ class SampleCollection(object):
             return any(
                 slice_media_type == fom.VIDEO
                 for slice_media_type in self.group_media_types.values()
+            )
+
+        if self.media_type == fom.MIXED:
+            return any(
+                slice_media_type == fom.VIDEO
+                for slice_media_type in self._get_group_media_types().values()
             )
 
         return False

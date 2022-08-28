@@ -12,10 +12,10 @@ import eta.core.video as etav
 VIDEO = "video"
 IMAGE = "image"
 POINT_CLOUD = "point-cloud"
-GROUP = "group"
-MEDIA_TYPES = {IMAGE, VIDEO, POINT_CLOUD, GROUP}
+MEDIA_TYPES = {IMAGE, VIDEO, POINT_CLOUD}
 
 # Special media types
+GROUP = "group"
 MIXED = "mixed"
 
 

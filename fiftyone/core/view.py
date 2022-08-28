@@ -575,6 +575,9 @@ class DatasetView(foc.SampleCollection):
         if self.media_type != fom.GROUP:
             raise ValueError("%s does not contain groups" % type(self))
 
+        if self.group_field is None:
+            raise ValueError("%s has no group field" % type(self))
+
         group_field = self.group_field
         id_field = group_field + "._id"
 
@@ -1075,13 +1078,22 @@ class DatasetView(foc.SampleCollection):
         _view = self._base_view
 
         _contains_videos = self._dataset._contains_videos()
+        _found_select_group_slice = False
         _attach_frames_idx = None
+        _attach_frames_idx0 = None
 
         _contains_groups = self._dataset.media_type == fom.GROUP
         _group_slices = set()
         _attach_groups_idx = None
 
         for idx, stage in enumerate(self._stages):
+            if isinstance(stage, fost.SelectGroupSlice):
+                # We might need to reattach frames after `SelectGroupSlice`,
+                # since it involves a `$lookup` that resets the samples
+                _found_select_group_slice = True
+                _attach_frames_idx0 = _attach_frames_idx
+                _attach_frames_idx = None
+
             # Determine if stage needs frames attached
             if (
                 _contains_videos
@@ -1113,17 +1125,48 @@ class DatasetView(foc.SampleCollection):
         if _attach_frames_idx is None and attach_frames or frames_only:
             _attach_frames_idx = len(_pipelines)
 
-        # Insert frame lookup pipeline if needed
-        if _attach_frames_idx is not None:
-            attach_frames = True
+        #######################################################################
+        # Insert frame lookup pipeline(s) if needed
+        #######################################################################
 
-            # @todo use this optimization
-            # There's an issue with poster frame lookups for videos in the App
-            """
+        if _attach_frames_idx0 is not None and _attach_frames_idx is not None:
+            # Two lookups are required; manually do the **last** one and rely
+            # on dataset._pipeline() to do the first one
+            attach_frames = True
+            _pipeline = self._dataset._attach_frames_pipeline()
+            _pipelines.insert(_attach_frames_idx, _pipeline)
+        elif _found_select_group_slice and _attach_frames_idx is not None:
+            # Must manually attach frames after the group selection
             attach_frames = None  # special syntax: frames already attached
             _pipeline = self._dataset._attach_frames_pipeline()
             _pipelines.insert(_attach_frames_idx, _pipeline)
-            """
+        elif _attach_frames_idx0 is not None or _attach_frames_idx is not None:
+            # Exactly one lookup is required; rely on dataset._pipeline() to
+            # do it
+            attach_frames = True
+
+        # @todo use the optimization below instead, which injects frames as
+        # late as possible in the pipeline. We can't currently use it because
+        # there's some issue with poster frames in the App if the frames are
+        # not attached first...
+
+        """
+        if _attach_frames_idx0 is not None or _attach_frames_idx is not None:
+            attach_frames = None  # special syntax: frames already attached
+
+            if _attach_frames_idx0 is not None:
+                _pipeline = self._dataset._attach_frames_pipeline()
+                _pipelines.insert(_attach_frames_idx0, _pipeline)
+
+            if _attach_frames_idx is not None:
+                if _attach_frames_idx0 is not None:
+                    _attach_frames_idx += 1
+
+                _pipeline = self._dataset._attach_frames_pipeline()
+                _pipelines.insert(_attach_frames_idx, _pipeline)
+        """
+
+        #######################################################################
 
         # Insert group lookup pipline if needed
         if _attach_groups_idx is not None:
@@ -1322,6 +1365,24 @@ class DatasetView(foc.SampleCollection):
         )
         filtered_fields = self._get_filtered_fields(frames=frames)
         return not any((selected_fields, excluded_fields, filtered_fields))
+
+    def _get_group_media_types(self):
+        if self._dataset.media_type != fom.GROUP:
+            return None
+
+        group_media_types = self._dataset._doc.group_media_types
+
+        for stage in self._stages:
+            if isinstance(stage, fost.SelectGroupSlice):
+                s = stage.slice
+                if etau.is_container(s):
+                    group_media_types = {
+                        k: v for k, v in group_media_types.items() if k in s
+                    }
+                elif s is not None:
+                    group_media_types = {s: group_media_types[s]}
+
+        return group_media_types
 
 
 def make_optimized_select_view(sample_collection, sample_ids, ordered=False):
