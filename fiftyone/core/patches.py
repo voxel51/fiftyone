@@ -515,10 +515,6 @@ def make_patches_dataset(
         field_type = _get_single_label_field_type(sample_collection, field)
 
     dataset = fod.Dataset(name=name, _patches=True)
-    dataset._doc.app_sidebar_groups = (
-        sample_collection._dataset._doc.app_sidebar_groups
-    )
-
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
@@ -654,9 +650,6 @@ def make_evaluation_patches_dataset(
 
     # Setup dataset with correct schema
     dataset = fod.Dataset(name=name, _patches=True)
-    dataset._doc.app_sidebar_groups = (
-        sample_collection._dataset._doc.app_sidebar_groups
-    )
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")

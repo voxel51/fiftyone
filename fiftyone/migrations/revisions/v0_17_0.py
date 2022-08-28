@@ -45,11 +45,9 @@ def down(db, dataset_name):
             "not supported before this release" % dataset_name
         )
 
-    if "app_config" in dataset_dict:
-        config = dataset_dict["app_config"]
-        if "sidebar_groups" in config:
-            dataset_dict["app_sidebar_groups"] = config.pop("sidebar_groups")
+    app_config = dataset_dict.pop("app_config", None)
 
-    dataset_dict.pop("app_config", None)
+    if app_config is not None and "sidebar_groups" in app_config:
+        dataset_dict["app_sidebar_groups"] = app_config["sidebar_groups"]
 
     db.datasets.replace_one(match_d, dataset_dict)
