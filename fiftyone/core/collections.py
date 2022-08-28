@@ -519,18 +519,12 @@ class SampleCollection(object):
                 "Compressed stats are only available for entire datasets"
             )
 
-        contains_videos = self._contains_videos(any_slice=True)
+        stats = {}
 
         if self.media_type == fom.GROUP:
             samples = self.select_group_slices(_allow_mixed=True)
-            if contains_videos:
-                videos = self.select_group_slices(media_type=fom.VIDEO)
         else:
             samples = self
-            if contains_videos:
-                videos = self
-
-        stats = {}
 
         samples_bytes = samples._get_samples_bytes()
         stats["samples_count"] = samples.count()
@@ -538,7 +532,12 @@ class SampleCollection(object):
         stats["samples_size"] = etau.to_human_bytes_str(samples_bytes)
         total_bytes = samples_bytes
 
-        if contains_videos:
+        if self._contains_videos(any_slice=True):
+            if self.media_type == fom.GROUP:
+                videos = self.select_group_slices(media_type=fom.VIDEO)
+            else:
+                videos = self
+
             frames_bytes = videos._get_frames_bytes()
             stats["frames_count"] = videos.count("frames")
             stats["frames_bytes"] = frames_bytes
@@ -546,7 +545,7 @@ class SampleCollection(object):
             total_bytes += frames_bytes
 
         if include_media:
-            self.compute_metadata()
+            samples.compute_metadata()
             media_bytes = samples.sum("metadata.size_bytes")
             stats["media_bytes"] = media_bytes
             stats["media_size"] = etau.to_human_bytes_str(media_bytes)
@@ -577,7 +576,7 @@ class SampleCollection(object):
 
     def _get_frames_bytes(self):
         """Computes the total size of the frame documents in the collection."""
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return None
 
         pipeline = [
@@ -611,7 +610,7 @@ class SampleCollection(object):
         """Returns a dictionary mapping frame IDs to document sizes (in bytes)
         for each frame in the video collection.
         """
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return None
 
         pipeline = [
@@ -627,7 +626,7 @@ class SampleCollection(object):
         """Returns a dictionary mapping sample IDs to total frame document
         sizes (in bytes) for each sample in the video collection.
         """
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return None
 
         pipeline = [

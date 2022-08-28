@@ -399,6 +399,32 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(len(view), 1)
 
     @drop_datasets
+    def test_stats(self):
+        dataset = _make_group_dataset()
+
+        stats = dataset.stats()
+
+        self.assertEqual(stats["samples_count"], 6)
+        self.assertNotIn("media_bytes", stats)
+
+        stats = dataset.stats(include_media=True)
+
+        self.assertEqual(stats["samples_count"], 6)
+        self.assertTrue(stats["media_bytes"] > 0)
+
+        view = dataset.limit(1).select_fields()
+
+        stats = view.stats()
+
+        self.assertEqual(stats["samples_count"], 3)
+        self.assertNotIn("media_bytes", stats)
+
+        stats = view.stats(include_media=True)
+
+        self.assertEqual(stats["samples_count"], 3)
+        self.assertTrue(stats["media_bytes"] > 0)
+
+    @drop_datasets
     def test_aggregations(self):
         dataset = _make_group_dataset()
 
