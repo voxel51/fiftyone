@@ -1087,8 +1087,8 @@ class DatasetView(foc.SampleCollection):
         _attach_groups_idx = None
 
         for idx, stage in enumerate(self._stages):
-            if isinstance(stage, fost.SelectGroupSlice):
-                # We might need to reattach frames after `SelectGroupSlice`,
+            if isinstance(stage, fost.SelectGroupSlices):
+                # We might need to reattach frames after `SelectGroupSlices`,
                 # since it involves a `$lookup` that resets the samples
                 _found_select_group_slice = True
                 _attach_frames_idx0 = _attach_frames_idx
@@ -1370,19 +1370,11 @@ class DatasetView(foc.SampleCollection):
         if self._dataset.media_type != fom.GROUP:
             return None
 
-        group_media_types = self._dataset._doc.group_media_types
+        for stage in reversed(self._stages):
+            if isinstance(stage, fost.SelectGroupSlices):
+                return stage._get_group_media_types(self._dataset)
 
-        for stage in self._stages:
-            if isinstance(stage, fost.SelectGroupSlice):
-                s = stage.slice
-                if etau.is_container(s):
-                    group_media_types = {
-                        k: v for k, v in group_media_types.items() if k in s
-                    }
-                elif s is not None:
-                    group_media_types = {s: group_media_types[s]}
-
-        return group_media_types
+        return self._dataset.group_media_types
 
 
 def make_optimized_select_view(sample_collection, sample_ids, ordered=False):

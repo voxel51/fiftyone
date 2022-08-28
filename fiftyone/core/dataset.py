@@ -1649,7 +1649,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError("Dataset has no group slice '%s'" % name)
 
         group_path = self.group_field + ".name"
-        self.select_group_slice(name).set_field(group_path, new_name).save()
+        self.select_group_slices(name).set_field(group_path, new_name).save()
 
         new_media_type = self._doc.group_media_types.pop(name)
         self._doc.group_media_types[new_name] = new_media_type
@@ -1674,7 +1674,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if name not in self._doc.group_media_types:
             raise ValueError("Dataset has no group slice '%s'" % name)
 
-        self.delete_samples(self.select_group_slice(name))
+        self.delete_samples(self.select_group_slices(name))
 
         self._doc.group_media_types.pop(name)
 
@@ -2797,7 +2797,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             contains_videos = view._contains_videos(any_slice=True)
 
             if view.media_type == fom.GROUP:
-                view = view.select_group_slice(_allow_mixed=True)
+                view = view.select_group_slices(_allow_mixed=True)
 
             sample_ids = view.values("id")
         else:
@@ -2832,7 +2832,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             F = foex.ViewField
             oids = [ObjectId(_id) for _id in group_ids]
-            view = self.select_group_slice(_allow_mixed=True).match(
+            view = self.select_group_slices(_allow_mixed=True).match(
                 F(self.group_field + "._id").is_in(oids)
             )
             sample_ids = view.values("id")
@@ -2843,13 +2843,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _keep(self, view=None, sample_ids=None):
         if self.media_type == fom.GROUP:
-            clear_view = self.select_group_slice(_allow_mixed=True)
+            clear_view = self.select_group_slices(_allow_mixed=True)
         else:
             clear_view = self.view()
 
         if view is not None:
             if view.media_type == fom.GROUP:
-                view = view.select_group_slice(_allow_mixed=True)
+                view = view.select_group_slices(_allow_mixed=True)
 
             clear_view = clear_view.exclude(view)
         elif sample_ids is not None:
@@ -2905,7 +2905,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if view is not None:
             if view.media_type == fom.GROUP:
-                view = view._select_group_slices(fom.VIDEO)
+                view = view.select_group_slices(media_type=fom.VIDEO)
 
             sample_ids = view.values("id")
 
@@ -2948,7 +2948,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         if view.media_type == fom.GROUP:
-            view = view._select_group_slices(fom.VIDEO)
+            view = view.select_group_slices(media_type=fom.VIDEO)
 
         sample_ids, frame_numbers = view.values(["id", "frames.frame_number"])
 
@@ -2991,8 +2991,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_collection = self
 
         if sample_collection.media_type == fom.GROUP:
-            sample_collection = sample_collection._select_group_slices(
-                fom.VIDEO
+            sample_collection = sample_collection.select_group_slices(
+                media_type=fom.VIDEO
             )
 
         sample_collection.compute_metadata()
@@ -5916,7 +5916,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
 def _get_samples_pipeline(sample_collection):
     if sample_collection.media_type == fom.GROUP:
-        sample_collection = sample_collection.select_group_slice(
+        sample_collection = sample_collection.select_group_slices(
             _allow_mixed=True
         )
 
@@ -5951,7 +5951,7 @@ def _get_frames_pipeline(sample_collection):
         # the sample collection
 
         if view.media_type == fom.GROUP:
-            view = view._select_group_slices(fom.VIDEO)
+            view = view.select_group_slices(media_type=fom.VIDEO)
 
         coll = dataset._sample_collection
         pipeline = view._pipeline(frames_only=True)
@@ -6388,7 +6388,7 @@ def _add_collection_with_new_ids(
     contains_videos = sample_collection._contains_videos(any_slice=True)
 
     if contains_groups:
-        src_samples = sample_collection.select_group_slice(_allow_mixed=True)
+        src_samples = sample_collection.select_group_slices(_allow_mixed=True)
     else:
         src_samples = sample_collection
 
@@ -6415,7 +6415,9 @@ def _add_collection_with_new_ids(
     #
 
     if contains_groups:
-        src_videos = sample_collection._select_group_slices(fom.VIDEO)
+        src_videos = sample_collection.select_group_slices(
+            media_type=fom.VIDEO
+        )
     else:
         src_videos = sample_collection
 
@@ -6480,8 +6482,8 @@ def _merge_samples_python(
         isinstance(samples, foc.SampleCollection)
         and samples.media_type == fom.GROUP
     ):
-        samples = samples.select_group_slice(_allow_mixed=True)
-        dst = dataset.select_group_slice(_allow_mixed=True)
+        samples = samples.select_group_slices(_allow_mixed=True)
+        dst = dataset.select_group_slices(_allow_mixed=True)
     else:
         dst = dataset
 
@@ -6598,19 +6600,21 @@ def _merge_samples_pipeline(
 
     contains_groups = src_collection.media_type == fom.GROUP
     if contains_groups:
-        src_samples = src_collection.select_group_slice(_allow_mixed=True)
+        src_samples = src_collection.select_group_slices(_allow_mixed=True)
     else:
         src_samples = src_collection
 
     contains_videos = src_collection._contains_videos(any_slice=True)
     if contains_videos:
         if contains_groups:
-            src_videos = src_collection._select_group_slices(fom.VIDEO)
+            src_videos = src_collection.select_group_slices(
+                media_type=fom.VIDEO
+            )
         else:
             src_videos = src_collection
 
         if dst_dataset.media_type == fom.GROUP:
-            dst_videos = dst_dataset._select_group_slices(fom.VIDEO)
+            dst_videos = dst_dataset.select_group_slices(media_type=fom.VIDEO)
         else:
             dst_videos = dst_dataset
 

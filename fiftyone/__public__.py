@@ -170,7 +170,7 @@ from .core.stages import (
     SelectFields,
     SelectFrames,
     SelectGroups,
-    SelectGroupSlice,
+    SelectGroupSlices,
     SelectLabels,
     SetField,
     Skip,

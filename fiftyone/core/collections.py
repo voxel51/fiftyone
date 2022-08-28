@@ -522,9 +522,9 @@ class SampleCollection(object):
         contains_videos = self._contains_videos(any_slice=True)
 
         if self.media_type == fom.GROUP:
-            samples = self.select_group_slice(_allow_mixed=True)
+            samples = self.select_group_slices(_allow_mixed=True)
             if contains_videos:
-                videos = self._select_group_slices(fom.VIDEO)
+                videos = self.select_group_slices(media_type=fom.VIDEO)
         else:
             samples = self
             if contains_videos:
@@ -4888,7 +4888,9 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def select_group_slice(self, slice=None, _allow_mixed=False):
+    def select_group_slices(
+        self, slices=None, media_type=None, _allow_mixed=False
+    ):
         """Selects the samples in the group collection from the given slice(s).
 
         The returned view is a flattened non-grouped view containing only the
@@ -4905,7 +4907,7 @@ class SampleCollection(object):
             import fiftyone as fo
 
             dataset = fo.Dataset()
-            dataset.add_group_field("group", default="center")
+            dataset.add_group_field("group", default="ego")
 
             group1 = fo.Group()
             group2 = fo.Group()
@@ -4913,59 +4915,65 @@ class SampleCollection(object):
             dataset.add_samples(
                 [
                     fo.Sample(
-                        filepath="/path/to/image1-left.jpg",
+                        filepath="/path/to/left-image1.jpg",
                         group=group1.element("left"),
                     ),
                     fo.Sample(
-                        filepath="/path/to/image1-center.jpg",
-                        group=group1.element("center"),
+                        filepath="/path/to/video1.mp4",
+                        group=group1.element("ego"),
                     ),
                     fo.Sample(
-                        filepath="/path/to/image1-right.jpg",
+                        filepath="/path/to/right-image1.jpg",
                         group=group1.element("right"),
                     ),
                     fo.Sample(
-                        filepath="/path/to/image2-left.jpg",
+                        filepath="/path/to/left-image2.jpg",
                         group=group2.element("left"),
                     ),
                     fo.Sample(
-                        filepath="/path/to/image2-center.jpg",
-                        group=group2.element("center"),
+                        filepath="/path/to/video2.mp4",
+                        group=group2.element("ego"),
                     ),
                     fo.Sample(
-                        filepath="/path/to/image2-right.jpg",
+                        filepath="/path/to/right-image2.jpg",
                         group=group2.element("right"),
                     ),
                 ]
             )
 
             #
-            # Retrieve the samples from the "center" group slice
+            # Retrieve the samples from the "ego" group slice
             #
 
-            view = dataset.select_group_slice("center")
+            view = dataset.select_group_slices("ego")
 
             #
             # Retrieve the samples from the "left" or "right" group slices
             #
 
-            view = dataset.select_group_slice(["left", "right"])
+            view = dataset.select_group_slices(["left", "right"])
 
             #
-            # Retrieve a flattened list of all samples
+            # Retrieve all image samples
             #
 
-            view = dataset.select_group_slice()
+            view = dataset.select_group_slices(media_type="image")
 
         Args:
-            slice (None): a group slice or list of group slices to select. By
-                default, a flattened list of all samples is returned
+            slices (None): a group slice or iterable of group slices to select.
+                If neither argument is provided, a flattened list of all
+                samples is returned
+            media_type (None): a media type whose slice(s) to select
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.SelectGroupSlice(slice=slice, _allow_mixed=_allow_mixed)
+            fos.SelectGroupSlices(
+                slices=slices,
+                media_type=media_type,
+                _allow_mixed=_allow_mixed,
+            )
         )
 
     @view_stage
@@ -6740,7 +6748,7 @@ class SampleCollection(object):
             )
 
         if self.media_type == fom.GROUP:
-            raise fom.SelectGroupSliceError((fom.IMAGE, fom.VIDEO))
+            raise fom.SelectGroupSlicesError((fom.IMAGE, fom.VIDEO))
 
         raise fom.MediaTypeError(
             "Unsupported media type '%s'" % self.media_type
@@ -7530,7 +7538,7 @@ class SampleCollection(object):
             d["default_skeleton"] = self._serialize_default_skeleton()
 
         if self.media_type == fom.GROUP:
-            view = self.select_group_slice(_allow_mixed=True)
+            view = self.select_group_slices(_allow_mixed=True)
         else:
             view = self
 
@@ -8105,14 +8113,6 @@ class SampleCollection(object):
                 group_slices.add(group_slice)
 
         return list(group_slices)
-
-    def _select_group_slices(self, media_type):
-        slice_names = [
-            slice_name
-            for slice_name, slice_media_type in self.group_media_types.items()
-            if slice_media_type == media_type
-        ]
-        return self.select_group_slice(slice_names)
 
     def _get_group_media_types(self):
         if self.media_type != fom.GROUP:

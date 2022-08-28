@@ -97,7 +97,7 @@ def validate_image_collection(sample_collection):
     validate_collection(sample_collection)
 
     if sample_collection.media_type == fom.GROUP:
-        raise fom.SelectGroupSliceError(fom.IMAGE)
+        raise fom.SelectGroupSlicesError(fom.IMAGE)
 
     if sample_collection.media_type != fom.IMAGE:
         raise ValueError(
@@ -128,7 +128,7 @@ def validate_video_collection(sample_collection):
     validate_collection(sample_collection)
 
     if sample_collection.media_type == fom.GROUP:
-        raise fom.SelectGroupSliceError(fom.VIDEO)
+        raise fom.SelectGroupSlicesError(fom.VIDEO)
 
     if sample_collection.media_type != fom.VIDEO:
         raise ValueError(

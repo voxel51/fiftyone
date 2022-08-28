@@ -779,7 +779,7 @@ def _write_generic_sample_dataset(
                 isinstance(samples, foc.SampleCollection)
                 and samples.media_type == fomm.GROUP
             ):
-                samples = samples.select_group_slice(_allow_mixed=True)
+                samples = samples.select_group_slices(_allow_mixed=True)
 
             for sample in pb(samples):
                 dataset_exporter.export_sample(sample)
@@ -1725,7 +1725,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         etau.ensure_dir(self.export_dir)
 
         if sample_collection.media_type == fomm.GROUP:
-            _sample_collection = sample_collection.select_group_slice(
+            _sample_collection = sample_collection.select_group_slices(
                 _allow_mixed=True
             )
         else:
@@ -1776,8 +1776,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 sample_collection, fod.Dataset
             ):
                 # Export frames for all video samples
-                _video_collection = sample_collection._select_group_slices(
-                    fomm.VIDEO
+                _video_collection = sample_collection.select_group_slices(
+                    media_type=fomm.VIDEO
                 )
             else:
                 _video_collection = sample_collection
