@@ -4830,7 +4830,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         media_type = d.get("media_type", None)
         if media_type is not None:
-            dataset._set_media_type(media_type)
+            dataset.media_type = media_type
 
         if media_type == fom.GROUP:
             # group_field and group_slice are inferred when adding samples
@@ -6080,25 +6080,25 @@ def _merge_dataset_doc(
     #
 
     curr_doc = dataset._doc
-    contains_videos = dataset._contains_videos(any_slice=True)
+    has_frame_fields = dataset._has_frame_fields()
     src_media_type = collection_or_doc.media_type
 
     if dataset.media_type is None:
         if src_media_type == fom.MIXED:
-            dataset._set_media_type(fom.GROUP)
+            dataset.media_type = fom.GROUP
         elif src_media_type is not None:
-            dataset._set_media_type(src_media_type)
+            dataset.media_type = src_media_type
 
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
         doc = collection_or_doc._root_dataset._doc
         schema = collection_or_doc.get_field_schema()
-        if contains_videos:
+        if has_frame_fields:
             frame_schema = collection_or_doc.get_frame_field_schema()
     else:
         doc = collection_or_doc
         schema = {f.name: f.to_field() for f in doc.sample_fields}
-        if contains_videos:
+        if has_frame_fields:
             frame_schema = {f.name: f.to_field() for f in doc.frame_fields}
 
     if curr_doc.media_type == fom.GROUP:
@@ -6154,7 +6154,7 @@ def _merge_dataset_doc(
 
     # Omit fields first in case `fields` is a dict that changes field names
     if omit_fields is not None:
-        if contains_videos:
+        if has_frame_fields:
             omit_fields, omit_frame_fields = fou.split_frame_fields(
                 omit_fields
             )
@@ -6170,7 +6170,7 @@ def _merge_dataset_doc(
         if not isinstance(fields, dict):
             fields = {f: f for f in fields}
 
-        if contains_videos:
+        if has_frame_fields:
             fields, frame_fields = fou.split_frame_fields(fields)
 
             frame_schema = {
@@ -6185,7 +6185,7 @@ def _merge_dataset_doc(
         schema, expand_schema=expand_schema
     )
 
-    if contains_videos and frame_schema is not None:
+    if has_frame_fields and frame_schema is not None:
         dataset._frame_doc_cls.merge_field_schema(
             frame_schema, expand_schema=expand_schema
         )
