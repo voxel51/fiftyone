@@ -49,12 +49,14 @@ def validate_video_sample(sample):
         )
 
 
-def validate_collection(sample_collection):
+def validate_collection(sample_collection, media_types=None):
     """Validates that the provided samples are a
     :class:`fiftyone.core.collections.SampleCollection`.
 
     Args:
         sample_collection: a sample collection
+        media_types (None): an optional media type or iterable of media types
+            that the collection must have
 
     Raises:
         ValueError: if ``samples`` is not a
@@ -65,6 +67,20 @@ def validate_collection(sample_collection):
             "Expected samples to be a %s; found %s"
             % (foc.SampleCollection, sample_collection.__class__)
         )
+
+    if etau.is_container(media_types):
+        media_types = set(media_types)
+        if sample_collection.media_type not in media_types:
+            raise ValueError(
+                "Expected a collection with media type in %s; found '%s'"
+                % (media_types, sample_collection.media_type)
+            )
+    elif media_types is not None:
+        if sample_collection.media_type != media_types:
+            raise ValueError(
+                "Expected a collection with media type '%s'; found '%s'"
+                % (media_types, sample_collection.media_type)
+            )
 
 
 def validate_image_collection(sample_collection):

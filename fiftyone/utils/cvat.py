@@ -3119,6 +3119,10 @@ class CVATBackend(foua.AnnotationBackend):
     """Class for interacting with the CVAT annotation backend."""
 
     @property
+    def supported_media_types(self):
+        return [fom.IMAGE, fom.VIDEO]
+
+    @property
     def supported_label_types(self):
         return [
             "classification",
