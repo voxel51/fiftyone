@@ -901,7 +901,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ["Sample fields:", self._to_fields_str(self.get_field_schema())]
         )
 
-        if self._contains_videos():
+        if self._has_frame_fields():
             lines.extend(
                 [
                     "Frame fields:",
@@ -936,6 +936,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a stats dict
         """
+        contains_videos = self._contains_videos(any_slice=True)
+
         stats = {}
 
         conn = foo.get_db_conn()
@@ -947,7 +949,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         stats["samples_size"] = etau.to_human_bytes_str(samples_bytes)
         total_bytes = samples_bytes
 
-        if self._contains_videos():
+        if contains_videos:
             cs = conn.command("collstats", self._frame_collection_name)
             frames_bytes = cs["storageSize"] if compressed else cs["size"]
             stats["frames_count"] = cs["count"]
@@ -1078,7 +1080,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a dictionary mapping field names to field types, or ``None`` if
             the dataset does not contain videos
         """
-        if not self._contains_videos():
+        if not self._has_frame_fields():
             return None
 
         return self._frame_doc_cls.get_field_schema(
@@ -1171,7 +1173,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ValueError: if a field with the given name exists but has an
                 incompatible type
         """
-        if not self._contains_videos():
+        if not self._has_frame_fields():
             raise ValueError(
                 "Only datasets that contain videos may have frame fields"
             )
@@ -1188,7 +1190,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._reload()
 
     def _add_implied_frame_field(self, field_name, value):
-        if not self._contains_videos():
+        if not self._has_frame_fields():
             raise ValueError(
                 "Only datasets that contain videos may have frame fields"
             )
@@ -1313,7 +1315,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._reload()
 
     def _rename_frame_fields(self, field_mapping, view=None):
-        if not self._contains_videos():
+        if not self._has_frame_fields():
             raise ValueError(
                 "Only datasets that contain videos have frame fields"
             )
@@ -1413,7 +1415,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._reload()
 
     def _clone_frame_fields(self, field_mapping, view=None):
-        if not self._contains_videos():
+        if not self._has_frame_fields():
             raise ValueError(
                 "Only datasets that contain videos have frame fields"
             )
@@ -1515,7 +1517,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _clear_frame_fields(self, field_names, view=None):
         sample_collection = self if view is None else view
-        if not sample_collection._contains_videos():
+        if not sample_collection._has_frame_fields():
             raise ValueError(
                 "%s has no frame fields" % type(sample_collection)
             )
@@ -1616,7 +1618,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._reload()
 
     def _delete_frame_fields(self, field_names, error_level):
-        if not self._contains_videos():
+        if not self._has_frame_fields():
             raise ValueError(
                 "Only datasets that contain videos have frame fields"
             )
@@ -2792,14 +2794,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _clear(self, view=None, sample_ids=None):
         if view is not None:
-            contains_videos = view._contains_videos()
+            contains_videos = view._contains_videos(any_slice=True)
 
             if view.media_type == fom.GROUP:
                 view = view.select_group_slice(_allow_mixed=True)
 
             sample_ids = view.values("id")
         else:
-            contains_videos = self._contains_videos()
+            contains_videos = self._contains_videos(any_slice=True)
 
         if sample_ids is not None:
             d = {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
@@ -2865,7 +2867,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if del_sample_fields:
             self.delete_sample_fields(del_sample_fields)
 
-        if self._contains_videos():
+        if self._has_frame_fields():
             del_frame_fields = view._get_missing_fields(frames=True)
             if del_frame_fields:
                 self.delete_frame_fields(del_frame_fields)
@@ -2880,7 +2882,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _clear_frames(self, view=None, sample_ids=None, frame_ids=None):
         sample_collection = view if view is not None else self
-        if not sample_collection._contains_videos():
+        if not sample_collection._contains_videos(any_slice=True):
             return
 
         if self._is_clips:
@@ -2919,7 +2921,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _keep_frames(self, view=None, frame_ids=None):
         sample_collection = view if view is not None else self
-        if not sample_collection._contains_videos():
+        if not sample_collection._contains_videos(any_slice=True):
             return
 
         if self._is_clips:
@@ -2980,7 +2982,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._ensure_frames()
 
     def _ensure_frames(self, view=None):
-        if not self._contains_videos():
+        if not self._has_frame_fields():
             return
 
         if view is not None:
@@ -4951,7 +4953,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if media_type == fom.VIDEO:
             contains_videos = True
         else:
-            contains_videos = self._contains_videos(only_active_slice=True)
+            contains_videos = self._contains_videos()
 
         if not contains_videos:
             attach_frames = False
@@ -5465,7 +5467,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _reload_docs(self, hard=False):
         fos.Sample._reload_docs(self._sample_collection_name, hard=hard)
 
-        if self._contains_videos():
+        if self._has_frame_fields():
             fofr.Frame._reload_docs(self._frame_collection_name, hard=hard)
 
     def _serialize(self):
@@ -5827,7 +5829,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     if dataset_exists(name):
         raise ValueError("Dataset '%s' already exists" % name)
 
-    contains_videos = dataset_or_view._contains_videos()
+    contains_videos = dataset_or_view._contains_videos(any_slice=True)
 
     if isinstance(dataset_or_view, fov.DatasetView):
         dataset = dataset_or_view._dataset
@@ -5967,7 +5969,7 @@ def _save_view(view, fields=None):
 
     dataset = view._dataset
 
-    contains_videos = view._contains_videos(only_active_slice=True)
+    contains_videos = view._contains_videos()
     all_fields = fields is None
 
     if fields is None:
@@ -6078,7 +6080,7 @@ def _merge_dataset_doc(
     #
 
     curr_doc = dataset._doc
-    contains_videos = dataset._contains_videos()
+    contains_videos = dataset._contains_videos(any_slice=True)
     src_media_type = collection_or_doc.media_type
 
     if dataset.media_type is None:
@@ -6383,7 +6385,7 @@ def _add_collection_with_new_ids(
     )
 
     contains_groups = sample_collection.media_type == fom.GROUP
-    contains_videos = sample_collection._contains_videos()
+    contains_videos = sample_collection._contains_videos(any_slice=True)
 
     if contains_groups:
         src_samples = sample_collection.select_group_slice(_allow_mixed=True)
@@ -6600,14 +6602,14 @@ def _merge_samples_pipeline(
     else:
         src_samples = src_collection
 
-    contains_videos = src_collection._contains_videos()
+    contains_videos = src_collection._contains_videos(any_slice=True)
     if contains_videos:
         if contains_groups:
             src_videos = src_collection._select_group_slices(fom.VIDEO)
         else:
             src_videos = src_collection
 
-        if dst_dataset._contains_videos():
+        if dst_dataset.media_type == fom.GROUP:
             dst_videos = dst_dataset._select_group_slices(fom.VIDEO)
         else:
             dst_videos = dst_dataset

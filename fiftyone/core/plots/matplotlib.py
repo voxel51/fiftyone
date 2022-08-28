@@ -537,9 +537,7 @@ def lines(
         raise ValueError("You must provide 'y' values")
 
     if etau.is_str(y) or isinstance(y, foe.ViewExpression):
-        if samples is not None and samples._contains_videos(
-            only_active_slice=True
-        ):
+        if samples is not None and samples._contains_videos():
             is_frames = foe.is_frames_expr(y)
         else:
             is_frames = False

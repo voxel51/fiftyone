@@ -313,7 +313,7 @@ class DatasetView(foc.SampleCollection):
             ]
         )
 
-        if self._contains_videos():
+        if self._has_frame_fields():
             lines.extend(
                 [
                     "Frame fields:",
@@ -1053,7 +1053,7 @@ class DatasetView(foc.SampleCollection):
         return d
 
     def _needs_frames(self):
-        if not self._dataset._contains_videos():
+        if not self._dataset._has_frame_fields():
             return False
 
         for stage in self._stages:
@@ -1077,7 +1077,7 @@ class DatasetView(foc.SampleCollection):
         _pipelines = []
         _view = self._base_view
 
-        _contains_videos = self._dataset._contains_videos()
+        _contains_videos = self._dataset._contains_videos(any_slice=True)
         _found_select_group_slice = False
         _attach_frames_idx = None
         _attach_frames_idx0 = None
@@ -1348,7 +1348,7 @@ class DatasetView(foc.SampleCollection):
 
     def _get_missing_fields(self, frames=False):
         if frames:
-            if not self._contains_videos():
+            if not self._has_frame_fields():
                 return set()
 
             dataset_schema = self._dataset.get_frame_field_schema()

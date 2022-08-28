@@ -650,7 +650,7 @@ class ExcludeFields(ViewStage):
         return self._field_names
 
     def get_excluded_fields(self, sample_collection, frames=False):
-        if sample_collection._contains_videos(only_active_slice=True):
+        if sample_collection._contains_videos():
             fields, frame_fields = fou.split_frame_fields(self.field_names)
             return frame_fields if frames else fields
 
@@ -662,7 +662,7 @@ class ExcludeFields(ViewStage):
         )
         excluded_fields = sample_collection._handle_db_fields(excluded_fields)
 
-        if sample_collection._contains_videos(only_active_slice=True):
+        if sample_collection._contains_videos():
             excluded_frame_fields = self.get_excluded_fields(
                 sample_collection, frames=True
             )
@@ -687,7 +687,7 @@ class ExcludeFields(ViewStage):
         return [{"$unset": excluded_fields}]
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         return any(
@@ -724,7 +724,7 @@ class ExcludeFields(ViewStage):
         # Using dataset here allows a field to be excluded multiple times
         sample_collection._dataset.validate_fields_exist(self.field_names)
 
-        if sample_collection._contains_videos(only_active_slice=True):
+        if sample_collection._contains_videos():
             fields, frame_fields = fou.split_frame_fields(self.field_names)
         else:
             fields = self.field_names
@@ -1083,7 +1083,7 @@ class ExcludeLabels(ViewStage):
         ]
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         if self._labels is not None:
@@ -1272,7 +1272,7 @@ class Exists(ViewStage):
         ]
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         return sample_collection._is_frame_field(self._field)
@@ -1417,7 +1417,7 @@ class FilterField(ViewStage):
         return new_field
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         return sample_collection._is_frame_field(self._field)
@@ -1979,7 +1979,7 @@ class FilterLabels(ViewStage):
         return new_field
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         return sample_collection._is_frame_field(self._labels_field)
@@ -2419,7 +2419,7 @@ class FilterKeypoints(ViewStage):
         return new_field
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         return sample_collection._is_frame_field(self._field)
@@ -2946,7 +2946,7 @@ class GroupBy(ViewStage):
         return pipeline
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         field_or_expr = self._get_mongo_field_or_expr()
@@ -3344,7 +3344,7 @@ class MapLabels(ViewStage):
         return pipeline
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         return sample_collection._is_frame_field(self._field)
@@ -3510,7 +3510,7 @@ class SetField(ViewStage):
         return self._pipeline
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         is_frame_field = sample_collection._is_frame_field(self._field)
@@ -3690,7 +3690,7 @@ class Match(ViewStage):
         return [{"$match": self._get_mongo_expr()}]
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         return foe.is_frames_expr(self._get_mongo_expr())
@@ -4314,7 +4314,7 @@ class MatchLabels(ViewStage):
         return self._filter
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         if self._labels is not None:
@@ -4682,7 +4682,7 @@ class Mongo(ViewStage):
         return self._pipeline
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         # The pipeline could be anything; always attach frames for videos
@@ -4984,7 +4984,7 @@ class SelectFields(ViewStage):
 
     def get_selected_fields(self, sample_collection, frames=False):
         if frames:
-            if not sample_collection._contains_videos(only_active_slice=True):
+            if not sample_collection._contains_videos():
                 return None
 
             default_fields = sample_collection._get_default_frame_fields(
@@ -5004,7 +5004,7 @@ class SelectFields(ViewStage):
                 include_private=True
             )
 
-            if sample_collection._contains_videos(only_active_slice=True):
+            if sample_collection._contains_videos():
                 default_fields += ("frames",)
 
             selected_fields = []
@@ -5022,7 +5022,7 @@ class SelectFields(ViewStage):
             selected_fields, frames=False
         )
 
-        if sample_collection._contains_videos(only_active_slice=True):
+        if sample_collection._contains_videos():
             selected_frame_fields = self.get_selected_fields(
                 sample_collection, frames=True
             )
@@ -5047,7 +5047,7 @@ class SelectFields(ViewStage):
         return [{"$project": {fn: True for fn in selected_fields}}]
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         return any(
@@ -5511,7 +5511,7 @@ class SelectLabels(ViewStage):
         ]
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         if self._labels is not None:
@@ -5895,7 +5895,7 @@ class SortBy(ViewStage):
         return pipeline
 
     def _needs_frames(self, sample_collection):
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         field_or_expr = self._get_mongo_field_or_expr()

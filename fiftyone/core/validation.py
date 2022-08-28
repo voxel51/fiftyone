@@ -164,7 +164,7 @@ def validate_collection_label_fields(
     if not etau.is_container(allowed_label_types):
         allowed_label_types = [allowed_label_types]
 
-    if sample_collection._contains_videos():
+    if sample_collection._has_frame_fields():
         sample_fields, frame_fields = fou.split_frame_fields(field_names)
     else:
         sample_fields = field_names

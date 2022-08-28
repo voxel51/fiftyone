@@ -441,7 +441,7 @@ class PlotManager(object):
             if self.has_frame_links:
                 if isinstance(plot_view, fov.FramesView):
                     frame_ids = plot_view.values("id")
-                elif plot_view._contains_videos(only_active_slice=True):
+                elif plot_view._contains_videos():
                     frame_ids = plot_view.values("frames.id", unwind=True)
 
             # If the session has plots linked to labels, retrieve the current
@@ -532,7 +532,7 @@ class PlotManager(object):
             if self.has_frame_links:
                 if isinstance(plot_view, fov.FramesView):
                     frame_ids = plot_view.values("id")
-                elif plot_view._contains_videos(only_active_slice=True):
+                elif plot_view._contains_videos():
                     frame_ids = plot_view.values("frames.id", unwind=True)
 
             # This plot is linked to labels, so we already know exactly which
@@ -590,7 +590,7 @@ class PlotManager(object):
 
             if isinstance(_view, fov.FramesView):
                 frame_ids = _view.values("id")
-            elif _view._contains_videos(only_active_slice=True):
+            elif _view._contains_videos():
                 frame_ids = _view.values("frames.id", unwind=True)
             else:
                 frame_ids = None

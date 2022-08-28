@@ -165,14 +165,16 @@ class Aggregation(object):
         Returns:
             True/False
         """
-        if not sample_collection._contains_videos(only_active_slice=True):
+        if not sample_collection._contains_videos():
             return False
 
         if self._field_name is not None:
-            return sample_collection._is_frame_field(self._field_name)
+            expr = F(self._field_name)
+        else:
+            expr = self._expr
 
-        if self._expr is not None:
-            return foe.is_frames_expr(self._expr)
+        if expr is not None:
+            return foe.is_frames_expr(expr)
 
         return False
 
@@ -552,10 +554,7 @@ class Count(Aggregation):
             unwind=self._unwind,
         )
 
-        if (
-            not sample_collection._contains_videos(only_active_slice=True)
-            or path != "frames"
-        ):
+        if not sample_collection._contains_videos() or path != "frames":
             pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
 
         pipeline.append({"$count": "count"})

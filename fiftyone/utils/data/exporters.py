@@ -1560,7 +1560,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         schema = sample_collection._serialize_field_schema()
         self._metadata["sample_fields"] = schema
 
-        if sample_collection._contains_videos():
+        if sample_collection._contains_videos(any_slice=True):
             schema = sample_collection._serialize_frame_field_schema()
             self._metadata["frame_fields"] = schema
 
@@ -1769,7 +1769,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             samples, self._samples_path, key="samples", num_docs=num_samples
         )
 
-        if sample_collection._contains_videos():
+        if sample_collection._contains_videos(any_slice=True):
             logger.info("Exporting frames...")
 
             if sample_collection.media_type == fomm.GROUP and not isinstance(

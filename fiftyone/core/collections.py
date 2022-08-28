@@ -519,7 +519,8 @@ class SampleCollection(object):
                 "Compressed stats are only available for entire datasets"
             )
 
-        contains_videos = self._contains_videos()
+        contains_videos = self._contains_videos(any_slice=True)
+
         if self.media_type == fom.GROUP:
             samples = self.select_group_slice(_allow_mixed=True)
             if contains_videos:
@@ -907,7 +908,7 @@ class SampleCollection(object):
             resolved_keys.extend(keys[:2])
             keys = keys[2:]
 
-        if self._contains_videos() and keys[0] == "frames":
+        if self._has_frame_fields() and keys[0] == "frames":
             schema = self.get_frame_field_schema(
                 include_private=include_private
             )
@@ -1037,7 +1038,7 @@ class SampleCollection(object):
         Returns:
             True/False
         """
-        if not self._contains_videos():
+        if not self._has_frame_fields():
             return False
 
         return field_name in self.get_frame_field_schema()
@@ -1061,7 +1062,7 @@ class SampleCollection(object):
             existing_fields = set(
                 self.get_field_schema(include_private=include_private).keys()
             )
-            if self._contains_videos():
+            if self._has_frame_fields():
                 existing_fields.add("frames")
 
             for field in fields:
@@ -7287,7 +7288,7 @@ class SampleCollection(object):
 
             index_info[key] = info
 
-        if self._contains_videos():
+        if self._has_frame_fields():
             # Frame-level indexes
             fields_map = self._get_db_fields_map(frames=True, reverse=True)
             frame_info = self._dataset._frame_collection.index_information()
@@ -7438,7 +7439,7 @@ class SampleCollection(object):
 
     def _get_default_indexes(self, frames=False):
         if frames:
-            if self._contains_videos():
+            if self._has_frame_fields():
                 return ["id", "_sample_id_1_frame_number_1"]
 
             return []
@@ -7487,7 +7488,7 @@ class SampleCollection(object):
         if rel_dir is not None:
             rel_dir = fou.normalize_path(rel_dir) + os.path.sep
 
-        contains_videos = self._contains_videos()
+        contains_videos = self._contains_videos(any_slice=True)
         write_frame_labels = (
             contains_videos and include_frames and frame_labels_dir is not None
         )
@@ -8039,10 +8040,10 @@ class SampleCollection(object):
         if etau.is_str(fields):
             fields = [fields]
 
-        if not self._contains_videos():
-            return fields, []
+        if self._has_frame_fields():
+            return fou.split_frame_fields(fields)
 
-        return fou.split_frame_fields(fields)
+        return fields, []
 
     def _parse_field_name(
         self,
@@ -8072,7 +8073,7 @@ class SampleCollection(object):
         return field_name, is_frame_field
 
     def _is_frame_field(self, field_name):
-        return self._contains_videos() and (
+        return self._has_frame_fields() and (
             field_name.startswith(self._FRAMES_PREFIX)
             or field_name == self._FRAMES_PREFIX[:-1]
         )
@@ -8119,20 +8120,19 @@ class SampleCollection(object):
 
         return self._dataset._doc.group_media_types
 
-    def _contains_videos(self, only_active_slice=False):
+    def _contains_videos(self, any_slice=False):
         if self.media_type == fom.VIDEO:
             return True
 
         if self.media_type == fom.GROUP:
-            if only_active_slice:
-                return (
-                    self.group_media_types.get(self.group_slice, None)
-                    == fom.VIDEO
+            if any_slice:
+                return any(
+                    slice_media_type == fom.VIDEO
+                    for slice_media_type in self.group_media_types.values()
                 )
 
-            return any(
-                slice_media_type == fom.VIDEO
-                for slice_media_type in self.group_media_types.values()
+            return (
+                self.group_media_types.get(self.group_slice, None) == fom.VIDEO
             )
 
         if self.media_type == fom.MIXED:
@@ -8142,6 +8142,9 @@ class SampleCollection(object):
             )
 
         return False
+
+    def _has_frame_fields(self):
+        return self._contains_videos(any_slice=True)
 
     def _handle_id_fields(self, field_name):
         return _handle_id_fields(self, field_name)
@@ -8229,7 +8232,7 @@ class SampleCollection(object):
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
 
-        if self._contains_videos():
+        if self._has_frame_fields():
             fields.extend(self._get_frame_label_fields())
 
         return fields
@@ -8242,7 +8245,7 @@ class SampleCollection(object):
         )
 
     def _get_frame_label_fields(self):
-        if not self._contains_videos():
+        if not self._has_frame_fields():
             return None
 
         return [
@@ -8255,7 +8258,7 @@ class SampleCollection(object):
     def _get_root_fields(self, fields):
         root_fields = set()
         for field in fields:
-            if self._contains_videos() and field.startswith(
+            if self._has_frame_fields() and field.startswith(
                 self._FRAMES_PREFIX
             ):
                 # Converts `frames.root[.x.y]` to `frames.root`
