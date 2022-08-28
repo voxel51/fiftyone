@@ -1100,7 +1100,7 @@ class DatasetView(foc.SampleCollection):
                 and _attach_frames_idx is None
                 and stage._needs_frames(_view)
             ):
-                _attached_frames_idx = idx
+                _attach_frames_idx = idx
 
             if _contains_groups:
                 # Special case: report a manual override if the first stage
