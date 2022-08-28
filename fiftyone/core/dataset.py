@@ -1805,7 +1805,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ):
                 for sample in group.values():
                     sample["test"] = make_label()
-                    sample.save()
 
             # Save every 0.5 seconds
             for group in dataset.iter_groups(
@@ -1813,7 +1812,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ):
                 for sample in group.values():
                     sample["test"] = make_label()
-                    sample.save()
 
         Args:
             progress (False): whether to render a progress bar tracking the
