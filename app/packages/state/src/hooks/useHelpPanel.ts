@@ -47,5 +47,6 @@ export default function useHelpPanel() {
     },
     items,
     isOpen,
+    stateAtom: helpPanelState,
   };
 }

@@ -203,7 +203,7 @@ function Polyline({
   selected,
   onClick,
   tooltip,
-  label
+  label,
 }) {
   if (filled) {
     // filled not yet supported
@@ -411,6 +411,15 @@ function Looker3dCore({ sampleOverride: sample }) {
   useHotkey(
     "Escape",
     ({ get, set }) => {
+      if (get(jsonPanel.stateAtom).isOpen) {
+        set(jsonPanel.stateAtom, (s) => ({ ...s, isOpen: false }));
+        return false;
+      }
+      if (get(helpPanel.stateAtom).isOpen) {
+        set(helpPanel.stateAtom, (s) => ({ ...s, isOpen: false }));
+        return false;
+      }
+
       const selectedLabels = get(fos.selectedLabels);
       if (selectedLabels && Object.keys(selectedLabels).length > 0) {
         set(fos.selectedLabels, {});
@@ -420,10 +429,9 @@ function Looker3dCore({ sampleOverride: sample }) {
       const changed = onChangeView("top");
       if (changed) return;
 
-      if (jsonPanel.isOpen) return;
       set(fos.modal, null);
     },
-    [jsonPanel.isOpen, selectedLabels, hovering]
+    [jsonPanel.isOpen, helpPanel.isOpen, selectedLabels, hovering]
   );
 
   useEffect(() => {
