@@ -116,6 +116,7 @@ export const PillButton = React.memo(
         arrow = false,
         style,
         title,
+        flipped,
       }: PillButton,
       ref
     ) => {
@@ -136,8 +137,9 @@ export const PillButton = React.memo(
             style={{ ...props, ...style }}
             title={title}
           >
+            {flipped && icon}
             {text && <span>{text}</span>}
-            {icon}
+            {!flipped && icon}
             {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
           </PillButtonDiv>
         </Tooltip>

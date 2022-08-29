@@ -11,7 +11,12 @@ import { gridZoom, gridZoomRange } from "./Grid";
 import GroupSliceSelector from "./GroupSliceSelector";
 
 import * as fos from "@fiftyone/state";
-import { isGroup } from "@fiftyone/state";
+import { dataset, isGroup } from "@fiftyone/state";
+
+import { Image, OndemandVideo, PhotoLibrary } from "@material-ui/icons";
+import Group from "@material-ui/icons";
+import { PillButton } from "./utils";
+import _ from "lodash";
 
 const SamplesHeader = styled.div`
   position: absolute;
@@ -31,15 +36,16 @@ const SamplesHeader = styled.div`
 `;
 
 const RightDiv = styled.div`
+  cursor: default;
   display: flex;
   justify-content: center;
   align-content: center;
   flex-direction: column;
   border-color: ${({ theme }) => theme.backgroundDarkBorder};
   border-right-style: solid;
-  border-right-width: 1px;
+  border-right-width: 0px;
   margin: 0 0.25rem;
-  padding-right: 1rem;
+  padding-right: 0;
   font-weight: bold;
 `;
 
@@ -54,35 +60,32 @@ const SliderContainer = styled.div`
   padding-right: 1rem;
 `;
 
-const Count = () => {
+const ImageContainerHeader = () => {
+  const type = useRecoilValue(fos.dataset).mediaType;
+  const setGridZoom = useSetRecoilState(gridZoom);
+  const gridZoomRangeValue = useRecoilValue(gridZoomRange);
+  const theme = useTheme();
+  const group = useRecoilValue(isGroup);
   const element = useRecoilValue(fos.elementNames);
   const total = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
 
   return (
-    <RightDiv>
-      <div>
-        <PathEntryCounts modal={false} path={""} />
-        &nbsp;
-        {total === 1 ? element.singular : element.plural}
-      </div>
-    </RightDiv>
-  );
-};
-
-const ImageContainerHeader = () => {
-  const setGridZoom = useSetRecoilState(gridZoom);
-  const gridZoomRangeValue = useRecoilValue(gridZoomRange);
-  const theme = useTheme();
-  const group = useRecoilValue(isGroup);
-
-  return (
     <SamplesHeader>
       <GridActionsRow />
       <RightContainer>
         <Suspense fallback={<RightDiv>{"Loading..."}</RightDiv>}>
-          <Count />
+          <PillButton
+            icon={<MediaTypeIcon type={type} />}
+            text={<PathEntryCounts modal={false} path={""} />}
+            title={`${total.toLocaleString()} ${_.capitalize(type)} ${
+              total === 1 ? element.singular : element.plural
+            }`}
+            highlight={true}
+            flipped={true}
+            style={{ height: "2rem", marginTop: "3px", cursor: "default" }}
+          />
         </Suspense>
         {group && (
           <RightDiv>
@@ -116,5 +119,21 @@ const ImageContainerHeader = () => {
     </SamplesHeader>
   );
 };
+
+function MediaTypeIcon({ type }) {
+  const style = {
+    position: "relative",
+    top: "0.5rem",
+  };
+
+  switch (type) {
+    case "video":
+      return <OndemandVideo />;
+    case "group":
+      return <PhotoLibrary />;
+    default:
+      return <Image />;
+  }
+}
 
 export default ImageContainerHeader;
