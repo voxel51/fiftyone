@@ -1142,6 +1142,45 @@ the above values on a :ref:`dataset's App config <custom-app-config>`:
     Dataset-specific plugin settings will override any settings from your
     :ref:`global App config <configuring-fiftyone-app>`.
 
+.. _groups-importing:
+
+Importing groups
+________________
+
+The simplest way to import grouped datasets is to
+:ref:`write a Python loop <groups-adding-samples>`:
+
+.. code-block:: python
+    :linenos:
+
+    samples = []
+    for fps in filepaths:
+        group = fo.Group()
+        for name, filepath in fps.items():
+            sample = fo.Sample(filepath=filepath, group=group.element(name))
+            samples.append(sample)
+
+    dataset.add_samples(samples)
+
+    print(dataset)
+
+Remember that each group is represented by a |Group| instance, and each sample
+in a group is denoted by its slice `name` using
+:meth:`Group.element() <fiftyone.core.groups.Group.element>`. The |Sample|
+objects can then simply be added to the dataset as usual.
+
+Alternatively, you can
+:ref:`write your own importer <writing-a-custom-dataset-importer>` and then
+import grouped datasets in your custom format using the syntax below:
+
+.. code-block:: python
+    :linenos:
+
+    # Create an instance of your custom dataset importer
+    importer = CustomGroupDatasetImporter(...)
+
+    dataset = fo.Dataset.from_importer(importer)
+
 .. _groups-exporting:
 
 Exporting groups
@@ -1178,3 +1217,15 @@ export the resulting ungrouped collection in
         export_dir="/tmp/groups-left",
         dataset_type=fo.types.ImageDirectory,
     )
+
+Alternatively, you can
+:ref:`write your own exporter <writing-a-custom-dataset-exporter>` and then
+export grouped datasets in your custom format using the syntax below:
+
+.. code-block:: python
+    :linenos:
+
+    # Create an instance of your custom dataset exporter
+    exporter = CustomGroupDatasetExporter(...)
+
+    dataset_or_view.export(dataset_exporter=exporter, ...)
