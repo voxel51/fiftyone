@@ -216,6 +216,30 @@ class VideoLabelsDataset(LabeledVideoDataset):
     pass
 
 
+class GroupDataset(Dataset):
+    """Base type for datasets that contain grouped samples of any type(s)."""
+
+    def get_dataset_importer_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.importers.GroupDatasetImporter` class for
+        importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.GroupDatasetImporter` class
+        """
+        return super().get_dataset_importer_cls()
+
+    def get_dataset_exporter_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.exporters.GroupDatasetExporter` class for
+        exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.GroupDatasetExporter` class
+        """
+        return super().get_dataset_exporter_cls()
+
+
 class ImageDirectory(UnlabeledImageDataset):
     """A directory of images.
 
