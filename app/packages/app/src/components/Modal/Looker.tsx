@@ -115,9 +115,6 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
     if (showJSON === true) {
       jsonPanel.open(sample);
     }
-    if (showJSON === false) {
-      jsonPanel.close();
-    }
   });
 
   onClose && useEventHandler(looker, "close", onClose);

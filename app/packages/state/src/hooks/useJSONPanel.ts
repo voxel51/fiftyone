@@ -36,17 +36,6 @@ export default function useJSONPanel() {
     setState((s) => ({ ...s, isOpen: false }));
   }
 
-  function handleEscape(e) {
-    if (e.key === "Escape") close();
-  }
-
-  useEffect(() => {
-    if (isOpen) {
-      window.addEventListener("keydown", handleEscape);
-    }
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [isOpen]);
-
   return {
     open(sample) {
       setState((s) => ({ ...s, sample, isOpen: true }));
@@ -67,5 +56,6 @@ export default function useJSONPanel() {
     sample,
     json,
     jsonHTML,
+    stateAtom: jsonPanelState,
   };
 }
