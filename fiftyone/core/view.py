@@ -6,6 +6,7 @@ Dataset views.
 |
 """
 from collections import OrderedDict
+import contextlib
 from copy import copy, deepcopy
 import itertools
 import numbers
@@ -312,7 +313,7 @@ class DatasetView(foc.SampleCollection):
             ]
         )
 
-        if self._contains_videos():
+        if self._has_frame_fields():
             lines.extend(
                 [
                     "Frame fields:",
@@ -343,23 +344,69 @@ class DatasetView(foc.SampleCollection):
         """
         return copy(self)
 
-    def iter_samples(self, progress=False):
+    def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the view.
+
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+            view = dataset.shuffle().limit(5000)
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for sample in view.iter_samples(progress=True):
+                sample.ground_truth.label = make_label()
+                sample.save()
+
+            # Save in batches of 10
+            for sample in view.iter_samples(
+                progress=True, autosave=True, batch_size=10
+            ):
+                sample.ground_truth.label = make_label()
+
+            # Save every 0.5 seconds
+            for sample in view.iter_samples(
+                progress=True, autosave=True, batch_size=0.5
+            ):
+                sample.ground_truth.label = make_label()
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.SampleView` instances
         """
-        if progress:
-            with fou.ProgressBar(total=len(self)) as pb:
-                for sample in pb(self._iter_samples()):
-                    yield sample
-        else:
-            for sample in self._iter_samples():
+        with contextlib.ExitStack() as exit_context:
+            samples = self._iter_samples()
+
+            if progress:
+                pb = fou.ProgressBar(total=len(self))
+                exit_context.enter_context(pb)
+                samples = pb(samples)
+
+            if autosave:
+                save_context = foc.SaveContext(self, batch_size=batch_size)
+                exit_context.enter_context(save_context)
+
+            for sample in samples:
                 yield sample
+
+                if autosave:
+                    save_context.save(sample)
 
     def _iter_samples(self):
         make_sample = self._make_sample_fcn()
@@ -401,12 +448,51 @@ class DatasetView(foc.SampleCollection):
 
         return make_sample
 
-    def iter_groups(self, progress=False):
+    def iter_groups(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the groups in the view.
+
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+            view = dataset.select_fields()
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for group in view.iter_groups(progress=True):
+                for sample in group.values():
+                    sample["test"] = make_label()
+                    sample.save()
+
+            # Save in batches of 10
+            for group in view.iter_groups(
+                progress=True, autosave=True, batch_size=10
+            ):
+                for sample in group.values():
+                    sample["test"] = make_label()
+
+            # Save every 0.5 seconds
+            for group in view.iter_groups(
+                progress=True, autosave=True, batch_size=0.5
+            ):
+                for sample in group.values():
+                    sample["test"] = make_label()
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
 
         Returns:
             an iterator that emits dicts mapping slice names to
@@ -415,13 +501,24 @@ class DatasetView(foc.SampleCollection):
         if self.media_type != fom.GROUP:
             raise ValueError("%s does not contain groups" % type(self))
 
-        if progress:
-            with fou.ProgressBar(total=len(self)) as pb:
-                for group in pb(self._iter_groups()):
-                    yield group
-        else:
-            for group in self._iter_groups():
+        with contextlib.ExitStack() as exit_context:
+            groups = self._iter_groups()
+
+            if progress:
+                pb = fou.ProgressBar(total=len(self))
+                exit_context.enter_context(pb)
+                groups = pb(groups)
+
+            if autosave:
+                save_context = foc.SaveContext(self, batch_size=batch_size)
+                exit_context.enter_context(save_context)
+
+            for group in groups:
                 yield group
+
+                if autosave:
+                    for sample in group.values():
+                        save_context.save(sample)
 
     def _iter_groups(self):
         make_sample = self._make_sample_fcn()
@@ -432,7 +529,7 @@ class DatasetView(foc.SampleCollection):
         group = {}
 
         try:
-            for d in self._aggregate(groups_only=True):
+            for d in self._aggregate(groups_only=True, detach_frames=True):
                 sample = make_sample(d)
 
                 group_id = sample[group_field].id
@@ -477,6 +574,9 @@ class DatasetView(foc.SampleCollection):
         """
         if self.media_type != fom.GROUP:
             raise ValueError("%s does not contain groups" % type(self))
+
+        if self.group_field is None:
+            raise ValueError("%s has no group field" % type(self))
 
         group_field = self.group_field
         id_field = group_field + "._id"
@@ -953,7 +1053,7 @@ class DatasetView(foc.SampleCollection):
         return d
 
     def _needs_frames(self):
-        if not self._dataset._contains_videos():
+        if not self._dataset._has_frame_fields():
             return False
 
         for stage in self._stages:
@@ -977,21 +1077,30 @@ class DatasetView(foc.SampleCollection):
         _pipelines = []
         _view = self._base_view
 
-        _contains_videos = self._dataset._contains_videos()
+        _contains_videos = self._dataset._contains_videos(any_slice=True)
+        _found_select_group_slice = False
         _attach_frames_idx = None
+        _attach_frames_idx0 = None
 
         _contains_groups = self._dataset.media_type == fom.GROUP
         _group_slices = set()
         _attach_groups_idx = None
 
         for idx, stage in enumerate(self._stages):
+            if isinstance(stage, fost.SelectGroupSlices):
+                # We might need to reattach frames after `SelectGroupSlices`,
+                # since it involves a `$lookup` that resets the samples
+                _found_select_group_slice = True
+                _attach_frames_idx0 = _attach_frames_idx
+                _attach_frames_idx = None
+
             # Determine if stage needs frames attached
             if (
                 _contains_videos
                 and _attach_frames_idx is None
                 and stage._needs_frames(_view)
             ):
-                _attached_frames_idx = idx
+                _attach_frames_idx = idx
 
             if _contains_groups:
                 # Special case: report a manual override if the first stage
@@ -1016,17 +1125,48 @@ class DatasetView(foc.SampleCollection):
         if _attach_frames_idx is None and attach_frames or frames_only:
             _attach_frames_idx = len(_pipelines)
 
-        # Insert frame lookup pipeline if needed
-        if _attach_frames_idx is not None:
-            attach_frames = True
+        #######################################################################
+        # Insert frame lookup pipeline(s) if needed
+        #######################################################################
 
-            # @todo use this optimization
-            # There's an issue with poster frame lookups for videos in the App
-            """
+        if _attach_frames_idx0 is not None and _attach_frames_idx is not None:
+            # Two lookups are required; manually do the **last** one and rely
+            # on dataset._pipeline() to do the first one
+            attach_frames = True
+            _pipeline = self._dataset._attach_frames_pipeline()
+            _pipelines.insert(_attach_frames_idx, _pipeline)
+        elif _found_select_group_slice and _attach_frames_idx is not None:
+            # Must manually attach frames after the group selection
             attach_frames = None  # special syntax: frames already attached
             _pipeline = self._dataset._attach_frames_pipeline()
             _pipelines.insert(_attach_frames_idx, _pipeline)
-            """
+        elif _attach_frames_idx0 is not None or _attach_frames_idx is not None:
+            # Exactly one lookup is required; rely on dataset._pipeline() to
+            # do it
+            attach_frames = True
+
+        # @todo use the optimization below instead, which injects frames as
+        # late as possible in the pipeline. We can't currently use it because
+        # there's some issue with poster frames in the App if the frames are
+        # not attached first...
+
+        """
+        if _attach_frames_idx0 is not None or _attach_frames_idx is not None:
+            attach_frames = None  # special syntax: frames already attached
+
+            if _attach_frames_idx0 is not None:
+                _pipeline = self._dataset._attach_frames_pipeline()
+                _pipelines.insert(_attach_frames_idx0, _pipeline)
+
+            if _attach_frames_idx is not None:
+                if _attach_frames_idx0 is not None:
+                    _attach_frames_idx += 1
+
+                _pipeline = self._dataset._attach_frames_pipeline()
+                _pipelines.insert(_attach_frames_idx, _pipeline)
+        """
+
+        #######################################################################
 
         # Insert group lookup pipline if needed
         if _attach_groups_idx is not None:
@@ -1208,7 +1348,7 @@ class DatasetView(foc.SampleCollection):
 
     def _get_missing_fields(self, frames=False):
         if frames:
-            if not self._contains_videos():
+            if not self._has_frame_fields():
                 return set()
 
             dataset_schema = self._dataset.get_frame_field_schema()
@@ -1225,6 +1365,16 @@ class DatasetView(foc.SampleCollection):
         )
         filtered_fields = self._get_filtered_fields(frames=frames)
         return not any((selected_fields, excluded_fields, filtered_fields))
+
+    def _get_group_media_types(self):
+        if self._dataset.media_type != fom.GROUP:
+            return None
+
+        for stage in reversed(self._stages):
+            if isinstance(stage, fost.SelectGroupSlices):
+                return stage._get_group_media_types(self._dataset)
+
+        return self._dataset.group_media_types
 
 
 def make_optimized_select_view(sample_collection, sample_ids, ordered=False):

@@ -38,8 +38,13 @@ class _PatchView(fos.SampleView):
     def _frame_id(self):
         return ObjectId(self._doc.frame_id)
 
-    def save(self):
-        super().save()
+    def _save(self, deferred=False):
+        if deferred:
+            raise NotImplementedError(
+                "Patches views do not support save contexts"
+            )
+
+        super()._save(deferred=deferred)
         self._view._sync_source_sample(self)
 
 
@@ -497,7 +502,7 @@ def make_patches_dataset(
             "convert your video dataset to frames via `to_frames()`"
         )
 
-    fova.validate_image_collection(sample_collection)
+    fova.validate_collection(sample_collection, media_type=fom.IMAGE)
 
     if etau.is_str(other_fields):
         other_fields = [other_fields]
@@ -510,10 +515,6 @@ def make_patches_dataset(
         field_type = _get_single_label_field_type(sample_collection, field)
 
     dataset = fod.Dataset(name=name, _patches=True)
-    dataset._doc.app_sidebar_groups = (
-        sample_collection._dataset._doc.app_sidebar_groups
-    )
-
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
@@ -649,9 +650,6 @@ def make_evaluation_patches_dataset(
 
     # Setup dataset with correct schema
     dataset = fod.Dataset(name=name, _patches=True)
-    dataset._doc.app_sidebar_groups = (
-        sample_collection._dataset._doc.app_sidebar_groups
-    )
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")

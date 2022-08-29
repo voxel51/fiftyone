@@ -26,18 +26,39 @@ class DatasetViewTests(unittest.TestCase):
     def test_iter_samples(self):
         dataset = fo.Dataset()
         dataset.add_samples(
-            [fo.Sample(filepath="image%d.jpg" % i) for i in range(50)]
+            [fo.Sample(filepath="image%d.jpg" % i) for i in range(51)]
         )
 
-        view = dataset.view()
+        first_sample = dataset.first()
+        view = dataset.limit(50)
 
-        self.assertEqual(len(dataset), len(view))
+        for idx, sample in enumerate(view):
+            sample["int"] = idx + 1
+            sample.save()
 
-        for sample in view:
-            pass
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+        self.assertEqual(first_sample.int, 1)
 
-        for sample in view.iter_samples(progress=True):
-            pass
+        for idx, sample in enumerate(view.iter_samples(progress=True)):
+            sample["int"] = idx + 2
+            sample.save()
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+        self.assertEqual(first_sample.int, 2)
+
+        for idx, sample in enumerate(view.iter_samples(autosave=True)):
+            sample["int"] = idx + 3
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+        self.assertEqual(first_sample.int, 3)
+
+        with view.save_context() as context:
+            for idx, sample in enumerate(view):
+                sample["int"] = idx + 4
+                context.save(sample)
+
+        self.assertTupleEqual(dataset.bounds("int"), (4, 53))
+        self.assertEqual(first_sample.int, 4)
 
     @drop_datasets
     def test_view(self):
@@ -1202,14 +1223,10 @@ class ViewSaveTest(unittest.TestCase):
         view = dataset.exclude_fields("classifications")
         view.keep_fields()
 
-        self.assertNotIn("classifications", view.get_field_schema())
         self.assertNotIn("classifications", dataset.get_field_schema())
 
-        sample_view = view.first()
-        with self.assertRaises(KeyError):
-            sample_view["classifications"]
-
         sample = dataset.first()
+
         with self.assertRaises(KeyError):
             sample["classifications"]
 

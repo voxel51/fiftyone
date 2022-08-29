@@ -78,7 +78,11 @@ def validate_fields_match(
         )
 
     if isinstance(field, fof.EmbeddedDocumentField):
-        if not issubclass(field.document_type, existing_field.document_type):
+        if not issubclass(
+            field.document_type, existing_field.document_type
+        ) and not issubclass(
+            existing_field.document_type, field.document_type
+        ):
             raise ValueError(
                 "Embedded document field '%s' type %s does not match existing "
                 "field type %s"
@@ -285,7 +289,9 @@ class DatasetMixin(object):
                             % field_name
                         )
 
-                    if dataset_doc.group_field is not None:
+                    # `group_field` could be None here if we're in the process
+                    # of merging one dataset's schema into another
+                    if dataset_doc.group_field not in (None, field_name):
                         raise ValueError(
                             "Cannot add group field '%s'. Datasets may only "
                             "have one group field" % field_name
@@ -1201,6 +1207,9 @@ class NoDatasetMixin(object):
         return cls(**kwargs)
 
     def save(self):
+        pass
+
+    def _save(self, deferred=False):
         pass
 
     def reload(self):

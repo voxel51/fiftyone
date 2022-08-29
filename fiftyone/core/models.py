@@ -109,7 +109,7 @@ def apply_model(
     if samples.media_type == fom.IMAGE:
         fov.validate_image_collection(samples)
     elif samples.media_type == fom.GROUP:
-        raise fom.SelectGroupSliceError((fom.IMAGE, fom.VIDEO))
+        raise fom.SelectGroupSlicesError((fom.IMAGE, fom.VIDEO))
     elif samples.media_type != fom.VIDEO:
         raise fom.MediaTypeError(
             "Unsupported media type '%s'" % samples.media_type
@@ -631,7 +631,7 @@ def compute_embeddings(
     if samples.media_type == fom.IMAGE:
         fov.validate_image_collection(samples)
     elif samples.media_type == fom.GROUP:
-        raise fom.SelectGroupSliceError((fom.IMAGE, fom.VIDEO))
+        raise fom.SelectGroupSlicesError((fom.IMAGE, fom.VIDEO))
     elif samples.media_type != fom.VIDEO:
         raise fom.MediaTypeError(
             "Unsupported media type '%s'" % samples.media_type
@@ -1133,7 +1133,7 @@ def compute_patch_embeddings(
             _ALLOWED_PATCH_TYPES,
         )
     elif samples.media_type == fom.GROUP:
-        raise fom.SelectGroupSliceError((fom.IMAGE, fom.VIDEO))
+        raise fom.SelectGroupSlicesError((fom.IMAGE, fom.VIDEO))
     else:
         raise fom.MediaTypeError(
             "Unsupported media type '%s'" % samples.media_type

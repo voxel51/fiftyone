@@ -779,7 +779,7 @@ def _write_generic_sample_dataset(
                 isinstance(samples, foc.SampleCollection)
                 and samples.media_type == fomm.GROUP
             ):
-                samples = samples.select_group_slice(_allow_mixed=True)
+                samples = samples.select_group_slices(_allow_mixed=True)
 
             for sample in pb(samples):
                 dataset_exporter.export_sample(sample)
@@ -1560,7 +1560,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         schema = sample_collection._serialize_field_schema()
         self._metadata["sample_fields"] = schema
 
-        if sample_collection._contains_videos():
+        if sample_collection._contains_videos(any_slice=True):
             schema = sample_collection._serialize_frame_field_schema()
             self._metadata["frame_fields"] = schema
 
@@ -1725,7 +1725,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         etau.ensure_dir(self.export_dir)
 
         if sample_collection.media_type == fomm.GROUP:
-            _sample_collection = sample_collection.select_group_slice(
+            _sample_collection = sample_collection.select_group_slices(
                 _allow_mixed=True
             )
         else:
@@ -1769,15 +1769,15 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             samples, self._samples_path, key="samples", num_docs=num_samples
         )
 
-        if sample_collection._contains_videos():
+        if sample_collection._contains_videos(any_slice=True):
             logger.info("Exporting frames...")
 
             if sample_collection.media_type == fomm.GROUP and not isinstance(
                 sample_collection, fod.Dataset
             ):
                 # Export frames for all video samples
-                _video_collection = sample_collection._select_group_slices(
-                    fomm.VIDEO
+                _video_collection = sample_collection.select_group_slices(
+                    media_type=fomm.VIDEO
                 )
             else:
                 _video_collection = sample_collection
@@ -1789,9 +1789,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 frames, self._frames_path, key="frames", num_docs=num_frames
             )
 
-        conn = foo.get_db_conn()
         dataset = sample_collection._dataset
-        dataset_dict = conn.datasets.find_one({"name": dataset.name})
+        dataset_dict = dataset._doc.to_dict()
 
         # Exporting runs only makes sense if the entire dataset is being
         # exported, otherwise the view for the run cannot be reconstructed

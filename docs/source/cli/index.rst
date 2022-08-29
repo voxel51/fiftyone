@@ -754,7 +754,7 @@ FiftyOne deployments.
 
 .. code-block:: shell
 
-    # Migrate the database and all datasets to the current package version
+    # Migrate the database and all datasets to the current client version
     fiftyone migrate --all
 
 .. code-block:: shell

@@ -610,8 +610,8 @@ class OpenLABELStreamInfos(object):
 
     @property
     def frame_numbers(self):
-        """All frame numbers existing in the :class:`OpenLABELStreamInfo` objects in
-        this collection.
+        """All frame numbers existing in the :class:`OpenLABELStreamInfo`
+        objects in this collection.
         """
         frame_numbers = []
         for info in self.infos:
@@ -732,7 +732,7 @@ class OpenLABELObjects(OpenLABELGroup):
 
     @property
     def all_objects(self):
-        """Get all :class:`OpenLABELObject`s in this collection."""
+        """A list of :class:`OpenLABELObject` instances in this collection."""
         return list(self._element_id_to_element.values())
 
     def parse_objects_dict(
@@ -745,8 +745,8 @@ class OpenLABELObjects(OpenLABELGroup):
             objects_dict: the dict of OpenLABEL object annotations
             label_file_id: the name of the annotations file containing these
                 objects
-            frame_number (None): an optional frame that this ``objects_dict`` is
-                in
+            frame_number (None): an optional frame that this ``objects_dict``
+                is in
         """
         self._parse_group_dict(
             objects_dict, label_file_id, frame_number=frame_number
@@ -782,12 +782,12 @@ class OpenLABELObjects(OpenLABELGroup):
         infos.
 
         Args:
-            stream_infos: a :class:`OpenLABELStreamInfos` used to get corresponding
-                objects
+            stream_infos: a :class:`OpenLABELStreamInfos` used to get
+                corresponding objects
 
         Returns:
-            an :class:`OpenLABELObjects` with objects that correspond to any of the
-            given stream infos
+            an :class:`OpenLABELObjects` with objects that correspond to any of
+            the given stream infos
         """
         stream_objects = OpenLABELObjects()
         for stream_info in stream_infos.infos:
@@ -815,9 +815,10 @@ class OpenLABELObjects(OpenLABELGroup):
         Args:
             frame_size: the size of the image frame in pixels (width, height)
             label_types: a list of label types to load
-            seg_type: the :class:`SegmentationType` to use to store segmentations
-            stream_infos: the :class:`OpenLABELStreamInfos` containing sample-level
-                attributes to parse into labels
+            seg_type: the :class:`SegmentationType` to use to store
+                segmentations
+            stream_infos: the :class:`OpenLABELStreamInfos` containing
+                sample-level attributes to parse into labels
             skeleton (None): a
                 :class:`fiftyone.core.odm.dataset.KeypointSkeleton` to use when
                 loading keypoint annotations
@@ -828,7 +829,6 @@ class OpenLABELObjects(OpenLABELGroup):
         Returns:
             a dictionary of sample level fields and label objects and a
             dictionary of frame numbers to frame level fields and label objects
-
         """
         frame_dets = defaultdict(list)
         frame_kps = defaultdict(list)
@@ -927,8 +927,8 @@ class OpenLABELStreams(OpenLABELGroup):
             streams_dict: the dict of OpenLABEL stream annotations
             label_file_id: the name of the annotations file containing these
                 streams
-            frame_number (None): an optional frame that this ``streams_dict`` is
-                in
+            frame_number (None): an optional frame that this ``streams_dict``
+                is in
         """
 
         for key, element_dict in streams_dict.items():
@@ -946,7 +946,7 @@ class OpenLABELStreams(OpenLABELGroup):
             file_id: the unique identifier to a media file
 
         Returns:
-            (width, height) of the given file
+            the ``(width, height)`` of the given file
         """
         stream_ids = list(self._uri_to_stream_ids.get(uri, []))
         # All streams pointing to this URI should be the same media

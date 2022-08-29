@@ -139,6 +139,9 @@ def create_field(
 class SampleFieldDocument(EmbeddedDocument):
     """Description of a sample field."""
 
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"strict": False}
+
     name = StringField()
     ftype = StringField()
     subfield = StringField(null=True)
@@ -314,6 +317,9 @@ class SampleFieldDocument(EmbeddedDocument):
 class SidebarGroupDocument(EmbeddedDocument):
     """Description of a sidebar group in the App."""
 
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"strict": False}
+
     name = StringField(required=True)
     paths = ListField(StringField(), default=[])
 
@@ -355,6 +361,9 @@ class KeypointSkeleton(EmbeddedDocument):
         edges: a list of lists of integer indexes defining the connectivity
             between nodes
     """
+
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"strict": False}
 
     labels = ListField(StringField(), null=True)
     edges = ListField(ListField(IntField()))
@@ -400,7 +409,8 @@ class DatasetAppConfig(EmbeddedDocument):
 class DatasetDocument(Document):
     """Backing document for datasets."""
 
-    meta = {"collection": "datasets"}
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"collection": "datasets", "strict": False}
 
     name = StringField(unique=True, required=True)
     version = StringField(required=True, null=True)

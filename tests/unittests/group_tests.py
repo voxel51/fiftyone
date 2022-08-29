@@ -93,10 +93,24 @@ class GroupTests(unittest.TestCase):
 
         self.assertEqual(num_groups, 2)
 
+        for group in dataset.iter_groups(autosave=True):
+            for sample in group.values():
+                sample["new_field"] = 1
+
+        self.assertEqual(
+            len(
+                dataset.select_group_slices(_allow_mixed=True).exists(
+                    "new_field"
+                )
+            ),
+            6,
+        )
+
         sample = dataset.first()
 
         self.assertEqual(sample.group_field.name, "ego")
         self.assertEqual(sample.media_type, "video")
+        self.assertEqual(sample.new_field, 1)
 
         group_id = sample.group_field.id
         group = dataset.get_group(group_id)
@@ -139,7 +153,7 @@ class GroupTests(unittest.TestCase):
     def test_delete_samples(self):
         dataset = _make_group_dataset()
 
-        view = dataset.select_group_slice(_allow_mixed=True)
+        view = dataset.select_group_slices(_allow_mixed=True)
         self.assertEqual(len(view), 6)
 
         sample = view.shuffle(seed=51).first()
@@ -160,14 +174,14 @@ class GroupTests(unittest.TestCase):
     def test_keep(self):
         dataset = _make_group_dataset()
 
-        view = dataset.select_group_slice(_allow_mixed=True)
+        view = dataset.select_group_slices(_allow_mixed=True)
         self.assertEqual(len(view), 6)
 
         dataset.limit(1).keep()
 
         self.assertEqual(len(view), 3)
 
-        dataset.select_group_slice("ego").keep()
+        dataset.select_group_slices("ego").keep()
         sample = view.first()
 
         self.assertEqual(len(view), 1)
@@ -196,7 +210,9 @@ class GroupTests(unittest.TestCase):
         )
         self.assertEqual(dataset.default_group_slice, "still_ego")
         self.assertEqual(dataset.group_slice, "still_ego")
-        self.assertEqual(len(dataset.select_group_slice(_allow_mixed=True)), 6)
+        self.assertEqual(
+            len(dataset.select_group_slices(_allow_mixed=True)), 6
+        )
 
         sample = dataset.first()
         self.assertEqual(sample.group_field.name, "still_ego")
@@ -206,21 +222,21 @@ class GroupTests(unittest.TestCase):
         self.assertSetEqual(set(dataset.group_slices), {"left", "right"})
         self.assertIn(dataset.default_group_slice, ["left", "right"])
         self.assertEqual(dataset.group_slice, dataset.default_group_slice)
-        self.assertEqual(len(dataset.select_group_slice()), 4)
+        self.assertEqual(len(dataset.select_group_slices()), 4)
 
         dataset.delete_group_slice("left")
 
         self.assertSetEqual(set(dataset.group_slices), {"right"})
         self.assertEqual(dataset.default_group_slice, "right")
         self.assertEqual(dataset.group_slice, "right")
-        self.assertEqual(len(dataset.select_group_slice()), 2)
+        self.assertEqual(len(dataset.select_group_slices()), 2)
 
         dataset.delete_group_slice("right")
 
         self.assertEqual(dataset.group_slices, [])
         self.assertIsNone(dataset.default_group_slice)
         self.assertIsNone(dataset.group_slice)
-        self.assertEqual(len(dataset.select_group_slice()), 0)
+        self.assertEqual(len(dataset.select_group_slices()), 0)
 
         group = fo.Group()
         sample = fo.Sample(
@@ -233,7 +249,7 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(dataset.group_slices, ["ego"])
         self.assertEqual(dataset.default_group_slice, "ego")
         self.assertEqual(dataset.group_slice, "ego")
-        self.assertEqual(len(dataset.select_group_slice()), 1)
+        self.assertEqual(len(dataset.select_group_slices()), 1)
 
     @drop_datasets
     def test_views(self):
@@ -267,6 +283,19 @@ class GroupTests(unittest.TestCase):
 
         self.assertEqual(num_groups, 2)
 
+        for group in view.iter_groups(autosave=True):
+            for sample in group.values():
+                sample["new_field"] = 1
+
+        self.assertEqual(
+            len(
+                dataset.select_group_slices(_allow_mixed=True).exists(
+                    "new_field"
+                )
+            ),
+            6,
+        )
+
         sample = view.first()
 
         self.assertEqual(sample.group_field.name, "ego")
@@ -290,7 +319,7 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(len(view), 1)
         self.assertEqual(view.first().field, 5)
 
-        view = dataset.select_group_slice("left")
+        view = dataset.select_group_slices("left")
 
         self.assertEqual(view.media_type, "image")
         self.assertEqual(len(view), 2)
@@ -298,7 +327,7 @@ class GroupTests(unittest.TestCase):
         sample = view.first()
         self.assertEqual(sample.group_field.name, "left")
 
-        view = dataset.select_group_slice(["left", "right"])
+        view = dataset.select_group_slices(["left", "right"])
 
         self.assertEqual(view.media_type, "image")
         self.assertEqual(len(view), 4)
@@ -309,10 +338,10 @@ class GroupTests(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError):
-            view = dataset.select_group_slice(["left", "ego"])
+            view = dataset.select_group_slices(["left", "ego"])
 
         with self.assertRaises(ValueError):
-            view = dataset.select_group_slice()
+            view = dataset.select_group_slices()
 
     @drop_datasets
     def test_attached_groups(self):
@@ -327,7 +356,7 @@ class GroupTests(unittest.TestCase):
             fo.Detections(detections=[fo.Detection(label="RIGHT")]),
         ]
 
-        view = dataset.select_group_slice(_allow_mixed=True)
+        view = dataset.select_group_slices(_allow_mixed=True)
         view.set_values("ground_truth", detections)
 
         dataset.group_slice = "left"
@@ -370,6 +399,32 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(len(view), 1)
 
     @drop_datasets
+    def test_stats(self):
+        dataset = _make_group_dataset()
+
+        stats = dataset.stats()
+
+        self.assertEqual(stats["samples_count"], 6)
+        self.assertNotIn("media_bytes", stats)
+
+        stats = dataset.stats(include_media=True)
+
+        self.assertEqual(stats["samples_count"], 6)
+        self.assertIn("media_bytes", stats)
+
+        view = dataset.limit(1).select_fields()
+
+        stats = view.stats()
+
+        self.assertEqual(stats["samples_count"], 3)
+        self.assertNotIn("media_bytes", stats)
+
+        stats = view.stats(include_media=True)
+
+        self.assertEqual(stats["samples_count"], 3)
+        self.assertIn("media_bytes", stats)
+
+    @drop_datasets
     def test_aggregations(self):
         dataset = _make_group_dataset()
 
@@ -378,11 +433,11 @@ class GroupTests(unittest.TestCase):
 
         self.assertListEqual(dataset.distinct("field"), [2, 5])
         self.assertListEqual(
-            dataset.select_group_slice(["left", "right"]).distinct("field"),
+            dataset.select_group_slices(["left", "right"]).distinct("field"),
             [1, 3, 4, 6],
         )
         self.assertListEqual(
-            dataset.select_group_slice(_allow_mixed=True).distinct("field"),
+            dataset.select_group_slices(_allow_mixed=True).distinct("field"),
             [1, 2, 3, 4, 5, 6],
         )
         self.assertListEqual(dataset.distinct("frames.field"), [1, 2])
@@ -394,16 +449,16 @@ class GroupTests(unittest.TestCase):
 
         self.assertListEqual(view.distinct("field"), [2])
         self.assertListEqual(
-            view.select_group_slice(["left", "right"]).distinct("field"),
+            view.select_group_slices(["left", "right"]).distinct("field"),
             [1, 3],
         )
         self.assertListEqual(
-            view.select_group_slice(_allow_mixed=True).distinct("field"),
+            view.select_group_slices(_allow_mixed=True).distinct("field"),
             [1, 2, 3],
         )
         self.assertListEqual(view.distinct("frames.field"), [1, 2])
 
-        view = dataset.limit(1).select_group_slice("ego")
+        view = dataset.limit(1).select_group_slices("ego")
 
         self.assertEqual(view.count(), 1)
         self.assertEqual(view.count("frames"), 2)
@@ -419,7 +474,7 @@ class GroupTests(unittest.TestCase):
 
         self.assertListEqual(dataset.values("new_field"), [3, 4])
         self.assertListEqual(
-            dataset.select_group_slice("left").values("new_field"),
+            dataset.select_group_slices("left").values("new_field"),
             [None, None],
         )
 
@@ -427,20 +482,20 @@ class GroupTests(unittest.TestCase):
 
         self.assertEqual(sample.new_field, 3)
 
-        sample = dataset.select_group_slice("left").first()
+        sample = dataset.select_group_slices("left").first()
 
         self.assertIsNone(sample.new_field)
 
-        view = dataset.select_group_slice(["left", "right"])
+        view = dataset.select_group_slices(["left", "right"])
 
         view.set_values("new_field", [10, 20, 30, 40])
 
         self.assertListEqual(
-            dataset.select_group_slice(_allow_mixed=True).values("new_field"),
+            dataset.select_group_slices(_allow_mixed=True).values("new_field"),
             [10, 3, 20, 30, 4, 40],
         )
 
-        sample = dataset.select_group_slice("left").first()
+        sample = dataset.select_group_slices("left").first()
 
         self.assertEqual(sample.new_field, 10)
 
@@ -512,7 +567,7 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(len(dataset2), 2)
         self.assertEqual(dataset2.count("frames"), 2)
         self.assertEqual(
-            len(dataset2.select_group_slice(_allow_mixed=True)),
+            len(dataset2.select_group_slices(_allow_mixed=True)),
             6,
         )
 
@@ -536,7 +591,7 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(len(dataset3), 1)
         self.assertEqual(dataset3.count("frames"), 2)
         self.assertEqual(
-            len(dataset3.select_group_slice(_allow_mixed=True)),
+            len(dataset3.select_group_slices(_allow_mixed=True)),
             3,
         )
 
@@ -550,7 +605,7 @@ class GroupTests(unittest.TestCase):
 
         self.assertEqual(frame.field, 1)
 
-        view = dataset.select_group_slice("ego")
+        view = dataset.select_group_slices("ego")
 
         dataset4 = view.clone()
 
@@ -568,6 +623,149 @@ class GroupTests(unittest.TestCase):
         frame = sample.frames.first()
 
         self.assertEqual(frame.field, 1)
+
+    def test_merge_groups1(self):
+        dataset = _make_group_dataset()
+
+        dataset1 = dataset[:1].clone()
+
+        new_dataset = fo.Dataset()
+        new_dataset.add_collection(dataset1)
+
+        self.assertEqual(len(new_dataset), 1)
+        self.assertEqual(
+            len(new_dataset.select_group_slices(_allow_mixed=True)), 3
+        )
+        self.assertEqual(new_dataset.media_type, "group")
+        self.assertEqual(new_dataset.default_group_slice, "ego")
+        self.assertEqual(new_dataset.group_slice, "ego")
+
+        new_dataset.add_collection(dataset[1:2])
+
+        self.assertEqual(len(new_dataset), 2)
+        self.assertEqual(
+            len(new_dataset.select_group_slices(_allow_mixed=True)), 6
+        )
+        self.assertEqual(new_dataset.media_type, "group")
+        self.assertEqual(new_dataset.default_group_slice, "ego")
+        self.assertEqual(new_dataset.group_slice, "ego")
+
+        new_dataset.add_collection(dataset.limit(0))
+
+        self.assertEqual(len(new_dataset), 2)
+        self.assertEqual(
+            len(new_dataset.select_group_slices(_allow_mixed=True)), 6
+        )
+        self.assertEqual(new_dataset.media_type, "group")
+        self.assertEqual(new_dataset.default_group_slice, "ego")
+        self.assertEqual(new_dataset.group_slice, "ego")
+
+    @drop_datasets
+    def test_merge_groups2(self):
+        dataset = _make_group_dataset()
+
+        new_dataset = fo.Dataset()
+        new_dataset.media_type = "group"
+
+        slice1 = dataset.limit(1).select_group_slices("left")
+        new_dataset.add_collection(slice1)
+
+        self.assertEqual(len(new_dataset), 1)
+        self.assertEqual(
+            len(new_dataset.select_group_slices(_allow_mixed=True)), 1
+        )
+        self.assertEqual(new_dataset.media_type, "group")
+        self.assertEqual(new_dataset.default_group_slice, "left")
+        self.assertEqual(new_dataset.group_slice, "left")
+        self.assertDictEqual(new_dataset.group_media_types, {"left": "image"})
+
+        slice2 = dataset.limit(1).select_group_slices(
+            ["right", "ego"], _allow_mixed=True
+        )
+        new_dataset.add_collection(slice2)
+
+        self.assertEqual(len(new_dataset), 1)
+        self.assertEqual(
+            len(new_dataset.select_group_slices(_allow_mixed=True)), 3
+        )
+        self.assertEqual(new_dataset.media_type, "group")
+        self.assertEqual(new_dataset.default_group_slice, "left")
+        self.assertEqual(new_dataset.group_slice, "left")
+        self.assertDictEqual(
+            new_dataset.group_media_types, dataset.group_media_types
+        )
+
+        slice3 = dataset.skip(1).select_group_slices(_allow_mixed=True)
+        new_dataset.add_collection(slice3)
+
+        self.assertEqual(len(new_dataset), 2)
+        self.assertEqual(
+            len(new_dataset.select_group_slices(_allow_mixed=True)), 6
+        )
+        self.assertEqual(new_dataset.media_type, "group")
+        self.assertEqual(new_dataset.default_group_slice, "left")
+        self.assertEqual(new_dataset.group_slice, "left")
+
+    @drop_datasets
+    def test_merge_groups3(self):
+        dataset = _make_group_dataset()
+
+        new_dataset = fo.Dataset()
+
+        slice1 = dataset.select_group_slices("left")
+        new_dataset.add_collection(slice1)
+
+        self.assertEqual(len(new_dataset), 2)
+        self.assertEqual(new_dataset.media_type, "image")
+        self.assertIsNone(new_dataset._doc.group_field)
+        self.assertIsNone(new_dataset._doc.default_group_slice)
+        self.assertEqual(new_dataset._doc.group_media_types, {})
+
+        # Cannot merge videos into image collection
+        with self.assertRaises(ValueError):
+            slice2 = dataset.select_group_slices("ego")
+            new_dataset.add_collection(slice2)
+
+    @drop_datasets
+    def test_merge_groups4(self):
+        dataset = _make_group_dataset()
+
+        new_dataset = dataset.clone()
+
+        new_dataset.delete_group_slice("left")
+        new_dataset.rename_group_slice("ego", "left")
+
+        # 'left' slice has wrong type
+        with self.assertRaises(ValueError):
+            new_dataset.add_collection(dataset)
+
+        # 'left' slice still has wrong type
+        with self.assertRaises(ValueError):
+            new_dataset.add_collection(dataset.select_group_slices("left"))
+
+        new_dataset.add_collection(
+            dataset.select_group_slices("right"), new_ids=True
+        )
+
+        self.assertEqual(new_dataset.group_slice, "left")
+        self.assertEqual(len(new_dataset), 2)
+
+        new_dataset.group_slice = "right"
+        self.assertEqual(len(new_dataset), 4)
+
+    @drop_datasets
+    def test_merge_groups5(self):
+        dataset = _make_group_dataset()
+
+        dataset.add_collection(dataset, new_ids=True)
+
+        self.assertEqual(len(dataset), 4)
+        self.assertEqual(dataset.media_type, "group")
+        self.assertEqual(dataset.group_slice, "ego")
+        self.assertEqual(
+            len(dataset.select_group_slices(_allow_mixed=True)), 12
+        )
+        self.assertEqual(dataset.count("frames"), 4)
 
 
 class GroupImportExportTests(unittest.TestCase):

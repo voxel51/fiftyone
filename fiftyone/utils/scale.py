@@ -24,6 +24,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 
 
 logger = logging.getLogger(__name__)
@@ -185,6 +186,9 @@ def import_from_scale(
         scale_id_field ("scale_id"): the sample field to use to associate Scale
             task IDs with FiftyOne samples
     """
+    fov.validate_collection(dataset, media_type=(fomm.IMAGE, fomm.VIDEO))
+    is_video = dataset.media_type == fomm.VIDEO
+
     # Load labels
     if labels_dir_or_json.endswith(".json"):
         labels = _load_labels(labels_dir_or_json)
@@ -197,8 +201,6 @@ def import_from_scale(
         label_key = lambda k: label_prefix + "_" + k
     else:
         label_key = lambda k: k
-
-    is_video = dataset.media_type == fomm.VIDEO
 
     with fou.ProgressBar(total=len(labels)) as pb:
         for task_id, task_labels in pb(labels.items()):
@@ -391,6 +393,9 @@ def export_to_scale(
 
             By default, no frame labels are exported
     """
+    fov.validate_collection(
+        sample_collection, media_type=(fomm.IMAGE, fomm.VIDEO)
+    )
     is_video = sample_collection.media_type == fomm.VIDEO
 
     # Get label fields to export
