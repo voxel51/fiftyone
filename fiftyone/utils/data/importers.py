@@ -25,6 +25,7 @@ import fiftyone.core.brain as fob
 import fiftyone.core.dataset as fod
 import fiftyone.core.evaluation as foe
 import fiftyone.core.frame as fof
+import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
@@ -125,7 +126,11 @@ def import_samples(
         except:
             num_samples = None
 
-        samples = map(parse_sample, iter(dataset_importer))
+        if isinstance(dataset_importer, GroupDatasetImporter):
+            samples = _generate_group_samples(dataset_importer, parse_sample)
+        else:
+            samples = map(parse_sample, iter(dataset_importer))
+
         sample_ids = dataset.add_samples(
             samples, expand_schema=expand_schema, num_samples=num_samples
         )
@@ -295,7 +300,10 @@ def merge_samples(
         except:
             num_samples = None
 
-        samples = map(parse_sample, iter(dataset_importer))
+        if isinstance(dataset_importer, GroupDatasetImporter):
+            samples = _generate_group_samples(dataset_importer, parse_sample)
+        else:
+            samples = map(parse_sample, iter(dataset_importer))
 
         dataset.merge_samples(
             samples,
@@ -334,11 +342,20 @@ def _handle_legacy_formats(dataset_importer):
     return dataset_importer
 
 
+def _generate_group_samples(dataset_importer, parse_sample):
+    group_field = dataset_importer.group_field
+    for group in dataset_importer:
+        _group = fog.Group()
+        for name, sample in group.items():
+            sample[group_field] = _group.element(name)
+            yield parse_sample(sample)
+
+
 def _build_parse_sample_fcn(
     dataset, dataset_importer, label_field, tags, expand_schema
 ):
     if isinstance(dataset_importer, GenericSampleDatasetImporter):
-        # Generic sample dataset
+        # Generic sample/group dataset
 
         #
         # If the importer provides a sample field schema, apply it now
@@ -951,8 +968,8 @@ class GenericSampleDatasetImporter(DatasetImporter):
         raise NotImplementedError("subclass must implement has_dataset_info")
 
     def get_sample_field_schema(self):
-        """Returns dictionary describing the field schema of the samples loaded
-        by this importer.
+        """Returns a dictionary describing the field schema of the samples
+        loaded by this importer.
 
         The returned dictionary should map field names to to string
         representations of :class:`fiftyone.core.fields.Field` instances
@@ -970,6 +987,59 @@ class GenericSampleDatasetImporter(DatasetImporter):
         raise NotImplementedError(
             "subclass must implement get_sample_field_schema()"
         )
+
+
+class GroupDatasetImporter(GenericSampleDatasetImporter):
+    """Interface for importing datasets that contain arbitrary grouped
+    :class:`fiftyone.core.sample.Sample` instances.
+
+    Typically, dataset importers should implement the parameters documented on
+    this class, although this is not mandatory.
+
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
+
+    .. automethod:: __len__
+    .. automethod:: __next__
+
+    Args:
+        dataset_dir (None): the dataset directory. This may be optional for
+            some importers
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __len__(self):
+        """The total number of samples that will be imported across all group
+        slices.
+
+        Raises:
+            TypeError: if the total number is not known
+        """
+        raise TypeError(
+            "The number of samples in this %s is not known a priori"
+            % type(self)
+        )
+
+    def __next__(self):
+        """Returns information about the next group in the dataset.
+
+        Returns:
+            a dict mapping slice names to :class:`fiftyone.core.sample.Sample`
+            instances
+
+        Raises:
+            StopIteration: if there are no more samples to import
+        """
+        raise NotImplementedError("subclass must implement __next__()")
+
+    @property
+    def group_field(self):
+        """The name of the group field to populate on each sample."""
+        return "group"
 
 
 class UnlabeledImageDatasetImporter(DatasetImporter):
