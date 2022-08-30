@@ -33,12 +33,16 @@ import {
   jsonIcon,
   helpIcon,
 } from "@fiftyone/components";
-import { colorMap } from "@fiftyone/state";
+import { colorMap, dataset } from "@fiftyone/state";
 import { removeListener } from "process";
 
 THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
 
 const deg2rad = (degrees) => degrees * (Math.PI / 180);
+const hasFocusAtom = recoil.atom({
+  key: "looker3dHasFocus",
+  default: false,
+});
 
 function PointCloudMesh({ minZ, colorBy, points, rotation, onLoad }) {
   const colorMinMaxRef = React.useRef();
@@ -411,6 +415,8 @@ function Looker3dCore({ sampleOverride: sample }) {
   useHotkey(
     "Escape",
     ({ get, set }) => {
+      console.log("get(fos.hoveredSample)", get(fos.hoveredSample));
+      if (get(fos.hoveredSample)?._id !== sample._id) return;
       if (get(jsonPanel.stateAtom).isOpen) {
         set(jsonPanel.stateAtom, (s) => ({ ...s, isOpen: false }));
         return false;
@@ -429,6 +435,7 @@ function Looker3dCore({ sampleOverride: sample }) {
       const changed = onChangeView("top");
       if (changed) return;
 
+      console.log("Looker3D Closing Modal");
       set(fos.modal, null);
     },
     [jsonPanel.isOpen, helpPanel.isOpen, selectedLabels, hovering]

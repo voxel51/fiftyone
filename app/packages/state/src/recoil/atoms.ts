@@ -218,3 +218,8 @@ export const modalTopBarVisible = atom<boolean>({
   key: "modalTopBarVisible",
   default: true,
 });
+
+export const hoveredSample = atom<Sample>({
+  key: "hoveredSample",
+  default: null,
+});

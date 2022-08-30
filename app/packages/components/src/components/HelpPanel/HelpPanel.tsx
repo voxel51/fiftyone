@@ -35,8 +35,8 @@ export default function HelpPanel({ onClose, items }) {
           <Scroll>
             <Header>Help</Header>
             <Items>
-              {items.map((item) => (
-                <Item {...item} />
+              {items.map((item, idx) => (
+                <Item key={`{item.shortcut}-${idx}`} {...item} />
               ))}
             </Items>
           </Scroll>
