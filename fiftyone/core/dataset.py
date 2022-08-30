@@ -4518,19 +4518,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return [k["key"][0][0] for k in index_info.values()]
 
     def _apply_field_schema(self, new_fields):
-        curr_fields = self.get_field_schema()
-        add_field_fcn = self.add_sample_field
-        self._apply_schema(curr_fields, new_fields, add_field_fcn)
-
-    def _apply_frame_field_schema(self, new_fields):
-        curr_fields = self.get_frame_field_schema()
-        add_field_fcn = self.add_frame_field
-        self._apply_schema(curr_fields, new_fields, add_field_fcn)
-
-    def _apply_schema(self, curr_fields, new_fields, add_field_fcn):
         for field_name, field_str in new_fields.items():
             ftype, embedded_doc_type, subfield = fof.parse_field_str(field_str)
-            add_field_fcn(
+            self.add_sample_field(
+                field_name,
+                ftype,
+                embedded_doc_type=embedded_doc_type,
+                subfield=subfield,
+            )
+
+    def _apply_frame_field_schema(self, new_fields):
+        for field_name, field_str in new_fields.items():
+            ftype, embedded_doc_type, subfield = fof.parse_field_str(field_str)
+            self.add_frame_field(
                 field_name,
                 ftype,
                 embedded_doc_type=embedded_doc_type,
@@ -5347,28 +5347,6 @@ def _merge_dataset_doc(
             curr_doc.default_skeleton = doc.default_skeleton
 
     curr_doc.save()
-
-    if dataset:
-        if doc.annotation_runs:
-            logger.warning(
-                "Annotation runs cannot be merged into a non-empty dataset"
-            )
-
-        if doc.brain_methods:
-            logger.warning(
-                "Brain runs cannot be merged into a non-empty dataset"
-            )
-
-        if doc.evaluations:
-            logger.warning(
-                "Evaluations cannot be merged into a non-empty dataset"
-            )
-    else:
-        dataset.delete_annotation_runs()
-        dataset.delete_brain_runs()
-        dataset.delete_evaluations()
-
-        _clone_runs(dataset, doc)
 
 
 def _update_no_overwrite(d, dnew):
