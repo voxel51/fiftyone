@@ -162,8 +162,13 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
     looker.updater((state) => ({
       ...state,
       shouldHandleKeyEvents: hoveredSample._id === sample._id,
+      options: {
+        ...state.options,
+        showJSON: jsonPanel.isOpen,
+        showHelp: helpPanel.isOpen,
+      },
     }));
-  }, [hoveredSample, sample, looker]);
+  }, [hoveredSample, sample, looker, jsonPanel, helpPanel]);
 
   return (
     <div
