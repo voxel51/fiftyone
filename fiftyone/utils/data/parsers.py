@@ -116,9 +116,10 @@ def add_labeled_images(
             :class:`fiftyone.core.labels.Label` instance per sample, this
             argument specifies the name of the field to use; the default is
             ``"ground_truth"``. If the parser produces a dictionary of labels
-            per sample, this argument specifies a string prefix to prepend to
-            each label key; the default in this case is to directly use the
-            keys of the imported label dictionaries as field names
+            per sample, this argument can be either a string prefix to prepend
+            to each label key or a dict mapping label keys to field names; the
+            default in this case is to directly use the keys of the imported
+            label dictionaries as field names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         expand_schema (True): whether to dynamically add new sample fields
@@ -143,7 +144,9 @@ def add_labeled_images(
             )
         )
 
-    if label_field:
+    if isinstance(label_field, dict):
+        label_key = lambda k: label_field.get(k, k)
+    elif label_field is not None:
         label_key = lambda k: label_field + "_" + k
     else:
         label_field = "ground_truth"
@@ -283,9 +286,10 @@ def add_labeled_videos(
             :class:`fiftyone.core.labels.Label` instance per sample/frame, this
             argument specifies the name of the field to use; the default is
             ``"ground_truth"``. If the parser produces a dictionary of labels
-            per sample/frame, this argument specifies a string prefix to
-            prepend to each label key; the default in this case is to directly
-            use the keys of the imported label dictionaries as field names
+            per sample/frame, this argument can be either a string prefix to
+            prepend to each label key or a dict mapping label keys to field
+            names; the default in this case is to directly use the keys of the
+            imported label dictionaries as field names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         expand_schema (True): whether to dynamically add new sample fields
@@ -304,7 +308,9 @@ def add_labeled_videos(
             )
         )
 
-    if label_field:
+    if isinstance(label_field, dict):
+        label_key = lambda k: label_field.get(k, k)
+    elif label_field is not None:
         label_key = lambda k: label_field + "_" + k
     else:
         label_field = "ground_truth"
@@ -909,7 +915,11 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
                     {
                         "label": <label-or-target>,
                         "confidence": <confidence>,
+                        "attributes": <optional-attributes>,
                     }
+
+            -   a :class:`fiftyone.core.labels.Classification` or
+                :class:`fiftyone.core.labels.Classifications` instance
 
     Args:
         classes (None): an optional list of class label strings. If provided,
@@ -940,6 +950,9 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
     def _parse_label(self, target):
         if target is None:
             return None
+
+        if isinstance(target, (fol.Classification, fol.Classifications)):
+            return target
 
         is_list = isinstance(target, (list, tuple))
 
@@ -983,36 +996,38 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         - ``image_or_path`` is either an image that can be converted to numpy
           format via ``np.asarray()`` or the path to an image on disk
 
-        - ``detections_or_path`` is either a list of detections in the
-          following format::
+        - ``detections_or_path`` can be any of the following:
 
-            [
-                {
-                    "<label_field>": <label-or-target>,
-                    "<bounding_box_field>": [
-                        <top-left-x>, <top-left-y>, <width>, <height>
-                    ],
-                    "<confidence_field>": <optional-confidence>,
-                    "<attributes_field>": {
-                        <optional-name>: <optional-value>,
+            -   None, for unlabeled images
+            -   a list of detections in the following format::
+
+                    [
+                        {
+                            "<label_field>": <label-or-target>,
+                            "<bounding_box_field>": [
+                                <top-left-x>, <top-left-y>, <width>, <height>
+                            ],
+                            "<confidence_field>": <optional-confidence>,
+                            "<attributes_field>": {
+                                <optional-name>: <optional-value>,
+                                ...
+                            }
+                        },
                         ...
-                    }
-                },
-                ...
-            ]
+                    ]
 
-          or the path to such a file on disk. For unlabeled images,
-          ``detections_or_path`` can be ``None``.
+                In the above, ``label-or-target`` is either a class ID
+                (if ``classes`` is provided) or a label string, and the bounding
+                box coordinates can either be relative coordinates in ``[0, 1]``
+                (if ``normalized == True``) or absolute pixels coordinates
+                (if ``normalized == False``). The confidence and attributes
+                fields are optional for each sample.
 
-          In the above, ``label-or-target`` is either a class ID
-          (if ``classes`` is provided) or a label string, and the bounding box
-          coordinates can either be relative coordinates in ``[0, 1]``
-          (if ``normalized == True``) or absolute pixels coordinates
-          (if ``normalized == False``). The confidence and attributes fields
-          are optional for each sample.
+                The input field names can be configured as necessary when
+                instantiating the parser.
 
-          The input field names can be configured as necessary when
-          instantiating the parser.
+            -   the path on disk to a file in the above format
+            -   a :class:`fiftyone.core.labels.Detections` instance
 
     Args:
         label_field ("label"): the name of the object label field in the
@@ -1072,6 +1087,9 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
     def _parse_label(self, target, img=None):
         if target is None:
             return None
+
+        if isinstance(target, fol.Detections):
+            return target
 
         if etau.is_str(target):
             target = fos.read_json(target)
@@ -1250,6 +1268,9 @@ class FiftyOneTemporalDetectionSampleParser(LabeledVideoSampleParser):
 
         if labels is None:
             return None
+
+        if isinstance(labels, fol.TemporalDetections):
+            return labels
 
         detections = []
         for label_dict in labels:

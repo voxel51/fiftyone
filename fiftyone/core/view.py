@@ -6,6 +6,7 @@ Dataset views.
 |
 """
 from collections import OrderedDict
+import contextlib
 from copy import copy, deepcopy
 import numbers
 
@@ -228,12 +229,10 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
-        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
         elements = [
             ("Dataset:", self.dataset_name),
             ("Media type:", self.media_type),
-            ("Num %s:" % self._elements_str, aggs[0]),
-            ("Tags:", aggs[1]),
+            ("Num %s:" % self._elements_str, self.count()),
         ]
 
         elements = fou.justify_headings(elements)
@@ -277,23 +276,69 @@ class DatasetView(foc.SampleCollection):
         """
         return copy(self)
 
-    def iter_samples(self, progress=False):
+    def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the view.
+
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+            view = dataset.shuffle().limit(5000)
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for sample in view.iter_samples(progress=True):
+                sample.ground_truth.label = make_label()
+                sample.save()
+
+            # Save in batches of 10
+            for sample in view.iter_samples(
+                progress=True, autosave=True, batch_size=10
+            ):
+                sample.ground_truth.label = make_label()
+
+            # Save every 0.5 seconds
+            for sample in view.iter_samples(
+                progress=True, autosave=True, batch_size=0.5
+            ):
+                sample.ground_truth.label = make_label()
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.SampleView` instances
         """
-        if progress:
-            with fou.ProgressBar(total=len(self)) as pb:
-                for sample in pb(self._iter_samples()):
-                    yield sample
-        else:
-            for sample in self._iter_samples():
+        with contextlib.ExitStack() as exit_context:
+            samples = self._iter_samples()
+
+            if progress:
+                pb = fou.ProgressBar(total=len(self))
+                exit_context.enter_context(pb)
+                samples = pb(samples)
+
+            if autosave:
+                save_context = foc.SaveContext(self, batch_size=batch_size)
+                exit_context.enter_context(save_context)
+
+            for sample in samples:
                 yield sample
+
+                if autosave:
+                    save_context.save(sample)
 
     def _iter_samples(self):
         sample_cls = self._sample_cls
@@ -714,17 +759,26 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._save(view=self, fields=fields)
 
-    def clone(self, name=None):
-        """Creates a new dataset containing only the contents of the view.
+    def clone(self, name=None, persistent=False):
+        """Creates a new dataset containing a copy of the contents of the view.
+
+        Dataset clones contain deep copies of all samples and dataset-level
+        information in the source collection. The source *media files*,
+        however, are not copied.
 
         Args:
             name (None): a name for the cloned dataset. By default,
-                :func:`fiftyone.core.dataset.get_default_dataset_name` is used
+                :func:`get_default_dataset_name` is used
+            persistent (False): whether the cloned dataset should be persistent
 
         Returns:
             the new :class:`fiftyone.core.dataset.Dataset`
         """
-        return self._dataset._clone(name=name, view=self)
+        return self._dataset._clone(
+            name=name,
+            persistent=persistent,
+            view=self,
+        )
 
     def reload(self):
         """Reloads the underlying dataset from the database.
@@ -735,7 +789,14 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset.reload()
 
-    def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
+    def to_dict(
+        self,
+        rel_dir=None,
+        include_private=False,
+        include_frames=False,
+        frame_labels_dir=None,
+        pretty_print=False,
+    ):
         """Returns a JSON dictionary representation of the view.
 
         Args:
@@ -746,11 +807,15 @@ class DatasetView(foc.SampleCollection):
                 use case for this argument is that your source data lives in
                 a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            include_private (False): whether to include private fields
+            include_frames (False): whether to include the frame labels for
+                video samples
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets
+                containing many frames). Only applicable to video datasets when
+                ``include_frames`` is True
             pretty_print (False): whether to render frame labels JSON in human
                 readable format with newlines and indentations. Only applicable
                 to video datasets when a ``frame_labels_dir`` is provided
@@ -760,6 +825,8 @@ class DatasetView(foc.SampleCollection):
         """
         d = super().to_dict(
             rel_dir=rel_dir,
+            include_private=include_private,
+            include_frames=include_frames,
             frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )

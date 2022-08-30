@@ -3,6 +3,202 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.16.6:
+
+FiftyOne 0.16.6
+---------------
+*Released August 25, 2022*
+
+App
+
+- Fixed a bug that caused the App to break when sample tags contained `.`
+  `#1924 <https://github.com/voxel51/fiftyone/pull/1924>`_
+- Fixed search results alignment
+  `#1930 <https://github.com/voxel51/fiftyone/pull/1930>`_
+- Fixed App refreshes after view changes had occurred from the view bar
+  `#1931 <https://github.com/voxel51/fiftyone/pull/1931>`_
+- Fixed mask targets rendering in the tooltip
+  `#1943 <https://github.com/voxel51/fiftyone/pull/1943>`_
+  `#1949 <https://github.com/voxel51/fiftyone/pull/1949>`_
+- Fixed classification confusion matrix connections
+  `#1967 <https://github.com/voxel51/fiftyone/pull/1967>`_
+
+Core
+
+- Added a save context that enables
+  :ref:`efficient batch edits <efficient-batch-edits>` of datasets and views
+  `#1727 <https://github.com/voxel51/fiftyone/pull/1727>`_
+- Added Plotly v5 support
+  `#1981 <https://github.com/voxel51/fiftyone/pull/1981>`_
+- Added a :ref:`quantiles aggregation <aggregations-quantiles>`
+  `#1937 <https://github.com/voxel51/fiftyone/pull/1937>`_
+- Added support for writing transformed images/videos to new locations in the
+  :func:`transform_images() <fiftyone.utils.image.transform_images>` and
+  :func:`transform_videos() <fiftyone.utils.video.transform_videos>` functions
+  `#2007 <https://github.com/voxel51/fiftyone/pull/2007>`_
+- Added support for configuring the
+  :ref:`package-wide logging level <configuring-fiftyone>`
+  `#2009 <https://github.com/voxel51/fiftyone/pull/2009>`_
+- Added more full-featured support for serializing and deserializing datasets,
+  views, and samples via `to_dict()` and `from_dict()`
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Added support for dynamic attributes when performing coerced exports
+  `#1993 <https://github.com/voxel51/fiftyone/pull/1993>`_
+- Introduced the notion of client compatability versions
+  `#2017 <https://github.com/voxel51/fiftyone/pull/2017>`_
+- Extended :meth:`stats() <fiftyone.core.collections.SampleCollection>` to all
+  sample collections `#1940 <https://github.com/voxel51/fiftyone/pull/1940>`_
+- Added support for serializing aggregations
+  `#1911 <https://github.com/voxel51/fiftyone/pull/1911>`_
+- Added :func:`weighted_sample() <fiftyone.utils.random.weighted_sample>`
+  and :func:`balanced_sample() <fiftyone.utils.random.balanced_sample>`
+  utility methods `#1925 <https://github.com/voxel51/fiftyone/pull/1925>`_
+- Added an optional ``new_ids=True`` option to
+  :meth:`Dataset.add_collection() <fiftyone.core.dataset.Dataset.add_collection>`
+  that generates new sample/frame IDs when adding the samples
+  `#1927 <https://github.com/voxel51/fiftyone/pull/1927>`_
+- Added support for the `path` variable in `dataset.yaml` of
+  :ref:`YOLOv5 datasets <YOLOv5Dataset-import>`
+  `#1903 <https://github.com/voxel51/fiftyone/issues/1903>`_
+- Fixed a bug that prevented using 
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+  to set frame-level label fields
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed automatic declaration of frame fields when computing embeddings on a
+  frame view `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed a regression that caused label ID fields to be returned as
+  `ObjectID` `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed a bug that allowed default frame fields to be excluded
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- :class:`ClipsView <fiftyone.core.clips.ClipsView>` instances will now report
+  their `metadata` type as |VideoMetadata|
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed
+  :meth:`load_evaluation_view() <fiftyone.core.dataset.Dataset.load_evaluation_view>`
+  when ``select_fields`` is ``True``
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed boolean field parsing when declaring fields
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed a bug that caused nested embedded documents to corrupt datasets
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed a bug that prevented assignment of array-valued dynamic attributes
+  to labels `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+
+Annotation
+
+- Added a new :ref:`Label Studio integration! <label-studio-integration>`
+  `#1848 <https://github.com/voxel51/fiftyone/pull/1848>`_
+- Optimized loading CVAT annotations and performing operations on
+  :class:`CVATAnnotationResults <fiftyone.utils.cvat.CVATAnnotationResults>`
+  `#1944 <https://github.com/voxel51/fiftyone/pull/1944>`_
+- Upgraded the :class:`AnnotationAPI <fiftyone.utils.annotations.AnnotationAPI>`
+  interface `#1997 <https://github.com/voxel51/fiftyone/pull/1997>`_
+- Fixed loading group IDs in CVAT video tasks
+  `#1917 <https://github.com/voxel51/fiftyone/pull/1917>`_
+- Fixed uploading to a CVAT project when no label schema is provided
+  `#1926 <https://github.com/voxel51/fiftyone/pull/1926>`_
+
+.. _release-notes-v0.16.5:
+
+FiftyOne 0.16.5
+---------------
+*Released June 24, 2022*
+
+App
+
+- Fixed dataset selection searches
+  `#1907 <https://github.com/voxel51/fiftyone/pull/1907>`_
+- Fixed dataset results for long dataset names
+  `#1907 <https://github.com/voxel51/fiftyone/pull/1907>`_
+
+.. _release-notes-v0.16.4:
+
+FiftyOne 0.16.4
+---------------
+*Released June 21, 2022*
+
+App
+
+- Fixed frame fields omission in the sidebar
+  `#1899 <https://github.com/voxel51/fiftyone/pull/1899>`_
+
+.. _release-notes-v0.16.3:
+
+FiftyOne 0.16.3
+---------------
+*Released June 20, 2022*
+
+App
+
+- Added hotkey to hide overlays while pressed
+  `#1779 <https://github.com/voxel51/fiftyone/pull/1779>`_
+- Changed expanded view ESC sequence to reset zoom before frame scrubbing
+  `#1810 <https://github.com/voxel51/fiftyone/pull/1810>`_
+- Fixed the expanded view tooltip when a keypoint has ``nan`` point(s)
+  `#1828 <https://github.com/voxel51/fiftyone/pull/1828>`_
+- Fixed initial loading of keypoint skeletons 
+  `#1828 <https://github.com/voxel51/fiftyone/pull/1828>`_
+- Fixed |Classifications| rendering in the grid 
+  `#1828 <https://github.com/voxel51/fiftyone/pull/1828>`_
+- Fixed App loads for environments with old (``<=v0.14.0``) datasets that have
+  yet to be migrated `#1829 <https://github.com/voxel51/fiftyone/pull/1829>`_
+- Fixed spurious loading states from tagging in the expanded view
+  `#1834 <https://github.com/voxel51/fiftyone/pull/1834>`_
+- Fixed a bug that caused frame classifications to be incorrectly rendered in
+  the grid `#1877 <https://github.com/voxel51/fiftyone/pull/1877>`_
+- Fixed active (checked) field persistence in the grid when changing views
+  `#1878 <https://github.com/voxel51/fiftyone/pull/1878>`_
+- Fixed views and actions that contain ``BSON``
+  `#1879 <https://github.com/voxel51/fiftyone/pull/1879>`_
+- Fixed ``JSON`` rendering in the expanded view for nested data
+  `#1880 <https://github.com/voxel51/fiftyone/pull/1880>`_
+- Fixed selection and expansion for bad media files
+  `#1882 <https://github.com/voxel51/fiftyone/pull/1882>`_
+- Fixed ``Other`` plot tab ``date`` and ``datetime`` fields with ``None``
+  values `#1817 <https://github.com/voxel51/fiftyone/pull/1817>`_
+- Increased results from 10 to 200 for search selectors
+  `#1875 <https://github.com/voxel51/fiftyone/pull/1875>`_
+- Fixed App issues related to dataset deletion and dataset schema changes
+  `#1875 <https://github.com/voxel51/fiftyone/pull/1875>`_
+
+Core
+
+- Added ``skeleton`` and ``skeleton_key`` to the OpenLABEL
+  :ref:`image <OpenLABELImageDataset-import>` and
+  :ref:`video <OpenLABELVideoDataset-import>` importers
+  `#1812 <https://github.com/voxel51/fiftyone/pull/1812>`_
+- Fixed a database field issue in
+  :meth:`clone_frame_field() <fiftyone.core.dataset.Dataset.clone_frame_field>`
+  and
+  :meth:`clone_sample_field() <fiftyone.core.dataset.Dataset.clone_sample_field>`,
+  `#1824 <https://github.com/voxel51/fiftyone/pull/1824>`_
+- Fixed using zoo models with the newest version of Torchvision
+  `#1838 <https://github.com/voxel51/fiftyone/pull/1838>`_
+- Added
+  :func:`classifications_to_detections() <fiftyone.utils.labels.classifications_to_detections>`
+  for converting classifications to detections
+  `#1842 <https://github.com/voxel51/fiftyone/pull/1842>`_
+- Set forking as the default for macOS multiprocessing
+  `#1844 <https://github.com/voxel51/fiftyone/pull/1844>`_
+- Added :attr:`dataset.tags <fiftyone.core.dataset.Dataset.tags>`
+  for organizing datasets
+  `#1845 <https://github.com/voxel51/fiftyone/pull/1845>`_
+- Added functionality to explicitly define classes for evaluation methods
+  `#1858 <https://github.com/voxel51/fiftyone/pull/1858>`_
+- Fixed ``tfrecord`` shard enumeration, i.e. zero indexing
+  `#1859 <https://github.com/voxel51/fiftyone/pull/1859>`_
+- Added support for label field dicts when importing labeled datasets
+  `#1864 <https://github.com/voxel51/fiftyone/pull/1864>`_
+- Removed non-XML or non-TXT files from CVAT, KITTI, CVATVideo
+  `#1884 <https://github.com/voxel51/fiftyone/pull/1884>`_
+
+Annotation
+
+- Updated CVAT task and project processing
+  `#1839 <https://github.com/voxel51/fiftyone/pull/1839>`_
+- Added the ability to upload and download group ids from CVAT
+  `#1876 <https://github.com/voxel51/fiftyone/pull/1876>`_
+
 .. _release-notes-v0.16.2:
 
 FiftyOne 0.16.2
@@ -27,7 +223,7 @@ App
 
 Core
 
-- Fixed errors related session-attached plots
+- Fixed errors related to session-attached plots
   `#1808 <https://github.com/voxel51/fiftyone/pull/1808>`_
 
 .. _release-notes-v0.16.1:
@@ -94,10 +290,10 @@ App
 Core
 
 - Fixed edge cases in
-  :meth:`SampleCollection.clone_frame_field() <fiftyone.core.collections.SampleCollection.clone_frame_field>`,
-  :meth:`SampleCollection.merge_samples() <fiftyone.core.collections.SampleCollection.merge_samples>`,
+  :meth:`clone_frame_field() <fiftyone.core.dataset.Dataset.clone_frame_field>`,
+  :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`,
   and
-  :meth:`SampleCollection.rename_frame_field() <fiftyone.core.collections.SampleCollection.rename_frame_field>`
+  :meth:`rename_frame_field() <fiftyone.core.dataset.Dataset.rename_frame_field>`
   `#1749 <https://github.com/voxel51/fiftyone/pull/1749>`_
 - Fixed a bug that would cause non-persistent datasets to be prematurely
   deleted `#1747 <https://github.com/voxel51/fiftyone/pull/1747>`_
@@ -516,7 +712,7 @@ Core
   :class:`FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
   with run results
 - Added a :class:`Regression <fiftyone.core.labels.Regression>` label type
-- Added a :func:`random_split() <fiftyone.utils.splits.random_split>` method
+- Added a :func:`random_split() <fiftyone.utils.random.random_split>` method
 - Added support for negating
   :meth:`match_labels() <fiftyone.core.collections.SampleCollection.match_labels()>`
   queries

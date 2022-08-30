@@ -4,7 +4,7 @@ export default graphql`
   mutation setViewMutation(
     $subscription: String!
     $session: String
-    $view: JSONArray!
+    $view: BSONArray!
     $dataset: String!
   ) {
     setView(

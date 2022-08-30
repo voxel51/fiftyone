@@ -73,22 +73,15 @@ def convert_dataset(
             "Either `output_type` or `dataset_exporter` must be provided"
         )
 
-    if input_kwargs is None:
-        input_kwargs = {}
-
-    if output_kwargs is None:
-        output_kwargs = {}
-
     dataset = fod.Dataset()
-    label_field = "label"
     images_dir = None
 
     try:
-        #
-        # Import dataset
-        #
-
+        # Build importer
         if dataset_importer is None:
+            if input_kwargs is None:
+                input_kwargs = {}
+
             # If the input dataset contains TFRecords, they must be unpacked
             # into a temporary directory during conversion
             if _is_tf_records(input_type) and "images_dir" not in input_kwargs:
@@ -99,41 +92,47 @@ def convert_dataset(
                 input_type, dataset_dir=input_dir, **input_kwargs
             )
 
-            logger.info("Input format: %s", etau.get_class_name(input_type))
+            logger.info(
+                "Using input format: %s", etau.get_class_name(input_type)
+            )
         else:
             input_dir = dataset_importer.input_dir
             logger.info(
                 "Using importer: %s", etau.get_class_name(dataset_importer)
             )
 
-        if input_dir is not None:
-            logger.info("Loading dataset from '%s'", input_dir)
-
-        dataset.add_importer(dataset_importer, label_field=label_field)
-
-        #
-        # Export dataset
-        #
-
+        # Build exporter
         if dataset_exporter is None:
+            if output_kwargs is None:
+                output_kwargs = {}
+
             dataset_exporter, _ = build_dataset_exporter(
                 output_type, export_dir=output_dir, **output_kwargs
             )
-            logger.info("Export format: %s", etau.get_class_name(output_type))
+            logger.info(
+                "Using export format: %s", etau.get_class_name(output_type)
+            )
         else:
             output_dir = dataset_exporter.export_dir
             logger.info(
                 "Using exporter: %s", etau.get_class_name(dataset_exporter)
             )
 
+        # Import dataset
+        if input_dir is not None:
+            logger.info("Loading dataset from '%s'", input_dir)
+        else:
+            logger.info("Loading dataset")
+
+        dataset.add_importer(dataset_importer)
+
+        # Export dataset
         if output_dir is not None:
             logger.info("Exporting dataset to '%s'", output_dir)
+        else:
+            logger.info("Exporting dataset")
 
-        dataset.export(
-            dataset_exporter=dataset_exporter,
-            label_field=label_field,
-            overwrite=overwrite,
-        )
+        dataset.export(dataset_exporter=dataset_exporter, overwrite=overwrite)
     finally:
         if images_dir is not None and os.path.isdir(images_dir):
             etau.delete_dir(images_dir)

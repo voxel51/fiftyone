@@ -1,6 +1,10 @@
 import { Key, pathToRegexp } from "path-to-regexp";
 import { OperationType, VariablesOf } from "relay-runtime";
 
+interface StringKey extends Key {
+  name: string;
+}
+
 interface CompilePathOptions {
   end: boolean;
   strict: boolean;
@@ -9,7 +13,7 @@ interface CompilePathOptions {
 
 interface CompilePathResult {
   regexp: RegExp;
-  keys: Key[];
+  keys: StringKey[];
 }
 
 const cache: {
@@ -29,7 +33,7 @@ const compilePath = (
 
   if (pathCache[path]) return pathCache[path];
 
-  const keys: Key[] = [];
+  const keys: StringKey[] = [];
   const regexp = pathToRegexp(path, keys, options);
   const result = { regexp, keys };
 
@@ -52,13 +56,13 @@ export interface MatchPathResult<T extends OperationType | undefined> {
   path: string;
   url: string;
   isExact: boolean;
-  variables: T extends OperationType ? VariablesOf<T> : undefined;
+  variables: VariablesOf<T extends OperationType ? T : never>;
 }
 
 export const matchPath = <T extends OperationType | undefined>(
   pathname: string,
   options: MatchPathOptions,
-  variables: T extends OperationType ? Partial<VariablesOf<T>> : undefined
+  variables: Partial<VariablesOf<T extends OperationType ? T : never>> = {}
 ): MatchPathResult<T> | null => {
   const { path, exact = false, strict = false, sensitive = false } = options;
 
@@ -78,16 +82,18 @@ export const matchPath = <T extends OperationType | undefined>(
 
   if (exact && !isExact) return null;
 
-  variables && (variables = { ...variables });
-  variables &&
-    keys.forEach((key, i) => variables && (variables[key.name] = values[i]));
+  const allVariables: VariablesOf<T extends OperationType ? T : never> = {
+    ...variables,
+  };
+  keys.forEach((key, i) => {
+    // @ts-ignore
+    allVariables[key.name] = values[i];
+  });
 
   return {
     path,
     url: path === "/" && url === "" ? "/" : url,
     isExact,
-    variables,
+    variables: allVariables,
   };
 };
-
-matchPath;

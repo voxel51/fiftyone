@@ -123,15 +123,7 @@ RUN if [ "${TEAMS_APP_VERSION}" = "latest" ]; then \
 # Configure shared storage
 #
 
-# The name of the shared directory in the container that should be
-# volume-mounted by users to persist data loaded into FiftyOne
-ARG ROOT_DIR=/fiftyone
-
-ENV FIFTYONE_MEDIA_CACHE_DIR=${ROOT_DIR}/cache \
-    FIFTYONE_DATABASE_DIR=${ROOT_DIR}/db \
-    FIFTYONE_DEFAULT_DATASET_DIR=${ROOT_DIR}/default \
-    FIFTYONE_DATASET_ZOO_DIR=${ROOT_DIR}/zoo/datasets \
-    FIFTYONE_MODEL_ZOO_DIR=${ROOT_DIR}/zoo/models \
+ENV FIFTYONE_MEDIA_CACHE_SIZE_BYTES=-1 \
     FIFTYONE_MEDIA_CACHE_APP_IMAGES=false \
     FIFTYONE_DATABASE_ADMIN=true \
     FIFTYONE_DATABASE_NAME=fiftyone
@@ -140,4 +132,4 @@ ENV FIFTYONE_MEDIA_CACHE_DIR=${ROOT_DIR}/cache \
 # Serve the app
 #
 
-CMD hypercorn fiftyone.teams.app:app --bind 0.0.0.0:5151
+CMD hypercorn fiftyone.teams.app:app --bind 0.0.0.0:"${FIFTYONE_DEFAULT_APP_PORT:-5151}"

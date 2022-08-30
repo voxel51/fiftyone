@@ -36,6 +36,9 @@ class _Document(object):
 
         return self._doc == other._doc
 
+    def __contains__(self, name):
+        return self.has_field(name)
+
     def __getattr__(self, name):
         try:
             return super().__getattr__(name)
@@ -110,7 +113,7 @@ class _Document(object):
 
     @property
     def field_names(self):
-        """An ordered tuple of the names of the fields of this document."""
+        """An ordered tuple of the public field names of this document."""
         return self._doc.field_names
 
     @property
@@ -118,16 +121,20 @@ class _Document(object):
         """Whether the document has been inserted into the database."""
         return self._doc.in_db
 
-    def _get_field_names(self, include_private=False):
+    def _get_field_names(self, include_private=False, use_db_fields=False):
         """Returns an ordered tuple of field names of this document.
 
         Args:
             include_private (False): whether to include private fields
+            use_db_fields (False): whether to return database fields
 
         Returns:
             a tuple of field names
         """
-        return self._doc._get_field_names(include_private=include_private)
+        return self._doc._get_field_names(
+            include_private=include_private,
+            use_db_fields=use_db_fields,
+        )
 
     def has_field(self, field_name):
         """Determines whether the document has the given field.
@@ -159,7 +166,6 @@ class _Document(object):
                 "%s has no field '%s'" % (self.__class__.__name__, field_name)
             )
 
-        # @todo `use_db_field` hack
         if isinstance(value, ObjectId):
             value = str(value)
 
@@ -177,12 +183,6 @@ class _Document(object):
             ValueError: if ``field_name`` is not an allowed field name
             AttirubteError: if the field does not exist and ``create == False``
         """
-        if field_name.startswith("_"):
-            raise ValueError(
-                "Invalid field name: '%s'. Field names cannot start with '_'"
-                % field_name
-            )
-
         self._doc.set_field(field_name, value, create=create)
 
     def update_fields(self, fields_dict, expand_schema=True):
@@ -213,8 +213,8 @@ class _Document(object):
         self._doc.clear_field(field_name)
 
     def iter_fields(self, include_id=False):
-        """Returns an iterator over the ``(name, value)`` pairs of the fields
-        of the document.
+        """Returns an iterator over the ``(name, value)`` pairs of the public
+        fields of the document.
 
         Args:
             include_id (False): whether to include the ``id`` field
@@ -308,22 +308,11 @@ class _Document(object):
                 field_type = type(curr_value)
 
                 if issubclass(field_type, list):
-                    if value is not None:
-                        curr_value.extend(
-                            v for v in value if v not in curr_value
-                        )
-
+                    _merge_lists(curr_value, value, overwrite=overwrite)
                     continue
 
                 if field_type in fol._LABEL_LIST_FIELDS:
-                    if value is not None:
-                        list_field = field_type._LABEL_LIST_FIELD
-                        _merge_labels(
-                            curr_value[list_field],
-                            value[list_field],
-                            overwrite=overwrite,
-                        )
-
+                    _merge_labels(curr_value, value, overwrite=overwrite)
                     continue
 
             if (
@@ -351,15 +340,20 @@ class _Document(object):
         """
         raise NotImplementedError("subclass must implement copy()")
 
-    def to_dict(self):
+    def to_dict(self, include_private=False):
         """Serializes the document to a JSON dictionary.
 
-        The document ID and private fields are excluded in this representation.
+        Args:
+            include_private (False): whether to include private fields
 
         Returns:
             a JSON dict
         """
         d = self._doc.to_dict(extended=True)
+
+        if include_private:
+            return d
+
         return {k: v for k, v in d.items() if not k.startswith("_")}
 
     def to_mongo_dict(self, include_id=False):
@@ -394,12 +388,15 @@ class _Document(object):
 
     def save(self):
         """Saves the document to the database."""
+        self._save()
+
+    def _save(self, deferred=False):
         if not self._in_db:
             raise ValueError(
                 "Cannot save a document that has not been added to a dataset"
             )
 
-        self._doc.save()
+        return self._doc._save(deferred=deferred)
 
     def _parse_fields(self, fields=None, omit_fields=None):
         if fields is None:
@@ -465,7 +462,7 @@ class Document(_Document):
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
-        """Creates a :class:`Document` backed by the given database document.
+        """Creates a document backed by the given database document.
 
         Args:
             doc: a :class:`fiftyone.core.odm.document.Document`
@@ -616,14 +613,9 @@ class DocumentView(_Document):
         super().__init__(doc, dataset=view._dataset)
 
     def __repr__(self):
-        if self._selected_fields is not None:
-            select_fields = ("id",) + tuple(self._selected_fields)
-        else:
-            select_fields = None
-
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__,
-            select_fields=select_fields,
+            select_fields=self._selected_fields,
             exclude_fields=self._excluded_fields,
         )
 
@@ -638,7 +630,10 @@ class DocumentView(_Document):
         This may be a subset of all fields of the document if fields have been
         selected or excluded.
         """
-        field_names = super().field_names
+        return self._get_field_names(include_private=False)
+
+    def _get_field_names(self, include_private=False, use_db_fields=False):
+        field_names = super()._get_field_names(include_private=include_private)
 
         if self._selected_fields is not None:
             field_names = tuple(
@@ -650,7 +645,13 @@ class DocumentView(_Document):
                 fn for fn in field_names if fn not in self._excluded_fields
             )
 
+        if use_db_fields:
+            return self._to_db_fields(field_names)
+
         return field_names
+
+    def _to_db_fields(self, field_names):
+        return self._doc._to_db_fields(field_names)
 
     @property
     def selected_field_names(self):
@@ -724,11 +725,18 @@ class DocumentView(_Document):
 
         super().clear_field(field_name)
 
-    def to_dict(self):
-        d = super().to_dict()
+    def to_dict(self, include_private=False):
+        d = super().to_dict(include_private=include_private)
 
         if self._selected_fields or self._excluded_fields:
-            d = {k: v for k, v in d.items() if k in self.field_names}
+            field_names = set(
+                self._get_field_names(
+                    include_private=include_private,
+                    use_db_fields=True,
+                )
+            )
+
+            d = {k: v for k, v in d.items() if k in field_names}
 
         return d
 
@@ -736,11 +744,11 @@ class DocumentView(_Document):
         d = super().to_mongo_dict(include_id=include_id)
 
         if self._selected_fields or self._excluded_fields:
-            d = {
-                k: v
-                for k, v in d.items()
-                if k in self.field_names or k == "_id"
-            }
+            field_names = set(
+                self._get_field_names(include_private=True, use_db_fields=True)
+            )
+
+            d = {k: v for k, v in d.items() if k in field_names}
 
         return d
 
@@ -752,13 +760,37 @@ class DocumentView(_Document):
 
     def save(self):
         """Saves the document view to the database."""
-        self._doc.save(filtered_fields=self._filtered_fields)
+        self._save()
+        self._reload_parents()
 
+    def _save(self, deferred=False):
+        return self._doc._save(
+            deferred=deferred,
+            filtered_fields=self._filtered_fields,
+        )
+
+    def _reload_parents(self):
         if issubclass(type(self._DOCUMENT_CLS), DocumentSingleton):
             self._DOCUMENT_CLS._reload_instance(self)
 
 
-def _merge_labels(labels, new_labels, overwrite=True):
+def _merge_lists(dst, src, overwrite=True):
+    if src is None:
+        return
+
+    dst.extend(v for v in src if v not in dst)
+
+
+def _merge_labels(dst, src, overwrite=True):
+    if src is None:
+        return
+
+    label_type = type(dst)
+    list_field = label_type._LABEL_LIST_FIELD
+
+    labels = dst[list_field]
+    new_labels = src[list_field]
+
     if overwrite:
         existing_ids = {l.id: idx for idx, l in enumerate(labels)}
         for l in new_labels:

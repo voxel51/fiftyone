@@ -12,10 +12,13 @@ import re
 from bson import json_util, ObjectId
 import mongoengine
 import pymongo
+from pymongo import UpdateOne
 
 import eta.core.serial as etas
 
 import fiftyone.core.utils as fou
+
+from .utils import serialize_value, deserialize_value
 
 
 class SerializableDocument(object):
@@ -32,6 +35,11 @@ class SerializableDocument(object):
             return False
 
         return self.to_dict() == other.to_dict()
+
+    @property
+    def field_names(self):
+        """An ordered tuple of the public fields of this document."""
+        raise NotImplementedError("Subclass must implement `field_names`")
 
     def fancy_repr(
         self,
@@ -122,11 +130,22 @@ class SerializableDocument(object):
         """
         raise NotImplementedError("Subclass must implement `clear_field()`")
 
-    def _get_field_names(self, include_private=False):
+    def iter_fields(self):
+        """Returns an iterator over the ``(name, value)`` pairs of the
+        public fields of the document.
+
+        Returns:
+            an iterator that emits ``(name, value)`` tuples
+        """
+        for field_name in self.field_names:
+            yield field_name, self.get_field(field_name)
+
+    def _get_field_names(self, include_private=False, use_db_fields=False):
         """Returns an ordered tuple of field names of this document.
 
         Args:
             include_private (False): whether to include private fields
+            use_db_fields (False): whether to return database fields
 
         Returns:
             a tuple of field names
@@ -149,6 +168,58 @@ class SerializableDocument(object):
             a :class:`SerializableDocument`
         """
         return deepcopy(self)
+
+    def merge(self, doc, merge_lists=True, merge_dicts=True, overwrite=True):
+        """Merges the contents of the given document into this document.
+
+        Args:
+            doc: a :class:`SerializableDocument` of same type as this document
+            merge_lists (True): whether to merge the elements of top-level list
+                fields rather than treating the list as a single value
+            merge_dicts (True): whether to recursively merge the contents of
+                top-level dict fields rather than treating the dict as a single
+                value
+            overwrite (True): whether to overwrite (True) or skip (False)
+                existing fields
+        """
+        if not isinstance(doc, type(self)):
+            raise ValueError(
+                "Cannot merge %s into %s" % (type(doc), type(self))
+            )
+
+        if not overwrite:
+            existing_field_names = set(self.field_names)
+
+        for field, value in doc.iter_fields():
+            try:
+                curr_value = self.get_field(field)
+            except AttributeError:
+                curr_value = None
+
+            if (
+                merge_lists
+                and isinstance(curr_value, list)
+                and isinstance(value, list)
+            ):
+                _merge_lists(curr_value, value, overwrite=overwrite)
+                continue
+
+            if (
+                merge_dicts
+                and isinstance(curr_value, dict)
+                and isinstance(value, dict)
+            ):
+                _merge_dicts(curr_value, value, overwrite=overwrite)
+                continue
+
+            if (
+                not overwrite
+                and field in existing_field_names
+                and curr_value is not None
+            ):
+                continue
+
+            self.set_field(field, value, create=True)
 
     def to_dict(self, extended=False):
         """Serializes this document to a BSON/JSON dictionary.
@@ -223,6 +294,10 @@ class MongoEngineBaseDocument(SerializableDocument):
         }
         return self.__class__(**kwargs)
 
+    @property
+    def field_names(self):
+        return self._get_field_names(include_private=False)
+
     def has_field(self, field_name):
         # pylint: disable=no-member
         return field_name in self._fields_ordered
@@ -246,7 +321,7 @@ class MongoEngineBaseDocument(SerializableDocument):
 
         super().__delattr__(field_name)
 
-        # pylint: disable=no-member
+        # pylint: disable=no-member,attribute-defined-outside-init
         if field_name not in self.__class__._fields_ordered:
             self._fields_ordered = tuple(
                 f for f in self._fields_ordered if f != field_name
@@ -261,13 +336,40 @@ class MongoEngineBaseDocument(SerializableDocument):
         # pylint: disable=no-member
         return self._fields[field_name].to_python(value)
 
-    def _get_field_names(self, include_private=False):
+    def _get_field_names(self, include_private=False, use_db_fields=False):
+        field_names = self._fields_ordered
+
         if not include_private:
-            return tuple(
-                f for f in self._fields_ordered if not f.startswith("_")
+            field_names = tuple(
+                f for f in field_names if not f.startswith("_")
             )
 
-        return self._fields_ordered
+        if use_db_fields:
+            field_names = self._to_db_fields(field_names)
+
+        return field_names
+
+    def _to_db_fields(self, field_names):
+        db_fields = []
+
+        for field_name in field_names:
+            if field_name == "id":
+                db_fields.append("_id")
+            else:
+                # pylint: disable=no-member
+                field = self._fields.get(field_name, None)
+                if field is None:
+                    value = self.get_field(field_name)
+                    if isinstance(
+                        value, ObjectId
+                    ) and not field_name.startswith("_"):
+                        db_fields.append("_" + field_name)
+                    else:
+                        db_fields.append(field_name)
+                else:
+                    db_fields.append(field.db_field or field_name)
+
+        return tuple(db_fields)
 
     def _get_repr_fields(self):
         # pylint: disable=no-member
@@ -280,7 +382,7 @@ class MongoEngineBaseDocument(SerializableDocument):
         if not extended:
             return d
 
-        # @todo is there a way to avoid bson -> str -> json dict?
+        # @todo can we optimize this?
         return json.loads(json_util.dumps(d))
 
     @classmethod
@@ -296,11 +398,75 @@ class MongoEngineBaseDocument(SerializableDocument):
                 pass
 
         # Construct any necessary extended JSON components like ObjectIds
-        # @todo is there a way to avoid json -> str -> bson?
+        # @todo can we optimize this?
         d = json_util.loads(json_util.dumps(d))
 
         # pylint: disable=no-member
         return cls._from_son(d)
+
+
+class DynamicMixin(object):
+    """Mixin for :class:`MongoEngineBaseDocument` classes that can have
+    arbitrary dynamic fields added to them.
+    """
+
+    def to_mongo(self, *args, **kwargs):
+        # pylint: disable=no-member
+        d = super().to_mongo(*args, **kwargs)
+
+        #
+        # We must manually serialize dynamic fields because MongoEngine doesn't
+        # have a `Field` instance to serialize them for us
+        #
+
+        rename = {}
+
+        for k, v in d.items():
+            # pylint: disable=no-member
+            if k not in self._fields:
+                # We store ObjectIds in private fields in the DB
+                if (
+                    isinstance(v, ObjectId)
+                    and k != "id"
+                    and not k.startswith("_")
+                ):
+                    rename[k] = "_" + k
+
+                d[k] = serialize_value(v)
+
+        for old, new in rename.items():
+            d[new] = d.pop(old)
+
+        return d
+
+    @classmethod
+    def _from_son(cls, d, *args, **kwargs):
+        #
+        # We must manually deserialize dynamic fields because MongoEngine
+        # doesn't have a `Field` instance to deserialize them for us
+        #
+
+        rename = {}
+
+        for k, v in d.items():
+            # pylint: disable=no-member
+            if k not in cls._fields:
+                v = deserialize_value(v)
+                d[k] = v
+
+                # We store ObjectIds in private fields in the DB
+                if (
+                    isinstance(v, ObjectId)
+                    and k != "_id"
+                    and k.startswith("_")
+                ):
+                    rename[k] = k[1:]
+
+        for old, new in rename.items():
+            d[new] = d.pop(old)
+
+        # pylint: disable=no-member
+        return super()._from_son(d, *args, **kwargs)
 
 
 class BaseDocument(MongoEngineBaseDocument):
@@ -334,13 +500,16 @@ class BaseDocument(MongoEngineBaseDocument):
         return self.id is not None
 
 
-class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):
+class DynamicDocument(DynamicMixin, BaseDocument, mongoengine.DynamicDocument):
     """Base class for dynamic documents that are stored in a MongoDB
     collection.
+
     Dynamic documents can have arbitrary fields added to them.
+
     The ID of a document is automatically populated when it is added to the
     database, and the ID of a document is ``None`` if it has not been added to
     the database.
+
     Attributes:
         id: the ID of the document, or ``None`` if it has not been added to the
             database
@@ -364,24 +533,31 @@ class Document(BaseDocument, mongoengine.Document):
     meta = {"abstract": True}
 
     def save(self, validate=True, clean=True, **kwargs):
-        """Save the :class:`Document` to the database.
+        """Saves the document to the database.
 
         If the document already exists, it will be updated, otherwise it will
         be created.
 
         Args:
-            validate (True): validates the document
-            clean (True): call the document's clean method; requires
-                ``validate`` to be True
+            validate (True): whether to validate the document
+            clean (True): whether to call the document's ``clean()`` method.
+                Only applicable when ``validate`` is True
 
         Returns:
             self
         """
+        self._save(deferred=False, validate=validate, clean=clean, **kwargs)
+        return self
+
+    def _save(self, deferred=False, validate=True, clean=True, **kwargs):
         # pylint: disable=no-member
         if self._meta.get("abstract"):
             raise mongoengine.InvalidDocumentError(
                 "Cannot save an abstract document."
             )
+
+        if self._meta.get("auto_create_index", True):
+            self.ensure_indexes()
 
         if validate:
             self.validate(clean=clean)
@@ -389,91 +565,76 @@ class Document(BaseDocument, mongoengine.Document):
         doc_id = self.to_mongo(fields=[self._meta["id_field"]])
         created = "_id" not in doc_id or self._created
 
-        # It might be refreshed by the pre_save_post_validation hook, e.g., for
-        # etag generation
         doc = self.to_mongo()
 
-        if self._meta.get("auto_create_index", True):
-            self.ensure_indexes()
+        _id = None
+        op = None
 
         try:
-            # Save a new document or update an existing one
             if created:
                 # Save new document
+                if deferred:
+                    _id = doc.get("_id", None) or ObjectId()
+                    op = UpdateOne({"_id": _id}, doc, upsert=True)
+                else:
+                    collection = self._get_collection()
 
-                # insert_one will provoke UniqueError alongside save does not
-                # therefore, it need to catch and call replace_one.
-                collection = self._get_collection()
+                    if "_id" in doc:
+                        raw_object = collection.find_one_and_replace(
+                            {"_id": doc["_id"]}, doc
+                        )
+                        if raw_object:
+                            _id = doc["_id"]
 
-                object_id = None
-
-                if "_id" in doc:
-                    raw_object = collection.find_one_and_replace(
-                        {"_id": doc["_id"]}, doc
-                    )
-                    if raw_object:
-                        object_id = doc["_id"]
-
-                if not object_id:
-                    object_id = collection.insert_one(doc).inserted_id
+                    if not _id:
+                        _id = collection.insert_one(doc).inserted_id
             else:
                 # Update existing document
-                object_id = doc["_id"]
+                _id = doc["_id"]
                 created = False
 
-                updates, removals = self._delta()
+                updates = {}
+                sets, unsets = self._delta()
 
-                update_doc = {}
+                if sets:
+                    updates["$set"] = sets
+
+                if unsets:
+                    updates["$unset"] = unsets
 
                 if updates:
-                    update_doc["$set"] = updates
-
-                if removals:
-                    update_doc["$unset"] = removals
-
-                if update_doc:
-                    updated_existing = self._update(
-                        object_id, update_doc, **kwargs
-                    )
-
-                    if updated_existing is False:
-                        created = True
-                        # !!! This is bad, means we accidentally created a
-                        # new, potentially corrupted document. See
-                        # https://github.com/MongoEngine/mongoengine/issues/564
-
-        except pymongo.errors.DuplicateKeyError as err:
+                    if deferred:
+                        op = UpdateOne({"_id": _id}, updates, upsert=True)
+                    else:
+                        updated_existing = self._update(_id, updates, **kwargs)
+                        if updated_existing is False:
+                            created = True
+        except pymongo.errors.DuplicateKeyError as e:
             message = "Tried to save duplicate unique keys (%s)"
-            raise mongoengine.NotUniqueError(message % err)
-
-        except pymongo.errors.OperationFailure as err:
+            raise mongoengine.NotUniqueError(message % e)
+        except pymongo.errors.OperationFailure as e:
             message = "Could not save document (%s)"
-            if re.match("^E1100[01] duplicate key", str(err)):
-                # E11000 - duplicate key error index
-                # E11001 - duplicate key on update
+            if re.match("^E1100[01] duplicate key", str(e)):
                 message = "Tried to save duplicate unique keys (%s)"
-                raise mongoengine.NotUniqueError(message % err)
+                raise mongoengine.NotUniqueError(message % e)
 
-            raise mongoengine.OperationError(message % err)
+            raise mongoengine.OperationError(message % e)
 
         # Make sure we store the PK on this document now that it's saved
         id_field = self._meta["id_field"]
         if created or id_field not in self._meta.get("shard_key", []):
-            self[id_field] = self._fields[id_field].to_python(object_id)
+            self[id_field] = self._fields[id_field].to_python(_id)
 
         self._clear_changed_fields()
         self._created = False
 
-        return self
+        return op
 
-    def _update(self, object_id, update_doc, **kwargs):
-        """Updates an existing document.
-
-        Helper method; should only be used by :meth:`Document.save`.
-        """
+    def _update(self, _id, updates, **kwargs):
+        """Updates an existing document."""
         result = (
             self._get_collection()
-            .update_one({"_id": object_id}, update_doc, upsert=True)
+            .update_one({"_id": _id}, updates, upsert=True)
             .raw_result
         )
 
@@ -483,3 +644,19 @@ class Document(BaseDocument, mongoengine.Document):
             updated_existing = None
 
         return updated_existing
+
+
+def _merge_lists(dst, src, overwrite=False):
+    dst.extend(v for v in src if v not in dst)
+
+
+def _merge_dicts(dst, src, overwrite=False):
+    for k, v in src.items():
+        if k not in dst:
+            dst[k] = v
+        else:
+            c = dst[k]
+            if isinstance(c, dict) and isinstance(v, dict):
+                _merge_dicts(c, v, overwrite=overwrite)
+            elif overwrite or dst.get(k, None) is None:
+                dst[k] = v

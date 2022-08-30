@@ -9,8 +9,10 @@ import itertools
 import logging
 import multiprocessing
 import os
+import re
 import requests
 
+import backoff
 from PIL import Image
 
 import eta.core.utils as etau
@@ -18,6 +20,7 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.core.cache as foc
+from fiftyone.core.config import HTTPRetryConfig
 from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
@@ -67,11 +70,21 @@ class Metadata(DynamicEmbeddedDocument):
         return cls(size_bytes=size_bytes, mime_type=mime_type)
 
     @classmethod
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=HTTPRetryConfig.FACTOR,
+        max_tries=HTTPRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.response.status_code
+        not in HTTPRetryConfig.RETRY_CODES,
+        logger=None,
+    )
     def _build_for_url(cls, url, mime_type=None):
         if mime_type is None:
             mime_type = etau.guess_mime_type(url)
 
         with requests.get(url, stream=True) as r:
+            r.raise_for_status()
             size_bytes = int(r.headers["Content-Length"])
 
         return cls(size_bytes=size_bytes, mime_type=mime_type)
@@ -132,11 +145,21 @@ class ImageMetadata(Metadata):
         )
 
     @classmethod
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=HTTPRetryConfig.FACTOR,
+        max_tries=HTTPRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.response.status_code
+        not in HTTPRetryConfig.RETRY_CODES,
+        logger=None,
+    )
     def _build_for_url(cls, url, mime_type=None):
         if mime_type is None:
             mime_type = etau.guess_mime_type(url)
 
         with requests.get(url, stream=True) as r:
+            r.raise_for_status()
             size_bytes = int(r.headers["Content-Length"])
             width, height, num_channels = get_image_info(fou.ResponseStream(r))
 
@@ -199,12 +222,52 @@ class VideoMetadata(Metadata):
         Returns:
             a :class:`VideoMetadata`
         """
-        if not fos.is_local(video_path):
-            video_path = fos.get_url(video_path)
+        if fos.is_local(video_path):
+            return cls._build_for_local(video_path, mime_type=mime_type)
 
+        url = fos.get_url(video_path)
+        return cls._build_for_url(url, mime_type=mime_type)
+
+    @classmethod
+    def _build_for_local(cls, video_path, mime_type=None):
         stream_info = etav.VideoStreamInfo.build_for(
             video_path, mime_type=mime_type
         )
+
+        return cls(
+            size_bytes=stream_info.size_bytes,
+            mime_type=stream_info.mime_type,
+            frame_width=stream_info.frame_size[0],
+            frame_height=stream_info.frame_size[1],
+            frame_rate=stream_info.frame_rate,
+            total_frame_count=stream_info.total_frame_count,
+            duration=stream_info.duration,
+            encoding_str=stream_info.encoding_str,
+        )
+
+    @classmethod
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=HTTPRetryConfig.FACTOR,
+        max_tries=HTTPRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.response.status_code
+        not in HTTPRetryConfig.RETRY_CODES,
+        logger=None,
+    )
+    def _build_for_url(cls, url, mime_type=None):
+        try:
+            stream_info = etav.VideoStreamInfo.build_for(
+                url, mime_type=mime_type
+            )
+        except Exception as e:
+            # Something went wrong; if we get a retryable code when pinging the
+            # URL, trigger a retry
+            with requests.get(url, stream=True) as r:
+                r.raise_for_status()
+
+            raise e
+
         return cls(
             size_bytes=stream_info.size_bytes,
             mime_type=stream_info.mime_type,
@@ -361,7 +424,9 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
 
     view = sample_collection.select_fields()
     with fou.ProgressBar(total=num_samples) as pb:
-        with multiprocessing.Pool(processes=num_workers) as pool:
+        with fou.get_multiprocessing_context().Pool(
+            processes=num_workers
+        ) as pool:
             for sample_id, metadata in pb(
                 pool.imap_unordered(_do_compute_metadata, inputs)
             ):

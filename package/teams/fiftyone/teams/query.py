@@ -38,7 +38,9 @@ class User(fosm.HasCollection):
 
 @gql.type
 class TeamsConfig:
+    audience: str
     client_id: str
+    domain: str
     organization: str
 
 

@@ -176,6 +176,7 @@ class KITTIDetectionDatasetImporter(
             labels_paths_map = {
                 os.path.splitext(p)[0]: fos.join(self.labels_path, p)
                 for p in fos.list_files(self.labels_path, recursive=True)
+                if etau.has_extension(p, ".txt")
             }
         else:
             labels_paths_map = {}

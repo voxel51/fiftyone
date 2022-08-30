@@ -1,10 +1,12 @@
 """
 FiftyOne Server JIT metadata utilities.
+
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import logging
+import re
 import requests
 import shutil
 import struct
@@ -12,6 +14,7 @@ import struct
 import asyncio
 import aiofiles
 import aiohttp
+import backoff
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -21,6 +24,7 @@ import fiftyone.core.cache as foc
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 import fiftyone.core.utils as fou
+from fiftyone.core.config import HTTPRetryConfig
 
 
 logger = logging.getLogger(__name__)
@@ -28,15 +32,18 @@ logger = logging.getLogger(__name__)
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def get_metadata(filepath, metadata=None):
+async def get_metadata(session, filepath, media_type, metadata=None):
     """Gets the metadata for the given local or remote media file.
+
     Args:
+        session: an ``aiohttp.ClientSession`` to use if necessary
         filepath: the path to the file
+        media_type: the media type
         metadata (None): a pre-existing metadata dict to use if possible
+
     Returns:
         metadata dict
     """
-    media_type = fom.get_media_type(filepath)
     is_video = media_type == fom.VIDEO
 
     use_local = foc.media_cache.is_local_or_cached(filepath)
@@ -48,8 +55,8 @@ async def get_metadata(filepath, metadata=None):
     if use_local:
         # Get local path to media on disk, downloading any uncached remote
         # files if necessary
-        local_path = await foc.media_cache.get_local_path(
-            filepath, download=True, coroutine=True
+        local_path = await foc.media_cache._async_get_local_path(
+            filepath, session, download=True
         )
     else:
         # Get a URL to use to retrieve metadata (if necessary) and for the App
@@ -84,12 +91,11 @@ async def get_metadata(filepath, metadata=None):
             metadata = await read_local_metadata(local_path, is_video)
         else:
             # Retrieve metadata from remote source
-            metadata = await read_url_metadata(url, is_video)
-    except Exception as exc:
-
+            metadata = await read_url_metadata(session, url, is_video)
+    except Exception as e:
         # Immediately fail so the user knows they should install FFmpeg
-        if isinstance(exc, FFprobeNotFoundException):
-            raise exc
+        if isinstance(e, FFmpegNotFoundException):
+            raise e
 
         # Something went wrong (ie non-existent file), so we gracefully return
         # some placeholder metadata so the App grid can be rendered
@@ -103,48 +109,50 @@ async def get_metadata(filepath, metadata=None):
     return d
 
 
-async def read_url_metadata(url, is_video):
+async def read_url_metadata(session, url, is_video):
     """Calculates the metadata for the given media URL.
+
     Args:
+        session: an ``aiohttp.ClientSession`` to use
         url: a file URL
         is_video: whether the file is a video
+
     Returns:
         metadata dict
     """
     if is_video:
-        info = await get_stream_info(url)
+        info = await get_stream_info(url, session=session)
         return {
             "width": info.frame_size[0],
             "height": info.frame_size[1],
             "frame_rate": info.frame_rate,
         }
 
+    width, height = await get_url_image_dimensions(session, url)
+
     #
     # Here's an alternative that uses PIL.Image
-    # Our async get_image_dimensions() seems to be a bit faster, so we won't
-    # use this unless PIL's presumably wider range of supported image formats
-    # becomes important
+    # Our async get_url_image_dimensions() seems to be a bit faster, so we
+    # won't use this unless PIL's presumably wider range of supported image
+    # formats becomes important
     #
     """
     loop = asyncio.get_event_loop()
     width, height, _ = await loop.run_in_executor(
-        None, _get_image_dimensions, url
+        None, _get_url_image_dimensions, url
     )
-    return {"width": width, "height": height}
     """
 
-    url = foc._safe_aiohttp_url(url)
-
-    async with aiohttp.ClientSession() as sess, sess.get(url) as resp:
-        width, height = await get_image_dimensions(Reader(resp.content))
-        return {"width": width, "height": height}
+    return {"width": width, "height": height}
 
 
 async def read_local_metadata(local_path, is_video):
     """Calculates the metadata for the given local media path.
+
     Args:
         local_path: a local filepath
         is_video: whether the file is a video
+
     Returns:
         dict
     """
@@ -158,11 +166,13 @@ async def read_local_metadata(local_path, is_video):
 
     async with aiofiles.open(local_path, "rb") as f:
         width, height = await get_image_dimensions(f)
-        return {"width": width, "height": height}
+
+    return {"width": width, "height": height}
 
 
 class Reader(object):
     """Asynchronous file-like reader.
+
     Args:
         content: a :class:`aiohttp.StreamReader`
     """
@@ -186,16 +196,57 @@ class Reader(object):
             self._data += await self._content.read(delta)
 
 
-async def get_stream_info(path):
+@backoff.on_exception(
+    backoff.expo,
+    aiohttp.ClientResponseError,
+    factor=HTTPRetryConfig.FACTOR,
+    max_tries=HTTPRetryConfig.MAX_TRIES,
+    giveup=lambda e: e.status not in HTTPRetryConfig.RETRY_CODES,
+    logger=None,
+)
+async def get_url_image_dimensions(session, url):
+    url = foc._safe_aiohttp_url(url)
+    async with session.get(url) as r:
+        r.raise_for_status()
+        return await get_image_dimensions(Reader(r.content))
+
+
+@backoff.on_exception(
+    backoff.expo,
+    requests.exceptions.RequestException,
+    factor=HTTPRetryConfig.FACTOR,
+    max_tries=HTTPRetryConfig.MAX_TRIES,
+    giveup=lambda e: e.response.status_code not in HTTPRetryConfig.RETRY_CODES,
+    logger=None,
+)
+def _get_url_image_dimensions(url):
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        return fome.get_image_info(fou.ResponseStream(r))
+
+
+@backoff.on_exception(
+    backoff.expo,
+    aiohttp.ClientResponseError,
+    factor=HTTPRetryConfig.FACTOR,
+    max_tries=HTTPRetryConfig.MAX_TRIES,
+    giveup=lambda e: e.status not in HTTPRetryConfig.RETRY_CODES,
+    logger=None,
+)
+async def get_stream_info(path, session=None):
     """Returns a :class:`eta.core.video.VideoStreamInfo` instance for the
     provided video path or URL.
+
     Args:
         path: a video filepath or URL
+        session (None): a ``aiohttp.ClientSession`` to use when ``path`` is a
+            URL
+
     Returns:
         a :class:`eta.core.video.VideoStreamInfo`
     """
     if _FFPROBE_BINARY_PATH is None:
-        raise FFprobeNotFoundException(
+        raise FFmpegNotFoundException(
             "You must have ffmpeg installed on your machine in order to view "
             "video datasets in the App, but we failed to find it"
         )
@@ -215,8 +266,16 @@ async def get_stream_info(path):
     )
 
     stdout, stderr = await proc.communicate()
+
+    # Something went wrong; if we get a retryable code when pinging the URL,
+    # trigger a retry
+    if stderr and session is not None:
+        url = foc._safe_aiohttp_url(path)
+        async with session.get(url) as r:
+            r.raise_for_status()
+
     if stderr:
-        raise ValueError(stderr)
+        raise RuntimeError(stderr)
 
     info = etas.load_json(stdout.decode("utf8"))
 
@@ -237,16 +296,13 @@ async def get_stream_info(path):
     return etav.VideoStreamInfo(stream_info, format_info, mime_type=mime_type)
 
 
-def _get_image_dimensions(url):
-    with requests.get(url, stream=True) as r:
-        return fome.get_image_info(fou.ResponseStream(r))
-
-
 async def get_image_dimensions(input):
     """Gets the dimensions of an image from its file-like asynchronous byte
     stream.
+
     Args:
         input: file-like object with async read and seek methods
+
     Returns:
         the ``(width, height)``
     """
@@ -390,7 +446,7 @@ class MetadataException(Exception):
     pass
 
 
-class FFprobeNotFoundException(MetadataException):
-    """Exception raised when FFprobe cannot be found."""
+class FFmpegNotFoundException(RuntimeError):
+    """Exception raised when FFmpeg or FFprobe cannot be found."""
 
     pass

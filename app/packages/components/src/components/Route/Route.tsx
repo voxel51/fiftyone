@@ -7,9 +7,9 @@ import { RouteData } from "../../routing";
 export type Route<Operation extends OperationType | undefined = OperationType> =
   React.FC<
     React.PropsWithChildren<{
-      prepared?: PreloadedQuery<
-        Operation extends undefined ? never : Operation
-      >;
+      prepared: Operation extends OperationType
+        ? PreloadedQuery<Operation>
+        : undefined;
       routeData?: RouteData<Operation>;
     }>
   >;

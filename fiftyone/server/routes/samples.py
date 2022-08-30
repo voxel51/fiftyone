@@ -1,10 +1,11 @@
 """
-FiftyOne Server /samples route
+FiftyOne Server /samples route.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import aiohttp
 import asyncio
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
@@ -58,18 +59,25 @@ class Samples(HTTPEndpoint):
             samples = samples[:page_length]
             more = page + 1
 
-        results = await _generate_results(samples)
+        results = await _generate_results(samples, view.media_type)
 
         return {"results": foj.stringify(results), "more": more}
 
 
-async def _generate_results(samples):
+async def _generate_results(samples, media_type):
     metadata_map = {s["filepath"]: s.get("metadata", None) for s in samples}
-
     filepaths = list(metadata_map.keys())
-    metadatas = await asyncio.gather(
-        *[fosm.get_metadata(f, metadata=metadata_map[f]) for f in filepaths]
-    )
+
+    async with aiohttp.ClientSession() as session:
+        metadatas = await asyncio.gather(
+            *[
+                fosm.get_metadata(
+                    session, f, media_type, metadata=metadata_map[f]
+                )
+                for f in filepaths
+            ]
+        )
+
     metadata_map = {f: m for f, m in zip(filepaths, metadatas)}
 
     results = []

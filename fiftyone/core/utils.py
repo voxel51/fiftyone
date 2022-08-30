@@ -17,13 +17,16 @@ import inspect
 import io
 import itertools
 import logging
+import multiprocessing
 import os
 import platform
 import signal
 import struct
 import subprocess
+import sys
 import timeit
 import types
+from xml.parsers.expat import ExpatError
 import zlib
 
 try:
@@ -628,8 +631,11 @@ def load_xml_as_json_dict(xml_path):
     Returns:
         a JSON dict
     """
-    with fos.open_file(xml_path, "rb") as f:
-        return xmltodict.parse(f.read())
+    try:
+        with fos.open_file(xml_path, "rb") as f:
+            return xmltodict.parse(f.read())
+    except ExpatError as ex:
+        raise ExpatError(f"Failed to read {xml_path}: {ex}")
 
 
 def parse_serializable(obj, cls):
@@ -967,8 +973,8 @@ class UniqueFilenameMaker(object):
             output paths
         ignore_exts (False): whether to omit file extensions when checking for
             duplicate filenames
-        ignore_existing (False): whether to take existing files into account
-            when generating unqiue filenames
+        ignore_existing (False): whether to ignore existing files in
+            ``output_dir`` for output filename generation purposes
     """
 
     def __init__(
@@ -1000,14 +1006,26 @@ class UniqueFilenameMaker(object):
 
         fos.ensure_dir(self.output_dir)
 
-        if not self.ignore_existing:
-            filenames = fos.list_files(self.output_dir)
-        else:
-            filenames = []
+        if self.ignore_existing:
+            return
+
+        abs_paths = self.rel_dir is not None
+        filenames = fos.list_files(self.output_dir, abs_paths=abs_paths)
 
         self._idx = len(filenames)
         for filename in filenames:
             self._filename_counts[filename] += 1
+
+    def seen_input_path(self, input_path):
+        """Checks whether we've already seen the given input path.
+
+        Args:
+            input_path: an input path
+
+        Returns:
+            True/False
+        """
+        return input_path in self._filepath_map
 
     def get_output_path(self, input_path=None, output_ext=None):
         """Returns a unique output path.
@@ -1307,6 +1325,32 @@ def is_32_bit():
         True/False
     """
     return struct.calcsize("P") * 8 == 32
+
+
+def get_multiprocessing_context():
+    """Returns the preferred ``multiprocessing`` context for the current OS.
+
+    Returns:
+        a ``multiprocessing`` context
+    """
+    if (
+        sys.platform == "darwin"
+        and multiprocessing.get_start_method(allow_none=True) is None
+    ):
+        #
+        # If we're running on macOS and the user didn't manually configure the
+        # default multiprocessing context, force 'fork' to be used
+        #
+        # Background: on macOS, multiprocessing's default context was changed
+        # from 'fork' to 'spawn' in Python 3.8, but we prefer 'fork' because
+        # the startup time is much shorter. Also, this is not fully proven, but
+        # @brimoor believes he's seen cases where 'spawn' causes some of our
+        # `multiprocessing.Pool.imap_unordered()` calls to run twice...
+        #
+        return multiprocessing.get_context("fork")
+
+    # Use the default context
+    return multiprocessing.get_context()
 
 
 def datetime_to_timestamp(dt):

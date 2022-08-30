@@ -267,7 +267,7 @@ Here's the workflow for downgrading to an older version of FiftyOne:
 .. code-block:: shell
 
     # The version that you wish to downgrade to
-    VERSION=0.14.4  # for example
+    VERSION=0.15.1
 
     # Migrate the database
     fiftyone migrate --all -v $VERSION
@@ -283,28 +283,15 @@ your ``fiftyone`` package without first running
 :ref:`fiftyone migrate <cli-fiftyone-migrate>`, don't worry, you simply need to
 reinstall the newer version of FiftyOne and then follow these instructions.
 
+See :ref:`this page <troubleshooting-downgrades>` if you need to install
+FiftyOne v0.7.3 or earlier.
+
 .. note::
 
   If you are working with a
   :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`, you
   can use :ref:`database admin privileges <database-migrations>` to control
   which clients are allowed to downgrade your FiftyOne deployment.
-
-.. note::
-
-    The :ref:`fiftyone migrate <cli-fiftyone-migrate>` command was introduced
-    in FiftyOne v0.7.3. If you would like to downgrade from a FiftyOne version
-    prior to v0.7.3 (to a yet older version), then you will first need to
-    *upgrade* to v0.7.3 or later and then follow the instructions above.
-
-.. note::
-
-    To install a FiftyOne version **prior to v0.7.0**, you must add an
-    ``--index`` option to ``pip install``:
-
-    .. code-block:: shell
-
-        pip install --index https://pypi.voxel51.com fiftyone==<version>
 
 .. _uninstalling-fiftyone:
 

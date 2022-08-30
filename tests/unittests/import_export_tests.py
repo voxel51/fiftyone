@@ -41,6 +41,7 @@ import fiftyone.core.storage as fos
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.image as foui
 import fiftyone.utils.yolo as fouy
+from fiftyone.core.expressions import ViewField as F
 
 from decorators import drop_datasets
 
@@ -1284,9 +1285,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         # Standard
 
-        fouy.add_yolo_labels(
-            dataset, "yolo", labels_path=yolo_labels_path, classes=classes
-        )
+        fouy.add_yolo_labels(dataset, "yolo", yolo_labels_path, classes)
         self.assertEqual(
             dataset.count_values("predictions.detections.label"),
             dataset.count_values("yolo.detections.label"),
@@ -1298,8 +1297,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         fouy.add_yolo_labels(
             dataset,
             "yolo_inclusive",
-            labels_path=yolo_labels_path,
-            classes=classes,
+            yolo_labels_path,
+            classes,
             include_missing=True,
         )
         self.assertEqual(
@@ -1321,9 +1320,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         )
         coco_labels_path = os.path.join(export_dir, "labels.json")
 
-        fouc.add_coco_labels(
-            dataset, "coco", coco_labels_path, classes=classes
-        )
+        fouc.add_coco_labels(dataset, "coco", coco_labels_path, classes)
         self.assertEqual(
             dataset.count_values("predictions.detections.label"),
             dataset.count_values("coco.detections.label"),
@@ -1968,6 +1965,69 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         info2 = dataset2.get_evaluation_info("test")
         self.assertEqual(info.key, info2.key)
 
+    @skipwindows
+    @drop_datasets
+    def test_legacy_fiftyone_dataset(self):
+        dataset = self._make_dataset()
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertListEqual(
+            [os.path.basename(f) for f in dataset.values("filepath")],
+            [os.path.basename(f) for f in dataset2.values("filepath")],
+        )
+        self.assertListEqual(
+            dataset.values("weather.label"), dataset2.values("weather.label")
+        )
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
+        )
+
+        # Test import/export of runs
+
+        dataset.clone_sample_field("predictions", "ground_truth")
+
+        view = dataset.limit(2)
+        view.evaluate_detections(
+            "predictions", gt_field="ground_truth", eval_key="test"
+        )
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertTrue("test" in dataset.list_evaluations())
+        self.assertTrue("test" in dataset2.list_evaluations())
+
+        view2 = dataset2.load_evaluation_view("test")
+        self.assertEqual(len(view), len(view2))
+
+        info = dataset.get_evaluation_info("test")
+        info2 = dataset2.get_evaluation_info("test")
+        self.assertEqual(info.key, info2.key)
+
 
 class OpenLABELImageDatasetTests(ImageDatasetTests):
     @drop_datasets
@@ -1985,7 +2045,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
 
         self.assertEqual(dataset.count("detections.detections.label"), 1)
         self.assertEqual(dataset.count("segmentations.detections.label"), 2)
-        self.assertEqual(dataset.count("keypoints.keypoints.label"), 1)
+        self.assertEqual(dataset.count("keypoints.keypoints.label"), 2)
 
     @drop_datasets
     def test_openlabel_single_type_dataset(self):
@@ -2004,6 +2064,34 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
         self.assertTrue(
             isinstance(dataset.first().ground_truth, fo.Detections)
         )
+
+    @drop_datasets
+    def test_openlabel_skeleton_dataset(self):
+        import utils.openlabel as ol
+
+        labels_path = ol._make_image_labels(self._tmp_dir)
+        img_filepath = self._new_image(name="openlabel_test")
+
+        skeleton, skeleton_key = ol._make_skeleton()
+        dataset = fo.Dataset.from_dir(
+            data_path=self.images_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELImageDataset,
+            label_types="keypoints",
+            skeleton_key=skeleton_key,
+            skeleton=skeleton,
+        )
+        dataset.default_skeleton = skeleton
+
+        self.assertTrue(isinstance(dataset.first().ground_truth, fo.Keypoints))
+        view = dataset.filter_labels(
+            "ground_truth",
+            F("points").length() > 1,
+        )
+        self.assertEqual(
+            view.first().ground_truth.keypoints[0].name[0], "pose_point1"
+        )
+        self.assertEqual(len(view.first().ground_truth.keypoints[0].points), 3)
 
     @drop_datasets
     def test_openlabel_segmentation_dataset(self):

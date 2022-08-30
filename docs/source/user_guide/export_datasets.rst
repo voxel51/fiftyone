@@ -349,26 +349,16 @@ Class lists
 -----------
 
 Certain labeled image/video export formats such as
-:ref:`COCO <COCODetectionDataset-export>` or
+:ref:`COCO <COCODetectionDataset-export>` and
 :ref:`YOLO <YOLOv5Dataset-export>` store an explicit list of classes for the
 label field being exported.
 
-In such cases, all exporters provided by FiftyOne use the following strategy
-to retrieve the class list when exporting a given `label_field`:
+By convention, all exporters provided by FiftyOne should provide a `classes`
+parameter that allows for manually specifying the classes list to use.
 
-1.  If the exporter provides a parameter like `classes` that allows for
-    manually specifying the classes, this list is used
-2.  If the :meth:`classes <fiftyone.core.dataset.Dataset.classes>` dict of the
-    sample collection contains `label_field`, this class list is used
-3.  If the collection's
-    :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
-    attribute is non-empty, this class list is used
-4.  If the collection's :meth:`info <fiftyone.core.dataset.Dataset.info>` dict
-    contains a class list under the `classes` key, this list is used
-
-If no explicit class list is available via the above methods, the observed
-classes in the collection being exported are used, which may be a subset of the
-classes in the parent dataset when exporting a view.
+If no explicit class list is provided, the observed classes in the collection
+being exported are used, which may be a subset of the classes in the parent
+dataset when exporting a view.
 
 .. note::
 
@@ -397,26 +387,17 @@ classes in the parent dataset when exporting a view.
     # Create a view that only contains cats and dogs
     view = dataset.filter_labels("ground_truth", F("label").is_in(["cat", "dog"]))
 
-    # By default, `default_classes` will be used to populate the COCO categories
+    # By default, only the observed classes will be stored as COCO categories
     view.export(
         labels_path="/tmp/coco1.json",
         dataset_type=fo.types.COCODetectionDataset,
     )
 
-    # But, since we're only interested in exporting cats and dogs, we can override
-    # this by manually providing the `classes` argument
+    # However, if desired, we can explicitly provide a classes list
     view.export(
         labels_path="/tmp/coco2.json",
         dataset_type=fo.types.COCODetectionDataset,
-        classes=["cat", "dog"],
-    )
-
-    # Equivalently, we can clear `default_classes` first so that the observed
-    # labels (only cats and dogs in this case) will be used
-    dataset.default_classes = None
-    view.export(
-        labels_path="/tmp/coco3.json",
-        dataset_type=fo.types.COCODetectionDataset,
+        classes=dataset.default_classes,
     )
 
 .. _supported-export-formats:
@@ -2211,6 +2192,7 @@ where `dataset.yaml` contains the following information:
 
 .. code-block:: text
 
+    path: <dataset_dir>  # optional
     train: ./images/train/
     val: ./images/val/
 
@@ -2224,7 +2206,9 @@ See `this page <https://docs.ultralytics.com/tutorials/train-custom-datasets>`_
 for a full description of the possible format of `dataset.yaml`. In particular,
 the dataset may contain one or more splits with arbitrary names, as the
 specific split being imported or exported is specified by the `split` argument
-to :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`.
+to :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`. Also, `dataset.yaml` can
+be located outside of `<dataset_dir>` as long as the optional `path` is
+provided.
 
 The TXT files in `labels/` are space-delimited files where each row corresponds
 to an object in the image of the same name, in one of the following formats:
@@ -2240,7 +2224,9 @@ where `<target>` is the zero-based integer index of the object class label from
 be included only if you pass the optional `include_confidence=True` flag to
 the export.
 
-Unlabeled images have no corresponding TXT file in `labels/`.
+Unlabeled images have no corresponding TXT file in `labels/`. The label file
+path for each image is obtained by replacing `images/` with `labels/` in the
+respective image path.
 
 .. note::
 

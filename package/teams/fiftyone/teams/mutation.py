@@ -23,7 +23,7 @@ import fiftyone.core.view as fov
 
 import fiftyone.server.mutation as fosm
 from fiftyone.server.query import Dataset
-from fiftyone.server.scalars import JSONArray
+from fiftyone.server.scalars import BSONArray
 
 
 from fiftyone.teams.query import User
@@ -68,7 +68,7 @@ class Mutation(fosm.Mutation):
         self,
         subscription: str,
         session: t.Optional[str],
-        view: JSONArray,
+        view: BSONArray,
         dataset: str,
         info: Info,
     ) -> fosm.ViewResponse:

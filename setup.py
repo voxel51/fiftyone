@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.8.5"
+VERSION = "0.8.8"
 
 
 def get_version():
@@ -48,7 +48,7 @@ INSTALL_REQUIRES = [
     "packaging",
     "pandas",
     "Pillow>=6.2",
-    "plotly>=4.14,<5",
+    "plotly>=4.14",
     "pprintpp",
     "psutil",
     "pymongo>=3.11,<4",
@@ -67,6 +67,7 @@ INSTALL_REQUIRES = [
     "universal-analytics-python3>=1.0.1,<2",
     # teams specific
     "aiohttp",
+    "backoff",
     "boto3>=1.15",
     "google-api-python-client",
     "google-cloud-storage>=1.36",
@@ -75,9 +76,9 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.8,<0.9",
+    "fiftyone-brain>=0.9,<0.10",
     "fiftyone-db>=0.3,<0.4",
-    "voxel51-eta>=0.7.0,<0.8",
+    "voxel51-eta>=0.8,<0.9",
 ]
 
 
@@ -114,7 +115,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.12.4,<0.13"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.13.1,<0.14"]}
 
 
 with open("README.md", "r") as fh:
@@ -160,9 +161,9 @@ setup(
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.7",

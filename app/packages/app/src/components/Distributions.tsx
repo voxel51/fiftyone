@@ -49,6 +49,7 @@ const getAxisTick = (isDateTime, timeZone) => {
     render() {
       const { x, y, payload, fill } = this.props;
       const v = payload.value;
+
       return (
         <g transform={`translate(${x},${y})`}>
           <text
@@ -59,7 +60,7 @@ const getAxisTick = (isDateTime, timeZone) => {
             fill={fill}
             transform="rotate(-80)"
           >
-            {isDateTime
+            {isDateTime && typeof v !== "string"
               ? formatDateTime(v, timeZone)
               : isFloat(v)
               ? v.toFixed(3)
@@ -153,7 +154,7 @@ const Distribution: React.FC<{ distribution: Distribution }> = (props) => {
 
             if (map[key]) {
               if (isDateTime || isDate) {
-                const [{ $date: start }, { $date: end }] = map[key];
+                const [{ datetime: start }, { datetime: end }] = map[key];
                 const [cFmt, dFmt] = getDateTimeRangeFormattersWithPrecision(
                   isDate ? "UTC" : timeZone,
                   start,
@@ -209,22 +210,24 @@ interface Distribution {
 
 const distributions = selectorFamily<Distribution[], string>({
   key: "distributions",
-  get: (group) => async ({ get }) => {
-    get(refresher);
-    const { distributions } = await getFetchFunction()(
-      "POST",
-      "/distributions",
-      {
-        group: group.toLowerCase(),
-        limit: LIMIT,
-        view: get(viewAtoms.view),
-        dataset: get(selectors.datasetName),
-        get: get(filterAtoms.filters),
-      }
-    );
+  get:
+    (group) =>
+    async ({ get }) => {
+      get(refresher);
+      const { distributions } = await getFetchFunction()(
+        "POST",
+        "/distributions",
+        {
+          group: group.toLowerCase(),
+          limit: LIMIT,
+          view: get(viewAtoms.view),
+          dataset: get(selectors.datasetName),
+          get: get(filterAtoms.filters),
+        }
+      );
 
-    return distributions as Distribution[];
-  },
+      return distributions as Distribution[];
+    },
 });
 
 const Distributions = ({ group }: { group: string }) => {

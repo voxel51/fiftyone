@@ -416,10 +416,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   getEvents(): Events<VideoState> {
     return {
-      error: ({ update, event, dispatchEvent }) => {
+      error: ({ update }) => {
         this.releaseVideo();
         update({ error: true });
-        dispatchEvent("error", { event });
       },
       loadedmetadata: ({ update }) => {
         update(({ config: { frameRate }, frameNumber }) => {
@@ -535,17 +534,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
         let canvas = this.canvas;
         acquireThumbnailer().then(([video, release]) => {
-          const error = (event) => {
-            // Chrome v60
-            if (event.path && event.path[0]) {
-              event = event.path[0].error;
-            }
-
-            // Firefox v55
-            if (event.originalTarget) {
-              event = event.originalTarget.error;
-            }
-
+          const error = () => {
             video.removeEventListener("error", error);
             video.removeEventListener("seeked", seeked);
             release();
@@ -576,9 +565,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             video.removeEventListener("loadedmetadata", load);
           };
 
+          video.src = src;
           video.addEventListener("error", error);
           video.addEventListener("loadedmetadata", load);
-          video.src = src;
         });
       } else {
         this.element = document.createElement("video");

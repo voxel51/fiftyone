@@ -1,8 +1,8 @@
-import React, { useContext } from "react";
+import React from "react";
 import mime from "mime";
 import styled from "styled-components";
 import { useExternalLink, prettify as pretty } from "@fiftyone/utilities";
-import { matchPath, RouterContext, RoutingContext } from "@fiftyone/components";
+import { matchPath, RoutingContext } from "@fiftyone/components";
 
 export const isFloat = (n: number): boolean => {
   return Number(n) === n && n % 1 !== 0;

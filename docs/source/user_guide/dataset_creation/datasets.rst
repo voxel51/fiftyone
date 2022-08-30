@@ -1553,16 +1553,16 @@ COCO format:
     dataset.export(
         export_dir="/tmp/coco",
         dataset_type=fo.types.COCODetectionDataset,
-        classes=classes,
         label_field="ground_truth",
+        classes=classes,
     )
 
     # Export predictions
     dataset.export(
         dataset_type=fo.types.COCODetectionDataset,
         labels_path="/tmp/coco/predictions.json",
-        classes=classes,
         label_field="predictions",
+        classes=classes,
     )
 
     # Now load ground truth labels into a new dataset
@@ -1577,7 +1577,7 @@ COCO format:
         dataset2,
         "predictions",
         "/tmp/coco/predictions.json",
-        classes=classes,
+        classes,
     )
 
     # Verify that ground truth and predictions were imported as expected
@@ -2147,16 +2147,16 @@ images-and-labels and labels-only data in YOLO format:
     dataset.export(
         export_dir="/tmp/yolov4",
         dataset_type=fo.types.YOLOv4Dataset,
-        classes=classes,
         label_field="ground_truth",
+        classes=classes,
     )
 
     # Export predictions
     dataset.export(
         dataset_type=fo.types.YOLOv4Dataset,
         labels_path="/tmp/yolov4/predictions",
-        classes=classes,
         label_field="predictions",
+        classes=classes,
     )
 
     # Now load ground truth labels into a new dataset
@@ -2171,7 +2171,7 @@ images-and-labels and labels-only data in YOLO format:
         dataset2,
         "predictions",
         "/tmp/yolov4/predictions",
-        classes=classes,
+        classes,
     )
 
     # Verify that ground truth and predictions were imported as expected
@@ -2225,6 +2225,7 @@ where `dataset.yaml` contains the following information:
 
 .. code-block:: text
 
+    path: <dataset_dir>  # optional
     train: ./images/train/
     val: ./images/val/
 
@@ -2238,7 +2239,9 @@ See `this page <https://docs.ultralytics.com/tutorials/train-custom-datasets>`_
 for a full description of the possible format of `dataset.yaml`. In particular,
 the dataset may contain one or more splits with arbitrary names, as the
 specific split being imported or exported is specified by the `split` argument
-to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter`.
+to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter`. Also, `dataset.yaml` can
+be located outside of `<dataset_dir>` as long as the optional `path` is
+provided.
 
 .. note::
 
@@ -2259,7 +2262,9 @@ where `<target>` is the zero-based integer index of the object class label from
 `[0, 1] x [0, 1]`, and `<confidence>` is an optional detection confidence in
 `[0, 1]`.
 
-Unlabeled images have no corresponding TXT file in `labels/`.
+Unlabeled images have no corresponding TXT file in `labels/`. The label file
+path for each image is obtained by replacing `images/` with `labels/` in the
+respective image path.
 
 The image and labels directories for a given split may contain nested
 subfolders of parallelly organized images and labels.
@@ -2327,16 +2332,16 @@ images-and-labels and labels-only data in YOLO format:
         export_dir="/tmp/yolov5",
         dataset_type=fo.types.YOLOv5Dataset,
         split="validation",
-        classes=classes,
         label_field="ground_truth",
+        classes=classes,
     )
 
     # Export predictions
     view.export(
         dataset_type=fo.types.YOLOv5Dataset,
         labels_path="/tmp/yolov5/predictions/validation",
-        classes=classes,
         label_field="predictions",
+        classes=classes,
     )
 
     # Now load ground truth labels into a new dataset
@@ -2352,7 +2357,7 @@ images-and-labels and labels-only data in YOLO format:
         dataset2,
         "predictions",
         "/tmp/yolov5/predictions/validation",
-        classes=classes,
+        classes,
     )
 
     # Verify that ground truth and predictions were imported as expected
@@ -3283,6 +3288,13 @@ following this format:
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
+If loading |Keypoints| related to a given |KeypointSkeleton|, then you can
+provide a `skeleton` and `skeleton_key` argument to the
+:class:`OpenLABELImageDatasetImporter <fiftyone.utils.openlabel.OpenLABELImageDatasetImporter>`
+allowing you to match points in your annotations file to labels in the
+|KeypointSkeleton| and load the points and their attributes in the correct
+order.
+
 You can create a FiftyOne dataset from a OpenLABEL image dataset stored in the
 above format as follows:
 
@@ -3566,6 +3578,13 @@ following this format:
     for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
+
+If loading |Keypoints| related to a given |KeypointSkeleton|, then you can
+provide a `skeleton` and `skeleton_key` argument to the
+:class:`OpenLABELVideoDatasetImporter <fiftyone.utils.openlabel.OpenLABELVideoDatasetImporter>`
+allowing you to match points in your annotations file to labels in the
+|KeypointSkeleton| and load the points and their attributes in the correct
+order.
 
 You can create a FiftyOne dataset from a OpenLABEL video dataset stored in the
 above format as follows:
@@ -5150,14 +5169,20 @@ should implement is determined by the type of dataset that you are importing.
         importer = CustomLabeledImageDatasetImporter(...)
         label_field = ...
 
+        if isinstance(label_field, dict):
+            label_key = lambda k: label_field.get(k, k)
+        elif label_field is not None:
+            label_key = lambda k: label_field + "_" + k
+        else:
+            label_field = "ground_truth"
+            label_key = lambda k: k
+
         with importer:
             for image_path, image_metadata, label in importer:
                 sample = fo.Sample(filepath=image_path, metadata=image_metadata)
 
                 if isinstance(label, dict):
-                    sample.update_fields(
-                        {label_field + "_" + k: v for k, v in label.items()}
-                    )
+                    sample.update_fields({label_key(k): v for k, v in label.items()})
                 elif label is not None:
                     sample[label_field] = label
 
@@ -5552,14 +5577,20 @@ should implement is determined by the type of dataset that you are importing.
         importer = CustomLabeledVideoDatasetImporter(...)
         label_field = ...
 
+        if isinstance(label_field, dict):
+            label_key = lambda k: label_field.get(k, k)
+        elif label_field is not None:
+            label_key = lambda k: label_field + "_" + k
+        else:
+            label_field = "ground_truth"
+            label_key = lambda k: k
+
         with importer:
             for video_path, video_metadata, label, frames in importer:
                 sample = fo.Sample(filepath=video_path, metadata=video_metadata)
 
                 if isinstance(label, dict):
-                    sample.update_fields(
-                        {label_field + "_" + k: v for k, v in label.items()}
-                    )
+                    sample.update_fields({label_key(k): v for k, v in label.items()})
                 elif label is not None:
                     sample[label_field] = label
 
@@ -5569,8 +5600,7 @@ should implement is determined by the type of dataset that you are importing.
                     for frame_number, _label in frames.items():
                         if isinstance(_label, dict):
                             frame_labels[frame_number] = {
-                                label_field + "_" + field_name: label
-                                for field_name, label in _label.items()
+                                label_key(k): v for k, v in _label.items()
                             }
                         elif _label is not None:
                             frame_labels[frame_number] = {label_field: _label}
