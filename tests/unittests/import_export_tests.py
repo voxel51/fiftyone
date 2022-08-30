@@ -1943,6 +1943,34 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         info2 = dataset2.get_evaluation_info("test")
         self.assertEqual(info.key, info2.key)
 
+        # Per sample/frame directories
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            use_dirs=True,
+        )
+
+        dataset3 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertEqual(len(dataset), len(dataset3))
+        self.assertListEqual(
+            [os.path.basename(f) for f in dataset.values("filepath")],
+            [os.path.basename(f) for f in dataset3.values("filepath")],
+        )
+        self.assertListEqual(
+            dataset.values("weather.label"), dataset3.values("weather.label")
+        )
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset3.count("predictions.detections"),
+        )
+
     @skipwindows
     @drop_datasets
     def test_legacy_fiftyone_dataset(self):

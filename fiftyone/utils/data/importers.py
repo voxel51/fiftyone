@@ -5,8 +5,8 @@ Dataset importers.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import copy
 import inspect
+import itertools
 import logging
 import os
 import random
@@ -831,23 +831,37 @@ class DatasetImporter(object):
         applying the values of the ``shuffle``, ``seed``, and ``max_samples``
         parameters of the importer.
 
+        You may also provide an iterable, in which case the output will also be
+        an iterable, unless the elements must be shuffled, in which case the
+        iterable must be read in-memory into a list and returned as a list.
+
         Args:
-            l: a list
+            l: a list or iterable
 
         Returns:
-            a processed copy of the list
+            a processed copy of the list/iterable
         """
         if self.shuffle:
-            if self.seed is not None:
-                random.seed(self.seed)
-
-            l = copy(l)
-            random.shuffle(l)
+            _random = _get_rng(self.seed)
+            l = list(l).copy()
+            _random.shuffle(l)
 
         if self.max_samples is not None:
-            l = l[: self.max_samples]
+            if isinstance(l, (list, tuple)):
+                l = l[: self.max_samples]
+            else:
+                l = itertools.islice(l, self.max_samples)
 
         return l
+
+
+def _get_rng(seed):
+    if seed is None:
+        return random
+
+    _random = random.Random()
+    _random.seed(seed)
+    return _random
 
 
 class BatchDatasetImporter(DatasetImporter):
@@ -1445,6 +1459,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             of each sample if the filepath is not absolute. This path is
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.utils.normalize_path`
+        ordered (True): whether to preserve document order when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1456,6 +1471,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self,
         dataset_dir,
         rel_dir=None,
+        ordered=True,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -1468,6 +1484,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         )
 
         self.rel_dir = rel_dir
+        self.ordered = ordered
 
         self._data_dir = None
         self._anno_dir = None
@@ -1476,6 +1493,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._metadata_path = None
         self._samples_path = None
         self._frames_path = None
+        self._has_frames = None
 
     def setup(self):
         self._data_dir = os.path.join(self.dataset_dir, "data")
@@ -1483,8 +1501,20 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._brain_dir = os.path.join(self.dataset_dir, "brain")
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
+
         self._samples_path = os.path.join(self.dataset_dir, "samples.json")
+        if not os.path.isfile(self._samples_path):
+            self._samples_path = os.path.join(self.dataset_dir, "samples")
+
         self._frames_path = os.path.join(self.dataset_dir, "frames.json")
+        if os.path.isfile(self._frames_path):
+            self._has_frames = True
+        else:
+            self._frames_path = os.path.join(self.dataset_dir, "frames")
+            if os.path.isdir(self._frames_path):
+                self._has_frames = True
+            else:
+                self._has_frames = False
 
     def import_samples(self, dataset, tags=None):
         dataset_dict = foo.import_document(self._metadata_path)
@@ -1566,9 +1596,14 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         #
 
         logger.info("Importing samples...")
-        samples = foo.import_collection(self._samples_path).get("samples", [])
+        samples, num_samples = foo.import_collection(
+            self._samples_path, key="samples"
+        )
 
         samples = self._preprocess_list(samples)
+
+        if self.max_samples is not None:
+            num_samples = self.max_samples
 
         if self.rel_dir is not None:
             # Prepend `rel_dir` to all relative paths
@@ -1577,38 +1612,50 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             # Prepend `dataset_dir` to all relative paths
             rel_dir = self.dataset_dir
 
-        for sample in samples:
+        def parse_sample(sample):
             filepath = sample["filepath"]
             if not os.path.isabs(filepath):
                 sample["filepath"] = os.path.join(rel_dir, filepath)
 
-        if tags is not None:
-            for sample in samples:
+            if tags is not None:
                 sample["tags"].extend(tags)
 
-        foo.insert_documents(samples, dataset._sample_collection, ordered=True)
+            return sample
 
-        sample_ids = [s["_id"] for s in samples]
+        sample_ids = foo.insert_documents(
+            map(parse_sample, samples),
+            dataset._sample_collection,
+            ordered=self.ordered,
+            progress=True,
+            num_docs=num_samples,
+        )
 
         #
         # Import frames
         #
 
-        if os.path.isfile(self._frames_path):
+        if self._has_frames:
             logger.info("Importing frames...")
-            frames = foo.import_collection(self._frames_path).get("frames", [])
+            frames, num_frames = foo.import_collection(
+                self._frames_path, key="frames"
+            )
 
+            # @todo optimize by only loading these docs in the first place
             if self.max_samples is not None:
-                frames = [
-                    f for f in frames if f["_sample_id"] in set(sample_ids)
-                ]
+                _sample_ids = set(sample_ids)
+                frames = [f for f in frames if f["_sample_id"] in _sample_ids]
+                num_frames = len(frames)
 
             foo.insert_documents(
-                frames, dataset._frame_collection, ordered=True
+                frames,
+                dataset._frame_collection,
+                ordered=self.ordered,
+                progress=True,
+                num_docs=num_frames,
             )
 
         #
-        # Import Run results
+        # Import run results
         #
 
         if empty_import:
