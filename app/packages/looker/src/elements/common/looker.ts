@@ -25,9 +25,13 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         const e = event as KeyboardEvent;
         update((state) => {
           const { SHORTCUTS, error, shouldHandleKeyEvents } = state;
-          if (shouldHandleKeyEvents && !error && e.key in SHORTCUTS) {
+          if (!error && e.key in SHORTCUTS) {
             const matchedControl = SHORTCUTS[e.key] as Control;
-            matchedControl.action(update, dispatchEvent, e.key, e.shiftKey);
+            const enabled =
+              shouldHandleKeyEvents || matchedControl.alwaysHandle;
+            if (enabled) {
+              matchedControl.action(update, dispatchEvent, e.key, e.shiftKey);
+            }
           }
 
           return {};
@@ -40,9 +44,14 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
         const e = event as KeyboardEvent;
         update(({ SHORTCUTS, error, shouldHandleKeyEvents }) => {
-          if (shouldHandleKeyEvents && !error && e.key in SHORTCUTS) {
+          if (!error && e.key in SHORTCUTS) {
             const matchedControl = SHORTCUTS[e.key] as Control;
-            if (matchedControl.eventKeyType === ControlEventKeyType.HOLD) {
+            const enabled =
+              shouldHandleKeyEvents || matchedControl.alwaysHandle;
+            if (
+              enabled &&
+              matchedControl.eventKeyType === ControlEventKeyType.HOLD
+            ) {
               matchedControl.afterAction(
                 update,
                 dispatchEvent,

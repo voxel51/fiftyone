@@ -415,15 +415,17 @@ function Looker3dCore({ sampleOverride: sample }) {
   useHotkey(
     "Escape",
     ({ get, set }) => {
-      console.log("get(fos.hoveredSample)", get(fos.hoveredSample));
       if (get(fos.hoveredSample)?._id !== sample._id) return;
-      if (get(jsonPanel.stateAtom).isOpen) {
-        set(jsonPanel.stateAtom, (s) => ({ ...s, isOpen: false }));
-        return false;
-      }
-      if (get(helpPanel.stateAtom).isOpen) {
-        set(helpPanel.stateAtom, (s) => ({ ...s, isOpen: false }));
-        return false;
+      const panels = get(fos.lookerPanels);
+      let lookerPanelUpdate;
+      for (let panel of ["help", "json"]) {
+        if (panels[panel].isOpen) {
+          set(fos.lookerPanels, {
+            ...panels,
+            [panel]: { ...panels[panel], isOpen: false },
+          });
+          return;
+        }
       }
 
       const selectedLabels = get(fos.selectedLabels);
@@ -435,10 +437,9 @@ function Looker3dCore({ sampleOverride: sample }) {
       const changed = onChangeView("top");
       if (changed) return;
 
-      console.log("Looker3D Closing Modal");
       set(fos.modal, null);
     },
-    [jsonPanel.isOpen, helpPanel.isOpen, selectedLabels, hovering]
+    [jsonPanel, helpPanel, selectedLabels, hovering]
   );
 
   useEffect(() => {

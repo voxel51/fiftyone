@@ -15,7 +15,7 @@ import { ContentDiv, ContentHeader } from "../utils";
 import { useEventHandler } from "../../utils/hooks";
 
 import { useErrorHandler } from "react-error-boundary";
-import { useTheme } from "@fiftyone/components";
+import { HelpPanel, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { lookerOptions, useOnSelectLabel } from "@fiftyone/state";
 import { TooltipInfo } from "./TooltipInfo";
@@ -106,18 +106,36 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   useEventHandler(looker, "fullscreen", useFullscreen());
   useEventHandler(looker, "showOverlays", useShowOverlays());
 
-  onNext && useEventHandler(looker, "next", onNext);
-  onPrevious && useEventHandler(looker, "previous", onPrevious);
+  onNext &&
+    useEventHandler(looker, "next", (e) => {
+      jsonPanel.close();
+      helpPanel.close();
+      return onNext(e);
+    });
+  onPrevious &&
+    useEventHandler(looker, "previous", (e) => {
+      jsonPanel.close();
+      helpPanel.close();
+      return onPrevious(e);
+    });
   useEventHandler(looker, "select", useOnSelectLabel());
   useEventHandler(looker, "error", (event) => handleError(event.detail));
   const jsonPanel = fos.useJSONPanel();
-  useEventHandler(looker, "options", ({ detail }) => {
-    const { showJSON } = detail || {};
+  const helpPanel = fos.useHelpPanel();
+  useEventHandler(looker, "options", (e) => {
+    const { detail } = e;
+    const { showJSON, showHelp, SHORTCUTS } = detail || {};
     if (showJSON === true) {
       jsonPanel.open(sample);
     }
     if (showJSON === false) {
       jsonPanel.close();
+    }
+    if (showHelp === true) {
+      helpPanel.open(shortcutToHelpItems(SHORTCUTS));
+    }
+    if (showHelp === false) {
+      helpPanel.close();
     }
   });
 
@@ -163,3 +181,7 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
 };
 
 export default React.memo(Looker);
+
+function shortcutToHelpItems(SHORTCUTS) {
+  return Object.values(SHORTCUTS);
+}

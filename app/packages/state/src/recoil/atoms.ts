@@ -223,3 +223,11 @@ export const hoveredSample = atom<Sample>({
   key: "hoveredSample",
   default: null,
 });
+
+export const lookerPanels = atom({
+  key: "lookerPanels",
+  default: {
+    json: { isOpen: false },
+    help: { isOpen: false },
+  },
+});
