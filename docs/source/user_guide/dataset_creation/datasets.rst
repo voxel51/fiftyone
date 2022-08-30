@@ -5713,7 +5713,7 @@ should implement is determined by the type of dataset that you are importing.
                     instances
 
                 Raises:
-                    StopIteration: if there are no more samples to import
+                    StopIteration: if there are no more groups to import
                 """
                 # Implement loading the next group in your dataset here
                 pass
@@ -5727,7 +5727,7 @@ should implement is determined by the type of dataset that you are importing.
             @property
             def has_sample_field_schema(self):
                 """Whether this importer produces a sample field schema."""
-                return True or False here
+                # Return True or False here
                 pass
 
             @property

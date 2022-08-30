@@ -803,13 +803,13 @@ def _write_group_dataset(
 ):
     if not isinstance(samples, foc.SampleCollection):
         raise ValueError(
-            "%s can only exported grouped collections; found %s"
+            "%s can only export grouped collections; found %s"
             % (type(dataset_exporter), type(samples))
         )
 
     if samples.media_type != fomm.GROUP:
         raise ValueError(
-            "%s can only exported grouped collections; found media type '%s'"
+            "%s can only export grouped collections; found media type '%s'"
             % (type(dataset_exporter), samples.media_type)
         )
 
@@ -1336,7 +1336,7 @@ class GroupDatasetExporter(DatasetExporter):
 
         Args:
             group: a dict mapping group slice names to
-                :class:`fiftyone.core.sample.Sample` intances
+                :class:`fiftyone.core.sample.Sample` instances
         """
         raise NotImplementedError("subclass must implement export_group()")
 

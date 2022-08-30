@@ -4499,7 +4499,7 @@ should implement is determined by the type of dataset that you are exporting.
 
                     Args:
                         group: a dict mapping group slice names to
-                            :class:`fiftyone.core.sample.Sample` intances
+                            :class:`fiftyone.core.sample.Sample` instances
                     """
                     # Export the provided group
                     pass
