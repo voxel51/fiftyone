@@ -415,7 +415,6 @@ function Looker3dCore({ sampleOverride: sample }) {
   useHotkey(
     "Escape",
     ({ get, set }) => {
-      if (get(fos.hoveredSample)?._id !== sample._id) return;
       const panels = get(fos.lookerPanels);
       let lookerPanelUpdate;
       for (let panel of ["help", "json"]) {
@@ -427,6 +426,7 @@ function Looker3dCore({ sampleOverride: sample }) {
           return;
         }
       }
+      if (get(fos.hoveredSample)?._id !== sample._id) return;
 
       const selectedLabels = get(fos.selectedLabels);
       if (selectedLabels && Object.keys(selectedLabels).length > 0) {
