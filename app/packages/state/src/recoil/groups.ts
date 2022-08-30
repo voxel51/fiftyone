@@ -1,12 +1,11 @@
 import {
   paginateGroup,
-  paginateGroupPinnedSampleFragment,
   paginateGroupPinnedSample_query$key,
   paginateGroupQuery,
   paginateGroup_query$key,
 } from "@fiftyone/relay";
-import { readInlineData, VariablesOf } from "react-relay";
-import { atom, selector, selectorFamily } from "recoil";
+import { VariablesOf } from "react-relay";
+import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import {
   AppSample,
@@ -156,4 +155,9 @@ export const activeModalSample = selector<
 
     return get(modal).sample;
   },
+});
+
+export const groupStatistics = atomFamily<"group" | "slice", boolean>({
+  key: "groupStatistics",
+  default: "slice",
 });

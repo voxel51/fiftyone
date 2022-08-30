@@ -11,7 +11,7 @@ import { gridZoom, gridZoomRange } from "./Grid";
 import GroupSliceSelector from "./GroupSliceSelector";
 
 import * as fos from "@fiftyone/state";
-import { isGroup } from "@fiftyone/state";
+import { groupStatistics, isGroup } from "@fiftyone/state";
 
 const SamplesHeader = styled.div`
   position: absolute;
@@ -55,10 +55,23 @@ const SliderContainer = styled.div`
 `;
 
 const Count = () => {
-  const element = useRecoilValue(fos.elementNames);
+  let element = useRecoilValue(fos.elementNames);
   const total = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
+  const group = useRecoilValue(isGroup);
+  const groupSlice = useRecoilValue(groupStatistics(false));
+  let include: string | null = null;
+
+  if (group) {
+    if (groupSlice === "group") {
+      element = {
+        plural: "groups",
+        singular: "group",
+      };
+    } else {
+    }
+  }
 
   return (
     <RightDiv>

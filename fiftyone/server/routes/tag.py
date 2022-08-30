@@ -15,6 +15,7 @@ import fiftyone.core.odm as foo
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
 
@@ -34,9 +35,14 @@ class Tag(HTTPEndpoint):
         modal = data.get("modal", None)
         extended = data.get("extended", None)
         current_frame = data.get("current_frame", None)
+        slice = data.get("slice", None)
 
         view = fosv.get_view(
-            dataset, stages=stages, filters=filters, extended_stages=extended
+            dataset,
+            stages=stages,
+            filters=filters,
+            extended_stages=extended,
+            sample_filter=SampleFilter(group=GroupElementFilter(slice=slice)),
         )
 
         sample_ids = set(sample_ids or [])

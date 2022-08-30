@@ -6,6 +6,7 @@ import styled from "styled-components";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { currentSlice, groupStatistics } from "@fiftyone/state";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};
@@ -109,6 +110,10 @@ export const tagStatistics = selectorFamily<
           ? [get(fos.modal)?.sample._id]
           : null,
         labels: toSnakeCase(labels),
+        slice:
+          get(groupStatistics(modal)) === "group"
+            ? null
+            : get(currentSlice(modal)),
         count_labels,
         filters: get(modal ? fos.modalFilters : fos.filters),
         hidden_labels:

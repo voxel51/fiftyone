@@ -43,9 +43,7 @@ class Aggregations(HTTPEndpoint):
             stages=stages,
             filters=filters,
             extended_stages=extended,
-            sample_filter=SampleFilter(group=GroupElementFilter(slice=slice))
-            if slice
-            else None,
+            sample_filter=SampleFilter(group=GroupElementFilter(slice=slice)),
         )
 
         if sample_ids:

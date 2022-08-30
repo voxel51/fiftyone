@@ -3,7 +3,6 @@ import {
   GetRecoilValue,
   RecoilValueReadOnly,
   selectorFamily,
-  useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
 
@@ -21,12 +20,7 @@ import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
-import {
-  currentSlice,
-  defaultGroupSlice,
-  groupSlice,
-  pinnedSlice,
-} from "./groups";
+import { currentSlice, groupStatistics } from "./groups";
 
 type DateTimeBound = { datetime: number } | null;
 
@@ -165,7 +159,10 @@ export const aggregations = selectorFamily<
         {
           filters,
           sample_ids: modal ? get(selectors.sidebarSampleId) : null,
-          slice: get(currentSlice(modal)),
+          slice:
+            get(groupStatistics(modal)) === "group"
+              ? null
+              : get(currentSlice(modal)),
           dataset,
           view: get(viewAtoms.view),
           hidden_labels: hiddenLabels,

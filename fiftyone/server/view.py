@@ -6,6 +6,7 @@ FiftyOne Server view
 |
 """
 from bson import ObjectId
+from fiftyone.core.collections import SampleCollection
 
 import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
@@ -22,8 +23,10 @@ from fiftyone.server.utils import iter_label_fields
 _LABEL_TAGS = "_label_tags"
 
 
-def get_group(sample_collection, group_id):
-    id_field = sample_collection.group_field + "._id"
+def get_group(
+    sample_collection: SampleCollection, group_field: str, group_id: str
+) -> SampleCollection:
+    id_field = group_field + "._id"
     return sample_collection.mongo(
         [{"$match": {"$expr": {"$eq": ["$" + id_field, ObjectId(group_id)]}}}]
     )
@@ -62,14 +65,15 @@ def get_view(
     view.reload()
 
     if sample_filter is not None:
+        group_field = view.group_field
         if sample_filter.group:
             if sample_filter.group.slice:
                 view.group_slice = sample_filter.group.slice
             elif view.media_type == fom.GROUP:
-                view.group_slice = view.default_group_slice
+                view = view.select_group_slices(_allow_mixed=True)
 
             if sample_filter.group.id:
-                view = get_group(view, sample_filter.group.id)
+                view = get_group(view, group_field, sample_filter.group.id)
 
         elif sample_filter.id:
             view = fov.make_optimized_select_view(view, sample_filter.id)

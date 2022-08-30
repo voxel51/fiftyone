@@ -18,6 +18,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.view as fosv
 
 
@@ -33,9 +34,13 @@ class Tagging(HTTPEndpoint):
         count_labels = data.get("count_labels", False)
         active_label_fields = data.get("active_label_fields", [])
         hidden_labels = data.get("hidden_labels", None)
-
+        slice = data.get("slice", None)
         view = fosv.get_view(
-            dataset, stages=stages, filters=filters, extended_stages=extended
+            dataset,
+            stages=stages,
+            filters=filters,
+            extended_stages=extended,
+            sample_filter=SampleFilter(group=GroupElementFilter(slice=slice)),
         )
 
         if sample_ids:
