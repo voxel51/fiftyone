@@ -17,9 +17,10 @@ import { useEventHandler } from "../../utils/hooks";
 import { useErrorHandler } from "react-error-boundary";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useOnSelectLabel } from "@fiftyone/state";
+import { lookerOptions, useOnSelectLabel } from "@fiftyone/state";
 import { TooltipInfo } from "./TooltipInfo";
 import { Tooltip } from "@material-ui/core";
+import { sample } from "lodash";
 
 type EventCallback = (event: CustomEvent) => void;
 
@@ -115,6 +116,9 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
     if (showJSON === true) {
       jsonPanel.open(sample);
     }
+    if (showJSON === false) {
+      jsonPanel.close();
+    }
   });
 
   onClose && useEventHandler(looker, "close", onClose);
@@ -134,6 +138,14 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
     tooltip.setDetail(e.detail ? e.detail : null);
     e.detail && tooltip.setCoords(e.detail.coordinates);
   });
+
+  const hoveredSample = useRecoilValue(fos.hoveredSample);
+  useEffect(() => {
+    looker.updater((state) => ({
+      ...state,
+      shouldHandleKeyEvents: hoveredSample._id === sample._id,
+    }));
+  }, [hoveredSample, sample, looker]);
 
   return (
     <div
