@@ -24,12 +24,19 @@ export default function useHelpPanel() {
   function handleEscape(e) {
     if (e.key === "Escape") close();
   }
+  function handleClick() {
+    close();
+  }
 
   useEffect(() => {
     if (isOpen) {
       window.addEventListener("keydown", handleEscape);
+      window.addEventListener("mousedown", handleClick);
     }
-    return () => window.removeEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("mousedown", handleClick);
+    };
   }, [isOpen]);
 
   return {
