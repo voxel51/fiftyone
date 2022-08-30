@@ -3,15 +3,12 @@ import { useState, useMemo, useEffect } from "react";
 import { atom, useRecoilState } from "recoil";
 import copyToClipboard from "copy-to-clipboard";
 import highlightJSON from "json-format-highlight";
+import * as fos from "../../";
 
 type JSONPanelState = {
   sample?: Sample;
   isOpen: boolean;
 };
-const jsonPanelState = atom<JSONPanelState>({
-  key: "jsonPanelState",
-  default: { isOpen: false },
-});
 
 export const JSON_COLORS = {
   keyColor: "rgb(138, 138, 138)",
@@ -23,7 +20,13 @@ export const JSON_COLORS = {
 };
 
 export default function useJSONPanel() {
-  const [{ isOpen, sample }, setState] = useRecoilState(jsonPanelState);
+  const [state, setFullState] = useRecoilState(fos.lookerPanels);
+  const { sample, isOpen } = state.json || {};
+  const setState = (update) =>
+    setFullState((fullState) => ({
+      ...fullState,
+      json: update(fullState.json),
+    }));
   const json = useMemo(
     () => (sample ? JSON.stringify(sample, null, 2) : null),
     [sample]
@@ -36,18 +39,45 @@ export default function useJSONPanel() {
     setState((s) => ({ ...s, isOpen: false }));
   }
 
+  function handleClick() {
+    close();
+  }
+
+  useEffect(() => {
+    window.addEventListener("click", handleClick);
+    return () => {
+      window.removeEventListener("click", handleClick);
+    };
+  }, []);
+
   return {
     open(sample) {
-      setState((s) => ({ ...s, sample, isOpen: true }));
+      setFullState((s) => ({
+        ...s,
+        json: {
+          sample,
+          isOpen: true,
+        },
+        help: {
+          ...s.help,
+          isOpen: false,
+        },
+      }));
     },
     close,
     toggle(sample) {
-      setState((s) => {
-        if (s.isOpen) {
-          return { ...s, sample: null, isOpen: false };
-        }
-        return { ...s, sample, isOpen: true };
-      });
+      setFullState((s) => ({
+        ...s,
+        help: {
+          ...s.help,
+          isOpen: false,
+        },
+        json: {
+          ...s.json,
+          sample,
+          isOpen: !s.json.isOpen,
+        },
+      }));
     },
     copy() {
       copyToClipboard(json);
@@ -56,6 +86,6 @@ export default function useJSONPanel() {
     sample,
     json,
     jsonHTML,
-    stateAtom: jsonPanelState,
+    stateAtom: fos.lookerPanels,
   };
 }

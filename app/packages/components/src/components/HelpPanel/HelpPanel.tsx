@@ -29,9 +29,12 @@ function Close({ onClick }) {
 
 export default function HelpPanel({ onClose, items }) {
   return (
-    <div className={`${lookerPanelContainer}`}>
+    <div
+      className={`${lookerPanelContainer}`}
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className={lookerPanelVerticalContainer}>
-        <div className={lookerPanel} onClick={(e) => e.stopPropagation()}>
+        <div className={lookerPanel}>
           <Scroll>
             <Header>Help</Header>
             <Items>

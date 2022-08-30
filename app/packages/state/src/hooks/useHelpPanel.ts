@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { atom, useRecoilState } from "recoil";
+import * as fos from "../../";
 
 type HelpItem = {
   shortcut: string;
@@ -10,13 +11,15 @@ type HelpPanelState = {
   isOpen: boolean;
   items: Array<HelpItem>;
 };
-const helpPanelState = atom<HelpPanelState>({
-  key: "HelpPanelState",
-  default: { isOpen: false, items: [] },
-});
 
 export default function useHelpPanel() {
-  const [{ isOpen, items }, setState] = useRecoilState(helpPanelState);
+  const [state, setFullState] = useRecoilState(fos.lookerPanels);
+  const setState = (update) =>
+    setFullState((fullState) => ({
+      ...fullState,
+      help: update(fullState.help),
+    }));
+  const { isOpen, items } = state.help || {};
   function close() {
     setState((s) => ({ ...s, isOpen: false }));
   }
@@ -31,29 +34,46 @@ export default function useHelpPanel() {
   useEffect(() => {
     if (isOpen) {
       window.addEventListener("keydown", handleEscape);
-      window.addEventListener("mousedown", handleClick);
+      window.addEventListener("click", handleClick);
     }
     return () => {
       window.removeEventListener("keydown", handleEscape);
-      window.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("click", handleClick);
     };
   }, [isOpen]);
 
   return {
     open(items) {
-      setState((s) => ({ ...s, items, isOpen: true }));
+      setFullState((s) => ({
+        ...s,
+        json: {
+          ...s.json,
+          isOpen: false,
+        },
+        help: {
+          ...s.help,
+          items,
+          isOpen: true,
+        },
+      }));
     },
     close,
     toggle(items) {
-      setState((s) => {
-        if (s.isOpen) {
-          return { ...s, items: null, isOpen: false };
-        }
-        return { ...s, items, isOpen: true };
-      });
+      setFullState((s) => ({
+        ...s,
+        json: {
+          ...s.json,
+          isOpen: false,
+        },
+        help: {
+          ...s.help,
+          items,
+          isOpen: !s.help.isOpen,
+        },
+      }));
     },
     items,
     isOpen,
-    stateAtom: helpPanelState,
+    stateAtom: fos.lookerPanels,
   };
 }

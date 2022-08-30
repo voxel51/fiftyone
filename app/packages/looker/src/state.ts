@@ -71,6 +71,7 @@ export interface Control<State extends BaseState = BaseState> {
   detail: string;
   action: Action<State>;
   afterAction?: Action<State>;
+  alwaysHandle?: boolean;
 }
 
 export interface ControlMap<State extends BaseState> {

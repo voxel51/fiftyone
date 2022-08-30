@@ -9,8 +9,8 @@ export default () => {
   return useRecoilTransaction_UNSTABLE(
     ({ set, get }) =>
       () => {
-        if (get(jsonPanel.stateAtom).isOpen) return;
-        if (get(helpPanel.stateAtom).isOpen) return;
+        if (get(jsonPanel.stateAtom).json.isOpen) return;
+        if (get(helpPanel.stateAtom).help.isOpen) return;
         const fullscreen = get(fos.fullscreen);
         if (fullscreen) {
           return;
