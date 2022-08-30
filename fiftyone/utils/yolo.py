@@ -1121,7 +1121,7 @@ def _to_classes(labels_map_rev):
     targets_to_labels = {v: k for k, v in labels_map_rev.items()}
 
     classes = []
-    for target in range(max(targets_to_labels.keys()) + 1):
+    for target in range(max(targets_to_labels.keys(), default=-1) + 1):
         if target in targets_to_labels:
             classes.append(targets_to_labels[target])
         else:
