@@ -828,7 +828,7 @@ def _prepare_kitti_split(split_dir, overwrite=False):
         },
         "overlay": {
             "rotation": [-90, 0, 0],
-            "itemRotation": [0, 90, 0],
+            "itemRotation": [0, 90, 90],
         },
     }
     dataset.save()
