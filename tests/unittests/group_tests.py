@@ -5,14 +5,16 @@ FiftyOne group-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import unittest
+import json
 import os
 import random
 import string
+import unittest
 
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
@@ -867,6 +869,110 @@ class GroupImportExportTests(unittest.TestCase):
         self.assertIn("left", group)
         self.assertIn("ego", group)
         self.assertIn("right", group)
+
+    @drop_datasets
+    def test_group_import_export(self):
+        dataset = _make_group_dataset()
+
+        export_path = os.path.join(self._new_dir(), "filepaths.json")
+
+        exporter = _GroupExporter(export_path)
+        dataset.export(dataset_exporter=exporter)
+
+        importer = _GroupImporter(export_path)
+        dataset2 = fo.Dataset.from_importer(importer)
+
+        flat_view = dataset.select_group_slices(_allow_mixed=True)
+        flat_view2 = dataset2.select_group_slices(_allow_mixed=True)
+
+        self.assertEqual(dataset2.media_type, "group")
+        self.assertEqual(set(dataset.group_slices), set(dataset2.group_slices))
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(len(flat_view), len(flat_view2))
+        self.assertEqual(
+            set(flat_view.values("filepath")),
+            set(flat_view2.values("filepath")),
+        )
+
+
+class _GroupImporter(foud.GroupDatasetImporter):
+    """Example grouped dataset importer.
+
+    Args:
+        filepaths: can be either a list of dicts mapping slice names to
+            filepaths, or the path to a JSON file on disk containing this list
+            under a top-level key of any name
+    """
+
+    def __init__(self, filepaths):
+        self.filepaths = filepaths
+
+        self._filepaths = None
+        self._iter_filepaths = None
+        self._num_samples = None
+
+    def __iter__(self):
+        self._iter_filepaths = iter(self._filepaths)
+        return self
+
+    def __len__(self):
+        return self._num_samples
+
+    def __next__(self):
+        filepaths = next(self._iter_filepaths)
+        return {
+            name: fo.Sample(filepath=filepath)
+            for name, filepath in filepaths.items()
+        }
+
+    @property
+    def has_sample_field_schema(self):
+        return False
+
+    @property
+    def has_dataset_info(self):
+        return False
+
+    @property
+    def group_field(self):
+        return "group"
+
+    def setup(self):
+        if isinstance(self.filepaths, str):
+            with open(self.filepaths, "r") as f:
+                filepaths = json.load(f)
+
+            self._filepaths = next(iter(filepaths.values()), [])
+        else:
+            self._filepaths = self.filepaths
+
+        self._num_samples = sum(len(f) for f in self._filepaths)
+
+
+class _GroupExporter(foud.GroupDatasetExporter):
+    """Example grouped dataset exporter.
+
+    Args:
+        export_path: the path to write a JSON file containing the filepaths of
+            the grouped collection
+    """
+
+    def __init__(self, export_path):
+        self.export_path = export_path
+        self._filepaths = None
+
+    def export_group(self, group):
+        self._filepaths.append(
+            {name: sample.filepath for name, sample in group.items()}
+        )
+
+    def setup(self):
+        self._filepaths = []
+
+    def close(self, *args):
+        os.makedirs(os.path.dirname(self.export_path), exist_ok=True)
+        with open(self.export_path, "w") as f:
+            json.dump({"filepaths": self._filepaths}, f)
 
 
 def _make_group_dataset():
