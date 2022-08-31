@@ -37,13 +37,16 @@ class Aggregations(HTTPEndpoint):
         hidden_labels = data.get("hidden_labels", None)
         extended = data.get("extended", None)
         slice = data.get("slice", None)
+        group_id = data.get("groupId", None)
 
         view = fosv.get_view(
             dataset,
             stages=stages,
             filters=filters,
             extended_stages=extended,
-            sample_filter=SampleFilter(group=GroupElementFilter(slice=slice)),
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(id=group_id, slice=slice)
+            ),
         )
 
         if sample_ids:

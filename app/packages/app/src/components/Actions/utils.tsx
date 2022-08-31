@@ -6,7 +6,12 @@ import styled from "styled-components";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { currentSlice, groupStatistics } from "@fiftyone/state";
+import {
+  currentSlice,
+  groupId,
+  groupStatistics,
+  sidebarSampleId,
+} from "@fiftyone/state";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};
@@ -106,10 +111,11 @@ export const tagStatistics = selectorFamily<
         active_label_fields: activeLabels,
         sample_ids: selected.size
           ? [...selected]
-          : modal
-          ? [get(fos.modal)?.sample._id]
+          : modal && get(groupStatistics(modal)) !== "group"
+          ? get(sidebarSampleId)
           : null,
         labels: toSnakeCase(labels),
+        groupId: get(groupStatistics(modal)) === "group" ? get(groupId) : null,
         slice:
           get(groupStatistics(modal)) === "group"
             ? null

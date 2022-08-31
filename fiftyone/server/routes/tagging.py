@@ -35,12 +35,15 @@ class Tagging(HTTPEndpoint):
         active_label_fields = data.get("active_label_fields", [])
         hidden_labels = data.get("hidden_labels", None)
         slice = data.get("slice", None)
+        group_id = data.get("group_id", None)
         view = fosv.get_view(
             dataset,
             stages=stages,
             filters=filters,
             extended_stages=extended,
-            sample_filter=SampleFilter(group=GroupElementFilter(slice=slice)),
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(id=group_id, slice=slice)
+            ),
         )
 
         if sample_ids:

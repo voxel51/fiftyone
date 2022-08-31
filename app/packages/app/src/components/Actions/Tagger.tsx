@@ -32,7 +32,12 @@ import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { currentSlice, groupStatistics, Lookers } from "@fiftyone/state";
+import {
+  currentSlice,
+  groupId,
+  groupStatistics,
+  Lookers,
+} from "@fiftyone/state";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -373,8 +378,10 @@ const useTagCallback = (
         const modalData = modal ? await snapshot.getPromise(fos.modal) : null;
         const stats = await snapshot.getPromise(groupStatistics(modal));
         let slice: string | null = null;
+        let group: string | null = null;
         if (stats !== "group") {
           slice = await snapshot.getPromise(currentSlice(modal));
+          group = await snapshot.getPromise(groupId);
         }
         const { samples } = await getFetchFunction()("POST", "/tag", {
           filters: f,
@@ -383,8 +390,9 @@ const useTagCallback = (
           active_label_fields: activeLabels,
           target_labels: targetLabels,
           changes,
+          groupId: group,
           slice,
-          modal: modal ? modalData.sample._id : null,
+          modal: modal && stats !== "group" ? modalData.sample._id : null,
           sample_ids: modal
             ? null
             : selectedSamples.size

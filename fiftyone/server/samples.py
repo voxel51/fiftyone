@@ -81,7 +81,10 @@ async def paginate_samples(
         stages=stages,
     )
 
-    media = root_view.group_media_types[root_view.default_group_slice]
+    media = view.media_type
+    if media == fom.MIXED:
+        media = root_view.group_media_types[root_view.default_group_slice]
+
     has_video_slice = False
     if media == fom.GROUP:
         media = view.group_media_types[view.group_slice]
