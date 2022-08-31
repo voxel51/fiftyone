@@ -46,6 +46,7 @@ type Dataset {
   persistent: Boolean!
   groupMediaTypes: [Group!]
   groupField: String
+  groupSlice: String
   defaultGroupSlice: String
   mediaType: MediaType
   maskTargets: [NamedTargets!]!

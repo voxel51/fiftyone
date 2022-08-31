@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1934d53ed4052922f1bb5ef47073c04c>>
+ * @generated SignedSource<<03357f8deaa9b7d1b48f88a9c7999f25>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -25,7 +25,7 @@ export type setViewMutation$data = {
   readonly setView: {
     readonly dataset: {
       readonly appConfig: {
-        readonly gridMediaField: string;
+        readonly gridMediaField: string | null;
         readonly mediaFields: ReadonlyArray<string>;
         readonly plugins: object | null;
         readonly sidebarGroups: ReadonlyArray<{
@@ -72,6 +72,7 @@ export type setViewMutation$data = {
         readonly path: string;
         readonly subfield: string | null;
       }>;
+      readonly groupSlice: string | null;
       readonly id: string;
       readonly lastLoadedAt: string | null;
       readonly maskTargets: ReadonlyArray<{
@@ -287,6 +288,13 @@ const node: ConcreteRequest = (function () {
                 args: null,
                 kind: "ScalarField",
                 name: "mediaType",
+                storageKey: null,
+              },
+              {
+                alias: null,
+                args: null,
+                kind: "ScalarField",
+                name: "groupSlice",
                 storageKey: null,
               },
               {
@@ -565,16 +573,16 @@ const node: ConcreteRequest = (function () {
       selections: v14 /*: any*/,
     },
     params: {
-      cacheID: "d3de8bc89b949c9751b00128c1bceb0b",
+      cacheID: "ad439b861b3a7272cb4dd2e7dfc10245",
       id: null,
       metadata: {},
       name: "setViewMutation",
       operationKind: "mutation",
-      text: "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $dataset: String!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, dataset: $dataset) {\n    dataset {\n      id\n      name\n      mediaType\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n      appConfig {\n        gridMediaField\n        mediaFields\n        plugins\n        sidebarGroups {\n          name\n          paths\n        }\n      }\n    }\n    view\n  }\n}\n",
+      text: "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $dataset: String!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, dataset: $dataset) {\n    dataset {\n      id\n      name\n      mediaType\n      groupSlice\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n      appConfig {\n        gridMediaField\n        mediaFields\n        plugins\n        sidebarGroups {\n          name\n          paths\n        }\n      }\n    }\n    view\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "f3b2e1c54c233e92fba9cc56c74909ee";
+(node as any).hash = "d366e3eb681ccfbd2c11554c312d3d41";
 
 export default node;

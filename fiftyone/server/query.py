@@ -147,6 +147,7 @@ class Dataset:
     persistent: bool
     group_media_types: t.Optional[t.List[Group]]
     group_field: t.Optional[str]
+    group_slice: t.Optional[str]
     default_group_slice: t.Optional[str]
     media_type: t.Optional[MediaType]
     mask_targets: t.List[NamedTargets]
@@ -216,6 +217,9 @@ class Dataset:
         if view.media_type != ds.media_type:
             dataset.id = ObjectId()
             dataset.media_type = view.media_type
+
+        if dataset.media_type == fom.GROUP:
+            dataset.group_slice = view.group_slice
 
         # old dataset docs, e.g. from imports have frame fields attached even for
         # image datasets. we need to remove them

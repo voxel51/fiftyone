@@ -97,9 +97,18 @@ const useStateUpdate = () => {
         }
 
         const previousDataset = get(datasetAtom);
-        if (!previousDataset || previousDataset.id !== dataset.id) {
+        if (
+          !previousDataset ||
+          previousDataset.id !== dataset.id ||
+          dataset.groupSlice !== previousDataset.groupSlice
+        ) {
           reset(_activeFields({ modal: false }));
-          set(groupSlice, dataset.defaultGroupSlice);
+          let slice = dataset.groupSlice;
+
+          if (dataset.groupMediaTypes[slice] === "pcd") {
+            slice = dataset.defaultGroupSlice;
+          }
+          set(groupSlice, slice);
           reset(similarityParameters);
           reset(extendedSelection);
           reset(filters);

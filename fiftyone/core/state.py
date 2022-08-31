@@ -105,8 +105,6 @@ class StateDescription(etas.Serializable):
         ref = view if view is not None else dataset
         if dataset is not None and group_slice is not None:
             ref.group_slice = group_slice
-            print(group_slice, ref.group_slice)
-        print("HELLO")
 
         config = with_config or fo.app_config.copy()
         for field, value in d.get("config", {}).items():
