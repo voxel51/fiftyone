@@ -79,7 +79,7 @@
 .. |LabeledImageDatasetExporter| replace:: :class:`LabeledImageDatasetExporter <fiftyone.utils.data.exporters.LabeledImageDatasetExporter>`
 .. |UnlabeledVideoDatasetExporter| replace:: :class:`UnlabeledVideoDatasetExporter <fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter>`
 .. |LabeledVideoDatasetExporter| replace:: :class:`LabeledVideoDatasetExporter <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter>`
-.. |GroupDatasetExporter| replace:: :class:`GroupDatasetExporter <fiftyone.utils.data.importers.GroupDatasetExporter>`
+.. |GroupDatasetExporter| replace:: :class:`GroupDatasetExporter <fiftyone.utils.data.exporters.GroupDatasetExporter>`
 
 .. |SampleParser| replace:: :class:`SampleParser <fiftyone.utils.data.parsers.SampleParser>`
 .. |UnlabeledImageSampleParser| replace:: :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`
