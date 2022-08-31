@@ -24,7 +24,7 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 
-import { getColor } from "../../color";
+import { getColor } from "@fiftyone/utilities";
 import { Classification, Regression } from "../../overlays/classifications";
 import { BaseState, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";

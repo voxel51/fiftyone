@@ -7,6 +7,7 @@ export { GraphQLError, NotFoundError, ServerError } from "./errors";
 export * from "./fetch";
 export * from "./theme";
 export * from "./Resource";
+export * from "./color";
 
 interface O {
   [key: string]: O | any;

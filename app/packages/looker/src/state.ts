@@ -6,9 +6,9 @@ import { Overlay } from "./overlays/base";
 
 import { Schema, Stage } from "@fiftyone/utilities";
 
+// vite won't import these from fou
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
-
 export interface Coloring {
   by: "field" | "instance" | "label";
   pool: string[];
