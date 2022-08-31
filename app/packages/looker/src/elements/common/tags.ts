@@ -378,7 +378,14 @@ const unwind = (name: string, value: unknown) => {
     return value.map((val) => unwind(name, val));
   }
 
-  return value[name];
+  let v = value[name];
+  if (v) {
+    return v;
+  }
+
+  if (name == "_id" && value.id) {
+    return value.id;
+  }
 };
 
 const getFieldAndValue = (
@@ -398,7 +405,7 @@ const getFieldAndValue = (
     }
 
     if (![undefined, null].includes(value)) {
-      value = unwind(field.name !== "id" ? field.dbField || key : "id", value);
+      value = unwind(field.dbField, value);
       list = list || field.ftype === LIST_FIELD;
     }
 
