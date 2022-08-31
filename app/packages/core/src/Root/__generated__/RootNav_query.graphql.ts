@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { Fragment, ReaderFragment } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
 export type RootNav_query$data = {
   readonly teamsSubmission: boolean;
@@ -20,21 +20,21 @@ export type RootNav_query$key = {
 };
 
 const node: ReaderFragment = {
-  "argumentDefinitions": [],
-  "kind": "Fragment",
-  "metadata": null,
-  "name": "RootNav_query",
-  "selections": [
+  argumentDefinitions: [],
+  kind: "Fragment",
+  metadata: null,
+  name: "RootNav_query",
+  selections: [
     {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "teamsSubmission",
-      "storageKey": null
-    }
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "teamsSubmission",
+      storageKey: null,
+    },
   ],
-  "type": "Query",
-  "abstractKey": null
+  type: "Query",
+  abstractKey: null,
 };
 
 (node as any).hash = "24cca3fbea15640c1527e86151f3899e";

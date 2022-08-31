@@ -216,10 +216,8 @@ const ObjectEditor = ({
       containerRef.current.style.left = state.matches("editing")
         ? `${x}px`
         : "unset";
-      const {
-        x: barX,
-        width: barWidth,
-      } = barRef.current.getBoundingClientRect();
+      const { x: barX, width: barWidth } =
+        barRef.current.getBoundingClientRect();
       const barRight = barX + barWidth;
       containerRef.current.style.width = state.matches("editing")
         ? `${Math.min(barRight - x, 400)}px`
@@ -299,14 +297,8 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   const [containerRef, setContainerRef] = useState({});
   const [expanded, setExpanded] = useState(false);
 
-  const {
-    type,
-    value,
-    active,
-    currentResult,
-    results,
-    bestMatch,
-  } = state.context;
+  const { type, value, active, currentResult, results, bestMatch } =
+    state.context;
   const hasObjectType = type
     .split("|")
     .some((t) => ["dict", "json"].includes(t));
