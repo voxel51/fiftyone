@@ -62,10 +62,11 @@ type Dataset {
 }
 
 type DatasetAppConfig {
-  gridMediaField: String!
   mediaFields: [String!]!
   plugins: JSON
   sidebarGroups: [SidebarGroup!]
+  modalMediaField: String
+  gridMediaField: String
 }
 
 type DatasetStrConnection {
@@ -159,6 +160,12 @@ type Mutation {
     dataset: String!
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
+  setGroupSlice(
+    subscription: String!
+    session: String
+    view: BSONArray!
+    slice: String!
+  ): Dataset!
 }
 
 type NamedKeypointSkeleton {

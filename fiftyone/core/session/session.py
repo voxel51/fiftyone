@@ -986,6 +986,9 @@ def _attach_listeners(session: "Session"):
         session, "_state", event.state
     )
     session._client.add_event_listener("state_update", on_state_update)
+    session._client.add_event_listener(
+        "state_update", lambda e: print(e.state.dataset)
+    )
 
     if focx.is_notebook_context() and not focx.is_colab_context():
 
