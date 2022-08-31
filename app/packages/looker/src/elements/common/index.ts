@@ -5,7 +5,6 @@
 export { CanvasElement } from "./canvas";
 export * from "./controls";
 export { ErrorElement } from "./error";
-export { JSONPanelElement } from "./json";
 export {
   HelpPanelElement,
   VideoHelpPanelElement,
