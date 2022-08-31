@@ -168,7 +168,8 @@ class PlotManager(object):
         """Returns an iterator over the plots in this manager.
 
         Returns:
-            an iterator that emits :class:`ResponsivePlot` instances
+            an iterator that emits
+            :class:`fiftyone.core.plots.base.ResponsivePlot` instances
         """
         return self._plots.values()
 
