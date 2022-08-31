@@ -17,6 +17,12 @@ export default graphql`
         id
         name
         mediaType
+        defaultGroupSlice
+        groupField
+        groupMediaTypes {
+          name
+          mediaType
+        }
         sampleFields {
           ftype
           subfield
