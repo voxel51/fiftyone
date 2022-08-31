@@ -381,7 +381,7 @@ const useTagCallback = (
         let group: string | null = null;
         if (stats !== "group") {
           slice = await snapshot.getPromise(currentSlice(modal));
-          group = await snapshot.getPromise(groupId);
+          group = modal ? await snapshot.getPromise(groupId) : null;
         }
         const { samples } = await getFetchFunction()("POST", "/tag", {
           filters: f,

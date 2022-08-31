@@ -115,7 +115,10 @@ export const tagStatistics = selectorFamily<
           ? get(sidebarSampleId)
           : null,
         labels: toSnakeCase(labels),
-        groupId: get(groupStatistics(modal)) === "group" ? get(groupId) : null,
+        groupId:
+          modal && get(groupStatistics(modal)) === "group"
+            ? get(groupId)
+            : null,
         slice:
           get(groupStatistics(modal)) === "group"
             ? null

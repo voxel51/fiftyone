@@ -163,7 +163,9 @@ export const aggregations = selectorFamily<
               ? get(selectors.sidebarSampleId)
               : null,
           groupId:
-            get(groupStatistics(modal)) === "group" ? get(groupId) : null,
+            modal && get(groupStatistics(modal)) === "group"
+              ? get(groupId)
+              : null,
           slice:
             get(groupStatistics(modal)) === "group"
               ? null
