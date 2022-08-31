@@ -4777,6 +4777,6 @@ corresponding to the type of dataset that you are working with.
                     # Return your custom GroupDatasetExporter class here
                     pass
 
-        Note that, as this type represents an unlabeled image dataset, its importer
-        must be a subclass of |GroupDatasetImporter|, and its exporter must be a
+        Note that, as this type represents a grouped dataset, its importer must
+        be a subclass of |GroupDatasetImporter|, and its exporter must be a
         subclass of |GroupDatasetExporter|.
