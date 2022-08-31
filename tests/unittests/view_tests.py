@@ -1203,9 +1203,11 @@ class ViewSaveTest(unittest.TestCase):
         dataset.add_samples([sample1, sample2])
 
         view = dataset.limit(1).match_frames(F("frame_number") == 1)
+        sample = view.first()
 
         self.assertEqual(dataset.count("frames"), 4)
         self.assertEqual(view.count("frames"), 1)
+        self.assertEqual(len(sample.frames), 1)
 
         view.keep_frames()
 
