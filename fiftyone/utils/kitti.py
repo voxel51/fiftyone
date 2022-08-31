@@ -618,32 +618,32 @@ _LABELS = {
 _LEFT_IMAGES = {
     "url": "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_image_2.zip",
     "contents": {
-        "train": ["data_object_image_2", "training", "image_2"],
-        "test": ["data_object_image_2", "testing", "image_2"],
+        "train": ["training", "image_2"],
+        "test": ["testing", "image_2"],
     },
 }
 
 _RIGHT_IMAGES = {
     "url": "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_image_3.zip",
     "contents": {
-        "train": ["data_object_image_3", "training", "image_3"],
-        "test": ["data_object_image_3", "testing", "image_3"],
+        "train": ["training", "image_3"],
+        "test": ["testing", "image_3"],
     },
 }
 
 _VELODYNE = {
     "url": "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_velodyne.zip",
     "contents": {
-        "train": ["data_object_velodyne", "training", "velodyne"],
-        "test": ["data_object_velodyne", "testing", "velodyne"],
+        "train": ["training", "velodyne"],
+        "test": ["testing", "velodyne"],
     },
 }
 
 _CALIB = {
     "url": "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_calib.zip",
     "contents": {
-        "train": ["data_object_calib", "training", "calib"],
-        "test": ["data_object_calib", "testing", "calib"],
+        "train": ["training", "calib"],
+        "test": ["testing", "calib"],
     },
 }
 
@@ -828,7 +828,7 @@ def _prepare_kitti_split(split_dir, overwrite=False):
         },
         "overlay": {
             "rotation": [-90, 0, 0],
-            "itemRotation": [0, 90, 0],
+            "itemRotation": [0, 90, 90],
         },
     }
     dataset.save()

@@ -1317,7 +1317,7 @@ def parse_coco_categories(categories):
 
     classes = []
     supercategory_map = {}
-    for cat_id in range(max(cat_map) + 1):
+    for cat_id in range(max(cat_map, default=-1) + 1):
         category = cat_map.get(cat_id, None)
         try:
             name = category["name"]
