@@ -1,0 +1,11 @@
+.DS_Store
+build/**
+node_modules/**
+
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+
+yarn-error.log
