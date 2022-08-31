@@ -379,27 +379,6 @@ class DatasetAppConfig(EmbeddedDocument):
     """Dataset-specific settings that customize how a dataset is visualized in
     the App.
 
-    Examples::
-
-        import fiftyone as fo
-        import fiftyone.utils.image as foui
-        import fiftyone.zoo as foz
-
-        dataset = foz.load_zoo_dataset("quickstart")
-
-        foui.transform_images(
-            dataset,
-            size=(-1, 32),
-            output_field="thumbnail_path",
-            output_dir="/tmp/thumbnails",
-        )
-
-        dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
-        dataset.app_config.grid_media_field = "thumbnail_path"
-        dataset.app_config.save()
-
-        session = fo.launch_app(dataset)
-
     Args:
         media_fields (["filepath"]): the list of sample fields that contain
             media and should be available to choose from the App's settings

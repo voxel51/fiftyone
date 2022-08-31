@@ -681,7 +681,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
             dataset.app_config.grid_media_field = "thumbnail_path"
-            dataset.app_config.save()  # must save after edits
+            dataset.save()  # must save after edits
 
             session = fo.launch_app(dataset)
         """
