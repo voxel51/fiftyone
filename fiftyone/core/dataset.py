@@ -667,15 +667,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Examples::
 
             import fiftyone as fo
+            import fiftyone.utils.image as foui
+            import fiftyone.zoo as foz
 
-            dataset = fo.Dataset()
+            dataset = foz.load_zoo_dataset("quickstart")
 
-            # View the dataset's current App config
-            print(dataset.app_config)
+            foui.transform_images(
+                dataset,
+                size=(-1, 32),
+                output_field="thumbnail_path",
+                output_dir="/tmp/thumbnails",
+            )
 
-            # Store some dataset-specific settings
-            dataset.app_config.plugins["map"] = {"clustering": False}
-            dataset.save()  # must save after edits
+            dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+            dataset.app_config.grid_media_field = "thumbnail_path"
+            dataset.app_config.save()  # must save after edits
+
+            session = fo.launch_app(dataset)
         """
         return self._doc.app_config
 
