@@ -486,7 +486,7 @@ def build_dataset_importer(
     """Builds the :class:`DatasetImporter` instance for the given parameters.
 
     Args:
-        dataset_type: the :class:`fiftyone.types.dataset_types.Dataset` type
+        dataset_type: the :class:`fiftyone.types.Dataset` type
         strip_none (True): whether to exclude None-valued items from ``kwargs``
         warn_unused (True): whether to issue warnings for any non-None unused
             parameters encountered
@@ -1239,8 +1239,8 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
     .. warning::
 
-        The :class:`fiftyone.types.dataset_types.FiftyOneDataset` format was
-        upgraded in ``fiftyone==0.8`` and this importer is now deprecated.
+        The :class:`fiftyone.types.FiftyOneDataset` format was upgraded in
+        ``fiftyone==0.8`` and this importer is now deprecated.
 
         However, to maintain backwards compatibility,
         :class:`FiftyOneDatasetImporter` will check for instances of datasets

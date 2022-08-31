@@ -6605,9 +6605,9 @@ class SampleCollection(object):
                 If an archive path is specified, the export is performed in a
                 directory of same name (minus extension) and then automatically
                 archived and the directory then deleted
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type to write. If
-                not specified, the default type for ``label_field`` is used
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type to
+                write. If not specified, the default type for ``label_field``
+                is used
             data_path (None): an optional parameter that enables explicit
                 control over the location of the exported media for certain
                 export formats. Can be any of the following:

@@ -2555,9 +2555,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir (None): the dataset directory. This can be omitted for
                 certain dataset formats if you provide arguments such as
                 ``data_path`` and ``labels_path``
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -2713,9 +2712,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir (None): the dataset directory. This can be omitted for
                 certain dataset formats if you provide arguments such as
                 ``data_path`` and ``labels_path``
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -2867,9 +2865,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``archive_path``
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -3018,9 +3015,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``archive_path``
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -3395,9 +3391,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_images_dir(self, images_dir, tags=None, recursive=True):
         """Adds the given directory of images to the dataset.
 
-        See :class:`fiftyone.types.dataset_types.ImageDirectory` for format
-        details. In particular, note that files with non-image MIME types are
-        omitted.
+        See :class:`fiftyone.types.ImageDirectory` for format details. In
+        particular, note that files with non-image MIME types are omitted.
 
         This operation does not read the images.
 
@@ -3629,9 +3624,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_videos_dir(self, videos_dir, tags=None, recursive=True):
         """Adds the given directory of videos to the dataset.
 
-        See :class:`fiftyone.types.dataset_types.VideoDirectory` for format
-        details. In particular, note that files with non-video MIME types are
-        omitted.
+        See :class:`fiftyone.types.VideoDirectory` for format details. In
+        particular, note that files with non-video MIME types are omitted.
 
         This operation does not read/decode the videos.
 
@@ -3786,9 +3780,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             dataset_dir (None): the dataset directory. This can be omitted if
                 you provide arguments such as ``data_path`` and ``labels_path``
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -3895,9 +3888,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``archive_path``
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
