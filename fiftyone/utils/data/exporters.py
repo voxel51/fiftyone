@@ -227,7 +227,10 @@ def export_samples(
         _write_batch_dataset(dataset_exporter, samples)
         return
 
-    if isinstance(dataset_exporter, GenericSampleDatasetExporter):
+    if isinstance(
+        dataset_exporter,
+        (GenericSampleDatasetExporter, GroupDatasetExporter),
+    ):
         sample_parser = None
     elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
         if found_patches:
@@ -380,6 +383,13 @@ def write_dataset(
 
     if isinstance(dataset_exporter, GenericSampleDatasetExporter):
         _write_generic_sample_dataset(
+            dataset_exporter,
+            samples,
+            num_samples=num_samples,
+            sample_collection=sample_collection,
+        )
+    elif isinstance(dataset_exporter, GroupDatasetExporter):
+        _write_group_dataset(
             dataset_exporter,
             samples,
             num_samples=num_samples,
@@ -783,6 +793,33 @@ def _write_generic_sample_dataset(
 
             for sample in pb(samples):
                 dataset_exporter.export_sample(sample)
+
+
+def _write_group_dataset(
+    dataset_exporter,
+    samples,
+    num_samples=None,
+    sample_collection=None,
+):
+    if not isinstance(samples, foc.SampleCollection):
+        raise ValueError(
+            "%s can only export grouped collections; found %s"
+            % (type(dataset_exporter), type(samples))
+        )
+
+    if samples.media_type != fomm.GROUP:
+        raise ValueError(
+            "%s can only export grouped collections; found media type '%s'"
+            % (type(dataset_exporter), samples.media_type)
+        )
+
+    with fou.ProgressBar(total=num_samples) as pb:
+        with dataset_exporter:
+            if sample_collection is not None:
+                dataset_exporter.log_collection(sample_collection)
+
+            for group in pb(samples.iter_groups()):
+                dataset_exporter.export_group(group)
 
 
 def _write_image_dataset(
@@ -1275,6 +1312,33 @@ class GenericSampleDatasetExporter(DatasetExporter):
             sample: a :class:`fiftyone.core.sample.Sample`
         """
         raise NotImplementedError("subclass must implement export_sample()")
+
+
+class GroupDatasetExporter(DatasetExporter):
+    """Interface for exporting grouped datasets.
+
+    See :ref:`this page <writing-a-custom-dataset-exporter>` for information
+    about implementing/using dataset exporters.
+
+    Args:
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
+    """
+
+    def export_sample(self, *args, **kwargs):
+        raise ValueError(
+            "Use export_group() to perform exports with %s instances"
+            % type(self)
+        )
+
+    def export_group(self, group):
+        """Exports the given group to the dataset.
+
+        Args:
+            group: a dict mapping group slice names to
+                :class:`fiftyone.core.sample.Sample` instances
+        """
+        raise NotImplementedError("subclass must implement export_group()")
 
 
 class UnlabeledImageDatasetExporter(DatasetExporter):

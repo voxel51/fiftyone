@@ -661,8 +661,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def app_config(self):
-        """Dataset-specific settings that customize how this dataset is
-        visualized in the :ref:`FiftyOne App <fiftyone-app>`.
+        """A :class:`fiftyone.core.odm.dataset.DatasetAppConfig` that
+        customizes how this dataset is visualized in the
+        :ref:`FiftyOne App <fiftyone-app>`.
 
         Examples::
 
