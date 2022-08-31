@@ -7242,8 +7242,9 @@ _STAGES = [
 # Registry of stages that promise to only reorder/select documents
 _STAGES_THAT_SELECT_OR_REORDER = {
     # View stages that only reorder documents
-    SortBy,
     GroupBy,
+    SortBy,
+    SortBySimilarity,
     Shuffle,
     # View stages that only select documents
     Exclude,
@@ -7253,12 +7254,10 @@ _STAGES_THAT_SELECT_OR_REORDER = {
     GeoWithin,
     Limit,
     Match,
-    MatchFrames,
     MatchLabels,
     MatchTags,
     Select,
     SelectBy,
     Skip,
-    SortBySimilarity,
     Take,
 }

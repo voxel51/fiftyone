@@ -216,6 +216,30 @@ class VideoLabelsDataset(LabeledVideoDataset):
     pass
 
 
+class GroupDataset(Dataset):
+    """Base type for datasets that contain grouped samples of any type(s)."""
+
+    def get_dataset_importer_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.importers.GroupDatasetImporter` class for
+        importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.GroupDatasetImporter` class
+        """
+        return super().get_dataset_importer_cls()
+
+    def get_dataset_exporter_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.exporters.GroupDatasetExporter` class for
+        exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.GroupDatasetExporter` class
+        """
+        return super().get_dataset_exporter_cls()
+
+
 class ImageDirectory(UnlabeledImageDataset):
     """A directory of images.
 
@@ -763,21 +787,26 @@ class LegacyFiftyOneDataset(Dataset):
                 <filename1>.<ext>
                 <filename2>.<ext>
                 ...
-            evaluations/
-                <eval_key1>.json
-                <eval_key2>.json
+            annotations/
+                <anno_key1>.json
+                <anno_key2>.json
                 ...
             brain/
                 <brain_key1>.json
                 <brain_key2>.json
                 ...
+            evaluations/
+                <eval_key1>.json
+                <eval_key2>.json
+                ...
 
     where ``metadata.json`` is a JSON file containing metadata associated with
     the dataset, ``samples.json`` is a JSON file containing a serialized
-    representation of the samples in the dataset, ``evaluations/`` contains any
-    serialized :class:`fiftyone.core.evaluations.EvaluationResults` for the
-    dataset, and ``brain/`` contains any serialized
-    :class:`fiftyone.core.brain.BrainResults` for the dataset.
+    representation of the samples in the dataset, ``annotations/`` contains any
+    serialized :class:`fiftyone.core.annotations.AnnotationResults`, ``brain/``
+    contains any serialized :class:`fiftyone.core.brain.BrainResults`, and
+    ``evaluations/`` contains any serialized
+    :class:`fiftyone.core.evaluations.EvaluationResults`.
 
     Video datasets have an additional ``frames/`` directory that contains a
     serialized representation of the frame labels for each video in the

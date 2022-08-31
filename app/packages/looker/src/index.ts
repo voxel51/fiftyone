@@ -3,8 +3,6 @@
  */
 import LRU from "lru-cache";
 import { v4 as uuid } from "uuid";
-import highlightJSON from "json-format-highlight";
-import copyToClipboard from "copy-to-clipboard";
 
 import {
   DATE_FIELD,
@@ -26,7 +24,6 @@ import {
   MAX_FRAME_CACHE_SIZE_BYTES,
   CHUNK_SIZE,
   DASH_LENGTH,
-  JSON_COLORS,
   BASE_ALPHA,
 } from "./constants";
 import {
@@ -235,13 +232,6 @@ export abstract class Looker<
 
   protected getDispatchEvent(): (eventType: string, detail: any) => void {
     return (eventType: string, detail: any) => {
-      // if (eventType === "copy") {
-      //   this.getSample().then((sample) =>
-      //     copyToClipboard(JSON.stringify(sample, null, 4))
-      //   );
-      //   return;
-      // }
-
       if (eventType === "selectthumbnail") {
         this.dispatchEvent(eventType, {
           shiftKey: detail,
@@ -271,13 +261,6 @@ export abstract class Looker<
         this.previousState = this.state;
         this.state = mergeUpdates(this.state, updates);
         if (!this.state.loaded) {
-          // if (this.state.options.showJSON) {
-          //   const pre = this.lookerElement.element.querySelectorAll("pre")[0];
-          //   this.getSample().then((sample) => {
-          //     pre.innerHTML = highlightJSON(sample, JSON_COLORS);
-          //   });
-          // }
-
           this.lookerElement.render(this.state, this.sample);
           return;
         }
@@ -307,13 +290,6 @@ export abstract class Looker<
 
         this.dispatchImpliedEvents(this.previousState, this.state);
 
-        // if (this.state.options.showJSON) {
-        //   const pre = this.lookerElement.element.querySelectorAll("pre")[0];
-        //   pre &&
-        //     this.getSample().then((sample) => {
-        //       pre.innerHTML = highlightJSON(sample, JSON_COLORS);
-        //     });
-        // }
         this.lookerElement.render(this.state, this.sample);
         const ctx = this.ctx;
 

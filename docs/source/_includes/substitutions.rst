@@ -72,12 +72,14 @@
 .. |LabeledImageDatasetImporter| replace:: :class:`LabeledImageDatasetImporter <fiftyone.utils.data.importers.LabeledImageDatasetImporter>`
 .. |UnlabeledVideoDatasetImporter| replace:: :class:`UnlabeledVideoDatasetImporter <fiftyone.utils.data.importers.UnlabeledVideoDatasetImporter>`
 .. |LabeledVideoDatasetImporter| replace:: :class:`LabeledVideoDatasetImporter <fiftyone.utils.data.importers.LabeledVideoDatasetImporter>`
+.. |GroupDatasetImporter| replace:: :class:`GroupDatasetImporter <fiftyone.utils.data.importers.GroupDatasetImporter>`
 
 .. |DatasetExporter| replace:: :class:`DatasetExporter <fiftyone.utils.data.exporters.DatasetExporter>`
 .. |UnlabeledImageDatasetExporter| replace:: :class:`UnlabeledImageDatasetExporter <fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter>`
 .. |LabeledImageDatasetExporter| replace:: :class:`LabeledImageDatasetExporter <fiftyone.utils.data.exporters.LabeledImageDatasetExporter>`
 .. |UnlabeledVideoDatasetExporter| replace:: :class:`UnlabeledVideoDatasetExporter <fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter>`
 .. |LabeledVideoDatasetExporter| replace:: :class:`LabeledVideoDatasetExporter <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter>`
+.. |GroupDatasetExporter| replace:: :class:`GroupDatasetExporter <fiftyone.utils.data.exporters.GroupDatasetExporter>`
 
 .. |SampleParser| replace:: :class:`SampleParser <fiftyone.utils.data.parsers.SampleParser>`
 .. |UnlabeledImageSampleParser| replace:: :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`
@@ -90,6 +92,7 @@
 .. |LabeledImageDatasetType| replace:: :class:`LabeledImageDataset <fiftyone.types.dataset_types.LabeledImageDataset>`
 .. |UnlabeledVideoDatasetType| replace:: :class:`UnlabeledVideoDataset <fiftyone.types.dataset_types.UnlabeledVideoDataset>`
 .. |LabeledVideoDatasetType| replace:: :class:`LabeledVideoDataset <fiftyone.types.dataset_types.LabeledVideoDataset>`
+.. |GroupDatasetType| replace:: :class:`GroupDataset <fiftyone.types.dataset_types.GroupDataset>`
 
 .. |Metadata| replace:: :class:`Metadata <fiftyone.core.metadata.Metadata>`
 .. |ImageMetadata| replace:: :class:`ImageMetadata <fiftyone.core.metadata.ImageMetadata>`
