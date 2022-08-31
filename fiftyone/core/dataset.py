@@ -672,6 +672,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             dataset = foz.load_zoo_dataset("quickstart")
 
+            # View the dataset's current App config
+            print(dataset.app_config)
+
             foui.transform_images(
                 dataset,
                 size=(-1, 32),
@@ -679,6 +682,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 output_dir="/tmp/thumbnails",
             )
 
+            # Modify the App config
             dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
             dataset.app_config.grid_media_field = "thumbnail_path"
             dataset.save()  # must save after edits
