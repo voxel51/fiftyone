@@ -29,15 +29,6 @@ export const DATE_TIME = "DateTime";
 export const SELECTION_TEXT =
   "Click to select sample, Shift+Click to select a range";
 
-export const JSON_COLORS = {
-  keyColor: "rgb(138, 138, 138)",
-  numberColor: "rgb(225, 100, 40)",
-  stringColor: "rgb(238, 238, 238)",
-  nullColor: "rgb(225, 100, 40)",
-  trueColor: "rgb(225, 100, 40)",
-  falseColor: "rgb(225, 100, 40)",
-};
-
 export const BIG_ENDIAN = (() => {
   let buf = new ArrayBuffer(4);
   let u32data = new Uint32Array(buf);
