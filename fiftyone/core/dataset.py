@@ -1982,16 +1982,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
         batcher = fou.DynamicBatcher(
-            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
+            samples,
+            target_latency=0.2,
+            init_batch_size=1,
+            max_batch_beta=2.0,
+            progress=True,
+            total=num_samples,
         )
 
         sample_ids = []
-        with fou.ProgressBar(total=num_samples) as pb:
+        with batcher:
             for batch in batcher:
-                sample_ids.extend(
-                    self._add_samples_batch(batch, expand_schema, validate)
-                )
-                pb.update(count=len(batch))
+                _ids = self._add_samples_batch(batch, expand_schema, validate)
+                sample_ids.extend(_ids)
 
         return sample_ids
 
@@ -2083,13 +2086,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
         batcher = fou.DynamicBatcher(
-            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
+            samples,
+            target_latency=0.2,
+            init_batch_size=1,
+            max_batch_beta=2.0,
+            progress=True,
         )
 
-        with fou.ProgressBar(total=num_samples) as pb:
+        with batcher:
             for batch in batcher:
                 self._upsert_samples_batch(batch, expand_schema, validate)
-                pb.update(count=len(batch))
 
     def _upsert_samples_batch(self, samples, expand_schema, validate):
         if self.media_type is None and samples:
@@ -5237,19 +5243,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return [k["key"][0][0] for k in index_info.values()]
 
     def _apply_field_schema(self, new_fields):
-        curr_fields = self.get_field_schema()
-        add_field_fcn = self.add_sample_field
-        self._apply_schema(curr_fields, new_fields, add_field_fcn)
-
-    def _apply_frame_field_schema(self, new_fields):
-        curr_fields = self.get_frame_field_schema()
-        add_field_fcn = self.add_frame_field
-        self._apply_schema(curr_fields, new_fields, add_field_fcn)
-
-    def _apply_schema(self, curr_fields, new_fields, add_field_fcn):
         for field_name, field_str in new_fields.items():
             ftype, embedded_doc_type, subfield = fof.parse_field_str(field_str)
-            add_field_fcn(
+            self.add_sample_field(
+                field_name,
+                ftype,
+                embedded_doc_type=embedded_doc_type,
+                subfield=subfield,
+            )
+
+    def _apply_frame_field_schema(self, new_fields):
+        for field_name, field_str in new_fields.items():
+            ftype, embedded_doc_type, subfield = fof.parse_field_str(field_str)
+            self.add_frame_field(
                 field_name,
                 ftype,
                 embedded_doc_type=embedded_doc_type,
@@ -6230,28 +6236,6 @@ def _merge_dataset_doc(
             curr_doc.default_skeleton = doc.default_skeleton
 
     curr_doc.save()
-
-    if dataset:
-        if doc.annotation_runs:
-            logger.warning(
-                "Annotation runs cannot be merged into a non-empty dataset"
-            )
-
-        if doc.brain_methods:
-            logger.warning(
-                "Brain runs cannot be merged into a non-empty dataset"
-            )
-
-        if doc.evaluations:
-            logger.warning(
-                "Evaluations cannot be merged into a non-empty dataset"
-            )
-    else:
-        dataset.delete_annotation_runs()
-        dataset.delete_brain_runs()
-        dataset.delete_evaluations()
-
-        _clone_runs(dataset, doc)
 
 
 def _update_no_overwrite(d, dnew):

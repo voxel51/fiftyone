@@ -1749,9 +1749,23 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             lives in a single directory and you wish to serialize relative,
             rather than absolute, paths to the data within that directory.
             Only applicable when ``export_media`` is False
+        export_runs (True): whether to include annotation/brain/evaluation
+            runs in the export. Only applicable when exporting full datasets
+        use_dirs (False): whether to export metadata into directories of per
+            sample/frame files
+        ordered (True): whether to preserve the order of the exported
+            collections
     """
 
-    def __init__(self, export_dir, export_media=None, rel_dir=None):
+    def __init__(
+        self,
+        export_dir,
+        export_media=None,
+        rel_dir=None,
+        export_runs=True,
+        use_dirs=False,
+        ordered=True,
+    ):
         if export_media is None:
             export_media = True
 
@@ -1759,6 +1773,9 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         self.export_media = export_media
         self.rel_dir = rel_dir
+        self.export_runs = export_runs
+        self.use_dirs = use_dirs
+        self.ordered = ordered
 
         self._data_dir = None
         self._anno_dir = None
@@ -1775,8 +1792,13 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._brain_dir = os.path.join(self.export_dir, "brain")
         self._eval_dir = os.path.join(self.export_dir, "evaluations")
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
-        self._samples_path = os.path.join(self.export_dir, "samples.json")
-        self._frames_path = os.path.join(self.export_dir, "frames.json")
+
+        if self.use_dirs:
+            self._samples_path = os.path.join(self.export_dir, "samples")
+            self._frames_path = os.path.join(self.export_dir, "frames")
+        else:
+            self._samples_path = os.path.join(self.export_dir, "samples.json")
+            self._frames_path = os.path.join(self.export_dir, "frames.json")
 
         self._media_exporter = MediaExporter(
             self.export_media,
@@ -1828,9 +1850,20 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             sample["filepath"] = outpath
             return sample
 
-        samples = map(_prep_sample, _samples, _outpaths)
+        if self.use_dirs:
+            if self.ordered:
+                patt = "{idx:06d}-{id}.json"
+            else:
+                patt = "{id}.json"
+        else:
+            patt = None
+
         foo.export_collection(
-            samples, self._samples_path, key="samples", num_docs=num_samples
+            map(_prep_sample, _samples, _outpaths),
+            self._samples_path,
+            key="samples",
+            patt=patt,
+            num_docs=num_samples,
         )
 
         if sample_collection._contains_videos(any_slice=True):
@@ -1850,7 +1883,11 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             num_frames = foo.count_documents(coll, pipeline)
             frames = foo.aggregate(coll, pipeline)
             foo.export_collection(
-                frames, self._frames_path, key="frames", num_docs=num_frames
+                frames,
+                self._frames_path,
+                key="frames",
+                patt=patt,
+                num_docs=num_frames,
             )
 
         dataset = sample_collection._dataset
@@ -1860,7 +1897,10 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         # exported, otherwise the view for the run cannot be reconstructed
         # based on the information encoded in the run's document
 
-        export_runs = sample_collection == sample_collection._root_dataset
+        export_runs = (
+            self.export_runs
+            and sample_collection == sample_collection._root_dataset
+        )
 
         if not export_runs:
             dataset_dict["annotation_runs"] = {}

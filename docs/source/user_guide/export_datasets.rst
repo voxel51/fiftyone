@@ -3605,9 +3605,12 @@ You can export a FiftyOne dataset to disk in the above format as follows:
             --export-dir $EXPORT_DIR \
             --type fiftyone.types.FiftyOneDataset
 
-You can also export datasets in this this format without copying the source
-media files by including `export_media=False` in your call to
+You can export datasets in this this format without copying the source media
+files by including `export_media=False` in your call to
 :meth:`export() <fiftyone.core.collections.SampleCollection.export>`.
+
+You can also pass `use_dirs=True` to export per-sample/frame JSON files rather
+than storing all samples/frames in single JSON files.
 
 By default, the absolute filepath of each image will be included in the export.
 However, if you want to re-import this dataset on a different machine with the
