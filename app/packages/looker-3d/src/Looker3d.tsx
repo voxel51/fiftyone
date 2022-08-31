@@ -299,10 +299,26 @@ function Looker3dCore({ sampleOverride: sample }) {
   const controlsRef = React.useRef();
   const getColor = recoil.useRecoilValue(fos.colorMap(true));
   const [pointCloudBounds, setPointCloudBounds] = React.useState();
+  const { coloring } = recoil.useRecoilValue(
+    fos.lookerOptions({ withFilter: true, modal })
+  );
 
   const overlays = load3dOverlays(sample, selectedLabels)
     .map((l) => {
-      return { ...l, color: getColor(l.path.join(".")) };
+      const path = l.path.join(".");
+      let color;
+      switch (coloring.by) {
+        case "field":
+          color = getColor(path);
+          break;
+        case "instance":
+          color = getColor(l._id);
+          break;
+        default:
+          color = getColor(l.label);
+          break;
+      }
+      return { ...l, color };
     })
     .filter((l) => pathFilter(l.path.join("."), l));
 
