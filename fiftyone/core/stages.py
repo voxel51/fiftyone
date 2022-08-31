@@ -152,7 +152,7 @@ class ViewStage(object):
                 the stage is being applied
 
         Returns:
-            the media type, or ``None`` if the stage does not change the media
+            the media type, or ``None`` if the stage does not change the type
         """
         return None
 

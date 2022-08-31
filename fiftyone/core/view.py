@@ -56,13 +56,16 @@ class DatasetView(foc.SampleCollection):
             view
     """
 
-    def __init__(self, dataset, _stages=None, _media_type=None):
+    def __init__(
+        self, dataset, _stages=None, _media_type=None, _group_slice=None
+    ):
         if _stages is None:
             _stages = []
 
         self.__dataset = dataset
         self.__stages = _stages
         self.__media_type = _media_type
+        self.__group_slice = _group_slice
 
     def __eq__(self, other_view):
         if type(other_view) != type(self):
@@ -116,6 +119,7 @@ class DatasetView(foc.SampleCollection):
             self.__dataset,
             _stages=deepcopy(self.__stages),
             _media_type=self.__media_type,
+            _group_slice=self.__group_slice,
         )
 
     @property
@@ -182,7 +186,22 @@ class DatasetView(foc.SampleCollection):
         if self.media_type != fom.GROUP:
             return None
 
+        if self.__group_slice is not None:
+            return self.__group_slice
+
         return self._dataset.group_slice
+
+    @group_slice.setter
+    def group_slice(self, slice_name):
+        if self.media_type != fom.GROUP:
+            raise ValueError("DatasetView has no groups")
+
+        if slice_name is not None and slice_name not in self.group_media_types:
+            raise ValueError(
+                "DatasetView has no group slice '%s'" % slice_name
+            )
+
+        self.__group_slice = slice_name
 
     @property
     def group_slices(self):
@@ -1069,6 +1088,7 @@ class DatasetView(foc.SampleCollection):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        group_slice=None,
         group_slices=None,
         groups_only=False,
         detach_groups=False,
@@ -1187,12 +1207,16 @@ class DatasetView(foc.SampleCollection):
         if media_type is None:
             media_type = self.media_type
 
+        if group_slice is None:
+            group_slice = self.group_slice
+
         return self._dataset._pipeline(
             pipeline=_pipeline,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
             media_type=media_type,
+            group_slice=group_slice,
             group_slices=group_slices,
             groups_only=groups_only,
             detach_groups=detach_groups,
@@ -1206,6 +1230,7 @@ class DatasetView(foc.SampleCollection):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        group_slice=None,
         group_slices=None,
         groups_only=False,
         detach_groups=False,
@@ -1217,6 +1242,7 @@ class DatasetView(foc.SampleCollection):
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
+            group_slice=group_slice,
             group_slices=group_slices,
             groups_only=groups_only,
             detach_groups=detach_groups,
@@ -1291,6 +1317,9 @@ class DatasetView(foc.SampleCollection):
 
     def _set_media_type(self, media_type):
         self.__media_type = media_type
+
+        if media_type != fom.GROUP:
+            self.__group_slice = None
 
     def _get_filtered_schema(self, schema, frames=False):
         if schema is None:
