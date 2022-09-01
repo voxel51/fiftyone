@@ -5746,25 +5746,14 @@ def _do_load_dataset(name, virtual=False):
 
     sample_collection_name = dataset_doc.sample_collection_name
     sample_doc_cls = _create_sample_document_cls(
-        sample_collection_name, dataset_doc.sample_fields
+        sample_collection_name, field_docs=dataset_doc.sample_fields
     )
 
-    default_sample_fields = fos.get_default_sample_fields(include_private=True)
     for sample_field in dataset_doc.sample_fields:
-        if sample_field.name in default_sample_fields:
-            continue
+        if sample_field.name not in sample_doc_cls._fields:
+            sample_doc_cls._declare_field(sample_field)
 
-        sample_doc_cls._declare_field(sample_field)
-
-    dataset_doc.sample_fields = [
-        SampleFieldDocument.from_field(f)
-        for f in sample_doc_cls._fields.values()
-    ]
     frame_collection_name = dataset_doc.frame_collection_name
-
-    if not virtual:
-        dataset_doc.last_loaded_at = datetime.utcnow()
-        dataset_doc.save()
 
     if sample_collection_name.startswith("clips."):
         # Clips datasets directly inherit frames from source dataset
@@ -5774,31 +5763,19 @@ def _do_load_dataset(name, virtual=False):
 
     if _src_dataset is not None:
         frame_doc_cls = _src_dataset._frame_doc_cls
-        dataset_doc.frame_fields = _src_dataset._doc.frame_fields
     else:
         frame_doc_cls = _create_frame_document_cls(
-            frame_collection_name, dataset_doc.frame_fields
+            frame_collection_name, field_docs=dataset_doc.frame_fields
         )
 
         if _contains_videos(dataset_doc):
-            default_frame_fields = fofr.get_default_frame_fields(
-                include_private=True
-            )
             for frame_field in dataset_doc.frame_fields:
-                if frame_field.name in default_frame_fields:
-                    continue
+                if frame_field.name not in frame_doc_cls._fields:
+                    frame_doc_cls._declare_field(frame_field)
 
-                frame_doc_cls._declare_field(frame_field)
-
-            dataset_doc.frame_fields = [
-                SampleFieldDocument.from_field(f)
-                for f in frame_doc_cls._fields.values()
-            ]
-
-    if dataset_doc.app_config is None:
-        dataset_doc.app_config = DatasetAppConfig()
-
-    dataset_doc.save()
+    if not virtual:
+        dataset_doc.last_loaded_at = datetime.utcnow()
+        dataset_doc.save()
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
