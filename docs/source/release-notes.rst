@@ -556,9 +556,8 @@ Core
   cases)
 - Added support for indexing into datasets using boolean arrays or view
   expressions via new `dataset[bool_array]` and `dataset[bool_expr]` syntaxes
-- Added support for registering custom
-  :class:`EmbeddedDocument <fiftyone.core.odm.document.EmbeddedDocument>`
-  classes that can be used to populate fields and embedded fields of datasets
+- Added support for registering custom |EmbeddedDocument| classes that can be
+  used to populate fields and embedded fields of datasets
 - Added support for importing and exporting `confidence` in YOLO formats
 - Added support for directly passing a `filename -> filepath` mapping dict to
   the `data_path` parameter to
