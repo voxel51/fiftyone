@@ -32,7 +32,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
-from .document import DynamicDocument
+from .document import Document
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
@@ -54,17 +54,18 @@ _db_service = None
 # wrong version or type of client.
 #
 # This is currently guaranteed because:
-#   - `DatabaseConfigDocument` is a dynamic document, so any future fields that
-#     are added will not cause an error
+#   - `DatabaseConfigDocument` is declared as non-strict, so any past or future
+#     fields that are not currently defined will not cause an error
 #   - All declared fields are optional and we have promised ourselves that
 #     their type and meaning will never change
 #
 
 
-class DatabaseConfigDocument(DynamicDocument):
+class DatabaseConfigDocument(Document):
     """Backing document for the database config."""
 
-    meta = {"collection": "config"}
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"collection": "config", "strict": False}
 
     version = fof.StringField()
     type = fof.StringField()
@@ -430,8 +431,7 @@ def drop_orphan_collections(dry_run=False):
     _logger = _get_logger(dry_run=dry_run)
 
     colls_in_use = set()
-    for name in list_datasets():
-        dataset_dict = conn.datasets.find_one({"name": name})
+    for dataset_dict in conn.datasets.find({}):
         sample_coll_name = dataset_dict.get("sample_collection_name", None)
         if sample_coll_name:
             colls_in_use.add(sample_coll_name)
@@ -534,19 +534,39 @@ def export_document(doc, json_path):
     etau.write_file(json_util.dumps(doc), json_path)
 
 
-def export_collection(docs, json_path, key="documents", num_docs=None):
+def export_collection(
+    docs,
+    json_dir_or_path,
+    key="documents",
+    patt="{idx:06d}-{id}.json",
+    num_docs=None,
+):
     """Exports the collection to disk in JSON format.
 
     Args:
-        docs: an iteraable containing the documents to export
-        json_path: the path to write the JSON file
+        docs: an iterable containing the documents to export
+        json_dir_or_path: the path to write a single JSON file containing the
+            entire collection, or a directory in which to write per-document
+            JSON files
         key ("documents"): the field name under which to store the documents
+            when ``json_path`` is a single JSON file
+        patt ("{idx:06d}-{id}.json"): a filename pattern to use when
+            ``json_path`` is a directory. The pattern may contain ``idx`` to
+            refer to the index of the document in ``docs`` or ``id`` to refer
+            to the document's ID
         num_docs (None): the total number of documents. If omitted, this must
             be computable via ``len(docs)``
     """
     if num_docs is None:
         num_docs = len(docs)
 
+    if json_dir_or_path.endswith(".json"):
+        _export_collection_single(docs, json_dir_or_path, key, num_docs)
+    else:
+        _export_collection_multi(docs, json_dir_or_path, patt, num_docs)
+
+
+def _export_collection_single(docs, json_path, key, num_docs):
     etau.ensure_basedir(json_path)
 
     with open(json_path, "w") as f:
@@ -558,6 +578,16 @@ def export_collection(docs, json_path, key="documents", num_docs=None):
                     f.write(",")
 
         f.write("]}")
+
+
+def _export_collection_multi(docs, json_dir, patt, num_docs):
+    etau.ensure_dir(json_dir)
+
+    json_patt = os.path.join(json_dir, patt)
+    with fou.ProgressBar(total=num_docs, iters_str="docs") as pb:
+        for idx, doc in pb(enumerate(docs, 1)):
+            json_path = json_patt.format(idx=idx, id=str(doc["_id"]))
+            export_document(doc, json_path)
 
 
 def import_document(json_path):
@@ -573,36 +603,89 @@ def import_document(json_path):
         return json_util.loads(f.read())
 
 
-def import_collection(json_path):
+def import_collection(json_dir_or_path, key="documents"):
     """Imports the collection from JSON on disk.
 
     Args:
-        json_path: the path to the collection on disk
+        json_dir_or_path: the path to a JSON file on disk, or a directory
+            containing per-document JSON files
+        key ("documents"): the field name under which the documents are stored
+            when ``json_path`` is a single JSON file
 
     Returns:
-        a BSON dict
+        a tuple of
+
+        -   an iterable of BSON documents
+        -   the number of documents
     """
+    if json_dir_or_path.endswith(".json"):
+        return _import_collection_single(json_dir_or_path, key)
+
+    return _import_collection_multi(json_dir_or_path)
+
+
+def _import_collection_single(json_path, key):
     with open(json_path, "r") as f:
-        return json_util.loads(f.read())
+        docs = json_util.loads(f.read()).get(key, [])
+
+    num_docs = len(docs)
+
+    return docs, num_docs
 
 
-def insert_documents(docs, coll, ordered=False):
-    """Inserts a list of documents into a collection.
+def _import_collection_multi(json_dir):
+    json_paths = [
+        p
+        for p in etau.list_files(json_dir, abs_paths=True)
+        if p.endswith(".json")
+    ]
+    docs = map(import_document, json_paths)
+
+    return docs, len(json_paths)
+
+
+def insert_documents(docs, coll, ordered=False, progress=False, num_docs=None):
+    """Inserts documents into a collection.
 
     The ``_id`` field of the input documents will be populated if it is not
     already set.
 
     Args:
-        docs: the list of BSON document dicts to insert
-        coll: a pymongo collection instance
+        docs: an iterable of BSON document dicts
+        coll: a pymongo collection
         ordered (False): whether the documents must be inserted in order
+        progress (False): whether to render a progress bar tracking the
+            insertion
+        num_docs (None): the total number of documents. Only used when
+            ``progress=True``. If omitted, this will be computed via
+            ``len(docs)``, if possible
+
+    Returns:
+        a list of IDs of the inserted documents
     """
+    ids = []
+
     try:
-        for batch in fou.iter_batches(docs, 100000):  # mongodb limit
-            coll.insert_many(list(batch), ordered=ordered)
+        batcher = fou.DynamicBatcher(
+            docs,
+            target_latency=0.2,
+            init_batch_size=1,
+            max_batch_beta=2.0,
+            max_batch_size=100000,  # mongodb limit
+            progress=progress,
+            total=num_docs,
+        )
+
+        with batcher:
+            for batch in batcher:
+                batch = list(batch)
+                coll.insert_many(batch, ordered=ordered)
+                ids.extend(b["_id"] for b in batch)
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe
+
+    return ids
 
 
 def bulk_write(ops, coll, ordered=False):
@@ -610,7 +693,7 @@ def bulk_write(ops, coll, ordered=False):
 
     Args:
         ops: a list of pymongo operations
-        coll: a pymongo collection instance
+        coll: a pymongo collection
         ordered (False): whether the operations must be performed in order
     """
     try:

@@ -12,10 +12,10 @@ import eta.core.video as etav
 VIDEO = "video"
 IMAGE = "image"
 POINT_CLOUD = "point-cloud"
-GROUP = "group"
-MEDIA_TYPES = {IMAGE, VIDEO, POINT_CLOUD, GROUP}
+MEDIA_TYPES = {IMAGE, VIDEO, POINT_CLOUD}
 
 # Special media types
+GROUP = "group"
 MIXED = "mixed"
 
 
@@ -43,7 +43,7 @@ class MediaTypeError(TypeError):
     pass
 
 
-class SelectGroupSliceError(ValueError):
+class SelectGroupSlicesError(ValueError):
     """Exception raised when a grouped collection is passed to a method that
     expects a primitive media type to be selected.
     """
@@ -54,7 +54,7 @@ class SelectGroupSliceError(ValueError):
 
         message = (
             "This method does not directly support grouped collections. "
-            "You must use `select_group_slice()` to select %s slice(s) to "
+            "You must use `select_group_slices()` to select %s slice(s) to "
             "process"
         ) % supported_media_types
 

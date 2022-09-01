@@ -25,7 +25,6 @@ import fiftyone.core.context as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
 import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
 import fiftyone.core.video as fov
@@ -837,7 +836,7 @@ def lines(
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
     if etau.is_str(y) or isinstance(y, foe.ViewExpression):
-        if samples is not None and samples.media_type == fom.VIDEO:
+        if samples is not None and samples._contains_videos():
             is_frames = foe.is_frames_expr(y)
         else:
             is_frames = False
@@ -1881,7 +1880,7 @@ def _check_plotly_jupyter_environment():
     # JupyterLab is different and I don't know how to distinguish Jupyter
     # notebooks from JupyterLab right now...
     #
-    fou.ensure_package("ipywidgets>=7.5")
+    fou.ensure_package("ipywidgets>=7.5,<8")
 
 
 class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):

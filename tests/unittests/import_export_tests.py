@@ -1943,6 +1943,97 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         info2 = dataset2.get_evaluation_info("test")
         self.assertEqual(info.key, info2.key)
 
+        # Per sample/frame directories
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            use_dirs=True,
+        )
+
+        dataset3 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertEqual(len(dataset), len(dataset3))
+        self.assertListEqual(
+            [os.path.basename(f) for f in dataset.values("filepath")],
+            [os.path.basename(f) for f in dataset3.values("filepath")],
+        )
+        self.assertListEqual(
+            dataset.values("weather.label"), dataset3.values("weather.label")
+        )
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset3.count("predictions.detections"),
+        )
+
+    @skipwindows
+    @drop_datasets
+    def test_legacy_fiftyone_dataset(self):
+        dataset = self._make_dataset()
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertListEqual(
+            [os.path.basename(f) for f in dataset.values("filepath")],
+            [os.path.basename(f) for f in dataset2.values("filepath")],
+        )
+        self.assertListEqual(
+            dataset.values("weather.label"), dataset2.values("weather.label")
+        )
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
+        )
+
+        # Test import/export of runs
+
+        dataset.clone_sample_field("predictions", "ground_truth")
+
+        view = dataset.limit(2)
+        view.evaluate_detections(
+            "predictions", gt_field="ground_truth", eval_key="test"
+        )
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertTrue("test" in dataset.list_evaluations())
+        self.assertTrue("test" in dataset2.list_evaluations())
+
+        view2 = dataset2.load_evaluation_view("test")
+        self.assertEqual(len(view), len(view2))
+
+        info = dataset.get_evaluation_info("test")
+        info2 = dataset2.get_evaluation_info("test")
+        self.assertEqual(info.key, info2.key)
+
 
 class OpenLABELImageDatasetTests(ImageDatasetTests):
     @drop_datasets

@@ -249,7 +249,7 @@ def compute_metadata(
         num_workers = multiprocessing.cpu_count()
 
     if sample_collection.media_type == fom.GROUP:
-        sample_collection = sample_collection.select_group_slice(
+        sample_collection = sample_collection.select_group_slices(
             _allow_mixed=True
         )
 

@@ -42,8 +42,8 @@ def convert_dataset(
 
     Args:
         input_dir (None): the input dataset directory
-        input_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
-            type of the dataset in ``input_dir``
+        input_type (None): the :class:`fiftyone.types.Dataset` type of the
+            dataset in ``input_dir``
         input_kwargs (None): optional kwargs dict to pass to the constructor of
             the :class:`fiftyone.utils.data.importers.DatasetImporter` for the
             ``input_type`` you specify
@@ -51,8 +51,8 @@ def convert_dataset(
             :class:`fiftyone.utils.data.importers.DatasetImporter` to use to
             import the input dataset
         output_dir (None): the directory to which to write the output dataset
-        output_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
-            type to write to ``output_dir``
+        output_type (None): the :class:`fiftyone.types.Dataset` type to write
+            to ``output_dir``
         output_kwargs (None): optional kwargs dict to pass to the constructor
             of the :class:`fiftyone.utils.data.exporters.DatasetExporter` for
             the ``output_type`` you specify

@@ -1,6 +1,9 @@
 export { default as useClearModal } from "./useClearModal";
 export { default as useCreateLooker } from "./useCreateLooker";
 export { default as useExpandSample } from "./useExpandSample";
+export { default as useHelpPanel } from "./useHelpPanel";
+export { default as useHoveredSample } from "./useHoveredSample";
+export { default as useJSONPanel } from "./useJSONPanel";
 export { default as useLookerStore } from "./useLookerStore";
 export * from "./useLookerStore";
 export { default as useReset } from "./useReset";
@@ -15,6 +18,7 @@ export { default as useSetExtendedSelection } from "./useSetExtendedSelection";
 export { default as useSetSelectedLabels } from "./useSetSelectedLabels";
 export { default as useSetView } from "./useSetView";
 export { default as useStateUpdate } from "./useStateUpdate";
+export { default as useTooltip } from "./useTooltip";
 export * from "./useOnSelectLabel";
 export * from "./useStateUpdate";
 export { default as useTo } from "./useTo";

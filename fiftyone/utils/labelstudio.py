@@ -20,8 +20,9 @@ from bson import ObjectId
 import numpy as np
 
 import fiftyone as fo
-import fiftyone.core.utils as fou
 import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
+import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 
 ls = fou.lazy_import(
@@ -77,6 +78,10 @@ class LabelStudioBackend(foua.AnnotationBackend):
     """Class for interacting with the Label Studio annotation backend."""
 
     @property
+    def supported_media_types(self):
+        return [fom.IMAGE]
+
+    @property
     def supported_label_types(self):
         return [
             "classification",
@@ -95,6 +100,10 @@ class LabelStudioBackend(foua.AnnotationBackend):
         ]
 
     @property
+    def supported_scalar_types(self):
+        return []
+
+    @property
     def supported_attr_types(self):
         return []
 
@@ -103,20 +112,12 @@ class LabelStudioBackend(foua.AnnotationBackend):
         return False
 
     @property
-    def supports_video(self):
-        return False
-
-    @property
     def supports_video_sample_fields(self):
         return False
 
     @property
-    def supports_attributes(self):
-        return False
-
-    @property
-    def supported_scalar_types(self):
-        return []
+    def requires_label_schema(self):
+        return True
 
     def _connect_to_api(self):
         return LabelStudioAnnotationAPI(
@@ -226,14 +227,19 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
     def _prepare_tasks(self, samples, label_schema, media_field):
         """Prepares Label Studio tasks for the given data."""
         samples.compute_metadata()
+
+        ids, mime_types, filepaths = samples.values(
+            ["id", "metadata.mime_type", media_field]
+        )
+
         tasks = [
             {
-                "source_id": one.id,
-                one.media_type: one[media_field],
+                "source_id": _id,
                 "media_type": "image",
-                "mime_type": one.metadata.mime_type,
+                "mime_type": _mime_type,
+                "image": _filepath,
             }
-            for one in samples.select_fields(media_field)
+            for _id, _mime_type, _filepath in zip(ids, mime_types, filepaths)
         ]
 
         predictions, id_map = {}, {}
@@ -244,7 +250,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                         smp[label_field],
                         full_result={
                             "from_name": "label",
-                            "to_name": smp.media_type,
+                            "to_name": "image",
                             "original_width": smp.metadata["width"],
                             "original_height": smp.metadata["height"],
                             "image_rotation": getattr(smp, "rotation", 0),
@@ -436,7 +442,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             project: a ``label_studio_sdk.Project``
             tasks: a list of task dicts
             sample_labels: a list or list of lists of
-                :class:`fiftyone.core.labels.Label`instances
+                :class:`fiftyone.core.labels.Label` instances
             label_type: the label type string
         """
         for task, labels in zip(tasks, sample_labels):

@@ -489,15 +489,22 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
     def save(self):
         """Saves the sample to the database."""
+        super().save()
+
+    def _save(self, deferred=False):
         if not self._in_db:
             raise ValueError(
                 "Cannot save a sample that has not been added to a dataset"
             )
 
         if self.media_type == fomm.VIDEO:
-            self.frames.save()
+            frame_ops = self.frames._save(deferred=deferred)
+        else:
+            frame_ops = []
 
-        super().save()
+        sample_op = super()._save(deferred=deferred)
+
+        return sample_op, frame_ops
 
     @classmethod
     def from_frame(cls, frame, filepath=None):
@@ -674,10 +681,17 @@ class SampleView(_SampleMixin, DocumentView):
             This will permanently delete any omitted or filtered contents from
             the source dataset.
         """
-        if self.media_type == fomm.VIDEO:
-            self.frames.save()
-
         super().save()
+
+    def _save(self, deferred=False):
+        if self.media_type == fomm.VIDEO:
+            frame_ops = self.frames._save(deferred=deferred)
+        else:
+            frame_ops = []
+
+        sample_op = super()._save(deferred=deferred)
+
+        return sample_op, frame_ops
 
 
 def _apply_confidence_thresh(label, confidence_thresh):

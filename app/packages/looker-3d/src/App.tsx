@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import logo from "./logo.svg";
 
-import { PointCloud } from "./PointCloud";
+import { Looker3d } from "./Looker3d";
 
 function App() {
   const [count, setCount] = useState(0);
 
-  return <PointCloud filePrefix="/" />;
+  return <Looker3d filePrefix="/" />;
 }
 
 export default App;

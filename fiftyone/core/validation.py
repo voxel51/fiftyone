@@ -49,12 +49,14 @@ def validate_video_sample(sample):
         )
 
 
-def validate_collection(sample_collection):
+def validate_collection(sample_collection, media_type=None):
     """Validates that the provided samples are a
     :class:`fiftyone.core.collections.SampleCollection`.
 
     Args:
         sample_collection: a sample collection
+        media_type (None): an optional media type or iterable of media types
+            that the collection must have
 
     Raises:
         ValueError: if ``samples`` is not a
@@ -65,6 +67,26 @@ def validate_collection(sample_collection):
             "Expected samples to be a %s; found %s"
             % (foc.SampleCollection, sample_collection.__class__)
         )
+
+    if etau.is_container(media_type):
+        media_types = set(media_type)
+        if sample_collection.media_type not in media_types:
+            if sample_collection.media_type == fom.GROUP:
+                raise fom.SelectGroupSlicesError(media_types)
+
+            raise ValueError(
+                "Expected a collection with media type in %s; found '%s'"
+                % (media_types, sample_collection.media_type)
+            )
+    elif media_type is not None:
+        if sample_collection.media_type != media_type:
+            if sample_collection.media_type == fom.GROUP:
+                raise fom.SelectGroupSlicesError(media_type)
+
+            raise ValueError(
+                "Expected a collection with media type '%s'; found '%s'"
+                % (media_type, sample_collection.media_type)
+            )
 
 
 def validate_image_collection(sample_collection):
@@ -81,7 +103,7 @@ def validate_image_collection(sample_collection):
     validate_collection(sample_collection)
 
     if sample_collection.media_type == fom.GROUP:
-        raise fom.SelectGroupSliceError(fom.IMAGE)
+        raise fom.SelectGroupSlicesError(fom.IMAGE)
 
     if sample_collection.media_type != fom.IMAGE:
         raise ValueError(
@@ -89,6 +111,8 @@ def validate_image_collection(sample_collection):
             % (fom.IMAGE, sample_collection.media_type)
         )
 
+    # Ensure that the frames view has image filepaths, since the caller may
+    # want to directly access the images
     if sample_collection._dataset._is_frames:
         try:
             filepath = sample_collection[:1].values("filepath")[0]
@@ -112,7 +136,7 @@ def validate_video_collection(sample_collection):
     validate_collection(sample_collection)
 
     if sample_collection.media_type == fom.GROUP:
-        raise fom.SelectGroupSliceError(fom.VIDEO)
+        raise fom.SelectGroupSlicesError(fom.VIDEO)
 
     if sample_collection.media_type != fom.VIDEO:
         raise ValueError(
@@ -148,7 +172,7 @@ def validate_collection_label_fields(
     if not etau.is_container(allowed_label_types):
         allowed_label_types = [allowed_label_types]
 
-    if sample_collection._contains_videos():
+    if sample_collection._has_frame_fields():
         sample_fields, frame_fields = fou.split_frame_fields(field_names)
     else:
         sample_fields = field_names

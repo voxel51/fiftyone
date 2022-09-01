@@ -9,9 +9,11 @@ from collections import defaultdict
 import fnmatch
 import itertools
 import logging
+import numbers
 import os
 import random
 import string
+import timeit
 import warnings
 
 from bson import ObjectId
@@ -67,6 +69,99 @@ view_stage = _make_registrar()
 
 # Keeps track of all `Aggregation` methods
 aggregation = _make_registrar()
+
+
+class SaveContext(object):
+    """Context that saves samples from a collection according to a configurable
+    batching strategy.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        batch_size (None): the batching strategy to use. Can either be an
+            integer specifying the number of samples to save in a batch, or a
+            float number of seconds between batched saves
+    """
+
+    def __init__(self, sample_collection, batch_size=None):
+        if batch_size is None:
+            batch_size = 0.2
+
+        self.sample_collection = sample_collection
+        self.batch_size = batch_size
+
+        self._dataset = sample_collection._dataset
+        self._sample_coll = sample_collection._dataset._sample_collection
+        self._frame_coll = sample_collection._dataset._frame_collection
+
+        self._sample_ops = []
+        self._frame_ops = []
+        self._reload_parents = []
+
+        self._curr_batch_size = None
+        self._dynamic_batches = not isinstance(batch_size, numbers.Integral)
+        self._last_time = None
+
+    def __enter__(self):
+        if self._dynamic_batches:
+            self._last_time = timeit.default_timer()
+
+        self._curr_batch_size = 0
+        return self
+
+    def __exit__(self, *args):
+        self._save_batch()
+
+    def save(self, sample):
+        """Registers the sample for saving in the next batch.
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView`
+        """
+        if sample._in_db and sample._dataset is not self._dataset:
+            raise ValueError(
+                "Dataset context '%s' cannot save sample from dataset '%s'"
+                % (self._dataset.name, sample._dataset.name)
+            )
+
+        sample_op, frame_ops = sample._save(deferred=True)
+        updated = sample_op is not None or frame_ops
+
+        self._curr_batch_size += 1
+
+        if sample_op is not None:
+            self._sample_ops.append(sample_op)
+
+        if frame_ops:
+            self._frame_ops.extend(frame_ops)
+
+        if updated and isinstance(sample, fosa.SampleView):
+            self._reload_parents.append(sample)
+
+        if self._dynamic_batches:
+            if timeit.default_timer() - self._last_time >= self.batch_size:
+                self._save_batch()
+                self._last_time = timeit.default_timer()
+        elif self._curr_batch_size >= self.batch_size:
+            self._save_batch()
+
+    def _save_batch(self):
+        self._curr_batch_size = 0
+
+        if self._sample_ops:
+            foo.bulk_write(self._sample_ops, self._sample_coll, ordered=False)
+            self._sample_ops.clear()
+
+        if self._frame_ops:
+            foo.bulk_write(self._frame_ops, self._frame_coll, ordered=False)
+            self._frame_ops.clear()
+
+        if self._reload_parents:
+            for sample in self._reload_parents:
+                sample._reload_parents()
+
+            self._reload_parents.clear()
 
 
 class SampleCollection(object):
@@ -426,22 +521,32 @@ class SampleCollection(object):
 
         stats = {}
 
-        samples_bytes = self._get_samples_bytes()
-        stats["samples_count"] = self.count()
+        if self.media_type == fom.GROUP:
+            samples = self.select_group_slices(_allow_mixed=True)
+        else:
+            samples = self
+
+        samples_bytes = samples._get_samples_bytes()
+        stats["samples_count"] = samples.count()
         stats["samples_bytes"] = samples_bytes
         stats["samples_size"] = etau.to_human_bytes_str(samples_bytes)
         total_bytes = samples_bytes
 
-        if self.media_type == fom.VIDEO:
-            frames_bytes = self._get_frames_bytes()
-            stats["frames_count"] = self.count("frames")
+        if self._contains_videos(any_slice=True):
+            if self.media_type == fom.GROUP:
+                videos = self.select_group_slices(media_type=fom.VIDEO)
+            else:
+                videos = self
+
+            frames_bytes = videos._get_frames_bytes()
+            stats["frames_count"] = videos.count("frames")
             stats["frames_bytes"] = frames_bytes
             stats["frames_size"] = etau.to_human_bytes_str(frames_bytes)
             total_bytes += frames_bytes
 
         if include_media:
-            self.compute_metadata()
-            media_bytes = self.sum("metadata.size_bytes")
+            samples.compute_metadata()
+            media_bytes = samples.sum("metadata.size_bytes")
             stats["media_bytes"] = media_bytes
             stats["media_size"] = etau.to_human_bytes_str(media_bytes)
             total_bytes += media_bytes
@@ -471,7 +576,7 @@ class SampleCollection(object):
 
     def _get_frames_bytes(self):
         """Computes the total size of the frame documents in the collection."""
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return None
 
         pipeline = [
@@ -505,7 +610,7 @@ class SampleCollection(object):
         """Returns a dictionary mapping frame IDs to document sizes (in bytes)
         for each frame in the video collection.
         """
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return None
 
         pipeline = [
@@ -521,7 +626,7 @@ class SampleCollection(object):
         """Returns a dictionary mapping sample IDs to total frame document
         sizes (in bytes) for each sample in the video collection.
         """
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return None
 
         pipeline = [
@@ -657,12 +762,17 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement view()")
 
-    def iter_samples(self, progress=False):
+    def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the collection.
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` or
@@ -670,12 +780,17 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    def iter_groups(self):
+    def iter_groups(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the groups in the collection.
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
 
         Returns:
             an iterator that emits dicts mapping group slice names to
@@ -698,6 +813,50 @@ class SampleCollection(object):
             KeyError: if the group ID is not found
         """
         raise NotImplementedError("Subclass must implement get_group()")
+
+    def save_context(self, batch_size=None):
+        """Returns a context that can be used to save samples from this
+        collection according to a configurable batching strategy.
+
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for sample in dataset.iter_samples(progress=True):
+                sample.ground_truth.label = make_label()
+                sample.save()
+
+            # Save in batches of 10
+            with dataset.save_context(batch_size=10) as context:
+                for sample in dataset.iter_samples(progress=True):
+                    sample.ground_truth.label = make_label()
+                    context.save(sample)
+
+            # Save every 0.5 seconds
+            with dataset.save_context(batch_size=0.5) as context:
+                for sample in dataset.iter_samples(progress=True):
+                    sample.ground_truth.label = make_label()
+                    context.save(sample)
+
+        Args:
+            batch_size (None): the batching strategy to use. Can either be an
+                integer specifying the number of samples to save in a batch, or
+                a float number of seconds between batched saves
+
+        Returns:
+            a :class:`SaveContext`
+        """
+        return SaveContext(self, batch_size=batch_size)
 
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
@@ -748,7 +907,7 @@ class SampleCollection(object):
             resolved_keys.extend(keys[:2])
             keys = keys[2:]
 
-        if self._contains_videos() and keys[0] == "frames":
+        if self._has_frame_fields() and keys[0] == "frames":
             schema = self.get_frame_field_schema(
                 include_private=include_private
             )
@@ -878,7 +1037,7 @@ class SampleCollection(object):
         Returns:
             True/False
         """
-        if not self._contains_videos():
+        if not self._has_frame_fields():
             return False
 
         return field_name in self.get_frame_field_schema()
@@ -902,7 +1061,7 @@ class SampleCollection(object):
             existing_fields = set(
                 self.get_field_schema(include_private=include_private).keys()
             )
-            if self._contains_videos():
+            if self._has_frame_fields():
                 existing_fields.add("frames")
 
             for field in fields:
@@ -4728,7 +4887,9 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def select_group_slice(self, slice=None, _allow_mixed=False):
+    def select_group_slices(
+        self, slices=None, media_type=None, _allow_mixed=False
+    ):
         """Selects the samples in the group collection from the given slice(s).
 
         The returned view is a flattened non-grouped view containing only the
@@ -4745,7 +4906,7 @@ class SampleCollection(object):
             import fiftyone as fo
 
             dataset = fo.Dataset()
-            dataset.add_group_field("group", default="center")
+            dataset.add_group_field("group", default="ego")
 
             group1 = fo.Group()
             group2 = fo.Group()
@@ -4753,59 +4914,65 @@ class SampleCollection(object):
             dataset.add_samples(
                 [
                     fo.Sample(
-                        filepath="/path/to/image1-left.jpg",
+                        filepath="/path/to/left-image1.jpg",
                         group=group1.element("left"),
                     ),
                     fo.Sample(
-                        filepath="/path/to/image1-center.jpg",
-                        group=group1.element("center"),
+                        filepath="/path/to/video1.mp4",
+                        group=group1.element("ego"),
                     ),
                     fo.Sample(
-                        filepath="/path/to/image1-right.jpg",
+                        filepath="/path/to/right-image1.jpg",
                         group=group1.element("right"),
                     ),
                     fo.Sample(
-                        filepath="/path/to/image2-left.jpg",
+                        filepath="/path/to/left-image2.jpg",
                         group=group2.element("left"),
                     ),
                     fo.Sample(
-                        filepath="/path/to/image2-center.jpg",
-                        group=group2.element("center"),
+                        filepath="/path/to/video2.mp4",
+                        group=group2.element("ego"),
                     ),
                     fo.Sample(
-                        filepath="/path/to/image2-right.jpg",
+                        filepath="/path/to/right-image2.jpg",
                         group=group2.element("right"),
                     ),
                 ]
             )
 
             #
-            # Retrieve the samples from the "center" group slice
+            # Retrieve the samples from the "ego" group slice
             #
 
-            view = dataset.select_group_slice("center")
+            view = dataset.select_group_slices("ego")
 
             #
             # Retrieve the samples from the "left" or "right" group slices
             #
 
-            view = dataset.select_group_slice(["left", "right"])
+            view = dataset.select_group_slices(["left", "right"])
 
             #
-            # Retrieve a flattened list of all samples
+            # Retrieve all image samples
             #
 
-            view = dataset.select_group_slice()
+            view = dataset.select_group_slices(media_type="image")
 
         Args:
-            slice (None): a group slice or list of group slices to select. By
-                default, a flattened list of all samples is returned
+            slices (None): a group slice or iterable of group slices to select.
+                If neither argument is provided, a flattened list of all
+                samples is returned
+            media_type (None): a media type whose slice(s) to select
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.SelectGroupSlice(slice=slice, _allow_mixed=_allow_mixed)
+            fos.SelectGroupSlices(
+                slices=slices,
+                media_type=media_type,
+                _allow_mixed=_allow_mixed,
+            )
         )
 
     @view_stage
@@ -6580,7 +6747,7 @@ class SampleCollection(object):
             )
 
         if self.media_type == fom.GROUP:
-            raise fom.SelectGroupSliceError((fom.IMAGE, fom.VIDEO))
+            raise fom.SelectGroupSlicesError((fom.IMAGE, fom.VIDEO))
 
         raise fom.MediaTypeError(
             "Unsupported media type '%s'" % self.media_type
@@ -6665,9 +6832,9 @@ class SampleCollection(object):
                 If an archive path is specified, the export is performed in a
                 directory of same name (minus extension) and then automatically
                 archived and the directory then deleted
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type to write. If
-                not specified, the default type for ``label_field`` is used
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type to
+                write. If not specified, the default type for ``label_field``
+                is used
             data_path (None): an optional parameter that enables explicit
                 control over the location of the exported media for certain
                 export formats. Can be any of the following:
@@ -7128,7 +7295,7 @@ class SampleCollection(object):
 
             index_info[key] = info
 
-        if self._contains_videos():
+        if self._has_frame_fields():
             # Frame-level indexes
             fields_map = self._get_db_fields_map(frames=True, reverse=True)
             frame_info = self._dataset._frame_collection.index_information()
@@ -7279,7 +7446,7 @@ class SampleCollection(object):
 
     def _get_default_indexes(self, frames=False):
         if frames:
-            if self._contains_videos():
+            if self._has_frame_fields():
                 return ["id", "_sample_id_1_frame_number_1"]
 
             return []
@@ -7328,7 +7495,7 @@ class SampleCollection(object):
         if rel_dir is not None:
             rel_dir = fou.normalize_path(rel_dir) + os.path.sep
 
-        contains_videos = self._contains_videos()
+        contains_videos = self._contains_videos(any_slice=True)
         write_frame_labels = (
             contains_videos and include_frames and frame_labels_dir is not None
         )
@@ -7370,7 +7537,7 @@ class SampleCollection(object):
             d["default_skeleton"] = self._serialize_default_skeleton()
 
         if self.media_type == fom.GROUP:
-            view = self.select_group_slice(_allow_mixed=True)
+            view = self.select_group_slices(_allow_mixed=True)
         else:
             view = self
 
@@ -7880,10 +8047,10 @@ class SampleCollection(object):
         if etau.is_str(fields):
             fields = [fields]
 
-        if not self._contains_videos():
-            return fields, []
+        if self._has_frame_fields():
+            return fou.split_frame_fields(fields)
 
-        return fou.split_frame_fields(fields)
+        return fields, []
 
     def _parse_field_name(
         self,
@@ -7913,7 +8080,7 @@ class SampleCollection(object):
         return field_name, is_frame_field
 
     def _is_frame_field(self, field_name):
-        return self._contains_videos() and (
+        return self._has_frame_fields() and (
             field_name.startswith(self._FRAMES_PREFIX)
             or field_name == self._FRAMES_PREFIX[:-1]
         )
@@ -7946,31 +8113,37 @@ class SampleCollection(object):
 
         return list(group_slices)
 
-    def _select_group_slices(self, media_type):
-        slice_names = [
-            slice_name
-            for slice_name, slice_media_type in self.group_media_types.items()
-            if slice_media_type == media_type
-        ]
-        return self.select_group_slice(slice_names)
+    def _get_group_media_types(self):
+        if self.media_type != fom.GROUP:
+            return None
 
-    def _contains_videos(self, only_active_slice=False):
+        return self._dataset._doc.group_media_types
+
+    def _contains_videos(self, any_slice=False):
         if self.media_type == fom.VIDEO:
             return True
 
         if self.media_type == fom.GROUP:
-            if only_active_slice:
-                return (
-                    self.group_media_types.get(self.group_slice, None)
-                    == fom.VIDEO
+            if any_slice:
+                return any(
+                    slice_media_type == fom.VIDEO
+                    for slice_media_type in self.group_media_types.values()
                 )
 
+            return (
+                self.group_media_types.get(self.group_slice, None) == fom.VIDEO
+            )
+
+        if self.media_type == fom.MIXED:
             return any(
                 slice_media_type == fom.VIDEO
-                for slice_media_type in self.group_media_types.values()
+                for slice_media_type in self._get_group_media_types().values()
             )
 
         return False
+
+    def _has_frame_fields(self):
+        return self._contains_videos(any_slice=True)
 
     def _handle_id_fields(self, field_name):
         return _handle_id_fields(self, field_name)
@@ -8058,7 +8231,7 @@ class SampleCollection(object):
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
 
-        if self._contains_videos():
+        if self._has_frame_fields():
             fields.extend(self._get_frame_label_fields())
 
         return fields
@@ -8071,7 +8244,7 @@ class SampleCollection(object):
         )
 
     def _get_frame_label_fields(self):
-        if not self._contains_videos():
+        if not self._has_frame_fields():
             return None
 
         return [
@@ -8084,7 +8257,7 @@ class SampleCollection(object):
     def _get_root_fields(self, fields):
         root_fields = set()
         for field in fields:
-            if self._contains_videos() and field.startswith(
+            if self._has_frame_fields() and field.startswith(
                 self._FRAMES_PREFIX
             ):
                 # Converts `frames.root[.x.y]` to `frames.root`

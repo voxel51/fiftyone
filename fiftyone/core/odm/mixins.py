@@ -78,7 +78,11 @@ def validate_fields_match(
         )
 
     if isinstance(field, fof.EmbeddedDocumentField):
-        if not issubclass(field.document_type, existing_field.document_type):
+        if not issubclass(
+            field.document_type, existing_field.document_type
+        ) and not issubclass(
+            existing_field.document_type, field.document_type
+        ):
             raise ValueError(
                 "Embedded document field '%s' type %s does not match existing "
                 "field type %s"
@@ -285,7 +289,9 @@ class DatasetMixin(object):
                             % field_name
                         )
 
-                    if dataset_doc.group_field is not None:
+                    # `group_field` could be None here if we're in the process
+                    # of merging one dataset's schema into another
+                    if dataset_doc.group_field not in (None, field_name):
                         raise ValueError(
                             "Cannot add group field '%s'. Datasets may only "
                             "have one group field" % field_name
@@ -441,6 +447,7 @@ class DatasetMixin(object):
         for field_name, new_field_name in zip(field_names, new_field_names):
             cls._rename_field_schema(field_name, new_field_name, dataset_doc)
 
+        dataset_doc.app_config._rename_paths(field_names, new_field_names)
         dataset_doc.save()
 
     @classmethod
@@ -459,6 +466,11 @@ class DatasetMixin(object):
         cls._rename_fields_collection(
             field_names, new_field_names, sample_collection
         )
+
+        if isinstance(sample_collection, fod.Dataset):
+            dataset_doc = cls._dataset_doc()
+            dataset_doc.app_config._rename_paths(field_names, new_field_names)
+            dataset_doc.save()
 
     @classmethod
     def _clone_fields(
@@ -615,6 +627,7 @@ class DatasetMixin(object):
         for field_name in del_fields:
             cls._delete_field_schema(field_name, dataset_doc)
 
+        dataset_doc.app_config._delete_paths(field_names)
         dataset_doc.save()
 
     @classmethod
@@ -625,6 +638,10 @@ class DatasetMixin(object):
             field_names: an iterable of "embedded.field.names"
         """
         cls._delete_fields_simple(field_names)
+
+        dataset_doc = cls._dataset_doc()
+        dataset_doc.app_config._delete_paths(field_names)
+        dataset_doc.save()
 
     @classmethod
     def _rename_fields_simple(cls, field_names, new_field_names):
@@ -1201,6 +1218,9 @@ class NoDatasetMixin(object):
         return cls(**kwargs)
 
     def save(self):
+        pass
+
+    def _save(self, deferred=False):
         pass
 
     def reload(self):

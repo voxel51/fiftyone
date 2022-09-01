@@ -115,8 +115,7 @@ def export_samples(
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         export_dir (None): the directory to which to export the samples in
             format ``dataset_type``
-        dataset_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
-            type to write
+        dataset_type (None): the :class:`fiftyone.types.Dataset` type to write
         data_path (None): an optional parameter that enables explicit control
             over the location of the exported media for certain export formats.
             Can be any of the following:
@@ -227,7 +226,10 @@ def export_samples(
         _write_batch_dataset(dataset_exporter, samples)
         return
 
-    if isinstance(dataset_exporter, GenericSampleDatasetExporter):
+    if isinstance(
+        dataset_exporter,
+        (GenericSampleDatasetExporter, GroupDatasetExporter),
+    ):
         sample_parser = None
     elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
         if found_patches:
@@ -385,6 +387,13 @@ def write_dataset(
             num_samples=num_samples,
             sample_collection=sample_collection,
         )
+    elif isinstance(dataset_exporter, GroupDatasetExporter):
+        _write_group_dataset(
+            dataset_exporter,
+            samples,
+            num_samples=num_samples,
+            sample_collection=sample_collection,
+        )
     elif isinstance(
         dataset_exporter,
         (UnlabeledImageDatasetExporter, LabeledImageDatasetExporter),
@@ -419,7 +428,7 @@ def build_dataset_exporter(
     """Builds the :class:`DatasetExporter` instance for the given parameters.
 
     Args:
-        dataset_type: the :class:`fiftyone.types.dataset_types.Dataset` type
+        dataset_type: the :class:`fiftyone.types.Dataset` type
         strip_none (True): whether to exclude None-valued items from ``kwargs``
         warn_unused (True): whether to issue warnings for any non-None unused
             parameters encountered
@@ -779,10 +788,37 @@ def _write_generic_sample_dataset(
                 isinstance(samples, foc.SampleCollection)
                 and samples.media_type == fomm.GROUP
             ):
-                samples = samples.select_group_slice(_allow_mixed=True)
+                samples = samples.select_group_slices(_allow_mixed=True)
 
             for sample in pb(samples):
                 dataset_exporter.export_sample(sample)
+
+
+def _write_group_dataset(
+    dataset_exporter,
+    samples,
+    num_samples=None,
+    sample_collection=None,
+):
+    if not isinstance(samples, foc.SampleCollection):
+        raise ValueError(
+            "%s can only export grouped collections; found %s"
+            % (type(dataset_exporter), type(samples))
+        )
+
+    if samples.media_type != fomm.GROUP:
+        raise ValueError(
+            "%s can only export grouped collections; found media type '%s'"
+            % (type(dataset_exporter), samples.media_type)
+        )
+
+    with fou.ProgressBar(total=num_samples) as pb:
+        with dataset_exporter:
+            if sample_collection is not None:
+                dataset_exporter.log_collection(sample_collection)
+
+            for group in pb(samples.iter_groups()):
+                dataset_exporter.export_group(group)
 
 
 def _write_image_dataset(
@@ -1277,6 +1313,33 @@ class GenericSampleDatasetExporter(DatasetExporter):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
+class GroupDatasetExporter(DatasetExporter):
+    """Interface for exporting grouped datasets.
+
+    See :ref:`this page <writing-a-custom-dataset-exporter>` for information
+    about implementing/using dataset exporters.
+
+    Args:
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
+    """
+
+    def export_sample(self, *args, **kwargs):
+        raise ValueError(
+            "Use export_group() to perform exports with %s instances"
+            % type(self)
+        )
+
+    def export_group(self, group):
+        """Exports the given group to the dataset.
+
+        Args:
+            group: a dict mapping group slice names to
+                :class:`fiftyone.core.sample.Sample` instances
+        """
+        raise NotImplementedError("subclass must implement export_group()")
+
+
 class UnlabeledImageDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of unlabeled image samples.
 
@@ -1487,9 +1550,9 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     .. warning::
 
-        The :class:`fiftyone.types.dataset_types.FiftyOneDataset` format was
-        upgraded in ``fiftyone==0.8`` and this exporter is now deprecated.
-        The new exporter is :class:`FiftyOneDatasetExporter`.
+        The :class:`fiftyone.types.FiftyOneDataset` format was upgraded in
+        ``fiftyone==0.8`` and this exporter is now deprecated. The new exporter
+        is :class:`FiftyOneDatasetExporter`.
 
     Args:
         export_dir: the directory to write the export
@@ -1560,7 +1623,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         schema = sample_collection._serialize_field_schema()
         self._metadata["sample_fields"] = schema
 
-        if sample_collection._contains_videos():
+        if sample_collection._contains_videos(any_slice=True):
             schema = sample_collection._serialize_frame_field_schema()
             self._metadata["frame_fields"] = schema
 
@@ -1685,9 +1748,23 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             lives in a single directory and you wish to serialize relative,
             rather than absolute, paths to the data within that directory.
             Only applicable when ``export_media`` is False
+        export_runs (True): whether to include annotation/brain/evaluation
+            runs in the export. Only applicable when exporting full datasets
+        use_dirs (False): whether to export metadata into directories of per
+            sample/frame files
+        ordered (True): whether to preserve the order of the exported
+            collections
     """
 
-    def __init__(self, export_dir, export_media=None, rel_dir=None):
+    def __init__(
+        self,
+        export_dir,
+        export_media=None,
+        rel_dir=None,
+        export_runs=True,
+        use_dirs=False,
+        ordered=True,
+    ):
         if export_media is None:
             export_media = True
 
@@ -1695,6 +1772,9 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         self.export_media = export_media
         self.rel_dir = rel_dir
+        self.export_runs = export_runs
+        self.use_dirs = use_dirs
+        self.ordered = ordered
 
         self._data_dir = None
         self._anno_dir = None
@@ -1711,8 +1791,13 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._brain_dir = os.path.join(self.export_dir, "brain")
         self._eval_dir = os.path.join(self.export_dir, "evaluations")
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
-        self._samples_path = os.path.join(self.export_dir, "samples.json")
-        self._frames_path = os.path.join(self.export_dir, "frames.json")
+
+        if self.use_dirs:
+            self._samples_path = os.path.join(self.export_dir, "samples")
+            self._frames_path = os.path.join(self.export_dir, "frames")
+        else:
+            self._samples_path = os.path.join(self.export_dir, "samples.json")
+            self._frames_path = os.path.join(self.export_dir, "frames.json")
 
         self._media_exporter = MediaExporter(
             self.export_media,
@@ -1725,7 +1810,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         etau.ensure_dir(self.export_dir)
 
         if sample_collection.media_type == fomm.GROUP:
-            _sample_collection = sample_collection.select_group_slice(
+            _sample_collection = sample_collection.select_group_slices(
                 _allow_mixed=True
             )
         else:
@@ -1764,20 +1849,31 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             sample["filepath"] = outpath
             return sample
 
-        samples = map(_prep_sample, _samples, _outpaths)
+        if self.use_dirs:
+            if self.ordered:
+                patt = "{idx:06d}-{id}.json"
+            else:
+                patt = "{id}.json"
+        else:
+            patt = None
+
         foo.export_collection(
-            samples, self._samples_path, key="samples", num_docs=num_samples
+            map(_prep_sample, _samples, _outpaths),
+            self._samples_path,
+            key="samples",
+            patt=patt,
+            num_docs=num_samples,
         )
 
-        if sample_collection._contains_videos():
+        if sample_collection._contains_videos(any_slice=True):
             logger.info("Exporting frames...")
 
             if sample_collection.media_type == fomm.GROUP and not isinstance(
                 sample_collection, fod.Dataset
             ):
                 # Export frames for all video samples
-                _video_collection = sample_collection._select_group_slices(
-                    fomm.VIDEO
+                _video_collection = sample_collection.select_group_slices(
+                    media_type=fomm.VIDEO
                 )
             else:
                 _video_collection = sample_collection
@@ -1786,18 +1882,24 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             num_frames = foo.count_documents(coll, pipeline)
             frames = foo.aggregate(coll, pipeline)
             foo.export_collection(
-                frames, self._frames_path, key="frames", num_docs=num_frames
+                frames,
+                self._frames_path,
+                key="frames",
+                patt=patt,
+                num_docs=num_frames,
             )
 
-        conn = foo.get_db_conn()
         dataset = sample_collection._dataset
-        dataset_dict = conn.datasets.find_one({"name": dataset.name})
+        dataset_dict = dataset._doc.to_dict()
 
         # Exporting runs only makes sense if the entire dataset is being
         # exported, otherwise the view for the run cannot be reconstructed
         # based on the information encoded in the run's document
 
-        export_runs = sample_collection == sample_collection._root_dataset
+        export_runs = (
+            self.export_runs
+            and sample_collection == sample_collection._root_dataset
+        )
 
         if not export_runs:
             dataset_dict["annotation_runs"] = {}

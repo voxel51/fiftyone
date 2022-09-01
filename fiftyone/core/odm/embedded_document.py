@@ -9,7 +9,7 @@ import mongoengine
 
 import fiftyone.core.utils as fou
 
-from .document import MongoEngineBaseDocument
+from .document import DynamicMixin, MongoEngineBaseDocument
 
 
 food = fou.lazy_import("fiftyone.core.odm.dataset")
@@ -36,6 +36,7 @@ class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
 
 
 class DynamicEmbeddedDocument(
+    DynamicMixin,
     BaseEmbeddedDocument,
     mongoengine.DynamicEmbeddedDocument,
 ):

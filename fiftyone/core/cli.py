@@ -2509,7 +2509,7 @@ class MigrateCommand(Command):
         # Print information about the current revisions of all datasets
         fiftyone migrate --info
 
-        # Migrate the database and all datasets to the current package version
+        # Migrate the database and all datasets to the current client version
         fiftyone migrate --all
 
         # Migrate to a specific revision
@@ -2608,7 +2608,12 @@ class MigrateCommand(Command):
 
 
 def _print_migration_table(db_ver, dataset_vers):
-    print("FiftyOne version: %s" % foc.VERSION)
+    print("Client version: %s" % foc.VERSION)
+
+    if foc.COMPATIBLE_VERSIONS:
+        print("Compatible versions: %s" % foc.COMPATIBLE_VERSIONS)
+        print("")
+
     print("Database version: %s" % db_ver)
 
     if dataset_vers:

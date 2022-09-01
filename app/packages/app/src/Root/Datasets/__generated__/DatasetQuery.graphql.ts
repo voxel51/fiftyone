@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1ee3b9ec6232c13e82beff3da5cc2581>>
+ * @generated SignedSource<<c4b17cb450e9f84cc8e6797f8a2aeedb>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,12 +22,12 @@ export type DatasetQuery$variables = {
 export type DatasetQuery$data = {
   readonly dataset: {
     readonly appConfig: {
-      readonly gridMediaField: string;
+      readonly gridMediaField: string | null;
       readonly mediaFields: ReadonlyArray<string>;
       readonly plugins: object | null;
       readonly sidebarGroups: ReadonlyArray<{
         readonly name: string;
-        readonly paths: ReadonlyArray<string>;
+        readonly paths: ReadonlyArray<string> | null;
       }> | null;
     } | null;
     readonly brainMethods: ReadonlyArray<{

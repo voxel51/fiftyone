@@ -6,6 +6,7 @@ import React, {
   Fragment,
   MutableRefObject,
   useCallback,
+  Suspense,
 } from "react";
 import {
   Canvas,
@@ -24,12 +25,24 @@ import * as recoil from "recoil";
 import * as fos from "@fiftyone/state";
 import { ShadeByIntensity, ShadeByZ } from "./shaders";
 import _ from "lodash";
-import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
-import { colorMap } from "@fiftyone/state";
+import {
+  JSONPanel,
+  Loading,
+  PopoutSectionTitle,
+  TabOption,
+  jsonIcon,
+  helpIcon,
+} from "@fiftyone/components";
+import { colorMap, dataset } from "@fiftyone/state";
+import { removeListener } from "process";
 
 THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
 
 const deg2rad = (degrees) => degrees * (Math.PI / 180);
+const hasFocusAtom = recoil.atom({
+  key: "looker3dHasFocus",
+  default: false,
+});
 
 function PointCloudMesh({ minZ, colorBy, points, rotation, onLoad }) {
   const colorMinMaxRef = React.useRef();
@@ -118,6 +131,8 @@ function Cuboid({
   location,
   selected,
   onClick,
+  tooltip,
+  label,
   color,
 }) {
   const [x, y, z] = location;
@@ -146,7 +161,12 @@ function Cuboid({
           />
         </lineSegments>
       </mesh>
-      <mesh onClick={onClick} position={loc} rotation={actualRotation}>
+      <mesh
+        onClick={onClick}
+        {...tooltip.getMeshProps(label)}
+        position={loc}
+        rotation={actualRotation}
+      >
         <boxGeometry args={dimensions} />
         <meshBasicMaterial
           transparent={true}
@@ -158,7 +178,7 @@ function Cuboid({
   );
 }
 
-function Line({ rotation, points, color, opacity, onClick }) {
+function Line({ rotation, points, color, opacity, onClick, tooltip, label }) {
   const geo = React.useMemo(() => {
     const g = new THREE.BufferGeometry().setFromPoints(
       points.map((p) => new THREE.Vector3(...p))
@@ -170,7 +190,7 @@ function Line({ rotation, points, color, opacity, onClick }) {
   }, []);
 
   return (
-    <line onClick={onClick}>
+    <line onClick={onClick} {...tooltip.getMeshProps(label)}>
       <primitive object={geo} attach="geometry" rotation={rotation} />
       <lineBasicMaterial attach="material" color={color} />
     </line>
@@ -186,14 +206,14 @@ function Polyline({
   color,
   selected,
   onClick,
+  tooltip,
+  label,
 }) {
   if (filled) {
     // filled not yet supported
     return null;
   }
   const rotationVec = new THREE.Vector3(...overlayRotation);
-
-  console.log("polyline points", points3d);
 
   const lines = points3d.map((points) => (
     <Line
@@ -202,6 +222,8 @@ function Polyline({
       opacity={opacity}
       color={selected ? "orange" : color}
       onClick={onClick}
+      tooltip={tooltip}
+      label={label}
     />
   ));
 
@@ -258,7 +280,15 @@ export const usePathFilter = (): Partial => {
   return fn.current;
 };
 
-export function Looker3d({ sampleOverride: sample }) {
+export function Looker3d(props) {
+  return (
+    <ErrorBoundary>
+      <Looker3dCore {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function Looker3dCore({ sampleOverride: sample }) {
   const settings = fop.usePluginSettings("3d");
 
   const modal = true;
@@ -267,7 +297,9 @@ export function Looker3d({ sampleOverride: sample }) {
   // @ts-ignore
   const src = fos.getSampleSrc(sample[mediaField]);
   const points = useLoader(PCDLoader, src);
-  const selectedLabels = recoil.useRecoilValue(fos.selectedLabels);
+  const [selectedLabels, setSelectedLabels] = recoil.useRecoilState(
+    fos.selectedLabels
+  );
   const pathFilter = usePathFilter();
   const labelAlpha = recoil.useRecoilValue(fos.alpha(modal));
   const onSelectLabel = fos.useOnSelectLabel();
@@ -275,10 +307,26 @@ export function Looker3d({ sampleOverride: sample }) {
   const controlsRef = React.useRef();
   const getColor = recoil.useRecoilValue(fos.colorMap(true));
   const [pointCloudBounds, setPointCloudBounds] = React.useState();
+  const { coloring } = recoil.useRecoilValue(
+    fos.lookerOptions({ withFilter: true, modal })
+  );
 
   const overlays = load3dOverlays(sample, selectedLabels)
     .map((l) => {
-      return { ...l, color: getColor(l.path.join(".")) };
+      const path = l.path.join(".");
+      let color;
+      switch (coloring.by) {
+        case "field":
+          color = getColor(path);
+          break;
+        case "instance":
+          color = getColor(l._id);
+          break;
+        default:
+          color = getColor(l.label);
+          break;
+      }
+      return { ...l, color };
     })
     .filter((l) => pathFilter(l.path.join("."), l));
 
@@ -290,36 +338,46 @@ export function Looker3d({ sampleOverride: sample }) {
 
   const colorBy = recoil.useRecoilValue(pcState.colorBy);
 
-  function onChangeView(view) {
-    const camera = cameraRef.current as any;
-    const controls = controlsRef.current as any;
-    if (camera) {
-      if (controls) {
+  const onChangeView = useCallback(
+    (view) => {
+      const camera = cameraRef.current as any;
+      const controls = controlsRef.current as any;
+      if (camera && controls) {
+        const origTarget = controls.target.clone();
+        const origCamPos = camera.position.clone();
         controls.target.set(0, 0, 0);
-      }
-      switch (view) {
-        case "top":
-          if (settings.defaultCameraPosition) {
-            camera.position.set(
-              settings.defaultCameraPosition.x,
-              settings.defaultCameraPosition.y,
-              settings.defaultCameraPosition.z
-            );
-          } else {
-            const maxZ = pointCloudBounds ? pointCloudBounds.max.z : null;
-            if (maxZ !== null) {
-              camera.position.set(0, 0, 20 * maxZ);
+        switch (view) {
+          case "top":
+            if (settings.defaultCameraPosition) {
+              camera.position.set(
+                settings.defaultCameraPosition.x,
+                settings.defaultCameraPosition.y,
+                settings.defaultCameraPosition.z
+              );
+            } else {
+              const maxZ = pointCloudBounds ? pointCloudBounds.max.z : null;
+              if (maxZ !== null) {
+                camera.position.set(0, 0, 20 * maxZ);
+              }
             }
-          }
-          break;
-        case "pov":
-          camera.position.set(0, -10, 1);
-          break;
+            break;
+          case "pov":
+            camera.position.set(0, -10, 1);
+            break;
+        }
+
+        camera.updateProjectionMatrix();
+        return !(
+          origTarget.equals(controls.target) &&
+          origCamPos.distanceTo(camera.position) < 1
+        );
       }
-      controls.update();
-      camera.updateProjectionMatrix();
-    }
-  }
+    },
+    [cameraRef, controlsRef, settings, pointCloudBounds]
+  );
+
+  const jsonPanel = fos.useJSONPanel();
+  const helpPanel = fos.useHelpPanel();
 
   const pcRotationSetting = _.get(settings, "pointCloud.rotation", [0, 0, 0]);
   const pcRotation = toEulerFromDegreesArray(pcRotationSetting);
@@ -351,9 +409,45 @@ export function Looker3d({ sampleOverride: sample }) {
     };
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
+  const tooltip = fos.useTooltip();
+  useHotkey("KeyT", () => onChangeView("top"));
+  useHotkey("KeyE", () => onChangeView("pov"));
+  useHotkey(
+    "Escape",
+    ({ get, set }) => {
+      const panels = get(fos.lookerPanels);
+      let lookerPanelUpdate;
+      for (let panel of ["help", "json"]) {
+        if (panels[panel].isOpen) {
+          set(fos.lookerPanels, {
+            ...panels,
+            [panel]: { ...panels[panel], isOpen: false },
+          });
+          return;
+        }
+      }
+      if (get(fos.hoveredSample)?._id !== sample._id) return;
+
+      const selectedLabels = get(fos.selectedLabels);
+      if (selectedLabels && Object.keys(selectedLabels).length > 0) {
+        set(fos.selectedLabels, {});
+        return;
+      }
+
+      const changed = onChangeView("top");
+      if (changed) return;
+
+      set(fos.modal, null);
+    },
+    [jsonPanel, helpPanel, selectedLabels, hovering]
+  );
+
+  useEffect(() => {
+    onChangeView("top");
+  }, [cameraRef, controlsRef]);
 
   return (
-    <Container onMouseEnter={update} onMouseMove={update} onMouseLeave={clear}>
+    <Container onMouseOver={update} onMouseMove={update} onMouseOut={clear}>
       <Canvas onClick={() => clear()}>
         <CameraSetup
           controlsRef={controlsRef}
@@ -370,6 +464,8 @@ export function Looker3d({ sampleOverride: sample }) {
                 opacity={labelAlpha}
                 {...label}
                 onClick={() => handleSelect(label)}
+                label={label}
+                tooltip={tooltip}
               />
             ))}
         </mesh>
@@ -381,7 +477,9 @@ export function Looker3d({ sampleOverride: sample }) {
               key={key}
               opacity={labelAlpha}
               {...label}
+              label={label}
               onClick={() => handleSelect(label)}
+              tooltip={tooltip}
             />
           ))}
         <PointCloudMesh
@@ -414,6 +512,8 @@ export function Looker3d({ sampleOverride: sample }) {
               label={"E"}
               hint="Ego View"
             />
+            <ViewJSON jsonPanel={jsonPanel} sample={sample} />
+            <ViewHelp helpPanel={helpPanel} />
           </ActionsBar>
         </ActionBarContainer>
       )}
@@ -516,7 +616,6 @@ function SetViewButton({ onChangeView, view, label, hint }) {
 }
 
 function ChooseColorSpace() {
-  const [open, setOpen] = useState(false);
   const [currentAction, setAction] = recoil.useRecoilState(
     pcState.currentAction
   );
@@ -570,6 +669,73 @@ function Choice({ label, value }) {
       <input type="radio" checked={selected} />
       {label}
     </div>
+  );
+}
+
+function ViewJSON({ sample, jsonPanel }) {
+  const [currentAction, setAction] = recoil.useRecoilState(
+    pcState.currentAction
+  );
+
+  return (
+    <Fragment>
+      <ActionItem>
+        <img
+          src={jsonIcon}
+          onClick={(e) => {
+            const targetAction = "json";
+            const nextAction =
+              currentAction === targetAction ? null : targetAction;
+            setAction(nextAction);
+            jsonPanel.toggle(sample);
+            e.stopPropagation();
+            e.preventDefault();
+            return false;
+          }}
+        />
+      </ActionItem>
+    </Fragment>
+  );
+}
+
+const LOOKER3D_HELP_ITEMS = [
+  { shortcut: "Wheel", title: "Zoom", detail: "Zoom in and out" },
+  { shortcut: "Drag", title: "Rotate", detail: "Rotate the camera" },
+  {
+    shortcut: "Shift + drag",
+    title: "Translate",
+    detail: "Translate the camera",
+  },
+  { shortcut: "T", title: "Top-down", detail: "Reset camera to top-down view" },
+  { shortcut: "E", title: "Ego-view", detail: "Reset the camera to ego view" },
+  { shortcut: "C", title: "Controls", detail: "Toggle controls" },
+  { shortcut: "?", title: "Display help", detail: "Display this help window" },
+  { shortcut: "ESC", title: "Escape ", detail: "Escape the current context" },
+];
+
+function ViewHelp({ helpPanel }) {
+  const [currentAction, setAction] = recoil.useRecoilState(
+    pcState.currentAction
+  );
+
+  return (
+    <Fragment>
+      <ActionItem>
+        <img
+          src={helpIcon}
+          onClick={(e) => {
+            const targetAction = "help";
+            const nextAction =
+              currentAction === targetAction ? null : targetAction;
+            setAction(nextAction);
+            helpPanel.toggle(LOOKER3D_HELP_ITEMS);
+            e.stopPropagation();
+            e.preventDefault();
+            return false;
+          }}
+        />
+      </ActionItem>
+    </Fragment>
   );
 }
 
@@ -634,4 +800,39 @@ function computeMinMaxForColorBufferAttribute(colorAttribute) {
   }
 
   return { min: minX, max: maxX };
+}
+
+class ErrorBoundary extends React.Component<
+  { set: React.Dispatch<any> },
+  { error: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError = (error) => ({ hasError: true, error });
+  componentDidCatch(error: any) {}
+  render() {
+    if (this.state.hasError) {
+      const { message, stack } = this.state.error;
+
+      return <Loading>{this.state.error}</Loading>;
+    }
+
+    return this.props.children;
+  }
+}
+function useHotkey(code, fn, deps) {
+  const EVENT_NAME = "keydown";
+  const cb = recoil.useRecoilTransaction_UNSTABLE((ctx) => () => fn(ctx), deps);
+  function handle(e) {
+    if (e.code === code) {
+      cb();
+    }
+  }
+  function unlisten() {
+    window.removeEventListener(EVENT_NAME, handle);
+  }
+  useEffect(() => {
+    window.addEventListener(EVENT_NAME, handle);
+
+    return unlisten;
+  }, []);
 }

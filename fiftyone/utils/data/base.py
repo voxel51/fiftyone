@@ -111,8 +111,7 @@ def download_image_classification_dataset(
     unique.
 
     The dataset is written to disk in
-    :class:`fiftyone.types.dataset_types.FiftyOneImageClassificationDataset`
-    format.
+    :class:`fiftyone.types.FiftyOneImageClassificationDataset` format.
 
     Args:
         csv_path: a CSV file containing the labels and image URLs

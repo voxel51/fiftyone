@@ -5,8 +5,6 @@ FiftyOne Server view
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from tokenize import group
-import typing as t
 from bson import ObjectId
 
 import fiftyone.core.dataset as fod
@@ -18,7 +16,6 @@ import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
-from fiftyone.server.filters import SampleFilter
 from fiftyone.server.utils import iter_label_fields
 
 
@@ -33,15 +30,34 @@ def get_group(sample_collection, group_id):
 
 
 def get_view(
-    dataset_name: str,
+    dataset_name,
     stages=None,
     filters=None,
-    extended_stages=None,
     count_label_tags=False,
     only_matches=True,
-    sample_filter: t.Optional[SampleFilter] = None,
-    sort: t.Optional[bool] = False,
-) -> fov.DatasetView:
+    extended_stages=None,
+    sample_filter=None,
+    sort=False,
+):
+    """Get the view from request paramters
+
+    Args:
+        dataset_names: the dataset name
+        stages (None): an optional list of serialized
+            :class:`fiftyone.core.stages.ViewStage` instances
+        filters (None): an optional ``dict`` of App defined filters
+        extended_stages (None): extended view stages
+        count_label_tags (False): whether to set the hidden ``_label_tags``
+            field with counts of tags with respect to all label fields
+        only_matches (True): whether to filter unmatches samples when filtering
+            labels
+        sample_filter (None): an optional
+            :class:`fiftyone.server.filters.SampleFilter`
+        sort (False): wheter to include sort extended stages
+
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView`
+    """
     view = fod.load_dataset(dataset_name)
     view.reload()
 
@@ -86,9 +102,9 @@ def get_extended_view(
 
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
-        filters: an optional `dict` of App defined filters
-        count_label_tags (False): whether to set the hidden `_label_tags` field
-            with counts of tags with respect to all label fields
+        filters: an optional ``dict`` of App defined filters
+        count_label_tags (False): whether to set the hidden ``_label_tags``
+            field with counts of tags with respect to all label fields
         only_matches (True): whether to filter unmatches samples when filtering
             labels
         extended_stages (None): extended view stages

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1934d53ed4052922f1bb5ef47073c04c>>
+ * @generated SignedSource<<ddf19413bfbaa51c927dde6814cf4a1d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -25,12 +25,12 @@ export type setViewMutation$data = {
   readonly setView: {
     readonly dataset: {
       readonly appConfig: {
-        readonly gridMediaField: string;
+        readonly gridMediaField: string | null;
         readonly mediaFields: ReadonlyArray<string>;
         readonly plugins: object | null;
         readonly sidebarGroups: ReadonlyArray<{
           readonly name: string;
-          readonly paths: ReadonlyArray<string>;
+          readonly paths: ReadonlyArray<string> | null;
         }> | null;
       } | null;
       readonly brainMethods: ReadonlyArray<{

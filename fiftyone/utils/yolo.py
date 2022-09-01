@@ -476,7 +476,8 @@ class YOLOv5DatasetImporter(
                 % (self.yaml_path, self.split)
             )
 
-        data = d[self.split]
+        dataset_path = d.get("path", "")
+        data = os.path.normpath(os.path.join(dataset_path, d[self.split]))
         classes = d.get("names", None)
 
         if etau.is_str(data) and data.endswith(".txt"):
@@ -1120,7 +1121,7 @@ def _to_classes(labels_map_rev):
     targets_to_labels = {v: k for k, v in labels_map_rev.items()}
 
     classes = []
-    for target in range(max(targets_to_labels.keys()) + 1):
+    for target in range(max(targets_to_labels.keys(), default=-1) + 1):
         if target in targets_to_labels:
             classes.append(targets_to_labels[target])
         else:

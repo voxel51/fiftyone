@@ -47,8 +47,18 @@ const GroupSample: React.FC<
     slice: string;
     pinned: boolean;
     onClick: MouseEventHandler;
+    onMouseEnter: MouseEventHandler;
+    onMouseLeave: MouseEventHandler;
   }>
-> = ({ children, onClick, pinned, sampleId, slice }) => {
+> = ({
+  children,
+  onClick,
+  pinned,
+  sampleId,
+  slice,
+  onMouseEnter,
+  onMouseLeave,
+}) => {
   const [hovering, setHovering] = useState(false);
 
   const timeout: MutableRefObject<number | null> = useRef<number>(null);
@@ -72,9 +82,15 @@ const GroupSample: React.FC<
       className={
         pinned ? classNames(groupSample, groupSampleActive) : groupSample
       }
-      onMouseEnter={update}
+      onMouseEnter={(e) => {
+        update();
+        onMouseEnter(e);
+      }}
       onMouseMove={update}
-      onMouseLeave={clear}
+      onMouseLeave={(e) => {
+        clear();
+        onMouseLeave(e);
+      }}
       onClickCapture={onClick}
     >
       {children}
@@ -106,6 +122,7 @@ const MainSample: React.FC<{
   const reset = useResetRecoilState(sidebarOverride);
 
   const slice = useSlice(sample);
+  const hover = fos.useHoveredSample(sample);
 
   return (
     <GroupSample
@@ -113,6 +130,7 @@ const MainSample: React.FC<{
       slice={slice}
       pinned={pinned}
       onClick={reset}
+      {...hover.handlers}
     >
       <Looker
         key={sample._id}
@@ -173,6 +191,7 @@ const PinnedSample: React.FC = () => {
 
   const [pinned, setPinned] = useRecoilState(sidebarOverride);
   const slice = useRecoilValue(pinnedSlice) as string;
+  const hover = fos.useHoveredSample(sample.sample);
 
   return (
     <GroupSample
@@ -180,6 +199,7 @@ const PinnedSample: React.FC = () => {
       pinned={Boolean(pinned)}
       onClick={() => setPinned(sample._id)}
       slice={slice}
+      {...hover.handlers}
     >
       <PluggableSample />
     </GroupSample>

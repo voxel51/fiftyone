@@ -315,7 +315,7 @@ filepath:
     :linenos:
 
     # Grab a random sample across all slices
-    sample = dataset.select_group_slice().shuffle().first()
+    sample = dataset.select_group_slices().shuffle().first()
 
     # Directly lookup same sample by ID
     also_sample = dataset[sample.id]
@@ -362,6 +362,7 @@ dict containing all samples in a group with a given ID:
             'group': <Group: {'id': '62f810ba59e644568f229c62', 'name': 'right'}>,
         }>,
     }
+
 .. _groups-deleting-samples:
 
 Deleting samples
@@ -375,7 +376,7 @@ delete individual sample(s) from a grouped dataset:
     :linenos:
 
     # Grab a random sample across all slices
-    sample = dataset.select_group_slice().shuffle().first()
+    sample = dataset.select_group_slices().shuffle().first()
 
     dataset.delete_samples(sample)
 
@@ -816,7 +817,7 @@ Selecting slices
 ----------------
 
 You can use
-:meth:`select_group_slice() <fiftyone.core.collections.SampleCollection.select_group_slice>`
+:meth:`select_group_slices() <fiftyone.core.collections.SampleCollection.select_group_slices>`
 to create *non-grouped views* that contain one or more slices of data from a
 grouped dataset.
 
@@ -826,7 +827,7 @@ images from the grouped dataset:
 .. code-block:: python
     :linenos:
 
-    left_view = dataset.select_group_slice("left")
+    left_view = dataset.select_group_slices("left")
     print(left_view)
 
 .. code-block:: text
@@ -841,7 +842,7 @@ images from the grouped dataset:
         metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
         group:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
     View stages:
-        1. SelectGroupSlice(slice='left')
+        1. SelectGroupSlices(slices='left')
 
 or you could create an image collection containing the left and right camera
 images:
@@ -849,7 +850,7 @@ images:
 .. code-block:: python
     :linenos:
 
-    lr_view = dataset.select_group_slice(["left", "right"])
+    lr_view = dataset.select_group_slices(["left", "right"])
     print(lr_view)
 
 .. code-block:: text
@@ -864,7 +865,7 @@ images:
         metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
         group:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
     View stages:
-        1. SelectGroupSlice(slice=['left', 'right'])
+        1. SelectGroupSlices(slices=['left', 'right'])
 
 Note that the :meth:`media_type <fiftyone.core.view.DatasetView.media_type` of
 the above collections are `image`, not `group`. This means you can perform any
@@ -874,7 +875,7 @@ the fact that their data is sourced from a grouped dataset!
 .. code-block:: python
     :linenos:
 
-    image_view = dataset.shuffle().limit(10).select_group_slice("left")
+    image_view = dataset.shuffle().limit(10).select_group_slices("left")
 
     another_view = image_view.match(F("metadata.width") >= 640)
 
@@ -956,7 +957,7 @@ slices, you can :ref:`select them <groups-selecting-slices>`!
     print(dataset.count())  # 200
     print(dataset.count("ground_truth.detections"))  # 1438
 
-    view3 = dataset.select_group_slice(["left", "right"])
+    view3 = dataset.select_group_slices(["left", "right"])
 
     print(view3.count())  # 400
     print(view3.count("ground_truth.detections"))  # 2876
@@ -1141,6 +1142,45 @@ the above values on a :ref:`dataset's App config <custom-app-config>`:
     Dataset-specific plugin settings will override any settings from your
     :ref:`global App config <configuring-fiftyone-app>`.
 
+.. _groups-importing:
+
+Importing groups
+________________
+
+The simplest way to import grouped datasets is to
+:ref:`write a Python loop <groups-adding-samples>`:
+
+.. code-block:: python
+    :linenos:
+
+    samples = []
+    for fps in filepaths:
+        group = fo.Group()
+        for name, filepath in fps.items():
+            sample = fo.Sample(filepath=filepath, group=group.element(name))
+            samples.append(sample)
+
+    dataset.add_samples(samples)
+
+    print(dataset)
+
+Remember that each group is represented by a |Group| instance, and each sample
+in a group is denoted by its slice `name` using
+:meth:`Group.element() <fiftyone.core.groups.Group.element>`. The |Sample|
+objects can then simply be added to the dataset as usual.
+
+Alternatively, you can
+:ref:`write your own importer <writing-a-custom-dataset-importer>` and then
+import grouped datasets in your custom format using the syntax below:
+
+.. code-block:: python
+    :linenos:
+
+    # Create an instance of your custom dataset importer
+    importer = CustomGroupDatasetImporter(...)
+
+    dataset = fo.Dataset.from_importer(importer)
+
 .. _groups-exporting:
 
 Exporting groups
@@ -1171,9 +1211,21 @@ export the resulting ungrouped collection in
 .. code-block:: python
     :linenos:
 
-    left_view = dataset.shuffle().limit(10).select_group_slice("left")
+    left_view = dataset.shuffle().limit(10).select_group_slices("left")
 
     left_view.export(
         export_dir="/tmp/groups-left",
         dataset_type=fo.types.ImageDirectory,
     )
+
+Alternatively, you can
+:ref:`write your own exporter <writing-a-custom-dataset-exporter>` and then
+export grouped datasets in your custom format using the syntax below:
+
+.. code-block:: python
+    :linenos:
+
+    # Create an instance of your custom dataset exporter
+    exporter = CustomGroupDatasetExporter(...)
+
+    dataset_or_view.export(dataset_exporter=exporter, ...)

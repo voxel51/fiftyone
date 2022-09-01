@@ -1,7 +1,8 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import { getColor } from "../color";
+
+import { getColor } from "@fiftyone/utilities";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import {

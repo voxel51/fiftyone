@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import _ from "lodash";
-import React, { useCallback, useRef } from "react";
+import React, { Fragment, useCallback, useRef } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
 import { useRecoilValue } from "recoil";
@@ -9,6 +9,8 @@ import { useRecoilValue } from "recoil";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
+import { lookerPanelOverlayContainer } from "./Group.module.css";
+import { HelpPanel, JSONPanel } from "@fiftyone/components";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -182,18 +184,36 @@ const SampleModal = () => {
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isGroup = useRecoilValue(fos.isGroup);
+  const jsonPanel = fos.useJSONPanel();
+  const helpPanel = fos.useHelpPanel();
 
   return ReactDOM.createPortal(
-    <ModalWrapper
-      ref={wrapperRef}
-      onClick={(event) => event.target === wrapperRef.current && clearModal()}
-    >
-      <Container style={{ ...screen, zIndex: 10001 }}>
-        <ContentColumn>{isGroup ? <Group /> : <Sample />}</ContentColumn>
-
-        <Sidebar render={renderEntry} modal={true} />
-      </Container>
-    </ModalWrapper>,
+    <Fragment>
+      <ModalWrapper
+        ref={wrapperRef}
+        onClick={(event) => event.target === wrapperRef.current && clearModal()}
+      >
+        <Container style={{ ...screen, zIndex: 10001 }}>
+          <ContentColumn>
+            {isGroup ? <Group /> : <Sample />}
+            {jsonPanel.isOpen && (
+              <JSONPanel
+                jsonHTML={jsonPanel.jsonHTML}
+                onClose={() => jsonPanel.close()}
+                onCopy={() => jsonPanel.copy()}
+              />
+            )}
+            {helpPanel.isOpen && (
+              <HelpPanel
+                onClose={() => helpPanel.close()}
+                items={helpPanel.items}
+              />
+            )}
+          </ContentColumn>
+          <Sidebar render={renderEntry} modal={true} />
+        </Container>
+      </ModalWrapper>
+    </Fragment>,
     document.getElementById("modal") as HTMLDivElement
   );
 };
