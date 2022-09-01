@@ -62,10 +62,11 @@ type Dataset {
 }
 
 type DatasetAppConfig {
-  gridMediaField: String!
   mediaFields: [String!]!
   plugins: JSON
   sidebarGroups: [SidebarGroup!]
+  modalMediaField: String
+  gridMediaField: String
 }
 
 type DatasetStrConnection {
@@ -259,7 +260,7 @@ input SelectedLabel {
 
 type SidebarGroup {
   name: String!
-  paths: [String!]!
+  paths: [String!]
 }
 
 type Target {

@@ -617,10 +617,22 @@ created when you launch the App. A session's config can be inspected and
 modified via the :meth:`session.config <fiftyone.core.session.Session.config>`
 property.
 
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    print(fo.app_config)
+
+    session = fo.launch_app(dataset)
+    print(session.config)
+
 .. note::
 
-    For changes to a session's config to take effect in the App, you must call
-    :meth:`session.refresh() <fiftyone.core.session.Session.refresh>` or
+    For changes to a live session's config to take effect in the App, you must
+    call :meth:`session.refresh() <fiftyone.core.session.Session.refresh>` or
     invoke another state-updating action such as ``session.view = my_view``.
 
 The FiftyOne App can be configured in the ways described below:
@@ -774,6 +786,12 @@ Modifying your App config
 You can modify your App config in a variety of ways. The following sections
 describe these options in detail.
 
+.. note::
+
+    Did you know? You can also configure the behavior of the App on a
+    per-dataset basis by customizing your
+    :ref:`dataset's App config <custom-app-config>`.
+
 Order of precedence
 ~~~~~~~~~~~~~~~~~~~
 
@@ -817,12 +835,10 @@ apply the changes:
 .. code-block:: python
     :linenos:
 
-    # Customize the config of a live Session
+    # Customize the config of a live session
     session.config.show_confidence = True
     session.config.show_attributes = True
-
-    # Refresh the session to apply the changes
-    session.refresh()
+    session.refresh()  # must refresh after edits
 
 Editing your JSON App config
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

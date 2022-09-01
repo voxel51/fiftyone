@@ -447,6 +447,7 @@ class DatasetMixin(object):
         for field_name, new_field_name in zip(field_names, new_field_names):
             cls._rename_field_schema(field_name, new_field_name, dataset_doc)
 
+        dataset_doc.app_config._rename_paths(field_names, new_field_names)
         dataset_doc.save()
 
     @classmethod
@@ -465,6 +466,11 @@ class DatasetMixin(object):
         cls._rename_fields_collection(
             field_names, new_field_names, sample_collection
         )
+
+        if isinstance(sample_collection, fod.Dataset):
+            dataset_doc = cls._dataset_doc()
+            dataset_doc.app_config._rename_paths(field_names, new_field_names)
+            dataset_doc.save()
 
     @classmethod
     def _clone_fields(
@@ -621,6 +627,7 @@ class DatasetMixin(object):
         for field_name in del_fields:
             cls._delete_field_schema(field_name, dataset_doc)
 
+        dataset_doc.app_config._delete_paths(field_names)
         dataset_doc.save()
 
     @classmethod
@@ -631,6 +638,10 @@ class DatasetMixin(object):
             field_names: an iterable of "embedded.field.names"
         """
         cls._delete_fields_simple(field_names)
+
+        dataset_doc = cls._dataset_doc()
+        dataset_doc.app_config._delete_paths(field_names)
+        dataset_doc.save()
 
     @classmethod
     def _rename_fields_simple(cls, field_names, new_field_names):

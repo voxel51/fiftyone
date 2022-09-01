@@ -128,6 +128,45 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(classes, dataset2.info["classes"])
 
     @drop_datasets
+    def test_dataset_app_config(self):
+        dataset_name = self.test_dataset_app_config.__name__
+
+        dataset = fo.Dataset(dataset_name)
+
+        self.assertFalse(dataset.app_config.is_custom())
+        self.assertListEqual(dataset.app_config.media_fields, ["filepath"])
+        self.assertEqual(dataset.app_config.grid_media_field, "filepath")
+        self.assertEqual(dataset.app_config.modal_media_field, "filepath")
+
+        dataset.add_sample_field("thumbnail_path", fo.StringField)
+
+        dataset.app_config.media_fields.append("thumbnail_path")
+        dataset.app_config.grid_media_field = "thumbnail_path"
+        dataset.save()
+
+        del dataset
+        gc.collect()  # force garbage collection
+
+        dataset = fo.load_dataset(dataset_name)
+
+        self.assertListEqual(
+            dataset.app_config.media_fields, ["filepath", "thumbnail_path"]
+        )
+        self.assertEqual(dataset.app_config.grid_media_field, "thumbnail_path")
+
+        dataset.rename_sample_field("thumbnail_path", "tp")
+
+        self.assertListEqual(
+            dataset.app_config.media_fields, ["filepath", "tp"]
+        )
+        self.assertEqual(dataset.app_config.grid_media_field, "tp")
+
+        dataset.delete_sample_field("tp")
+
+        self.assertListEqual(dataset.app_config.media_fields, ["filepath"])
+        self.assertEqual(dataset.app_config.grid_media_field, "filepath")
+
+    @drop_datasets
     def test_meta_dataset(self):
         dataset_name = self.test_meta_dataset.__name__
         dataset1 = fo.Dataset(dataset_name)
