@@ -397,10 +397,9 @@ Core
 - Added a :meth:`keep_fields() <fiftyone.core.view.DatasetView.keep_fields>`
   method to |DatasetView| and its subclasses
   `#1616 <https://github.com/voxel51/fiftyone/pull/1616>`_
-- Added a :func:`fiftyone.core.plots.base.lines()` method that allows for
-  plotting lines whose scatter points can be interactively selected via the
-  typical
-  `interactive plotting workflows <https://voxel51.com/docs/fiftyone/user_guide/plots.html>`_
+- Added a :func:`lines() <fiftyone.core.plots.base.lines>` method that allows
+  for plotting lines whose scatter points can be interactively selected via the
+  typical `interactive plotting workflows <https://voxel51.com/docs/fiftyone/user_guide/plots.html>`_
   `#1614 <https://github.com/voxel51/fiftyone/pull/1614>`_
 - Added an optional `force_rgb=True` syntax when importing/exporting/creating
   TF records using all relevant methods in :mod:`fiftyone.utils.tf`
@@ -708,8 +707,7 @@ Core
   parent dataset that has brain runs
 - Fixed sampling frames when using
   :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
-- Fixed importing of
-  :class:`FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
+- Fixed importing of :class:`FiftyOneDataset <fiftyone.types.FiftyOneDataset>`
   with run results
 - Added a :class:`Regression <fiftyone.core.labels.Regression>` label type
 - Added a :func:`random_split() <fiftyone.utils.random.random_split>` method
@@ -725,9 +723,8 @@ Core
   :meth:`compute_max_ious() <fiftyone.utils.eval.detection.compute_max_ious>`
   utility
 - Added support for labels-only exports when working with
-  :class:`YOLOv4Dataset <fiftyone.types.dataset_types.YOLOv4Dataset>` and
-  :class:`YOLOv5Dataset <fiftyone.types.dataset_types.YOLOv5Dataset>`
-  formats
+  :class:`YOLOv4Dataset <fiftyone.types.YOLOv4Dataset>` and
+  :class:`YOLOv5Dataset <fiftyone.types.YOLOv5Dataset>` formats
 - Added :mod:`fiftyone.utils.beam` for parallel import, merge, and export
   operations with `Apache Beam <https://beam.apache.org>`_
 - Added an  :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>`
@@ -1241,8 +1238,8 @@ Core
 - Added support for :ref:`importing <YOLOv5Dataset-import>` and
   :ref:`exporting <YOLOv5Dataset-export>` datasets in
   `YOLOv5 format <https://github.com/ultralytics/yolov5>`_
-- Updated the :class:`GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
-  dataset type to support both image and video datasets
+- Updated the :class:`GeoJSONDataset <fiftyone.types.GeoJSONDataset>` dataset
+  type to support both image and video datasets
 - Added support for :class:`importing <fiftyone.utils.coco.COCODetectionDatasetImporter>`
   and :class:`exporting <fiftyone.utils.coco.COCODetectionDatasetExporter>` extra
   attributes in COCO format via a new ``extra_attrs`` parameter
@@ -1585,8 +1582,8 @@ Core
       an interacive scatterplot of a dataset via its |GeoLocation| coordinates
     - Added |GeoLocation| and |GeoLocations| label types that can be used to store
       arbitrary GeoJSON location data on samples
-    - Added the :class:`GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
-      dataset type for importing and exporting datasets in GeoJSON format
+    - Added the :class:`GeoJSONDataset <fiftyone.types.GeoJSONDataset>` dataset
+      type for importing and exporting datasets in GeoJSON format
     - Added :meth:`SampleCollection.geo_near() <fiftyone.core.collections.SampleCollection.geo_near>`
       and
       :meth:`SampleCollection.geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`
@@ -2302,8 +2299,7 @@ Core
   `CVAT video format <https://github.com/openvinotoolkit/cvat/blob/develop/cvat/apps/documentation/xml_format.md>`_
 - Added support for :ref:`importing <FiftyOneDataset-import>` and
   :ref:`exporting <FiftyOneDataset-export>` video datasets in
-  :class:`FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
-  format
+  :class:`FiftyOneDataset <fiftyone.types.FiftyOneDataset>` format
 - Added frame field schemas to string representations for video datasets/views
 
 CLI
@@ -2581,7 +2577,7 @@ Core
 
 - Added support for :ref:`importing <FiftyOneDataset-import>` and
   :ref:`exporting <FiftyOneDataset-export>` FiftyOne datasets via the
-  :class:`FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>` type
+  :class:`FiftyOneDataset <fiftyone.types.FiftyOneDataset>` type
 - Added a :meth:`Dataset.info <fiftyone.core.dataset.Dataset.info>` field that
   can be used to store dataset-level info in FiftyOne datasets
 - Added a :meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`
@@ -2677,15 +2673,15 @@ App
 Core
 
 - Added support for importing and exporting datasets in several common formats:
-    - COCO: :class:`COCODetectionDataset <fiftyone.types.dataset_types.COCODetectionDataset>`
-    - VOC: :class:`VOCDetectionDataset <fiftyone.types.dataset_types.VOCDetectionDataset>`
-    - KITTI: :class:`KITTIDetectionDataset <fiftyone.types.dataset_types.KITTIDetectionDataset>`
+    - COCO: :class:`COCODetectionDataset <fiftyone.types.COCODetectionDataset>`
+    - VOC: :class:`VOCDetectionDataset <fiftyone.types.VOCDetectionDataset>`
+    - KITTI: :class:`KITTIDetectionDataset <fiftyone.types.KITTIDetectionDataset>`
     - Image classification TFRecords:
-      :class:`TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
+      :class:`TFImageClassificationDataset <fiftyone.types.TFImageClassificationDataset>`
     - TF Object Detection API TFRecords:
-      :class:`TFObjectDetectionDataset <fiftyone.types.dataset_types.TFObjectDetectionDataset>`
-    - CVAT image: :class:`CVATImageDataset <fiftyone.types.dataset_types.CVATImageDataset>`
-    - Berkeley DeepDrive: :class:`BDDDataset <fiftyone.types.dataset_types.BDDDataset>`
+      :class:`TFObjectDetectionDataset <fiftyone.types.TFObjectDetectionDataset>`
+    - CVAT image: :class:`CVATImageDataset <fiftyone.types.CVATImageDataset>`
+    - Berkeley DeepDrive: :class:`BDDDataset <fiftyone.types.BDDDataset>`
 - Added :meth:`Dataset.add_dir() <fiftyone.core.dataset.Dataset.add_dir>` and
   :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to allow
   for importing datasets on disk in any supported format
