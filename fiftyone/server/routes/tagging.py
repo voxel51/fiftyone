@@ -58,7 +58,7 @@ class Tagging(HTTPEndpoint):
             view = view.select_fields(active_label_fields)
             count_aggs, tag_aggs = build_label_tag_aggregations(view)
             results = await view._async_aggregate(count_aggs + tag_aggs)
-
+            items = None
             count = sum(results[: len(count_aggs)])
             tags = defaultdict(int)
 
@@ -66,10 +66,12 @@ class Tagging(HTTPEndpoint):
                 for tag, num in result.items():
                     tags[tag] += num
         else:
-            tags = await view._async_aggregate(foa.CountValues("tags"))
+            tags, items = await view._async_aggregate(
+                [foa.CountValues("tags"), foa.Count()]
+            )
             count = sum(tags.values())
 
-        return {"count": count, "tags": tags}
+        return {"count": count, "tags": tags, "items": items}
 
 
 def build_label_tag_aggregations(view: foc.SampleCollection):

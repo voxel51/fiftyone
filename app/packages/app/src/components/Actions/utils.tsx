@@ -84,6 +84,7 @@ export const allTags = selector<{ sample: string[]; label: string[] } | null>({
 export const tagStatistics = selectorFamily<
   {
     count: number;
+    items: number;
     tags: { [key: string]: number };
   },
   { modal: boolean; labels: boolean }
@@ -105,38 +106,41 @@ export const tagStatistics = selectorFamily<
         );
       }
 
-      const { count, tags } = await getFetchFunction()("POST", "/tagging", {
+      const groupStats = get(groupStatistics(modal)) === "group";
+
+      return await getFetchFunction()("POST", "/tagging", {
         dataset: get(fos.dataset).name,
         view: get(fos.view),
         active_label_fields: activeLabels,
         sample_ids: selected.size
           ? [...selected]
-          : modal && get(groupStatistics(modal)) !== "group"
+          : modal && !groupStats
           ? get(sidebarSampleId)
           : null,
         labels: toSnakeCase(labels),
-        groupId:
-          modal && get(groupStatistics(modal)) === "group"
-            ? get(groupId)
-            : null,
-        slice:
-          get(groupStatistics(modal)) === "group"
-            ? null
-            : get(currentSlice(modal)),
+        groupId: modal && groupStats ? get(groupId) : null,
+        slice: groupStats ? null : get(currentSlice(modal)),
         count_labels,
         filters: get(modal ? fos.modalFilters : fos.filters),
         hidden_labels:
           modal && labels ? toSnakeCase(get(fos.hiddenLabelsArray)) : null,
       });
-
-      return { count, tags };
     },
 });
 
-export const numLabelsInSelectedSamples = selector<number>({
+export const numItemsInSelection = selectorFamily<number, boolean>({
   key: "numLabelsInSelectedSamples",
+  get:
+    (labels) =>
+    ({ get }) => {
+      return get(tagStatistics({ modal: false, labels })).count;
+    },
+});
+
+export const selectedSamplesCount = selector<number>({
+  key: "selectedSampleCount",
   get: ({ get }) => {
-    return get(tagStatistics({ modal: false, labels: true })).count;
+    return get(tagStatistics({ modal: false, labels: false })).items;
   },
 });
 

@@ -21,10 +21,11 @@ import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
 import {
   tagStats,
-  numLabelsInSelectedSamples,
   SwitchDiv,
   SwitcherDiv,
   tagStatistics,
+  numItemsInSelection,
+  selectedSamplesCount,
 } from "./utils";
 import { Button } from "../utils";
 import { PopoutSectionTitle } from "@fiftyone/components";
@@ -458,7 +459,10 @@ const usePlaceHolder = (
           : useRecoilValue(fos.labelCount({ modal: true, extended: true }));
       return [labelCount, labelsModalPlaceholder(selectedLabels, labelCount)];
     } else if (modal && !selectedSamples) {
-      return [1, samplePlaceholder(elementNames)];
+      return [
+        useRecoilValue(selectedSamplesCount),
+        samplePlaceholder(elementNames),
+      ];
     } else {
       const totalSamples = useRecoilValue(
         fos.count({ path: "", extended: false, modal: false })
@@ -466,8 +470,10 @@ const usePlaceHolder = (
       const filteredSamples = useRecoilValue(
         fos.count({ path: "", extended: true, modal: false })
       );
+
       const count = filteredSamples ?? totalSamples;
-      const selectedLabelCount = useRecoilValue(numLabelsInSelectedSamples);
+      const itemCount = useRecoilValue(selectedSamplesCount);
+      const selectedLabelCount = useRecoilValue(numItemsInSelection(true));
       const labelCount = selectedSamples
         ? selectedLabelCount
         : useRecoilValue(fos.labelCount({ modal, extended: true }));
@@ -478,7 +484,7 @@ const usePlaceHolder = (
         ];
       } else {
         return [
-          selectedSamples > 0 ? selectedSamples : count,
+          selectedSamples > 0 ? itemCount : count,
           samplesPlaceholder(selectedSamples, labelCount, count, elementNames),
         ];
       }
