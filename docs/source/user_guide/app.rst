@@ -1084,6 +1084,13 @@ the grid view:
     :alt: multiple-media-fields
     :align: center
 
+.. warning::
+
+    When populating multiple media fields on samples, keep in mind that all
+    media sources must have the same **type** (e.g., image) and
+    **aspect ratio** as the sample's primary `filepath`, since the media must
+    be compatible with the dataset's spatial labels (e.g., object detections).
+
 .. _app-config:
 
 Configuring the App
