@@ -1005,13 +1005,101 @@ appears in the upper-right corner of the modal:
     a similarity index in a session. Subsequent similarity searches will use
     cached results and will be faster!
 
+.. _app-multiple-media-fields:
+
+Multiple media fields
+_____________________
+
+There are use cases where you may want to associate multiple media versions
+with each sample in your dataset, such as:
+
+-   Thumbnail images
+-   Anonymized (e.g., blurred) versions of the images
+
+You can work with multiple media sources in FiftyOne by simply adding extra
+field(s) to your dataset containing the paths to each media source and then
+configuring your dataset to expose these multiple media fields in the App.
+
+For example, let's create thumbnail images for use in the App's grid view and
+store their paths in a `thumbnail_path` field:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.image as foui
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Generate some thumbnail images
+    foui.transform_images(
+        dataset,
+        size=(-1, 32),
+        output_field="thumbnail_path",
+        output_dir="/tmp/thumbnails",
+    )
+
+    print(dataset)
+
+.. code-block:: text
+
+    Name:        quickstart
+    Media type:  image
+    Num samples: 200
+    Persistent:  False
+    Tags:        []
+    Sample fields:
+        id:             fiftyone.core.fields.ObjectIdField
+        filepath:       fiftyone.core.fields.StringField
+        tags:           fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:       fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        ground_truth:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        uniqueness:     fiftyone.core.fields.FloatField
+        predictions:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        thumbnail_path: fiftyone.core.fields.StringField
+
+We can expose the thumbnail images to the App by modifying the
+:ref:`dataset's App config <custom-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Modify the dataset's App config
+    dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+    dataset.app_config.grid_media_field = "thumbnail_path"
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+Adding `thumbnail_path` to the
+:class:`media_fields <fiftyone.core.odm.dataset.DatasetAppConfig>` property
+adds it to the `Media Field` selector under the App's settings menu, and
+setting the
+:meth:`grid_media_field <fiftyone.core.odm.dataset.DatasetAppConfig>` property
+to `thumbnail_path` instructs the App to use the thumbnail images by default in
+the grid view:
+
+.. image:: /images/app/app-multiple-media-fields.gif
+    :alt: multiple-media-fields
+    :align: center
+
 .. _app-config:
 
 Configuring the App
 ___________________
 
-The behavior of the App can be configured in various ways. The code sample
-below shows the basic pattern for customizing the App on a one-off basis:
+The behavior of the App can be configured globally, on a per-session basis, and
+on a per-dataset basis.
+
+Global App config
+-----------------
+
+FiftyOne provides a :ref:`global App config <configuring-fiftyone-app>` that
+you can use to customize the default App behavior for all sessions and datasets
+on your machine.
+
+You can also customize the global App config on a per-session basis:
 
 .. code-block:: python
     :linenos:
@@ -1021,12 +1109,18 @@ below shows the basic pattern for customizing the App on a one-off basis:
 
     dataset = foz.load_zoo_dataset("quickstart")
 
+    # Your default App config
+    print(fo.app_config)
+
     # Create a custom App config
     app_config = fo.app_config.copy()
     app_config.show_confidence = False
     app_config.show_label = True
+    print(app_config)
 
+    # Launch App with custom config
     session = fo.launch_app(dataset, config=app_config)
+    print(session.config)
 
 You can also reconfigure a live |Session| by editing its
 :meth:`session.config <fiftyone.core.session.Session.config>` property and
@@ -1036,12 +1130,50 @@ apply the changes:
 .. code-block:: python
     :linenos:
 
-    # Customize the config of a live Session
+    # Customize the config of a live session
     session.config.show_confidence = True
     session.config.show_label = True
+    session.refresh()  # must refresh after edits
 
-    # Refresh the session to apply the changes
-    session.refresh()
+See :ref:`this page <configuring-fiftyone-app>` for information about the
+available App configuration options.
 
-See :ref:`this page <configuring-fiftyone-app>` for more information about
-configuring the App.
+Dataset App config
+------------------
+
+Datasets also provide an :ref:`app_config property <custom-app-config>` that
+you can use to customize the behavior of the App for that particular dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.image as foui
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # View the dataset's current App config
+    print(dataset.app_config)
+
+    # Generate some thumbnail images
+    foui.transform_images(
+        dataset,
+        size=(-1, 32),
+        output_field="thumbnail_path",
+        output_dir="/tmp/thumbnails",
+    )
+
+    # Modify the dataset's App config
+    dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+    dataset.app_config.grid_media_field = "thumbnail_path"
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    Any settings stored in a dataset's
+    :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
+    the corresponding settings from your
+    :ref:`global App config <configuring-fiftyone-app>`.

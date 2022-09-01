@@ -675,6 +675,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # View the dataset's current App config
             print(dataset.app_config)
 
+            # Generate some thumbnail images
             foui.transform_images(
                 dataset,
                 size=(-1, 32),
@@ -682,7 +683,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 output_dir="/tmp/thumbnails",
             )
 
-            # Modify the App config
+            # Modify the dataset's App config
             dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
             dataset.app_config.grid_media_field = "thumbnail_path"
             dataset.save()  # must save after edits
