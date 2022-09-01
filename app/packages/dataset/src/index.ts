@@ -1,5 +1,6 @@
-/**
- * Copyright 2017-2022, Voxel51, Inc.
- */
+export {Dataset} from './Dataset'
+import {getEnvironment, RelayEnvironmentKey} from '@fiftyone/state'
 
-export { Dataset } from "@fiftyone/core";
+export function getEnvProps() {
+  return {environment: getEnvironment(), environmentKey: RelayEnvironmentKey}
+}
