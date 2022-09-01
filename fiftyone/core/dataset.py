@@ -5745,15 +5745,11 @@ def _do_load_dataset(name, virtual=False):
         raise ValueError("Dataset '%s' not found" % name)
 
     sample_collection_name = dataset_doc.sample_collection_name
+    frame_collection_name = dataset_doc.frame_collection_name
+
     sample_doc_cls = _create_sample_document_cls(
         sample_collection_name, field_docs=dataset_doc.sample_fields
     )
-
-    for sample_field in dataset_doc.sample_fields:
-        if sample_field.name not in sample_doc_cls._fields:
-            sample_doc_cls._declare_field(sample_field)
-
-    frame_collection_name = dataset_doc.frame_collection_name
 
     if sample_collection_name.startswith("clips."):
         # Clips datasets directly inherit frames from source dataset
@@ -5768,29 +5764,11 @@ def _do_load_dataset(name, virtual=False):
             frame_collection_name, field_docs=dataset_doc.frame_fields
         )
 
-        if _contains_videos(dataset_doc):
-            for frame_field in dataset_doc.frame_fields:
-                if frame_field.name not in frame_doc_cls._fields:
-                    frame_doc_cls._declare_field(frame_field)
-
     if not virtual:
         dataset_doc.last_loaded_at = datetime.utcnow()
         dataset_doc.save()
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
-
-
-def _contains_videos(dataset_doc):
-    if dataset_doc.media_type == fom.VIDEO:
-        return True
-
-    if (dataset_doc.media_type == fom.GROUP) and any(
-        slice_media_type == fom.VIDEO
-        for slice_media_type in dataset_doc.group_media_types.values()
-    ):
-        return True
-
-    return False
 
 
 def _delete_dataset_doc(dataset_doc):
