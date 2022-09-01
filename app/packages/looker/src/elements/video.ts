@@ -435,6 +435,10 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                 return {
                   loaded: true,
                   playing: autoplay || playing,
+                  dimensions: [
+                    this.element.videoWidth,
+                    this.element.videoHeight,
+                  ],
                   waitingForVideo: false,
                 };
               }

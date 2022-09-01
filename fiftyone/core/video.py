@@ -832,7 +832,7 @@ def _init_frames(
             docs.append(doc)
 
             # Commit batch of docs to frames dataset
-            if len(docs) >= 100000:  # MongoDB limit for bulk inserts
+            if len(docs) >= 10000:
                 _insert_docs(docs, src_docs, src_inds, dataset, src_dataset)
 
     # Add remaining docs to frames dataset

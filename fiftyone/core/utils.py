@@ -841,18 +841,25 @@ class DynamicBatcher(object):
 
         import fiftyone.core.utils as fou
 
-        total = int(1e7)
-        elements = range(total)
+        elements = range(int(1e7))
 
-        batches = fou.DynamicBatcher(
+        batcher = fou.DynamicBatcher(
             elements, target_latency=0.1, max_batch_beta=2.0
         )
 
-        with fou.ProgressBar(total) as pb:
-            for batch in batches:
-                batch_size = len(batch)
-                print("batch size: %d" % batch_size)
-                pb.update(count=batch_size)
+        for batch in batcher:
+            print("batch size: %d" % len(batch))
+
+        batcher = fou.DynamicBatcher(
+            elements,
+            target_latency=0.1,
+            max_batch_beta=2.0,
+            progress=True,
+        )
+
+        with batcher:
+            for batch in batcher:
+                print("batch size: %d" % len(batch))
 
     Args:
         iterable: an iterable
@@ -866,6 +873,11 @@ class DynamicBatcher(object):
         return_views (False): whether to return each batch as a
             :class:`fiftyone.core.view.DatasetView`. Only applicable when the
             iterable is a :class:`fiftyone.core.collections.SampleCollection`
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches
+        total (None): the length of ``iterable``. Only applicable when
+            ``progress=True``. If not provided, it is computed via
+            ``len(iterable)``, if possible
     """
 
     def __init__(
@@ -877,6 +889,8 @@ class DynamicBatcher(object):
         max_batch_size=None,
         max_batch_beta=None,
         return_views=False,
+        progress=False,
+        total=None,
     ):
         import fiftyone.core.collections as foc
 
@@ -890,13 +904,29 @@ class DynamicBatcher(object):
         self.max_batch_size = max_batch_size
         self.max_batch_beta = max_batch_beta
         self.return_views = return_views
+        self.progress = progress
+        self.total = total
 
         self._iter = None
         self._last_time = None
         self._last_batch_size = None
-
+        self._pb = None
+        self._in_context = False
         self._last_offset = None
         self._num_samples = None
+
+    def __enter__(self):
+        self._in_context = True
+        return self
+
+    def __exit__(self, *args):
+        self._in_context = False
+
+        if self.progress:
+            if self._last_batch_size is not None:
+                self._pb.update(count=self._last_batch_size)
+
+            self._pb.__exit__(*args)
 
     def __iter__(self):
         if self.return_views:
@@ -905,11 +935,30 @@ class DynamicBatcher(object):
         else:
             self._iter = iter(self.iterable)
 
-        self._last_batch_size = None
+        if self.progress:
+            if self._in_context:
+                total = self.total
+                if total is None:
+                    try:
+                        total = len(self.iterable)
+                    except:
+                        pass
+
+                self._pb = ProgressBar(total=total)
+                self._pb.__enter__()
+            else:
+                logger.warning(
+                    "DynamicBatcher must be invoked as a context manager in "
+                    "order to print progress"
+                )
+                self.progress = False
 
         return self
 
     def __next__(self):
+        if self.progress and self._last_batch_size is not None:
+            self._pb.update(count=self._last_batch_size)
+
         batch_size = self._compute_batch_size()
 
         if self.return_views:
@@ -922,16 +971,20 @@ class DynamicBatcher(object):
             return self.iterable[offset : (offset + batch_size)]
 
         batch = []
+        idx = 0
 
         try:
-            idx = 0
             while idx < batch_size:
                 batch.append(next(self._iter))
                 idx += 1
 
         except StopIteration:
+            self._last_batch_size = len(batch)
+
             if not batch:
                 raise StopIteration
+
+        self._last_batch_size = len(batch)
 
         return batch
 

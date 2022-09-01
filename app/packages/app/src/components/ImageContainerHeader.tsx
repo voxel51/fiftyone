@@ -63,22 +63,36 @@ const Count = () => {
   const groupSlice = useRecoilValue(groupStatistics(false));
   let include: string | null = null;
 
-  if (group) {
-    if (groupSlice === "group") {
-      element = {
-        plural: "groups",
-        singular: "group",
-      };
-    } else {
-    }
-  }
-
   return (
     <RightDiv>
       <div>
         <PathEntryCounts modal={false} path={""} />
         &nbsp;
         {total === 1 ? element.singular : element.plural}
+        {include && <PathEntryCounts modal={false} path={"_"} />}
+      </div>
+    </RightDiv>
+  );
+};
+
+const GroupsCount = () => {
+  let element = useRecoilValue(fos.elementNames);
+  const total = useRecoilValue(
+    fos.count({ path: "_", extended: false, modal: false })
+  );
+  const elementTotal = useRecoilValue(
+    fos.count({ path: "", extended: false, modal: false })
+  );
+
+  return (
+    <RightDiv>
+      <div>
+        <PathEntryCounts modal={false} path={"_"} />
+        &nbsp;
+        {total === 1 ? "group" : "groups"}
+        &nbsp; (<PathEntryCounts modal={false} path={""} />
+        &nbsp;
+        {elementTotal === 1 ? element.singular : element.plural})
       </div>
     </RightDiv>
   );
@@ -89,13 +103,14 @@ const ImageContainerHeader = () => {
   const gridZoomRangeValue = useRecoilValue(gridZoomRange);
   const theme = useTheme();
   const group = useRecoilValue(isGroup);
+  const groupStats = useRecoilValue(groupStatistics(false));
 
   return (
     <SamplesHeader>
       <GridActionsRow />
       <RightContainer>
         <Suspense fallback={<RightDiv>{"Loading..."}</RightDiv>}>
-          <Count />
+          {groupStats === "group" ? <GroupsCount /> : <Count />}
         </Suspense>
         {group && (
           <RightDiv>

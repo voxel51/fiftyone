@@ -39,9 +39,12 @@ function Copy({ onClick }) {
 
 export default function JSONPanel({ jsonHTML, onClose, onCopy }) {
   return (
-    <div className={`${lookerJSONPanel} ${lookerPanelContainer}`}>
+    <div
+      className={`${lookerJSONPanel} ${lookerPanelContainer}`}
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className={lookerPanelVerticalContainer}>
-        <div className={lookerPanel} onClick={(e) => e.stopPropagation()}>
+        <div className={lookerPanel}>
           {jsonHTML && <pre dangerouslySetInnerHTML={jsonHTML} />}
         </div>
         <Close onClick={onClose} />

@@ -42,12 +42,6 @@ export const getFrameElements: GetElements<FrameState> = (
       {
         node: common.ThumbnailSelectorElement,
       },
-      // {
-      //   node: common.JSONPanelElement,
-      // },
-      {
-        node: common.HelpPanelElement,
-      },
       {
         node: common.ControlsElement,
         children: [
@@ -109,12 +103,6 @@ export const getImageElements: GetElements<ImageState> = (
       { node: common.TagsElement },
       {
         node: common.ThumbnailSelectorElement,
-      },
-      // {
-      //   node: common.JSONPanelElement,
-      // },
-      {
-        node: common.HelpPanelElement,
       },
       {
         node: common.ControlsElement,
@@ -178,14 +166,8 @@ export const getVideoElements: GetElements<VideoState> = (
       {
         node: common.ThumbnailSelectorElement,
       },
-      // {
-      //   node: common.JSONPanelElement,
-      // },
       {
         node: video.LoaderBar,
-      },
-      {
-        node: common.VideoHelpPanelElement,
       },
       {
         node: common.ControlsElement,

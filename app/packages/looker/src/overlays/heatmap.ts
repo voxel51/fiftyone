@@ -1,7 +1,12 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import { get32BitColor, getColor, getRGBA, getRGBAColor } from "../color";
+import {
+  get32BitColor,
+  getColor,
+  getRGBA,
+  getRGBAColor,
+} from "@fiftyone/utilities";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { isFloatArray } from "../util";

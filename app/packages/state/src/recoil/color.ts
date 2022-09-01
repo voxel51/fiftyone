@@ -1,7 +1,7 @@
 import { selectorFamily } from "recoil";
 
 import { Coloring, createColorGenerator } from "@fiftyone/looker";
-import { getColor } from "@fiftyone/looker/src/color";
+import { getColor } from "@fiftyone/utilities";
 
 import * as atoms from "./atoms";
 import * as schemaAtoms from "./schema";

@@ -2,7 +2,7 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
-import { getColor } from "../color";
+import { getColor } from "@fiftyone/utilities";
 import { INFO_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates, KeypointSkeleton, NONFINITE } from "../state";
 import { distance, distanceFromLineSegment, multiply } from "../util";

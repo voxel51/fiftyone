@@ -6,9 +6,9 @@ import { Overlay } from "./overlays/base";
 
 import { Schema, Stage } from "@fiftyone/utilities";
 
+// vite won't import these from fou
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
-
 export interface Coloring {
   by: "field" | "instance" | "label";
   pool: string[];
@@ -71,6 +71,7 @@ export interface Control<State extends BaseState = BaseState> {
   detail: string;
   action: Action<State>;
   afterAction?: Action<State>;
+  alwaysHandle?: boolean;
 }
 
 export interface ControlMap<State extends BaseState> {

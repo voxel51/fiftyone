@@ -35,21 +35,26 @@ export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   return schema;
 };
 
-export const filterPaths = (paths: string[], schema: Schema): string[] => {
-  return paths.filter((path) => {
-    if (path.startsWith("tags.") || path.startsWith("_label_tags."))
-      return true;
+export const filterPaths = (
+  paths: string[] | null,
+  schema: Schema
+): string[] => {
+  return paths
+    ? paths.filter((path) => {
+        if (path.startsWith("tags.") || path.startsWith("_label_tags."))
+          return true;
 
-    const keys = path.split(".");
-    let fields = schema;
+        const keys = path.split(".");
+        let fields = schema;
 
-    for (let j = 0; j < keys.length; j++) {
-      if (!fields[keys[j]]) return false;
-      fields = fields[keys[j]].fields;
-    }
+        for (let j = 0; j < keys.length; j++) {
+          if (!fields[keys[j]]) return false;
+          fields = fields[keys[j]].fields;
+        }
 
-    return true;
-  });
+        return true;
+      })
+    : [];
 };
 
 export const buildSchema = (dataset: State.Dataset): Schema => {

@@ -213,7 +213,7 @@ const GroupStatistics = ({ modal }) => {
       <PopoutSectionTitle>Statistics</PopoutSectionTitle>
       <TabOption
         active={statistics}
-        options={["group", "slice"].map((value) => ({
+        options={["slice", "group"].map((value) => ({
           text: value,
           title: `View ${value} sidebar statistics`,
           onClick: () => setStatistics(value as "group" | "slice"),

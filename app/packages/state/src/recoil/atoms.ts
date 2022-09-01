@@ -26,16 +26,16 @@ interface ModalSample extends SampleData {
   navigation: ModalNavigation;
 }
 
-export const refresher = atom<boolean>({
+export const refresher = atom<number>({
   key: "refresher",
-  default: false,
+  default: 0,
 });
 
 export const useRefresh = () => {
   return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) =>
+    ({ set }) =>
       () => {
-        set(refresher, !get(refresher));
+        set(refresher, (cur) => cur + 1);
       },
     []
   );
@@ -217,4 +217,17 @@ export const similarityParameters = atom<
 export const modalTopBarVisible = atom<boolean>({
   key: "modalTopBarVisible",
   default: true,
+});
+
+export const hoveredSample = atom<Sample>({
+  key: "hoveredSample",
+  default: null,
+});
+
+export const lookerPanels = atom({
+  key: "lookerPanels",
+  default: {
+    json: { isOpen: false },
+    help: { isOpen: false },
+  },
 });

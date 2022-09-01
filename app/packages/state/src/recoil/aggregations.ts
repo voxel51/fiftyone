@@ -152,6 +152,7 @@ export const aggregations = selectorFamily<
       if (!dataset) {
         return null;
       }
+      const groupStats = get(groupStatistics(modal)) === "group";
 
       const { aggregations: data } = (await getFetchFunction()(
         "POST",
@@ -159,21 +160,14 @@ export const aggregations = selectorFamily<
         {
           filters,
           sample_ids:
-            modal && get(groupStatistics(modal)) !== "group"
-              ? get(selectors.sidebarSampleId)
-              : null,
-          groupId:
-            modal && get(groupStatistics(modal)) === "group"
-              ? get(groupId)
-              : null,
-          slice:
-            get(groupStatistics(modal)) === "group"
-              ? null
-              : get(currentSlice(modal)),
+            modal && !groupStats ? get(selectors.sidebarSampleId) : null,
+          groupId: modal && groupStats ? get(groupId) : null,
+          slice: get(currentSlice(modal)),
           dataset,
           view: get(viewAtoms.view),
           hidden_labels: hiddenLabels,
           extended: get(selectors.extendedStagesUnsorted),
+          mixed: !modal && groupStats,
         }
       )) as { aggregations: AggregationsData };
 
@@ -388,7 +382,10 @@ export const count = selectorFamily<
         }
 
         if (split.length < 2) {
-          throw new Error(`invalid path ${path}`);
+          // this will never resolve, which allows for incoming schema changes
+          // this shouldn't be necessary, but there is a mismatch between
+          // aggs and schema when there is a field change
+          return new Promise(() => {});
         }
 
         const parent = split.slice(0, split.length - 1).join(".");

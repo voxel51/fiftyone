@@ -39,13 +39,12 @@ const Sample: React.FC = () => {
     };
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
+  const hover = fos.useHoveredSample(data.sample, { update, clear });
 
   return (
     <div
       style={{ width: "100%", height: "100%", position: "relative" }}
-      onMouseEnter={update}
-      onMouseMove={update}
-      onMouseLeave={clear}
+      {...hover.handlers}
     >
       <SampleBar
         sampleId={_id}
