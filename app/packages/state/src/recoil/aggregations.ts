@@ -21,12 +21,7 @@ import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
-import {
-  currentSlice,
-  defaultGroupSlice,
-  groupSlice,
-  pinnedSlice,
-} from "./groups";
+import { currentSlice } from "./groups";
 
 type DateTimeBound = { datetime: number } | null;
 
