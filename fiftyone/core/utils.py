@@ -1062,6 +1062,9 @@ class UniqueFilenameMaker(object):
             duplicate filenames
         ignore_existing (False): whether to ignore existing files in
             ``output_dir`` for output filename generation purposes
+        idempotent (True): whether to return the same output path when the same
+            input path is provided multiple times (True) or to regenerate new
+            output paths (False)
     """
 
     def __init__(
@@ -1071,12 +1074,14 @@ class UniqueFilenameMaker(object):
         default_ext=None,
         ignore_exts=False,
         ignore_existing=False,
+        idempotent=True,
     ):
         self.output_dir = output_dir
         self.rel_dir = rel_dir
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
         self.ignore_existing = ignore_existing
+        self.idempotent = idempotent
 
         self._filepath_map = {}
         self._filename_counts = defaultdict(int)
@@ -1126,7 +1131,11 @@ class UniqueFilenameMaker(object):
         """
         found_input = bool(input_path)
 
-        if found_input and input_path in self._filepath_map:
+        if (
+            found_input
+            and self.idempotent
+            and input_path in self._filepath_map
+        ):
             return self._filepath_map[input_path]
 
         self._idx += 1

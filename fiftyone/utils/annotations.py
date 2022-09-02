@@ -2300,7 +2300,7 @@ class DrawConfig(etaa.AnnotationConfig):
 
 
 def draw_labeled_images(
-    samples, output_dir, label_fields=None, config=None, **kwargs
+    samples, output_dir, rel_dir=None, label_fields=None, config=None, **kwargs
 ):
     """Renders annotated versions of the images in the collection with the
     specified label data overlaid to the given directory.
@@ -2314,6 +2314,11 @@ def draw_labeled_images(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         output_dir: the directory to write the annotated images
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each annotated image.
+            This argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths
         label_fields (None): a label field or list of label fields to render.
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
@@ -2328,7 +2333,9 @@ def draw_labeled_images(
         config, kwargs, samples=samples, label_fields=label_fields
     )
 
-    filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
+    filename_maker = fou.UniqueFilenameMaker(
+        output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+    )
     output_ext = fo.config.default_image_ext
 
     outpaths = []
@@ -2372,7 +2379,7 @@ def draw_labeled_image(
 
 
 def draw_labeled_videos(
-    samples, output_dir, label_fields=None, config=None, **kwargs
+    samples, output_dir, rel_dir=None, label_fields=None, config=None, **kwargs
 ):
     """Renders annotated versions of the videos in the collection with the
     specified label data overlaid to the given directory.
@@ -2386,6 +2393,11 @@ def draw_labeled_videos(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         output_dir: the directory to write the annotated videos
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each annotated video.
+            This argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths
         label_fields (None): a label field or list of label fields to render.
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
@@ -2400,7 +2412,9 @@ def draw_labeled_videos(
         config, kwargs, samples=samples, label_fields=label_fields
     )
 
-    filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
+    filename_maker = fou.UniqueFilenameMaker(
+        output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+    )
     output_ext = fo.config.default_video_ext
 
     is_clips = samples._dataset._is_clips

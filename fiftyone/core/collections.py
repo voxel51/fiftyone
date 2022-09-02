@@ -6464,6 +6464,7 @@ class SampleCollection(object):
     def draw_labels(
         self,
         output_dir,
+        rel_dir=None,
         label_fields=None,
         overwrite=False,
         config=None,
@@ -6481,6 +6482,12 @@ class SampleCollection(object):
 
         Args:
             output_dir: the directory to write the annotated media
+            rel_dir (None): an optional relative directory to strip from each
+                input filepath to generate a unique identifier that is joined
+                with ``output_dir`` to generate an output path for each
+                annotated media. This argument allows for populating nested
+                subdirectories in ``output_dir`` that match the shape of the
+                input paths
             label_fields (None): a label field or list of label fields to
                 render. By default, all :class:`fiftyone.core.labels.Label`
                 fields are drawn
@@ -6513,6 +6520,7 @@ class SampleCollection(object):
             return foua.draw_labeled_videos(
                 self,
                 output_dir,
+                rel_dir=rel_dir,
                 label_fields=label_fields,
                 config=config,
                 **kwargs,
@@ -6521,6 +6529,7 @@ class SampleCollection(object):
         return foua.draw_labeled_images(
             self,
             output_dir,
+            rel_dir=rel_dir,
             label_fields=label_fields,
             config=config,
             **kwargs,

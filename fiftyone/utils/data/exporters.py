@@ -1045,6 +1045,7 @@ class MediaExporter(object):
             output_dir=output_dir,
             default_ext=self.default_ext,
             ignore_exts=self.ignore_exts,
+            ignore_existing=True,
         )
         self._manifest_path = manifest_path
         self._manifest = manifest
