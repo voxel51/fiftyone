@@ -447,8 +447,8 @@ function Looker3dCore({ sampleOverride: sample }) {
   }, [cameraRef, controlsRef]);
 
   return (
-    <Container onMouseOver={update} onMouseMove={update} onMouseOut={clear}>
-      <Canvas onClick={() => clear()}>
+    <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
+      <Canvas onClick={() => setAction(null)}>
         <CameraSetup
           controlsRef={controlsRef}
           cameraRef={cameraRef}
