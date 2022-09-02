@@ -1377,7 +1377,9 @@ class DatasetView(foc.SampleCollection):
         return self._dataset.group_media_types
 
 
-def make_optimized_select_view(sample_collection, sample_ids, ordered=False):
+def make_optimized_select_view(
+    sample_collection, sample_ids, ordered=False, groups=False
+):
     """Returns a view that selects the provided sample IDs that is optimized
     to reduce the document list as early as possible in the pipeline.
 
@@ -1393,6 +1395,7 @@ def make_optimized_select_view(sample_collection, sample_ids, ordered=False):
         sample_ids: a sample ID or iterable of sample IDs to select
         ordered (False): whether to sort the samples in the returned view to
             match the order of the provided IDs
+        groups (False): whether the IDs are group IDs, not sample IDs
 
     Returns:
         a :class:`DatasetView`
@@ -1405,6 +1408,9 @@ def make_optimized_select_view(sample_collection, sample_ids, ordered=False):
         # run the entire view's aggregation first and then select the samples
         # of interest at the end
         #
+        if groups:
+            return view.select_groups(sample_ids, ordered=ordered)
+
         return view.select(sample_ids, ordered=ordered)
 
     #
@@ -1421,7 +1427,13 @@ def make_optimized_select_view(sample_collection, sample_ids, ordered=False):
     # that could affect our ability to select the samples of interest first,
     # we'll need to account for that here...
     #
-    optimized_view = view._dataset.select(sample_ids, ordered=ordered)
+    if groups:
+        optimized_view = view._dataset.select_groups(
+            sample_ids, ordered=ordered
+        )
+    else:
+        optimized_view = view._dataset.select(sample_ids, ordered=ordered)
+
     for stage in view._stages:
         if type(stage) not in fost._STAGES_THAT_SELECT_OR_REORDER:
             optimized_view._stages.append(stage)
