@@ -291,8 +291,6 @@ export function Looker3d(props) {
 function Looker3dCore({ sampleOverride: sample }) {
   const settings = fop.usePluginSettings("3d");
 
-  console.log("looker3d", { sample });
-
   const modal = true;
   const isModal = true;
   const mediaField = recoil.useRecoilValue(fos.selectedMediaField(isModal));
@@ -328,7 +326,7 @@ function Looker3dCore({ sampleOverride: sample }) {
           color = getColor(l.label);
           break;
       }
-      return { ...l, color };
+      return { ...l, color, id: l._id };
     })
     .filter((l) => pathFilter(l.path.join("."), l));
 
@@ -689,7 +687,6 @@ function ViewJSON({ sample, jsonPanel }) {
             const nextAction =
               currentAction === targetAction ? null : targetAction;
             setAction(nextAction);
-            console.log("toggle", { sample });
             jsonPanel.toggle(sample);
             e.stopPropagation();
             e.preventDefault();

@@ -15,12 +15,10 @@ import { ContentDiv, ContentHeader } from "../utils";
 import { useEventHandler } from "../../utils/hooks";
 
 import { useErrorHandler } from "react-error-boundary";
-import { HelpPanel, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { lookerOptions, useOnSelectLabel } from "@fiftyone/state";
+import { useOnSelectLabel } from "@fiftyone/state";
 import { TooltipInfo } from "./TooltipInfo";
-import { Tooltip } from "@material-ui/core";
-import { sample } from "lodash";
 
 type EventCallback = (event: CustomEvent) => void;
 
