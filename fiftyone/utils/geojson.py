@@ -547,6 +547,13 @@ class GeoJSONDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each media. When
+            exporting media, this identifier is joined with ``data_path`` to
+            generate an output path for each exported media. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -575,6 +582,7 @@ class GeoJSONDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
         image_format=None,
         location_field=None,
         property_makers=None,
@@ -599,6 +607,7 @@ class GeoJSONDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
         self.image_format = image_format
         self.location_field = location_field
         self.property_makers = property_makers
@@ -613,6 +622,7 @@ class GeoJSONDatasetExporter(
         self._media_exporter = foud.ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             default_ext=self.image_format,
         )
         self._media_exporter.setup()

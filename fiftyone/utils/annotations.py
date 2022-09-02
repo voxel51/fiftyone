@@ -2318,7 +2318,9 @@ def draw_labeled_images(
             filepath to generate a unique identifier that is joined with
             ``output_dir`` to generate an output path for each annotated image.
             This argument allows for populating nested subdirectories in
-            ``output_dir`` that match the shape of the input paths
+            ``output_dir`` that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
         label_fields (None): a label field or list of label fields to render.
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
@@ -2397,7 +2399,9 @@ def draw_labeled_videos(
             filepath to generate a unique identifier that is joined with
             ``output_dir`` to generate an output path for each annotated video.
             This argument allows for populating nested subdirectories in
-            ``output_dir`` that match the shape of the input paths
+            ``output_dir`` that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
         label_fields (None): a label field or list of label fields to render.
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw

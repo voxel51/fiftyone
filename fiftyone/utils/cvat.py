@@ -854,6 +854,13 @@ class CVATImageDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` to
+            generate an output path for each exported image. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -865,6 +872,7 @@ class CVATImageDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
         image_format=None,
     ):
         data_path, export_media = self._parse_data_path(
@@ -885,6 +893,7 @@ class CVATImageDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
         self.image_format = image_format
 
         self._name = None
@@ -910,6 +919,7 @@ class CVATImageDatasetExporter(
         self._media_exporter = foud.ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             default_ext=self.image_format,
         )
         self._media_exporter.setup()
@@ -1018,6 +1028,13 @@ class CVATVideoDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each video. When
+            exporting media, this identifier is joined with ``data_path`` to
+            generate an output path for each exported video. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
     """
 
     def __init__(
@@ -1026,6 +1043,7 @@ class CVATVideoDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
     ):
         data_path, export_media = self._parse_data_path(
             export_dir=export_dir,
@@ -1045,6 +1063,7 @@ class CVATVideoDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
 
         self._task_labels = None
         self._num_samples = 0
@@ -1069,9 +1088,10 @@ class CVATVideoDatasetExporter(
 
     def setup(self):
         self._writer = CVATVideoAnnotationWriter()
-        self._media_exporter = foud.ImageExporter(
+        self._media_exporter = foud.VideoExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
         )
         self._media_exporter.setup()
 
