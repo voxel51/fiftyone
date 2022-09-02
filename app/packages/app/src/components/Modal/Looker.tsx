@@ -15,12 +15,10 @@ import { ContentDiv, ContentHeader } from "../utils";
 import { useEventHandler } from "../../utils/hooks";
 
 import { useErrorHandler } from "react-error-boundary";
-import { HelpPanel, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { lookerOptions, useOnSelectLabel } from "@fiftyone/state";
+import { useOnSelectLabel } from "@fiftyone/state";
 import { TooltipInfo } from "./TooltipInfo";
-import { Tooltip } from "@material-ui/core";
-import { sample } from "lodash";
 
 type EventCallback = (event: CustomEvent) => void;
 
@@ -176,11 +174,9 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
       shouldHandleKeyEvents: hoveredSample._id === sample._id,
       options: {
         ...state.options,
-        showJSON: jsonPanel.isOpen,
-        showHelp: helpPanel.isOpen,
       },
     }));
-  }, [hoveredSample, sample, looker, jsonPanel, helpPanel]);
+  }, [hoveredSample, sample, looker]);
 
   return (
     <div

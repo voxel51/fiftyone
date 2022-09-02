@@ -62,7 +62,10 @@ function Items({ children }) {
 function Item({ shortcut, title, detail }) {
   return (
     <Fragment>
-      <div className={lookerShortcutValue}>{shortcut}</div>
+      <div
+        className={lookerShortcutValue}
+        dangerouslySetInnerHTML={{ __html: shortcut }}
+      />
       <div className={lookerShortcutTitle}>{title}</div>
       <div className={lookerShortcutDetail}>{detail}</div>
     </Fragment>
