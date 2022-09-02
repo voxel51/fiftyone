@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<28945ea7273ff31a9efc303c8dcc74f7>>
+ * @generated SignedSource<<4c60ff6540d65f075ed00a173701893a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -77,7 +77,76 @@ const node: ConcreteRequest = (function () {
       name: "view",
       variableName: "view",
     },
-    v8 = [
+    v8 = {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "aspectRatio",
+      storageKey: null,
+    },
+    v9 = {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "sample",
+      storageKey: null,
+    },
+    v10 = [
+      {
+        alias: null,
+        args: null,
+        kind: "ScalarField",
+        name: "__typename",
+        storageKey: null,
+      },
+      {
+        kind: "InlineFragment",
+        selections: [v8 /*: any*/, v9 /*: any*/],
+        type: "ImageSample",
+        abstractKey: null,
+      },
+      {
+        kind: "InlineFragment",
+        selections: [v9 /*: any*/],
+        type: "PointCloudSample",
+        abstractKey: null,
+      },
+      {
+        kind: "InlineFragment",
+        selections: [
+          v8 /*: any*/,
+          {
+            alias: null,
+            args: null,
+            kind: "ScalarField",
+            name: "frameRate",
+            storageKey: null,
+          },
+          v9 /*: any*/,
+        ],
+        type: "VideoSample",
+        abstractKey: null,
+      },
+    ],
+    v11 = {
+      alias: null,
+      args: [
+        v6 /*: any*/,
+        {
+          kind: "Variable",
+          name: "filter",
+          variableName: "pinnedSampleFilter",
+        },
+        v7 /*: any*/,
+      ],
+      concreteType: null,
+      kind: "LinkedField",
+      name: "sample",
+      plural: false,
+      selections: v10 /*: any*/,
+      storageKey: null,
+    },
+    v12 = [
       {
         kind: "Variable",
         name: "after",
@@ -95,57 +164,6 @@ const node: ConcreteRequest = (function () {
         variableName: "count",
       },
       v7 /*: any*/,
-    ],
-    v9 = {
-      alias: null,
-      args: null,
-      kind: "ScalarField",
-      name: "aspectRatio",
-      storageKey: null,
-    },
-    v10 = {
-      alias: null,
-      args: null,
-      kind: "ScalarField",
-      name: "sample",
-      storageKey: null,
-    },
-    v11 = [
-      {
-        alias: null,
-        args: null,
-        kind: "ScalarField",
-        name: "__typename",
-        storageKey: null,
-      },
-      {
-        kind: "InlineFragment",
-        selections: [v9 /*: any*/, v10 /*: any*/],
-        type: "ImageSample",
-        abstractKey: null,
-      },
-      {
-        kind: "InlineFragment",
-        selections: [v10 /*: any*/],
-        type: "PointCloudSample",
-        abstractKey: null,
-      },
-      {
-        kind: "InlineFragment",
-        selections: [
-          v9 /*: any*/,
-          {
-            alias: null,
-            args: null,
-            kind: "ScalarField",
-            name: "frameRate",
-            storageKey: null,
-          },
-          v10 /*: any*/,
-        ],
-        type: "VideoSample",
-        abstractKey: null,
-      },
     ];
   return {
     fragment: {
@@ -167,9 +185,9 @@ const node: ConcreteRequest = (function () {
           name: "paginateGroup_query",
         },
         {
-          args: null,
-          kind: "FragmentSpread",
+          kind: "InlineDataFragmentSpread",
           name: "paginateGroupPinnedSample_query",
+          selections: [v11 /*: any*/],
         },
       ],
       type: "Query",
@@ -190,7 +208,7 @@ const node: ConcreteRequest = (function () {
       selections: [
         {
           alias: null,
-          args: v8 /*: any*/,
+          args: v12 /*: any*/,
           concreteType: "SampleItemStrConnection",
           kind: "LinkedField",
           name: "samples",
@@ -225,7 +243,7 @@ const node: ConcreteRequest = (function () {
                   kind: "LinkedField",
                   name: "node",
                   plural: false,
-                  selections: v11 /*: any*/,
+                  selections: v10 /*: any*/,
                   storageKey: null,
                 },
               ],
@@ -261,31 +279,14 @@ const node: ConcreteRequest = (function () {
         },
         {
           alias: null,
-          args: v8 /*: any*/,
+          args: v12 /*: any*/,
           filters: ["dataset", "view", "filter"],
           handle: "connection",
           key: "paginateGroup_query_samples",
           kind: "LinkedHandle",
           name: "samples",
         },
-        {
-          alias: null,
-          args: [
-            v6 /*: any*/,
-            {
-              kind: "Variable",
-              name: "filter",
-              variableName: "pinnedSampleFilter",
-            },
-            v7 /*: any*/,
-          ],
-          concreteType: null,
-          kind: "LinkedField",
-          name: "sample",
-          plural: false,
-          selections: v11 /*: any*/,
-          storageKey: null,
-        },
+        v11 /*: any*/,
       ],
     },
     params: {

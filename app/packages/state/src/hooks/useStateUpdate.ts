@@ -99,7 +99,7 @@ const useStateUpdate = () => {
         const previousDataset = get(datasetAtom);
         if (!previousDataset || previousDataset.id !== dataset.id) {
           reset(_activeFields({ modal: false }));
-          set(groupSlice, dataset.defaultGroupSlice);
+          set(groupSlice(false), dataset.defaultGroupSlice);
           reset(similarityParameters);
           reset(extendedSelection);
           reset(filters);

@@ -20,7 +20,10 @@ import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
+
 import { currentSlice, groupStatistics, groupId } from "./groups";
+
+import { sidebarSampleId } from "./modal";
 
 type DateTimeBound = { datetime: number } | null;
 

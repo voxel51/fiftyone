@@ -326,7 +326,7 @@ function Looker3dCore({ sampleOverride: sample }) {
           color = getColor(l.label);
           break;
       }
-      return { ...l, color };
+      return { ...l, color, id: l._id };
     })
     .filter((l) => pathFilter(l.path.join("."), l));
 
@@ -447,8 +447,8 @@ function Looker3dCore({ sampleOverride: sample }) {
   }, [cameraRef, controlsRef]);
 
   return (
-    <Container onMouseOver={update} onMouseMove={update} onMouseOut={clear}>
-      <Canvas onClick={() => clear()}>
+    <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
+      <Canvas onClick={() => setAction(null)}>
         <CameraSetup
           controlsRef={controlsRef}
           cameraRef={cameraRef}

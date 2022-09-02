@@ -1,6 +1,7 @@
 import { useRelayEnvironment } from "react-relay";
 import { RecoilState, useRecoilCallback } from "recoil";
-import { groupStatistics } from "../recoil";
+
+import { groupSlice, groupStatistics } from "../recoil";
 
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
@@ -42,7 +43,10 @@ export default () => {
             sidebarAtoms.sidebarVisible(false),
           ],
           [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
+
           [groupStatistics(true), groupStatistics(false)],
+
+          [groupSlice(true), groupSlice(false)],
         ];
 
         const results = await Promise.all(

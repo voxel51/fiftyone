@@ -1,21 +1,6 @@
-import { useTheme } from "@fiftyone/components";
-import { CircularProgress } from "@material-ui/core";
 import React, { Suspense } from "react";
 import { RecoilValue, useRecoilValue } from "recoil";
-
-const Loading = () => {
-  const theme = useTheme();
-  return (
-    <CircularProgress
-      style={{
-        color: theme.fontDark,
-        height: 16,
-        width: 16,
-        margin: 4,
-      }}
-    />
-  );
-};
+import LoadingCircle from "./LoadingCircle";
 
 const EntryCounts = ({
   countAtom,
@@ -30,7 +15,7 @@ const EntryCounts = ({
   ];
 
   if (typeof count !== "number") {
-    return <Loading />;
+    return <LoadingCircle />;
   }
 
   if (count === subcount || count === 0) {

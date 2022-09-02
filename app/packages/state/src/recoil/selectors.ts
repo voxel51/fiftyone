@@ -314,16 +314,6 @@ export const similarityKeys = selector<{
   },
 });
 
-export const sidebarSampleId = selector({
-  key: "sidebarSampleId",
-  get: ({ get }) => {
-    const override = get(atoms.sidebarOverride);
-    const modal = get(atoms.modal);
-
-    return override ? override : modal.sample._id;
-  },
-});
-
 export const extendedStagesUnsorted = selector({
   key: "extendedStagesUnsorted",
   get: ({ get }) => {
@@ -356,4 +346,9 @@ export const mediaFields = selector<string[]>({
   get: ({ get }) => {
     return get(atoms.dataset)?.appConfig?.mediaFields || [];
   },
+});
+
+export const modalNavigation = selector<atoms.ModalNavigation>({
+  key: "modalNavigation",
+  get: ({ get }) => get(atoms.modal).navigation,
 });

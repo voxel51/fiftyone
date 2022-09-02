@@ -15,12 +15,10 @@ import { ContentDiv, ContentHeader } from "../utils";
 import { useEventHandler } from "../../utils/hooks";
 
 import { useErrorHandler } from "react-error-boundary";
-import { HelpPanel, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { lookerOptions, useOnSelectLabel } from "@fiftyone/state";
+import { useOnSelectLabel } from "@fiftyone/state";
 import { TooltipInfo } from "./TooltipInfo";
-import { Tooltip } from "@material-ui/core";
-import { sample } from "lodash";
 
 type EventCallback = (event: CustomEvent) => void;
 
@@ -106,18 +104,30 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   useEventHandler(looker, "fullscreen", useFullscreen());
   useEventHandler(looker, "showOverlays", useShowOverlays());
 
-  onNext &&
-    useEventHandler(looker, "next", (e) => {
-      jsonPanel.close();
-      helpPanel.close();
-      return onNext(e);
-    });
-  onPrevious &&
-    useEventHandler(looker, "previous", (e) => {
-      jsonPanel.close();
-      helpPanel.close();
-      return onPrevious(e);
-    });
+  useEventHandler(looker, "close", onClose);
+
+  useEventHandler(
+    looker,
+    "next",
+    onNext
+      ? (e) => {
+          jsonPanel.close();
+          helpPanel.close();
+          return onNext(e);
+        }
+      : null
+  );
+  useEventHandler(
+    looker,
+    "previous",
+    onPrevious
+      ? (e) => {
+          jsonPanel.close();
+          helpPanel.close();
+          return onPrevious(e);
+        }
+      : null
+  );
   useEventHandler(looker, "select", useOnSelectLabel());
   useEventHandler(looker, "error", (event) => handleError(event.detail));
   const jsonPanel = fos.useJSONPanel();
@@ -164,11 +174,9 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
       shouldHandleKeyEvents: hoveredSample._id === sample._id,
       options: {
         ...state.options,
-        showJSON: jsonPanel.isOpen,
-        showHelp: helpPanel.isOpen,
       },
     }));
-  }, [hoveredSample, sample, looker, jsonPanel, helpPanel]);
+  }, [hoveredSample, sample, looker]);
 
   return (
     <div

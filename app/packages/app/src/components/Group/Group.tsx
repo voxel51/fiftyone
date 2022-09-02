@@ -11,7 +11,7 @@ import React, {
 } from "react";
 import { usePaginationFragment } from "react-relay";
 import {
-  useRecoilTransaction_UNSTABLE,
+  useRecoilCallback,
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
@@ -117,7 +117,7 @@ const Column: React.FC = () => {
     }
   }, [samples]);
 
-  const setSample = fos.useExpandSample();
+  const setSample = fos.useSetExpandedSample();
 
   const select = fos.useSelectSample();
   const selectSample = useRef(select);
@@ -195,13 +195,14 @@ const Column: React.FC = () => {
     return () => flashlight.detach();
   }, [flashlight, id]);
 
-  const updateItem = useRecoilTransaction_UNSTABLE(
-    ({ get }) =>
-      (id: string) => {
+  const updateItem = useRecoilCallback(
+    ({ snapshot }) =>
+      async (id: string) => {
         store.lookers.get(id)?.updateOptions({
           ...opts,
-          selected: get(fos.selectedSamples).has(id),
-          highlight: get(fos.modal)?.sample._id === id,
+          selected: snapshot.getLoadable(fos.selectedSamples).contents.has(id),
+          highlight:
+            (await snapshot.getPromise(fos.mainGroupSample))?._id === id,
         });
       },
     [opts]
