@@ -104,18 +104,30 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   useEventHandler(looker, "fullscreen", useFullscreen());
   useEventHandler(looker, "showOverlays", useShowOverlays());
 
-  onNext &&
-    useEventHandler(looker, "next", (e) => {
-      jsonPanel.close();
-      helpPanel.close();
-      return onNext(e);
-    });
-  onPrevious &&
-    useEventHandler(looker, "previous", (e) => {
-      jsonPanel.close();
-      helpPanel.close();
-      return onPrevious(e);
-    });
+  useEventHandler(looker, "close", onClose);
+
+  useEventHandler(
+    looker,
+    "next",
+    onNext
+      ? (e) => {
+          jsonPanel.close();
+          helpPanel.close();
+          return onNext(e);
+        }
+      : null
+  );
+  useEventHandler(
+    looker,
+    "previous",
+    onPrevious
+      ? (e) => {
+          jsonPanel.close();
+          helpPanel.close();
+          return onPrevious(e);
+        }
+      : null
+  );
   useEventHandler(looker, "select", useOnSelectLabel());
   useEventHandler(looker, "error", (event) => handleError(event.detail));
   const jsonPanel = fos.useJSONPanel();

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f628127b11f43a54687541906cd933e8>>
+ * @generated SignedSource<<91d2e992d99ca5af6a6d53825dfab9c8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from "relay-runtime";
+import { InlineFragment, ReaderInlineDataFragment } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
 export type paginateGroupPinnedSample_query$data = {
   readonly sample:
@@ -31,7 +31,8 @@ export type paginateGroupPinnedSample_query$data = {
         // This will never be '%other', but we need some
         // value in case none of the concrete values match.
         readonly __typename: "%other";
-      };
+      }
+    | null;
   readonly " $fragmentType": "paginateGroupPinnedSample_query";
 };
 export type paginateGroupPinnedSample_query$key = {
@@ -39,113 +40,11 @@ export type paginateGroupPinnedSample_query$key = {
   readonly " $fragmentSpreads": FragmentRefs<"paginateGroupPinnedSample_query">;
 };
 
-const node: ReaderFragment = (function () {
-  var v0 = {
-      alias: null,
-      args: null,
-      kind: "ScalarField",
-      name: "aspectRatio",
-      storageKey: null,
-    },
-    v1 = {
-      alias: null,
-      args: null,
-      kind: "ScalarField",
-      name: "sample",
-      storageKey: null,
-    };
-  return {
-    argumentDefinitions: [
-      {
-        kind: "RootArgument",
-        name: "dataset",
-      },
-      {
-        kind: "RootArgument",
-        name: "pinnedSampleFilter",
-      },
-      {
-        kind: "RootArgument",
-        name: "view",
-      },
-    ],
-    kind: "Fragment",
-    metadata: null,
-    name: "paginateGroupPinnedSample_query",
-    selections: [
-      {
-        kind: "RequiredField",
-        field: {
-          alias: null,
-          args: [
-            {
-              kind: "Variable",
-              name: "dataset",
-              variableName: "dataset",
-            },
-            {
-              kind: "Variable",
-              name: "filter",
-              variableName: "pinnedSampleFilter",
-            },
-            {
-              kind: "Variable",
-              name: "view",
-              variableName: "view",
-            },
-          ],
-          concreteType: null,
-          kind: "LinkedField",
-          name: "sample",
-          plural: false,
-          selections: [
-            {
-              alias: null,
-              args: null,
-              kind: "ScalarField",
-              name: "__typename",
-              storageKey: null,
-            },
-            {
-              kind: "InlineFragment",
-              selections: [v0 /*: any*/, v1 /*: any*/],
-              type: "ImageSample",
-              abstractKey: null,
-            },
-            {
-              kind: "InlineFragment",
-              selections: [v1 /*: any*/],
-              type: "PointCloudSample",
-              abstractKey: null,
-            },
-            {
-              kind: "InlineFragment",
-              selections: [
-                v0 /*: any*/,
-                {
-                  alias: null,
-                  args: null,
-                  kind: "ScalarField",
-                  name: "frameRate",
-                  storageKey: null,
-                },
-                v1 /*: any*/,
-              ],
-              type: "VideoSample",
-              abstractKey: null,
-            },
-          ],
-          storageKey: null,
-        },
-        action: "THROW",
-        path: "sample",
-      },
-    ],
-    type: "Query",
-    abstractKey: null,
-  };
-})();
+const node: ReaderInlineDataFragment = {
+  kind: "InlineDataFragment",
+  name: "paginateGroupPinnedSample_query",
+};
 
-(node as any).hash = "5ff580beb470ab9b3a7399cc73d28675";
+(node as any).hash = "eb9c0c15bffcff12cd9a2174a2671591";
 
 export default node;
