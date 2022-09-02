@@ -5,7 +5,7 @@ import * as fos from "@fiftyone/state";
 
 export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
   const expandSample = fos.useExpandSample();
-  const setSample = fos.useSetExpandedSample();
+  const setSample = fos.useSetExpandedSample(false);
   const clear = fos.useClearModal();
 
   return useCallback<

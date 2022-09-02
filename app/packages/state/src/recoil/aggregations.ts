@@ -22,6 +22,7 @@ import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
 import { currentSlice } from "./groups";
+import { sidebarSampleId } from "./modal";
 
 type DateTimeBound = { datetime: number } | null;
 
@@ -159,7 +160,7 @@ export const aggregations = selectorFamily<
         "/aggregations",
         {
           filters,
-          sample_ids: modal ? get(selectors.sidebarSampleId) : null,
+          sample_ids: modal ? get(sidebarSampleId) : null,
           slice: get(currentSlice(modal)),
           dataset,
           view: get(viewAtoms.view),

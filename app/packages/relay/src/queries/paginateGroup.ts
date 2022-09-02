@@ -48,9 +48,8 @@ export const paginateGroupPaginationFragment = graphql`
 `;
 
 export const paginateGroupPinnedSampleFragment = graphql`
-  fragment paginateGroupPinnedSample_query on Query {
-    sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter)
-      @required(action: THROW) {
+  fragment paginateGroupPinnedSample_query on Query @inline {
+    sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {
       __typename
       ... on ImageSample {
         aspectRatio
