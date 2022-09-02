@@ -498,10 +498,7 @@ class DatasetDocument(Document):
     default_group_slice = StringField()
     tags = ListField(StringField())
     info = DictField()
-    app_config = EmbeddedDocumentField(
-        document_type=DatasetAppConfig,
-        default=lambda: DatasetAppConfig(),
-    )
+    app_config = EmbeddedDocumentField(document_type=DatasetAppConfig)
     classes = DictField(ClassesField())
     default_classes = ClassesField()
     mask_targets = DictField(TargetsField())

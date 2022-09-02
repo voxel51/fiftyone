@@ -2592,11 +2592,6 @@ class MigrateCommand(Command):
             )
             return
 
-        fom.migrate_database_if_necessary(
-            destination=args.version,
-            verbose=args.verbose,
-        )
-
         if args.dataset_name:
             for name in args.dataset_name:
                 fom.migrate_dataset_if_necessary(
@@ -2605,6 +2600,11 @@ class MigrateCommand(Command):
                     error_level=args.error_level,
                     verbose=args.verbose,
                 )
+        else:
+            fom.migrate_database_if_necessary(
+                destination=args.version,
+                verbose=args.verbose,
+            )
 
 
 def _print_migration_table(db_ver, dataset_vers):

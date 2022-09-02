@@ -5745,26 +5745,11 @@ def _do_load_dataset(name, virtual=False):
         raise ValueError("Dataset '%s' not found" % name)
 
     sample_collection_name = dataset_doc.sample_collection_name
-    sample_doc_cls = _create_sample_document_cls(
-        sample_collection_name, dataset_doc.sample_fields
-    )
-
-    default_sample_fields = fos.get_default_sample_fields(include_private=True)
-    for sample_field in dataset_doc.sample_fields:
-        if sample_field.name in default_sample_fields:
-            continue
-
-        sample_doc_cls._declare_field(sample_field)
-
-    dataset_doc.sample_fields = [
-        SampleFieldDocument.from_field(f)
-        for f in sample_doc_cls._fields.values()
-    ]
     frame_collection_name = dataset_doc.frame_collection_name
 
-    if not virtual:
-        dataset_doc.last_loaded_at = datetime.utcnow()
-        dataset_doc.save()
+    sample_doc_cls = _create_sample_document_cls(
+        sample_collection_name, field_docs=dataset_doc.sample_fields
+    )
 
     if sample_collection_name.startswith("clips."):
         # Clips datasets directly inherit frames from source dataset
@@ -5774,46 +5759,16 @@ def _do_load_dataset(name, virtual=False):
 
     if _src_dataset is not None:
         frame_doc_cls = _src_dataset._frame_doc_cls
-        dataset_doc.frame_fields = _src_dataset._doc.frame_fields
     else:
         frame_doc_cls = _create_frame_document_cls(
-            frame_collection_name, dataset_doc.frame_fields
+            frame_collection_name, field_docs=dataset_doc.frame_fields
         )
 
-        if _contains_videos(dataset_doc):
-            default_frame_fields = fofr.get_default_frame_fields(
-                include_private=True
-            )
-            for frame_field in dataset_doc.frame_fields:
-                if frame_field.name in default_frame_fields:
-                    continue
-
-                frame_doc_cls._declare_field(frame_field)
-
-            dataset_doc.frame_fields = [
-                SampleFieldDocument.from_field(f)
-                for f in frame_doc_cls._fields.values()
-            ]
-
-    if dataset_doc.app_config is None:
-        dataset_doc.app_config = DatasetAppConfig()
-
-    dataset_doc.save()
+    if not virtual:
+        dataset_doc.last_loaded_at = datetime.utcnow()
+        dataset_doc.save()
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
-
-
-def _contains_videos(dataset_doc):
-    if dataset_doc.media_type == fom.VIDEO:
-        return True
-
-    if (dataset_doc.media_type == fom.GROUP) and any(
-        slice_media_type == fom.VIDEO
-        for slice_media_type in dataset_doc.group_media_types.values()
-    ):
-        return True
-
-    return False
 
 
 def _delete_dataset_doc(dataset_doc):
