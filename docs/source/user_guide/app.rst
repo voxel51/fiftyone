@@ -1194,5 +1194,5 @@ FiftyOne provides a plugin system that you can use to customize and extend its
 behavior!
 
 Check out
-`this page <https://github.com/voxel51/fiftyone/blob/groups/app/packages/plugins/README.md>`_
+`this page <https://github.com/voxel51/fiftyone/blob/develop/app/packages/plugins/README.md>`_
 for documentation on developing and installing custom plugins.
