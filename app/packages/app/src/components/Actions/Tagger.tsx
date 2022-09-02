@@ -391,9 +391,10 @@ const useTagCallback = (
           active_label_fields: activeLabels,
           target_labels: targetLabels,
           changes,
-          groupId: group,
+          group_id: group,
           slice,
-          modal: modal && stats !== "group" ? modalData.sample._id : null,
+          mixed: stats === "group",
+          modal: modal ? modalData.sample._id : null,
           sample_ids: modal
             ? null
             : selectedSamples.size
@@ -459,10 +460,8 @@ const usePlaceHolder = (
           : useRecoilValue(fos.labelCount({ modal: true, extended: true }));
       return [labelCount, labelsModalPlaceholder(selectedLabels, labelCount)];
     } else if (modal && !selectedSamples) {
-      return [
-        useRecoilValue(selectedSamplesCount),
-        samplePlaceholder(elementNames),
-      ];
+      const count = useRecoilValue(selectedSamplesCount(modal));
+      return [count, samplesPlaceholder(0, null, count, elementNames)];
     } else {
       const totalSamples = useRecoilValue(
         fos.count({ path: "", extended: false, modal: false })
@@ -472,7 +471,7 @@ const usePlaceHolder = (
       );
 
       const count = filteredSamples ?? totalSamples;
-      const itemCount = useRecoilValue(selectedSamplesCount);
+      const itemCount = useRecoilValue(selectedSamplesCount(modal));
       const selectedLabelCount = useRecoilValue(numItemsInSelection(true));
       const labelCount = selectedSamples
         ? selectedLabelCount
@@ -485,7 +484,12 @@ const usePlaceHolder = (
       } else {
         return [
           selectedSamples > 0 ? itemCount : count,
-          samplesPlaceholder(selectedSamples, labelCount, count, elementNames),
+          samplesPlaceholder(
+            selectedSamples > 0 ? itemCount : count,
+            labelCount,
+            count,
+            elementNames
+          ),
         ];
       }
     }

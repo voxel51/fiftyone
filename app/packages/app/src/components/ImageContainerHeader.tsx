@@ -60,8 +60,12 @@ const Count = () => {
     fos.count({ path: "", extended: false, modal: false })
   );
   const group = useRecoilValue(isGroup);
-  const groupSlice = useRecoilValue(groupStatistics(false));
-  let include: string | null = null;
+  if (group) {
+    element = {
+      plural: "groups",
+      singular: "group",
+    };
+  }
 
   return (
     <RightDiv>
@@ -69,7 +73,6 @@ const Count = () => {
         <PathEntryCounts modal={false} path={""} />
         &nbsp;
         {total === 1 ? element.singular : element.plural}
-        {include && <PathEntryCounts modal={false} path={"_"} />}
       </div>
     </RightDiv>
   );

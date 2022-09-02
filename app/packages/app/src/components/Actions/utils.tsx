@@ -118,10 +118,11 @@ export const tagStatistics = selectorFamily<
           ? get(sidebarSampleId)
           : null,
         labels: toSnakeCase(labels),
-        groupId: modal && groupStats ? get(groupId) : null,
+        group_id: modal ? get(groupId) : null,
         slice: groupStats ? null : get(currentSlice(modal)),
         count_labels,
         filters: get(modal ? fos.modalFilters : fos.filters),
+        mixed: groupStats,
         hidden_labels:
           modal && labels ? toSnakeCase(get(fos.hiddenLabelsArray)) : null,
       });
@@ -137,11 +138,13 @@ export const numItemsInSelection = selectorFamily<number, boolean>({
     },
 });
 
-export const selectedSamplesCount = selector<number>({
+export const selectedSamplesCount = selectorFamily<number, boolean>({
   key: "selectedSampleCount",
-  get: ({ get }) => {
-    return get(tagStatistics({ modal: false, labels: false })).items;
-  },
+  get:
+    (modal) =>
+    ({ get }) => {
+      return get(tagStatistics({ modal, labels: false })).items;
+    },
 });
 
 export const tagStats = selectorFamily<

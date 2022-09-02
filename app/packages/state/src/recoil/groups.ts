@@ -56,7 +56,7 @@ export const pinnedSlice = selector<string | null>({
     const { groupMediaTypes } = get(dataset);
 
     for (const { name, mediaType } of groupMediaTypes) {
-      if (mediaType === "point_cloud") {
+      if (mediaType === "point_cloud" || mediaType === "point-cloud") {
         return name;
       }
     }

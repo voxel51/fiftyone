@@ -167,7 +167,7 @@ export const aggregations = selectorFamily<
           view: get(viewAtoms.view),
           hidden_labels: hiddenLabels,
           extended: get(selectors.extendedStagesUnsorted),
-          mixed: !modal && groupStats,
+          mixed: groupStats,
         }
       )) as { aggregations: AggregationsData };
 

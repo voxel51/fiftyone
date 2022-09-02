@@ -37,6 +37,7 @@ class Tag(HTTPEndpoint):
         current_frame = data.get("current_frame", None)
         slice = data.get("slice", None)
         group_id = data.get("group_id", None)
+        mixed = data.get("mixed", False)
 
         view = fosv.get_view(
             dataset,
@@ -64,6 +65,10 @@ class Tag(HTTPEndpoint):
             elif hidden_labels:
                 view = view.exclude_labels(hidden_labels)
 
+        if mixed:
+            view = view.select_group_slices(_allow_mixed=True)
+
+        if target_labels:
             fosu.change_label_tags(
                 view, changes, label_fields=active_label_fields
             )

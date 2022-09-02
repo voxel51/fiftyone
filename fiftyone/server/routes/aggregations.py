@@ -46,9 +46,7 @@ class Aggregations(HTTPEndpoint):
             filters=filters,
             extended_stages=extended,
             sample_filter=SampleFilter(
-                group=GroupElementFilter(
-                    id=group_id, slice=slice if not mixed else None
-                )
+                group=GroupElementFilter(id=group_id, slice=slice)
             ),
         )
 
@@ -58,7 +56,9 @@ class Aggregations(HTTPEndpoint):
         if hidden_labels:
             view = view.exclude_labels(hidden_labels)
 
-        if not mixed:
+        if mixed:
+            view = view.select_group_slices(_allow_mixed=True)
+        else:
             return {"aggregations": await get_app_statistics(view, filters)}
 
         slice_view = fosv.get_view(
