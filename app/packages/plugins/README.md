@@ -36,14 +36,18 @@ NOTE: your plugins directory must be readable by the FiftyOne server.
 Once you have a plugins directory setup, you must create a shell package to
 version your plugins:
 
-```
+```shell
 cd $FIFTYONE_PLUGINS_DIR
-yarn init # or npm init
+
+yarn init
+
+# or with npm
+npm init
 ```
 
 Now you can install a node package that contains a plugin:
 
-```
+```shell
 # if it is avaialable on plubic/private npm registry
 yarn add my-fiftyone-plugin
 
@@ -55,7 +59,7 @@ If your plugin is only available in a git repository, you can still install via
 git, although the environment must be configured to allow reading from that git
 repository:
 
-```
+```shell
 # install via a github http url
 yarn add my-plugin@https://github.com/user/my-plugin.git#my-branch-name
 
@@ -99,17 +103,19 @@ First ensure your plugin's `package.json` includes the path to the plugin
 script:
 
 ```json
+{
   "fiftyone": {
     "script": "dist/index.umd.js"
   }
+}
 ```
 
 Then follow the steps below, in separate terminal sessions as needed.
 
-```sh
+```shell
 # tell FiftyOne where you want to load plugins from
-# this should be a parent directory to all your plugins
-FIFTYONE_PLUGINS_DIR=$MY_PLUGINS_DIR
+# this should be the parent directory to all your plugins
+FIFTYONE_PLUGINS_DIR=/path/to/your/plugins
 
 # start the FiftyOne App in dev mode
 cd $FIFTYONE/app/packaages/app
@@ -154,10 +160,11 @@ Before publishing make sure you do the following:
 
 Then to publish your latest plugin to an npm registry:
 
-```
-# using yarn
+```shell
 yarn publish
-# using npm
+
+# or with npm
+npm publish
 ```
 
 If you are using a git repository to publish your plugins, you must ensure that
