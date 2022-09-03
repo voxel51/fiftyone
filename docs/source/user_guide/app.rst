@@ -1184,3 +1184,15 @@ you can use to customize the behavior of the App for that particular dataset:
     :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
     the corresponding settings from your
     :ref:`global App config <configuring-fiftyone-app>`.
+
+.. _app-plugins:
+
+Custom App plugins
+__________________
+
+FiftyOne provides a plugin system that you can use to customize and extend its
+behavior!
+
+Check out
+`this page <https://github.com/voxel51/fiftyone/blob/develop/app/packages/plugins/README.md>`_
+for documentation on developing and installing custom plugins.
