@@ -267,7 +267,7 @@ input SelectedLabel {
 
 type SidebarGroup {
   name: String!
-  paths: [String!]!
+  paths: [String!]
 }
 
 type Target {

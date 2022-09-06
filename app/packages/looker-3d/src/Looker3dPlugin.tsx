@@ -13,7 +13,6 @@ registerComponent({
     if (!sample) return false;
     const settings = usePluginSettings("3d");
     const field = getFilepathField(sample, settings.filepathFields);
-
     return field !== null;
   },
 });

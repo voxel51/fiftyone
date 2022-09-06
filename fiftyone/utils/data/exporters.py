@@ -115,8 +115,7 @@ def export_samples(
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         export_dir (None): the directory to which to export the samples in
             format ``dataset_type``
-        dataset_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
-            type to write
+        dataset_type (None): the :class:`fiftyone.types.Dataset` type to write
         data_path (None): an optional parameter that enables explicit control
             over the location of the exported media for certain export formats.
             Can be any of the following:
@@ -429,7 +428,7 @@ def build_dataset_exporter(
     """Builds the :class:`DatasetExporter` instance for the given parameters.
 
     Args:
-        dataset_type: the :class:`fiftyone.types.dataset_types.Dataset` type
+        dataset_type: the :class:`fiftyone.types.Dataset` type
         strip_none (True): whether to exclude None-valued items from ``kwargs``
         warn_unused (True): whether to issue warnings for any non-None unused
             parameters encountered
@@ -1551,9 +1550,9 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     .. warning::
 
-        The :class:`fiftyone.types.dataset_types.FiftyOneDataset` format was
-        upgraded in ``fiftyone==0.8`` and this exporter is now deprecated.
-        The new exporter is :class:`FiftyOneDatasetExporter`.
+        The :class:`fiftyone.types.FiftyOneDataset` format was upgraded in
+        ``fiftyone==0.8`` and this exporter is now deprecated. The new exporter
+        is :class:`FiftyOneDatasetExporter`.
 
     Args:
         export_dir: the directory to write the export

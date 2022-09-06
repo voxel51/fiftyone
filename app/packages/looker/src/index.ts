@@ -75,10 +75,10 @@ import {
 import { zoomToContent } from "./zoom";
 
 import { getFrameNumber } from "./elements/util";
-import { getColor } from "./color";
+import { getColor } from "@fiftyone/utilities";
 import { Events } from "./elements/base";
 
-export { createColorGenerator, getRGB } from "./color";
+export { createColorGenerator, getRGB } from "@fiftyone/utilities";
 export { freeVideos } from "./elements/util";
 export type {
   Coloring,

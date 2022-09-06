@@ -2,8 +2,16 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
-import { BIG_ENDIAN } from "./constants";
-import { RGB, RGBA } from "./state";
+export type RGB = [number, number, number];
+export type RGBA = [number, number, number, number];
+
+export const BIG_ENDIAN = (() => {
+  let buf = new ArrayBuffer(4);
+  let u32data = new Uint32Array(buf);
+  let u8data = new Uint8Array(buf);
+  u32data[0] = 0xcafebabe;
+  return u8data[0] === 0xca;
+})();
 
 const bitColorCache: { [color: string]: number } = {};
 

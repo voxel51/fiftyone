@@ -4,7 +4,7 @@
 
 import { REGRESSION, TEMPORAL_DETECTION } from "@fiftyone/utilities";
 
-import { getColor } from "../color";
+import { getColor } from "@fiftyone/utilities";
 import { INFO_COLOR, MOMENT_CLASSIFICATIONS } from "../constants";
 import {
   BaseState,

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<03357f8deaa9b7d1b48f88a9c7999f25>>
+ * @generated SignedSource<<0405bd66c857abb59d78eae67caae85a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -30,7 +30,7 @@ export type setViewMutation$data = {
         readonly plugins: object | null;
         readonly sidebarGroups: ReadonlyArray<{
           readonly name: string;
-          readonly paths: ReadonlyArray<string>;
+          readonly paths: ReadonlyArray<string> | null;
         }> | null;
       } | null;
       readonly brainMethods: ReadonlyArray<{

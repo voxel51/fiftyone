@@ -125,7 +125,7 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
         state: router?.state?.state ? router.state.state || {} : {},
       };
     });
-  }, [dataset]);
+  }, [dataset, router.state]);
 
   if (!name || name !== dataset.name) {
     return null;

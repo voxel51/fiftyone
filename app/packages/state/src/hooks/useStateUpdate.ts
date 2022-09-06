@@ -48,7 +48,7 @@ const useStateUpdate = () => {
 
       const { get, reset, set } = t;
 
-      if (state?.view) {
+      if (state) {
         const view = get(viewAtoms.view);
 
         if (!viewsAreEqual(view || [], state.view || [])) {
@@ -108,7 +108,9 @@ const useStateUpdate = () => {
           if (dataset.groupMediaTypes[slice] === "pcd") {
             slice = dataset.defaultGroupSlice;
           }
-          set(groupSlice, slice);
+
+          set(groupSlice(false), slice);
+
           reset(similarityParameters);
           reset(extendedSelection);
           reset(filters);

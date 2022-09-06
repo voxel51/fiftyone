@@ -31,13 +31,18 @@ import {
   PopoutSectionTitle,
   TabOption,
   jsonIcon,
+  helpIcon,
 } from "@fiftyone/components";
-import { colorMap } from "@fiftyone/state";
+import { colorMap, dataset } from "@fiftyone/state";
 import { removeListener } from "process";
 
 THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
 
 const deg2rad = (degrees) => degrees * (Math.PI / 180);
+const hasFocusAtom = recoil.atom({
+  key: "looker3dHasFocus",
+  default: false,
+});
 
 function PointCloudMesh({ minZ, colorBy, points, rotation, onLoad }) {
   const colorMinMaxRef = React.useRef();
@@ -202,6 +207,7 @@ function Polyline({
   selected,
   onClick,
   tooltip,
+  label,
 }) {
   if (filled) {
     // filled not yet supported
@@ -291,7 +297,9 @@ function Looker3dCore({ sampleOverride: sample }) {
   // @ts-ignore
   const src = fos.getSampleSrc(sample[mediaField]);
   const points = useLoader(PCDLoader, src);
-  const selectedLabels = recoil.useRecoilValue(fos.selectedLabels);
+  const [selectedLabels, setSelectedLabels] = recoil.useRecoilState(
+    fos.selectedLabels
+  );
   const pathFilter = usePathFilter();
   const labelAlpha = recoil.useRecoilValue(fos.alpha(modal));
   const onSelectLabel = fos.useOnSelectLabel();
@@ -299,10 +307,26 @@ function Looker3dCore({ sampleOverride: sample }) {
   const controlsRef = React.useRef();
   const getColor = recoil.useRecoilValue(fos.colorMap(true));
   const [pointCloudBounds, setPointCloudBounds] = React.useState();
+  const { coloring } = recoil.useRecoilValue(
+    fos.lookerOptions({ withFilter: true, modal })
+  );
 
   const overlays = load3dOverlays(sample, selectedLabels)
     .map((l) => {
-      return { ...l, color: getColor(l.path.join(".")) };
+      const path = l.path.join(".");
+      let color;
+      switch (coloring.by) {
+        case "field":
+          color = getColor(path);
+          break;
+        case "instance":
+          color = getColor(l._id);
+          break;
+        default:
+          color = getColor(l.label);
+          break;
+      }
+      return { ...l, color, id: l._id };
     })
     .filter((l) => pathFilter(l.path.join("."), l));
 
@@ -314,36 +338,46 @@ function Looker3dCore({ sampleOverride: sample }) {
 
   const colorBy = recoil.useRecoilValue(pcState.colorBy);
 
-  function onChangeView(view) {
-    const camera = cameraRef.current as any;
-    const controls = controlsRef.current as any;
-    if (camera) {
-      if (controls) {
+  const onChangeView = useCallback(
+    (view) => {
+      const camera = cameraRef.current as any;
+      const controls = controlsRef.current as any;
+      if (camera && controls) {
+        const origTarget = controls.target.clone();
+        const origCamPos = camera.position.clone();
         controls.target.set(0, 0, 0);
-      }
-      switch (view) {
-        case "top":
-          if (settings.defaultCameraPosition) {
-            camera.position.set(
-              settings.defaultCameraPosition.x,
-              settings.defaultCameraPosition.y,
-              settings.defaultCameraPosition.z
-            );
-          } else {
-            const maxZ = pointCloudBounds ? pointCloudBounds.max.z : null;
-            if (maxZ !== null) {
-              camera.position.set(0, 0, 20 * maxZ);
+        switch (view) {
+          case "top":
+            if (settings.defaultCameraPosition) {
+              camera.position.set(
+                settings.defaultCameraPosition.x,
+                settings.defaultCameraPosition.y,
+                settings.defaultCameraPosition.z
+              );
+            } else {
+              const maxZ = pointCloudBounds ? pointCloudBounds.max.z : null;
+              if (maxZ !== null) {
+                camera.position.set(0, 0, 20 * maxZ);
+              }
             }
-          }
-          break;
-        case "pov":
-          camera.position.set(0, -10, 1);
-          break;
+            break;
+          case "pov":
+            camera.position.set(0, -10, 1);
+            break;
+        }
+
+        camera.updateProjectionMatrix();
+        return !(
+          origTarget.equals(controls.target) &&
+          origCamPos.distanceTo(camera.position) < 1
+        );
       }
-      controls.update();
-      camera.updateProjectionMatrix();
-    }
-  }
+    },
+    [cameraRef, controlsRef, settings, pointCloudBounds]
+  );
+
+  const jsonPanel = fos.useJSONPanel();
+  const helpPanel = fos.useHelpPanel();
 
   const pcRotationSetting = _.get(settings, "pointCloud.rotation", [0, 0, 0]);
   const pcRotation = toEulerFromDegreesArray(pcRotationSetting);
@@ -376,10 +410,45 @@ function Looker3dCore({ sampleOverride: sample }) {
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
   const tooltip = fos.useTooltip();
+  useHotkey("KeyT", () => onChangeView("top"));
+  useHotkey("KeyE", () => onChangeView("pov"));
+  useHotkey(
+    "Escape",
+    ({ get, set }) => {
+      const panels = get(fos.lookerPanels);
+      let lookerPanelUpdate;
+      for (let panel of ["help", "json"]) {
+        if (panels[panel].isOpen) {
+          set(fos.lookerPanels, {
+            ...panels,
+            [panel]: { ...panels[panel], isOpen: false },
+          });
+          return;
+        }
+      }
+      if (get(fos.hoveredSample)?._id !== sample._id) return;
+
+      const selectedLabels = get(fos.selectedLabels);
+      if (selectedLabels && Object.keys(selectedLabels).length > 0) {
+        set(fos.selectedLabels, {});
+        return;
+      }
+
+      const changed = onChangeView("top");
+      if (changed) return;
+
+      set(fos.modal, null);
+    },
+    [jsonPanel, helpPanel, selectedLabels, hovering]
+  );
+
+  useEffect(() => {
+    onChangeView("top");
+  }, [cameraRef, controlsRef]);
 
   return (
-    <Container onMouseOver={update} onMouseMove={update} onMouseOut={clear}>
-      <Canvas onClick={() => clear()}>
+    <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
+      <Canvas onClick={() => setAction(null)}>
         <CameraSetup
           controlsRef={controlsRef}
           cameraRef={cameraRef}
@@ -426,8 +495,8 @@ function Looker3dCore({ sampleOverride: sample }) {
       </Canvas>
       {(hoveringRef.current || hovering) && (
         <ActionBarContainer
-          onMouseOver={() => (hoveringRef.current = true)}
-          onMouseOut={() => (hoveringRef.current = false)}
+          onMouseEnter={() => (hoveringRef.current = true)}
+          onMouseLeave={() => (hoveringRef.current = false)}
         >
           <ActionsBar>
             <ChooseColorSpace />
@@ -443,7 +512,8 @@ function Looker3dCore({ sampleOverride: sample }) {
               label={"E"}
               hint="Ego View"
             />
-            <ViewJSON sample={sample} />
+            <ViewJSON jsonPanel={jsonPanel} sample={sample} />
+            <ViewHelp helpPanel={helpPanel} />
           </ActionsBar>
         </ActionBarContainer>
       )}
@@ -602,8 +672,7 @@ function Choice({ label, value }) {
   );
 }
 
-function ViewJSON({ sample }) {
-  const jsonPanel = fos.useJSONPanel();
+function ViewJSON({ sample, jsonPanel }) {
   const [currentAction, setAction] = recoil.useRecoilState(
     pcState.currentAction
   );
@@ -619,6 +688,47 @@ function ViewJSON({ sample }) {
               currentAction === targetAction ? null : targetAction;
             setAction(nextAction);
             jsonPanel.toggle(sample);
+            e.stopPropagation();
+            e.preventDefault();
+            return false;
+          }}
+        />
+      </ActionItem>
+    </Fragment>
+  );
+}
+
+const LOOKER3D_HELP_ITEMS = [
+  { shortcut: "Wheel", title: "Zoom", detail: "Zoom in and out" },
+  { shortcut: "Drag", title: "Rotate", detail: "Rotate the camera" },
+  {
+    shortcut: "Shift + drag",
+    title: "Translate",
+    detail: "Translate the camera",
+  },
+  { shortcut: "T", title: "Top-down", detail: "Reset camera to top-down view" },
+  { shortcut: "E", title: "Ego-view", detail: "Reset the camera to ego view" },
+  { shortcut: "C", title: "Controls", detail: "Toggle controls" },
+  { shortcut: "?", title: "Display help", detail: "Display this help window" },
+  { shortcut: "ESC", title: "Escape ", detail: "Escape the current context" },
+];
+
+function ViewHelp({ helpPanel }) {
+  const [currentAction, setAction] = recoil.useRecoilState(
+    pcState.currentAction
+  );
+
+  return (
+    <Fragment>
+      <ActionItem>
+        <img
+          src={helpIcon}
+          onClick={(e) => {
+            const targetAction = "help";
+            const nextAction =
+              currentAction === targetAction ? null : targetAction;
+            setAction(nextAction);
+            helpPanel.toggle(LOOKER3D_HELP_ITEMS);
             e.stopPropagation();
             e.preventDefault();
             return false;
@@ -708,4 +818,21 @@ class ErrorBoundary extends React.Component<
 
     return this.props.children;
   }
+}
+function useHotkey(code, fn, deps) {
+  const EVENT_NAME = "keydown";
+  const cb = recoil.useRecoilTransaction_UNSTABLE((ctx) => () => fn(ctx), deps);
+  function handle(e) {
+    if (e.code === code) {
+      cb();
+    }
+  }
+  function unlisten() {
+    window.removeEventListener(EVENT_NAME, handle);
+  }
+  useEffect(() => {
+    window.addEventListener(EVENT_NAME, handle);
+
+    return unlisten;
+  }, []);
 }

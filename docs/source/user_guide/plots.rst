@@ -5,8 +5,7 @@ Interactive Plots
 
 .. default-role:: code
 
-FiftyOne provides a powerful
-:mod:`fiftyone.core.plots <fiftyone.core.plots.base>` framework that contains
+FiftyOne provides a powerful :mod:`fiftyone.core.plots` framework that contains
 a variety of interactive plotting methods that enable you to visualize your
 datasets and uncover patterns that are not apparent from inspecting either the
 :ref:`raw media files <fiftyone-app>` or
@@ -1230,8 +1229,7 @@ property of the plot:
 Plotting backend
 ----------------
 
-Most plotting methods in the
-:meth:`fiftyone.core.plots <fiftyone.core.plots.base>` module provide an
+Most plotting methods in the :meth:`fiftyone.core.plots` module provide an
 optional ``backend`` parameter that you can use to control the plotting backend
 used to render plots.
 

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<17a556c77dd2ef66e611bdf93f5cebb2>>
+ * @generated SignedSource<<ea5365736f1bd446454e5e87bc24c7ff>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -27,7 +27,7 @@ export type DatasetQuery$data = {
       readonly plugins: object | null;
       readonly sidebarGroups: ReadonlyArray<{
         readonly name: string;
-        readonly paths: ReadonlyArray<string>;
+        readonly paths: ReadonlyArray<string> | null;
       }> | null;
     } | null;
     readonly brainMethods: ReadonlyArray<{

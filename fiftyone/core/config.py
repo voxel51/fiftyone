@@ -109,6 +109,9 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MODULE_PATH",
             default=None,
         )
+        self.plugins_dir = self.parse_string(
+            d, "plugins_dir", env_var="FIFTYONE_PLUGINS_DIR", default=None
+        )
         self.dataset_zoo_manifest_paths = self.parse_path_array(
             d,
             "dataset_zoo_manifest_paths",

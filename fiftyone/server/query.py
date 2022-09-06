@@ -115,7 +115,7 @@ class EvaluationRun(Run):
 @gql.type
 class SidebarGroup:
     name: str
-    paths: t.List[str]
+    paths: t.Optional[t.List[str]]
 
 
 @gql.type

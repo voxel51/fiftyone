@@ -1,5 +1,5 @@
 """
-Session class for interacting with the FiftyOne App
+Session class for interacting with the FiftyOne App.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -194,8 +194,8 @@ def update_state(auto_show: bool = False) -> t.Callable:
     """:class:`Session` method decorator for triggering state update events
 
     Args:
-        auto_show (False): whether the method should show a new notebook App cell as
-            well, if ``auto`` is ``True``
+        auto_show (False): whether the method should show a new notebook App
+            cell as well, if ``auto`` is ``True``
 
     Returns:
         the decorated method

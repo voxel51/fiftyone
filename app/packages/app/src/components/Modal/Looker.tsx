@@ -19,7 +19,6 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useOnSelectLabel } from "@fiftyone/state";
 import { TooltipInfo } from "./TooltipInfo";
-import { Tooltip } from "@material-ui/core";
 
 type EventCallback = (event: CustomEvent) => void;
 
@@ -105,21 +104,52 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   useEventHandler(looker, "fullscreen", useFullscreen());
   useEventHandler(looker, "showOverlays", useShowOverlays());
 
-  onNext && useEventHandler(looker, "next", onNext);
-  onPrevious && useEventHandler(looker, "previous", onPrevious);
-  onClose && useEventHandler(looker, "close", onClose);
+  useEventHandler(looker, "close", onClose);
+
+  useEventHandler(
+    looker,
+    "next",
+    onNext
+      ? (e) => {
+          jsonPanel.close();
+          helpPanel.close();
+          return onNext(e);
+        }
+      : null
+  );
+  useEventHandler(
+    looker,
+    "previous",
+    onPrevious
+      ? (e) => {
+          jsonPanel.close();
+          helpPanel.close();
+          return onPrevious(e);
+        }
+      : null
+  );
   useEventHandler(looker, "select", useOnSelectLabel());
   useEventHandler(looker, "error", (event) => handleError(event.detail));
   const jsonPanel = fos.useJSONPanel();
-  useEventHandler(looker, "options", ({ detail }) => {
-    const { showJSON } = detail || {};
+  const helpPanel = fos.useHelpPanel();
+  useEventHandler(looker, "options", (e) => {
+    const { detail } = e;
+    const { showJSON, showHelp, SHORTCUTS } = detail || {};
     if (showJSON === true) {
       jsonPanel.open(sample);
     }
     if (showJSON === false) {
       jsonPanel.close();
     }
+    if (showHelp === true) {
+      helpPanel.open(shortcutToHelpItems(SHORTCUTS));
+    }
+    if (showHelp === false) {
+      helpPanel.close();
+    }
   });
+
+  onClose && useEventHandler(looker, "close", onClose);
 
   useEffect(() => {
     initialRef.current = false;
@@ -137,6 +167,17 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
     e.detail && tooltip.setCoords(e.detail.coordinates);
   });
 
+  const hoveredSample = useRecoilValue(fos.hoveredSample);
+  useEffect(() => {
+    looker.updater((state) => ({
+      ...state,
+      shouldHandleKeyEvents: hoveredSample._id === sample._id,
+      options: {
+        ...state.options,
+      },
+    }));
+  }, [hoveredSample, sample, looker]);
+
   return (
     <div
       id={id}
@@ -153,3 +194,7 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
 };
 
 export default React.memo(Looker);
+
+function shortcutToHelpItems(SHORTCUTS) {
+  return Object.values(SHORTCUTS);
+}

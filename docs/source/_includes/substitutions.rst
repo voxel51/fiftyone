@@ -87,12 +87,12 @@
 .. |UnlabeledVideoSampleParser| replace:: :class:`UnlabeledVideoSampleParser <fiftyone.utils.data.parsers.UnlabeledVideoSampleParser>`
 .. |LabeledVideoSampleParser| replace:: :class:`LabeledVideoSampleParser <fiftyone.utils.data.parsers.LabeledVideoSampleParser>`
 
-.. |DatasetType| replace:: :class:`Dataset <fiftyone.types.dataset_types.Dataset>`
-.. |UnlabeledImageDatasetType| replace:: :class:`UnlabeledImageDataset <fiftyone.types.dataset_types.UnlabeledImageDataset>`
-.. |LabeledImageDatasetType| replace:: :class:`LabeledImageDataset <fiftyone.types.dataset_types.LabeledImageDataset>`
-.. |UnlabeledVideoDatasetType| replace:: :class:`UnlabeledVideoDataset <fiftyone.types.dataset_types.UnlabeledVideoDataset>`
-.. |LabeledVideoDatasetType| replace:: :class:`LabeledVideoDataset <fiftyone.types.dataset_types.LabeledVideoDataset>`
-.. |GroupDatasetType| replace:: :class:`GroupDataset <fiftyone.types.dataset_types.GroupDataset>`
+.. |DatasetType| replace:: :class:`Dataset <fiftyone.types.Dataset>`
+.. |UnlabeledImageDatasetType| replace:: :class:`UnlabeledImageDataset <fiftyone.types.UnlabeledImageDataset>`
+.. |LabeledImageDatasetType| replace:: :class:`LabeledImageDataset <fiftyone.types.LabeledImageDataset>`
+.. |UnlabeledVideoDatasetType| replace:: :class:`UnlabeledVideoDataset <fiftyone.types.UnlabeledVideoDataset>`
+.. |LabeledVideoDatasetType| replace:: :class:`LabeledVideoDataset <fiftyone.types.LabeledVideoDataset>`
+.. |GroupDatasetType| replace:: :class:`GroupDataset <fiftyone.types.GroupDataset>`
 
 .. |Metadata| replace:: :class:`Metadata <fiftyone.core.metadata.Metadata>`
 .. |ImageMetadata| replace:: :class:`ImageMetadata <fiftyone.core.metadata.ImageMetadata>`

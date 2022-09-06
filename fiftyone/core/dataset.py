@@ -668,15 +668,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Examples::
 
             import fiftyone as fo
+            import fiftyone.utils.image as foui
+            import fiftyone.zoo as foz
 
-            dataset = fo.Dataset()
+            dataset = foz.load_zoo_dataset("quickstart")
 
             # View the dataset's current App config
             print(dataset.app_config)
 
-            # Store some dataset-specific settings
-            dataset.app_config.plugins["map"] = {"clustering": False}
+            # Generate some thumbnail images
+            foui.transform_images(
+                dataset,
+                size=(-1, 32),
+                output_field="thumbnail_path",
+                output_dir="/tmp/thumbnails",
+            )
+
+            # Modify the dataset's App config
+            dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+            dataset.app_config.grid_media_field = "thumbnail_path"
             dataset.save()  # must save after edits
+
+            session = fo.launch_app(dataset)
         """
         return self._doc.app_config
 
@@ -3094,9 +3107,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir (None): the dataset directory. This can be omitted for
                 certain dataset formats if you provide arguments such as
                 ``data_path`` and ``labels_path``
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -3252,9 +3264,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir (None): the dataset directory. This can be omitted for
                 certain dataset formats if you provide arguments such as
                 ``data_path`` and ``labels_path``
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -3406,9 +3417,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``archive_path``
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -3557,9 +3567,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``archive_path``
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -3934,9 +3943,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_images_dir(self, images_dir, tags=None, recursive=True):
         """Adds the given directory of images to the dataset.
 
-        See :class:`fiftyone.types.dataset_types.ImageDirectory` for format
-        details. In particular, note that files with non-image MIME types are
-        omitted.
+        See :class:`fiftyone.types.ImageDirectory` for format details. In
+        particular, note that files with non-image MIME types are omitted.
 
         This operation does not read the images.
 
@@ -4168,9 +4176,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_videos_dir(self, videos_dir, tags=None, recursive=True):
         """Adds the given directory of videos to the dataset.
 
-        See :class:`fiftyone.types.dataset_types.VideoDirectory` for format
-        details. In particular, note that files with non-video MIME types are
-        omitted.
+        See :class:`fiftyone.types.VideoDirectory` for format details. In
+        particular, note that files with non-video MIME types are omitted.
 
         This operation does not read/decode the videos.
 
@@ -4325,9 +4332,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             dataset_dir (None): the dataset directory. This can be omitted if
                 you provide arguments such as ``data_path`` and ``labels_path``
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -4434,9 +4440,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``archive_path``
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -5740,26 +5745,11 @@ def _do_load_dataset(name, virtual=False):
         raise ValueError("Dataset '%s' not found" % name)
 
     sample_collection_name = dataset_doc.sample_collection_name
-    sample_doc_cls = _create_sample_document_cls(
-        sample_collection_name, dataset_doc.sample_fields
-    )
-
-    default_sample_fields = fos.get_default_sample_fields(include_private=True)
-    for sample_field in dataset_doc.sample_fields:
-        if sample_field.name in default_sample_fields:
-            continue
-
-        sample_doc_cls._declare_field(sample_field)
-
-    dataset_doc.sample_fields = [
-        SampleFieldDocument.from_field(f)
-        for f in sample_doc_cls._fields.values()
-    ]
     frame_collection_name = dataset_doc.frame_collection_name
 
-    if not virtual:
-        dataset_doc.last_loaded_at = datetime.utcnow()
-        dataset_doc.save()
+    sample_doc_cls = _create_sample_document_cls(
+        sample_collection_name, field_docs=dataset_doc.sample_fields
+    )
 
     if sample_collection_name.startswith("clips."):
         # Clips datasets directly inherit frames from source dataset
@@ -5769,46 +5759,16 @@ def _do_load_dataset(name, virtual=False):
 
     if _src_dataset is not None:
         frame_doc_cls = _src_dataset._frame_doc_cls
-        dataset_doc.frame_fields = _src_dataset._doc.frame_fields
     else:
         frame_doc_cls = _create_frame_document_cls(
-            frame_collection_name, dataset_doc.frame_fields
+            frame_collection_name, field_docs=dataset_doc.frame_fields
         )
 
-        if _contains_videos(dataset_doc):
-            default_frame_fields = fofr.get_default_frame_fields(
-                include_private=True
-            )
-            for frame_field in dataset_doc.frame_fields:
-                if frame_field.name in default_frame_fields:
-                    continue
-
-                frame_doc_cls._declare_field(frame_field)
-
-            dataset_doc.frame_fields = [
-                SampleFieldDocument.from_field(f)
-                for f in frame_doc_cls._fields.values()
-            ]
-
-    if dataset_doc.app_config is None:
-        dataset_doc.app_config = DatasetAppConfig()
-
-    dataset_doc.save()
+    if not virtual:
+        dataset_doc.last_loaded_at = datetime.utcnow()
+        dataset_doc.save()
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
-
-
-def _contains_videos(dataset_doc):
-    if dataset_doc.media_type == fom.VIDEO:
-        return True
-
-    if (dataset_doc.media_type == fom.GROUP) and any(
-        slice_media_type == fom.VIDEO
-        for slice_media_type in dataset_doc.group_media_types.values()
-    ):
-        return True
-
-    return False
 
 
 def _delete_dataset_doc(dataset_doc):

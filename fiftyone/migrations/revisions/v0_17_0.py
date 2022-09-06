@@ -21,7 +21,13 @@ def up(db, dataset_name):
         dataset_dict["default_group_slice"] = None
 
     if "app_config" not in dataset_dict:
-        dataset_dict["app_config"] = {}
+        dataset_dict["app_config"] = {
+            "media_fields": ["filepath"],
+            "grid_media_field": "filepath",
+            "modal_media_field": "filepath",
+            "sidebar_groups": None,
+            "plugins": {},
+        }
 
     if "app_sidebar_groups" in dataset_dict:
         dataset_dict["app_config"]["sidebar_groups"] = dataset_dict.pop(

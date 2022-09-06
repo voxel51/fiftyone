@@ -5,8 +5,6 @@ FiftyOne Server view
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from bson import ObjectId
-
 import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
@@ -20,13 +18,6 @@ from fiftyone.server.utils import iter_label_fields
 
 
 _LABEL_TAGS = "_label_tags"
-
-
-def get_group(sample_collection, group_id):
-    id_field = sample_collection.group_field + "._id"
-    return sample_collection.mongo(
-        [{"$match": {"$expr": {"$eq": ["$" + id_field, ObjectId(group_id)]}}}]
-    )
 
 
 def get_view(
@@ -69,7 +60,9 @@ def get_view(
                 view.group_slice = view.default_group_slice
 
             if sample_filter.group.id:
-                view = get_group(view, sample_filter.group.id)
+                view = fov.make_optimized_select_view(
+                    view, sample_filter.group.id, groups=True
+                )
 
         elif sample_filter.id:
             view = fov.make_optimized_select_view(view, sample_filter.id)
