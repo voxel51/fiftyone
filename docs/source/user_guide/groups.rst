@@ -1007,11 +1007,17 @@ contain a 3D visualizer.
    :alt: groups-modal
    :align: center
 
-.. note::
+By default, the filters sidebar shows statistics for **only** the group slice
+that currently has focus in the grid/modal. In the grid view, the active slice
+is denoted by the selector in the upper-right corner of the grid, and in the
+modal, the active sample is denoted by the `pin icon` in the upper-left corner.
 
-    The filters sidebar shows statistics for **only** the group slice that
-    currently has focus in the modal, which is denoted by the `pin icon` in the
-    upper-left corner of the modal.
+However, you can opt to show statistics across all slices of a grouped dataset
+by selecting `group` mode under the App's settings menu:
+
+.. image:: /images/groups/groups-stats.gif
+   :alt: groups-stats
+   :align: center
 
 .. _3d-visualizer:
 
