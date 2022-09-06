@@ -193,10 +193,11 @@ export const mainGroupSample = selector<AppSample>({
   key: "mainGroupSample",
   get: ({ get }) => {
     const field = get(groupField);
+    const group = get(isGroup);
 
     const sample = get(modal).sample;
 
-    if (!field) return sample;
+    if (!field || !group) return sample;
 
     if (sample[field].name === get(groupSlice(true))) {
       return sample;
