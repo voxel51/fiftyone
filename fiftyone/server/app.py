@@ -1,19 +1,12 @@
 """
-FiftyOne Server app
+FiftyOne Server app.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import os
 
-import fiftyone.constants as foc
-import strawberry as gql
-from fiftyone.server.context import GraphQL
-from fiftyone.server.extensions import EndSession
-from fiftyone.server.mutation import Mutation
-from fiftyone.server.query import Query
-from fiftyone.server.routes import routes
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.base import (
@@ -26,6 +19,15 @@ from starlette.responses import Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 from starlette.types import Scope
+import strawberry as gql
+
+import fiftyone as fo
+import fiftyone.constants as foc
+from fiftyone.server.context import GraphQL
+from fiftyone.server.extensions import EndSession
+from fiftyone.server.mutation import Mutation
+from fiftyone.server.query import Query
+from fiftyone.server.routes import routes
 
 
 class Static(StaticFiles):
@@ -72,7 +74,7 @@ app = Starlette(
         Mount(
             "/plugins",
             app=Static(
-                directory=os.environ.get('FIFTYONE_PLUGINS_DIR'),
+                directory=fo.config.plugins_dir,
                 html=True,
             ),
             name="plugins",
