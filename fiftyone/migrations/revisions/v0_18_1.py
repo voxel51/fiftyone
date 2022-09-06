@@ -60,7 +60,7 @@ def _set_url_name(db, dataset_dict):
         try:
             # Give the user a one-time pass if they have a really long dataset
             # name to have a URL-friendly name that's shorter
-            url_name = _to_url_name(name[: _URL_NAME_LENGTH_RANGE[1]])
+            url_name = _to_url_name(name[: _NAME_LENGTH_RANGE[1]])
         except Exception as e:
             old_name = name
             name = _get_default_dataset_name(existing_names)
@@ -75,7 +75,7 @@ def _set_url_name(db, dataset_dict):
         # Make a valid, unique name that resembles the original
         name = _get_default_dataset_name(existing_names)
         name = old_name + "-RENAMED-" + name
-        name = name[-_URL_NAME_LENGTH_RANGE[1] :]
+        name = name[-_NAME_LENGTH_RANGE[1] :]
 
         url_name = _to_url_name(name)
 
@@ -88,16 +88,16 @@ def _set_url_name(db, dataset_dict):
     dataset_dict["url_name"] = url_name
 
 
-_SAFE_CHARS = set(string.ascii_letters) | set(string.digits) | set("-_.")
-_WHITESAPCE_CHARS = set(string.whitespace) | set("+")
-_URL_NAME_LENGTH_RANGE = (1, 100)
+_SAFE_CHARS = set(string.ascii_letters) | set(string.digits)
+_HYPHEN_CHARS = set(string.whitespace) | set("+_.-")
+_NAME_LENGTH_RANGE = (1, 100)
 
 
 def _sanitize_char(c):
     if c in _SAFE_CHARS:
         return c
 
-    if c in _WHITESAPCE_CHARS:
+    if c in _HYPHEN_CHARS:
         return "-"
 
     return ""
@@ -107,10 +107,10 @@ def _to_url_name(name):
     if not isinstance(name, str):
         raise ValueError("Expected string; found %s: %s" % (type(name), name))
 
-    if len(name) > _URL_NAME_LENGTH_RANGE[1]:
+    if len(name) > _NAME_LENGTH_RANGE[1]:
         raise ValueError(
             "'%s' is too long; length %d > %d"
-            % (name, len(name), _URL_NAME_LENGTH_RANGE[1])
+            % (name, len(name), _NAME_LENGTH_RANGE[1])
         )
 
     safe = []
@@ -121,18 +121,18 @@ def _to_url_name(name):
             safe.append(s)
             last = s
 
-    url_name = "".join(safe).strip("-")
+    url_name = "".join(safe).strip("-").lower()
 
-    if len(url_name) < _URL_NAME_LENGTH_RANGE[0]:
+    if len(url_name) < _NAME_LENGTH_RANGE[0]:
         raise ValueError(
             "'%s' has invalid URL-friendly name '%s'; length %d < %d"
-            % (name, url_name, len(url_name), _URL_NAME_LENGTH_RANGE[0])
+            % (name, url_name, len(url_name), _NAME_LENGTH_RANGE[0])
         )
 
-    if len(url_name) > _URL_NAME_LENGTH_RANGE[1]:
+    if len(url_name) > _NAME_LENGTH_RANGE[1]:
         raise ValueError(
             "'%s' has invalid URL-friendly name '%s'; length %d > %d"
-            % (name, url_name, len(url_name), _URL_NAME_LENGTH_RANGE[1])
+            % (name, url_name, len(url_name), _NAME_LENGTH_RANGE[1])
         )
 
     return url_name

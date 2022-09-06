@@ -43,17 +43,17 @@ class CoreUtilsTests(unittest.TestCase):
             fou.validate_hex_color("#FFFF")
 
     def test_to_url_name(self):
-        self.assertEqual(fou.to_url_name("coco_2017"), "coco_2017")
+        self.assertEqual(fou.to_url_name("coco_2017"), "coco-2017")
         self.assertEqual(fou.to_url_name("c+o+c+o 2-0-1-7"), "c-o-c-o-2-0-1-7")
-        self.assertEqual(fou.to_url_name("cat.DOG"), "cat.DOG")
+        self.assertEqual(fou.to_url_name("cat.DOG"), "cat-dog")
         self.assertEqual(fou.to_url_name("---z----"), "z")
         self.assertEqual(
             fou.to_url_name("Brian's #$&@ [awesome?] dataset!"),
-            "Brians-awesome-dataset",
+            "brians-awesome-dataset",
         )
         self.assertEqual(
             fou.to_url_name("     sPaM     aNd  EgGs    "),
-            "sPaM-aNd-EgGs",
+            "spam-and-eggs",
         )
 
         with self.assertRaises(ValueError):
