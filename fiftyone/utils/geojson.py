@@ -554,6 +554,8 @@ class GeoJSONDatasetExporter(
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.utils.normalize_path`
+        abs_paths (False): whether to store absolute paths to the images in the
+            exported labels
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -583,6 +585,7 @@ class GeoJSONDatasetExporter(
         labels_path=None,
         export_media=None,
         rel_dir=None,
+        abs_paths=False,
         image_format=None,
         location_field=None,
         property_makers=None,
@@ -608,6 +611,7 @@ class GeoJSONDatasetExporter(
         self.labels_path = labels_path
         self.export_media = export_media
         self.rel_dir = rel_dir
+        self.abs_paths = abs_paths
         self.image_format = image_format
         self.location_field = location_field
         self.property_makers = property_makers
@@ -640,9 +644,12 @@ class GeoJSONDatasetExporter(
                 if value is not None or not self.omit_none_fields:
                     properties[key] = fn(value)
 
-        _, uuid = self._media_exporter.export(sample.filepath)
+        out_media_path, uuid = self._media_exporter.export(sample.filepath)
 
-        properties["filename"] = uuid
+        if self.abs_paths:
+            properties["filename"] = out_media_path
+        else:
+            properties["filename"] = uuid
 
         location = sample[self.location_field]
         if location is not None:

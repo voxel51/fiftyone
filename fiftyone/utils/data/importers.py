@@ -2012,7 +2012,11 @@ class FiftyOneImageClassificationDatasetImporter(
     def __next__(self):
         uuid = next(self._iter_uuids)
 
-        image_path = self._image_paths_map[uuid]
+        if os.path.isabs(uuid):
+            image_path = uuid
+        else:
+            image_path = self._image_paths_map[uuid]
+
         target = self._labels_map[uuid]
 
         if self.compute_metadata:
@@ -2464,7 +2468,11 @@ class FiftyOneImageDetectionDatasetImporter(
     def __next__(self):
         uuid = next(self._iter_uuids)
 
-        image_path = self._image_paths_map[uuid]
+        if os.path.isabs(uuid):
+            image_path = uuid
+        else:
+            image_path = self._image_paths_map[uuid]
+
         target = self._labels_map[uuid]
 
         if self.compute_metadata:
@@ -2644,7 +2652,11 @@ class FiftyOneTemporalDetectionDatasetImporter(
     def __next__(self):
         uuid = next(self._iter_uuids)
 
-        video_path = self._video_paths_map[uuid]
+        if os.path.isabs(uuid):
+            video_path = uuid
+        else:
+            video_path = self._video_paths_map[uuid]
+
         labels = self._labels_map[uuid]
 
         if self.compute_metadata:

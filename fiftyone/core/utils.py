@@ -1181,19 +1181,24 @@ class UniqueFilenameMaker(object):
         return output_path
 
 
-def safe_relpath(path, start=None):
+def safe_relpath(path, start=None, default=None):
     """A safe version of ``os.path.relpath`` that returns the basename of the
     given path if it does not lie within the given relative start.
 
     Args:
         path: a path
         start (None): the relative prefix to strip from ``path``
+        default (None): a default value to return if ``path`` does not lie
+            within ``start``. By default, the basename of the path is returned
 
     Returns:
         the relative path
     """
     relpath = os.path.relpath(path, start)
     if relpath.startswith(".."):
+        if default is not None:
+            return default
+
         logger.warning(
             "Path '%s' is not in '%s'. Using filename as unique identifier",
             path,

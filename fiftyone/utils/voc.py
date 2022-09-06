@@ -353,12 +353,10 @@ class VOCDetectionDatasetExporter(
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(image_or_path)
 
-        path = None
         if self.include_paths:
-            if out_image_path is not None:
-                path = out_image_path
-            elif etau.is_str(image_or_path):
-                path = image_or_path
+            path = out_image_path
+        else:
+            path = None
 
         annotation = VOCAnnotation.from_labeled_image(
             metadata,

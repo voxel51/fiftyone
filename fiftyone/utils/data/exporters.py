@@ -1103,7 +1103,7 @@ class MediaExporter(object):
             if outpath is not None:
                 uuid = self._get_uuid(outpath)
             elif self.export_mode in (False, "manifest"):
-                outpath = None
+                outpath = media_or_path
                 uuid = self._get_uuid(media_path)
             else:
                 outpath = self._filename_maker.get_output_path(media_path)
@@ -1535,8 +1535,8 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.utils.normalize_path`
-        relative_filepaths (True): whether to store relative (True) or absolute
-            (False) filepaths to media files on disk in the output dataset
+        abs_paths (False): whether to store absolute paths to the media in the
+            exported labels
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
@@ -1546,7 +1546,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         export_dir,
         export_media=None,
         rel_dir=None,
-        relative_filepaths=True,
+        abs_paths=False,
         pretty_print=False,
     ):
         if export_media is None:
@@ -1556,7 +1556,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
         self.export_media = export_media
         self.rel_dir = rel_dir
-        self.relative_filepaths = relative_filepaths
+        self.abs_paths = abs_paths
         self.pretty_print = pretty_print
 
         self._data_dir = None
@@ -1660,14 +1660,15 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     def export_sample(self, sample):
         out_filepath, _ = self._media_exporter.export(sample.filepath)
-        if out_filepath is None:
-            out_filepath = sample.filepath
 
         sd = sample.to_dict(include_private=True)
-        sd["filepath"] = out_filepath
 
-        if self.relative_filepaths:
-            sd["filepath"] = os.path.relpath(out_filepath, self.export_dir)
+        if self.abs_paths:
+            sd["filepath"] = out_filepath
+        else:
+            sd["filepath"] = fou.safe_relpath(
+                out_filepath, self.export_dir, default=out_filepath
+            )
 
         if self._is_video_dataset:
             # Serialize frame labels separately
@@ -1739,6 +1740,9 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         if export_media is None:
             export_media = True
 
+        if rel_dir is not None:
+            rel_dir = fou.normalize_path(rel_dir)
+
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
@@ -1790,10 +1794,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 _outpaths.append(os.path.join("data", uuid))
         elif self.rel_dir is not None:
             # Remove `rel_dir` prefix from filepaths
-            rel_dir = fou.normalize_path(self.rel_dir) + os.path.sep
             _outpaths = [
-                p[len(rel_dir) :] if p.startswith(rel_dir) else p
-                for p in inpaths
+                fou.safe_relpath(p, self.rel_dir, default=p) for p in inpaths
             ]
         else:
             # Export raw filepaths
@@ -2086,6 +2088,8 @@ class FiftyOneImageClassificationDatasetExporter(
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.utils.normalize_path`
+        abs_paths (False): whether to store absolute paths to the images in the
+            exported labels
         include_confidence (False): whether to include classification
             confidences in the export. The supported values are:
 
@@ -2114,6 +2118,7 @@ class FiftyOneImageClassificationDatasetExporter(
         labels_path=None,
         export_media=None,
         rel_dir=None,
+        abs_paths=False,
         include_confidence=False,
         include_attributes=False,
         classes=None,
@@ -2139,6 +2144,7 @@ class FiftyOneImageClassificationDatasetExporter(
         self.labels_path = labels_path
         self.export_media = export_media
         self.rel_dir = rel_dir
+        self.abs_paths = abs_paths
         self.include_confidence = include_confidence
         self.include_attributes = include_attributes
         self.classes = classes
@@ -2171,8 +2177,14 @@ class FiftyOneImageClassificationDatasetExporter(
         self._media_exporter.setup()
 
     def export_sample(self, image_or_path, label, metadata=None):
-        _, uuid = self._media_exporter.export(image_or_path)
-        self._labels_dict[uuid] = _parse_classifications(
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
+
+        if self.abs_paths:
+            key = out_image_path
+        else:
+            key = uuid
+
+        self._labels_dict[key] = _parse_classifications(
             label,
             labels_map_rev=self._labels_map_rev,
             include_confidence=self.include_confidence,
@@ -2477,6 +2489,8 @@ class FiftyOneImageDetectionDatasetExporter(
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.utils.normalize_path`
+        abs_paths (False): whether to store absolute paths to the images in the
+            exported labels
         classes (None): the list of possible class labels
         include_confidence (None): whether to include detection confidences in
             the export. The supported values are:
@@ -2505,6 +2519,7 @@ class FiftyOneImageDetectionDatasetExporter(
         labels_path=None,
         export_media=None,
         rel_dir=None,
+        abs_paths=False,
         classes=None,
         include_confidence=None,
         include_attributes=None,
@@ -2530,6 +2545,7 @@ class FiftyOneImageDetectionDatasetExporter(
         self.labels_path = labels_path
         self.export_media = export_media
         self.rel_dir = rel_dir
+        self.abs_paths = abs_paths
         self.classes = classes
         self.include_confidence = include_confidence
         self.include_attributes = include_attributes
@@ -2562,8 +2578,14 @@ class FiftyOneImageDetectionDatasetExporter(
         self._media_exporter.setup()
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        _, uuid = self._media_exporter.export(image_or_path)
-        self._labels_dict[uuid] = _parse_detections(
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
+
+        if self.abs_paths:
+            key = out_image_path
+        else:
+            key = uuid
+
+        self._labels_dict[key] = _parse_detections(
             detections,
             labels_map_rev=self._labels_map_rev,
             include_confidence=self.include_confidence,
@@ -2652,6 +2674,8 @@ class FiftyOneTemporalDetectionDatasetExporter(
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.utils.normalize_path`
+        abs_paths (False): whether to store absolute paths to the images in the
+            exported labels
         use_timestamps (False): whether to export the support of each temporal
             detection in seconds rather than frame numbers
         classes (None): the list of possible class labels
@@ -2679,6 +2703,7 @@ class FiftyOneTemporalDetectionDatasetExporter(
         labels_path=None,
         export_media=None,
         rel_dir=None,
+        abs_paths=False,
         use_timestamps=False,
         classes=None,
         include_confidence=None,
@@ -2704,6 +2729,7 @@ class FiftyOneTemporalDetectionDatasetExporter(
         self.labels_path = labels_path
         self.export_media = export_media
         self.rel_dir = rel_dir
+        self.abs_paths = abs_paths
         self.use_timestamps = use_timestamps
         self.classes = classes
         self.include_confidence = include_confidence
@@ -2739,8 +2765,14 @@ class FiftyOneTemporalDetectionDatasetExporter(
         self._media_exporter.setup()
 
     def export_sample(self, video_path, temporal_detections, _, metadata=None):
-        _, uuid = self._media_exporter.export(video_path)
-        self._labels_dict[uuid] = _parse_temporal_detections(
+        out_video_path, uuid = self._media_exporter.export(video_path)
+
+        if self.abs_paths:
+            key = out_video_path
+        else:
+            key = uuid
+
+        self._labels_dict[key] = _parse_temporal_detections(
             temporal_detections,
             labels_map_rev=self._labels_map_rev,
             metadata=metadata,

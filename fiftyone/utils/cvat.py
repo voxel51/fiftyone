@@ -861,6 +861,8 @@ class CVATImageDatasetExporter(
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.utils.normalize_path`
+        abs_paths (False): whether to store absolute paths to the images in the
+            exported labels
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -873,6 +875,7 @@ class CVATImageDatasetExporter(
         labels_path=None,
         export_media=None,
         rel_dir=None,
+        abs_paths=False,
         image_format=None,
     ):
         data_path, export_media = self._parse_data_path(
@@ -894,6 +897,7 @@ class CVATImageDatasetExporter(
         self.labels_path = labels_path
         self.export_media = export_media
         self.rel_dir = rel_dir
+        self.abs_paths = abs_paths
         self.image_format = image_format
 
         self._name = None
@@ -929,7 +933,7 @@ class CVATImageDatasetExporter(
         self._task_labels = sample_collection.info.get("task_labels", None)
 
     def export_sample(self, image_or_path, labels, metadata=None):
-        _, uuid = self._media_exporter.export(image_or_path)
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
 
         if labels is None:
             return  # unlabeled
@@ -943,10 +947,14 @@ class CVATImageDatasetExporter(
         if metadata is None:
             metadata = fomt.ImageMetadata.build_for(image_or_path)
 
-        cvat_image = CVATImage.from_labels(labels, metadata)
+        if self.abs_paths:
+            name = out_image_path
+        else:
+            name = uuid
 
+        cvat_image = CVATImage.from_labels(labels, metadata)
         cvat_image.id = len(self._cvat_images)
-        cvat_image.name = uuid
+        cvat_image.name = name
 
         self._cvat_images.append(cvat_image)
 
@@ -1099,7 +1107,7 @@ class CVATVideoDatasetExporter(
         self._task_labels = sample_collection.info.get("task_labels", None)
 
     def export_sample(self, video_path, _, frames, metadata=None):
-        _, filename = self._media_exporter.export(video_path)
+        _, uuid = self._media_exporter.export(video_path)
 
         if frames is None:
             return  # unlabeled
@@ -1108,7 +1116,7 @@ class CVATVideoDatasetExporter(
             metadata = fomt.VideoMetadata.build_for(video_path)
 
         out_anno_path = os.path.join(
-            self.labels_path, os.path.splitext(filename)[0] + ".xml"
+            self.labels_path, os.path.splitext(uuid)[0] + ".xml"
         )
 
         # Generate object tracks
@@ -1134,7 +1142,7 @@ class CVATVideoDatasetExporter(
             metadata,
             out_anno_path,
             id=self._num_samples - 1,
-            name=filename,
+            name=uuid,
         )
 
     def close(self, *args):
