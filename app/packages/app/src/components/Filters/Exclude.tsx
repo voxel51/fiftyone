@@ -1,7 +1,7 @@
 import React from "react";
 import { RecoilState, useRecoilState } from "recoil";
 
-import { TabOption } from "../utils";
+import { TabOption } from "@fiftyone/components";
 
 interface ExcludeOptionProps {
   excludeAtom: RecoilState<boolean>;

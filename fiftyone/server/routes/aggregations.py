@@ -15,6 +15,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.utils import meets_type
 import fiftyone.server.view as fosv
 
@@ -34,8 +35,18 @@ class Aggregations(HTTPEndpoint):
         stages = data.get("view", None)
         sample_ids = data.get("sample_ids", None)
         hidden_labels = data.get("hidden_labels", None)
+        extended = data.get("extended", None)
+        slice = data.get("slice", None)
 
-        view = fosv.get_view(dataset, stages=stages, filters=filters)
+        view = fosv.get_view(
+            dataset,
+            stages=stages,
+            filters=filters,
+            extended_stages=extended,
+            sample_filter=SampleFilter(group=GroupElementFilter(slice=slice))
+            if slice
+            else None,
+        )
 
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)

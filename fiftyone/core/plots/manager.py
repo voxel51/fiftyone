@@ -15,7 +15,6 @@ import eta.core.utils as etau
 
 import fiftyone.core.clips as foc
 from fiftyone.core.expressions import ViewField as F
-import fiftyone.core.media as fom
 import fiftyone.core.patches as fop
 import fiftyone.core.video as fov
 
@@ -443,7 +442,7 @@ class PlotManager(object):
             if self.has_frame_links:
                 if isinstance(plot_view, fov.FramesView):
                     frame_ids = plot_view.values("id")
-                elif plot_view.media_type == fom.VIDEO:
+                elif plot_view._contains_videos():
                     frame_ids = plot_view.values("frames.id", unwind=True)
 
             # If the session has plots linked to labels, retrieve the current
@@ -534,7 +533,7 @@ class PlotManager(object):
             if self.has_frame_links:
                 if isinstance(plot_view, fov.FramesView):
                     frame_ids = plot_view.values("id")
-                elif plot_view.media_type == fom.VIDEO:
+                elif plot_view._contains_videos():
                     frame_ids = plot_view.values("frames.id", unwind=True)
 
             # This plot is linked to labels, so we already know exactly which
@@ -592,7 +591,7 @@ class PlotManager(object):
 
             if isinstance(_view, fov.FramesView):
                 frame_ids = _view.values("id")
-            elif _view.media_type == fom.VIDEO:
+            elif _view._contains_videos():
                 frame_ids = _view.values("frames.id", unwind=True)
             else:
                 frame_ids = None

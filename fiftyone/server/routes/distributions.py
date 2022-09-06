@@ -30,12 +30,15 @@ class Distributions(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
         filters = data.get("filters", None)
+        extended = data.get("extended", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
         group = data.get("group", None)
         limit = data.get("limit", 1)
 
-        view = fosv.get_view(dataset, stages=stages, filters=filters)
+        view = fosv.get_view(
+            dataset, stages=stages, filters=filters, extended_stages=extended
+        )
 
         if group == "label tags":
 

@@ -24,7 +24,7 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 
-import { getColor } from "../../color";
+import { getColor } from "@fiftyone/utilities";
 import { Classification, Regression } from "../../overlays/classifications";
 import { BaseState, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
@@ -179,15 +179,17 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           ),
         };
       },
-      [STRING_FIELD]: (path, value: string) => ({
-        value,
-        title: `${path}: ${value}`,
-        color: getColor(
-          coloring.pool,
-          coloring.seed,
-          coloring.by === "label" ? value : path
-        ),
-      }),
+      [STRING_FIELD]: (path, value: string) => {
+        return {
+          value,
+          title: `${path}: ${value}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.by === "label" ? value : path
+          ),
+        };
+      },
     };
 
     const LABEL_RENDERERS: {

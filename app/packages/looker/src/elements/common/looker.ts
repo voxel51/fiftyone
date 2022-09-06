@@ -6,13 +6,14 @@ import { SELECTION_TEXT } from "../../constants";
 import { BaseState, Control, ControlEventKeyType } from "../../state";
 import { BaseElement, Events } from "../base";
 
-import { looker, lookerError } from "./looker.module.css";
+import { looker, lookerError, lookerHighlight } from "./looker.module.css";
 
 export class LookerElement<State extends BaseState> extends BaseElement<
   State,
   HTMLDivElement
 > {
   private selection: boolean;
+  private highlight: boolean;
 
   getEvents(): Events<State> {
     return {
@@ -22,10 +23,15 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         }
 
         const e = event as KeyboardEvent;
-        update(({ SHORTCUTS, error }) => {
+        update((state) => {
+          const { SHORTCUTS, error, shouldHandleKeyEvents } = state;
           if (!error && e.key in SHORTCUTS) {
             const matchedControl = SHORTCUTS[e.key] as Control;
-            matchedControl.action(update, dispatchEvent, e.key, e.shiftKey);
+            const enabled =
+              shouldHandleKeyEvents || matchedControl.alwaysHandle;
+            if (enabled) {
+              matchedControl.action(update, dispatchEvent, e.key, e.shiftKey);
+            }
           }
 
           return {};
@@ -37,10 +43,15 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         }
 
         const e = event as KeyboardEvent;
-        update(({ SHORTCUTS, error }) => {
+        update(({ SHORTCUTS, error, shouldHandleKeyEvents }) => {
           if (!error && e.key in SHORTCUTS) {
             const matchedControl = SHORTCUTS[e.key] as Control;
-            if (matchedControl.eventKeyType === ControlEventKeyType.HOLD) {
+            const enabled =
+              shouldHandleKeyEvents || matchedControl.alwaysHandle;
+            if (
+              enabled &&
+              matchedControl.eventKeyType === ControlEventKeyType.HOLD
+            ) {
               matchedControl.afterAction(
                 update,
                 dispatchEvent,
@@ -78,10 +89,17 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     hovering,
     error,
     config: { thumbnail },
-    options: { inSelectionMode },
+    options: { highlight, inSelectionMode },
   }: Readonly<State>) {
     if (!thumbnail && hovering && this.element !== document.activeElement) {
       this.element.focus();
+    }
+
+    if (highlight !== this.highlight) {
+      this.highlight = highlight;
+      highlight
+        ? this.element.classList.add(lookerHighlight)
+        : this.element.classList.remove(lookerHighlight);
     }
 
     if (error && !thumbnail) {

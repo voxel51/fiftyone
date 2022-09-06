@@ -128,6 +128,7 @@ export const next: Control = {
   shortcut: "&#8594;",
   eventKeys: "ArrowRight",
   detail: "Go to the next sample",
+  alwaysHandle: true,
   action: (_, dispatchEvent) => {
     dispatchEvent("next");
   },
@@ -138,6 +139,7 @@ export const previous: Control = {
   shortcut: "&#8592;",
   eventKeys: "ArrowLeft",
   detail: "Go to the previous sample",
+  alwaysHandle: true,
   action: (_, dispatchEvent) => {
     dispatchEvent("previous");
   },
@@ -220,14 +222,18 @@ export const help: Control = {
   shortcut: "?",
   detail: "Display this help window",
   action: (update, dispatchEvent) => {
-    update(({ showHelp, config: { thumbnail } }) => {
+    update(({ showHelp, SHORTCUTS, config: { thumbnail } }) => {
       if (thumbnail) {
         return {};
       }
 
       if (!showHelp) {
-        dispatchEvent("options", { showJSON: false });
-        return { showHelp: true, options: { showJSON: false } };
+        dispatchEvent("options", {
+          showJSON: false,
+          showHelp: true,
+          SHORTCUTS,
+        });
+        return { showHelp: true, options: { showJSON: false, showHelp: true } };
       }
 
       return { showHelp: false };
@@ -245,7 +251,7 @@ export const zoomIn: Control = {
       ({
         scale,
         windowBBox: [_, __, ww, wh],
-        config: { dimensions },
+        dimensions,
         pan: [px, py],
         options: { zoomPad },
       }) => {
@@ -280,7 +286,7 @@ export const zoomOut: Control = {
       ({
         scale,
         windowBBox: [_, __, ww, wh],
-        config: { dimensions },
+        dimensions,
         pan: [px, py],
         options: { zoomPad },
       }) => {
@@ -440,6 +446,7 @@ export const nextFrame: Control<VideoState> = {
   eventKeys: [".", ">"],
   shortcut: ">",
   detail: "Seek to the next frame",
+  alwaysHandle: true,
   action: (update, dispatchEvent) => {
     update(
       ({
@@ -470,6 +477,7 @@ export const previousFrame: Control<VideoState> = {
   eventKeys: [",", "<"],
   shortcut: "<",
   detail: "Seek to the previous frame",
+  alwaysHandle: true,
   action: (update, dispatchEvent) => {
     update(
       ({
@@ -690,122 +698,6 @@ export const VIDEO = {
 };
 
 export const VIDEO_SHORTCUTS = readActions(VIDEO);
-
-export class HelpPanelElement<
-  State extends BaseState
-> extends BaseElement<State> {
-  private showHelp?: boolean;
-  protected items?: HTMLDivElement;
-
-  getEvents(): Events<State> {
-    return {
-      click: ({ event, update }) => {
-        event.stopPropagation();
-        event.preventDefault();
-        update({ showHelp: false });
-      },
-      dblclick: ({ event }) => {
-        event.stopPropagation();
-        event.preventDefault();
-      },
-    };
-  }
-
-  createHTMLElement(update) {
-    return this.createHelpPanel(update, COMMON);
-  }
-
-  isShown({ thumbnail }: Readonly<State["config"]>) {
-    return !thumbnail;
-  }
-
-  renderSelf({ showHelp }: Readonly<State>) {
-    if (this.showHelp === showHelp) {
-      return this.element;
-    }
-    if (showHelp) {
-      this.element.style.opacity = "0.9";
-      this.element.style.display = "flex";
-    } else {
-      this.element.style.opacity = "0.0";
-      this.element.style.display = "none";
-    }
-    this.showHelp = showHelp;
-    return this.element;
-  }
-
-  protected createHelpPanel(
-    update: StateUpdate<State>,
-    controls: ControlMap<State>
-  ): HTMLElement {
-    const element = document.createElement("div");
-    const header = document.createElement("div");
-    header.innerText = "Help";
-    header.classList.add(lookerPanelHeader);
-    element.classList.add(lookerPanel);
-
-    const container = document.createElement("div");
-    container.classList.add(lookerPanelContainer);
-
-    const vContainer = document.createElement("div");
-    vContainer.classList.add(lookerPanelVerticalContainer);
-
-    vContainer.appendChild(element);
-
-    container.appendChild(vContainer);
-    const scroll = document.createElement("div");
-    scroll.classList.add(lookerPanelFlex);
-
-    const items = document.createElement("div");
-    items.classList.add(lookerHelpPanelItems);
-    this.items = items;
-
-    const close = document.createElement("img");
-    close.src = closeIcon;
-    close.classList.add(lookerPanelClose);
-    close.onclick = () => update({ showHelp: false });
-    element.appendChild(close);
-
-    const first = ["Wheel", "Esc"];
-
-    Object.values(controls)
-      .sort((a, b) =>
-        a.shortcut.length !== b.shortcut.length
-          ? first.includes(b.shortcut)
-            ? 1
-            : first.includes(a.shortcut)
-            ? -1
-            : b.shortcut.length - a.shortcut.length
-          : a.shortcut > b.shortcut
-          ? 1
-          : -1
-      )
-      .forEach(addItem(items));
-
-    scroll.appendChild(header);
-    scroll.appendChild(items);
-    element.append(scroll);
-
-    return container;
-  }
-}
-
-export class VideoHelpPanelElement extends HelpPanelElement<VideoState> {
-  createHTMLElement(update) {
-    let config = null;
-    update(({ config: _config }) => {
-      config = _config;
-      return {};
-    });
-
-    return this.createHelpPanel(
-      update,
-      Object.fromEntries(
-        Object.entries(VIDEO).filter(([k, v]) => !v.filter || v.filter(config))
-      )
-    );
-  }
-}
 
 const addItem =
   <State extends BaseState>(items: HTMLDivElement) =>

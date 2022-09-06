@@ -45,7 +45,7 @@ done
 [ ${SHOW_HELP} = true ] && usage && exit 0
 
 set -e
-NODE_VERSION=17.9.0
+NODE_VERSION=18.1.0
 OS=$(uname -s)
 
 if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then

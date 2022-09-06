@@ -280,6 +280,54 @@ Datasets can also store more specific types of ancillary information such as
     the dataset's :meth:`info <fiftyone.core.dataset.Dataset.info>` property
     in-place to save the changes to the database.
 
+.. _custom-app-config:
+
+Custom App config
+-----------------
+
+All |Dataset| instances have an
+:meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property that
+contains a |DatasetAppConfig| you can use to store dataset-specific settings
+that customize how the dataset is visualized in the
+:ref:`FiftyOne App <fiftyone-app>`.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.image as foui
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # View the dataset's current App config
+    print(dataset.app_config)
+
+    # Generate some thumbnail images
+    foui.transform_images(
+        dataset,
+        size=(-1, 32),
+        output_field="thumbnail_path",
+        output_dir="/tmp/thumbnails",
+    )
+
+    # Modify the dataset's App config
+    dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+    dataset.app_config.grid_media_field = "thumbnail_path"
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+Check out :ref:`this section <app-config>` for more information about
+customizing the behavior of the App.
+
+.. note::
+
+    Any settings stored in a dataset's
+    :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
+    the corresponding settings from your
+    :ref:`global App config <configuring-fiftyone-app>`.
+
 .. _storing-classes:
 
 Storing class lists

@@ -41,6 +41,7 @@ from .dataset import (
     create_field,
     SampleFieldDocument,
     KeypointSkeleton,
+    DatasetAppConfig,
     DatasetDocument,
 )
 from .document import (

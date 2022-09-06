@@ -1,9 +1,11 @@
 import React from "react";
 
-import * as aggregationAtoms from "../../recoil/aggregations";
-
 import CategoricalFilter from "./CategoricalFilter";
-import { selectedValuesAtom } from "./booleanState";
+
+import {
+  booleanCountResults,
+  booleanSelectedValuesAtom,
+} from "@fiftyone/state";
 
 const BooleanFieldFilter = ({
   path,
@@ -18,9 +20,9 @@ const BooleanFieldFilter = ({
   title: string;
 }) => {
   return (
-    <CategoricalFilter<boolean | null>
-      selectedValuesAtom={selectedValuesAtom({ path, modal })}
-      countsAtom={aggregationAtoms.booleanCountResults({
+    <CategoricalFilter<{ value: boolean | null; count: number }>
+      selectedValuesAtom={booleanSelectedValuesAtom({ path, modal })}
+      countsAtom={booleanCountResults({
         path,
         modal,
         extended: false,

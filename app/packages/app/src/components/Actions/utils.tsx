@@ -3,15 +3,9 @@ import { selector, selectorFamily } from "recoil";
 import { animated, useSpring } from "@react-spring/web";
 import styled from "styled-components";
 
-import * as atoms from "../../recoil/atoms";
-import * as aggregationAtoms from "../../recoil/aggregations";
-import * as filterAtoms from "../../recoil/filters";
-import * as schemaAtoms from "../../recoil/schema";
-import { hiddenLabelsArray } from "../../recoil/selectors";
-import { State } from "../../recoil/types";
-import { view } from "../../recoil/view";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};
@@ -66,13 +60,9 @@ export const useHighlightHover = (disabled, override = null, color = null) => {
 export const allTags = selector<{ sample: string[]; label: string[] } | null>({
   key: "tagAggs",
   get: async ({ get }) => {
-    const labels = get(
-      aggregationAtoms.labelTagCounts({ modal: false, extended: false })
-    );
+    const labels = get(fos.labelTagCounts({ modal: false, extended: false }));
 
-    const sample = get(
-      aggregationAtoms.sampleTagCounts({ modal: false, extended: false })
-    );
+    const sample = get(fos.sampleTagCounts({ modal: false, extended: false }));
 
     if (!labels || !sample) {
       return null;
@@ -96,12 +86,12 @@ export const tagStatistics = selectorFamily<
   get:
     ({ modal, labels: count_labels }) =>
     async ({ get }) => {
-      const activeLabels = get(schemaAtoms.activeLabelFields({ modal }));
-      const selected = get(atoms.selectedSamples);
+      const activeLabels = get(fos.activeLabelFields({ modal }));
+      const selected = get(fos.selectedSamples);
 
-      let labels: State.SelectedLabel[] = [];
+      let labels: fos.State.SelectedLabel[] = [];
       if (modal) {
-        labels = Object.entries(get(atoms.selectedLabels)).map(
+        labels = Object.entries(get(fos.selectedLabels)).map(
           ([labelId, data]) => ({
             labelId,
             ...data,
@@ -110,19 +100,19 @@ export const tagStatistics = selectorFamily<
       }
 
       const { count, tags } = await getFetchFunction()("POST", "/tagging", {
-        dataset: get(atoms.dataset).name,
-        view: get(view),
+        dataset: get(fos.dataset).name,
+        view: get(fos.view),
         active_label_fields: activeLabels,
         sample_ids: selected.size
           ? [...selected]
           : modal
-          ? [get(atoms.modal).sample._id]
+          ? [get(fos.modal)?.sample._id]
           : null,
         labels: toSnakeCase(labels),
         count_labels,
-        filters: get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
+        filters: get(modal ? fos.modalFilters : fos.filters),
         hidden_labels:
-          modal && labels ? toSnakeCase(get(hiddenLabelsArray)) : null,
+          modal && labels ? toSnakeCase(get(fos.hiddenLabelsArray)) : null,
       });
 
       return { count, tags };

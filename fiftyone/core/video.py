@@ -138,6 +138,14 @@ class FramesView(fov.DatasetView):
     def name(self):
         return self.dataset_name + "-frames"
 
+    @property
+    def media_type(self):
+        return fom.IMAGE
+
+    @property
+    def _media_type(self):
+        return fom.IMAGE
+
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
     ):
@@ -573,9 +581,6 @@ def make_frames_dataset(
     #
 
     dataset = fod.Dataset(name=name, _frames=True)
-    dataset._doc.app_sidebar_groups = (
-        sample_collection._dataset._doc.app_sidebar_groups
-    )
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
 

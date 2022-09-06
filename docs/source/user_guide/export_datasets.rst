@@ -3740,11 +3740,10 @@ should implement is determined by the type of dataset that you are exporting.
                 Args:
                     export_dir (None): the directory to write the export. This may be
                         optional for some exporters
-                    *args: additional positional arguments for your exporter
                     **kwargs: additional keyword arguments for your exporter
                 """
 
-                def __init__(self, export_dir=None, *args, **kwargs):
+                def __init__(self, export_dir=None, **kwargs):
                     super().__init__(export_dir=export_dir)
                     # Your initialization here
 
@@ -3890,11 +3889,10 @@ should implement is determined by the type of dataset that you are exporting.
                 Args:
                     export_dir (None): the directory to write the export. This may be
                         optional for some exporters
-                    *args: additional positional arguments for your exporter
                     **kwargs: additional keyword arguments for your exporter
                 """
 
-                def __init__(self, export_dir=None, *args, **kwargs):
+                def __init__(self, export_dir=None, **kwargs):
                     super().__init__(export_dir=export_dir)
                     # Your initialization here
 
@@ -4075,11 +4073,10 @@ should implement is determined by the type of dataset that you are exporting.
                 Args:
                     export_dir (None): the directory to write the export. This may be
                         optional for some exporters
-                    *args: additional positional arguments for your exporter
                     **kwargs: additional keyword arguments for your exporter
                 """
 
-                def __init__(self, export_dir=None, *args, **kwargs):
+                def __init__(self, export_dir=None, **kwargs):
                     super().__init__(export_dir=export_dir)
                     # Your initialization here
 
@@ -4225,11 +4222,10 @@ should implement is determined by the type of dataset that you are exporting.
                 Args:
                     export_dir (None): the directory to write the export. This may be
                         optional for some exporters
-                    *args: additional positional arguments for your exporter
                     **kwargs: additional keyword arguments for your exporter
                 """
 
-                def __init__(self, export_dir=None, *args, **kwargs):
+                def __init__(self, export_dir=None, **kwargs):
                     super().__init__(export_dir=export_dir)
                     # Your initialization here
 
@@ -4423,6 +4419,129 @@ should implement is determined by the type of dataset that you are exporting.
         (e.g., its filename, encoding, shape, etc) are required in order to
         export the sample.
 
+  .. group-tab:: Grouped datasets
+
+        To define a custom exporter for grouped datasets, implement the
+        |GroupDatasetExporter| interface.
+
+        The pseudocode below provides a template for a custom
+        |GroupDatasetExporter|:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.utils.data as foud
+
+            class CustomGroupDatasetExporter(foud.GroupDatasetExporter):
+                """Custom exporter for grouped datasets.
+
+                Args:
+                    export_dir (None): the directory to write the export. This may be
+                        optional for some exporters
+                    **kwargs: additional keyword arguments for your exporter
+                """
+
+                def __init__(self, export_dir=None, **kwargs):
+                    super().__init__(export_dir=export_dir)
+                    # Your initialization here
+
+                def setup(self):
+                    """Performs any necessary setup before exporting the first group in
+                    the dataset.
+
+                    This method is called when the exporter's context manager interface is
+                    entered, :func:`DatasetExporter.__enter__`.
+                    """
+                    # Your custom setup here
+                    pass
+
+                def log_collection(self, sample_collection):
+                    """Logs any relevant information about the
+                    :class:`fiftyone.core.collections.SampleCollection` whose samples will
+                    be exported.
+
+                    Subclasses can optionally implement this method if their export format
+                    can record information such as the
+                    :meth:`fiftyone.core.collections.SampleCollection.info` or
+                    :meth:`fiftyone.core.collections.SampleCollection.classes` of the
+                    collection being exported.
+
+                    By convention, this method must be optional; i.e., if it is not called
+                    before the first call to :meth:`export_sample`, then the exporter must
+                    make do without any information about the
+                    :class:`fiftyone.core.collections.SampleCollection` (which may not be
+                    available, for example, if the samples being exported are not stored in
+                    a collection).
+
+                    Args:
+                        sample_collection: the
+                            :class:`fiftyone.core.collections.SampleCollection` whose
+                            samples will be exported
+                    """
+                    # Log any information from the sample collection here
+                    pass
+
+                def export_group(self, group):
+                    """Exports the given group to the dataset.
+
+                    Args:
+                        group: a dict mapping group slice names to
+                            :class:`fiftyone.core.sample.Sample` instances
+                    """
+                    # Export the provided group
+                    pass
+
+                def close(self, *args):
+                    """Performs any necessary actions after the last group has been
+                    exported.
+
+                    This method is called when the importer's context manager interface is
+                    exited, :func:`DatasetExporter.__exit__`.
+
+                    Args:
+                        *args: the arguments to :func:`DatasetExporter.__exit__`
+                    """
+                    # Your custom code here to complete the export
+                    pass
+
+        When
+        :meth:`export() <fiftyone.core.collections.SampleCollection.export>` is
+        called with a custom |GroupDatasetExporter|, the export is effectively
+        performed via the pseudocode below:
+
+        .. code-block:: python
+
+            import fiftyone as fo
+
+            samples = ...
+            exporter = CustomGroupDatasetExporter(...)
+
+            with exporter:
+                exporter.log_collection(samples)
+
+                for group in samples.iter_groups():
+                    exporter.export_group(group)
+
+        Note that the exporter is invoked via its context manager interface,
+        which automatically calls the
+        :meth:`setup() <fiftyone.utils.data.exporters.GroupDatasetExporter.setup>`
+        and
+        :meth:`close() <fiftyone.utils.data.exporters.GroupDatasetExporter.close>`
+        methods of the exporter to handle setup/completion of the export.
+
+        The
+        :meth:`log_collection() <fiftyone.utils.data.exporters.GroupDatasetExporter.log_collection>`
+        method is called after the exporter's context manager has been entered
+        but before any samples have been exported. This method can optionally
+        be implemented by exporters that store information such as the
+        :meth:`name <fiftyone.core.collections.SampleCollection.name>` or
+        :meth:`info <fiftyone.core.collections.SampleCollection.info>` from the
+        collection being exported.
+
+        Each sample group is exported via the
+        :meth:`export_group() <fiftyone.utils.data.exporters.GroupDatasetExporter.export_group>`
+        method.
+
 .. _writing-a-custom-dataset-type-exporter:
 
 Writing a custom Dataset type
@@ -4607,3 +4726,44 @@ corresponding to the type of dataset that you are working with.
         Note that, as this type represents a labeled video dataset, its
         importer must be a subclass of |LabeledVideoDatasetImporter|, and its
         exporter must be a subclass of |LabeledVideoDatasetExporter|.
+
+  .. group-tab:: Grouped datasets
+
+        The pseudocode below provides a template for a custom |GroupDatasetType|
+        subclass:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.types as fot
+
+            class CustomGroupDataset(fot.GroupDataset):
+                """Custom grouped dataset type."""
+
+                def get_dataset_importer_cls(self):
+                    """Returns the
+                    :class:`fiftyone.utils.data.importers.GroupDatasetImporter`
+                    class for importing datasets of this type from disk.
+
+                    Returns:
+                        a :class:`fiftyone.utils.data.importers.GroupDatasetImporter`
+                        class
+                    """
+                    # Return your custom GroupDatasetImporter class here
+                    pass
+
+                def get_dataset_exporter_cls(self):
+                    """Returns the
+                    :class:`fiftyone.utils.data.exporters.GroupDatasetExporter`
+                    class for exporting datasets of this type to disk.
+
+                    Returns:
+                        a :class:`fiftyone.utils.data.exporters.GroupDatasetExporter`
+                        class
+                    """
+                    # Return your custom GroupDatasetExporter class here
+                    pass
+
+        Note that, as this type represents a grouped dataset, its importer must
+        be a subclass of |GroupDatasetImporter|, and its exporter must be a
+        subclass of |GroupDatasetExporter|.

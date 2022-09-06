@@ -1,5 +1,5 @@
 import _ from "lodash";
-
+import mime from "mime";
 import { isElectron } from "./electron";
 
 export { isElectron } from "./electron";
@@ -7,6 +7,7 @@ export { GraphQLError, NotFoundError, ServerError } from "./errors";
 export * from "./fetch";
 export * from "./theme";
 export * from "./Resource";
+export * from "./color";
 
 interface O {
   [key: string]: O | any;
@@ -442,4 +443,12 @@ type Mutable<T> = {
 
 export const clone = <T extends unknown>(data: T): Mutable<T> => {
   return JSON.parse(JSON.stringify(data));
+};
+
+export const getMimeType = (sample: any) => {
+  return (
+    (sample.metadata && sample.metadata.mime_type) ||
+    mime.getType(sample.filepath) ||
+    "image/jpg"
+  );
 };
