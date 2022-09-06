@@ -53,12 +53,9 @@ def get_view(
     view.reload()
 
     if sample_filter is not None:
-        group_field = view.group_field
         if sample_filter.group:
             if sample_filter.group.slice:
                 view.group_slice = sample_filter.group.slice
-            elif view.media_type == fom.GROUP:
-                view = view.select_group_slices(_allow_mixed=True)
 
             if sample_filter.group.id:
                 view = fov.make_optimized_select_view(

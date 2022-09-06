@@ -162,8 +162,7 @@ export const aggregations = selectorFamily<
         "/aggregations",
         {
           filters,
-          sample_ids:
-            modal && !groupStats ? get(selectors.sidebarSampleId) : null,
+          sample_ids: modal && !groupStats ? get(sidebarSampleId) : null,
           groupId: modal && groupStats ? get(groupId) : null,
           slice: get(currentSlice(modal)),
           dataset,

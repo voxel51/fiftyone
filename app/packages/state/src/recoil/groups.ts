@@ -2,6 +2,7 @@ import {
   mainSample,
   mainSampleQuery,
   paginateGroup,
+  paginateGroupPinnedSampleFragment,
   paginateGroupPinnedSample_query$key,
   paginateGroupQuery,
   paginateGroup_query$key,
