@@ -13,7 +13,7 @@ const useSetGroupSlice = () => {
   const onError = useErrorHandler();
 
   return useRecoilTransaction_UNSTABLE(({ get, set }) => (slice: string) => {
-    set(groupSlice, slice);
+    set(groupSlice(false), slice);
     send((session) =>
       commit({
         onError,
