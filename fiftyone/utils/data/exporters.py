@@ -2674,7 +2674,7 @@ class FiftyOneTemporalDetectionDatasetExporter(
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.utils.normalize_path`
-        abs_paths (False): whether to store absolute paths to the images in the
+        abs_paths (False): whether to store absolute paths to the videos in the
             exported labels
         use_timestamps (False): whether to export the support of each temporal
             detection in seconds rather than frame numbers

@@ -1285,8 +1285,8 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
     def __next__(self):
         d = next(self._iter_samples)
 
-        # Convert filepath to absolute path
-        d["filepath"] = os.path.join(self.dataset_dir, d["filepath"])
+        if not os.path.isabs(d["filepath"]):
+            d["filepath"] = os.path.join(self.dataset_dir, d["filepath"])
 
         if self._is_video_dataset:
             labels_relpath = d.pop("frames")
@@ -1613,9 +1613,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             rel_dir = self.dataset_dir
 
         def parse_sample(sample):
-            filepath = sample["filepath"]
-            if not os.path.isabs(filepath):
-                sample["filepath"] = os.path.join(rel_dir, filepath)
+            if not os.path.isabs(sample["filepath"]):
+                sample["filepath"] = os.path.join(rel_dir, sample["filepath"])
 
             if tags is not None:
                 sample["tags"].extend(tags)
@@ -1948,6 +1947,9 @@ class FiftyOneImageClassificationDatasetImporter(
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
+        include_all_data (False): whether to generate samples for all images in
+            the data directory (True) rather than only creating samples for
+            images with labels (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1961,6 +1963,7 @@ class FiftyOneImageClassificationDatasetImporter(
         data_path=None,
         labels_path=None,
         compute_metadata=False,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -1993,6 +1996,7 @@ class FiftyOneImageClassificationDatasetImporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.compute_metadata = compute_metadata
+        self.include_all_data = include_all_data
 
         self._classes = None
         self._sample_parser = None
@@ -2017,15 +2021,18 @@ class FiftyOneImageClassificationDatasetImporter(
         else:
             image_path = self._image_paths_map[uuid]
 
-        target = self._labels_map[uuid]
+        target = self._labels_map.get(uuid, None)
 
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
         else:
             image_metadata = None
 
-        self._sample_parser.with_sample((image_path, target))
-        label = self._sample_parser.get_label()
+        if target is not None:
+            self._sample_parser.with_sample((image_path, target))
+            label = self._sample_parser.get_label()
+        else:
+            label = None
 
         return image_path, image_metadata, label
 
@@ -2054,16 +2061,20 @@ class FiftyOneImageClassificationDatasetImporter(
 
         labels_map = labels.get("labels", {})
         classes = labels.get("classes", None)
-        uuids = self._preprocess_list(sorted(labels_map.keys()))
+
+        uuids = set(labels_map.keys())
+
+        if self.include_all_data:
+            uuids.update(image_paths_map.keys())
+
+        uuids = self._preprocess_list(sorted(uuids))
 
         self._classes = classes
-
         self._sample_parser = FiftyOneImageClassificationSampleParser()
         self._sample_parser.classes = self._classes
-
-        self._uuids = uuids
         self._image_paths_map = image_paths_map
         self._labels_map = labels_map
+        self._uuids = uuids
         self._num_samples = len(uuids)
 
     def get_dataset_info(self):
@@ -2198,9 +2209,9 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         else:
             classes = sorted(classes)
 
+        self._classes = classes
         self._samples = samples
         self._num_samples = len(samples)
-        self._classes = classes
 
     def get_dataset_info(self):
         return {"classes": self._classes}
@@ -2344,9 +2355,9 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
         else:
             classes = sorted(classes)
 
+        self._classes = classes
         self._samples = samples
         self._num_samples = len(samples)
-        self._classes = classes
 
     def get_dataset_info(self):
         return {"classes": self._classes}
@@ -2403,6 +2414,9 @@ class FiftyOneImageDetectionDatasetImporter(
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
+        include_all_data (False): whether to generate samples for all images in
+            the data directory (True) rather than only creating samples for
+            images with labels (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -2416,6 +2430,7 @@ class FiftyOneImageDetectionDatasetImporter(
         data_path=None,
         labels_path=None,
         compute_metadata=False,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -2448,6 +2463,7 @@ class FiftyOneImageDetectionDatasetImporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.compute_metadata = compute_metadata
+        self.include_all_data = include_all_data
 
         self._classes = None
         self._sample_parser = None
@@ -2456,7 +2472,6 @@ class FiftyOneImageDetectionDatasetImporter(
         self._uuids = None
         self._iter_uuids = None
         self._num_samples = None
-        self._has_labels = False
 
     def __iter__(self):
         self._iter_uuids = iter(self._uuids)
@@ -2473,14 +2488,14 @@ class FiftyOneImageDetectionDatasetImporter(
         else:
             image_path = self._image_paths_map[uuid]
 
-        target = self._labels_map[uuid]
+        target = self._labels_map.get(uuid, None)
 
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
         else:
             image_metadata = None
 
-        if self._has_labels:
+        if target is not None:
             self._sample_parser.with_sample((image_path, target))
             label = self._sample_parser.get_label()
         else:
@@ -2514,15 +2529,16 @@ class FiftyOneImageDetectionDatasetImporter(
         classes = labels.get("classes", None)
         labels_map = labels.get("labels", {})
 
-        uuids = self._preprocess_list(sorted(labels_map.keys()))
-        has_labels = any(labels_map.values())
+        uuids = set(labels_map.keys())
+
+        if self.include_all_data:
+            uuids.update(image_paths_map.keys())
+
+        uuids = self._preprocess_list(sorted(uuids))
 
         self._classes = classes
-        self._has_labels = has_labels
-
         self._sample_parser = FiftyOneImageDetectionSampleParser()
         self._sample_parser.classes = classes
-
         self._image_paths_map = image_paths_map
         self._labels_map = labels_map
         self._uuids = uuids
@@ -2587,6 +2603,9 @@ class FiftyOneTemporalDetectionDatasetImporter(
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.VideoMetadata` instances for each
             video when importing
+        include_all_data (False): whether to generate samples for all videos in
+            the data directory (True) rather than only creating samples for
+            videos with labels (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -2600,6 +2619,7 @@ class FiftyOneTemporalDetectionDatasetImporter(
         data_path=None,
         labels_path=None,
         compute_metadata=False,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -2632,15 +2652,15 @@ class FiftyOneTemporalDetectionDatasetImporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.compute_metadata = compute_metadata
+        self.include_all_data = include_all_data
 
+        self._classes = None
+        self._sample_parser = None
         self._video_paths_map = None
         self._labels_map = None
         self._uuids = None
         self._iter_uuids = None
-        self._classes = None
-        self._sample_parser = None
         self._num_samples = None
-        self._has_labels = False
 
     def __iter__(self):
         self._iter_uuids = iter(self._uuids)
@@ -2657,14 +2677,14 @@ class FiftyOneTemporalDetectionDatasetImporter(
         else:
             video_path = self._video_paths_map[uuid]
 
-        labels = self._labels_map[uuid]
+        labels = self._labels_map.get(uuid, None)
 
         if self.compute_metadata:
             video_metadata = self._sample_parser.get_video_metadata()
         else:
             video_metadata = None
 
-        if self._has_labels:
+        if labels is not None:
             sample = (video_path, labels)
             self._sample_parser.with_sample(sample, metadata=video_metadata)
             label = self._sample_parser.get_label()
@@ -2702,18 +2722,19 @@ class FiftyOneTemporalDetectionDatasetImporter(
 
         classes = labels.get("classes", None)
         labels_map = labels.get("labels", {})
-        has_labels = any(labels_map.values())
 
-        uuids = sorted(labels_map.keys())
-        uuids = self._preprocess_list(uuids)
+        uuids = set(labels_map.keys())
 
-        self._sample_parser = FiftyOneTemporalDetectionSampleParser()
-        self._sample_parser.classes = classes
+        if self.include_all_data:
+            uuids.update(video_paths_map.keys())
+
+        uuids = self._preprocess_list(sorted(uuids))
 
         self._classes = classes
+        self._sample_parser = FiftyOneTemporalDetectionSampleParser()
+        self._sample_parser.classes = classes
         self._video_paths_map = video_paths_map
         self._labels_map = labels_map
-        self._has_labels = has_labels
         self._uuids = uuids
         self._num_samples = len(uuids)
 
