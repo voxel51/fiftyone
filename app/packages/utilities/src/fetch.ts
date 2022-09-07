@@ -85,6 +85,9 @@ export const getAPI = () => {
   if (import.meta.env.VITE_API) {
     return import.meta.env.VITE_API;
   }
+  if (window.FIFTYONE_SERVER_ADDRESS) {
+    return window.FIFTYONE_SERVER_ADDRESS;
+  }
 
   return isElectron()
     ? `http://${process.env.FIFTYONE_SERVER_ADDRESS || "localhost"}:${
