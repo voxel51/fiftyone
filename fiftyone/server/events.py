@@ -19,6 +19,7 @@ import fiftyone.core.context as focx
 from fiftyone.core.json import FiftyOneJSONEncoder
 from fiftyone.core.session.events import (
     CloseSession,
+    DeactivateNotebookCell,
     dict_factory,
     EventType,
     ListenPayload,
@@ -160,7 +161,10 @@ async def dispatch_polling_event_listener(
 
     if sub != payload.subscription:
         if sub is not None and listeners:
-            await _disconnect(True, listeners)
+            if focx.is_colab_context():
+                await dispatch_event(sub, DeactivateNotebookCell())
+            else:
+                await _disconnect(True, listeners)
 
         data = await _initialize_listener(payload)
         _polling_listener = (payload.subscription, data.request_listeners)
