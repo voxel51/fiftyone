@@ -460,6 +460,32 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
             dataset2.count("predictions"),
         )
 
+        # Labels-only (absolute paths)
+
+        labels_path = os.path.join(self._new_dir(), "labels.json")
+
+        dataset.export(
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            labels_path=labels_path,
+            abs_paths=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            labels_path=labels_path,
+            label_field="predictions",
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(dataset.values("filepath")),
+            set(dataset2.values("filepath")),
+        )
+        self.assertEqual(
+            dataset.count("predictions"),
+            dataset2.count("predictions"),
+        )
+
     @drop_datasets
     def test_image_classification_directory_tree(self):
         dataset = self._make_dataset()
@@ -826,6 +852,32 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset2.count("predictions.detections"),
         )
 
+        # Labels-only (absolute paths)
+
+        labels_path = os.path.join(self._new_dir(), "labels.json")
+
+        dataset.export(
+            dataset_type=fo.types.FiftyOneImageDetectionDataset,
+            labels_path=labels_path,
+            abs_paths=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_type=fo.types.FiftyOneImageDetectionDataset,
+            labels_path=labels_path,
+            label_field="predictions",
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(dataset.values("filepath")),
+            set(dataset2.values("filepath")),
+        )
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
+        )
+
     @drop_datasets
     def test_tf_object_detection_dataset(self):
         dataset = self._make_dataset()
@@ -952,6 +1004,32 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         dataset2 = fo.Dataset.from_dir(
             dataset_type=fo.types.COCODetectionDataset,
             data_path=data_path,
+            labels_path=labels_path,
+            label_field="predictions",
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(dataset.values("filepath")),
+            set(dataset2.values("filepath")),
+        )
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
+        )
+
+        # Labels-only (absolute paths)
+
+        labels_path = os.path.join(self._new_dir(), "labels.json")
+
+        dataset.export(
+            dataset_type=fo.types.COCODetectionDataset,
+            labels_path=labels_path,
+            abs_paths=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_type=fo.types.COCODetectionDataset,
             labels_path=labels_path,
             label_field="predictions",
         )
@@ -1654,6 +1732,31 @@ class GeoLocationDatasetTests(ImageDatasetTests):
             dataset.count("coordinates"), dataset2.count("coordinates")
         )
 
+        # Labels-only (absolute paths)
+
+        labels_path = os.path.join(self._new_dir(), "labels.json")
+
+        dataset.export(
+            labels_path=labels_path,
+            dataset_type=fo.types.GeoJSONDataset,
+            abs_paths=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            labels_path=labels_path,
+            dataset_type=fo.types.GeoJSONDataset,
+            location_field="coordinates",
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(dataset.values("filepath")),
+            set(dataset2.values("filepath")),
+        )
+        self.assertEqual(
+            dataset.count("coordinates"), dataset2.count("coordinates")
+        )
+
 
 class MultitaskImageDatasetTests(ImageDatasetTests):
     def _make_dataset(self):
@@ -1815,6 +1918,30 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset2.count("detections.detections"),
         )
 
+        # Labels-only (absolute paths)
+
+        labels_path = os.path.join(self._new_dir(), "labels.json")
+
+        dataset.export(
+            labels_path=labels_path,
+            dataset_type=fo.types.BDDDataset,
+            abs_paths=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            labels_path=labels_path,
+            dataset_type=fo.types.BDDDataset,
+        )
+
+        self.assertEqual(
+            dataset.count("weather"),
+            dataset2.count("attributes"),
+        )
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("detections.detections"),
+        )
+
     @drop_datasets
     def test_cvat_image_dataset(self):
         dataset = self._make_dataset()
@@ -1875,6 +2002,26 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         )
 
         self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("detections.detections"),
+        )
+
+        # Labels-only (absolute paths)
+
+        labels_path = os.path.join(self._new_dir(), "labels.xml")
+
+        dataset.export(
+            labels_path=labels_path,
+            dataset_type=fo.types.CVATImageDataset,
+            abs_paths=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            labels_path=labels_path,
+            dataset_type=fo.types.CVATImageDataset,
+        )
+
         self.assertEqual(
             dataset.count("predictions.detections"),
             dataset2.count("detections.detections"),
@@ -2545,6 +2692,59 @@ class TemporalDetectionDatasetTests(VideoDatasetTests):
         self.assertListEqual(
             sorted(supports, key=lambda k: (k is None, k)),
             sorted(supports2, key=lambda k: (k is None, k)),
+        )
+
+        # Labels-only
+
+        data_path = self.videos_dir
+        labels_path = os.path.join(self._new_dir(), "labels.json")
+
+        dataset.export(
+            dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
+            labels_path=labels_path,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            label_field="predictions",
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(dataset.values("filepath")),
+            set(dataset2.values("filepath")),
+        )
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
+        )
+
+        # Labels-only (absolute paths)
+
+        labels_path = os.path.join(self._new_dir(), "labels.json")
+
+        dataset.export(
+            dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
+            labels_path=labels_path,
+            abs_paths=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
+            labels_path=labels_path,
+            label_field="predictions",
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(dataset.values("filepath")),
+            set(dataset2.values("filepath")),
+        )
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
         )
 
 
