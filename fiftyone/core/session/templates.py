@@ -128,8 +128,7 @@ SCREENSHOT_COLAB_SCRIPT = """
             google.colab.kernel.invokeFunction(`fiftyone.${subscription.replaceAll('-', '_')}`, [event.data.src, event.data.width], {});
             overlay.addEventListener("click", () => {
               const reactivateURL = new URL(baseURL);
-              console.log(reactivateURL)
-              fetch(`${reactivateURL}/event`, {
+              fetch(`${reactivateURL}event`, {
                 method: "POST",
                 body: JSON.stringify({
                   event: "reactivate_notebook_cell",
