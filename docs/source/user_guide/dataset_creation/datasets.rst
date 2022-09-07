@@ -76,6 +76,22 @@ that you're loading.
             labels_path=labels_path,
         )
 
+    Many formats like :ref:`COCO <COCODetectionDataset-import>` also support
+    storing absolute filepaths to the source media directly in the labels, in
+    which case you can provide only the `labels_path` parameter:
+
+    .. code-block:: python
+        :linenos:
+
+        # The path to a COCO labels JSON file containing absolute image paths
+        labels_path = "/path/to/coco-labels.json"
+
+        # Import the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.COCODetectionDataset,
+            labels_path=labels_path,
+        )
+
     In general, you can pass any parameter for the |DatasetImporter| of the
     format you're importing to
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`. For
@@ -140,6 +156,20 @@ that you're loading.
             --kwargs \
                 data_path=$DATA_PATH \
                 labels_path=$LABELS_PATH
+
+    Many formats like :ref:`COCO <COCODetectionDataset-import>` also support
+    storing absolute filepaths to the source media directly in the labels, in
+    which case you can provide only the `labels_path` parameter:
+
+    .. code-block:: shell
+
+        # The path to a COCO labels JSON file containing absolute image paths
+        LABELS_PATH=/path/to/coco-labels.json
+
+        # Import the dataset
+        fiftyone datasets create --name my-dataset \
+            --type fiftyone.types.COCODetectionDataset \
+            --kwargs labels_path=$LABELS_PATH
 
     In general, you can pass any parameter for the |DatasetImporter| of the
     format you're importing via the
@@ -471,7 +501,8 @@ The target value in `labels` for unlabeled images is `None` (or missing).
 
 The UUIDs can also be relative paths like `path/to/uuid`, in which case the
 images in `data/` should be arranged in nested subfolders with the
-corresponding names.
+corresponding names, or they can be absolute paths, in which case the images
+may or may not be in `data/`.
 
 Alternatively, `labels.json` can contain predictions with associated
 confidences and additional attributes in the following format:
@@ -633,6 +664,11 @@ directory containing the corresponding media files by providing the
             --kwargs \
                 data_path=$DATA_PATH \
                 labels_path=$LABELS_PATH
+
+.. note::
+
+    If the UUIDs in your labels are absolute paths to the source media, then
+    you can omit the `data_path` parameter from the example above.
 
 .. _ImageClassificationDirectoryTree-import:
 
@@ -1008,7 +1044,8 @@ The target value in `labels` for unlabeled images is `None` (or missing).
 
 The UUIDs can also be relative paths like `path/to/uuid`, in which case the
 images in `data/` should be arranged in nested subfolders with the
-corresponding names.
+corresponding names, or they can be absolute paths, in which case the images
+may or may not be in `data/`.
 
 .. note::
 
@@ -1118,6 +1155,11 @@ directory containing the corresponding media files by providing the
                 data_path=$DATA_PATH \
                 labels_path=$LABELS_PATH
 
+.. note::
+
+    If the UUIDs in your labels are absolute paths to the source media, then
+    you can omit the `data_path` parameter from the example above.
+
 .. _FiftyOneTemporalDetectionDataset-import:
 
 FiftyOneTemporalDetectionDataset
@@ -1207,7 +1249,8 @@ Unlabeled videos can have a `None` (or missing) key in `labels`.
 
 The UUIDs can also be relative paths like `path/to/uuid`, in which case the
 images in `data/` should be arranged in nested subfolders with the
-corresponding names.
+corresponding names, or they can be absolute paths, in which case the images
+may or may not be in `data/`.
 
 .. note::
 
@@ -1315,6 +1358,11 @@ directory containing the corresponding media files by providing the
             --kwargs \
                 data_path=$DATA_PATH \
                 labels_path=$LABELS_PATH
+
+.. note::
+
+    If the UUIDs in your labels are absolute paths to the source media, then
+    you can omit the `data_path` parameter from the example above.
 
 .. _COCODetectionDataset-import:
 
@@ -1527,6 +1575,11 @@ directory containing the corresponding media files by providing the
             --kwargs \
                 data_path=$DATA_PATH \
                 labels_path=$LABELS_PATH
+
+.. note::
+
+    If the `file_name` key of your labels contains absolute paths to the source
+    media, then you can omit the `data_path` parameter from the example above.
 
 If you have an existing dataset and corresponding model predictions stored in
 COCO format, then you can use
@@ -1771,6 +1824,12 @@ directory containing the corresponding media files by providing the
             --kwargs \
                 data_path=$DATA_PATH \
                 labels_path=$LABELS_PATH
+
+.. note::
+
+    If the `<path>` field of your labels are populated with the absolute paths
+    to the source media, then you can omit the `data_path` parameter from the
+    example above.
 
 .. _KITTIDetectionDataset-import:
 
@@ -2874,6 +2933,11 @@ directory containing the corresponding media files by providing the
             --kwargs \
                 data_path=$DATA_PATH \
                 labels_path=$LABELS_PATH
+
+.. note::
+
+    If the `name` key of your labels contains absolute paths to the source
+    media, then you can omit the `data_path` parameter from the example above.
 
 .. _CVATVideoDataset-import:
 
@@ -4138,7 +4202,7 @@ directory containing the corresponding media files by providing the
 .. note::
 
     If the `name` key of your labels contains absolute paths to the source
-    media, then you can omit `data_path` parameter from the example above.
+    media, then you can omit the `data_path` parameter from the example above.
 
 .. _DICOMDataset-import:
 
