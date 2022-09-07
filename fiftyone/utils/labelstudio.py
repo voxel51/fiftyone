@@ -368,7 +368,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                     if not isinstance(labels[0], fol.Regression)
                     else labels[0]
                 )
-                sample_id = task_map[t["id"]]
+                sample_id = task_map[str(t["id"])]
                 results[sample_id] = label_ids
 
         return results
