@@ -71,7 +71,7 @@ def _get_context():
     if _context is not None:
         return _context
 
-    if os.environ.get("FIFTYONE_COLAB", None):
+    if os.environ.get("FIFTYONE_CONTEXT", None):
         _context = _COLAB
         return _context
 
@@ -117,6 +117,8 @@ def _get_context():
 
     # Otherwise, we're not in a known notebook context.
     _context = _NONE
+
+    os.environ["FIFTYONE_CONTEXT"] = _context
 
     return _context
 
