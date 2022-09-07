@@ -15,6 +15,7 @@ from sse_starlette import ServerSentEvent
 from starlette.requests import Request
 
 import fiftyone as fo
+import fiftyone.core.context as focx
 from fiftyone.core.json import FiftyOneJSONEncoder
 from fiftyone.core.session.events import (
     CloseSession,
@@ -24,7 +25,6 @@ from fiftyone.core.session.events import (
     StateUpdate,
 )
 import fiftyone.core.state as fos
-from fiftyone.core.view import DatasetView
 from fiftyone.server.query import serialize_dataset
 
 
@@ -193,7 +193,7 @@ async def dispatch_polling_event_listener(
                 "event": e.get_event_name(),
                 "data": asdict(e, dict_factory=dict_factory),
             }
-            for e in events
+            for (_, e) in events
         ]
     }
 
@@ -221,7 +221,7 @@ async def _disconnect(
         global _app_count
         _app_count -= 1
 
-        if not _app_count:
+        if not _app_count and focx._get_context() == focx._NONE:
             await dispatch_event(None, CloseSession())
 
 

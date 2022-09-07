@@ -958,7 +958,7 @@ class Session(object):
         if self.remote:
             return
 
-        if self._client._connected:
+        if self._client._connected and focx._get_context() == focx._NONE:
             self._client.send_event(CloseSession())
 
         self.plots.disconnect()
