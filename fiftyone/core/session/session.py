@@ -997,7 +997,6 @@ def _attach_listeners(session: "Session"):
         )
 
         def on_reactivate_notebook_cell(event: ReactivateNotebookCell) -> None:
-            session._client.send_event(DeactivateNotebookCell())
             fosn.display(
                 session._notebook_cells[event.subscription], reactivate=True
             )
