@@ -987,7 +987,16 @@ def _attach_listeners(session: "Session"):
     )
     session._client.add_event_listener("state_update", on_state_update)
 
-    if focx.is_notebook_context() and not focx.is_colab_context():
+    if focx.is_colab_context():
+        # pylint: disable=no-name-in-module,import-error
+        from google.colab import output
+
+        def colab_deactivate() -> None:
+            session._client.send_event(DeactivateNotebookCell())
+
+        output.register_callback(f"fiftyone.deactivate", colab_deactivate)
+
+    elif focx.is_notebook_context():
 
         def on_capture_notebook_cell(event: CaptureNotebookCell) -> None:
             fosn.capture(session._notebook_cells[event.subscription], event)
@@ -1004,13 +1013,6 @@ def _attach_listeners(session: "Session"):
         session._client.add_event_listener(
             "reactivate_notebook_cell", on_reactivate_notebook_cell
         )
-        # pylint: disable=no-name-in-module,import-error
-        from google.colab import output
-
-        def colab_deactivate() -> None:
-            session._client.send_event(DeactivateNotebookCell())
-
-        output.register_callback(f"fiftyone.deactivate", colab_deactivate)
 
 
 def import_desktop() -> None:
