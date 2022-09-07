@@ -46,6 +46,7 @@ class Tagging(HTTPEndpoint):
             sample_filter=SampleFilter(
                 group=GroupElementFilter(id=group_id, slice=slice)
             ),
+            mixed=mixed,
         )
 
         if sample_ids:

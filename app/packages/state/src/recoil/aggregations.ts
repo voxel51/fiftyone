@@ -131,6 +131,8 @@ export const aggregations = selectorFamily<
       let filters = null;
       let hiddenLabels = null;
       get(atoms.refresher);
+      get(atoms.tagging({ modal, labels: true }));
+      get(atoms.tagging({ modal, labels: false }));
 
       if (extended && get(filterAtoms.hasFilters(modal))) {
         filters = get(modal ? filterAtoms.modalFilters : filterAtoms.filters);

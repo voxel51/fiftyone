@@ -314,12 +314,11 @@ const labelsModalPlaceholder = (selection, numLabels) => {
   }`;
 };
 
-const samplesPlaceholder = (selection, _, numSamples, elementNames) => {
+const samplesPlaceholder = (numSamples, elementNames, selected = false) => {
   if (numSamples === 0) {
     return `no ${elementNames.plural}`;
   }
-  if (selection) {
-    numSamples = selection;
+  if (selected) {
     const formatted = numeral(numSamples).format("0,0");
     return `+ tag ${numSamples > 1 ? `${formatted} ` : ""}selected ${
       numSamples === 1 ? elementNames.singular : elementNames.plural
@@ -332,28 +331,15 @@ const samplesPlaceholder = (selection, _, numSamples, elementNames) => {
   }`;
 };
 
-const samplePlaceholder = (elementNames) => {
-  return `+ tag ${elementNames.singular}`;
-};
-
 const useTagCallback = (
   modal,
   targetLabels,
   lookerRef?: React.MutableRefObject<Lookers | undefined>
 ) => {
-  const refreshers = [true, false]
-    .map((modal) =>
-      [true, false].map((extended) =>
-        useRecoilRefresher_UNSTABLE(fos.aggregations({ modal, extended }))
-      )
-    )
-    .flat();
-  refreshers.push(
-    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false }))
-  );
-  refreshers.push(
-    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: targetLabels }))
-  );
+  const refreshers = [
+    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
+    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: targetLabels })),
+  ];
 
   return useRecoilCallback(
     ({ snapshot, set }) =>
@@ -461,7 +447,7 @@ const usePlaceHolder = (
       return [labelCount, labelsModalPlaceholder(selectedLabels, labelCount)];
     } else if (modal && !selectedSamples) {
       const count = useRecoilValue(selectedSamplesCount(modal));
-      return [count, samplesPlaceholder(0, null, count, elementNames)];
+      return [count, samplesPlaceholder(count, elementNames)];
     } else {
       const totalSamples = useRecoilValue(
         fos.count({ path: "", extended: false, modal: false })
@@ -483,13 +469,8 @@ const usePlaceHolder = (
         ];
       } else {
         return [
-          selectedSamples > 0 ? itemCount : count,
-          samplesPlaceholder(
-            selectedSamples > 0 ? itemCount : count,
-            labelCount,
-            count,
-            elementNames
-          ),
+          itemCount,
+          samplesPlaceholder(itemCount, elementNames, Boolean(selectedSamples)),
         ];
       }
     }
