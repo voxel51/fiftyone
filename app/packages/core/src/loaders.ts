@@ -1,9 +1,9 @@
-import * as fos from '@fiftyone/state'
-import { dataset } from '@fiftyone/state';
-import { toCamelCase } from '@fiftyone/utilities';
-import {useEffect} from 'react'
-import { usePreloadedQuery, useQueryLoader } from 'react-relay';
-export { DatasetQuery } from "./__generated__/DatasetQuery.graphql";
+import * as fos from "@fiftyone/state";
+import { dataset } from "@fiftyone/state";
+import { Resource, toCamelCase } from "@fiftyone/utilities";
+import { useEffect, useState } from "react";
+import { loadQuery, usePreloadedQuery, useQueryLoader } from "react-relay";
+import { useRecoilValue } from "recoil";
 
 const DatasetQueryNode = graphql`
   query DatasetQuery($name: String!, $view: BSONArray = null) {
@@ -96,7 +96,11 @@ const DatasetQueryNode = graphql`
   }
 `;
 
-export function usePrepareDataset(dataset, {colorscale, config, state}) {
+export function usePrepareDataset(
+  dataset,
+  { colorscale, config, state },
+  setReady
+) {
   const update = fos.useStateUpdate();
 
   useEffect(() => {
@@ -108,17 +112,28 @@ export function usePrepareDataset(dataset, {colorscale, config, state}) {
             ? (toCamelCase(config) as fos.State.Config)
             : undefined,
           dataset: fos.transformDataset(dataset),
-          state
+          state,
         };
       });
+      setReady(true);
     }
   }, [dataset]);
 }
-export function usePreLoadedDataset(preloadedQuery, {colorscale, config, state} = {}) {
-  const {dataset} = usePreloadedQuery(DatasetQueryNode, preloadedQuery)
-  usePrepareDataset(dataset, {colorscale, config, state})
+export function usePreLoadedDataset(
+  queryRef,
+  { colorscale, config, state } = {}
+) {
+  const [ready, setReady] = useState(false);
+  const { dataset } = usePreloadedQuery(DatasetQueryNode, queryRef);
+  usePrepareDataset(dataset, { colorscale, config, state }, setReady);
+  return [dataset, ready];
 }
-export function useLoadedDataset({colorscale, config, state} = {}) {
-  const {dataset} = useQueryLoader(DatasetQueryNode)
-  usePrepareDataset(dataset, {colorscale, config, state})
+export function useDatasetLoader(environment) {
+  const [queryRef, loadQuery] = useQueryLoader(DatasetQueryNode);
+  return [
+    queryRef,
+    (name) => {
+      loadQuery({ name });
+    },
+  ];
 }
