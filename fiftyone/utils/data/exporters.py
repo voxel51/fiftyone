@@ -978,10 +978,7 @@ class MediaExporter(object):
                 directory in which to export the media
             -   When ``export_mode`` is "manifest", the path to write a JSON
                 file mapping UUIDs to input filepaths
-            -   When ``export_media`` is False, this parameter can optionally
-                be a root directory to strip from each exported image's path to
-                yield a UUID for each image. If no path is provided, only the
-                filename of each image is used for UUID generation
+            -   When ``export_media`` is False, this parameter has no effect
         rel_dir (None): an optional relative directory to strip from each input
             filepath to generate a unique identifier for each media. When
             exporting media, this identifier is joined with ``export_path`` to
