@@ -72,7 +72,7 @@ def _get_context():
         return _context
 
     if os.environ.get("FIFTYONE_CONTEXT", None):
-        _context = _COLAB
+        _context = os.environ["FIFTYONE_CONTEXT"]
         return _context
 
     # In Colab, the `google.colab` module is available, but the shell returned
