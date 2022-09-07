@@ -1004,6 +1004,13 @@ def _attach_listeners(session: "Session"):
         session._client.add_event_listener(
             "reactivate_notebook_cell", on_reactivate_notebook_cell
         )
+        # pylint: disable=no-name-in-module,import-error
+        from google.colab import output
+
+        def colab_deactivate() -> None:
+            session._client.send_event(DeactivateNotebookCell())
+
+        output.register_callback(f"fiftyone.deactivate", colab_deactivate)
 
 
 def import_desktop() -> None:

@@ -127,15 +127,7 @@ SCREENSHOT_COLAB_SCRIPT = """
             var overlay = document.getElementById(`fooverlay-${subscription}`);
             google.colab.kernel.invokeFunction(`fiftyone.${subscription.replaceAll('-', '_')}`, [event.data.src, event.data.width], {});
             overlay.addEventListener("click", () => {
-              const reactivateURL = new URL(baseURL);
-              fetch(`${reactivateURL}event`, {
-                method: "POST",
-                body: JSON.stringify({
-                  event: "reactivate_notebook_cell",
-                  data: { subscription: "{{ subscription }}" },
-                  subscription: "{{ subscription }}"
-                })
-              })
+              google.colab.kernel.invokeFunction(`fiftyone.deactivate`, [], {})
               container.removeChild(container.children[1]);
               document.body.appendChild(iframe);
             });
