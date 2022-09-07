@@ -127,7 +127,7 @@ SCREENSHOT_COLAB_SCRIPT = """
             var overlay = document.getElementById(`fooverlay-${subscription}`);
             google.colab.kernel.invokeFunction(`fiftyone.${subscription.replaceAll('-', '_')}`, [event.data.src, event.data.width], {});
             overlay.addEventListener("click", () => {
-              google.colab.kernel.invokeFunction(`fiftyone.deactivate`, [], {})
+              google.colab.kernel.invokeFunction(`fiftyone.deactivate.${subscription.replaceAll('-', '_')}`, [], {})
               container.removeChild(container.children[1]);
               document.body.appendChild(iframe);
             });

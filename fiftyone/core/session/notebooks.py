@@ -10,6 +10,8 @@ import os
 
 from jinja2 import Template
 
+from fiftyone.core.session.client import Client
+
 try:
     import IPython.display
 except:
@@ -43,23 +45,27 @@ def capture(cell: NotebookCell, data: fose.CaptureNotebookCell) -> None:
     )
 
 
-def display(cell: NotebookCell, reactivate: bool = False) -> None:
+def display(
+    client: Client, cell: NotebookCell, reactivate: bool = False
+) -> None:
     """Displays a running FiftyOne instance."""
     funcs = {
         focx._COLAB: display_colab,
         focx._IPYTHON: display_ipython,
     }
     fn = funcs[focx._get_context()]
-    fn(cell, reactivate)
+    fn(client, cell, reactivate)
 
 
-def display_ipython(cell: NotebookCell, reactivate: bool = False) -> None:
+def display_ipython(
+    client: Client, cell: NotebookCell, reactivate: bool = False
+) -> None:
     iframe = IPython.display.IFrame(
-        focx.get_url(
+        f"""{focx.get_url(
             cell.address,
             os.environ.get("FIFTYONE_APP_CLIENT_PORT", cell.port),
             subscription=cell.subscription,
-        ),
+        )}""",
         height=cell.height,
         width="100%",
     )
@@ -69,7 +75,9 @@ def display_ipython(cell: NotebookCell, reactivate: bool = False) -> None:
         cell.handle.display(iframe)
 
 
-def display_colab(cell: NotebookCell, reactivate: bool = False) -> None:
+def display_colab(
+    client: Client, cell: NotebookCell, reactivate: bool = False
+) -> None:
     """Display a FiftyOne instance in a Colab output frame.
 
     The Colab VM is not directly exposed to the network, so the Colab runtime
@@ -110,4 +118,9 @@ def display_colab(cell: NotebookCell, reactivate: bool = False) -> None:
 
     output.register_callback(
         f"fiftyone.{cell.subscription.replace('-', '_')}", capture
+    )
+
+    output.register_callback(
+        f"fiftyone.deactivate.{cell.subscription.replace('-', '_')}",
+        lambda: client.send_event(fose.DeactivateNotebookCell()),
     )
