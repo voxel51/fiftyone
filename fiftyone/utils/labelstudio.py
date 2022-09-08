@@ -520,10 +520,12 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
 
     @classmethod
     def _from_dict(cls, d, samples, config):
+        # int keys were serialized as strings...
         uploaded_tasks = {
             int(task_id): source_id
             for task_id, source_id in d["uploaded_tasks"].items()
         }
+
         return cls(
             samples,
             config,
