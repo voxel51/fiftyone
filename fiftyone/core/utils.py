@@ -1055,13 +1055,18 @@ class UniqueFilenameMaker(object):
 
     Args:
         output_dir (None): a directory in which to generate output paths
-        rel_dir (None): an optional relative directory to strip from each path
+        rel_dir (None): an optional relative directory to strip from each path.
+            The path is converted to an absolute path (if necessary) via
+            :func:`normalize_path`
         default_ext (None): the file extension to use when generating default
             output paths
         ignore_exts (False): whether to omit file extensions when checking for
             duplicate filenames
         ignore_existing (False): whether to ignore existing files in
             ``output_dir`` for output filename generation purposes
+        idempotent (True): whether to return the same output path when the same
+            input path is provided multiple times (True) or to generate new
+            output paths (False)
     """
 
     def __init__(
@@ -1071,12 +1076,17 @@ class UniqueFilenameMaker(object):
         default_ext=None,
         ignore_exts=False,
         ignore_existing=False,
+        idempotent=True,
     ):
+        if rel_dir is not None:
+            rel_dir = normalize_path(rel_dir)
+
         self.output_dir = output_dir
         self.rel_dir = rel_dir
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
         self.ignore_existing = ignore_existing
+        self.idempotent = idempotent
 
         self._filepath_map = {}
         self._filename_counts = defaultdict(int)
@@ -1096,8 +1106,8 @@ class UniqueFilenameMaker(object):
         if self.ignore_existing:
             return
 
-        abs_paths = self.rel_dir is not None
-        filenames = etau.list_files(self.output_dir, abs_paths=abs_paths)
+        recursive = self.rel_dir is not None
+        filenames = etau.list_files(self.output_dir, recursive=recursive)
 
         self._idx = len(filenames)
         for filename in filenames:
@@ -1112,7 +1122,7 @@ class UniqueFilenameMaker(object):
         Returns:
             True/False
         """
-        return input_path in self._filepath_map
+        return normalize_path(input_path) in self._filepath_map
 
     def get_output_path(self, input_path=None, output_ext=None):
         """Returns a unique output path.
@@ -1126,15 +1136,18 @@ class UniqueFilenameMaker(object):
         """
         found_input = bool(input_path)
 
-        if found_input and input_path in self._filepath_map:
-            return self._filepath_map[input_path]
+        if found_input:
+            input_path = normalize_path(input_path)
+
+            if self.idempotent and input_path in self._filepath_map:
+                return self._filepath_map[input_path]
 
         self._idx += 1
 
         if not found_input:
             filename = self._default_filename_patt % self._idx
-        elif self.rel_dir:
-            filename = os.path.relpath(input_path, self.rel_dir)
+        elif self.rel_dir is not None:
+            filename = safe_relpath(input_path, self.rel_dir)
         else:
             filename = os.path.basename(input_path)
 
@@ -1166,6 +1179,35 @@ class UniqueFilenameMaker(object):
             self._filepath_map[input_path] = output_path
 
         return output_path
+
+
+def safe_relpath(path, start=None, default=None):
+    """A safe version of ``os.path.relpath`` that returns a configurable
+    default value if the given path if it does not lie within the given
+    relative start.
+
+    Args:
+        path: a path
+        start (None): the relative prefix to strip from ``path``
+        default (None): a default value to return if ``path`` does not lie
+            within ``start``. By default, the basename of the path is returned
+
+    Returns:
+        the relative path
+    """
+    relpath = os.path.relpath(path, start)
+    if relpath.startswith(".."):
+        if default is not None:
+            return default
+
+        logger.warning(
+            "Path '%s' is not in '%s'. Using filename as unique identifier",
+            path,
+            start,
+        )
+        relpath = os.path.basename(path)
+
+    return relpath
 
 
 def compute_filehash(filepath, method=None, chunk_size=None):

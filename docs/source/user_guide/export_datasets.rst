@@ -66,10 +66,12 @@ a |DatasetView| into any format of your choice via the basic recipe below.
         :linenos:
 
         # Export **only** labels in the `ground_truth` field in COCO format
+        # with absolute image filepaths in the labels
         dataset_or_view.export(
             dataset_type=fo.types.COCODetectionDataset,
             labels_path="/path/for/export.json",
             label_field="ground_truth",
+            abs_paths=True,
         )
 
     Or you can use the `export_media` parameter to configure whether to copy,
@@ -131,10 +133,13 @@ a |DatasetView| into any format of your choice via the basic recipe below.
     .. code-block:: shell
 
         # Export **only** labels in the `ground_truth` field in COCO format
+        # with absolute image filepaths in the labels
         fiftyone datasets export $NAME \
             --type fiftyone.types.COCODetectionDataset \
             --label-field ground_truth \
-            --kwargs labels_path=/path/for/labels.json
+            --kwargs \
+                labels_path=/path/for/labels.json \
+                abs_paths=True
 
     Or you can use the `export_media` parameter to configure whether to copy,
     move, symlink, or omit the media files from the export:
@@ -762,15 +767,24 @@ disk in the above format as follows:
     the strategy outlined in :ref:`this section <export-class-lists>` will be
     used to populate the class list.
 
-You can also perform labels-only exports in this format. If the filenames of
-the images of your dataset are unique, then you can simply provide the
-`labels_path` parameter instead of `export_dir` when calling
-:meth:`export() <fiftyone.core.collections.SampleCollection.export>` and the
-labels JSON will be populated using the basenames of the exported samples'
-image filepaths as keys. You can also include the `data_path` parameter to
-specify a common prefix to strip from each image's filepath to generate keys,
-in which case you must explicitly pass `export_media=False` to declare that you
-would only like to export labels.
+You can also perform labels-only exports in this format by providing the
+`labels_path` parameter instead of `export_dir` to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` to specify
+a location to write (only) the labels.
+
+.. note::
+
+    You can optionally include the `export_media=False` option to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    make it explicit that you only wish to export labels, although this will be
+    inferred if you do not provide an `export_dir` or `data_path`.
+
+By default, the filenames of your images will be used as keys in the exported
+labels. However, you can also provide the optional `rel_dir` parameter to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` to specify
+a prefix to strip from each image path to generate a key for the image. This
+argument allows for populating nested subdirectories that match the shape of
+the input paths.
 
 .. tabs::
 
@@ -795,13 +809,12 @@ would only like to export labels.
         )
 
         # Export labels using the relative path of each image with respect to
-        # the given `data_path` as keys
+        # the given `rel_dir` as keys
         dataset_or_view.export(
             dataset_type=fo.types.FiftyOneImageClassificationDataset,
-            data_path="/common/images/dir",
             labels_path=labels_path,
             label_field=label_field,
-            export_media=False,
+            rel_dir="/common/images/dir",
         )
 
   .. group-tab:: CLI
@@ -819,14 +832,13 @@ would only like to export labels.
             --kwargs labels_path=$LABELS_PATH
 
         # Export labels using the relative path of each image with respect to
-        # the given `data_path` as keys
+        # the given `rel_dir` as keys
         fiftyone datasets export $NAME \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneImageClassificationDataset \
             --kwargs \
-                data_path="/common/images/dir" \
                 labels_path=$LABELS_PATH \
-                export_media=False
+                rel_dir=/common/images/dir
 
 .. _ImageClassificationDirectoryTree-export:
 
@@ -1204,15 +1216,24 @@ format as follows:
     the strategy outlined in :ref:`this section <export-class-lists>` will be
     used to populate the class list.
 
-You can also perform labels-only exports in this format. If the filenames of
-the images of your dataset are unique, then you can simply provide the
-`labels_path` parameter instead of `export_dir` when calling
-:meth:`export() <fiftyone.core.collections.SampleCollection.export>` and the
-labels JSON will be populated using the basenames of the exported samples'
-image filepaths as keys. You can also include the `data_path` parameter to
-specify a common prefix to strip from each image's filepath to generate keys,
-in which case you must explicitly pass `export_media=False` to declare that you
-would only like to export labels.
+You can also perform labels-only exports in this format by providing the
+`labels_path` parameter instead of `export_dir` to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` to specify
+a location to write (only) the labels.
+
+.. note::
+
+    You can optionally include the `export_media=False` option to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    make it explicit that you only wish to export labels, although this will be
+    inferred if you do not provide an `export_dir` or `data_path`.
+
+By default, the filenames of your images will be used as keys in the exported
+labels. However, you can also provide the optional `rel_dir` parameter to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` to specify
+a prefix to strip from each image path to generate a key for the image. This
+argument allows for populating nested subdirectories that match the shape of
+the input paths.
 
 .. tabs::
 
@@ -1237,13 +1258,12 @@ would only like to export labels.
         )
 
         # Export labels using the relative path of each image with respect to
-        # the given `data_path` as keys
+        # the given `rel_dir` as keys
         dataset_or_view.export(
             dataset_type=fo.types.FiftyOneImageDetectionDataset,
-            data_path="/common/images/dir",
             labels_path=labels_path,
             label_field=label_field,
-            export_media=False,
+            rel_dir="/common/images/dir",
         )
 
   .. group-tab:: CLI
@@ -1261,14 +1281,13 @@ would only like to export labels.
             --kwargs labels_path=$LABELS_PATH
 
         # Export labels using the relative path of each image with respect to
-        # the given `data_path` as keys
+        # the given `rel_dir` as keys
         fiftyone datasets export $NAME \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneImageDetectionDataset \
             --kwargs \
-                data_path=/common/images/dir \
                 labels_path=$LABELS_PATH \
-                export_media=False
+                rel_dir=/common/images/dir
 
 .. _FiftyOneTemporalDetectionDataset-export:
 
@@ -1422,15 +1441,24 @@ disk in the above format as follows:
     the strategy outlined in :ref:`this section <export-class-lists>` will be
     used to populate the class list.
 
-You can also perform labels-only exports in this format. If the filenames of
-the images of your dataset are unique, then you can simply provide the
-`labels_path` parameter instead of `export_dir` when calling
-:meth:`export() <fiftyone.core.collections.SampleCollection.export>` and the
-labels JSON will be populated using the basenames of the exported samples'
-image filepaths as keys. You can also include the `data_path` parameter to
-specify a common prefix to strip from each image's filepath to generate keys,
-in which case you must explicitly pass `export_media=False` to declare that you
-would only like to export labels.
+You can also perform labels-only exports in this format by providing the
+`labels_path` parameter instead of `export_dir` to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` to specify
+a location to write (only) the labels.
+
+.. note::
+
+    You can optionally include the `export_media=False` option to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    make it explicit that you only wish to export labels, although this will be
+    inferred if you do not provide an `export_dir` or `data_path`.
+
+By default, the filenames of your images will be used as keys in the exported
+labels. However, you can also provide the optional `rel_dir` parameter to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` to specify
+a prefix to strip from each image path to generate a key for the image. This
+argument allows for populating nested subdirectories that match the shape of
+the input paths.
 
 .. tabs::
 
@@ -1455,13 +1483,12 @@ would only like to export labels.
         )
 
         # Export labels using the relative path of each image with respect to
-        # the given `data_path` as keys
+        # the given `rel_dir` as keys
         dataset_or_view.export(
             dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
-            data_path="/common/images/dir",
             labels_path=labels_path,
             label_field=label_field,
-            export_media=False,
+            rel_dir="/common/images/dir",
         )
 
   .. group-tab:: CLI
@@ -1479,14 +1506,13 @@ would only like to export labels.
             --kwargs labels_path=$LABELS_PATH
 
         # Export labels using the relative path of each image with respect to
-        # the given `data_path` as keys
+        # the given `rel_dir` as keys
         fiftyone datasets export $NAME \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneTemporalDetectionDataset \
             --kwargs \
-                data_path=/common/images/dir \
                 labels_path=$LABELS_PATH \
-                export_media=False
+                rel_dir=/common/images/dir
 
 .. _COCODetectionDataset-export:
 
@@ -1572,8 +1598,8 @@ The `file_name` attribute of the labels file encodes the location of the
 corresponding images, which can be any of the following:
 
 -   The filename of an image in the `data/` folder
--   A relative path like `data/sub/folder/filename.ext` specifying the relative
-    path to the image in a nested subfolder of `data/`
+-   A relative path like `path/to/filename.ext` specifying the relative path to
+    the image in a nested subfolder of `data/`
 -   An absolute path to an image, which may or may not be in the `data/` folder
 
 .. note::
@@ -2657,8 +2683,8 @@ The `name` field of the `<image>` tags in the labels file encodes the location
 of the corresponding images, which can be any of the following:
 
 -   The filename of an image in the `data/` folder
--   A relative path like `data/sub/folder/filename.ext` specifying the relative
-    path to the image in a nested subfolder of `data/`
+-   A relative path like `path/to/filename.ext` specifying the relative path to
+    the image in a nested subfolder of `data/`
 -   An absolute path to an image, which may or may not be in the `data/` folder
 
 .. note::
@@ -3268,8 +3294,8 @@ The `name` attribute of the labels file encodes the location of the
 corresponding images, which can be any of the following:
 
 -   The filename of an image in the `data/` folder
--   A relative path like `data/sub/folder/filename.ext` specifying the relative
-    path to the image in a nested subfolder of `data/`
+-   A relative path like `path/to/filename.ext` specifying the relative path to
+    the image in a nested subfolder of `data/`
 -   An absolute path to an image, which may or may not be in the `data/` folder
 
 .. note::
@@ -3656,7 +3682,7 @@ image's filepath, and then provide the new `rel_dir` when
             --type fiftyone.types.FiftyOneDataset \
             --kwargs \
                 export_media=False \
-                rel_dir="/common/images/dir"
+                rel_dir=/common/images/dir
 
 .. note::
 

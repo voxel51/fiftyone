@@ -262,6 +262,14 @@ class VOCDetectionDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` and
+            ``labels_path`` to generate output paths for each exported image
+            and labels file. This argument allows for populating nested
+            subdirectories that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
         include_paths (True): whether to include the absolute paths to the
             images in the ``<path>`` elements of the exported XML
         image_format (None): the image format to use when writing in-memory
@@ -281,6 +289,7 @@ class VOCDetectionDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
         include_paths=True,
         image_format=None,
         extra_attrs=True,
@@ -303,6 +312,7 @@ class VOCDetectionDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
         self.include_paths = include_paths
         self.image_format = image_format
         self.extra_attrs = extra_attrs
@@ -323,6 +333,7 @@ class VOCDetectionDatasetExporter(
         self._media_exporter = foud.ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             default_ext=self.image_format,
         )
         self._media_exporter.setup()
@@ -330,30 +341,28 @@ class VOCDetectionDatasetExporter(
         etau.ensure_dir(self.labels_path)
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path, filename = self._media_exporter.export(image_or_path)
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
 
         if detections is None:
             return
 
         out_labels_path = os.path.join(
-            self.labels_path, os.path.splitext(filename)[0] + ".xml"
+            self.labels_path, os.path.splitext(uuid)[0] + ".xml"
         )
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(image_or_path)
 
-        path = None
         if self.include_paths:
-            if out_image_path is not None:
-                path = out_image_path
-            elif etau.is_str(image_or_path):
-                path = image_or_path
+            path = out_image_path
+        else:
+            path = None
 
         annotation = VOCAnnotation.from_labeled_image(
             metadata,
             detections,
             path=path,
-            filename=filename,
+            filename=uuid,
             extra_attrs=self.extra_attrs,
         )
         self._writer.write(annotation, out_labels_path)
