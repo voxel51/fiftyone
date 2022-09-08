@@ -5350,7 +5350,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         # For non-outside tracked objects, the last track goes to the end of
         # the video, so fill remaining frames with copies of the last instance
-        if prev_frame is not None and not prev_outside:
+        if (
+            anno_type == "track"
+            and prev_frame is not None
+            and not prev_outside
+        ):
             for frame in range(prev_frame + 1, max(frame_id_map) + 1):
                 anno = deepcopy(prev_anno)
                 anno["frame"] = frame
