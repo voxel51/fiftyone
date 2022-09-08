@@ -10,10 +10,9 @@ import { refresher, Route, RouterContext } from "@fiftyone/state";
 import { getDatasetName } from "@fiftyone/state";
 import { usePreLoadedDataset, DatasetQuery } from "../../loaders";
 
-
 export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const router = useContext(RouterContext);
-  const dataset = usePreLoadedDataset(prepared, router?.state)
+  const dataset = usePreLoadedDataset(prepared, router?.state);
   if (!dataset) {
     throw new NotFoundError(`/datasets/${getDatasetName(router)}`);
   }

@@ -23,7 +23,7 @@ import * as fos from "@fiftyone/state";
 
 import RegularEntry from "./RegularEntry";
 
-import LoadingCircle from "../../Common/LoadingCircle";
+import LoadingCircle from "../../Common/Loading";
 
 const ScalarDiv = styled.div`
   & > div {
