@@ -1718,8 +1718,8 @@
                     "embeddings_layer": "visual",
                     "tokenizer_base_filename": "clip_bpe_simple_vocab_16e6.txt.gz",
                     "tokenizer_base_url": "https://github.com/openai/CLIP/raw/main/clip/bpe_simple_vocab_16e6.txt.gz",
-                    "text_prompt": "A photo of",
-                    "context_length": 77
+                    "context_length": 77,
+                    "text_prompt": "A photo of"
                 }
             },
             "requirements": {
