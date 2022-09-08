@@ -333,6 +333,7 @@ class ImageExportCoersionTests(ImageDatasetTests):
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.COCODetectionDataset,
+            label_types="detections",
             label_field="animal",
         )
 
@@ -1033,6 +1034,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.COCODetectionDataset,
+            label_types="detections",
             label_field="predictions",
         )
 
@@ -1071,6 +1073,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.COCODetectionDataset,
+            label_types="detections",
             label_field="predictions",
         )
 
@@ -1092,6 +1095,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset_type=fo.types.COCODetectionDataset,
             data_path=data_path,
             labels_path=labels_path,
+            label_types="detections",
             label_field="predictions",
         )
 
@@ -1118,6 +1122,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         dataset2 = fo.Dataset.from_dir(
             dataset_type=fo.types.COCODetectionDataset,
             labels_path=labels_path,
+            label_types="detections",
             label_field="predictions",
         )
 
@@ -1145,6 +1150,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.COCODetectionDataset,
+            label_types="detections",
             label_field="predictions",
         )
 
@@ -1614,7 +1620,6 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset.count_values("predictions.detections.label"),
             dataset.count_values("coco.detections.label"),
         )
-        self.assertEqual(len(dataset), len(dataset.exists("coco")))
 
 
 class ImageSegmentationDatasetTests(ImageDatasetTests):

@@ -916,6 +916,9 @@ class COCO2014Dataset(FiftyOneDataset):
         seed=None,
         max_samples=None,
     ):
+        if label_types is None:
+            label_types = ["detections"]
+
         self.label_types = label_types
         self.classes = classes
         self.image_ids = image_ids
@@ -939,6 +942,10 @@ class COCO2014Dataset(FiftyOneDataset):
     @property
     def supports_partial_downloads(self):
         return True
+
+    @property
+    def importer_kwargs(self):
+        return {"label_types": self.label_types}
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         num_samples, classes, downloaded = fouc.download_coco_dataset_split(
@@ -1104,6 +1111,9 @@ class COCO2017Dataset(FiftyOneDataset):
         seed=None,
         max_samples=None,
     ):
+        if label_types is None:
+            label_types = ["detections"]
+
         self.label_types = label_types
         self.classes = classes
         self.image_ids = image_ids
@@ -1127,6 +1137,10 @@ class COCO2017Dataset(FiftyOneDataset):
     @property
     def supports_partial_downloads(self):
         return True
+
+    @property
+    def importer_kwargs(self):
+        return {"label_types": self.label_types}
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         num_samples, classes, downloaded = fouc.download_coco_dataset_split(

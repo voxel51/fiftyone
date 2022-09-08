@@ -1518,17 +1518,17 @@ above format as follows:
 
 .. note::
 
-    By default, only bounding boxes are loaded. However, if your COCO JSON
-    contains segmentation and/or keypoint data, you can load these label types
-    by passing the optional `label_types` argument to methods like
+    By default, all supported label types are loaded (detections,
+    segmentations, and keypoints). However, you can choose specific type(s) to
+    load by passing the optional `label_types` argument to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
 
     .. code-block:: python
 
-        # Load bounding boxes and instance segmentations
+        # Only load bounding boxes
         dataset = fo.Dataset.from_dir(
             dataset_type=fo.types.COCODetectionDataset,
-            label_types=["detections", "segmentations"],
+            label_types=["detections"],
             ...
         )
 
