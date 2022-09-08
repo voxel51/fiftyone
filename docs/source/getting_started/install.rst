@@ -272,11 +272,11 @@ Here's the workflow for downgrading to an older version of FiftyOne:
     # Migrate the database
     fiftyone migrate --all -v $VERSION
 
-    # Optional: verify that your datasets were migrated
-    fiftyone migrate --info
-
     # Now install the older version of `fiftyone`
     pip install fiftyone==$VERSION
+
+    # Optional: verify that your datasets were migrated
+    fiftyone migrate --info
 
 If you are reading this after encountering an error resulting from downgrading
 your ``fiftyone`` package without first running

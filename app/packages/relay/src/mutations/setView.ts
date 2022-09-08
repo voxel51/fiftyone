@@ -17,6 +17,7 @@ export default graphql`
         id
         name
         mediaType
+        groupSlice
         defaultGroupSlice
         groupField
         groupMediaTypes {

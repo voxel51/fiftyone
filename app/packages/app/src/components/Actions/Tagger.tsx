@@ -378,6 +378,7 @@ const useTagCallback = (
         const stats = await snapshot.getPromise(groupStatistics(modal));
         let slice: string | null = null;
         let group: string | null = null;
+
         if (stats !== "group" && !hasSelected) {
           slice = await snapshot.getPromise(currentSlice(modal));
           group = modal ? await snapshot.getPromise(groupId) : null;
@@ -450,31 +451,27 @@ const usePlaceHolder = (
 ) => {
   return (): [number, string] => {
     const selectedSamples = useRecoilValue(fos.selectedSamples).size;
-
     const selectedLabels = useRecoilValue(fos.selectedLabelIds).size;
+    const totalSamples = useRecoilValue(
+      fos.count({ path: "", extended: false, modal })
+    );
+    const filteredSamples = useRecoilValue(
+      fos.count({ path: "", extended: true, modal })
+    );
+
+    const count = filteredSamples ?? totalSamples;
+    const itemCount = useRecoilValue(selectedSamplesCount(modal));
+    const selectedLabelCount = useRecoilValue(numItemsInSelection(true));
+    const totalLabelCount = useRecoilValue(
+      fos.labelCount({ modal, extended: true })
+    );
     if (modal && labels && (!selectedSamples || selectedLabels)) {
-      const labelCount =
-        selectedLabels > 0
-          ? selectedLabels
-          : useRecoilValue(fos.labelCount({ modal: true, extended: true }));
+      const labelCount = selectedLabels > 0 ? selectedLabels : totalLabelCount;
       return [labelCount, labelsModalPlaceholder(selectedLabels, labelCount)];
     } else if (modal && !selectedSamples) {
-      const count = useRecoilValue(selectedSamplesCount(modal));
-      return [count, samplesPlaceholder(count, elementNames)];
+      return [itemCount, samplesPlaceholder(count, elementNames)];
     } else {
-      const totalSamples = useRecoilValue(
-        fos.count({ path: "", extended: false, modal: false })
-      );
-      const filteredSamples = useRecoilValue(
-        fos.count({ path: "", extended: true, modal: false })
-      );
-
-      const count = filteredSamples ?? totalSamples;
-      const itemCount = useRecoilValue(selectedSamplesCount(modal));
-      const selectedLabelCount = useRecoilValue(numItemsInSelection(true));
-      const labelCount = selectedSamples
-        ? selectedLabelCount
-        : useRecoilValue(fos.labelCount({ modal, extended: true }));
+      const labelCount = selectedSamples ? selectedLabelCount : totalLabelCount;
       if (labels) {
         return [
           labelCount,

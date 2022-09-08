@@ -46,6 +46,7 @@ type Dataset {
   persistent: Boolean!
   groupMediaTypes: [Group!]
   groupField: String
+  groupSlice: String
   defaultGroupSlice: String
   mediaType: MediaType
   maskTargets: [NamedTargets!]!
@@ -160,6 +161,12 @@ type Mutation {
     dataset: String!
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
+  setGroupSlice(
+    subscription: String!
+    session: String
+    view: BSONArray!
+    slice: String!
+  ): Dataset!
 }
 
 type NamedKeypointSkeleton {

@@ -594,6 +594,7 @@ class Session(object):
     @update_state()
     def refresh(self) -> None:
         """Refreshes the current App window."""
+        self._client.send_event(StateUpdate(state=self._state))
         self._client.send_event(RefreshApp())
 
     @property
@@ -861,7 +862,7 @@ class Session(object):
         webbrowser.open(self.url, new=2)
 
     @update_state()
-    def show(self, height: int = None) -> str:
+    def show(self, height: int = None) -> None:
         """Opens the App in the output of the current notebook cell.
 
         This method has no effect in non-notebook contexts.
@@ -889,7 +890,6 @@ class Session(object):
         )
 
         fosn.display(self._client, self._notebook_cells[uuid])
-        return uuid
 
     def no_show(self) -> fou.SetAttributes:
         """Returns a context manager that temporarily prevents new App

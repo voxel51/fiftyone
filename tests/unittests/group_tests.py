@@ -345,6 +345,33 @@ class GroupTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             view = dataset.select_group_slices()
 
+        view = dataset.select_fields()
+        sample = view.first()
+
+        self.assertEqual(view.group_slice, "ego")
+        self.assertEqual(sample.group_field.name, "ego")
+
+        view.group_slice = "left"
+        sample = view.first()
+
+        self.assertEqual(view.group_slice, "left")
+        self.assertEqual(sample.group_field.name, "left")
+
+        with self.assertRaises(ValueError):
+            view.group_slice = "foo-bar"
+
+        view2 = view.limit(1)
+        sample2 = view2.first()
+
+        self.assertEqual(view2.group_slice, "left")
+        self.assertEqual(sample2.group_field.name, "left")
+
+        view.group_slice = None
+        sample = view.first()
+
+        self.assertEqual(view.group_slice, "ego")
+        self.assertEqual(sample.group_field.name, "ego")
+
     @drop_datasets
     def test_attached_groups(self):
         dataset = _make_group_dataset()
