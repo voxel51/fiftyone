@@ -2242,6 +2242,27 @@ class ViewStageTests(unittest.TestCase):
         for sample, _id in zip(view, ids):
             self.assertEqual(sample.id, _id)
 
+    def test_select_by(self):
+        filepaths = self.dataset.values("filepath")
+
+        values = [filepaths[1], filepaths[0]]
+        unordered_values = [filepaths[0], filepaths[1]]
+
+        result = self.dataset.select_by("filepath", values)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("filepath"), unordered_values)
+
+    def test_select_by_ordered(self):
+        filepaths = self.dataset.values("filepath")
+
+        values = [filepaths[1], filepaths[0]]
+
+        result = self.dataset.select_by("filepath", values, ordered=True)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("filepath"), values)
+
     def test_select_fields(self):
         self.dataset.add_sample_field("select_fields_field", fo.IntField)
 

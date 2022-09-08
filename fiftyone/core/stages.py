@@ -4477,7 +4477,11 @@ class SelectBy(ViewStage):
             return [{"$match": {path: {"$in": values}}}]
 
         return [
-            {"$set": {"_select_order": {"$indexOfArray": [path, "$" + path]}}},
+            {
+                "$set": {
+                    "_select_order": {"$indexOfArray": [values, "$" + path]}
+                }
+            },
             {"$match": {"_select_order": {"$gt": -1}}},
             {"$sort": {"_select_order": 1}},
             {"$unset": "_select_order"},
