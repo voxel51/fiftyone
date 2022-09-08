@@ -66,10 +66,12 @@ a |DatasetView| into any format of your choice via the basic recipe below.
         :linenos:
 
         # Export **only** labels in the `ground_truth` field in COCO format
+        # with absolute image filepaths in the labels
         dataset_or_view.export(
             dataset_type=fo.types.COCODetectionDataset,
             labels_path="/path/for/export.json",
             label_field="ground_truth",
+            abs_paths=True,
         )
 
     Or you can use the `export_media` parameter to configure whether to copy,
@@ -131,10 +133,13 @@ a |DatasetView| into any format of your choice via the basic recipe below.
     .. code-block:: shell
 
         # Export **only** labels in the `ground_truth` field in COCO format
+        # with absolute image filepaths in the labels
         fiftyone datasets export $NAME \
             --type fiftyone.types.COCODetectionDataset \
             --label-field ground_truth \
-            --kwargs labels_path=/path/for/labels.json
+            --kwargs \
+                labels_path=/path/for/labels.json \
+                abs_paths=True
 
     Or you can use the `export_media` parameter to configure whether to copy,
     move, symlink, or omit the media files from the export:

@@ -1065,7 +1065,7 @@ class UniqueFilenameMaker(object):
         ignore_existing (False): whether to ignore existing files in
             ``output_dir`` for output filename generation purposes
         idempotent (True): whether to return the same output path when the same
-            input path is provided multiple times (True) or to regenerate new
+            input path is provided multiple times (True) or to generate new
             output paths (False)
     """
 
@@ -1182,8 +1182,9 @@ class UniqueFilenameMaker(object):
 
 
 def safe_relpath(path, start=None, default=None):
-    """A safe version of ``os.path.relpath`` that returns the basename of the
-    given path if it does not lie within the given relative start.
+    """A safe version of ``os.path.relpath`` that returns a configurable
+    default value if the given path if it does not lie within the given
+    relative start.
 
     Args:
         path: a path

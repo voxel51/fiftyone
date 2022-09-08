@@ -95,7 +95,7 @@ that you're loading.
     In general, you can pass any parameter for the |DatasetImporter| of the
     format you're importing to
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`. For
-    example, all importers should support optional `max_samples`, `shuffle`,
+    example, most builtin importers support optional `max_samples`, `shuffle`,
     and `seed` parameters, which provide support for importing a small subset
     of a potentially large dataset:
 
@@ -173,8 +173,8 @@ that you're loading.
 
     In general, you can pass any parameter for the |DatasetImporter| of the
     format you're importing via the
-    :ref:`kwargs option <cli-fiftyone-datasets-create>`. For example, all
-    importers should support optional `max_samples`, `shuffle`, and `seed`
+    :ref:`kwargs option <cli-fiftyone-datasets-create>`. For example, most
+    builtin importers support optional `max_samples`, `shuffle`, and `seed`
     parameters, which provide support for importing a small subset of a
     potentially large dataset:
 
