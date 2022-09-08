@@ -26,7 +26,7 @@ export function Dataset({ datasetName, environment, theme }) {
   const [datasetQueryRef, loadDataset] = useDatasetLoader(environment);
 
   useEffect(() => {
-    loadDataset("quickstart-geo");
+    loadDataset(datasetName);
   }, [environment]);
   const subscription = useRecoilValue(fos.stateSubscription);
   useEventSource(datasetName, subscription, setInitialState);
