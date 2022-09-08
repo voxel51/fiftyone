@@ -390,7 +390,7 @@ const useTagCallback = (
           target_labels: targetLabels,
           changes,
           group_id: group,
-          slice: null,
+          slice,
           modal: modal ? modalData.sample._id : null,
           sample_ids: modal
             ? null
