@@ -3,6 +3,50 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.17.0:
+
+FiftyOne 0.17.0
+---------------
+*Released September 8, 2022*
+
+App
+
+- Fixed Colabatory screenshotting and cell updates
+  `#2069 <https://github.com/voxel51/fiftyone/pull/2069>`_
+
+Core
+
+- Added the :attr:`Dataset.app_config <fiftyone.core.dataset.Dataset>`
+  for configuring App behavior for an individual dataset
+- Added ``rel_dir`` to
+  :meth:`export() <fiftyone.core.collectionsSampleCollection.export>`
+  and
+  :meth:`draw_labels() <fiftyone.core.collectionsSampleCollection.draw_labels>`
+  `#2060 <https://github.com/voxel51/fiftyone/pull/2060>`_
+- Fixed
+  :meth:`select_by() <fiftyone.core.collectionsSampleCollection.select_by>`
+  when using the ``ordered`` is ``True``
+  `#2059 <https://github.com/voxel51/fiftyone/pull/2059>`_
+- Fixed :ref:`custom embedded documents <custom-embedded-documents>`that would
+  when an :class:`EmbeddedDocument <fiftyone.core.odm.EmbeddedDocument>` class
+  was used to populate a dynamic attribute of a label field
+  `#2051 <https://github.com/voxel51/fiftyone/pull/2051>`_
+- Fixed a :meth:`match_frames() <fiftyone.core.SampleCollection.match_frames>`
+  bug that caused all frames to included in query, even if the view filters
+  the frames `#2029 <https://github.com/voxel51/fiftyone/pull/2029>`_
+- Added an optional ``use_dirs=True`` parameter to
+  :meth:`export() <fiftyone.core.collectionsSampleCollection.export>` 
+  which causes metadata to be exported in per-sample/frame JSON files
+  rather than the default behavior of writing single samples.json/frames.json
+  files `#2028 <https://github.com/voxel51/fiftyone/pull/2028>`_
+
+Annotation
+
+- Fixed :func:`task_exists() <fiftyone.utils.cvat.task_exists>` to handle
+  404 responses from CVAT 2 servers
+  `#2070 <https://github.com/voxel51/fiftyone/pull/2070>`_
+
+
 .. _release-notes-v0.16.6:
 
 FiftyOne 0.16.6
