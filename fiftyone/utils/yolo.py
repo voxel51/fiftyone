@@ -601,6 +601,14 @@ class YOLOv4DatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` and
+            ``labels_path`` to generate output paths for each exported image
+            and labels file. This argument allows for populating nested
+            subdirectories that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
         classes (None): the list of possible class labels
         include_confidence (False): whether to include detection confidences in
             the export, if they exist
@@ -617,6 +625,7 @@ class YOLOv4DatasetExporter(
         objects_path=None,
         images_path=None,
         export_media=None,
+        rel_dir=None,
         classes=None,
         include_confidence=False,
         image_format=None,
@@ -651,6 +660,7 @@ class YOLOv4DatasetExporter(
         self.objects_path = objects_path
         self.images_path = images_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
         self.classes = classes
         self.include_confidence = include_confidence
         self.image_format = image_format
@@ -672,15 +682,9 @@ class YOLOv4DatasetExporter(
         return fol.Detections
 
     def setup(self):
-        if self.export_dir is None:
-            rel_dir = self.data_path
-        else:
-            rel_dir = self.export_dir
-
-        self._rel_dir = rel_dir
-
         self._classes = {}
         self._labels_map_rev = {}
+        self._rel_dir = os.path.dirname(self.images_path)
         self._images = []
         self._writer = YOLOAnnotationWriter()
 
@@ -690,6 +694,7 @@ class YOLOv4DatasetExporter(
         self._media_exporter = foud.ImageExporter(
             self.export_media,
             export_path=export_path,
+            rel_dir=self.rel_dir,
             supported_modes=(True, False, "move", "symlink"),
             default_ext=self.image_format,
             ignore_exts=True,
@@ -795,6 +800,14 @@ class YOLOv5DatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` and
+            ``labels_path`` to generate output paths for each exported image
+            and labels file. This argument allows for populating nested
+            subdirectories that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
         classes (None): the list of possible class labels
         include_confidence (False): whether to include detection confidences in
             the export, if they exist
@@ -811,6 +824,7 @@ class YOLOv5DatasetExporter(
         labels_path=None,
         yaml_path=None,
         export_media=None,
+        rel_dir=None,
         classes=None,
         include_confidence=False,
         image_format=None,
@@ -841,6 +855,7 @@ class YOLOv5DatasetExporter(
         self.labels_path = labels_path
         self.yaml_path = yaml_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
         self.classes = classes
         self.include_confidence = include_confidence
         self.image_format = image_format
@@ -872,6 +887,7 @@ class YOLOv5DatasetExporter(
         self._media_exporter = foud.ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             supported_modes=(True, False, "move", "symlink"),
             default_ext=self.image_format,
             ignore_exts=True,
