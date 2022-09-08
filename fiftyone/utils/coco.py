@@ -1987,9 +1987,6 @@ def _coco_objects_to_polylines(
 
         if polyline is not None:
             polylines.append(polyline)
-        else:
-            msg = "Skipping object with no segmentation mask"
-            warnings.warn(msg)
 
     if not polylines:
         return None
@@ -2009,12 +2006,10 @@ def _coco_objects_to_detections(
             load_segmentation=load_segmentations,
         )
 
-        if detection is not None:
-            if load_segmentations and detection.mask is None:
-                msg = "Skipping object with no segmentation mask"
-                warnings.warn(msg)
-            else:
-                detections.append(detection)
+        if detection is not None and (
+            not load_segmentations or detection.mask is not None
+        ):
+            detections.append(detection)
 
     if not detections:
         return None
@@ -2026,6 +2021,7 @@ def _coco_objects_to_keypoints(coco_objects, frame_size, classes):
     keypoints = []
     for coco_obj in coco_objects:
         keypoint = coco_obj.to_keypoints(frame_size, classes=classes)
+
         if keypoint is not None:
             keypoints.append(keypoint)
 
