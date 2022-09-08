@@ -37,7 +37,6 @@ class Tag(HTTPEndpoint):
         current_frame = data.get("current_frame", None)
         slice = data.get("slice", None)
         group_id = data.get("group_id", None)
-        mixed = data.get("mixed", False)
 
         view = fosv.get_view(
             dataset,
@@ -60,13 +59,12 @@ class Tag(HTTPEndpoint):
             view = fov.make_optimized_select_view(view, sample_ids)
 
         if target_labels:
+            if view.media_type == fom.GROUP:
+                view = view.select_group_slices(_allow_mixed=True)
             if labels:
                 view = view.select_labels(labels)
             elif hidden_labels:
                 view = view.exclude_labels(hidden_labels)
-
-        if mixed:
-            view = view.select_group_slices(_allow_mixed=True)
 
         if target_labels:
             fosu.change_label_tags(

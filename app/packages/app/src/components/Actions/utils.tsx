@@ -118,11 +118,10 @@ export const tagStatistics = selectorFamily<
           ? get(sidebarSampleId)
           : null,
         labels: toSnakeCase(labels),
-        group_id: modal ? get(groupId) : null,
+        group_id: modal && !selected.size && groupStats ? get(groupId) : null,
         slice: groupStats ? null : get(currentSlice(modal)),
         count_labels,
         filters: get(modal ? fos.modalFilters : fos.filters),
-        mixed: groupStats,
         hidden_labels:
           modal && labels ? toSnakeCase(get(fos.hiddenLabelsArray)) : null,
       });

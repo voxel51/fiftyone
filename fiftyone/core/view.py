@@ -1410,6 +1410,8 @@ def make_optimized_select_view(
         #
         if groups:
             return view.select_groups(sample_ids, ordered=ordered)
+        elif view.media_type == fom.GROUP:
+            view = view.select_group_slices(_allow_mixed=True)
 
         return view.select(sample_ids, ordered=ordered)
 
@@ -1432,7 +1434,13 @@ def make_optimized_select_view(
             sample_ids, ordered=ordered
         )
     else:
-        optimized_view = view._dataset.select(sample_ids, ordered=ordered)
+        optimized_view = view._dataset
+        if view.media_type == fom.GROUP:
+            optimized_view = optimized_view.select_group_slices(
+                _allow_mixed=True
+            )
+
+        optimized_view = optimized_view.select(sample_ids, ordered=ordered)
 
     for stage in view._stages:
         if type(stage) not in fost._STAGES_THAT_SELECT_OR_REORDER:
