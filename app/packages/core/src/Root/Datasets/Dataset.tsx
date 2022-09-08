@@ -12,11 +12,12 @@ import { usePreLoadedDataset, DatasetQuery } from "../../loaders";
 
 export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const router = useContext(RouterContext);
-  const dataset = usePreLoadedDataset(prepared, router?.state);
+  const [dataset, ready] = usePreLoadedDataset(prepared, router?.state);
+  const name = useRecoilValue(fos.datasetName);
+  if (!ready) return null;
   if (!dataset) {
     throw new NotFoundError(`/datasets/${getDatasetName(router)}`);
   }
-  const name = useRecoilValue(fos.datasetName);
   if (!name || name !== dataset.name) {
     return null;
   }
