@@ -1006,11 +1006,6 @@ class NoDatasetMixin(object):
     _is_frames_doc = None
 
     def __getattr__(self, name):
-        try:
-            return super().__getattr__(name)
-        except AttributeError:
-            pass
-
         return self.get_field(name)
 
     def __setattr__(self, name, value):
