@@ -14,7 +14,6 @@ export default graphql`
       slice: $slice
     ) {
       id
-      groupSlice
     }
   }
 `;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7f93f1a4af342a7571647f4eb67c6a22>>
+ * @generated SignedSource<<74d626b47db10bf8fe56d811cad7e41f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,7 +17,6 @@ export type setGroupSliceMutation$variables = {
 };
 export type setGroupSliceMutation$data = {
   readonly setGroupSlice: {
-    readonly groupSlice: string | null;
     readonly id: string;
   };
 };
@@ -84,13 +83,6 @@ const node: ConcreteRequest = (function () {
             name: "id",
             storageKey: null,
           },
-          {
-            alias: null,
-            args: null,
-            kind: "ScalarField",
-            name: "groupSlice",
-            storageKey: null,
-          },
         ],
         storageKey: null,
       },
@@ -123,16 +115,16 @@ const node: ConcreteRequest = (function () {
       selections: v4 /*: any*/,
     },
     params: {
-      cacheID: "ed7c1407d4261a17c04234c974091287",
+      cacheID: "bf10fdcc9a9e3441643c157812f905a2",
       id: null,
       metadata: {},
       name: "setGroupSliceMutation",
       operationKind: "mutation",
-      text: "mutation setGroupSliceMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $slice: String!\n) {\n  setGroupSlice(subscription: $subscription, session: $session, view: $view, slice: $slice) {\n    id\n    groupSlice\n  }\n}\n",
+      text: "mutation setGroupSliceMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $slice: String!\n) {\n  setGroupSlice(subscription: $subscription, session: $session, view: $view, slice: $slice) {\n    id\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "8b3c122c9c926b39a2ad621fe847d10d";
+(node as any).hash = "88072c125d8981795598ed623e1609eb";
 
 export default node;
