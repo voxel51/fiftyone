@@ -406,9 +406,8 @@ Supported formats
 -----------------
 
 Each supported dataset type is represented by a subclass of
-:class:`fiftyone.types.Dataset <fiftyone.types.dataset_types.Dataset>`, which
-is used by the Python library and CLI to refer to the corresponding dataset
-format when writing the dataset to disk.
+:class:`fiftyone.types.Dataset`, which is used by the Python library and CLI to
+refer to the corresponding dataset format when writing the dataset to disk.
 
 .. table::
     :widths: 40 60
@@ -492,8 +491,8 @@ format when writing the dataset to disk.
 ImageDirectory
 --------------
 
-The :class:`fiftyone.types.ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`
-type represents a directory of images.
+The :class:`fiftyone.types.ImageDirectory` type represents a directory of
+images.
 
 Datasets of this type are exported in the following format:
 
@@ -550,8 +549,8 @@ disk as follows:
 VideoDirectory
 --------------
 
-The :class:`fiftyone.types.VideoDirectory <fiftyone.types.dataset_types.VideoDirectory>`
-type represents a directory of videos.
+The :class:`fiftyone.types.VideoDirectory` type represents a directory of
+videos.
 
 Datasets of this type are exported in the following format:
 
@@ -613,9 +612,9 @@ FiftyOneImageClassificationDataset
 
     |Classification|, |Classifications|
 
-The :class:`fiftyone.types.FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`
-type represents a labeled dataset consisting of images and their associated
-classification label(s) stored in a simple JSON format.
+The :class:`fiftyone.types.FiftyOneImageClassificationDataset` type represents
+a labeled dataset consisting of images and their associated classification
+label(s) stored in a simple JSON format.
 
 Datasets of this type are exported in the following format:
 
@@ -839,9 +838,8 @@ ImageClassificationDirectoryTree
 
     |Classification|
 
-The :class:`fiftyone.types.ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`
-type represents a directory tree whose subfolders define an image
-classification dataset.
+The :class:`fiftyone.types.ImageClassificationDirectoryTree` type represents a
+directory tree whose subfolders define an image classification dataset.
 
 Datasets of this type are exported in the following format:
 
@@ -916,9 +914,8 @@ VideoClassificationDirectoryTree
 
     |Classification|
 
-The :class:`fiftyone.types.VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`
-type represents a directory tree whose subfolders define a video classification
-dataset.
+The :class:`fiftyone.types.VideoClassificationDirectoryTree` type represents a
+directory tree whose subfolders define a video classification dataset.
 
 Datasets of this type are exported in the following format:
 
@@ -993,9 +990,9 @@ TFImageClassificationDataset
 
     |Classification|
 
-The :class:`fiftyone.types.TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
-type represents a labeled dataset consisting of images and their associated
-classification labels stored as
+The :class:`fiftyone.types.TFImageClassificationDataset` type represents a
+labeled dataset consisting of images and their associated classification labels
+stored as
 `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.
 
 Datasets of this type are exported in the following format:
@@ -1091,9 +1088,9 @@ FiftyOneImageDetectionDataset
 
     |Detections|
 
-The :class:`fiftyone.types.FiftyOneImageDetectionDataset <fiftyone.types.dataset_types.FiftyOneImageDetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections stored in a simple JSON format.
+The :class:`fiftyone.types.FiftyOneImageDetectionDataset` type represents a
+labeled dataset consisting of images and their associated object detections
+stored in a simple JSON format.
 
 Datasets of this type are exported in the following format:
 
@@ -1283,9 +1280,9 @@ FiftyOneTemporalDetectionDataset
 
     |TemporalDetections|
 
-The :class:`fiftyone.types.FiftyOneTemporalDetectionDataset <fiftyone.types.dataset_types.FiftyOneTemporalDetectionDataset>`
-type represents a labeled dataset consisting of videos and their associated
-temporal detections stored in a simple JSON format.
+The :class:`fiftyone.types.FiftyOneTemporalDetectionDataset` type represents a
+labeled dataset consisting of videos and their associated temporal detections
+stored in a simple JSON format.
 
 Datasets of this type are exported in the following format:
 
@@ -1501,9 +1498,8 @@ COCODetectionDataset
 
     |Detections|, |Polylines|
 
-The :class:`fiftyone.types.COCODetectionDataset <fiftyone.types.dataset_types.COCODetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.COCODetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections saved in
 `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
 
 Datasets of this type are exported in the following format:
@@ -1683,9 +1679,8 @@ VOCDetectionDataset
 
     |Detections|
 
-The :class:`fiftyone.types.VOCDetectionDataset <fiftyone.types.dataset_types.VOCDetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.VOCDetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections saved in
 `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
 
 Datasets of this type are exported in the following format:
@@ -1848,9 +1843,8 @@ KITTIDetectionDataset
 
     |Detections|
 
-The :class:`fiftyone.types.KITTIDetectionDataset <fiftyone.types.dataset_types.KITTIDetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.KITTIDetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections saved in
 `KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
 Datasets of this type are exported in the following format:
@@ -2003,9 +1997,8 @@ YOLOv4Dataset
 
     |Detections|
 
-The :class:`fiftyone.types.YOLOv4Dataset <fiftyone.types.dataset_types.YOLOv4Dataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.YOLOv4Dataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
 `YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.
 
 Datasets of this type are exported in the following format:
@@ -2158,9 +2151,8 @@ YOLOv5Dataset
 
     |Detections|
 
-The :class:`fiftyone.types.YOLOv5Dataset <fiftyone.types.dataset_types.YOLOv5Dataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.YOLOv5Dataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
 `YOLOv5 format <https://github.com/ultralytics/yolov5>`_.
 
 Datasets of this type are exported in the following format:
@@ -2192,6 +2184,7 @@ where `dataset.yaml` contains the following information:
 
 .. code-block:: text
 
+    path: <dataset_dir>  # optional
     train: ./images/train/
     val: ./images/val/
 
@@ -2205,7 +2198,9 @@ See `this page <https://docs.ultralytics.com/tutorials/train-custom-datasets>`_
 for a full description of the possible format of `dataset.yaml`. In particular,
 the dataset may contain one or more splits with arbitrary names, as the
 specific split being imported or exported is specified by the `split` argument
-to :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`.
+to :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`. Also, `dataset.yaml` can
+be located outside of `<dataset_dir>` as long as the optional `path` is
+provided.
 
 The TXT files in `labels/` are space-delimited files where each row corresponds
 to an object in the image of the same name, in one of the following formats:
@@ -2221,7 +2216,9 @@ where `<target>` is the zero-based integer index of the object class label from
 be included only if you pass the optional `include_confidence=True` flag to
 the export.
 
-Unlabeled images have no corresponding TXT file in `labels/`.
+Unlabeled images have no corresponding TXT file in `labels/`. The label file
+path for each image is obtained by replacing `images/` with `labels/` in the
+respective image path.
 
 .. note::
 
@@ -2301,9 +2298,8 @@ TFObjectDetectionDataset
 
     |Detections|
 
-The :class:`fiftyone.types.TFObjectDetectionDataset <fiftyone.types.dataset_types.TFObjectDetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections stored as
+The :class:`fiftyone.types.TFObjectDetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections stored as
 `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_ in
 `TF Object Detection API format <https://github.com/tensorflow/models/blob/master/research/object_detection>`_.
 
@@ -2433,9 +2429,9 @@ ImageSegmentationDirectory
 
     |Segmentation|, |Detections|, |Polylines|
 
-The :class:`fiftyone.types.ImageSegmentationDirectory <fiftyone.types.dataset_types.ImageSegmentationDirectory>`
-type represents a labeled dataset consisting of images and their associated
-semantic segmentations stored as images on disk.
+The :class:`fiftyone.types.ImageSegmentationDirectory` type represents a
+labeled dataset consisting of images and their associated semantic
+segmentations stored as images on disk.
 
 Datasets of this type are exported in the following format:
 
@@ -2554,9 +2550,8 @@ CVATImageDataset
 
     |Classifications|, |Detections|, |Polylines|, |Keypoints|
 
-The :class:`fiftyone.types.CVATImageDataset <fiftyone.types.dataset_types.CVATImageDataset>`
-type represents a labeled dataset consisting of images and their associated
-tags and object detections stored in
+The :class:`fiftyone.types.CVATImageDataset` type represents a labeled dataset
+consisting of images and their associated tags and object detections stored in
 `CVAT image format <https://github.com/opencv/cvat>`_.
 
 Datasets of this type are exported in the following format:
@@ -2761,9 +2756,8 @@ CVATVideoDataset
 
     |Detections|, |Polylines|, |Keypoints|
 
-The :class:`fiftyone.types.CVATVideoDataset <fiftyone.types.dataset_types.CVATVideoDataset>`
-type represents a labeled dataset consisting of videos and their associated
-object detections stored in
+The :class:`fiftyone.types.CVATVideoDataset` type represents a labeled dataset
+consisting of videos and their associated object detections stored in
 `CVAT video format <https://github.com/opencv/cvat>`_.
 
 Datasets of this type are exported in the following format:
@@ -2969,9 +2963,9 @@ FiftyOneImageLabelsDataset
 
     |Classifications|, |Detections|, |Polylines|, |Keypoints|
 
-The :class:`fiftyone.types.FiftyOneImageLabelsDataset <fiftyone.types.dataset_types.FiftyOneImageLabelsDataset>`
-type represents a labeled dataset consisting of images and their associated
-multitask predictions stored in
+The :class:`fiftyone.types.FiftyOneImageLabelsDataset` type represents a
+labeled dataset consisting of images and their associated multitask predictions
+stored in
 `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
 
 Datasets of this type are exported in the following format:
@@ -3070,9 +3064,8 @@ FiftyOneVideoLabelsDataset
 
     |Classifications|, |Detections|, |TemporalDetections|, |Polylines|, |Keypoints|
 
-The :class:`fiftyone.types.FiftyOneVideoLabelsDataset <fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset>`
-type represents a labeled dataset consisting of videos and their associated
-labels stored in
+The :class:`fiftyone.types.FiftyOneVideoLabelsDataset` type represents a
+labeled dataset consisting of videos and their associated labels stored in
 `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
 
 Datasets of this type are exported in the following format:
@@ -3171,9 +3164,8 @@ BDDDataset
 
     |Classifications|, |Detections|, |Polylines|
 
-The :class:`fiftyone.types.BDDDataset <fiftyone.types.dataset_types.BDDDataset>`
-type represents a labeled dataset consisting of images and their associated
-multitask predictions saved in
+The :class:`fiftyone.types.BDDDataset` type represents a labeled dataset
+consisting of images and their associated multitask predictions saved in
 `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
 Datasets of this type are exported in the following format:
@@ -3370,10 +3362,9 @@ the `labels_path` parameter instead of `export_dir`:
 GeoJSONDataset
 --------------
 
-The :class:`fiftyone.types.GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
-type represents a dataset consisting of images or videos and their associated
-geolocation data and optional properties stored in
-`GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
+The :class:`fiftyone.types.GeoJSONDataset` type represents a dataset consisting
+of images or videos and their associated geolocation data and optional
+properties stored in `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
 
 Datasets of this type are exported in the following format:
 
@@ -3522,9 +3513,8 @@ providing the `labels_path` parameter instead of `export_dir`:
 FiftyOneDataset
 ---------------
 
-The :class:`fiftyone.types.FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
-provides a disk representation of an entire |Dataset| in a serialized JSON
-format along with its source media.
+The :class:`fiftyone.types.FiftyOneDataset` provides a disk representation of
+an entire |Dataset| in a serialized JSON format along with its source media.
 
 Datasets of this type are exported in the following format:
 
@@ -3600,9 +3590,12 @@ You can export a FiftyOne dataset to disk in the above format as follows:
             --export-dir $EXPORT_DIR \
             --type fiftyone.types.FiftyOneDataset
 
-You can also export datasets in this this format without copying the source
-media files by including `export_media=False` in your call to
+You can export datasets in this this format without copying the source media
+files by including `export_media=False` in your call to
 :meth:`export() <fiftyone.core.collections.SampleCollection.export>`.
+
+You can also pass `use_dirs=True` to export per-sample/frame JSON files rather
+than storing all samples/frames in single JSON files.
 
 By default, the absolute filepath of each image will be included in the export.
 However, if you want to re-import this dataset on a different machine with the
@@ -3667,14 +3660,13 @@ image's filepath, and then provide the new `rel_dir` when
 
 .. note::
 
-    Exporting in
-    :class:`fiftyone.types.FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
-    format as shown above using the `export_media=False` and `rel_dir`
-    parameters is a convenient way to transfer datasets between work
-    environments, since this enables you to store the media files wherever you
-    wish in each environment and then simply provide the appropriate `rel_dir`
-    value when :ref:`importing <FiftyOneDataset-import>` the dataset into
-    FiftyOne in a new environment.
+    Exporting in :class:`fiftyone.types.FiftyOneDataset` format as shown above
+    using the `export_media=False` and `rel_dir` parameters is a convenient way
+    to transfer datasets between work environments, since this enables you to
+    store the media files wherever you wish in each environment and then simply
+    provide the appropriate `rel_dir` value when
+    :ref:`importing <FiftyOneDataset-import>` the dataset into FiftyOne in a
+    new environment.
 
 .. _custom-dataset-exporter:
 

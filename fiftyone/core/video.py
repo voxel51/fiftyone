@@ -53,9 +53,13 @@ class FrameView(fos.SampleView):
     def _sample_id(self):
         return ObjectId(self._doc.sample_id)
 
-    def save(self):
-        """Saves the frame to the database."""
-        super().save()
+    def _save(self, deferred=False):
+        if deferred:
+            raise NotImplementedError(
+                "Frames views do not support save contexts"
+            )
+
+        super()._save(deferred=deferred)
         self._view._sync_source_sample(self)
 
 
@@ -823,7 +827,7 @@ def _init_frames(
             docs.append(doc)
 
             # Commit batch of docs to frames dataset
-            if len(docs) >= 100000:  # MongoDB limit for bulk inserts
+            if len(docs) >= 10000:
                 _insert_docs(docs, src_docs, src_inds, dataset, src_dataset)
 
     # Add remaining docs to frames dataset

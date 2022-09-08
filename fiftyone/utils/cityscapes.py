@@ -42,7 +42,7 @@ def parse_cityscapes_dataset(
 ):
     """Parses the Cityscapes archive(s) in the specified directory and writes
     the requested splits in subdirectories of ``dataset_dir`` in
-    :class:`fiftyone.types.dataset_types.FiftyOneDataset` format.
+    :class:`fiftyone.types.FiftyOneDataset` format.
 
     The archives must have been manually downloaded into the directory before
     this method is called.

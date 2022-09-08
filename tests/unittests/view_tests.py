@@ -26,18 +26,39 @@ class DatasetViewTests(unittest.TestCase):
     def test_iter_samples(self):
         dataset = fo.Dataset()
         dataset.add_samples(
-            [fo.Sample(filepath="image%d.jpg" % i) for i in range(50)]
+            [fo.Sample(filepath="image%d.jpg" % i) for i in range(51)]
         )
 
-        view = dataset.view()
+        first_sample = dataset.first()
+        view = dataset.limit(50)
 
-        self.assertEqual(len(dataset), len(view))
+        for idx, sample in enumerate(view):
+            sample["int"] = idx + 1
+            sample.save()
 
-        for sample in view:
-            pass
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+        self.assertEqual(first_sample.int, 1)
 
-        for sample in view.iter_samples(progress=True):
-            pass
+        for idx, sample in enumerate(view.iter_samples(progress=True)):
+            sample["int"] = idx + 2
+            sample.save()
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+        self.assertEqual(first_sample.int, 2)
+
+        for idx, sample in enumerate(view.iter_samples(autosave=True)):
+            sample["int"] = idx + 3
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+        self.assertEqual(first_sample.int, 3)
+
+        with view.save_context() as context:
+            for idx, sample in enumerate(view):
+                sample["int"] = idx + 4
+                context.save(sample)
+
+        self.assertTupleEqual(dataset.bounds("int"), (4, 53))
+        self.assertEqual(first_sample.int, 4)
 
     @drop_datasets
     def test_view(self):
@@ -1182,9 +1203,11 @@ class ViewSaveTest(unittest.TestCase):
         dataset.add_samples([sample1, sample2])
 
         view = dataset.limit(1).match_frames(F("frame_number") == 1)
+        sample = view.first()
 
         self.assertEqual(dataset.count("frames"), 4)
         self.assertEqual(view.count("frames"), 1)
+        self.assertEqual(len(sample.frames), 1)
 
         view.keep_frames()
 
@@ -2218,6 +2241,27 @@ class ViewStageTests(unittest.TestCase):
         self.assertIs(len(view), 2)
         for sample, _id in zip(view, ids):
             self.assertEqual(sample.id, _id)
+
+    def test_select_by(self):
+        filepaths = self.dataset.values("filepath")
+
+        values = [filepaths[1], filepaths[0]]
+        unordered_values = [filepaths[0], filepaths[1]]
+
+        result = self.dataset.select_by("filepath", values)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("filepath"), unordered_values)
+
+    def test_select_by_ordered(self):
+        filepaths = self.dataset.values("filepath")
+
+        values = [filepaths[1], filepaths[0]]
+
+        result = self.dataset.select_by("filepath", values, ordered=True)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("filepath"), values)
 
     def test_select_fields(self):
         self.dataset.add_sample_field("select_fields_field", fo.IntField)

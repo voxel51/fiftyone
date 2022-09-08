@@ -4477,7 +4477,11 @@ class SelectBy(ViewStage):
             return [{"$match": {path: {"$in": values}}}]
 
         return [
-            {"$set": {"_select_order": {"$indexOfArray": [path, "$" + path]}}},
+            {
+                "$set": {
+                    "_select_order": {"$indexOfArray": [values, "$" + path]}
+                }
+            },
             {"$match": {"_select_order": {"$gt": -1}}},
             {"$sort": {"_select_order": 1}},
             {"$unset": "_select_order"},
@@ -6609,8 +6613,9 @@ _STAGES = [
 # Registry of stages that promise to only reorder/select documents
 _STAGES_THAT_SELECT_OR_REORDER = {
     # View stages that only reorder documents
-    SortBy,
     GroupBy,
+    SortBy,
+    SortBySimilarity,
     Shuffle,
     # View stages that only select documents
     Exclude,
@@ -6620,12 +6625,10 @@ _STAGES_THAT_SELECT_OR_REORDER = {
     GeoWithin,
     Limit,
     Match,
-    MatchFrames,
     MatchLabels,
     MatchTags,
     Select,
     SelectBy,
     Skip,
-    SortBySimilarity,
     Take,
 }

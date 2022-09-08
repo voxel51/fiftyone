@@ -18,6 +18,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 from fiftyone import ViewField as F
+import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 
 from decorators import drop_datasets, skip_windows
@@ -220,11 +221,29 @@ class DatasetTests(unittest.TestCase):
             [fo.Sample(filepath="image%d.jpg" % i) for i in range(50)]
         )
 
-        for sample in dataset:
-            pass
+        for idx, sample in enumerate(dataset):
+            sample["int"] = idx + 1
+            sample.save()
 
-        for sample in dataset.iter_samples(progress=True):
-            pass
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+
+        for idx, sample in enumerate(dataset.iter_samples(progress=True)):
+            sample["int"] = idx + 2
+            sample.save()
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+
+        for idx, sample in enumerate(dataset.iter_samples(autosave=True)):
+            sample["int"] = idx + 3
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+
+        with dataset.save_context() as context:
+            for idx, sample in enumerate(dataset):
+                sample["int"] = idx + 4
+                context.save(sample)
+
+        self.assertTupleEqual(dataset.bounds("int"), (4, 53))
 
     @drop_datasets
     def test_date_fields(self):
@@ -2764,6 +2783,50 @@ class DatasetDeletionTests(unittest.TestCase):
         num_labels_after = self.dataset.count("frames.ground_truth.detections")
 
         self.assertEqual(num_labels_after, num_labels - num_selected)
+
+
+class CustomEmbeddedDocumentTests(unittest.TestCase):
+    @drop_datasets
+    def test_custom_embedded_documents(self):
+        sample = fo.Sample(
+            filepath="/path/to/image.png",
+            camera_info=_CameraInfo(
+                camera_id="123456789",
+                quality=99.0,
+            ),
+            weather=fo.Classification(
+                label="sunny",
+                confidence=0.95,
+                metadata=_LabelMetadata(
+                    model_name="resnet50",
+                    description="A dynamic field",
+                ),
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertIsInstance(sample.camera_info, _CameraInfo)
+        self.assertIsInstance(sample.weather.metadata, _LabelMetadata)
+
+        view = dataset.limit(1)
+        sample_view = view.first()
+
+        self.assertIsInstance(sample_view.camera_info, _CameraInfo)
+        self.assertIsInstance(sample_view.weather.metadata, _LabelMetadata)
+
+
+class _CameraInfo(foo.EmbeddedDocument):
+    camera_id = fof.StringField(required=True)
+    quality = fof.FloatField()
+    description = fof.StringField()
+
+
+class _LabelMetadata(foo.DynamicEmbeddedDocument):
+    created_at = fof.DateTimeField(default=datetime.utcnow)
+
+    model_name = fof.StringField()
 
 
 if __name__ == "__main__":

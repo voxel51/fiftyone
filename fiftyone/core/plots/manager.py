@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 class PlotManager(object):
     """Class that manages communication between a
     :class:`fiftyone.core.session.Session` and one or more
-    :class:`ResponsivePlot` instances.
+    :class:`fiftyone.core.plots.base.ResponsivePlot` instances.
 
     Each plot can be linked to either the view, samples, frames, or labels of a
     session:
@@ -168,7 +168,8 @@ class PlotManager(object):
         """Returns an iterator over the plots in this manager.
 
         Returns:
-            an iterator that emits :class:`ResponsivePlot` instances
+            an iterator that emits
+            :class:`fiftyone.core.plots.base.ResponsivePlot` instances
         """
         return self._plots.values()
 
@@ -291,7 +292,7 @@ class PlotManager(object):
             name: the name of a plot
 
         Returns:
-            the :class:`ResponsivePlot`
+            the :class:`fiftyone.core.plots.base.ResponsivePlot`
         """
         if name not in self._plots:
             raise ValueError("No plot with name '%s'" % name)

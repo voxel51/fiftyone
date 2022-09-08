@@ -3,6 +3,101 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.16.6:
+
+FiftyOne 0.16.6
+---------------
+*Released August 25, 2022*
+
+App
+
+- Fixed a bug that caused the App to break when sample tags contained `.`
+  `#1924 <https://github.com/voxel51/fiftyone/pull/1924>`_
+- Fixed search results alignment
+  `#1930 <https://github.com/voxel51/fiftyone/pull/1930>`_
+- Fixed App refreshes after view changes had occurred from the view bar
+  `#1931 <https://github.com/voxel51/fiftyone/pull/1931>`_
+- Fixed mask targets rendering in the tooltip
+  `#1943 <https://github.com/voxel51/fiftyone/pull/1943>`_
+  `#1949 <https://github.com/voxel51/fiftyone/pull/1949>`_
+- Fixed classification confusion matrix connections
+  `#1967 <https://github.com/voxel51/fiftyone/pull/1967>`_
+
+Core
+
+- Added a save context that enables
+  :ref:`efficient batch edits <efficient-batch-edits>` of datasets and views
+  `#1727 <https://github.com/voxel51/fiftyone/pull/1727>`_
+- Added Plotly v5 support
+  `#1981 <https://github.com/voxel51/fiftyone/pull/1981>`_
+- Added a :ref:`quantiles aggregation <aggregations-quantiles>`
+  `#1937 <https://github.com/voxel51/fiftyone/pull/1937>`_
+- Added support for writing transformed images/videos to new locations in the
+  :func:`transform_images() <fiftyone.utils.image.transform_images>` and
+  :func:`transform_videos() <fiftyone.utils.video.transform_videos>` functions
+  `#2007 <https://github.com/voxel51/fiftyone/pull/2007>`_
+- Added support for configuring the
+  :ref:`package-wide logging level <configuring-fiftyone>`
+  `#2009 <https://github.com/voxel51/fiftyone/pull/2009>`_
+- Added more full-featured support for serializing and deserializing datasets,
+  views, and samples via `to_dict()` and `from_dict()`
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Added support for dynamic attributes when performing coerced exports
+  `#1993 <https://github.com/voxel51/fiftyone/pull/1993>`_
+- Introduced the notion of client compatability versions
+  `#2017 <https://github.com/voxel51/fiftyone/pull/2017>`_
+- Extended :meth:`stats() <fiftyone.core.collections.SampleCollection>` to all
+  sample collections `#1940 <https://github.com/voxel51/fiftyone/pull/1940>`_
+- Added support for serializing aggregations
+  `#1911 <https://github.com/voxel51/fiftyone/pull/1911>`_
+- Added :func:`weighted_sample() <fiftyone.utils.random.weighted_sample>`
+  and :func:`balanced_sample() <fiftyone.utils.random.balanced_sample>`
+  utility methods `#1925 <https://github.com/voxel51/fiftyone/pull/1925>`_
+- Added an optional ``new_ids=True`` option to
+  :meth:`Dataset.add_collection() <fiftyone.core.dataset.Dataset.add_collection>`
+  that generates new sample/frame IDs when adding the samples
+  `#1927 <https://github.com/voxel51/fiftyone/pull/1927>`_
+- Added support for the `path` variable in `dataset.yaml` of
+  :ref:`YOLOv5 datasets <YOLOv5Dataset-import>`
+  `#1903 <https://github.com/voxel51/fiftyone/issues/1903>`_
+- Fixed a bug that prevented using 
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+  to set frame-level label fields
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed automatic declaration of frame fields when computing embeddings on a
+  frame view `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed a regression that caused label ID fields to be returned as
+  `ObjectID` `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed a bug that allowed default frame fields to be excluded
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- :class:`ClipsView <fiftyone.core.clips.ClipsView>` instances will now report
+  their `metadata` type as |VideoMetadata|
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed
+  :meth:`load_evaluation_view() <fiftyone.core.dataset.Dataset.load_evaluation_view>`
+  when ``select_fields`` is ``True``
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed boolean field parsing when declaring fields
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed a bug that caused nested embedded documents to corrupt datasets
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Fixed a bug that prevented assignment of array-valued dynamic attributes
+  to labels `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+
+Annotation
+
+- Added a new :ref:`Label Studio integration! <label-studio-integration>`
+  `#1848 <https://github.com/voxel51/fiftyone/pull/1848>`_
+- Optimized loading CVAT annotations and performing operations on
+  :class:`CVATAnnotationResults <fiftyone.utils.cvat.CVATAnnotationResults>`
+  `#1944 <https://github.com/voxel51/fiftyone/pull/1944>`_
+- Upgraded the :class:`AnnotationAPI <fiftyone.utils.annotations.AnnotationAPI>`
+  interface `#1997 <https://github.com/voxel51/fiftyone/pull/1997>`_
+- Fixed loading group IDs in CVAT video tasks
+  `#1917 <https://github.com/voxel51/fiftyone/pull/1917>`_
+- Fixed uploading to a CVAT project when no label schema is provided
+  `#1926 <https://github.com/voxel51/fiftyone/pull/1926>`_
+
 .. _release-notes-v0.16.5:
 
 FiftyOne 0.16.5
@@ -302,10 +397,9 @@ Core
 - Added a :meth:`keep_fields() <fiftyone.core.view.DatasetView.keep_fields>`
   method to |DatasetView| and its subclasses
   `#1616 <https://github.com/voxel51/fiftyone/pull/1616>`_
-- Added a :func:`fiftyone.core.plots.base.lines()` method that allows for
-  plotting lines whose scatter points can be interactively selected via the
-  typical
-  `interactive plotting workflows <https://voxel51.com/docs/fiftyone/user_guide/plots.html>`_
+- Added a :func:`lines() <fiftyone.core.plots.base.lines>` method that allows
+  for plotting lines whose scatter points can be interactively selected via the
+  typical `interactive plotting workflows <https://voxel51.com/docs/fiftyone/user_guide/plots.html>`_
   `#1614 <https://github.com/voxel51/fiftyone/pull/1614>`_
 - Added an optional `force_rgb=True` syntax when importing/exporting/creating
   TF records using all relevant methods in :mod:`fiftyone.utils.tf`
@@ -462,9 +556,8 @@ Core
   cases)
 - Added support for indexing into datasets using boolean arrays or view
   expressions via new `dataset[bool_array]` and `dataset[bool_expr]` syntaxes
-- Added support for registering custom
-  :class:`EmbeddedDocument <fiftyone.core.odm.document.EmbeddedDocument>`
-  classes that can be used to populate fields and embedded fields of datasets
+- Added support for registering custom |EmbeddedDocument| classes that can be
+  used to populate fields and embedded fields of datasets
 - Added support for importing and exporting `confidence` in YOLO formats
 - Added support for directly passing a `filename -> filepath` mapping dict to
   the `data_path` parameter to
@@ -613,8 +706,7 @@ Core
   parent dataset that has brain runs
 - Fixed sampling frames when using
   :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
-- Fixed importing of
-  :class:`FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
+- Fixed importing of :class:`FiftyOneDataset <fiftyone.types.FiftyOneDataset>`
   with run results
 - Added a :class:`Regression <fiftyone.core.labels.Regression>` label type
 - Added a :func:`random_split() <fiftyone.utils.random.random_split>` method
@@ -630,9 +722,8 @@ Core
   :meth:`compute_max_ious() <fiftyone.utils.eval.detection.compute_max_ious>`
   utility
 - Added support for labels-only exports when working with
-  :class:`YOLOv4Dataset <fiftyone.types.dataset_types.YOLOv4Dataset>` and
-  :class:`YOLOv5Dataset <fiftyone.types.dataset_types.YOLOv5Dataset>`
-  formats
+  :class:`YOLOv4Dataset <fiftyone.types.YOLOv4Dataset>` and
+  :class:`YOLOv5Dataset <fiftyone.types.YOLOv5Dataset>` formats
 - Added :mod:`fiftyone.utils.beam` for parallel import, merge, and export
   operations with `Apache Beam <https://beam.apache.org>`_
 - Added an  :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>`
@@ -1146,8 +1237,8 @@ Core
 - Added support for :ref:`importing <YOLOv5Dataset-import>` and
   :ref:`exporting <YOLOv5Dataset-export>` datasets in
   `YOLOv5 format <https://github.com/ultralytics/yolov5>`_
-- Updated the :class:`GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
-  dataset type to support both image and video datasets
+- Updated the :class:`GeoJSONDataset <fiftyone.types.GeoJSONDataset>` dataset
+  type to support both image and video datasets
 - Added support for :class:`importing <fiftyone.utils.coco.COCODetectionDatasetImporter>`
   and :class:`exporting <fiftyone.utils.coco.COCODetectionDatasetExporter>` extra
   attributes in COCO format via a new ``extra_attrs`` parameter
@@ -1490,8 +1581,8 @@ Core
       an interacive scatterplot of a dataset via its |GeoLocation| coordinates
     - Added |GeoLocation| and |GeoLocations| label types that can be used to store
       arbitrary GeoJSON location data on samples
-    - Added the :class:`GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
-      dataset type for importing and exporting datasets in GeoJSON format
+    - Added the :class:`GeoJSONDataset <fiftyone.types.GeoJSONDataset>` dataset
+      type for importing and exporting datasets in GeoJSON format
     - Added :meth:`SampleCollection.geo_near() <fiftyone.core.collections.SampleCollection.geo_near>`
       and
       :meth:`SampleCollection.geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`
@@ -2207,8 +2298,7 @@ Core
   `CVAT video format <https://github.com/openvinotoolkit/cvat/blob/develop/cvat/apps/documentation/xml_format.md>`_
 - Added support for :ref:`importing <FiftyOneDataset-import>` and
   :ref:`exporting <FiftyOneDataset-export>` video datasets in
-  :class:`FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
-  format
+  :class:`FiftyOneDataset <fiftyone.types.FiftyOneDataset>` format
 - Added frame field schemas to string representations for video datasets/views
 
 CLI
@@ -2486,7 +2576,7 @@ Core
 
 - Added support for :ref:`importing <FiftyOneDataset-import>` and
   :ref:`exporting <FiftyOneDataset-export>` FiftyOne datasets via the
-  :class:`FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>` type
+  :class:`FiftyOneDataset <fiftyone.types.FiftyOneDataset>` type
 - Added a :meth:`Dataset.info <fiftyone.core.dataset.Dataset.info>` field that
   can be used to store dataset-level info in FiftyOne datasets
 - Added a :meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`
@@ -2582,15 +2672,15 @@ App
 Core
 
 - Added support for importing and exporting datasets in several common formats:
-    - COCO: :class:`COCODetectionDataset <fiftyone.types.dataset_types.COCODetectionDataset>`
-    - VOC: :class:`VOCDetectionDataset <fiftyone.types.dataset_types.VOCDetectionDataset>`
-    - KITTI: :class:`KITTIDetectionDataset <fiftyone.types.dataset_types.KITTIDetectionDataset>`
+    - COCO: :class:`COCODetectionDataset <fiftyone.types.COCODetectionDataset>`
+    - VOC: :class:`VOCDetectionDataset <fiftyone.types.VOCDetectionDataset>`
+    - KITTI: :class:`KITTIDetectionDataset <fiftyone.types.KITTIDetectionDataset>`
     - Image classification TFRecords:
-      :class:`TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
+      :class:`TFImageClassificationDataset <fiftyone.types.TFImageClassificationDataset>`
     - TF Object Detection API TFRecords:
-      :class:`TFObjectDetectionDataset <fiftyone.types.dataset_types.TFObjectDetectionDataset>`
-    - CVAT image: :class:`CVATImageDataset <fiftyone.types.dataset_types.CVATImageDataset>`
-    - Berkeley DeepDrive: :class:`BDDDataset <fiftyone.types.dataset_types.BDDDataset>`
+      :class:`TFObjectDetectionDataset <fiftyone.types.TFObjectDetectionDataset>`
+    - CVAT image: :class:`CVATImageDataset <fiftyone.types.CVATImageDataset>`
+    - Berkeley DeepDrive: :class:`BDDDataset <fiftyone.types.BDDDataset>`
 - Added :meth:`Dataset.add_dir() <fiftyone.core.dataset.Dataset.add_dir>` and
   :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to allow
   for importing datasets on disk in any supported format

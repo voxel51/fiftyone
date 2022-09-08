@@ -164,9 +164,8 @@ Supported formats
 -----------------
 
 Each supported dataset type is represented by a subclass of
-:class:`fiftyone.types.Dataset <fiftyone.types.dataset_types.Dataset>`, which
-is used by the Python library and CLI to refer to the corresponding dataset
-format when reading the dataset from disk.
+:class:`fiftyone.types.Dataset`, which is used by the Python library and CLI to
+refer to the corresponding dataset format when reading the dataset from disk.
 
 .. table::
     :widths: 40 60
@@ -260,8 +259,8 @@ format when reading the dataset from disk.
 ImageDirectory
 --------------
 
-The :class:`fiftyone.types.ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`
-type represents a directory of images.
+The :class:`fiftyone.types.ImageDirectory` type represents a directory of
+images.
 
 Datasets of this type are read in the following format:
 
@@ -346,8 +345,8 @@ You can create a FiftyOne dataset from a directory of images as follows:
 VideoDirectory
 --------------
 
-The :class:`fiftyone.types.VideoDirectory <fiftyone.types.dataset_types.VideoDirectory>`
-type represents a directory of videos.
+The :class:`fiftyone.types.VideoDirectory` type represents a directory of
+videos.
 
 Datasets of this type are read in the following format:
 
@@ -432,9 +431,9 @@ You can create a FiftyOne dataset from a directory of videos as follows:
 FiftyOneImageClassificationDataset
 ----------------------------------
 
-The :class:`fiftyone.types.FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`
-type represents a labeled dataset consisting of images and their associated
-classification label(s) stored in a simple JSON format.
+The :class:`fiftyone.types.FiftyOneImageClassificationDataset` type represents
+a labeled dataset consisting of images and their associated classification
+label(s) stored in a simple JSON format.
 
 Datasets of this type are read in the following format:
 
@@ -640,9 +639,8 @@ directory containing the corresponding media files by providing the
 ImageClassificationDirectoryTree
 --------------------------------
 
-The :class:`fiftyone.types.ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`
-type represents a directory tree whose subfolders define an image
-classification dataset.
+The :class:`fiftyone.types.ImageClassificationDirectoryTree` type represents a
+directory tree whose subfolders define an image classification dataset.
 
 Datasets of this type are read in the following format:
 
@@ -734,9 +732,8 @@ stored in the above format as follows:
 VideoClassificationDirectoryTree
 --------------------------------
 
-The :class:`fiftyone.types.VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`
-type represents a directory tree whose subfolders define a video classification
-dataset.
+The :class:`fiftyone.types.VideoClassificationDirectoryTree` type represents a
+directory tree whose subfolders define a video classification dataset.
 
 Datasets of this type are read in the following format:
 
@@ -828,9 +825,9 @@ stored in the above format as follows:
 TFImageClassificationDataset
 ----------------------------
 
-The :class:`fiftyone.types.TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
-type represents a labeled dataset consisting of images and their associated
-classification labels stored as
+The :class:`fiftyone.types.TFImageClassificationDataset` type represents a
+labeled dataset consisting of images and their associated classification labels
+stored as
 `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.
 
 Datasets of this type are read in the following format:
@@ -953,9 +950,9 @@ as a directory of TFRecords in the above format as follows:
 FiftyOneImageDetectionDataset
 -----------------------------
 
-The :class:`fiftyone.types.FiftyOneImageDetectionDataset <fiftyone.types.dataset_types.FiftyOneImageDetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections stored in a simple JSON format.
+The :class:`fiftyone.types.FiftyOneImageDetectionDataset` type represents a
+labeled dataset consisting of images and their associated object detections
+stored in a simple JSON format.
 
 Datasets of this type are read in the following format:
 
@@ -1126,9 +1123,9 @@ directory containing the corresponding media files by providing the
 FiftyOneTemporalDetectionDataset
 --------------------------------
 
-The :class:`fiftyone.types.FiftyOneTemporalDetectionDataset <fiftyone.types.dataset_types.FiftyOneTemporalDetectionDataset>`
-type represents a labeled dataset consisting of videos and their associated
-temporal detections stored in a simple JSON format.
+The :class:`fiftyone.types.FiftyOneTemporalDetectionDataset` type represents a
+labeled dataset consisting of videos and their associated temporal detections
+stored in a simple JSON format.
 
 Datasets of this type are read in the following format:
 
@@ -1324,9 +1321,8 @@ directory containing the corresponding media files by providing the
 COCODetectionDataset
 --------------------
 
-The :class:`fiftyone.types.COCODetectionDataset <fiftyone.types.dataset_types.COCODetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.COCODetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections saved in
 `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
 
 Datasets of this type are read in the following format:
@@ -1597,9 +1593,8 @@ COCO format:
 VOCDetectionDataset
 -------------------
 
-The :class:`fiftyone.types.VOCDetectionDataset <fiftyone.types.dataset_types.VOCDetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.VOCDetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections saved in
 `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
 
 Datasets of this type are read in the following format:
@@ -1782,9 +1777,8 @@ directory containing the corresponding media files by providing the
 KITTIDetectionDataset
 ---------------------
 
-The :class:`fiftyone.types.KITTIDetectionDataset <fiftyone.types.dataset_types.KITTIDetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.KITTIDetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections saved in
 `KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
 Datasets of this type are read in the following format:
@@ -1957,9 +1951,8 @@ directory containing the corresponding media files by providing the
 YOLOv4Dataset
 -------------
 
-The :class:`fiftyone.types.YOLOv4Dataset <fiftyone.types.dataset_types.YOLOv4Dataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.YOLOv4Dataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
 `YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.
 
 Datasets of this type are read in the following format:
@@ -2191,9 +2184,8 @@ images-and-labels and labels-only data in YOLO format:
 YOLOv5Dataset
 -------------
 
-The :class:`fiftyone.types.YOLOv5Dataset <fiftyone.types.dataset_types.YOLOv5Dataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.YOLOv5Dataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
 `YOLOv5 format <https://github.com/ultralytics/yolov5>`_.
 
 Datasets of this type are read in the following format:
@@ -2225,6 +2217,7 @@ where `dataset.yaml` contains the following information:
 
 .. code-block:: text
 
+    path: <dataset_dir>  # optional
     train: ./images/train/
     val: ./images/val/
 
@@ -2238,7 +2231,9 @@ See `this page <https://docs.ultralytics.com/tutorials/train-custom-datasets>`_
 for a full description of the possible format of `dataset.yaml`. In particular,
 the dataset may contain one or more splits with arbitrary names, as the
 specific split being imported or exported is specified by the `split` argument
-to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter`.
+to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter`. Also, `dataset.yaml` can
+be located outside of `<dataset_dir>` as long as the optional `path` is
+provided.
 
 .. note::
 
@@ -2259,7 +2254,9 @@ where `<target>` is the zero-based integer index of the object class label from
 `[0, 1] x [0, 1]`, and `<confidence>` is an optional detection confidence in
 `[0, 1]`.
 
-Unlabeled images have no corresponding TXT file in `labels/`.
+Unlabeled images have no corresponding TXT file in `labels/`. The label file
+path for each image is obtained by replacing `images/` with `labels/` in the
+respective image path.
 
 The image and labels directories for a given split may contain nested
 subfolders of parallelly organized images and labels.
@@ -2372,9 +2369,8 @@ images-and-labels and labels-only data in YOLO format:
 TFObjectDetectionDataset
 ------------------------
 
-The :class:`fiftyone.types.TFObjectDetectionDataset <fiftyone.types.dataset_types.TFObjectDetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections stored as
+The :class:`fiftyone.types.TFObjectDetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections stored as
 `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_ in
 `TF Object Detection API format <https://github.com/tensorflow/models/blob/master/research/object_detection>`_.
 
@@ -2523,9 +2519,9 @@ directory of TFRecords in the above format as follows:
 ImageSegmentationDirectory
 --------------------------
 
-The :class:`fiftyone.types.ImageSegmentationDirectory <fiftyone.types.dataset_types.ImageSegmentationDirectory>`
-type represents a labeled dataset consisting of images and their associated
-semantic segmentations stored as images on disk.
+The :class:`fiftyone.types.ImageSegmentationDirectory` type represents a
+labeled dataset consisting of images and their associated semantic
+segmentations stored as images on disk.
 
 Datasets of this type are read in the following format:
 
@@ -2661,9 +2657,8 @@ directory containing the corresponding media files by providing the
 CVATImageDataset
 ----------------
 
-The :class:`fiftyone.types.CVATImageDataset <fiftyone.types.dataset_types.CVATImageDataset>`
-type represents a labeled dataset consisting of images and their associated
-tags and object detections stored in
+The :class:`fiftyone.types.CVATImageDataset` type represents a labeled dataset
+consisting of images and their associated tags and object detections stored in
 `CVAT image format <https://github.com/opencv/cvat>`_.
 
 Datasets of this type are read in the following format:
@@ -2885,9 +2880,8 @@ directory containing the corresponding media files by providing the
 CVATVideoDataset
 ----------------
 
-The :class:`fiftyone.types.CVATVideoDataset <fiftyone.types.dataset_types.CVATVideoDataset>`
-type represents a labeled dataset consisting of videos and their associated
-object detections stored in
+The :class:`fiftyone.types.CVATVideoDataset` type represents a labeled dataset
+consisting of videos and their associated object detections stored in
 `CVAT video format <https://github.com/opencv/cvat>`_.
 
 Datasets of this type are read in the following format:
@@ -3113,10 +3107,9 @@ directory containing the corresponding media files by providing the
 OpenLABELImageDataset
 ---------------------
 
-The :class:`fiftyone.types.OpenLABELImageDataset <fiftyone.types.dataset_types.OpenLABELImageDataset>`
-type represents a labeled dataset consisting of images and their associated
-multitask predictions stored in
-`OpenLABEL format <https://www.asam.net/index.php?eID=dumpFile&t=f&f=3876&token=413e8c85031ae64cc35cf42d0768627514868b2f>`_.
+The :class:`fiftyone.types.OpenLABELImageDataset` type represents a labeled
+dataset consisting of images and their associated multitask predictions stored =
+in `OpenLABEL format <https://www.asam.net/index.php?eID=dumpFile&t=f&f=3876&token=413e8c85031ae64cc35cf42d0768627514868b2f>`_.
 
 OpenLABEL is a flexible format which allows labels to be stored in a variety of
 different ways with respect to the corresponding media files. The following
@@ -3407,10 +3400,9 @@ directory containing the corresponding media files by providing the
 OpenLABELVideoDataset
 ---------------------
 
-The :class:`fiftyone.types.OpenLABELVideoDataset <fiftyone.types.dataset_types.OpenLABELVideoDataset>`
-type represents a labeled dataset consisting of videos and their associated
-multitask predictions stored in
-`OpenLABEL format <https://www.asam.net/index.php?eID=dumpFile&t=f&f=3876&token=413e8c85031ae64cc35cf42d0768627514868b2f>`_.
+The :class:`fiftyone.types.OpenLABELVideoDataset` type represents a labeled
+dataset consisting of videos and their associated multitask predictions stored
+in `OpenLABEL format <https://www.asam.net/index.php?eID=dumpFile&t=f&f=3876&token=413e8c85031ae64cc35cf42d0768627514868b2f>`_.
 
 OpenLABEL is a flexible format which allows labels to be stored in a variety of
 different ways with respect to the corresponding media files. The following
@@ -3697,9 +3689,9 @@ directory containing the corresponding media files by providing the
 FiftyOneImageLabelsDataset
 --------------------------
 
-The :class:`fiftyone.types.FiftyOneImageLabelsDataset <fiftyone.types.dataset_types.FiftyOneImageLabelsDataset>`
-type represents a labeled dataset consisting of images and their associated
-multitask predictions stored in
+The :class:`fiftyone.types.FiftyOneImageLabelsDataset` type represents a
+labeled dataset consisting of images and their associated multitask predictions
+stored in
 `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
 
 Datasets of this type are read in the following format:
@@ -3813,9 +3805,8 @@ above format as follows:
 FiftyOneVideoLabelsDataset
 --------------------------
 
-The :class:`fiftyone.types.FiftyOneVideoLabelsDataset <fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset>`
-type represents a labeled dataset consisting of videos and their associated
-labels stored in
+The :class:`fiftyone.types.FiftyOneVideoLabelsDataset` type represents a
+labeled dataset consisting of videos and their associated labels stored in
 `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
 
 Datasets of this type are read in the following format:
@@ -3929,9 +3920,8 @@ above format as follows:
 BDDDataset
 ----------
 
-The :class:`fiftyone.types.BDDDataset <fiftyone.types.dataset_types.BDDDataset>`
-type represents a labeled dataset consisting of images and their associated
-multitask predictions saved in
+The :class:`fiftyone.types.BDDDataset` type represents a labeled dataset
+consisting of images and their associated multitask predictions saved in
 `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
 Datasets of this type are read in the following format:
@@ -4155,9 +4145,9 @@ directory containing the corresponding media files by providing the
 DICOMDataset
 ------------
 
-The :class:`fiftyone.types.DICOMDataset <fiftyone.types.dataset_types.DICOMDataset>`
-type represents a dataset consisting of images and their associated properties
-stored in `DICOM format <https://en.wikipedia.org/wiki/DICOM>`_.
+The :class:`fiftyone.types.DICOMDataset` type represents a dataset consisting
+of images and their associated properties stored in
+`DICOM format <https://en.wikipedia.org/wiki/DICOM>`_.
 
 .. note::
 
@@ -4313,10 +4303,9 @@ path to a DICOMDIR file as follows:
 GeoJSONDataset
 --------------
 
-The :class:`fiftyone.types.GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
-type represents a dataset consisting of images or videos and their associated
-geolocation data and optional properties stored in
-`GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
+The :class:`fiftyone.types.GeoJSONDataset` type represents a dataset consisting
+of images or videos and their associated geolocation data and optional
+properties stored in `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
 
 Datasets of this type are read in the following format:
 
@@ -4496,9 +4485,9 @@ directory containing the corresponding media files by providing the
 GeoTIFFDataset
 --------------
 
-The :class:`fiftyone.types.GeoTIFFDataset <fiftyone.types.dataset_types.GeoTIFFDataset>`
-type represents a dataset consisting of images and their associated geolocation
-data stored in `GeoTIFF format <https://en.wikipedia.org/wiki/GeoTIFF>`_.
+The :class:`fiftyone.types.GeoTIFFDataset` type represents a dataset consisting
+of images and their associated geolocation data stored in
+`GeoTIFF format <https://en.wikipedia.org/wiki/GeoTIFF>`_.
 
 .. note::
 
@@ -4640,9 +4629,8 @@ as follows:
 FiftyOneDataset
 ---------------
 
-The :class:`fiftyone.types.FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
-provides a disk representation of an entire |Dataset| in a serialized JSON
-format along with its source media.
+The :class:`fiftyone.types.FiftyOneDataset` provides a disk representation of
+an entire |Dataset| in a serialized JSON format along with its source media.
 
 Datasets of this type are read in the following format:
 

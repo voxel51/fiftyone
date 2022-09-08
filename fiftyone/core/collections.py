@@ -9,9 +9,11 @@ from collections import defaultdict
 import fnmatch
 import itertools
 import logging
+import numbers
 import os
 import random
 import string
+import timeit
 import warnings
 
 from bson import ObjectId
@@ -67,6 +69,99 @@ view_stage = _make_registrar()
 
 # Keeps track of all `Aggregation` methods
 aggregation = _make_registrar()
+
+
+class SaveContext(object):
+    """Context that saves samples from a collection according to a configurable
+    batching strategy.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        batch_size (None): the batching strategy to use. Can either be an
+            integer specifying the number of samples to save in a batch, or a
+            float number of seconds between batched saves
+    """
+
+    def __init__(self, sample_collection, batch_size=None):
+        if batch_size is None:
+            batch_size = 0.2
+
+        self.sample_collection = sample_collection
+        self.batch_size = batch_size
+
+        self._dataset = sample_collection._dataset
+        self._sample_coll = sample_collection._dataset._sample_collection
+        self._frame_coll = sample_collection._dataset._frame_collection
+
+        self._sample_ops = []
+        self._frame_ops = []
+        self._reload_parents = []
+
+        self._curr_batch_size = None
+        self._dynamic_batches = not isinstance(batch_size, numbers.Integral)
+        self._last_time = None
+
+    def __enter__(self):
+        if self._dynamic_batches:
+            self._last_time = timeit.default_timer()
+
+        self._curr_batch_size = 0
+        return self
+
+    def __exit__(self, *args):
+        self._save_batch()
+
+    def save(self, sample):
+        """Registers the sample for saving in the next batch.
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView`
+        """
+        if sample._in_db and sample._dataset is not self._dataset:
+            raise ValueError(
+                "Dataset context '%s' cannot save sample from dataset '%s'"
+                % (self._dataset.name, sample._dataset.name)
+            )
+
+        sample_op, frame_ops = sample._save(deferred=True)
+        updated = sample_op is not None or frame_ops
+
+        self._curr_batch_size += 1
+
+        if sample_op is not None:
+            self._sample_ops.append(sample_op)
+
+        if frame_ops:
+            self._frame_ops.extend(frame_ops)
+
+        if updated and isinstance(sample, fosa.SampleView):
+            self._reload_parents.append(sample)
+
+        if self._dynamic_batches:
+            if timeit.default_timer() - self._last_time >= self.batch_size:
+                self._save_batch()
+                self._last_time = timeit.default_timer()
+        elif self._curr_batch_size >= self.batch_size:
+            self._save_batch()
+
+    def _save_batch(self):
+        self._curr_batch_size = 0
+
+        if self._sample_ops:
+            foo.bulk_write(self._sample_ops, self._sample_coll, ordered=False)
+            self._sample_ops.clear()
+
+        if self._frame_ops:
+            foo.bulk_write(self._frame_ops, self._frame_coll, ordered=False)
+            self._frame_ops.clear()
+
+        if self._reload_parents:
+            for sample in self._reload_parents:
+                sample._reload_parents()
+
+            self._reload_parents.clear()
 
 
 class SampleCollection(object):
@@ -636,18 +731,97 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement view()")
 
-    def iter_samples(self, progress=False):
+    def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the collection.
+
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for sample in dataset.iter_samples(progress=True):
+                sample.ground_truth.label = make_label()
+                sample.save()
+
+            # Save in batches of 10
+            for sample in dataset.iter_samples(
+                progress=True, autosave=True, batch_size=10
+            ):
+                sample.ground_truth.label = make_label()
+
+            # Save every 0.5 seconds
+            for sample in dataset.iter_samples(
+                progress=True, autosave=True, batch_size=0.5
+            ):
+                sample.ground_truth.label = make_label()
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView` instances
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
+
+    def save_context(self, batch_size=None):
+        """Returns a context that can be used to save samples from this
+        collection according to a configurable batching strategy.
+
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for sample in dataset.iter_samples(progress=True):
+                sample.ground_truth.label = make_label()
+                sample.save()
+
+            # Save in batches of 10
+            with dataset.save_context(batch_size=10) as context:
+                for sample in dataset.iter_samples(progress=True):
+                    sample.ground_truth.label = make_label()
+                    context.save(sample)
+
+            # Save every 0.5 seconds
+            with dataset.save_context(batch_size=0.5) as context:
+                for sample in dataset.iter_samples(progress=True):
+                    sample.ground_truth.label = make_label()
+                    context.save(sample)
+
+        Args:
+            batch_size (None): the batching strategy to use. Can either be an
+                integer specifying the number of samples to save in a batch, or
+                a float number of seconds between batched saves
+
+        Returns:
+            a :class:`SaveContext`
+        """
+        return SaveContext(self, batch_size=batch_size)
 
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
@@ -6431,9 +6605,9 @@ class SampleCollection(object):
                 If an archive path is specified, the export is performed in a
                 directory of same name (minus extension) and then automatically
                 archived and the directory then deleted
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type to write. If
-                not specified, the default type for ``label_field`` is used
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type to
+                write. If not specified, the default type for ``label_field``
+                is used
             data_path (None): an optional parameter that enables explicit
                 control over the location of the exported media for certain
                 export formats. Can be any of the following:

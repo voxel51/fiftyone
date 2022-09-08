@@ -6,6 +6,7 @@ FiftyOne datasets.
 |
 """
 from collections import defaultdict
+import contextlib
 from copy import deepcopy
 from datetime import datetime
 import fnmatch
@@ -26,7 +27,6 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.constants as focn
@@ -1387,25 +1387,70 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._reload()
 
-    def iter_samples(self, progress=False):
+    def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the dataset.
+
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for sample in dataset.iter_samples(progress=True):
+                sample.ground_truth.label = make_label()
+                sample.save()
+
+            # Save in batches of 10
+            for sample in dataset.iter_samples(
+                progress=True, autosave=True, batch_size=10
+            ):
+                sample.ground_truth.label = make_label()
+
+            # Save every 0.5 seconds
+            for sample in dataset.iter_samples(
+                progress=True, autosave=True, batch_size=0.5
+            ):
+                sample.ground_truth.label = make_label()
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         pipeline = self._pipeline(detach_frames=True)
 
-        if progress:
-            with fou.ProgressBar(total=len(self)) as pb:
-                for sample in pb(self._iter_samples(pipeline)):
-                    yield sample
-        else:
-            for sample in self._iter_samples(pipeline):
+        with contextlib.ExitStack() as exit_context:
+            samples = self._iter_samples(pipeline)
+
+            if progress:
+                pb = fou.ProgressBar(total=len(self))
+                exit_context.enter_context(pb)
+                samples = pb(samples)
+
+            if autosave:
+                save_context = foc.SaveContext(self, batch_size=batch_size)
+                exit_context.enter_context(save_context)
+
+            for sample in samples:
                 yield sample
+
+                if autosave:
+                    save_context.save(sample)
 
     def _iter_samples(self, pipeline):
         index = 0
@@ -1479,16 +1524,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
         batcher = fou.DynamicBatcher(
-            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
+            samples,
+            target_latency=0.2,
+            init_batch_size=1,
+            max_batch_beta=2.0,
+            progress=True,
+            total=num_samples,
         )
 
         sample_ids = []
-        with fou.ProgressBar(total=num_samples) as pb:
+        with batcher:
             for batch in batcher:
-                sample_ids.extend(
-                    self._add_samples_batch(batch, expand_schema, validate)
-                )
-                pb.update(count=len(batch))
+                _ids = self._add_samples_batch(batch, expand_schema, validate)
+                sample_ids.extend(_ids)
 
         return sample_ids
 
@@ -1580,13 +1628,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
         batcher = fou.DynamicBatcher(
-            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
+            samples,
+            target_latency=0.2,
+            init_batch_size=1,
+            max_batch_beta=2.0,
+            progress=True,
         )
 
-        with fou.ProgressBar(total=num_samples) as pb:
+        with batcher:
             for batch in batcher:
                 self._upsert_samples_batch(batch, expand_schema, validate)
-                pb.update(count=len(batch))
 
     def _upsert_samples_batch(self, samples, expand_schema, validate):
         if self.media_type is None and samples:
@@ -2504,9 +2555,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir (None): the dataset directory. This can be omitted for
                 certain dataset formats if you provide arguments such as
                 ``data_path`` and ``labels_path``
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -2662,9 +2712,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir (None): the dataset directory. This can be omitted for
                 certain dataset formats if you provide arguments such as
                 ``data_path`` and ``labels_path``
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -2816,9 +2865,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``archive_path``
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -2967,9 +3015,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``archive_path``
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -3344,9 +3391,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_images_dir(self, images_dir, tags=None, recursive=True):
         """Adds the given directory of images to the dataset.
 
-        See :class:`fiftyone.types.dataset_types.ImageDirectory` for format
-        details. In particular, note that files with non-image MIME types are
-        omitted.
+        See :class:`fiftyone.types.ImageDirectory` for format details. In
+        particular, note that files with non-image MIME types are omitted.
 
         This operation does not read the images.
 
@@ -3578,9 +3624,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_videos_dir(self, videos_dir, tags=None, recursive=True):
         """Adds the given directory of videos to the dataset.
 
-        See :class:`fiftyone.types.dataset_types.VideoDirectory` for format
-        details. In particular, note that files with non-video MIME types are
-        omitted.
+        See :class:`fiftyone.types.VideoDirectory` for format details. In
+        particular, note that files with non-video MIME types are omitted.
 
         This operation does not read/decode the videos.
 
@@ -3735,9 +3780,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             dataset_dir (None): the dataset directory. This can be omitted if
                 you provide arguments such as ``data_path`` and ``labels_path``
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -3844,9 +3888,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``archive_path``
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
                 control over the location of the media for certain dataset
                 types. Can be any of the following:
@@ -4473,37 +4516,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return [k["key"][0][0] for k in index_info.values()]
 
     def _apply_field_schema(self, new_fields):
-        curr_fields = self.get_field_schema()
-        add_field_fcn = self.add_sample_field
-        self._apply_schema(curr_fields, new_fields, add_field_fcn)
+        for field_name, field_str in new_fields.items():
+            ftype, embedded_doc_type, subfield = fof.parse_field_str(field_str)
+            self.add_sample_field(
+                field_name,
+                ftype,
+                embedded_doc_type=embedded_doc_type,
+                subfield=subfield,
+            )
 
     def _apply_frame_field_schema(self, new_fields):
-        curr_fields = self.get_frame_field_schema()
-        add_field_fcn = self.add_frame_field
-        self._apply_schema(curr_fields, new_fields, add_field_fcn)
-
-    def _apply_schema(self, curr_fields, new_fields, add_field_fcn):
         for field_name, field_str in new_fields.items():
-            if field_name in curr_fields:
-                # Ensure that existing field matches the requested field
-                _new_field_str = str(field_str)
-                _curr_field_str = str(curr_fields[field_name])
-                if _new_field_str != _curr_field_str:
-                    raise ValueError(
-                        "Existing field %s=%s does not match new field type %s"
-                        % (field_name, _curr_field_str, _new_field_str)
-                    )
-            else:
-                # Add new field
-                ftype, embedded_doc_type, subfield = fof.parse_field_str(
-                    field_str
-                )
-                add_field_fcn(
-                    field_name,
-                    ftype,
-                    embedded_doc_type=embedded_doc_type,
-                    subfield=subfield,
-                )
+            ftype, embedded_doc_type, subfield = fof.parse_field_str(field_str)
+            self.add_frame_field(
+                field_name,
+                ftype,
+                embedded_doc_type=embedded_doc_type,
+                subfield=subfield,
+            )
 
     def _ensure_label_field(self, label_field, label_cls):
         if label_field not in self.get_field_schema():
@@ -4879,6 +4909,25 @@ def _load_dataset(name, virtual=False):
         fomi.migrate_dataset_if_necessary(name)
 
     try:
+        return _do_load_dataset(name, virtual=virtual)
+    except Exception as e:
+        try:
+            version = fomi.get_dataset_revision(name)
+        except:
+            raise e
+
+        if version != focn.VERSION:
+            raise ValueError(
+                "Failed to load dataset '%s' from v%s using client v%s. "
+                "You may need to upgrade your client"
+                % (name, version, focn.VERSION)
+            ) from e
+
+        raise e
+
+
+def _do_load_dataset(name, virtual=False):
+    try:
         # pylint: disable=no-member
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
     except moe.DoesNotExist:
@@ -4936,6 +4985,7 @@ def _load_dataset(name, virtual=False):
             ]
 
     dataset_doc.save()
+
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
@@ -5209,7 +5259,7 @@ def _merge_dataset_doc(
 
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
-        doc = collection_or_doc._dataset._doc
+        doc = collection_or_doc._root_dataset._doc
         schema = collection_or_doc.get_field_schema()
         if is_video:
             frame_schema = collection_or_doc.get_frame_field_schema()
@@ -5295,28 +5345,6 @@ def _merge_dataset_doc(
             curr_doc.default_skeleton = doc.default_skeleton
 
     curr_doc.save()
-
-    if dataset:
-        if doc.annotation_runs:
-            logger.warning(
-                "Annotation runs cannot be merged into a non-empty dataset"
-            )
-
-        if doc.brain_methods:
-            logger.warning(
-                "Brain runs cannot be merged into a non-empty dataset"
-            )
-
-        if doc.evaluations:
-            logger.warning(
-                "Evaluations cannot be merged into a non-empty dataset"
-            )
-    else:
-        dataset.delete_annotation_runs()
-        dataset.delete_brain_runs()
-        dataset.delete_evaluations()
-
-        _clone_runs(dataset, doc)
 
 
 def _update_no_overwrite(d, dnew):

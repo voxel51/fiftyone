@@ -188,29 +188,29 @@ class MigrationTests(unittest.TestCase):
             return [(v, v + ".py") for v in versions]
 
         runner = MigrationRunner(
-            head="0.0.1",
-            destination="0.3",
+            "0.0.1",
+            "0.3",
             _revisions=revs(["0.1", "0.2", "0.3"]),
         )
         self.assertEqual(runner.revisions, ["0.1", "0.2", "0.3"])
 
         runner = MigrationRunner(
-            head="0.1",
-            destination="0.3",
+            "0.1",
+            "0.3",
             _revisions=revs(["0.1", "0.2", "0.3"]),
         )
         self.assertEqual(runner.revisions, ["0.2", "0.3"])
 
         runner = MigrationRunner(
-            head="0.3",
-            destination="0.1",
+            "0.3",
+            "0.1",
             _revisions=revs(["0.1", "0.2", "0.3"]),
         )
         self.assertEqual(runner.revisions, ["0.3", "0.2"])
 
         runner = MigrationRunner(
-            head="0.3",
-            destination="0.0.1",
+            "0.3",
+            "0.0.1",
             _revisions=revs(["0.1", "0.2", "0.3"]),
         )
         self.assertEqual(runner.revisions, ["0.3", "0.2", "0.1"])
@@ -222,18 +222,18 @@ class MigrationTests(unittest.TestCase):
         # Uprading to a future version is not allowed
 
         with self.assertRaises(EnvironmentError):
-            MigrationRunner(destination=future_ver)
+            MigrationRunner(pkg_ver, future_ver)
 
         with self.assertRaises(EnvironmentError):
-            MigrationRunner(head="0.1", destination=future_ver)
+            MigrationRunner("0.1", future_ver)
 
         # Downgrading from a future version is not allowed
 
         with self.assertRaises(EnvironmentError):
-            MigrationRunner(head=future_ver)
+            MigrationRunner(future_ver, pkg_ver)
 
         with self.assertRaises(EnvironmentError):
-            MigrationRunner(head=future_ver, destination="0.1")
+            MigrationRunner(future_ver, "0.1")
 
 
 class UIDTests(unittest.TestCase):
