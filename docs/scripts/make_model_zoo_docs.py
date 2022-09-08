@@ -123,7 +123,7 @@ _MODEL_TEMPLATE = """
         classes=["person", "dog", "cat", "bird", "car", "tree", "chair"],
     )
 
-    dataset.apply_model(model, label_field="predictions2")
+    dataset.apply_model(model, label_field="predictions")
     session.refresh()
 {% endif %}
 """

@@ -1,5 +1,5 @@
 """
-CLIP model handler for the FiftyOne Model Zoo.
+CLIP model wrapper for the FiftyOne Model Zoo.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -8,6 +8,7 @@ CLIP model handler for the FiftyOne Model Zoo.
 import logging
 import os
 from pkg_resources import packaging
+import warnings
 
 import eta.core.web as etaw
 
@@ -104,16 +105,17 @@ class TorchCLIPModel(fout.TorchImageModel):
         # source: https://github.com/openai/CLIP/blob/main/clip/clip.py
         sot_token = self._tokenizer.encoder["<|startoftext|>"]
         eot_token = self._tokenizer.encoder["<|endoftext|>"]
+        prompts = [
+            "%s %s" % (self.config.text_prompt, c) for c in self.classes
+        ]
+        all_tokens = [
+            [sot_token] + self._tokenizer.encode(p) + [eot_token]
+            for p in prompts
+        ]
 
-        all_tokens = [sot_token]
-        for label in self.classes:
-            prompt = "%s %s" % (self.config.text_prompt, label)
-            all_tokens.append(self._tokenizer.encode(prompt))
-
-        all_tokens.append(eot_token)
-
-        torch_version = packaging.version.parse(torch.__version__)
-        if torch_version < packaging.version.parse("1.8.0"):
+        if packaging.version.parse(
+            torch.__version__
+        ) < packaging.version.parse("1.8.0"):
             dtype = torch.long
         else:
             dtype = torch.int
@@ -122,10 +124,15 @@ class TorchCLIPModel(fout.TorchImageModel):
             len(all_tokens), self.config.context_length, dtype=dtype
         )
 
-        for i, tokens in enumerate(all_tokens):
+        for i, (prompt, tokens) in enumerate(zip(prompts, all_tokens)):
             if len(tokens) > self.config.context_length:
                 tokens = tokens[: self.config.context_length]
                 tokens[-1] = eot_token
+                msg = (
+                    "Truncating prompt '%s'; too long for context length '%d'"
+                    % (prompt, self.config.context_length)
+                )
+                warnings.warn(msg)
 
             text_features[i, : len(tokens)] = torch.tensor(tokens)
 
