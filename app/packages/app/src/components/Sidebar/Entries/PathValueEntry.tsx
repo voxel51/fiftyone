@@ -206,8 +206,8 @@ const ListLoadable = ({ path }: { path: string }) => {
 
   return (
     <ListContainer>
-      {values.map((v) => (
-        <div>{v}</div>
+      {values.map((v, i) => (
+        <div key={i}>{v}</div>
       ))}
     </ListContainer>
   );
@@ -259,7 +259,7 @@ const PathValueEntry = ({
     cb: () => void
   ) => void;
 }) => {
-  const field = useRecoilValue(fos.field(path.split(".")[0]));
+  const field = useRecoilValue(fos.field(path));
 
   return field.ftype !== LIST_FIELD ? (
     <ScalarValueEntry entryKey={entryKey} path={path} trigger={trigger} />
