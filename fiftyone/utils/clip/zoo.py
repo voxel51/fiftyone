@@ -1,137 +1,152 @@
-"""CLIP model handler for FiftyOne model zoo.
 """
-import requests
-import torch
+CLIP model wrapper for the FiftyOne Model Zoo.
+
+| Copyright 2017-2022, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+import logging
+import os
+from pkg_resources import packaging
+import warnings
+
+import eta.core.web as etaw
 
 import fiftyone as fo
-from fiftyone.utils import torch as fout
-from fiftyone.zoo import models as fozm
-from fiftyone.utils.clip.tokenizer import SimpleTokenizer
-from fiftyone.utils.clip.model import build_model
+import fiftyone.core.utils as fou
+import fiftyone.utils.torch as fout
+import fiftyone.zoo.models as fozm
+
+fou.ensure_torch()
+import torch
+
+from .tokenizer import SimpleTokenizer
+from .model import build_model
+
+
+logger = logging.getLogger(__name__)
 
 
 class TorchCLIPModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
+    """Configuration for running a :class:`TorchCLIPModel`.
+
+    See :class:`fiftyone.utils.torch.TorchImageModelConfig` for additional
+    arguments.
+
+    Args:
+        tokenizer_base_filename: the filename in ``fo.config.model_zoo_dir`` in
+            which to store the model's tokenizer
+        tokenizer_base_url: a URL from which the tokenizer can be downloaded,
+            if necessary
+        context_length: the model's context length
+        text_prompt: the text prompt to use, e.g., ``"A photo of"``
+        classes (None): an optional list of custom classes to use for zero-shot
+            prediction
+    """
+
     def __init__(self, d):
         d = self.init(d)
         super().__init__(d)
-        self._init_vars(d)
 
-    def _init_vars(self, d):
-        from pathlib import Path
-
-        self._tokenizer_path = Path(
-            fo.config.model_zoo_dir
-        ) / self.parse_string(d, "tokenizer_base_filename")
-        self._tokenizer_base_url = self.parse_string(d, "tokenizer_base_url")
-        self.text_prompt = self.parse_string(d, "text_prompt")
+        self.tokenizer_base_filename = self.parse_string(
+            d, "tokenizer_base_filename"
+        )
+        self.tokenizer_base_url = self.parse_string(d, "tokenizer_base_url")
         self.context_length = self.parse_int(d, "context_length")
-        self.class_labels = self.parse_array(d, "class_labels", [])
+        self.text_prompt = self.parse_string(d, "text_prompt")
+        self.classes = self.parse_array(d, "classes", default=None)
+
+        self._tokenizer_path = os.path.join(
+            fo.config.model_zoo_dir, self.tokenizer_base_filename
+        )
+
+    @property
+    def tokenizer_path(self):
+        return self._tokenizer_path
 
     def download_tokenizer_if_necessary(self):
-        if not self._tokenizer_path.exists():
-            with requests.get(
-                self._tokenizer_base_url, stream=True
-            ) as response, open(
-                self._tokenizer_path, "wb"
-            ) as f, fo.ProgressBar(
-                iters_str="downloading clip tokenizer"
-            ) as bar:
-                for chunk in bar(response.iter_content(chunk_size=1024)):
-                    if chunk:
-                        f.write(chunk)
+        if not os.path.isfile(self._tokenizer_path):
+            logger.info("Downloading CLIP tokenizer...")
+            etaw.download_file(
+                self.tokenizer_base_url, path=self._tokenizer_path
+            )
 
 
 class TorchCLIPModel(fout.TorchImageModel):
-    """Torch implementation of the CLIP model.
+    """Torch implementation of CLIP from `https://github.com/openai/CLIP`_.
 
-    By default VOC labels are used for zero-shot prediction.
-    To use custom labels, set `class_labels=[list,of,labels]` in the model
+    Args:
+        config: a :class:`TorchCLIPModelConfig`
     """
+
+    def __init__(self, config):
+        super().__init__(config)
+
+        self._tokenizer = SimpleTokenizer(config.tokenizer_path)
+        self._text_features = None
 
     def _download_model(self, config):
         config.download_model_if_necessary()
         config.download_tokenizer_if_necessary()
 
-    def _get_class_labels(self, config):
-        if hasattr(config, "class_labels") and config.class_labels:
-            # use custom labels
-            return config.class_labels
-        else:
-            # same as parent class
-            return super()._get_class_labels(config)
+    def _parse_classes(self, config):
+        if config.classes:
+            return config.classes
+
+        return super()._parse_classes(config)
 
     def _load_network(self, config):
         with open(config.model_path, "rb") as f:
             model = torch.jit.load(f, map_location=self.device).eval()
-        model = build_model(model.state_dict()).to(self.device).float()
-        # load tokenizer and set clip params
-        self._tokenizer = SimpleTokenizer(str(config._tokenizer_path))
-        self._text_prompt = config.text_prompt
-        self._context_length = config.context_length
-        return model
 
-    def _prepare_text(self):
-        """Convert class labels to tensors for text encoding.
+        return build_model(model.state_dict()).to(self.device).float()
 
-        Returns:
-            torch.Tensor: encoded text
-        """
-        from pkg_resources import packaging
-
-        # init vars and prepare text
-        class_labels = self._output_processor.class_labels
-        texts = [
-            f"{self._text_prompt} {class_labels[i]}"
-            for i in range(len(class_labels))
-        ]
+    def _prepare_text_features(self):
         # source: https://github.com/openai/CLIP/blob/main/clip/clip.py
         sot_token = self._tokenizer.encoder["<|startoftext|>"]
         eot_token = self._tokenizer.encoder["<|endoftext|>"]
-        all_tokens = [
-            [sot_token] + self._tokenizer.encode(txt) + [eot_token]
-            for txt in texts
+        prompts = [
+            "%s %s" % (self.config.text_prompt, c) for c in self.classes
         ]
+        all_tokens = [
+            [sot_token] + self._tokenizer.encode(p) + [eot_token]
+            for p in prompts
+        ]
+
         if packaging.version.parse(
             torch.__version__
         ) < packaging.version.parse("1.8.0"):
-            result = torch.zeros(
-                len(all_tokens), self._context_length, dtype=torch.long
-            )
+            dtype = torch.long
         else:
-            result = torch.zeros(
-                len(all_tokens), self._context_length, dtype=torch.int
-            )
-        for i, tokens in enumerate(all_tokens):
-            if len(tokens) > self._context_length:
-                tokens = tokens[: self._context_length]
+            dtype = torch.int
+
+        text_features = torch.zeros(
+            len(all_tokens), self.config.context_length, dtype=dtype
+        )
+
+        for i, (prompt, tokens) in enumerate(zip(prompts, all_tokens)):
+            if len(tokens) > self.config.context_length:
+                tokens = tokens[: self.config.context_length]
                 tokens[-1] = eot_token
-            result[i, : len(tokens)] = torch.tensor(tokens)
-        return result
+                msg = (
+                    "Truncating prompt '%s'; too long for context length '%d'"
+                    % (prompt, self.config.context_length)
+                )
+                warnings.warn(msg)
+
+            text_features[i, : len(tokens)] = torch.tensor(tokens)
+
+        return text_features
 
     def _get_text_features(self):
-        """Get class labels embeddings.
-
-        Run only once for all class labels. If embeddings exists, use them.
-
-        Returns:
-            torch.Tensor: class labels embeddings
-        """
-        if not hasattr(self, "_text_features") or self._text_features is None:
-            tokens = self._prepare_text()
+        if self._text_features is None:
+            text_features = self._prepare_text_features()
             with torch.no_grad():
-                self._text_features = self._model.encode_text(tokens)
+                self._text_features = self._model.encode_text(text_features)
+
         return self._text_features
 
     def _get_class_logits(self, text_features, image_features):
-        """Get dot-product similarities text and image features.
-
-        Args:
-            text_features: CLIP text encoding output
-            image_features: CLIP image encoding output
-
-        Returns:
-            torch.Tensor: a tuple of image logits and text logits
-        """
         # source: https://github.com/openai/CLIP/blob/main/README.md
         image_features = image_features / image_features.norm(
             dim=1, keepdim=True
