@@ -1,7 +1,7 @@
 import { useRecoilValue } from "recoil";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import { SampleBar } from "./Bars";
-import { modal, useClearModal } from "@fiftyone/state";
+import { modal, useClearModal, useHoveredSample } from "@fiftyone/state";
 import Looker from "./Looker";
 import { VideoLooker } from "@fiftyone/looker";
 
@@ -38,7 +38,7 @@ const Sample: React.FC = () => {
     };
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
-  const hover = fos.useHoveredSample(data.sample, { update, clear });
+  const hover = useHoveredSample(data.sample, { update, clear });
 
   return (
     <div

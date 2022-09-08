@@ -10,6 +10,7 @@ import Popout from "./Popout";
 import { Slider } from "../Common/RangeSlider";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { groupStatistics, isGroup } from "@fiftyone/state";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
@@ -123,41 +124,6 @@ const Opacity = ({ modal }) => {
   );
 };
 
-const ImageFilter = ({ modal, filter }: { modal: boolean; filter: string }) => {
-  const theme = useTheme();
-  const [value, setFilter] = useRecoilState(
-    fos.imageFilters({ modal, filter })
-  );
-
-  return (
-    <>
-      <PopoutSectionTitle style={{ display: "flex", height: 33 }}>
-        <span>Image {filter}</span>
-        {value !== fos.IMAGE_FILTERS[filter].default && (
-          <span
-            onClick={() => setFilter(fos.IMAGE_FILTERS[filter].default)}
-            style={{ cursor: "pointer", margin: "0.25rem" }}
-            title={"Reset label opacity"}
-          >
-            <Check />
-          </span>
-        )}
-      </PopoutSectionTitle>
-      <Slider
-        valueAtom={fos.imageFilters({ modal, filter })}
-        boundsAtom={constSelector(fos.IMAGE_FILTERS[filter].bounds)}
-        color={theme.brand}
-        showBounds={false}
-        persistValue={false}
-        showValue={false}
-        onChange={true}
-        style={{ padding: 0 }}
-        int={false}
-      />
-    </>
-  );
-};
-
 const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
     fos.sortFilterResults(modal)
@@ -239,14 +205,34 @@ const MediaFields = ({ modal }) => {
   );
 };
 
+const GroupStatistics = ({ modal }) => {
+  const [statistics, setStatistics] = useRecoilState(groupStatistics(modal));
+
+  return (
+    <>
+      <PopoutSectionTitle>Statistics</PopoutSectionTitle>
+      <TabOption
+        active={statistics}
+        options={["slice", "group"].map((value) => ({
+          text: value,
+          title: `View ${value} sidebar statistics`,
+          onClick: () => setStatistics(value as "group" | "slice"),
+        }))}
+      />
+    </>
+  );
+};
+
 type OptionsProps = {
   modal: boolean;
   bounds: [number, number];
 };
 
 const Options = ({ modal, bounds }: OptionsProps) => {
+  const group = useRecoilValue(isGroup);
   return (
     <Popout modal={modal} bounds={bounds}>
+      {group && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />

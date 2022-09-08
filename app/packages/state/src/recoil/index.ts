@@ -4,6 +4,7 @@ export * from "./color";
 export * from "./filters";
 export * from "./groups";
 export * from "./looker";
+export * from "./modal";
 export * from "./options";
 export * from "./pathFilters";
 export * from "./relay";

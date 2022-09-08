@@ -21,18 +21,24 @@ import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
 import {
   tagStats,
-  numLabelsInSelectedSamples,
   SwitchDiv,
   SwitcherDiv,
   tagStatistics,
+  numItemsInSelection,
+  selectedSamplesCount,
 } from "./utils";
 import { Button } from "../utils";
-import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
+import { PopoutSectionTitle } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Lookers } from "@fiftyone/state";
+import {
+  currentSlice,
+  groupId,
+  groupStatistics,
+  Lookers,
+} from "@fiftyone/state";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -308,12 +314,11 @@ const labelsModalPlaceholder = (selection, numLabels) => {
   }`;
 };
 
-const samplesPlaceholder = (selection, _, numSamples, elementNames) => {
+const samplesPlaceholder = (numSamples, elementNames, selected = false) => {
   if (numSamples === 0) {
     return `no ${elementNames.plural}`;
   }
-  if (selection) {
-    numSamples = selection;
+  if (selected) {
     const formatted = numeral(numSamples).format("0,0");
     return `+ tag ${numSamples > 1 ? `${formatted} ` : ""}selected ${
       numSamples === 1 ? elementNames.singular : elementNames.plural
@@ -326,28 +331,15 @@ const samplesPlaceholder = (selection, _, numSamples, elementNames) => {
   }`;
 };
 
-const samplePlaceholder = (elementNames) => {
-  return `+ tag ${elementNames.singular}`;
-};
-
 const useTagCallback = (
   modal,
   targetLabels,
   lookerRef?: React.MutableRefObject<Lookers | undefined>
 ) => {
-  const refreshers = [true, false]
-    .map((modal) =>
-      [true, false].map((extended) =>
-        useRecoilRefresher_UNSTABLE(fos.aggregations({ modal, extended }))
-      )
-    )
-    .flat();
-  refreshers.push(
-    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false }))
-  );
-  refreshers.push(
-    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: targetLabels }))
-  );
+  const refreshers = [
+    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
+    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: targetLabels })),
+  ];
 
   return useRecoilCallback(
     ({ snapshot, set }) =>
@@ -371,7 +363,13 @@ const useTagCallback = (
             : null;
 
         const modalData = modal ? await snapshot.getPromise(fos.modal) : null;
-
+        const stats = await snapshot.getPromise(groupStatistics(modal));
+        let slice: string | null = null;
+        let group: string | null = null;
+        if (stats !== "group") {
+          slice = await snapshot.getPromise(currentSlice(modal));
+          group = modal ? await snapshot.getPromise(groupId) : null;
+        }
         const { samples } = await getFetchFunction()("POST", "/tag", {
           filters: f,
           view,
@@ -379,6 +377,9 @@ const useTagCallback = (
           active_label_fields: activeLabels,
           target_labels: targetLabels,
           changes,
+          group_id: group,
+          slice,
+          mixed: stats === "group",
           modal: modal ? modalData.sample._id : null,
           sample_ids: modal
             ? null
@@ -445,7 +446,8 @@ const usePlaceHolder = (
           : useRecoilValue(fos.labelCount({ modal: true, extended: true }));
       return [labelCount, labelsModalPlaceholder(selectedLabels, labelCount)];
     } else if (modal && !selectedSamples) {
-      return [1, samplePlaceholder(elementNames)];
+      const count = useRecoilValue(selectedSamplesCount(modal));
+      return [count, samplesPlaceholder(count, elementNames)];
     } else {
       const totalSamples = useRecoilValue(
         fos.count({ path: "", extended: false, modal: false })
@@ -453,8 +455,10 @@ const usePlaceHolder = (
       const filteredSamples = useRecoilValue(
         fos.count({ path: "", extended: true, modal: false })
       );
+
       const count = filteredSamples ?? totalSamples;
-      const selectedLabelCount = useRecoilValue(numLabelsInSelectedSamples);
+      const itemCount = useRecoilValue(selectedSamplesCount(modal));
+      const selectedLabelCount = useRecoilValue(numItemsInSelection(true));
       const labelCount = selectedSamples
         ? selectedLabelCount
         : useRecoilValue(fos.labelCount({ modal, extended: true }));
@@ -465,8 +469,8 @@ const usePlaceHolder = (
         ];
       } else {
         return [
-          selectedSamples > 0 ? selectedSamples : count,
-          samplesPlaceholder(selectedSamples, labelCount, count, elementNames),
+          itemCount,
+          samplesPlaceholder(itemCount, elementNames, Boolean(selectedSamples)),
         ];
       }
     }

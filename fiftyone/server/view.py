@@ -29,6 +29,7 @@ def get_view(
     extended_stages=None,
     sample_filter=None,
     sort=False,
+    mixed=False,
 ):
     """Get the view from request paramters
 
@@ -44,7 +45,8 @@ def get_view(
             labels
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
-        sort (False): wheter to include sort extended stages
+        sort (False): whether to include sort extended stages
+        mixed (False): whether to allow mixed slices for a group dataset
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -52,12 +54,13 @@ def get_view(
     view = fod.load_dataset(dataset_name)
     view.reload()
 
+    if mixed:
+        view = view.select_group_slices(_allow_mixed=True)
+
     if sample_filter is not None:
         if sample_filter.group:
             if sample_filter.group.slice:
                 view.group_slice = sample_filter.group.slice
-            elif view.media_type == fom.GROUP:
-                view.group_slice = view.default_group_slice
 
             if sample_filter.group.id:
                 view = fov.make_optimized_select_view(

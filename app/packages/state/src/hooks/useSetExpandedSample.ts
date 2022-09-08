@@ -1,10 +1,11 @@
 import { useRecoilTransaction_UNSTABLE, useRecoilValue } from "recoil";
-import { groupField, groupSlice } from "../recoil";
+import { groupField, groupSlice, isGroup } from "../recoil";
 
 import * as atoms from "../recoil/atoms";
 
 export default (withGroup: boolean = true) => {
   const field = useRecoilValue(groupField);
+  const group = useRecoilValue(isGroup);
   return useRecoilTransaction_UNSTABLE(
     ({ set }) =>
       (sample: atoms.SampleData, navigation?: atoms.ModalNavigation) => {
@@ -15,8 +16,11 @@ export default (withGroup: boolean = true) => {
           };
         });
 
-        withGroup && field && set(groupSlice(true), sample.sample[field].name);
+        group &&
+          withGroup &&
+          field &&
+          set(groupSlice(true), sample.sample[field].name);
       },
-    [field, withGroup]
+    [group, field, withGroup]
   );
 };
