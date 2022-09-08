@@ -140,5 +140,5 @@
 .. |AnnotationBackend| replace:: :class:`AnnotationBackend <fiftyone.utils.annotations.AnnotationBackend>`
 .. |AnnotationBackendConfig| replace:: :class:`AnnotationBackendConfig <fiftyone.utils.annotations.AnnotationBackendConfig>`
 
-.. |EmbeddedDocument| replace:: :class:`EmbeddedDocument <fiftyone.core.odm.document.EmbeddedDocument>`
-.. |DynamicEmbeddedDocument| replace:: :class:`DynamicEmbeddedDocument <fiftyone.core.odm.document.DynamicEmbeddedDocument>`
+.. |EmbeddedDocument| replace:: :class:`EmbeddedDocument <fiftyone.core.odm.embedded_document.EmbeddedDocument>`
+.. |DynamicEmbeddedDocument| replace:: :class:`DynamicEmbeddedDocument <fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument>`

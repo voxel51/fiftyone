@@ -10,6 +10,7 @@ from datetime import date, datetime
 import json
 import numbers
 import six
+import sys
 
 from bson import json_util
 from bson.binary import Binary
@@ -24,7 +25,8 @@ import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
-foed = fou.lazy_import("fiftyone.core.odm.embedded_document")
+food = fou.lazy_import("fiftyone.core.odm.document")
+fooe = fou.lazy_import("fiftyone.core.odm.embedded_document")
 
 
 def serialize_value(value, extended=False):
@@ -97,8 +99,8 @@ def deserialize_value(value):
     """
     if isinstance(value, dict):
         if "_cls" in value:
-            # Serialized embedded document
-            _cls = getattr(fo, value["_cls"])
+            # Serialized document
+            _cls = _document_registry[value["_cls"]]
             return _cls.from_dict(value)
 
         if "$binary" in value:
@@ -221,7 +223,7 @@ def get_implied_field_kwargs(value):
     Returns:
         a field specification dict
     """
-    if isinstance(value, foed.BaseEmbeddedDocument):
+    if isinstance(value, fooe.BaseEmbeddedDocument):
         return {
             "ftype": fof.EmbeddedDocumentField,
             "embedded_doc_type": type(value),
@@ -323,7 +325,7 @@ def _get_list_value_type(value):
     if isinstance(value, ObjectId):
         return fof.ObjectIdField
 
-    if isinstance(value, foed.BaseEmbeddedDocument):
+    if isinstance(value, fooe.BaseEmbeddedDocument):
         return fof.EmbeddedDocumentField
 
     if isinstance(value, datetime):
@@ -420,3 +422,66 @@ def _merge_field_kwargs(fields_list):
                 kwargs["fields"].append(v)
 
     return kwargs
+
+
+class DocumentRegistry(object):
+    """A registry of
+    :class:`fiftyone.core.odm.document.MongoEngineBaseDocument` classes found
+    when importing data from the database.
+    """
+
+    def __init__(self):
+        self._cache = {}
+
+    def __repr__(self):
+        return repr(self._cache)
+
+    def __getitem__(self, name):
+        # Check cache first
+        cls = self._cache.get(name, None)
+        if cls is not None:
+            return cls
+
+        # Then fiftyone namespace
+        try:
+            cls = self._get_cls(fo, name)
+            self._cache[name] = cls
+            return cls
+        except AttributeError:
+            pass
+
+        # Then full module list
+        for module in sys.modules.values():
+            try:
+                cls = self._get_cls(module, name)
+                self._cache[name] = cls
+                return cls
+            except AttributeError:
+                pass
+
+        raise DocumentRegistryError(
+            "Could not locate document class '%s'.\n\nIf you are working with "
+            "a dataset that uses custom embedded documents, you must add them "
+            "to FiftyOne's module path. See "
+            "https://voxel51.com/docs/fiftyone/user_guide/using_datasets.html#custom-embedded-documents "
+            "for more information" % name
+        )
+
+    def _get_cls(self, module, name):
+        cls = getattr(module, name)
+
+        try:
+            assert issubclass(cls, food.MongoEngineBaseDocument)
+        except:
+            raise AttributeError
+
+        return cls
+
+
+class DocumentRegistryError(Exception):
+    """Error raised when an unknown document class is encountered."""
+
+    pass
+
+
+_document_registry = DocumentRegistry()
