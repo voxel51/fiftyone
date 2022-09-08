@@ -37,6 +37,7 @@ from fiftyone.core.session.events import (
     CloseSession,
     DeactivateNotebookCell,
     ReactivateNotebookCell,
+    RefreshApp,
     StateUpdate,
 )
 
@@ -594,6 +595,7 @@ class Session(object):
     def refresh(self) -> None:
         """Refreshes the current App window."""
         self._client.send_event(StateUpdate(state=self._state))
+        self._client.send_event(RefreshApp())
 
     @property
     def selected(self) -> t.List[str]:
