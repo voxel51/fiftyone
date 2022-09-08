@@ -28,6 +28,9 @@ export const getFetchHeaders = () => {
 };
 
 export const getFetchOrigin = () => {
+  if (window.FIFTYONE_SERVER_ADDRESS) {
+    return window.FIFTYONE_SERVER_ADDRESS;
+  }
   return fetchOrigin;
 };
 
@@ -88,7 +91,6 @@ export const getAPI = () => {
   if (window.FIFTYONE_SERVER_ADDRESS) {
     return window.FIFTYONE_SERVER_ADDRESS;
   }
-
   return isElectron()
     ? `http://${process.env.FIFTYONE_SERVER_ADDRESS || "localhost"}:${
         process.env.FIFTYONE_SERVER_PORT || 5151
