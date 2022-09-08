@@ -11,13 +11,39 @@ FiftyOne 0.17.0
 
 App
 
+- Added initial support for :ref:`App plugins <app-plugins>`
+  `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added support for configuring the media field for both the grid
+  and modal via the options gear action, and via the dataset's
+  :attr:`app_config <fiftyone.core.dataset.Dataset.app_config>`
+  `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added support for visualizing sample groups in grouped datasets
+  in the modal
+  `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added support for a group context option when using grouped
+  datasets that targets an sample group as opposed to the active slice
+  `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added support for visualizing point cloud samples in the modal
+  `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added support for visualizing and interacting with
+  :class:`GeoLocation <fiftyone.core.labels.GeoLocation>`
+  and 
+  :class:`GeoLocations <fiftyone.core.labels.GeoLocations>`
+  label field coordinates via the ``Map`` plot tab
+  `#1976 <https://github.com/voxel51/fiftyone/pull/1976>`_
 - Fixed Colabatory screenshotting and cell updates
   `#2069 <https://github.com/voxel51/fiftyone/pull/2069>`_
 
 Core
 
-- Added the :attr:`Dataset.app_config <fiftyone.core.dataset.Dataset>`
+- Added support for grouped datasets, e.g. multiple camera view scenes
+  `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added support for point cloud samples when using grouped datasets
+  `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added the Dataset
+  :attr:`app_config <fiftyone.core.dataset.Dataset.app_config>`
   for configuring App behavior for an individual dataset
+  `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
 - Added ``rel_dir`` to
   :meth:`export() <fiftyone.core.collectionsSampleCollection.export>`
   and
@@ -46,6 +72,10 @@ Annotation
   404 responses from CVAT 2 servers
   `#2070 <https://github.com/voxel51/fiftyone/pull/2070>`_
 
+Zoo
+
+- Added the ``quickstart-geo`` and ``quickstart-groups`` datasets to the 
+  dataset zoo
 
 .. _release-notes-v0.16.6:
 
