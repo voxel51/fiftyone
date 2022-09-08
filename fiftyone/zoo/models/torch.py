@@ -81,7 +81,8 @@ class TorchvisionImageModelConfig(
 
 
 class TorchvisionImageModel(fout.TorchImageModel):
-    """Wrapper for evaluating a :mod:`torchvision:torchvision.models` model on images.
+    """Wrapper for evaluating a :mod:`torchvision:torchvision.models` model on
+    images.
 
     Args:
         config: an :class:`TorchvisionImageModelConfig`

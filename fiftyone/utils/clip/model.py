@@ -1,10 +1,18 @@
 """
-CLIP model from https://github.com/openai/CLIP
+CLIP model from `https://github.com/openai/CLIP`_.
+
+| Copyright 2017-2022, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 from collections import OrderedDict
 from typing import Tuple, Union
 
 import numpy as np
+
+import fiftyone.core.utils as fou
+
+fou.ensure_torch()
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -119,14 +127,14 @@ class AttentionPool2d(nn.Module):
 
 
 class ModifiedResNet(nn.Module):
-    """
-    A ResNet class that is similar to torchvision's
-     but contains the following changes:
-    - There are now 3 "stem" convolutions as opposed to 1,
-     with an average pool instead of a max pool.
-    - Performs anti-aliasing strided convolutions,
-    where an avgpool is prepended to convolutions with stride > 1
-    - The final pooling layer is a QKV attention instead of an average pool
+    """A ResNet class that is similar to torchvision's but contains the
+    following changes:
+
+    -   There are now 3 "stem" convolutions as opposed to 1, with an
+        average pool instead of a max pool.
+    -   Performs anti-aliasing strided convolutions, where an avgpool is
+        prepended to convolutions with stride > 1
+    -   The final pooling layer is a QKV attention instead of an average pool
     """
 
     def __init__(
@@ -484,7 +492,7 @@ class CLIP(nn.Module):
 
 
 def convert_weights(model: nn.Module):
-    """Convert applicable model parameters to fp16"""
+    """Converts applicable model parameters to fp16."""
 
     def _convert_weights_to_fp16(l):
         if isinstance(l, (nn.Conv1d, nn.Conv2d, nn.Linear)):
