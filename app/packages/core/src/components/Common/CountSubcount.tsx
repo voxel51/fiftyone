@@ -1,6 +1,6 @@
 import React, { Suspense } from "react";
 import { RecoilValue, useRecoilValue } from "recoil";
-import LoadingCircle from "./LoadingCircle";
+import LoadingCircle from "./Loading";
 
 const EntryCounts = ({
   countAtom,

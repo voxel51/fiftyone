@@ -6,6 +6,7 @@ import {
   Dataset as CoreDataset,
   useDatasetLoader,
   usePreLoadedDataset,
+  ViewBar,
 } from "@fiftyone/core";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
@@ -44,6 +45,7 @@ export function Dataset({ datasetName, environment, theme }) {
           datasetQueryRef={datasetQueryRef}
           initialState={initialState}
         >
+          <ViewBar />
           <CoreDataset />
         </DatasetLoader>
       </Suspense>
