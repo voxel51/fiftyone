@@ -3540,6 +3540,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def task_url(self, task_id):
         return "%s/%d" % (self.tasks_url, task_id)
 
+    def task_status_url(self, task_id):
+        return "%s/status" % self.task_url(task_id)
+
     def task_data_url(self, task_id):
         return "%s/data" % self.task_url(task_id)
 
@@ -3999,15 +4002,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             True/False
         """
-        return (
-            self._get_value_from_search(
-                self.task_id_search_url,
-                task_id,
-                "id",
-                "id",
+        try:
+            response = self.get(
+                self.task_status_url(task_id), print_error_info=False
             )
-            is not None
-        )
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                return False
+            else:
+                raise e
+
+        return True
 
     def delete_task(self, task_id):
         """Deletes the given task from the CVAT server.
@@ -5373,7 +5378,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         # For non-outside tracked objects, the last track goes to the end of
         # the video, so fill remaining frames with copies of the last instance
-        if prev_frame is not None and not prev_outside:
+        if (
+            anno_type == "track"
+            and prev_frame is not None
+            and not prev_outside
+        ):
             for frame in range(prev_frame + 1, max(frame_id_map) + 1):
                 anno = deepcopy(prev_anno)
                 anno["frame"] = frame
