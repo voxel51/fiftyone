@@ -1,6 +1,6 @@
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
-import { getFetchFunction } from "@fiftyone/utilities";
+import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
 import * as recoil from "recoil";
 import * as fos from "@fiftyone/state";
 import * as _ from "lodash";
@@ -68,7 +68,7 @@ export async function loadPlugins() {
   for (const { scriptPath, name } of plugins) {
     const pluginSetting = settings && settings[name];
     if (!pluginSetting || pluginSetting.enabled !== false) {
-      await loadScript(name, scriptPath);
+      await loadScript(name, `${getFetchOrigin()}${scriptPath}`);
     }
   }
 }
