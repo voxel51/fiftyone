@@ -6464,6 +6464,7 @@ class SampleCollection(object):
     def draw_labels(
         self,
         output_dir,
+        rel_dir=None,
         label_fields=None,
         overwrite=False,
         config=None,
@@ -6481,6 +6482,13 @@ class SampleCollection(object):
 
         Args:
             output_dir: the directory to write the annotated media
+            rel_dir (None): an optional relative directory to strip from each
+                input filepath to generate a unique identifier that is joined
+                with ``output_dir`` to generate an output path for each
+                annotated media. This argument allows for populating nested
+                subdirectories in ``output_dir`` that match the shape of the
+                input paths. The path is converted to an absolute path (if
+                necessary) via :func:`fiftyone.core.utils.normalize_path`
             label_fields (None): a label field or list of label fields to
                 render. By default, all :class:`fiftyone.core.labels.Label`
                 fields are drawn
@@ -6513,6 +6521,7 @@ class SampleCollection(object):
             return foua.draw_labeled_videos(
                 self,
                 output_dir,
+                rel_dir=rel_dir,
                 label_fields=label_fields,
                 config=config,
                 **kwargs,
@@ -6521,6 +6530,7 @@ class SampleCollection(object):
         return foua.draw_labeled_images(
             self,
             output_dir,
+            rel_dir=rel_dir,
             label_fields=label_fields,
             config=config,
             **kwargs,
@@ -6533,6 +6543,7 @@ class SampleCollection(object):
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
         dataset_exporter=None,
         label_field=None,
         frame_labels_field=None,
@@ -6665,6 +6676,14 @@ class SampleCollection(object):
                 that some dataset formats may not support certain values for
                 this parameter (e.g., when exporting in binary formats such as
                 TF records, "symlink" is not an option)
+            rel_dir (None): an optional relative directory to strip from each
+                input filepath to generate a unique identifier for each media.
+                When exporting media, this identifier is joined with
+                ``data_path`` to generate an output path for each exported
+                media. This argument allows for populating nested
+                subdirectories that match the shape of the input paths. The
+                path is converted to an absolute path (if necessary) via
+                :func:`fiftyone.core.utils.normalize_path`
             dataset_exporter (None): a
                 :class:`fiftyone.utils.data.exporters.DatasetExporter` to use
                 to export the samples. When provided, parameters such as
@@ -6721,6 +6740,7 @@ class SampleCollection(object):
             data_path=data_path,
             labels_path=labels_path,
             export_media=export_media,
+            rel_dir=rel_dir,
             dataset_exporter=dataset_exporter,
             label_field=label_field,
             frame_labels_field=frame_labels_field,
@@ -8736,6 +8756,7 @@ def _export(
     data_path=None,
     labels_path=None,
     export_media=None,
+    rel_dir=None,
     dataset_exporter=None,
     label_field=None,
     frame_labels_field=None,
@@ -8766,6 +8787,7 @@ def _export(
             data_path=data_path,
             labels_path=labels_path,
             export_media=export_media,
+            rel_dir=rel_dir,
             **kwargs,
         )
 
