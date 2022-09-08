@@ -4954,6 +4954,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        group_slice=None,
         group_slices=None,
         groups_only=False,
         detach_groups=False,
@@ -4961,6 +4962,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         if media_type is None:
             media_type = self.media_type
+
+        if group_slice is None:
+            group_slice = self.group_slice
 
         if media_type == fom.VIDEO:
             contains_videos = True
@@ -4996,7 +5000,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # If this is a grouped dataset, always start the pipeline by selecting
         # `group_slice`, unless the caller manually overrides this
         if self.media_type == fom.GROUP and not manual_group_select:
-            _pipeline.extend(self._group_select_pipeline())
+            _pipeline.extend(self._group_select_pipeline(group_slice))
 
         if attach_frames:
             _pipeline.extend(self._attach_frames_pipeline())
@@ -5094,21 +5098,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             {"$replaceRoot": {"newRoot": "$frames"}},
         ]
 
-    def _group_select_pipeline(self):
-        """A pipeline that selects only ``group_slice`` documents from the
+    def _group_select_pipeline(self, slice_name):
+        """A pipeline that selects only the given slice's documents from the
         pipeline.
         """
         if self.group_field is None:
             return []
 
         name_field = self.group_field + ".name"
-        return [
-            {
-                "$match": {
-                    "$expr": {"$eq": ["$" + name_field, self.group_slice]}
-                }
-            }
-        ]
+        return [{"$match": {"$expr": {"$eq": ["$" + name_field, slice_name]}}}]
 
     def _attach_groups_pipeline(self, group_slices=None):
         """A pipeline that attaches the reuested group slice(s) for each
@@ -5207,6 +5205,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        group_slice=None,
         group_slices=None,
         groups_only=False,
         detach_groups=False,
@@ -5218,6 +5217,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
+            group_slice=group_slice,
             group_slices=group_slices,
             groups_only=groups_only,
             detach_groups=detach_groups,

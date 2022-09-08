@@ -7866,6 +7866,7 @@ class SampleCollection(object):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        group_slice=None,
         group_slices=None,
         groups_only=False,
         detach_groups=False,
@@ -7886,6 +7887,9 @@ class SampleCollection(object):
                 videos
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the collection
+            group_slice (None): the current group slice of the collection, if
+                different than the source dataset's group slice. Only
+                applicable for grouped collections
             group_slices (None): a list of group slices to attach immediately
                 prior to executing ``pipeline``. Only applicable for grouped
                 collections
@@ -7909,6 +7913,7 @@ class SampleCollection(object):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        group_slice=None,
         group_slices=None,
         groups_only=False,
         detach_groups=False,
@@ -7930,6 +7935,9 @@ class SampleCollection(object):
                 videos
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the colection
+            group_slice (None): the current group slice of the collection, if
+                different than the source dataset's group slice. Only
+                applicable for grouped collections
             group_slices (None): a list of group slices to attach immediately
                 prior to executing ``pipeline``. Only applicable for grouped
                 collections

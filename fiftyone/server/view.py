@@ -49,7 +49,7 @@ def get_view(
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
-    view = fod.load_dataset(dataset_name)
+    view = fod.load_dataset(dataset_name).view()
     view.reload()
 
     if stages:
@@ -57,13 +57,12 @@ def get_view(
 
     if sample_filter is not None:
         if sample_filter.group:
-            if sample_filter.group.slice:
-                view.group_slice = sample_filter.group.slice
-
             if sample_filter.group.id:
                 view = fov.make_optimized_select_view(
                     view, sample_filter.group.id, groups=True
                 )
+            if sample_filter.group.slice:
+                view.group_slice = sample_filter.group.slice
 
         elif sample_filter.id:
             view = fov.make_optimized_select_view(view, sample_filter.id)

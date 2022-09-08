@@ -1,7 +1,8 @@
-import { useTheme } from "@fiftyone/components";
+import { Loading, useTheme } from "@fiftyone/components";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
+  Field,
   formatDate,
   formatDateTime,
   FRAME_SUPPORT_FIELD,
@@ -9,7 +10,9 @@ import {
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@material-ui/icons";
 import { useSpring } from "@react-spring/core";
+
 import React, { Suspense, useMemo, useState } from "react";
+
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
@@ -203,8 +206,8 @@ const ListLoadable = ({ path }: { path: string }) => {
 
   return (
     <ListContainer>
-      {values.map((v) => (
-        <div>{v}</div>
+      {values.map((v, i) => (
+        <div key={i}>{v}</div>
       ))}
     </ListContainer>
   );
@@ -256,7 +259,7 @@ const PathValueEntry = ({
     cb: () => void
   ) => void;
 }) => {
-  const field = useRecoilValue(fos.field(path.split(".")[0]));
+  const field = useRecoilValue(fos.field(path));
 
   return field.ftype !== LIST_FIELD ? (
     <ScalarValueEntry entryKey={entryKey} path={path} trigger={trigger} />

@@ -122,6 +122,7 @@ export const tagStatistics = selectorFamily<
         slice: groupStats ? null : get(currentSlice(modal)),
         count_labels,
         filters: get(modal ? fos.modalFilters : fos.filters),
+        mixed: groupStats,
         hidden_labels:
           modal && labels ? toSnakeCase(get(fos.hiddenLabelsArray)) : null,
       });

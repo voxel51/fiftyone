@@ -1,4 +1,4 @@
-import React, { MutableRefObject, useLayoutEffect } from "react";
+import React, { MutableRefObject, useCallback, useLayoutEffect } from "react";
 import {
   RecoilValueReadOnly,
   useRecoilCallback,
@@ -30,20 +30,19 @@ const useGridActions = (close: () => void) => {
   const elementNames = useRecoilValue(fos.elementNames);
   const clearSelection = useClearSampleSelection(close);
   const setView = fos.useSetView();
-  const addStage = useRecoilTransaction_UNSTABLE(
-    ({ get }) =>
-      (name: string) => {
-        const view = get(fos.view);
-
-        setView([
-          ...(view || []),
-          {
-            _cls: `fiftyone.core.stages.${name}`,
-            kwargs: [["sample_ids", Array.from(get(fos.selectedSamples))]],
-          },
-        ]);
-        close();
-      }
+  const selected = useRecoilValue(fos.selectedSamples);
+  const addStage = useCallback(
+    (name: string) => {
+      setView((cur) => [
+        ...cur,
+        {
+          _cls: `fiftyone.core.stages.${name}`,
+          kwargs: [["sample_ids", [...selected]]],
+        },
+      ]);
+      close();
+    },
+    [selected]
   );
   return [
     {

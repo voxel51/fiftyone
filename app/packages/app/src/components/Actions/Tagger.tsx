@@ -378,6 +378,7 @@ const useTagCallback = (
         const stats = await snapshot.getPromise(groupStatistics(modal));
         let slice: string | null = null;
         let group: string | null = null;
+
         if (stats !== "group" && !hasSelected) {
           slice = await snapshot.getPromise(currentSlice(modal));
           group = modal ? await snapshot.getPromise(groupId) : null;
