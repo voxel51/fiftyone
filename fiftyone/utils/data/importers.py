@@ -1248,6 +1248,10 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        rel_dir (None): a relative directory to prepend to the ``filepath`` of
+            each sample if the filepath is not absolute. This path is converted
+            to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1256,7 +1260,12 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
     """
 
     def __init__(
-        self, dataset_dir, shuffle=False, seed=None, max_samples=None
+        self,
+        dataset_dir,
+        rel_dir=None,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
     ):
         super().__init__(
             dataset_dir=dataset_dir,
@@ -1265,7 +1274,10 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
             max_samples=max_samples,
         )
 
+        self.rel_dir = rel_dir
+
         self._metadata = None
+        self._rel_dir = None
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
@@ -1286,7 +1298,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         d = next(self._iter_samples)
 
         if not os.path.isabs(d["filepath"]):
-            d["filepath"] = os.path.join(self.dataset_dir, d["filepath"])
+            d["filepath"] = os.path.join(self._rel_dir, d["filepath"])
 
         if self._is_video_dataset:
             labels_relpath = d.pop("frames")
@@ -1319,6 +1331,11 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
             self._is_video_dataset = media_type == fomm.VIDEO
         else:
             self._metadata = {}
+
+        if self.rel_dir is not None:
+            self._rel_dir = fou.normalize_path(self.rel_dir)
+        else:
+            self._rel_dir = self.dataset_dir
 
         self._anno_dir = os.path.join(self.dataset_dir, "annotations")
         self._brain_dir = os.path.join(self.dataset_dir, "brain")
@@ -1455,9 +1472,9 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
-        rel_dir (None): a relative directory to prepend to the ``filepath``
-            of each sample if the filepath is not absolute. This path is
-            converted to an absolute path (if necessary) via
+        rel_dir (None): a relative directory to prepend to the ``filepath`` of
+            each sample if the filepath is not absolute. This path is converted
+            to an absolute path (if necessary) via
             :func:`fiftyone.core.utils.normalize_path`
         ordered (True): whether to preserve document order when importing
         shuffle (False): whether to randomly shuffle the order in which the

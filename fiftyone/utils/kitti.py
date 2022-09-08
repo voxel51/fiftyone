@@ -309,6 +309,7 @@ class KITTIDetectionDatasetExporter(
         self._media_exporter = foud.ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             default_ext=self.image_format,
             ignore_exts=True,
         )

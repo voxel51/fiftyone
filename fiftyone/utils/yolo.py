@@ -682,13 +682,9 @@ class YOLOv4DatasetExporter(
         return fol.Detections
 
     def setup(self):
-        if self.export_dir is None:
-            self._rel_dir = self.data_path
-        else:
-            self._rel_dir = self.export_dir
-
         self._classes = {}
         self._labels_map_rev = {}
+        self._rel_dir = os.path.dirname(self.images_path)
         self._images = []
         self._writer = YOLOAnnotationWriter()
 
