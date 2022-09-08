@@ -13,6 +13,7 @@ import {
   useRecoilRefresher_UNSTABLE,
   useRecoilState,
   useRecoilValue,
+  useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 import { useSpring } from "@react-spring/web";
@@ -336,13 +337,22 @@ const useTagCallback = (
   targetLabels,
   lookerRef?: React.MutableRefObject<Lookers | undefined>
 ) => {
-  const refreshers = [
-    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
-    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: targetLabels })),
+  const setAggs = useSetRecoilState(fos.aggregationsTick);
+  const setLabels = fos.useSetSelectedLabels();
+  const setSamples = fos.useSetSelected();
+
+  const finalize = [
+    () => setLabels([]),
+    () => setSamples([]),
+    () => setAggs((cur) => cur + 1),
+    ...[
+      useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
+      useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: true })),
+    ],
   ];
 
   return useRecoilCallback(
-    ({ snapshot, set }) =>
+    ({ snapshot, set, reset }) =>
       async ({ changes }) => {
         const activeLabels = await snapshot.getPromise(
           fos.labelPaths({ expanded: false })
@@ -355,18 +365,21 @@ const useTagCallback = (
         const selectedLabels =
           modal && targetLabels
             ? await snapshot.getPromise(fos.selectedLabelList)
-            : null;
+            : [];
+
         const selectedSamples = await snapshot.getPromise(fos.selectedSamples);
         const hiddenLabels =
           modal && targetLabels
             ? await snapshot.getPromise(fos.hiddenLabelsArray)
             : null;
+        const hasSelected = selectedLabels.length || selectedSamples.size;
 
         const modalData = modal ? await snapshot.getPromise(fos.modal) : null;
         const stats = await snapshot.getPromise(groupStatistics(modal));
         let slice: string | null = null;
         let group: string | null = null;
-        if (stats !== "group") {
+
+        if (stats !== "group" && !hasSelected) {
           slice = await snapshot.getPromise(currentSlice(modal));
           group = modal ? await snapshot.getPromise(groupId) : null;
         }
@@ -379,7 +392,6 @@ const useTagCallback = (
           changes,
           group_id: group,
           slice,
-          mixed: stats === "group",
           modal: modal ? modalData.sample._id : null,
           sample_ids: modal
             ? null
@@ -414,8 +426,10 @@ const useTagCallback = (
           });
 
         set(fos.anyTagging, false);
+        reset(fos.selectedLabels);
+        reset(fos.selectedSamples);
 
-        refreshers.forEach((r) => r());
+        finalize.forEach((r) => r());
       },
     [modal, targetLabels, lookerRef]
   );

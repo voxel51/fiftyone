@@ -46,7 +46,6 @@ def get_view(
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
         sort (False): whether to include sort extended stages
-        mixed (False): whether to allow mixed slices for a group dataset
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -54,8 +53,8 @@ def get_view(
     view = fod.load_dataset(dataset_name)
     view.reload()
 
-    if mixed:
-        view = view.select_group_slices(_allow_mixed=True)
+    if stages:
+        view = fov.DatasetView._build(view, stages)
 
     if sample_filter is not None:
         if sample_filter.group:
@@ -69,9 +68,6 @@ def get_view(
 
         elif sample_filter.id:
             view = fov.make_optimized_select_view(view, sample_filter.id)
-
-    if stages:
-        view = fov.DatasetView._build(view, stages)
 
     if filters or extended_stages or count_label_tags:
         view = get_extended_view(

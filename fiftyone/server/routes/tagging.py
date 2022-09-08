@@ -36,7 +36,6 @@ class Tagging(HTTPEndpoint):
         hidden_labels = data.get("hidden_labels", None)
         slice = data.get("slice", None)
         group_id = data.get("group_id", None)
-        mixed = data.get("mixed", False)
 
         view = fosv.get_view(
             dataset,
@@ -46,7 +45,6 @@ class Tagging(HTTPEndpoint):
             sample_filter=SampleFilter(
                 group=GroupElementFilter(id=group_id, slice=slice)
             ),
-            mixed=mixed,
         )
 
         if sample_ids:
