@@ -3557,6 +3557,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def task_url(self, task_id):
         return "%s/%d" % (self.tasks_url, task_id)
 
+    def task_status_url(self, task_id):
+        return "%s/status" % self.task_url(task_id)
+
     def task_data_url(self, task_id):
         return "%s/data" % self.task_url(task_id)
 
@@ -4041,15 +4044,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             True/False
         """
-        return (
-            self._get_value_from_search(
-                self.task_id_search_url,
-                task_id,
-                "id",
-                "id",
+        try:
+            response = self.get(
+                self.task_status_url(task_id), print_error_info=False
             )
-            is not None
-        )
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                return False
+            else:
+                raise e
+
+        return True
 
     def delete_task(self, task_id):
         """Deletes the given task from the CVAT server.
