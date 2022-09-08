@@ -45,7 +45,9 @@ const useGeoLocations = ({
       () =>
         points
           ? points[0].reduce((acc, id, i) => {
-              acc[id] = points[1][i];
+              if (points[1][i]) {
+                acc[id] = points[1][i];
+              }
               return acc;
             }, {})
           : {},
