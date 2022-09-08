@@ -14,6 +14,7 @@ import { darkTheme, getEventSource, toCamelCase } from "@fiftyone/utilities";
 import { useEffect, useState, Suspense } from "react";
 import { State } from "@fiftyone/state";
 import { usePlugins } from "@fiftyone/plugins";
+import styled from "styled-components";
 
 enum Events {
   STATE_UPDATE = "state_update",
@@ -38,17 +39,35 @@ export function Dataset({ datasetName, environment, theme }) {
 
   console.log({ initialState });
 
+  const Container = styled.div`
+    width: 100%;
+    height: 100%;
+    background: var(--background-dark);
+    margin: 0;
+    padding: 0;
+    font-family: "Palanquin", sans-serif;
+    font-size: 14px;
+
+    color: var(--font);
+    display: flex;
+    flex-direction: column;
+    min-width: 660px;
+  `;
+
   return (
     <Theme theme={theme}>
-      <Suspense fallback={loadingElement}>
-        <DatasetLoader
-          datasetQueryRef={datasetQueryRef}
-          initialState={initialState}
-        >
-          <ViewBar />
-          <CoreDataset />
-        </DatasetLoader>
-      </Suspense>
+      <Container>
+        <Suspense fallback={loadingElement}>
+          <DatasetLoader
+            datasetQueryRef={datasetQueryRef}
+            initialState={initialState}
+          >
+            <ViewBar />
+            <CoreDataset />
+          </DatasetLoader>
+        </Suspense>
+        <div id="modal" />
+      </Container>
     </Theme>
   );
 }
