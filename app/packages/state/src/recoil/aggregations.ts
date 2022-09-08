@@ -3,7 +3,6 @@ import {
   GetRecoilValue,
   RecoilValueReadOnly,
   selectorFamily,
-  useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
 
@@ -21,7 +20,9 @@ import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
-import { currentSlice } from "./groups";
+
+import { currentSlice, groupStatistics, groupId } from "./groups";
+
 import { sidebarSampleId } from "./modal";
 
 type DateTimeBound = { datetime: number } | null;
@@ -130,6 +131,7 @@ export const aggregations = selectorFamily<
       let filters = null;
       let hiddenLabels = null;
       get(atoms.refresher);
+      get(aggregationsTick);
 
       if (extended && get(filterAtoms.hasFilters(modal))) {
         filters = get(modal ? filterAtoms.modalFilters : filterAtoms.filters);
@@ -154,18 +156,21 @@ export const aggregations = selectorFamily<
       if (!dataset) {
         return null;
       }
+      const groupStats = get(groupStatistics(modal)) === "group";
 
       const { aggregations: data } = (await getFetchFunction()(
         "POST",
         "/aggregations",
         {
           filters,
-          sample_ids: modal ? get(sidebarSampleId) : null,
+          sample_ids: modal && !groupStats ? get(sidebarSampleId) : null,
+          groupId: modal && groupStats ? get(groupId) : null,
           slice: get(currentSlice(modal)),
           dataset,
           view: get(viewAtoms.view),
           hidden_labels: hiddenLabels,
           extended: get(selectors.extendedStagesUnsorted),
+          mixed: groupStats,
         }
       )) as { aggregations: AggregationsData };
 

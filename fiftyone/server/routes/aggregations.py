@@ -5,10 +5,10 @@ FiftyOne Server /aggregation and /tagging routes
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import asyncio
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
-import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
@@ -37,15 +37,17 @@ class Aggregations(HTTPEndpoint):
         hidden_labels = data.get("hidden_labels", None)
         extended = data.get("extended", None)
         slice = data.get("slice", None)
+        group_id = data.get("groupId", None)
+        mixed = data.get("mixed", False)
 
         view = fosv.get_view(
             dataset,
             stages=stages,
             filters=filters,
             extended_stages=extended,
-            sample_filter=SampleFilter(group=GroupElementFilter(slice=slice))
-            if slice
-            else None,
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(id=group_id, slice=slice)
+            ),
         )
 
         if sample_ids:
@@ -54,7 +56,31 @@ class Aggregations(HTTPEndpoint):
         if hidden_labels:
             view = view.exclude_labels(hidden_labels)
 
-        return {"aggregations": await get_app_statistics(view, filters)}
+        if mixed:
+            view = view.select_group_slices(_allow_mixed=True)
+        else:
+            return {"aggregations": await get_app_statistics(view, filters)}
+
+        slice_view = fosv.get_view(
+            dataset,
+            stages=stages,
+            filters=filters,
+            extended_stages=extended,
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(id=group_id, slice=slice)
+            ),
+        )
+
+        results, slice_count = await asyncio.gather(
+            *(
+                get_app_statistics(view, filters),
+                slice_view._async_aggregate(foa.Count()),
+            )
+        )
+
+        results["_"] = {foa.Count.__name__: slice_count}
+
+        return {"aggregations": results}
 
 
 async def get_app_statistics(view, filters):
@@ -69,6 +95,7 @@ async def get_app_statistics(view, filters):
         a `dict` mapping field paths to aggregation `dict`s
     """
     aggregations = {"": {foa.Count.__name__: foa.Count()}}
+
     for path, field in view.get_field_schema().items():
         aggregations.update(_build_field_aggregations(path, field, filters))
 

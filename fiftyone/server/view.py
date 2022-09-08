@@ -44,7 +44,7 @@ def get_view(
             labels
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
-        sort (False): wheter to include sort extended stages
+        sort (False): whether to include sort extended stages
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -52,12 +52,13 @@ def get_view(
     view = fod.load_dataset(dataset_name)
     view.reload()
 
+    if stages:
+        view = fov.DatasetView._build(view, stages)
+
     if sample_filter is not None:
         if sample_filter.group:
             if sample_filter.group.slice:
                 view.group_slice = sample_filter.group.slice
-            elif view.media_type == fom.GROUP:
-                view.group_slice = view.default_group_slice
 
             if sample_filter.group.id:
                 view = fov.make_optimized_select_view(
@@ -66,9 +67,6 @@ def get_view(
 
         elif sample_filter.id:
             view = fov.make_optimized_select_view(view, sample_filter.id)
-
-    if stages:
-        view = fov.DatasetView._build(view, stages)
 
     if filters or extended_stages or count_label_tags:
         view = get_extended_view(

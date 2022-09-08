@@ -29,6 +29,7 @@ class Pin(HTTPEndpoint):
         sample_ids = data.get("sample_ids", None)
         add_stages = data.get("add_stages", None)
         extended = data.get("extended", None)
+        group_slice = data.get("slice", None)
 
         view = fosv.get_view(dataset, stages, filters)
         if sample_ids:
@@ -49,6 +50,12 @@ class Pin(HTTPEndpoint):
 
         if state.dataset != view:
             state.view = view
+
+        if group_slice:
+            if state.view is not None:
+                state.view.group_slice = group_slice
+            else:
+                state.dataset.group_slice = group_slice
 
         await fose.dispatch_event(subscription, StateUpdate(state=state))
 

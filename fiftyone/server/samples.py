@@ -16,7 +16,7 @@ import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.server.filters import SampleFilter
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 
 import fiftyone.server.metadata as fosm
 from fiftyone.server.paginator import Connection, Edge, PageInfo
@@ -76,7 +76,15 @@ async def paginate_samples(
         sample_filter=sample_filter,
     )
 
+    root_view = fosv.get_view(
+        dataset,
+        stages=stages,
+    )
+
     media = view.media_type
+    if media == fom.MIXED:
+        media = root_view.group_media_types[root_view.default_group_slice]
+
     has_video_slice = False
     if media == fom.GROUP:
         media = view.group_media_types[view.group_slice]

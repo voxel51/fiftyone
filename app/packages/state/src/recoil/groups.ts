@@ -7,8 +7,10 @@ import {
   paginateGroupQuery,
   paginateGroup_query$key,
 } from "@fiftyone/relay";
-import { VariablesOf, readInlineData, graphql } from "react-relay";
+
 import { atomFamily, selector, selectorFamily } from "recoil";
+import { VariablesOf, readInlineData } from "react-relay";
+
 import { graphQLSelector } from "recoil-relay";
 import {
   AppSample,
@@ -57,8 +59,9 @@ export const pinnedSlice = selector<string | null>({
   key: "pinnedSlice",
   get: ({ get }) => {
     const { groupMediaTypes } = get(dataset);
+
     for (const { name, mediaType } of groupMediaTypes) {
-      if (mediaType === "point_cloud") {
+      if (mediaType === "point_cloud" || mediaType === "point-cloud") {
         return name;
       }
     }
@@ -190,10 +193,11 @@ export const mainGroupSample = selector<AppSample>({
   key: "mainGroupSample",
   get: ({ get }) => {
     const field = get(groupField);
+    const group = get(isGroup);
 
     const sample = get(modal).sample;
 
-    if (!field) return sample;
+    if (!field || !group) return sample;
 
     if (sample[field].name === get(groupSlice(true))) {
       return sample;
@@ -201,4 +205,9 @@ export const mainGroupSample = selector<AppSample>({
 
     return get(mainSampleQuery).sample.sample as AppSample;
   },
+});
+
+export const groupStatistics = atomFamily<"group" | "slice", boolean>({
+  key: "groupStatistics",
+  default: "slice",
 });

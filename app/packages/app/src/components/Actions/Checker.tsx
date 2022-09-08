@@ -223,6 +223,7 @@ const Checker = ({
             : changes[name] === CheckState.REMOVE
             ? null
             : items[name];
+
         return (
           <Check
             {...{ name, count: c, active, disabled }}

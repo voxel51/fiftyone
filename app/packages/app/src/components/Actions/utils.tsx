@@ -6,6 +6,12 @@ import styled from "styled-components";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import {
+  currentSlice,
+  groupId,
+  groupStatistics,
+  sidebarSampleId,
+} from "@fiftyone/state";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};
@@ -78,6 +84,7 @@ export const allTags = selector<{ sample: string[]; label: string[] } | null>({
 export const tagStatistics = selectorFamily<
   {
     count: number;
+    items: number;
     tags: { [key: string]: number };
   },
   { modal: boolean; labels: boolean }
@@ -99,31 +106,44 @@ export const tagStatistics = selectorFamily<
         );
       }
 
-      const { count, tags } = await getFetchFunction()("POST", "/tagging", {
+      const groupStats = get(groupStatistics(modal)) === "group";
+
+      return await getFetchFunction()("POST", "/tagging", {
         dataset: get(fos.dataset).name,
         view: get(fos.view),
         active_label_fields: activeLabels,
         sample_ids: selected.size
           ? [...selected]
-          : modal
-          ? [get(fos.modal)?.sample._id]
+          : modal && !groupStats
+          ? get(sidebarSampleId)
           : null,
         labels: toSnakeCase(labels),
+        group_id: modal && !selected.size && groupStats ? get(groupId) : null,
+        slice: groupStats ? null : get(currentSlice(modal)),
         count_labels,
         filters: get(modal ? fos.modalFilters : fos.filters),
         hidden_labels:
           modal && labels ? toSnakeCase(get(fos.hiddenLabelsArray)) : null,
       });
-
-      return { count, tags };
     },
 });
 
-export const numLabelsInSelectedSamples = selector<number>({
+export const numItemsInSelection = selectorFamily<number, boolean>({
   key: "numLabelsInSelectedSamples",
-  get: ({ get }) => {
-    return get(tagStatistics({ modal: false, labels: true })).count;
-  },
+  get:
+    (labels) =>
+    ({ get }) => {
+      return get(tagStatistics({ modal: false, labels })).count;
+    },
+});
+
+export const selectedSamplesCount = selectorFamily<number, boolean>({
+  key: "selectedSampleCount",
+  get:
+    (modal) =>
+    ({ get }) => {
+      return get(tagStatistics({ modal, labels: false })).items;
+    },
 });
 
 export const tagStats = selectorFamily<

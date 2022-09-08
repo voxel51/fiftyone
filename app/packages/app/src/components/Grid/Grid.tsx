@@ -125,8 +125,7 @@ const Grid: React.FC<{}> = () => {
       fos.filterView(useRecoilValue(fos.view)),
       useRecoilValue(fos.groupSlice(false)),
       useRecoilValue(fos.refresher),
-      fos.tagging,
-      useRecoilValue(fos.extendedStages),
+      useRecoilValue(fos.extendedStagesUnsorted),
       useRecoilValue(fos.selectedMediaField(false)),
     ]
   );

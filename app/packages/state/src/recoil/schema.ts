@@ -16,6 +16,7 @@ import {
 import * as atoms from "./atoms";
 import { State } from "./types";
 import * as viewAtoms from "./view";
+import { isGroup } from "./groups";
 
 const RESERVED_FIELDS = [
   "id",
@@ -77,7 +78,8 @@ export const buildSchema = (dataset: State.Dataset): Schema => {
 const fieldFilter = (
   fields: Schema,
   view: State.Stage[],
-  space: State.SPACE
+  space: State.SPACE,
+  isGroup: boolean
 ) => {
   view.forEach(({ _cls, kwargs }) => {
     if (_cls === "fiftyone.core.stages.SelectFields") {
@@ -91,7 +93,8 @@ const fieldFilter = (
       Object.keys(fields).forEach(
         (f) =>
           !names.has(f) &&
-          fields[f].embeddedDocType !== "fiftyone.core.groups.Group" &&
+          (fields[f].embeddedDocType !== "fiftyone.core.groups.Group" ||
+            !isGroup) &&
           delete fields[f]
       );
     } else if (_cls === "fiftyone.core.stages.ExcludeFields") {
@@ -128,7 +131,7 @@ export const fieldSchema = selectorFamily<
         space === State.SPACE.FRAME ? dataset.frameFields : dataset.sampleFields
       ).reduce(schemaReduce, {});
 
-      filtered && fieldFilter(fields, get(viewAtoms.view), space);
+      filtered && fieldFilter(fields, get(viewAtoms.view), space, get(isGroup));
 
       return fields;
     },
