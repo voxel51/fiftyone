@@ -195,7 +195,7 @@ const ListValueEntry = ({
 
 const LengthLoadable = ({ path }: { path: string }) => {
   const data = useData<any[]>(path);
-  return <>{data.length}</>;
+  return <>{data?.length || 0}</>;
 };
 
 const ListLoadable = ({ path }: { path: string }) => {
