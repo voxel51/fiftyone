@@ -114,7 +114,7 @@ _MODEL_TEMPLATE = """
 
 {% if 'zero-shot' in tags %}
     #
-    # Make zero-shot predictions with custom classses
+    # Make zero-shot predictions with custom classes
     #
 
     model = foz.load_zoo_model(
