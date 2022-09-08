@@ -127,8 +127,9 @@ SCREENSHOT_COLAB_SCRIPT = """
             var overlay = document.getElementById(`fooverlay-${subscription}`);
             google.colab.kernel.invokeFunction(`fiftyone.${subscription.replaceAll('-', '_')}`, [event.data.src, event.data.width], {});
             overlay.addEventListener("click", () => {
-                container.removeChild(container.children[1]);
-                document.body.appendChild(iframe);
+              google.colab.kernel.invokeFunction(`fiftyone.deactivate.${subscription.replaceAll('-', '_')}`, [], {})
+              container.removeChild(container.children[1]);
+              document.body.appendChild(iframe);
             });
             container.addEventListener("mouseenter", () => overlay.style.display = "block");
             container.addEventListener("mouseleave", () => overlay.style.display = "none");

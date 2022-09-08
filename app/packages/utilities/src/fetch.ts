@@ -205,7 +205,6 @@ const pollingEventSource = (
   opened: boolean = false
 ): void => {
   if (signal.aborted) {
-    opened && events.onclose();
     return;
   }
 

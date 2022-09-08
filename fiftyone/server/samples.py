@@ -8,7 +8,6 @@ FiftyOne Server samples pagination
 import asyncio
 from dacite import Config, from_dict
 import strawberry as gql
-import strawberry.schema_directive as gqls
 import typing as t
 
 

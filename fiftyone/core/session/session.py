@@ -888,7 +888,7 @@ class Session(object):
             subscription=uuid,
         )
 
-        fosn.display(self._notebook_cells[uuid])
+        fosn.display(self._client, self._notebook_cells[uuid])
         return uuid
 
     def no_show(self) -> fou.SetAttributes:
@@ -958,7 +958,7 @@ class Session(object):
         if self.remote:
             return
 
-        if self._client._connected:
+        if self._client._connected and focx._get_context() == focx._NONE:
             self._client.send_event(CloseSession())
 
         self.plots.disconnect()
@@ -997,9 +997,10 @@ def _attach_listeners(session: "Session"):
         )
 
         def on_reactivate_notebook_cell(event: ReactivateNotebookCell) -> None:
-            session._client.send_event(DeactivateNotebookCell())
             fosn.display(
-                session._notebook_cells[event.subscription], reactivate=True
+                session._client,
+                session._notebook_cells[event.subscription],
+                reactivate=True,
             )
 
         session._client.add_event_listener(
