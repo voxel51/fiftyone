@@ -16,6 +16,10 @@ import { State } from "@fiftyone/state";
 import { usePlugins } from "@fiftyone/plugins";
 import styled from "styled-components";
 
+// built-in plugins
+import "@fiftyone/map";
+import "@fiftyone/looker-3d";
+
 enum Events {
   STATE_UPDATE = "state_update",
 }
