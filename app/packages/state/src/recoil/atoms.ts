@@ -19,7 +19,9 @@ export interface SampleData {
   aspectRatio: number;
   frameRate?: number;
   frameNumber?: number;
-  url?: string;
+  urls: {
+    [field: string]: string;
+  };
 }
 
 export interface ModalNavigation {

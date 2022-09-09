@@ -9,10 +9,18 @@ export default graphql`
     sample(dataset: $dataset, view: $view, filter: $filter) {
       ... on ImageSample {
         sample
+        urls {
+          field
+          url
+        }
       }
       ... on VideoSample {
         sample
         frameRate
+        urls {
+          field
+          url
+        }
       }
     }
   }

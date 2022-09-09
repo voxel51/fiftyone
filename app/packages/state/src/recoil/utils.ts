@@ -1,11 +1,12 @@
 import { getFetchOrigin } from "@fiftyone/utilities";
 
-export const getSampleSrc = (filepath: string, id: string, url?: string) => {
-  if (url) {
-    return url;
-  }
+export const getSampleSrc = (url: string) => {
+  try {
+    const { protocol } = new URL(url);
+    if (["http", "https"].includes(protocol)) {
+      return url;
+    }
+  } catch {}
 
-  return `${getFetchOrigin()}/media?filepath=${encodeURIComponent(
-    filepath
-  )}&id=${id}`;
+  return `${getFetchOrigin()}/media?filepath=${encodeURIComponent(url)}`;
 };

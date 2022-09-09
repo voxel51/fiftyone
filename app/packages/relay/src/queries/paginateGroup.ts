@@ -32,14 +32,26 @@ export const paginateGroupPaginationFragment = graphql`
           ... on ImageSample {
             aspectRatio
             sample
+            urls {
+              field
+              url
+            }
           }
           ... on PointCloudSample {
             sample
+            urls {
+              field
+              url
+            }
           }
           ... on VideoSample {
             aspectRatio
             frameRate
             sample
+            urls {
+              field
+              url
+            }
           }
         }
       }
@@ -54,14 +66,26 @@ export const paginateGroupPinnedSampleFragment = graphql`
       ... on ImageSample {
         aspectRatio
         sample
+        urls {
+          field
+          url
+        }
       }
       ... on PointCloudSample {
         sample
+        urls {
+          field
+          url
+        }
       }
       ... on VideoSample {
         aspectRatio
         frameRate
         sample
+        urls {
+          field
+          url
+        }
       }
     }
   }

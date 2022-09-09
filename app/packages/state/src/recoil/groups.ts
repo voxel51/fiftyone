@@ -45,11 +45,16 @@ export const groupSlice = atomFamily<string, boolean>({
   default: null,
 });
 
+export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
+  key: "groupMediaTypes",
+  get: ({ get }) => get(dataset).groupMediaTypes,
+});
+
 export const groupSlices = selector<string[]>({
   key: "groupSlices",
   get: ({ get }) => {
-    return get(dataset)
-      .groupMediaTypes.filter(({ mediaType }) => mediaType !== "point_cloud")
+    return get(groupMediaTypes)
+      .filter(({ mediaType }) => mediaType !== "point_cloud")
       .map(({ name }) => name)
       .sort();
   },
@@ -145,7 +150,10 @@ export const pinnedSliceSample = selector({
       throw new Error("unsupported pinned sample type");
     }
 
-    return data.sample;
+    return {
+      sample: data.sample,
+      urls: Object.fromEntries(data.urls.map(({ field, url }) => [field, url])),
+    };
   },
 });
 
