@@ -5,16 +5,19 @@ FiftyOne Server JIT metadata utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from enum import Enum
 import logging
 import re
 import requests
 import shutil
 import struct
+import typing as t
 
 import asyncio
 import aiofiles
 import aiohttp
 import backoff
+import strawberry as gql
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -32,13 +35,26 @@ logger = logging.getLogger(__name__)
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def get_metadata(session, filepath, media_type, metadata=None):
+@gql.enum
+class MediaType(Enum):
+    image = "image"
+    group = "group"
+    point_cloud = "point-cloud"
+    video = "video"
+
+
+async def get_metadata(
+    session: aiohttp.ClientSession,
+    filepath: str,
+    media_type: MediaType,
+    metadata: t.Optional[t.Dict] = None,
+):
     """Gets the metadata for the given local or remote media file.
 
     Args:
         session: an ``aiohttp.ClientSession`` to use if necessary
         filepath: the path to the file
-        media_type: the media type
+        media_type: the file's media type
         metadata (None): a pre-existing metadata dict to use if possible
 
     Returns:
@@ -72,18 +88,14 @@ async def get_metadata(session, filepath, media_type, metadata=None):
             frame_rate = metadata.get("frame_rate", None)
 
             if width and height and frame_rate:
-                d["width"] = width
-                d["height"] = height
-                d["frame_rate"] = frame_rate
-                return d
+                return dict(aspect_ratio=width / height, frame_rate=frame_rate)
+
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
 
             if width and height:
-                d["width"] = width
-                d["height"] = height
-                return d
+                return dict(aspect_ratio=width / height)
 
     try:
         if use_local:
@@ -100,13 +112,9 @@ async def get_metadata(session, filepath, media_type, metadata=None):
         # Something went wrong (ie non-existent file), so we gracefully return
         # some placeholder metadata so the App grid can be rendered
         if is_video:
-            metadata = {"width": 512, "height": 512, "frame_rate": 30}
+            return dict(aspect_ratio=1, frame_rate=30)
         else:
-            metadata = {"width": 512, "height": 512}
-
-    d.update(metadata)
-
-    return d
+            return dict(aspect_ratio=1)
 
 
 async def read_url_metadata(session, url, is_video):
@@ -158,16 +166,14 @@ async def read_local_metadata(local_path, is_video):
     """
     if is_video:
         info = await get_stream_info(local_path)
-        return {
-            "width": info.frame_size[0],
-            "height": info.frame_size[1],
-            "frame_rate": info.frame_rate,
-        }
+        return dict(
+            aspect_ratio=info.frame_size[0] / info.frame_size[1],
+            frame_rate=info.frame_rate,
+        )
 
     async with aiofiles.open(local_path, "rb") as f:
         width, height = await get_image_dimensions(f)
-
-    return {"width": width, "height": height}
+        return dict(aspect_ratio=width / height)
 
 
 class Reader(object):

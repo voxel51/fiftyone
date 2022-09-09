@@ -180,9 +180,8 @@ const TabOptionDiv = animated(styled.div`
 
   & > div {
     display: flex;
-    justify-content: center;
-    align-content: center;
     flex-direction: column;
+    align-content: center;
     cursor: inherit;
     flex-grow: 1;
     flex-basis: 0;

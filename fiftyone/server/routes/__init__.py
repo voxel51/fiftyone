@@ -5,6 +5,7 @@ FiftyOne Server routes
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from .aggregate import Aggregate
 from .aggregations import Aggregations
 from .colorscales import Colorscales
 from .distributions import Distributions
@@ -15,6 +16,7 @@ from .fiftyone import FiftyOne
 from .frames import Frames
 from .media import Media
 from .pin import Pin
+from .plugins import Plugins
 from .samples import Samples
 from .select import Select
 from .sidebar import Sidebar
@@ -26,6 +28,7 @@ from .values import Values
 
 
 routes = [
+    ("/aggregate", Aggregate),
     ("/aggregations", Aggregations),
     ("/coloscales", Colorscales),
     ("/distributions", Distributions),
@@ -36,6 +39,7 @@ routes = [
     ("/frames", Frames),
     ("/media", Media),
     ("/pin", Pin),
+    ("/plugins", Plugins),
     ("/samples", Samples),
     ("/select", Select),
     ("/sidebar", Sidebar),

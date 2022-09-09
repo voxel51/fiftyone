@@ -214,6 +214,15 @@ def annotate(
     anno_backend = config.build()
     anno_backend.ensure_requirements()
 
+    supported_media_types = anno_backend.supported_media_types
+    if samples.media_type == fomm.GROUP:
+        raise fomm.SelectGroupSlicesError(supported_media_types)
+    elif samples.media_type not in supported_media_types:
+        raise fomm.MediaTypeError(
+            "The '%s' backend does not supported annotating '%s' collections"
+            % (anno_backend.config.name, samples.media_type)
+        )
+
     label_schema, samples = _build_label_schema(
         samples,
         anno_backend,
@@ -436,12 +445,6 @@ def _build_label_schema(
         _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
 
         if is_video:
-            if not backend.supports_video:
-                raise ValueError(
-                    "Backend '%s' does not support annotating videos."
-                    % backend.config.name
-                )
-
             if not _is_frame_field:
                 if _return_type in _SPATIAL_TYPES:
                     raise ValueError(
@@ -869,7 +872,7 @@ def _get_attributes(
     if "attributes" in label_info:
         attributes = label_info["attributes"]
 
-    if attributes and not backend.supports_attributes:
+    if attributes and not backend.supported_attr_types:
         logger.warning(
             "The backend '%s' does not support attributes. Provided "
             "attributes will be ignored.",
@@ -1805,6 +1808,16 @@ class AnnotationBackend(foa.AnnotationMethod):
             self._api.__exit__(*args)
 
     @property
+    def supported_media_types(self):
+        """The list of media types that this backend supports.
+
+        For example, CVAT supports ``["image", "video"]``.
+        """
+        raise NotImplementedError(
+            "subclass must implement supported_media_types"
+        )
+
+    @property
     def supported_label_types(self):
         """The list of label types supported by the backend.
 
@@ -1874,23 +1887,13 @@ class AnnotationBackend(foa.AnnotationMethod):
         )
 
     @property
-    def supports_video(self):
-        """Whether this backend supports annotating videos."""
-        return True
-
-    @property
-    def supports_attributes(self):
-        """Whether this backend supports uploading and editing label
-        attributes.
-        """
-        return True
-
-    @property
     def requires_label_schema(self):
         """Whether this backend requires a pre-defined label schema for its
         annotation runs.
         """
-        return True
+        raise NotImplementedError(
+            "subclass must implement requires_label_schema"
+        )
 
     def recommend_attr_tool(self, name, value):
         """Recommends an attribute tool for an attribute with the given name
@@ -2301,7 +2304,7 @@ class DrawConfig(etaa.AnnotationConfig):
 
 
 def draw_labeled_images(
-    samples, output_dir, label_fields=None, config=None, **kwargs
+    samples, output_dir, rel_dir=None, label_fields=None, config=None, **kwargs
 ):
     """Renders annotated versions of the images in the collection with the
     specified label data overlaid to the given directory.
@@ -2315,6 +2318,13 @@ def draw_labeled_images(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         output_dir: the directory to write the annotated images
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each annotated image.
+            This argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
         label_fields (None): a label field or list of label fields to render.
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
@@ -2331,7 +2341,9 @@ def draw_labeled_images(
 
     samples.download_media()
 
-    filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
+    filename_maker = fou.UniqueFilenameMaker(
+        output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+    )
     output_ext = fo.config.default_image_ext
 
     outpaths = []
@@ -2378,7 +2390,7 @@ def draw_labeled_image(
 
 
 def draw_labeled_videos(
-    samples, output_dir, label_fields=None, config=None, **kwargs
+    samples, output_dir, rel_dir=None, label_fields=None, config=None, **kwargs
 ):
     """Renders annotated versions of the videos in the collection with the
     specified label data overlaid to the given directory.
@@ -2392,6 +2404,13 @@ def draw_labeled_videos(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         output_dir: the directory to write the annotated videos
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each annotated video.
+            This argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
         label_fields (None): a label field or list of label fields to render.
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
@@ -2406,7 +2425,9 @@ def draw_labeled_videos(
         config, kwargs, samples=samples, label_fields=label_fields
     )
 
-    filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
+    filename_maker = fou.UniqueFilenameMaker(
+        output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+    )
     output_ext = fo.config.default_video_ext
 
     is_clips = samples._dataset._is_clips

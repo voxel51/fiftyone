@@ -71,8 +71,8 @@ def _get_context():
     if _context is not None:
         return _context
 
-    if os.environ.get("FIFTYONE_COLAB", None):
-        _context = _COLAB
+    if os.environ.get("FIFTYONE_CONTEXT", None):
+        _context = os.environ["FIFTYONE_CONTEXT"]
         return _context
 
     # In Colab, the `google.colab` module is available, but the shell returned
@@ -86,6 +86,7 @@ def _get_context():
         if IPython.get_ipython() is not None:
             # We'll assume that we're in a Colab notebook context.
             _context = _COLAB
+            os.environ["FIFTYONE_CONTEXT"] = _context
             return _context
 
     # In Databricks, the `dbutils` module is available and required for the proxy,
@@ -101,6 +102,7 @@ def _get_context():
         if IPython.get_ipython() is not None:
             # We'll assume that we're in a Databricks notebook context.
             _context = _DATABRICKS
+            os.environ["FIFTYONE_CONTEXT"] = _context
             return _context
 
     # In an IPython command line shell or Jupyter notebook, we can directly
@@ -113,10 +115,12 @@ def _get_context():
         ipython = IPython.get_ipython()
         if ipython is not None and ipython.has_trait("kernel"):
             _context = _IPYTHON
+            os.environ["FIFTYONE_CONTEXT"] = _context
             return _context
 
     # Otherwise, we're not in a known notebook context.
     _context = _NONE
+    os.environ["FIFTYONE_CONTEXT"] = _context
 
     return _context
 

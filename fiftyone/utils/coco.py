@@ -262,8 +262,8 @@ class COCODetectionDatasetImporter(
             If None, the parameter will default to ``labels.json``
         label_types (None): a label type or list of label types to load. The
             supported values are
-            ``("detections", "segmentations", "keypoints")``. By default, only
-            "detections" are loaded
+            ``("detections", "segmentations", "keypoints")``. By default, all
+            label types are loaded
         classes (None): a string or list of strings specifying required classes
             to load. Only samples containing at least one instance of a
             specified class will be loaded
@@ -632,6 +632,15 @@ class COCODetectionDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` to
+            generate an output path for each exported image. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
+        abs_paths (False): whether to store absolute paths to the images in the
+            exported labels
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -662,6 +671,8 @@ class COCODetectionDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
+        abs_paths=False,
         image_format=None,
         classes=None,
         info=None,
@@ -688,6 +699,8 @@ class COCODetectionDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
+        self.abs_paths = abs_paths
         self.image_format = image_format
         self.classes = classes
         self.info = info
@@ -726,6 +739,7 @@ class COCODetectionDatasetExporter(
         self._media_exporter = foud.ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             default_ext=self.image_format,
         )
         self._media_exporter.setup()
@@ -735,16 +749,21 @@ class COCODetectionDatasetExporter(
             self.info = sample_collection.info
 
     def export_sample(self, image_or_path, label, metadata=None):
-        _, uuid = self._media_exporter.export(image_or_path)
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(image_or_path)
+
+        if self.abs_paths:
+            file_name = out_image_path
+        else:
+            file_name = uuid
 
         self._image_id += 1
         self._images.append(
             {
                 "id": self._image_id,
-                "file_name": uuid,
+                "file_name": file_name,
                 "height": metadata.height,
                 "width": metadata.width,
                 "license": None,
@@ -983,8 +1002,12 @@ class COCOObject(object):
                 for the object, if available
 
         Returns:
-            a :class:`fiftyone.core.labels.Detection`
+            a :class:`fiftyone.core.labels.Detection`, or None if no bbox data
+            is available
         """
+        if self.bbox is None:
+            return None
+
         label, attributes = self._get_object_label_and_attributes(
             classes, supercategory_map
         )
@@ -1316,7 +1339,7 @@ def parse_coco_categories(categories):
 
     classes = []
     supercategory_map = {}
-    for cat_id in range(max(cat_map) + 1):
+    for cat_id in range(max(cat_map, default=-1) + 1):
         category = cat_map.get(cat_id, None)
         try:
             name = category["name"]
@@ -1328,70 +1351,6 @@ def parse_coco_categories(categories):
             supercategory_map[name] = category
 
     return classes, supercategory_map
-
-
-def is_download_required(
-    dataset_dir,
-    split,
-    year="2017",
-    label_types=None,
-    classes=None,
-    image_ids=None,
-    max_samples=None,
-    raw_dir=None,
-):
-    """Checks whether :meth:`download_coco_dataset_split` must be called in
-    order for the given directory to contain enough samples to satisfy the
-    given requirements.
-
-    See :ref:`this page <COCODetectionDataset-import>` for the format in which
-    ``dataset_dir`` must be arranged.
-
-    Args:
-        dataset_dir: the directory to download the dataset
-        split: the split to download. Supported values are
-            ``("train", "validation", "test")``
-        year ("2017"): the dataset year to download. Supported values are
-            ``("2014", "2017")``
-        label_types (None): a label type or list of label types to load. The
-            supported values are ``("detections", "segmentations")``. By
-            default, only "detections" are loaded
-        classes (None): a string or list of strings specifying required classes
-            to load. Only samples containing at least one instance of a
-            specified class will be loaded
-        image_ids (None): an optional list of specific image IDs to load. Can
-            be provided in any of the following formats:
-
-            -   a list of ``<image-id>`` ints or strings
-            -   a list of ``<split>/<image-id>`` strings
-            -   the path to a text (newline-separated), JSON, or CSV file
-                containing the list of image IDs to load in either of the first
-                two formats
-        max_samples (None): the maximum number of samples desired
-        raw_dir (None): a directory in which full annotations files may be
-            stored to avoid re-downloads in the future
-
-    Returns:
-        True/False
-    """
-    logging.disable(logging.CRITICAL)
-    try:
-        _download_coco_dataset_split(
-            dataset_dir,
-            split,
-            year=year,
-            label_types=label_types,
-            classes=classes,
-            image_ids=image_ids,
-            max_samples=max_samples,
-            raw_dir=raw_dir,
-            dry_run=True,
-        )
-        return False  # everything was downloaded
-    except:
-        return True  # something needs to be downloaded
-    finally:
-        logging.disable(logging.NOTSET)
 
 
 def download_coco_dataset_split(
@@ -1424,7 +1383,7 @@ def download_coco_dataset_split(
             ``("2014", "2017")``
         label_types (None): a label type or list of label types to load. The
             supported values are ``("detections", "segmentations")``. By
-            default, only "detections" are loaded
+            default, all label types are loaded
         classes (None): a string or list of strings specifying required classes
             to load. Only samples containing at least one instance of a
             specified class will be loaded
@@ -1716,7 +1675,7 @@ def _write_partial_annotations(d, outpath, split, filenames):
 
 def _parse_label_types(label_types):
     if label_types is None:
-        return ["detections"]
+        return _SUPPORTED_LABEL_TYPES
 
     if etau.is_str(label_types):
         label_types = [label_types]
@@ -1990,9 +1949,9 @@ def _coco_objects_to_polylines(
 
         if polyline is not None:
             polylines.append(polyline)
-        else:
-            msg = "Skipping object with no segmentation mask"
-            warnings.warn(msg)
+
+    if not polylines:
+        return None
 
     return fol.Polylines(polylines=polylines)
 
@@ -2009,11 +1968,13 @@ def _coco_objects_to_detections(
             load_segmentation=load_segmentations,
         )
 
-        if load_segmentations and detection.mask is None:
-            msg = "Skipping object with no segmentation mask"
-            warnings.warn(msg)
-        else:
+        if detection is not None and (
+            not load_segmentations or detection.mask is not None
+        ):
             detections.append(detection)
+
+    if not detections:
+        return None
 
     return fol.Detections(detections=detections)
 
@@ -2021,7 +1982,13 @@ def _coco_objects_to_detections(
 def _coco_objects_to_keypoints(coco_objects, frame_size, classes):
     keypoints = []
     for coco_obj in coco_objects:
-        keypoints.append(coco_obj.to_keypoints(frame_size, classes=classes))
+        keypoint = coco_obj.to_keypoints(frame_size, classes=classes)
+
+        if keypoint is not None:
+            keypoints.append(keypoint)
+
+    if not keypoints:
+        return None
 
     return fol.Keypoints(keypoints=keypoints)
 

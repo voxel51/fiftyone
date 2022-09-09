@@ -1,6 +1,4 @@
-import { PayloadError } from "relay-runtime";
-
-export interface GQLError extends PayloadError {
+export interface GQLError {
   extensions: {
     stack: string[];
   };

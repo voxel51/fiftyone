@@ -64,11 +64,18 @@ your datasets and turn your good models into *great models*.
     :tags: Annotation,Dataset-Evaluation
 
 .. customcarditem::
-    :header: Annotating with Labelbox 
+    :header: Annotating with Labelbox
     :description: Unlock the power of the Labelbox platform. See how you can get your FiftyOne datasets annotated with just one line of code.
     :link: labelbox_annotation.html
     :image: ../_static/images/tutorials/labelbox_square.png
     :tags: Annotation,Dataset-Evaluation
+
+.. customcarditem::
+    :header: Training with Detectron2
+    :description: Put your FiftyOne datasets to work and learn how to train and evaluate Detectron2 models directly on your data.
+    :link: detectron2.html
+    :image: ../_static/images/tutorials/detectron2.png
+    :tags: Model-Training,Model-Evaluation
 
 .. customcarditem::
     :header: Downloading and evaluating Open Images
@@ -128,6 +135,7 @@ your datasets and turn your good models into *great models*.
    Annotating with CVAT <cvat_annotation.ipynb>
    Annotating with Labelbox <labelbox_annotation.ipynb>
    Working with Open Images <open_images.ipynb>
+   Training with Detectron2 <detectron2.ipynb>
    Exploring image uniqueness <uniqueness.ipynb>
    Finding class mistakes <classification_mistakes.ipynb>
    Finding detection mistakes <detection_mistakes.ipynb>

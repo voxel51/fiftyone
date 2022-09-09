@@ -256,6 +256,15 @@ class BDDDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` to
+            generate an output path for each exported image. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
+        abs_paths (False): whether to store absolute paths to the images in the
+            exported labels
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -273,6 +282,8 @@ class BDDDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
+        abs_paths=False,
         image_format=None,
         extra_attrs=True,
     ):
@@ -294,6 +305,8 @@ class BDDDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
+        self.abs_paths = abs_paths
         self.image_format = image_format
         self.extra_attrs = extra_attrs
 
@@ -317,12 +330,13 @@ class BDDDatasetExporter(
         self._media_exporter = foud.ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             default_ext=self.image_format,
         )
         self._media_exporter.setup()
 
     def export_sample(self, image_or_path, labels, metadata=None):
-        _, uuid = self._media_exporter.export(image_or_path)
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
 
         if labels is None:
             return  # unlabeled
@@ -336,8 +350,13 @@ class BDDDatasetExporter(
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(image_or_path)
 
+        if self.abs_paths:
+            name = out_image_path
+        else:
+            name = uuid
+
         annotation = _make_bdd_annotation(
-            labels, metadata, uuid, self.extra_attrs
+            labels, metadata, name, self.extra_attrs
         )
         self._annotations.append(annotation)
 

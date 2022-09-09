@@ -7,12 +7,12 @@
   width: auto;
   position: relative;
   overflow: hidden;
+  min-width: 90px;
 }
 
 .scrollContainer {
   overflow: auto;
   max-height: 250px;
-  padding-bottom: 26.5px;
 }
 
 .result {

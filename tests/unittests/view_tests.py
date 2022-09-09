@@ -1203,9 +1203,11 @@ class ViewSaveTest(unittest.TestCase):
         dataset.add_samples([sample1, sample2])
 
         view = dataset.limit(1).match_frames(F("frame_number") == 1)
+        sample = view.first()
 
         self.assertEqual(dataset.count("frames"), 4)
         self.assertEqual(view.count("frames"), 1)
+        self.assertEqual(len(sample.frames), 1)
 
         view.keep_frames()
 
@@ -1223,14 +1225,10 @@ class ViewSaveTest(unittest.TestCase):
         view = dataset.exclude_fields("classifications")
         view.keep_fields()
 
-        self.assertNotIn("classifications", view.get_field_schema())
         self.assertNotIn("classifications", dataset.get_field_schema())
 
-        sample_view = view.first()
-        with self.assertRaises(KeyError):
-            sample_view["classifications"]
-
         sample = dataset.first()
+
         with self.assertRaises(KeyError):
             sample["classifications"]
 
@@ -2239,6 +2237,27 @@ class ViewStageTests(unittest.TestCase):
         self.assertIs(len(view), 2)
         for sample, _id in zip(view, ids):
             self.assertEqual(sample.id, _id)
+
+    def test_select_by(self):
+        filepaths = self.dataset.values("filepath")
+
+        values = [filepaths[1], filepaths[0]]
+        unordered_values = [filepaths[0], filepaths[1]]
+
+        result = self.dataset.select_by("filepath", values)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("filepath"), unordered_values)
+
+    def test_select_by_ordered(self):
+        filepaths = self.dataset.values("filepath")
+
+        values = [filepaths[1], filepaths[0]]
+
+        result = self.dataset.select_by("filepath", values, ordered=True)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("filepath"), values)
 
     def test_select_fields(self):
         self.dataset.add_sample_field("select_fields_field", fo.IntField)

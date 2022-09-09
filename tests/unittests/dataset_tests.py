@@ -18,6 +18,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 from fiftyone import ViewField as F
+import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 
 from decorators import drop_datasets, skip_windows
@@ -126,6 +127,45 @@ class DatasetTests(unittest.TestCase):
 
         self.assertTrue("classes" in dataset2.info)
         self.assertEqual(classes, dataset2.info["classes"])
+
+    @drop_datasets
+    def test_dataset_app_config(self):
+        dataset_name = self.test_dataset_app_config.__name__
+
+        dataset = fo.Dataset(dataset_name)
+
+        self.assertFalse(dataset.app_config.is_custom())
+        self.assertListEqual(dataset.app_config.media_fields, ["filepath"])
+        self.assertEqual(dataset.app_config.grid_media_field, "filepath")
+        self.assertEqual(dataset.app_config.modal_media_field, "filepath")
+
+        dataset.add_sample_field("thumbnail_path", fo.StringField)
+
+        dataset.app_config.media_fields.append("thumbnail_path")
+        dataset.app_config.grid_media_field = "thumbnail_path"
+        dataset.save()
+
+        del dataset
+        gc.collect()  # force garbage collection
+
+        dataset = fo.load_dataset(dataset_name)
+
+        self.assertListEqual(
+            dataset.app_config.media_fields, ["filepath", "thumbnail_path"]
+        )
+        self.assertEqual(dataset.app_config.grid_media_field, "thumbnail_path")
+
+        dataset.rename_sample_field("thumbnail_path", "tp")
+
+        self.assertListEqual(
+            dataset.app_config.media_fields, ["filepath", "tp"]
+        )
+        self.assertEqual(dataset.app_config.grid_media_field, "tp")
+
+        dataset.delete_sample_field("tp")
+
+        self.assertListEqual(dataset.app_config.media_fields, ["filepath"])
+        self.assertEqual(dataset.app_config.grid_media_field, "filepath")
 
     @drop_datasets
     def test_meta_dataset(self):
@@ -2782,6 +2822,50 @@ class DatasetDeletionTests(unittest.TestCase):
         num_labels_after = self.dataset.count("frames.ground_truth.detections")
 
         self.assertEqual(num_labels_after, num_labels - num_selected)
+
+
+class CustomEmbeddedDocumentTests(unittest.TestCase):
+    @drop_datasets
+    def test_custom_embedded_documents(self):
+        sample = fo.Sample(
+            filepath="/path/to/image.png",
+            camera_info=_CameraInfo(
+                camera_id="123456789",
+                quality=99.0,
+            ),
+            weather=fo.Classification(
+                label="sunny",
+                confidence=0.95,
+                metadata=_LabelMetadata(
+                    model_name="resnet50",
+                    description="A dynamic field",
+                ),
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertIsInstance(sample.camera_info, _CameraInfo)
+        self.assertIsInstance(sample.weather.metadata, _LabelMetadata)
+
+        view = dataset.limit(1)
+        sample_view = view.first()
+
+        self.assertIsInstance(sample_view.camera_info, _CameraInfo)
+        self.assertIsInstance(sample_view.weather.metadata, _LabelMetadata)
+
+
+class _CameraInfo(foo.EmbeddedDocument):
+    camera_id = fof.StringField(required=True)
+    quality = fof.FloatField()
+    description = fof.StringField()
+
+
+class _LabelMetadata(foo.DynamicEmbeddedDocument):
+    created_at = fof.DateTimeField(default=datetime.utcnow)
+
+    model_name = fof.StringField()
 
 
 if __name__ == "__main__":

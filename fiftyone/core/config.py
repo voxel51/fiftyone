@@ -110,6 +110,9 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MODULE_PATH",
             default=None,
         )
+        self.plugins_dir = self.parse_string(
+            d, "plugins_dir", env_var="FIFTYONE_PLUGINS_DIR", default=None
+        )
         self.dataset_zoo_manifest_paths = self.parse_path_array(
             d,
             "dataset_zoo_manifest_paths",
@@ -356,6 +359,13 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_USE_FRAME_NUMBER",
             default=False,
         )
+        self.disable_plugins = self.parse_bool(
+            d,
+            "disable_plugins",
+            env_var="FIFTYONE_APP_DISABLE_PLUGINS",
+            default=False,
+        )
+        self.plugins = d.get("plugins", {})
 
         self._init()
 
@@ -416,6 +426,17 @@ class AppConfig(EnvConfig):
                 "`grid_zoom` must be in [0, 10]; found %d", self.grid_zoom
             )
             self.grid_zoom = 5
+
+        if "MAPBOX_TOKEN" in os.environ:
+            try:
+                _set_nested_dict_value(
+                    self.plugins,
+                    "map.mapboxAccessToken",
+                    os.environ["MAPBOX_TOKEN"],
+                )
+                raise OSError("HAHAHAHA")
+            except Exception as e:
+                logger.warning("Failed to set mapbox token: %s", e)
 
 
 class AppConfigError(etac.EnvConfigError):
@@ -766,6 +787,26 @@ def load_media_cache_config():
     return MediaCacheConfig()
 
 
+class HTTPRetryConfig(object):
+    """Values used to configure the behavior of the retry logic of HTTP calls
+    made throughout the library.
+
+    NOTE: calls made directly through storage clients (GCS, S3) use their own
+    internal retry logic implementation and may not perfectly match this
+    configuration. This configuration is for direct HTTP requests.
+    """
+
+    # HTTP codes that should trigger a retry
+    RETRY_CODES = {408, 429, 500, 502, 503, 504, 509}
+
+    # Exponential backoff factor
+    # See https://github.com/litl/backoff/blob/master/backoff/_wait_gen.py#L17
+    FACTOR = 0.1
+
+    # Maximum number of times to execute a retry before throwing an exception
+    MAX_TRIES = 10
+
+
 def _parse_env_value(value):
     try:
         return int(value)
@@ -802,21 +843,13 @@ def _get_installed_packages():
         return set()
 
 
-class HTTPRetryConfig(object):
-    """Values used to configure the behavior of the retry logic of HTTP calls
-    made throughout the library.
+def _set_nested_dict_value(d, path, value):
+    keys = path.split(".")
 
-    NOTE: calls made directly through storage clients (GCS, S3) use their own
-    internal retry logic implementation and may not perfectly match this
-    configuration. This configuration is for direct HTTP requests.
-    """
+    for key in keys[:-1]:
+        if key not in d:
+            d[key] = {}
 
-    # HTTP codes that should trigger a retry
-    RETRY_CODES = {408, 429, 500, 502, 503, 504, 509}
+        d = d[key]
 
-    # Exponential backoff factor
-    # See https://github.com/litl/backoff/blob/master/backoff/_wait_gen.py#L17
-    FACTOR = 0.1
-
-    # Maximum number of times to execute a retry before throwing an exception
-    MAX_TRIES = 10
+    d[keys[-1]] = value

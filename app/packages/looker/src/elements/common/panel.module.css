@@ -14,6 +14,8 @@
   overflow: auto;
   scrollbar-width: none;
   position: relative;
+  pointer-events: all;
+  width: 100%;
 }
 
 .lookerPanel::-webkit-scrollbar {
@@ -30,15 +32,21 @@
   top: 0;
   left: 0;
   height: 100%;
+  width: 100%;
   display: flex;
   justify-content: center;
-  padding: 5rem;
+  position: absolute;
+  overflow: hidden;
+  z-index: 10000;
+  pointer-events: none;
 }
 
 .lookerPanelVerticalContainer {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  position: relative;
+  margin: 3.5rem;
 }
 
 .lookerPanelHeader {

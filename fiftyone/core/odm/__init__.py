@@ -5,6 +5,8 @@ ODM package declaration.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import types
+
 from .database import (
     aggregate,
     get_db_config,
@@ -39,6 +41,7 @@ from .dataset import (
     create_field,
     SampleFieldDocument,
     KeypointSkeleton,
+    DatasetAppConfig,
     DatasetDocument,
 )
 from .document import (
@@ -65,3 +68,10 @@ from .utils import (
     get_field_kwargs,
     get_implied_field_kwargs,
 )
+
+# This enables Sphinx refs to directly use paths imported here
+__all__ = [
+    k
+    for k, v in globals().items()
+    if not k.startswith("_") and not isinstance(v, types.ModuleType)
+]

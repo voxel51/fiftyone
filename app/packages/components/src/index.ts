@@ -1,6 +1,8 @@
 export * from "./components";
-export * from "./contexts";
-export * from "./routing";
-export * from "./use";
 
 export { scrollable } from "./scrollable.module.css";
+
+import jsonIcon from "./icons/json.svg";
+import helpIcon from "./icons/help.svg";
+
+export { jsonIcon, helpIcon };

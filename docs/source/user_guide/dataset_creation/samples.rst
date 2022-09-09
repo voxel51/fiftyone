@@ -665,20 +665,17 @@ You can use a |SampleParser| to
 | <fiftyone.utils.data.parsers.ImageLabelsSampleParser>`                 | `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.             |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`FiftyOneImageClassificationSampleParser                        | Parser for samples in FiftyOne image classification datasets. See                                               |
-| <fiftyone.utils.data.parsers.FiftyOneImageClassificationSampleParser>` | :class:`FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`   |
-|                                                                        | for format details.                                                                                             |
+| <fiftyone.utils.data.parsers.FiftyOneImageClassificationSampleParser>` | :class:`FiftyOneImageClassificationDataset <fiftyone.types.FiftyOneImageClassificationDataset>` for format      |
+|                                                                        | details.                                                                                                        |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`FiftyOneImageDetectionSampleParser                             | Parser for samples in FiftyOne image detection datasets. See                                                    |
-| <fiftyone.utils.data.parsers.FiftyOneImageDetectionSampleParser>`      | :class:`FiftyOneImageDetectionDataset <fiftyone.types.dataset_types.FiftyOneImageDetectionDataset>` for format  |
-|                                                                        | details.                                                                                                        |
+| <fiftyone.utils.data.parsers.FiftyOneImageDetectionSampleParser>`      | :class:`FiftyOneImageDetectionDataset <fiftyone.types.FiftyOneImageDetectionDataset>` for format details.       |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`FiftyOneImageLabelsSampleParser                                | Parser for samples in FiftyOne image labels datasets. See                                                       |
-| <fiftyone.utils.data.parsers.FiftyOneImageLabelsSampleParser>`         | :class:`FiftyOneImageLabelsDataset <fiftyone.types.dataset_types.FiftyOneImageLabelsDataset>` for format        |
-|                                                                        | details.                                                                                                        |
+| <fiftyone.utils.data.parsers.FiftyOneImageLabelsSampleParser>`         | :class:`FiftyOneImageLabelsDataset <fiftyone.types.FiftyOneImageLabelsDataset>` for format details.             |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`FiftyOneVideoLabelsSampleParser                                | Parser for samples in FiftyOne video labels datasets. See                                                       |
-| <fiftyone.utils.data.parsers.FiftyOneVideoLabelsSampleParser>`         | :class:`FiftyOneVideoLabelsDataset <fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset>` for format        |
-|                                                                        | details.                                                                                                        |
+| <fiftyone.utils.data.parsers.FiftyOneVideoLabelsSampleParser>`         | :class:`FiftyOneVideoLabelsDataset <fiftyone.types.FiftyOneVideoLabelsDataset>` for format details.             |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`TFImageClassificationSampleParser                              | Parser for image classification samples stored as                                                               |
 | <fiftyone.utils.tf.TFImageClassificationSampleParser>`                 | `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.                                         |

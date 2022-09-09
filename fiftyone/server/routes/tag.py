@@ -15,6 +15,7 @@ import fiftyone.core.odm as foo
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
 
@@ -32,9 +33,20 @@ class Tag(HTTPEndpoint):
         hidden_labels = data.get("hidden_labels", None)
         changes = data.get("changes", {})
         modal = data.get("modal", None)
+        extended = data.get("extended", None)
         current_frame = data.get("current_frame", None)
+        slice = data.get("slice", None)
+        group_id = data.get("group_id", None)
 
-        view = fosv.get_view(dataset, stages=stages, filters=filters)
+        view = fosv.get_view(
+            dataset,
+            stages=stages,
+            filters=filters,
+            extended_stages=extended,
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(id=group_id, slice=slice)
+            ),
+        )
 
         sample_ids = set(sample_ids or [])
         if labels:
@@ -47,11 +59,14 @@ class Tag(HTTPEndpoint):
             view = fov.make_optimized_select_view(view, sample_ids)
 
         if target_labels:
+            if view.media_type == fom.GROUP:
+                view = view.select_group_slices(_allow_mixed=True)
             if labels:
                 view = view.select_labels(labels)
             elif hidden_labels:
                 view = view.exclude_labels(hidden_labels)
 
+        if target_labels:
             fosu.change_label_tags(
                 view, changes, label_fields=active_label_fields
             )
