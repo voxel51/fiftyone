@@ -10,6 +10,7 @@ from datetime import datetime
 import logging
 from multiprocessing.pool import ThreadPool
 import os
+import tempfile
 
 import asyncio
 from bson import json_util
@@ -22,8 +23,6 @@ from packaging.version import Version
 import pymongo
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
 import pytz
-
-import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
@@ -584,7 +583,7 @@ def _export_collection_multi(docs, json_dir, patt, num_docs):
     fost.ensure_dir(json_dir)
 
     with fost.LocalDir(json_dir, "w") as local_dir:
-        json_patt = fost.join(local_dir, patt)
+        json_patt = os.path.join(local_dir, patt)
         with fou.ProgressBar(total=num_docs, iters_str="docs") as pb:
             for idx, doc in pb(enumerate(docs, 1)):
                 json_path = json_patt.format(idx=idx, id=str(doc["_id"]))
@@ -635,15 +634,23 @@ def _import_collection_single(json_path, key):
 
 
 def _import_collection_multi(json_dir):
-    # @todo make this cloud-friendly
-    fost.ensure_local(json_dir)
+    # @todo refactor to enable automatic cleanup when importing cloud dirs
+    context = fost.LocalDir(json_dir, "r", basedir=tempfile.gettempdir())
+    with context as local_dir:
+        if context._tmpdir is not None:
+            logger.warning(
+                "Temporary directory '%s' will not be automatically deleted",
+                context._tmpdir,
+            )
+            context._tmpdir = None
 
-    json_paths = [
-        p
-        for p in etau.list_files(json_dir, abs_paths=True)
-        if p.endswith(".json")
-    ]
-    docs = map(import_document, json_paths)
+        json_paths = [
+            p
+            for p in fost.list_files(local_dir, abs_paths=True)
+            if p.endswith(".json")
+        ]
+
+        docs = map(import_document, json_paths)
 
     return docs, len(json_paths)
 
