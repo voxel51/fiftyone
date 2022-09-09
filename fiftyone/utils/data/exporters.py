@@ -178,7 +178,7 @@ def export_samples(
             generate an output path for each exported media. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         dataset_exporter (None): a :class:`DatasetExporter` to use to write the
             dataset
         label_field (None): the name of the label field to export, or a
@@ -1028,7 +1028,7 @@ class MediaExporter(object):
             generate an output path for each exported media. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         supported_modes (None): an optional tuple specifying a subset of the
             ``export_mode`` values that are allowed
         default_ext (None): the file extension to use when generating default
@@ -1684,7 +1684,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             generate an output path for each exported media. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         abs_paths (False): whether to store absolute paths to the media in the
             exported labels
         pretty_print (False): whether to render the JSON in human readable
@@ -2098,7 +2098,7 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
             generate an output path for each exported image. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -2164,7 +2164,7 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
             generate an output path for each exported video. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
     """
 
     def __init__(self, export_dir, export_media=None, rel_dir=None):
@@ -2265,7 +2265,7 @@ class FiftyOneImageClassificationDatasetExporter(
             generate an output path for each exported image. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         abs_paths (False): whether to store absolute paths to the images in the
             exported labels
         include_confidence (False): whether to include classification
@@ -2410,7 +2410,7 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
             generate an output path for each exported image. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -2525,7 +2525,7 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
             generate an output path for each exported video. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
     """
 
     def __init__(self, export_dir, export_media=None, rel_dir=None):
@@ -2665,7 +2665,7 @@ class FiftyOneImageDetectionDatasetExporter(
             generate an output path for each exported image. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         abs_paths (False): whether to store absolute paths to the images in the
             exported labels
         classes (None): the list of possible class labels
@@ -2850,7 +2850,7 @@ class FiftyOneTemporalDetectionDatasetExporter(
             generate an output path for each exported video. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         abs_paths (False): whether to store absolute paths to the videos in the
             exported labels
         use_timestamps (False): whether to export the support of each temporal
@@ -3040,7 +3040,7 @@ class ImageSegmentationDirectoryExporter(
             and mask. This argument allows for populating nested subdirectories
             that match the shape of the input paths. The path is converted to
             an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -3200,7 +3200,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
             generate an output path for each exported image. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -3325,7 +3325,7 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
             generate an output path for each exported video. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """

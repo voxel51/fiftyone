@@ -6776,7 +6776,7 @@ class SampleCollection(object):
                 annotated media. This argument allows for populating nested
                 subdirectories in ``output_dir`` that match the shape of the
                 input paths. The path is converted to an absolute path (if
-                necessary) via :func:`fiftyone.core.utils.normalize_path`
+                necessary) via :func:`fiftyone.core.storage.normalize_path`
             label_fields (None): a label field or list of label fields to
                 render. By default, all :class:`fiftyone.core.labels.Label`
                 fields are drawn
@@ -6979,7 +6979,7 @@ class SampleCollection(object):
                 media. This argument allows for populating nested
                 subdirectories that match the shape of the input paths. The
                 path is converted to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`
+                :func:`fiftyone.core.storage.normalize_path`
             dataset_exporter (None): a
                 :class:`fiftyone.utils.data.exporters.DatasetExporter` to use
                 to export the samples. When provided, parameters such as

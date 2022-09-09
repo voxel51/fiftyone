@@ -286,7 +286,7 @@ class KITTIDetectionDatasetExporter(
             and labels file. This argument allows for populating nested
             subdirectories that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used

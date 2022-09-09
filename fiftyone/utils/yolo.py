@@ -641,7 +641,7 @@ class YOLOv4DatasetExporter(
             and labels file. This argument allows for populating nested
             subdirectories that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         classes (None): the list of possible class labels
         include_confidence (False): whether to include detection confidences in
             the export, if they exist
@@ -846,7 +846,7 @@ class YOLOv5DatasetExporter(
             and labels file. This argument allows for populating nested
             subdirectories that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         classes (None): the list of possible class labels
         include_confidence (False): whether to include detection confidences in
             the export, if they exist

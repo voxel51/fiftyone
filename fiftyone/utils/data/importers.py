@@ -1374,7 +1374,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         rel_dir (None): a relative directory to prepend to the ``filepath`` of
             each sample if the filepath is not absolute. This path is converted
             to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling

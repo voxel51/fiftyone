@@ -262,7 +262,7 @@ class BDDDatasetExporter(
             generate an output path for each exported image. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         abs_paths (False): whether to store absolute paths to the images in the
             exported labels
         image_format (None): the image format to use when writing in-memory

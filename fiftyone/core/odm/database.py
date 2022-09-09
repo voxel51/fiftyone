@@ -23,6 +23,8 @@ import pymongo
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
 import pytz
 
+import eta.core.utils as etau
+
 import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.config import FiftyOneConfigError
@@ -581,12 +583,12 @@ def _export_collection_single(docs, json_path, key, num_docs):
 def _export_collection_multi(docs, json_dir, patt, num_docs):
     fost.ensure_dir(json_dir)
 
-    # @todo optimize for cloud
-    json_patt = fost.join(json_dir, patt)
-    with fou.ProgressBar(total=num_docs, iters_str="docs") as pb:
-        for idx, doc in pb(enumerate(docs, 1)):
-            json_path = json_patt.format(idx=idx, id=str(doc["_id"]))
-            export_document(doc, json_path)
+    with fost.LocalDir(json_dir, "w") as local_dir:
+        json_patt = fost.join(local_dir, patt)
+        with fou.ProgressBar(total=num_docs, iters_str="docs") as pb:
+            for idx, doc in pb(enumerate(docs, 1)):
+                json_path = json_patt.format(idx=idx, id=str(doc["_id"]))
+                export_document(doc, json_path)
 
 
 def import_document(json_path):
@@ -632,11 +634,13 @@ def _import_collection_single(json_path, key):
     return docs, num_docs
 
 
-# @todo optimize for cloud
 def _import_collection_multi(json_dir):
+    # @todo make this cloud-friendly
+    fost.ensure_local(json_dir)
+
     json_paths = [
         p
-        for p in fost.list_files(json_dir, abs_paths=True)
+        for p in etau.list_files(json_dir, abs_paths=True)
         if p.endswith(".json")
     ]
     docs = map(import_document, json_paths)
