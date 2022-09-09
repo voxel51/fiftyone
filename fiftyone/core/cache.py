@@ -259,7 +259,9 @@ class MediaCache(object):
         Returns:
             the local filepath
         """
-        _, local_path, exists, client = self._parse_filepath(filepath)
+        _, local_path, exists, client = self._parse_filepath(
+            filepath, check_exists=download
+        )
 
         if download and not exists:
             task = (client, filepath, local_path, skip_failures, False)
@@ -270,7 +272,9 @@ class MediaCache(object):
     async def _async_get_local_path(
         self, filepath, session, download=True, skip_failures=True
     ):
-        _, local_path, exists, client = self._parse_filepath(filepath)
+        _, local_path, exists, client = self._parse_filepath(
+            filepath, check_exists=download
+        )
 
         if download and not exists:
             task = (client, session, filepath, local_path, skip_failures)
@@ -294,7 +298,9 @@ class MediaCache(object):
         tasks = []
         seen = set()
         for filepath in filepaths:
-            fs, local_path, exists, client = self._parse_filepath(filepath)
+            fs, local_path, exists, client = self._parse_filepath(
+                filepath, check_exists=download
+            )
             local_paths.append(local_path)
 
             if fs == fos.FileSystem.LOCAL or filepath in seen:
@@ -352,7 +358,9 @@ class MediaCache(object):
         tasks = []
         seen = set()
         for filepath in filepaths:
-            fs, local_path, _, client = self._parse_filepath(filepath)
+            fs, local_path, _, client = self._parse_filepath(
+                filepath, check_exists=False
+            )
             if fs == fos.FileSystem.LOCAL or filepath in seen:
                 continue
 
@@ -366,7 +374,9 @@ class MediaCache(object):
 
         tasks = []
         for filepath, checksum in checksums.items():
-            fs, local_path, _, client = self._parse_filepath(filepath)
+            fs, local_path, _, client = self._parse_filepath(
+                filepath, check_exists=False
+            )
 
             result = _get_cache_result(local_path)
             if result is not None:
@@ -423,7 +433,7 @@ class MediaCache(object):
                 if fs != fos.FileSystem.LOCAL and exists:
                     _pop_cache(local_path)
 
-    def _parse_filepath(self, filepath):
+    def _parse_filepath(self, filepath, check_exists=True):
         fs = fos.get_file_system(filepath)
 
         # Always return `exists=True` for local filepaths
@@ -433,6 +443,10 @@ class MediaCache(object):
         client = fos.get_client(fs)
         relpath = client.get_local_path(filepath)
         local_path = os.path.join(self.media_dir, fs, relpath)
+
+        if not check_exists:
+            return fs, local_path, None, client
+
         exists = os.path.isfile(local_path)
 
         # If the file does not exist and we were unable to download it in the
