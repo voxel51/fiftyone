@@ -895,7 +895,8 @@ class DatasetImporter(object):
         Args:
             filepaths: a list of filepaths or dict mapping keys to filepaths
             keys (None): an optional subset of keys for which to get metadata.
-                Only applicable when ``filepaths`` is a dict
+                May also contain absolute paths to add to ``filepaths``. Only
+                applicable when ``filepaths`` is a dict
 
         Returns:
             a dict mapping filepaths (or keys, if ``filepaths`` was a dict) to
@@ -903,7 +904,7 @@ class DatasetImporter(object):
         """
         if isinstance(filepaths, dict):
             if keys is not None:
-                filepaths = {k: filepaths[k] for k in keys}
+                filepaths = _restrict_filepaths(filepaths, keys)
 
             keys_map = {
                 p: k for k, p in filepaths.items() if not fos.is_local(p)
@@ -923,6 +924,19 @@ class DatasetImporter(object):
             metadata = {keys_map[p]: m for p, m in metadata.items()}
 
         return metadata
+
+
+def _restrict_filepaths(filepaths, keys):
+    _filepaths = {}
+
+    for key in keys:
+        filepath = filepaths.get(key, None)
+        if filepath is not None:
+            _filepaths[key] = filepath
+        elif fos.isabs(key):
+            _filepaths[key] = key
+
+    return _filepaths
 
 
 def _get_rng(seed):
