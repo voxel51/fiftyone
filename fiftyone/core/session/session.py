@@ -8,7 +8,6 @@ Session class for interacting with the FiftyOne App.
 from collections import defaultdict
 from functools import wraps
 import logging
-from weakref import ref
 from packaging.version import Version
 import pkg_resources
 import time
