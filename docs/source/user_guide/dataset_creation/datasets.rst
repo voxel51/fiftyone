@@ -33,7 +33,7 @@ that you're loading.
     method.
 
     If your data is stored in the
-    :ref:`canoncial format <supported-import-formats>` of the type you're
+    :ref:`canonical format <supported-import-formats>` of the type you're
     importing, then you can load it by providing the `dataset_dir` and
     `dataset_type` parameters:
 
@@ -116,7 +116,7 @@ that you're loading.
     :ref:`via the CLI <cli-fiftyone-datasets-create>`.
 
     If your data is stored in the
-    :ref:`canoncial format <supported-import-formats>` of the type you're
+    :ref:`canonical format <supported-import-formats>` of the type you're
     importing, then you can load it by providing the `--dataset-dir` and
     `--type` options:
 
