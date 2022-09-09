@@ -54,7 +54,7 @@ your datasets and turn your good models into *great models*.
     :description: Visualize your data in new ways. This tutorial shows how to use FiftyOne's powerful embeddings visualization capabilities to improve your image datasets.
     :link: image_embeddings.html
     :image: ../_static/images/tutorials/image_embeddings.png
-    :tags: Visualization,Brain
+    :tags: Visualization,Brain,Embeddings
 
 .. customcarditem::
     :header: Annotating with CVAT
@@ -105,6 +105,13 @@ your datasets and turn your good models into *great models*.
     :image: ../_static/images/tutorials/detection_mistakes.png
     :tags: Dataset-Evaluation,Brain
 
+.. customcarditem::
+    :header: Nearest Neighbor Classification of Embeddings with Qdrant
+    :description: Easily pre-annotate your FiftyOne datasets using approximate nearest neighbors search on embeddings with Qdrant.
+    :link: qdrant.html
+    :image: ../_static/images/tutorials/qdrant.png
+    :tags: Dataset-Evaluation,Model-Evaluation,Embeddings
+
 .. End of tutorial cards
 
 .. raw:: html
@@ -139,3 +146,4 @@ your datasets and turn your good models into *great models*.
    Exploring image uniqueness <uniqueness.ipynb>
    Finding class mistakes <classification_mistakes.ipynb>
    Finding detection mistakes <detection_mistakes.ipynb>
+   Embeddings with Qdrant <qdrant.ipynb>
