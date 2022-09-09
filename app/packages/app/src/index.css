@@ -45,6 +45,6 @@ button {
   color: var(--font);
 }
 
-.noscroll {
+body {
   overflow: hidden;
 }

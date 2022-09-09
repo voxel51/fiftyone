@@ -71,7 +71,6 @@ const App: React.FC = ({}) => {
   const handleError = useErrorHandler();
 
   useEffect(() => {
-    document.body.classList.toggle("noscroll", isModalActive);
     document
       .getElementById("modal")
       ?.classList.toggle("modalon", isModalActive);
