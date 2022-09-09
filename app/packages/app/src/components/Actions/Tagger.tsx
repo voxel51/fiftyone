@@ -376,11 +376,11 @@ const useTagCallback = (
 
         const modalData = modal ? await snapshot.getPromise(fos.modal) : null;
         const stats = await snapshot.getPromise(groupStatistics(modal));
-        let slice: string | null = null;
+        const groups = stats === "group";
+        const slice = await snapshot.getPromise(currentSlice(modal));
         let group: string | null = null;
 
-        if (stats !== "group" && !hasSelected) {
-          slice = await snapshot.getPromise(currentSlice(modal));
+        if (groups && !hasSelected) {
           group = modal ? await snapshot.getPromise(groupId) : null;
         }
         const { samples } = await getFetchFunction()("POST", "/tag", {
@@ -391,13 +391,13 @@ const useTagCallback = (
           target_labels: targetLabels,
           changes,
           group_id: group,
-          slice,
-          modal: modal ? modalData.sample._id : null,
-          sample_ids: modal
-            ? null
-            : selectedSamples.size
-            ? [...selectedSamples]
-            : null,
+          slice: !modal && !hasSelected && !groups ? slice : null,
+          sample_ids:
+            modal && !hasSelected && !group
+              ? [modalData.sample._id]
+              : selectedSamples.size
+              ? [...selectedSamples]
+              : null,
           labels:
             selectedLabels && selectedLabels.length
               ? toSnakeCase(selectedLabels)

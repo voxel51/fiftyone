@@ -1,4 +1,9 @@
-import { atom, atomFamily, useRecoilTransaction_UNSTABLE } from "recoil";
+import {
+  atom,
+  atomFamily,
+  useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
+} from "recoil";
 
 import { Sample, RGB } from "@fiftyone/looker/src/state";
 
@@ -32,7 +37,7 @@ export const refresher = atom<number>({
 });
 
 export const useRefresh = () => {
-  return useRecoilTransaction_UNSTABLE(
+  return useRecoilCallback(
     ({ set }) =>
       () => {
         set(refresher, (cur) => cur + 1);

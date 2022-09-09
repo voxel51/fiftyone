@@ -57,10 +57,10 @@ class Tag(HTTPEndpoint):
 
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
+        elif view.media_type == fom.GROUP and group_id:
+            view = view.select_group_slices(_allow_mixed=True)
 
         if target_labels:
-            if view.media_type == fom.GROUP:
-                view = view.select_group_slices(_allow_mixed=True)
             if labels:
                 view = view.select_labels(labels)
             elif hidden_labels:
@@ -76,8 +76,18 @@ class Tag(HTTPEndpoint):
         if not modal:
             return {"samples": []}
 
-        view = fosv.get_view(dataset, stages=stages, filters=filters)
-        view = fov.make_optimized_select_view(view, sample_ids)
+        view = fosv.get_view(
+            dataset,
+            stages=stages,
+            filters=filters,
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(id=group_id, slice=slice)
+            ),
+        )
+        if sample_ids:
+            view = fov.make_optimized_select_view(view, sample_ids)
+        elif view.media_type == fom.GROUP and group_id:
+            view = view.select_group_slices(_allow_mixed=True)
 
         if view.media_type == fom.VIDEO and current_frame is not None:
             default_filter = F("frame_number") == 1
