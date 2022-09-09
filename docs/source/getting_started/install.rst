@@ -230,7 +230,7 @@ If you use the desktop App, you should also run:
 
 .. code-block:: shell
 
-   pip install fiftyone[desktop]
+   pip install "fiftyone[desktop]"
 
 to ensure that you have the proper version of the desktop App installed for
 your current FiftyOne version.
