@@ -106,7 +106,7 @@ your datasets and turn your good models into *great models*.
     :tags: Dataset-Evaluation,Brain
 
 .. customcarditem::
-    :header: Nearest Neighbor Classification of Embeddings with Qdrant
+    :header: Nearest Neighbor Embeddings Classification with Qdrant
     :description: Easily pre-annotate your FiftyOne datasets using approximate nearest neighbors search on embeddings with Qdrant.
     :link: qdrant.html
     :image: ../_static/images/tutorials/qdrant.png
