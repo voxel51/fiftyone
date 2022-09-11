@@ -87,7 +87,7 @@ class MediaCache(object):
         """Returns a dictionary of stats about the cache.
 
         Args:
-            filepaths (None): a list of filepaths to restrict the stats to
+            filepaths (None): an iterable of filepaths to restrict the stats to
 
         Returns:
             a stats dict
@@ -172,7 +172,7 @@ class MediaCache(object):
         given file.
 
         Args:
-            filepaths: a list of filepaths
+            filepaths: an iterable of filepaths
             skip_failures (True): whether to gracefully continue without
                 raising an error if a file's metadata cannot be computed
 
@@ -222,7 +222,7 @@ class MediaCache(object):
         file.
 
         Args:
-            filepaths: a list of filepaths
+            filepaths: an iterable of filepaths
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file's metadata cannot be computed
 
@@ -286,7 +286,7 @@ class MediaCache(object):
         """Retrieves the local paths for the given files.
 
         Args:
-            filepaths: a list of filepaths
+            filepaths: an iterable of filepaths
             download (True): whether to download uncached remote files
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
@@ -347,8 +347,8 @@ class MediaCache(object):
         re-downloaded.
 
         Args:
-            filepaths (None): an optional list of remote files to check for
-                updates. By default, the entire cache is updated
+            filepaths (None): an iterable of remote files to check for updates.
+                By default, the entire cache is updated
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
         """
@@ -420,8 +420,8 @@ class MediaCache(object):
         """Deletes all or specific files from the cache.
 
         Args:
-            filepaths (None): a list of filepaths to restrict the deletion. By
-                default, all cached files are deleted
+            filepaths (None): an iterable of filepaths to delete, if necessary.
+                By default, all cached files are deleted
         """
         if filepaths is None:
             if os.path.isdir(self.media_dir):

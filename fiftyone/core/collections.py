@@ -2033,7 +2033,12 @@ class SampleCollection(object):
             skip_failures=skip_failures,
         )
 
-    def download_media(self, update=False, skip_failures=True):
+    def download_media(
+        self,
+        media_field="filepath",
+        update=False,
+        skip_failures=True,
+    ):
         """Downloads the source media files for all samples in the collection.
 
         This method is only useful for collections that contain at least one
@@ -2043,12 +2048,14 @@ class SampleCollection(object):
         their checksums no longer match.
 
         Args:
+            media_field ("filepath"): the field containing the media paths to
+                download
             update (False): whether to re-download media whose checksums no
                 longer match
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
         """
-        filepaths = self.values("filepath")
+        filepaths = self.values(media_field)
         if update:
             foc.media_cache.update(
                 filepaths=filepaths, skip_failures=skip_failures
@@ -2058,13 +2065,19 @@ class SampleCollection(object):
                 filepaths, download=True, skip_failures=skip_failures
             )
 
-    def get_local_paths(self, download=True, skip_failures=True):
+    def get_local_paths(
+        self,
+        media_field="filepath",
+        download=True,
+        skip_failures=True,
+    ):
         """Returns a list of local paths to the media files in this collection.
 
         This method is only useful for collections that contain at least one
         remote media file.
 
         Args:
+            media_field ("filepath"): the field containing the media paths
             download (True): whether to download any non-cached media files
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
@@ -2072,32 +2085,54 @@ class SampleCollection(object):
         Returns:
             a list of local filepaths
         """
-        filepaths = self.values("filepath")
+        filepaths = self.values(media_field)
         return foc.media_cache.get_local_paths(
             filepaths, download=download, skip_failures=skip_failures
         )
 
-    def clear_media(self):
+    def clear_media(self, media_fields=None):
         """Deletes any local copies of media files in this collection from the
         media cache.
 
         This method is only useful for collections that contain at least one
         remote media file.
+
+        Args:
+            media_fields (None): a field or iterable of fields containing media
+                paths to clear from the cache. By default, all media fields
+                in the collection's :meth:`app_config` are cleared
         """
-        filepaths = self.values("filepath")
+        if media_fields is None:
+            media_fields = self.app_config.media_fields
+
+        if not etau.is_container(media_fields):
+            media_fields = [media_fields]
+
+        filepaths = itertools.chain.from_iterable(self.values(media_fields))
         foc.media_cache.clear(filepaths=filepaths)
 
-    def cache_stats(self):
+    def cache_stats(self, media_fields=None):
         """Returns a dictionary of stats about the cached media files in this
         collection.
 
         This method is only useful for collections that contain at least one
         remote media file.
 
+        Args:
+            media_fields (None): a field or iterable of fields containing media
+                paths. By default, all media fields in the collection's
+                :meth:`app_config` are included
+
         Returns:
             a stats dict
         """
-        filepaths = self.values("filepath")
+        if media_fields is None:
+            media_fields = self.app_config.media_fields
+
+        if not etau.is_container(media_fields):
+            media_fields = [media_fields]
+
+        filepaths = itertools.chain.from_iterable(self.values(media_fields))
         return foc.media_cache.stats(filepaths=filepaths)
 
     def apply_model(
