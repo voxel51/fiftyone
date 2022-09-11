@@ -1,10 +1,8 @@
 from collections import defaultdict
 from copy import deepcopy
-import os
-
-import eta.core.serial as etas
 
 import fiftyone.core.odm.dataset as fod
+import fiftyone.core.storage as fos
 
 
 class OpenLABELLabels(object):
@@ -79,7 +77,7 @@ class OpenLABELLabels(object):
         self.base_labels["openlabel"]["objects"][object_id] = o.object_dict
 
     def write_labels(self, labels_path):
-        etas.write_json(self.base_labels, labels_path)
+        fos.write_json(self.base_labels, labels_path)
 
 
 class OpenLABELObject(object):
@@ -294,7 +292,7 @@ def _make_image_labels(tmp_dir):
         },
     )
 
-    labels_path = os.path.join(tmp_dir, "openlabel_test.json")
+    labels_path = fos.join(tmp_dir, "openlabel_test.json")
     labels.write_labels(labels_path)
     return labels_path
 
@@ -360,7 +358,7 @@ def _make_segmentation_labels(tmp_dir):
     line_obj.add_object_data(line_obj_data, is_frame=True)
     labels.add_object(line_obj)
 
-    labels_path = os.path.join(tmp_dir, "openlabel_test.json")
+    labels_path = fos.join(tmp_dir, "openlabel_test.json")
     labels.write_labels(labels_path)
     return labels_path
 
@@ -416,6 +414,6 @@ def _make_video_labels(tmp_dir):
     bbox_obj.add_object_data(bbox_obj_data, is_frame=True)
     labels.add_object(bbox_obj)
 
-    labels_path = os.path.join(tmp_dir, "openlabel_test.json")
+    labels_path = fos.join(tmp_dir, "openlabel_test.json")
     labels.write_labels(labels_path)
     return labels_path
