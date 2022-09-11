@@ -235,6 +235,9 @@ def export_samples(
         dataset_exporter, "export_media", export_media
     ) in {True, "move", "symlink"}
 
+    if _export_media:
+        samples.download_media()
+
     sample_collection = samples
 
     if isinstance(dataset_exporter, BatchDatasetExporter):
