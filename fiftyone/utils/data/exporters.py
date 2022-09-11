@@ -230,6 +230,11 @@ def export_samples(
             if value is not None:
                 logger.warning("Ignoring unsupported parameter '%s'", key)
 
+    # True for copy/move/symlink, False for manifest/no export/unknown
+    _export_media = getattr(
+        dataset_exporter, "export_media", export_media
+    ) in {True, "move", "symlink"}
+
     sample_collection = samples
 
     if isinstance(dataset_exporter, BatchDatasetExporter):
@@ -254,7 +259,8 @@ def export_samples(
             num_samples = len(samples)
         else:
             sample_parser = FiftyOneUnlabeledImageSampleParser(
-                compute_metadata=True
+                compute_metadata=True,
+                export_media=_export_media,
             )
 
     elif isinstance(dataset_exporter, UnlabeledVideoDatasetExporter):
@@ -262,11 +268,6 @@ def export_samples(
             # Export unlabeled video clips
             samples = samples.to_clips(label_field)
             num_samples = len(samples)
-
-        # True for copy/move/symlink, False for manifest/no export
-        _export_media = getattr(
-            dataset_exporter, "export_media", export_media
-        ) not in {False, "symlink"}
 
         #
         # Clips are always written to a temporary directory first, so the
@@ -279,7 +280,9 @@ def export_samples(
             dataset_exporter.export_media = "move"
 
         sample_parser = FiftyOneUnlabeledVideoSampleParser(
-            compute_metadata=True, export_media=_export_media, **clips_kwargs
+            compute_metadata=True,
+            export_media=_export_media,
+            **clips_kwargs,
         )
 
     elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
@@ -301,6 +304,7 @@ def export_samples(
                 label_field,
                 label_fcn=label_fcn,
                 compute_metadata=True,
+                export_media=_export_media,
             )
 
     elif isinstance(dataset_exporter, LabeledVideoDatasetExporter):
@@ -308,11 +312,6 @@ def export_samples(
             # Export labeled video clips
             samples = samples.to_clips(label_field)
             num_samples = len(samples)
-
-        # True for copy/move/symlink, False for manifest/no export
-        _export_media = getattr(
-            dataset_exporter, "export_media", export_media
-        ) not in {False, "symlink"}
 
         #
         # Clips are always written to a temporary directory first, so the
