@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<31c88539c949967cbe4d688e23d9434d>>
+ * @generated SignedSource<<c62d61558f2189e329945c0e1cc98580>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,6 +18,7 @@ export type paginateGroup_query$data = {
         | {
             readonly __typename: "ImageSample";
             readonly aspectRatio: number;
+            readonly id: string;
             readonly sample: object;
             readonly urls: ReadonlyArray<{
               readonly field: string;
@@ -26,6 +27,7 @@ export type paginateGroup_query$data = {
           }
         | {
             readonly __typename: "PointCloudSample";
+            readonly id: string;
             readonly sample: object;
             readonly urls: ReadonlyArray<{
               readonly field: string;
@@ -36,6 +38,7 @@ export type paginateGroup_query$data = {
             readonly __typename: "VideoSample";
             readonly aspectRatio: number;
             readonly frameRate: number;
+            readonly id: string;
             readonly sample: object;
             readonly urls: ReadonlyArray<{
               readonly field: string;
@@ -65,17 +68,24 @@ const node: ReaderFragment = (function () {
       alias: null,
       args: null,
       kind: "ScalarField",
-      name: "aspectRatio",
+      name: "id",
       storageKey: null,
     },
     v2 = {
       alias: null,
       args: null,
       kind: "ScalarField",
-      name: "sample",
+      name: "aspectRatio",
       storageKey: null,
     },
     v3 = {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "sample",
+      storageKey: null,
+    },
+    v4 = {
       alias: null,
       args: null,
       concreteType: "MediaURL",
@@ -211,13 +221,18 @@ const node: ReaderFragment = (function () {
                   },
                   {
                     kind: "InlineFragment",
-                    selections: [v1 /*: any*/, v2 /*: any*/, v3 /*: any*/],
+                    selections: [
+                      v1 /*: any*/,
+                      v2 /*: any*/,
+                      v3 /*: any*/,
+                      v4 /*: any*/,
+                    ],
                     type: "ImageSample",
                     abstractKey: null,
                   },
                   {
                     kind: "InlineFragment",
-                    selections: [v2 /*: any*/, v3 /*: any*/],
+                    selections: [v1 /*: any*/, v3 /*: any*/, v4 /*: any*/],
                     type: "PointCloudSample",
                     abstractKey: null,
                   },
@@ -225,6 +240,7 @@ const node: ReaderFragment = (function () {
                     kind: "InlineFragment",
                     selections: [
                       v1 /*: any*/,
+                      v2 /*: any*/,
                       {
                         alias: null,
                         args: null,
@@ -232,8 +248,8 @@ const node: ReaderFragment = (function () {
                         name: "frameRate",
                         storageKey: null,
                       },
-                      v2 /*: any*/,
                       v3 /*: any*/,
+                      v4 /*: any*/,
                     ],
                     type: "VideoSample",
                     abstractKey: null,
@@ -278,6 +294,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "d5e352aa950d2415f09a58a5003fd6ac";
+(node as any).hash = "20891cc18082d493738d44781ff64148";
 
 export default node;

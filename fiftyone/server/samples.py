@@ -32,6 +32,7 @@ class MediaURL:
 
 @gql.interface
 class Sample:
+    id: gql.ID
     sample: JSON
     urls: t.List[MediaURL]
 
@@ -180,6 +181,6 @@ async def _create_sample_item(
 
     return from_dict(
         cls,
-        {"sample": sample, **metadata},
+        {"id": sample["_id"], "sample": sample, **metadata},
         Config(check_types=False),
     )

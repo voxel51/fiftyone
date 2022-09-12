@@ -32,7 +32,7 @@ class Tag(HTTPEndpoint):
         active_label_fields = data.get("active_label_fields", [])
         hidden_labels = data.get("hidden_labels", None)
         changes = data.get("changes", {})
-        modal = data.get("modal", None)
+        modal = data.get("modal", False)
         extended = data.get("extended", None)
         current_frame = data.get("current_frame", None)
         slice = data.get("slice", None)
@@ -52,12 +52,10 @@ class Tag(HTTPEndpoint):
         if labels:
             for label in labels:
                 sample_ids.add(label["sample_id"])
-        elif modal:
-            sample_ids.add(modal)
 
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
-        elif view.media_type == fom.GROUP and group_id:
+        elif view.media_type == fom.GROUP and not slice:
             view = view.select_group_slices(_allow_mixed=True)
 
         if target_labels:
@@ -86,7 +84,7 @@ class Tag(HTTPEndpoint):
         )
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
-        elif view.media_type == fom.GROUP and group_id:
+        elif view.media_type == fom.GROUP and not slice:
             view = view.select_group_slices(_allow_mixed=True)
 
         if view.media_type == fom.VIDEO and current_frame is not None:
@@ -100,8 +98,11 @@ class Tag(HTTPEndpoint):
             )
             view = view.set_field("frames", expr)
 
-        samples = await foo.aggregate(
+        samples = []
+        async for document in foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(attach_frames=True, detach_frames=False),
-        ).to_list(len(sample_ids))
+        ):
+            samples.append(document)
+
         return {"samples": foj.stringify(samples)}

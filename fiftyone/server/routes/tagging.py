@@ -49,7 +49,7 @@ class Tagging(HTTPEndpoint):
 
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
-        elif view.media_type == fom.GROUP and group_id:
+        elif view.media_type == fom.GROUP and not slice:
             view = view.select_group_slices(_allow_mixed=True)
 
         if count_labels and labels:

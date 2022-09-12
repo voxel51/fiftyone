@@ -8,7 +8,7 @@ import {
   paginateGroup_query$key,
 } from "@fiftyone/relay";
 
-import { atomFamily, selector, selectorFamily } from "recoil";
+import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { VariablesOf, readInlineData } from "react-relay";
 
 import { graphQLSelector } from "recoil-relay";
@@ -107,6 +107,11 @@ export const groupId = selector<string>({
   },
 });
 
+export const refreshGroupQuery = atom<number>({
+  key: "refreshGroupQuery",
+  default: 0,
+});
+
 export const groupQuery = graphQLSelector<
   VariablesOf<paginateGroupQuery>,
   ResponseFrom<paginateGroupQuery>
@@ -141,13 +146,20 @@ export const groupQuery = graphQLSelector<
 export const pinnedSliceSample = selector({
   key: "pinnedSliceSampleFragment",
   get: ({ get }) => {
-    const data = readInlineData<paginateGroupPinnedSample_query$key>(
+    let data = readInlineData<paginateGroupPinnedSample_query$key>(
       paginateGroupPinnedSampleFragment,
       get(groupQuery)
     ).sample;
 
     if (data.__typename !== "PointCloudSample") {
       throw new Error("unsupported pinned sample type");
+    }
+
+    if (typeof data.sample === "string") {
+      data = {
+        ...data,
+        sample: JSON.parse(data.sample),
+      };
     }
 
     return {

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b1e7c1c489449082561879825e82d53e>>
+ * @generated SignedSource<<834054b17e431ba1b208fb4df817f662>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -25,6 +25,7 @@ export type mainSampleQuery$variables = {
 export type mainSampleQuery$data = {
   readonly sample: {
     readonly frameRate?: number;
+    readonly id?: string;
     readonly sample?: object;
     readonly urls?: ReadonlyArray<{
       readonly field: string;
@@ -74,10 +75,17 @@ const node: ConcreteRequest = (function () {
       alias: null,
       args: null,
       kind: "ScalarField",
-      name: "sample",
+      name: "id",
       storageKey: null,
     },
     v5 = {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "sample",
+      storageKey: null,
+    },
+    v6 = {
       alias: null,
       args: null,
       concreteType: "MediaURL",
@@ -102,16 +110,17 @@ const node: ConcreteRequest = (function () {
       ],
       storageKey: null,
     },
-    v6 = {
+    v7 = {
       kind: "InlineFragment",
-      selections: [v4 /*: any*/, v5 /*: any*/],
+      selections: [v4 /*: any*/, v5 /*: any*/, v6 /*: any*/],
       type: "ImageSample",
       abstractKey: null,
     },
-    v7 = {
+    v8 = {
       kind: "InlineFragment",
       selections: [
         v4 /*: any*/,
+        v5 /*: any*/,
         {
           alias: null,
           args: null,
@@ -119,7 +128,7 @@ const node: ConcreteRequest = (function () {
           name: "frameRate",
           storageKey: null,
         },
-        v5 /*: any*/,
+        v6 /*: any*/,
       ],
       type: "VideoSample",
       abstractKey: null,
@@ -138,7 +147,7 @@ const node: ConcreteRequest = (function () {
           kind: "LinkedField",
           name: "sample",
           plural: false,
-          selections: [v6 /*: any*/, v7 /*: any*/],
+          selections: [v7 /*: any*/, v8 /*: any*/],
           storageKey: null,
         },
       ],
@@ -166,24 +175,30 @@ const node: ConcreteRequest = (function () {
               name: "__typename",
               storageKey: null,
             },
-            v6 /*: any*/,
             v7 /*: any*/,
+            v8 /*: any*/,
+            {
+              kind: "InlineFragment",
+              selections: [v4 /*: any*/],
+              type: "PointCloudSample",
+              abstractKey: null,
+            },
           ],
           storageKey: null,
         },
       ],
     },
     params: {
-      cacheID: "26ec2aa2c560cc96f85ccc22c94db962",
+      cacheID: "8288bef45852588e173f7ad9366b1cbc",
       id: null,
       metadata: {},
       name: "mainSampleQuery",
       operationKind: "query",
-      text: "query mainSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n) {\n  sample(dataset: $dataset, view: $view, filter: $filter) {\n    __typename\n    ... on ImageSample {\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on VideoSample {\n      sample\n      frameRate\n      urls {\n        field\n        url\n      }\n    }\n  }\n}\n",
+      text: "query mainSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n) {\n  sample(dataset: $dataset, view: $view, filter: $filter) {\n    __typename\n    ... on ImageSample {\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on VideoSample {\n      id\n      sample\n      frameRate\n      urls {\n        field\n        url\n      }\n    }\n    ... on PointCloudSample {\n      id\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "2a4a2b71392bbedf7f1812f0fb7a1065";
+(node as any).hash = "20386ac4db1c242b8eda0747ef22faa1";
 
 export default node;

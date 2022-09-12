@@ -91,7 +91,7 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);
-  }, [sampleData.sample]);
+  }, [sample]);
 
   useEffect(() => {
     return () => looker && looker.destroy();

@@ -11,7 +11,6 @@ import {
   getSampleSrc,
   groupField,
   groupId,
-  groupMediaTypes,
   hasPinnedSlice,
   mainGroupSample,
   modalNavigation,
@@ -185,7 +184,7 @@ const PluggableSample: React.FC<{
 });
 
 const PinnedSample: React.FC = () => {
-  const sample = useRecoilValue(pinnedSliceSample);
+  const { sample } = useRecoilValue(pinnedSliceSample);
 
   const [pinned, setPinned] = useRecoilState(sidebarOverride);
   const slice = useRecoilValue(pinnedSlice) as string;

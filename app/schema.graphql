@@ -124,6 +124,7 @@ input GroupElementFilter {
 }
 
 type ImageSample implements Sample {
+  id: ID!
   sample: JSON!
   urls: [MediaURL!]!
   aspectRatio: Float!
@@ -187,6 +188,7 @@ type NamedTargets {
 }
 
 type PointCloudSample implements Sample {
+  id: ID!
   sample: JSON!
   urls: [MediaURL!]!
 }
@@ -229,6 +231,7 @@ interface RunConfig {
 }
 
 interface Sample {
+  id: ID!
   sample: JSON!
   urls: [MediaURL!]!
 }
@@ -284,6 +287,7 @@ type Target {
 }
 
 type VideoSample implements Sample {
+  id: ID!
   sample: JSON!
   urls: [MediaURL!]!
   aspectRatio: Float!
