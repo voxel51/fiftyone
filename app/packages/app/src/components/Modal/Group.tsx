@@ -28,6 +28,7 @@ import React, {
   useCallback,
   useRef,
   useState,
+  useEffect,
 } from "react";
 
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
@@ -189,6 +190,8 @@ const PinnedSample: React.FC = () => {
   const [pinned, setPinned] = useRecoilState(sidebarOverride);
   const slice = useRecoilValue(pinnedSlice) as string;
   const hover = fos.useHoveredSample(sample.sample);
+
+  useEffect(() => () => setPinned(null), []);
 
   return (
     <GroupSample

@@ -28,13 +28,13 @@ construct some mocked triples of left/center/right images:
     :linenos:
 
     import fiftyone as fo
-    import fiftyone.utils.splits as fous
+    import fiftyone.utils.random as four
     import fiftyone.zoo as foz
 
     groups = ["left", "center", "right"]
 
     d = foz.load_zoo_dataset("quickstart")
-    fous.random_split(d, {g: 1 / len(groups) for g in groups})
+    four.random_split(d, {g: 1 / len(groups) for g in groups})
     filepaths = [d.match_tags(g).values("filepath") for g in groups]
     filepaths = [dict(zip(groups, fps)) for fps in zip(*filepaths)]
 
