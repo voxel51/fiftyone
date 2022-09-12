@@ -826,7 +826,8 @@ function useHotkey(code, fn, deps) {
   const EVENT_NAME = "keydown";
   const cb = recoil.useRecoilTransaction_UNSTABLE((ctx) => () => fn(ctx), deps);
   function handle(e) {
-    if (e.code === code) {
+    const shouldIgnore = e.target.tagName.toLowerCase() === "input";
+    if (!shouldIgnore && e.code === code) {
       cb();
     }
   }
