@@ -7,7 +7,7 @@ import DatasetComponent from "../../components/Dataset";
 import { DatasetQuery } from "./__generated__/DatasetQuery.graphql";
 
 import * as fos from "@fiftyone/state";
-import { Route, RouterContext } from "@fiftyone/state";
+import { refresher, Route, RouterContext } from "@fiftyone/state";
 import { getDatasetName } from "@fiftyone/state";
 
 const Query = graphql`
@@ -113,7 +113,10 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const update = fos.useStateUpdate();
 
   useEffect(() => {
-    update(() => {
+    update(({ set }) => {
+      if (router.state.refresh) {
+        set(refresher, (cur) => cur + 1);
+      }
       return {
         colorscale: router?.state?.colorscale
           ? router.state.colorscale

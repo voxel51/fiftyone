@@ -22,6 +22,7 @@ import strawberry as gql
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
+from fiftyone.core.collections import SampleCollection
 
 import fiftyone.core.cache as foc
 import fiftyone.core.media as fom
@@ -44,10 +45,12 @@ class MediaType(Enum):
 
 
 async def get_metadata(
+    collection: SampleCollection,
+    sample: t.Dict,
+    media_type: t.Dict[str, t.Dict],
+    metadata_cache: t.Dict[str, t.Dict[str, str]],
+    url_cache: t.Dict[str, str],
     session: aiohttp.ClientSession,
-    filepath: str,
-    media_type: MediaType,
-    metadata: t.Optional[t.Dict] = None,
 ):
     """Gets the metadata for the given local or remote media file.
 
@@ -60,7 +63,10 @@ async def get_metadata(
     Returns:
         metadata dict
     """
+    filepath = sample["filepath"]
     is_video = media_type == fom.VIDEO
+    metadata = sample.get("metadata", None)
+    urls = _create_media_urls(collection, sample, url_cache)
 
     use_local = foc.media_cache.is_local_or_cached(filepath)
     if media_type == fom.IMAGE and foc.media_cache.config.cache_app_images:
@@ -81,40 +87,52 @@ async def get_metadata(
         d["url"] = url
 
     # If sufficient pre-existing metadata exists, use it
-    if metadata:
+    if filepath not in metadata_cache and metadata:
         if is_video:
             width = metadata.get("frame_width", None)
             height = metadata.get("frame_height", None)
             frame_rate = metadata.get("frame_rate", None)
 
             if width and height and frame_rate:
-                return dict(aspect_ratio=width / height, frame_rate=frame_rate)
+                metadata_cache[sample["filepath"]] = dict(
+                    aspect_ratio=width / height,
+                    frame_rate=frame_rate,
+                )
 
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
 
             if width and height:
-                return dict(aspect_ratio=width / height)
+                metadata_cache[sample["filepath"]] = dict(
+                    aspect_ratio=width / height,
+                )
 
-    try:
-        if use_local:
-            # Retrieve media metadata from local disk
-            metadata = await read_local_metadata(local_path, is_video)
-        else:
-            # Retrieve metadata from remote source
-            metadata = await read_url_metadata(session, url, is_video)
-    except Exception as e:
-        # Immediately fail so the user knows they should install FFmpeg
-        if isinstance(e, FFmpegNotFoundException):
-            raise e
+    if filepath not in metadata_cache:
+        try:
+            if use_local:
+                # Retrieve media metadata from local disk
+                metadata_cache[filepath] = await read_local_metadata(
+                    local_path, is_video
+                )
+            else:
+                # Retrieve metadata from remote source
+                metadata_cache[filepath] = await read_url_metadata(
+                    session, url, is_video
+                )
+        except Exception as exc:
+            # Immediately fail so the user knows they should install FFmpeg
+            if isinstance(exc, FFmpegNotFoundException):
+                raise exc
 
-        # Something went wrong (ie non-existent file), so we gracefully return
-        # some placeholder metadata so the App grid can be rendered
-        if is_video:
-            return dict(aspect_ratio=1, frame_rate=30)
-        else:
-            return dict(aspect_ratio=1)
+            # Something went wrong (ie non-existent file), so we gracefully return
+            # some placeholder metadata so the App grid can be rendered
+            if is_video:
+                metadata_cache[filepath] = dict(aspect_ratio=1, frame_rate=30)
+            else:
+                metadata_cache[filepath] = dict(aspect_ratio=1)
+
+    return dict(urls=urls, **metadata_cache[filepath])
 
 
 async def read_url_metadata(session, url, is_video):
@@ -456,3 +474,17 @@ class FFmpegNotFoundException(RuntimeError):
     """Exception raised when FFmpeg or FFprobe cannot be found."""
 
     pass
+
+
+def _create_media_urls(
+    collection: SampleCollection, sample: t.Dict, cache: t.Dict
+) -> t.Dict[str, str]:
+    media_urls = []
+    for field in collection.app_config.media_fields:
+        path = sample.get(field, None)
+        if path not in cache:
+            cache[path] = path
+
+        media_urls.append(dict(field=field, url=path))
+
+    return media_urls

@@ -38,7 +38,9 @@ const usePage = (
                 aspectRatio: result.aspect_ratio,
                 frameRate: result.frame_rate,
                 frameNumber: result.sample.frame_number,
-                url: result.url,
+                urls: Object.fromEntries(
+                  result.urls.map(({ field, url }) => [field, url])
+                ),
               };
 
               store.samples.set(result.sample._id, data);

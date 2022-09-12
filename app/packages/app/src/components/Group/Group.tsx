@@ -37,6 +37,9 @@ const process = (
       let data: any = {
         sample: node.sample,
         aspectRatio: node.aspectRatio,
+        urls: Object.fromEntries(
+          node.urls.map(({ field, url }) => [field, url])
+        ),
       };
 
       if (node.__typename === "VideoSample") {

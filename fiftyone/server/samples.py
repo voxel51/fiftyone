@@ -13,10 +13,11 @@ import typing as t
 
 
 import fiftyone.core.clips as focl
+from fiftyone.core.collections import SampleCollection
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.server.filters import GroupElementFilter, SampleFilter
+from fiftyone.server.filters import SampleFilter
 
 import fiftyone.server.metadata as fosm
 from fiftyone.server.paginator import Connection, Edge, PageInfo
@@ -24,9 +25,17 @@ import fiftyone.server.view as fosv
 from fiftyone.server.scalars import BSON, JSON, BSONArray
 
 
+@gql.type
+class MediaURL:
+    field: str
+    url: str
+
+
 @gql.interface
 class Sample:
+    id: gql.ID
     sample: JSON
+    urls: t.List[MediaURL]
 
 
 @gql.type
@@ -92,8 +101,6 @@ async def paginate_samples(
             [slice == fom.VIDEO for slice in view.group_media_types.values()]
         )
 
-    media_type = MEDIA_TYPES[media]
-
     if media == fom.VIDEO or has_video_slice:
         if isinstance(view, focl.ClipsView):
             expr = F("frame_number") == F("$support")[0]
@@ -123,45 +130,26 @@ async def paginate_samples(
         samples = samples[:first]
         more = True
 
-    metadata_map = {s["filepath"]: s.get("metadata", None) for s in samples}
-    media_types = {f: fom.get_media_type(f) for f in metadata_map}
-
+    metadata_cache = {}
+    url_cache = {}
     async with aiohttp.ClientSession() as session:
-        metadatas = await asyncio.gather(
+        nodes = await asyncio.gather(
             *[
-                fosm.get_metadata(session, f, m, metadata=metadata_map[f])
-                for f, m in media_types.items()
+                _create_sample_item(
+                    view, sample, metadata_cache, url_cache, session
+                )
+                for sample in samples
             ]
         )
 
-    metadata_map = {f: m for f, m in zip(media_types, metadatas)}
-
     edges = []
-    for idx, doc in enumerate(samples):
-        cls = (
-            media_type
-            if media_type is not None
-            else VideoSample
-            if media_types[doc["filepath"]] == fom.VIDEO
-            else ImageSample
-        )
+    for idx, node in enumerate(nodes):
         edges.append(
             Edge(
-                node=from_dict(
-                    cls,
-                    {"sample": doc, **metadata_map[doc["filepath"]]},
-                    Config(check_types=False),
-                ),
+                node=node,
                 cursor=str(idx + int(after) + 1),
             )
         )
-
-    results = []
-    for sample in samples:
-        filepath = sample["filepath"]
-        sample_result = {"sample": sample}
-        sample_result.update(metadata_map[filepath])
-        results.append(sample_result)
 
     return Connection(
         page_info=PageInfo(
@@ -171,4 +159,33 @@ async def paginate_samples(
             end_cursor=edges[-1].cursor if len(edges) > 1 else None,
         ),
         edges=edges,
+    )
+
+
+async def _create_sample_item(
+    dataset: SampleCollection,
+    sample: t.Dict,
+    metadata_cache: t.Dict[str, t.Dict],
+    url_cache: t.Dict[str, str],
+    session: aiohttp.ClientSession,
+) -> SampleItem:
+    media_type = fom.get_media_type(sample["filepath"])
+
+    if media_type == fom.IMAGE:
+        cls = ImageSample
+    elif media_type == fom.VIDEO:
+        cls = VideoSample
+    elif media_type == fom.POINT_CLOUD:
+        cls = PointCloudSample
+    else:
+        raise ValueError(f"unknown media type '{media_type}'")
+
+    metadata = await fosm.get_metadata(
+        dataset, sample, media_type, metadata_cache, url_cache, session
+    )
+
+    return from_dict(
+        cls,
+        {"id": sample["_id"], "sample": sample, **metadata},
+        Config(check_types=False),
     )

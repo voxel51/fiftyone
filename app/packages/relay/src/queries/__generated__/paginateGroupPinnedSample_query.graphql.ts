@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<91d2e992d99ca5af6a6d53825dfab9c8>>
+ * @generated SignedSource<<e24e8f7403dfa519de235a084ed5a4ae>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,17 +15,32 @@ export type paginateGroupPinnedSample_query$data = {
     | {
         readonly __typename: "ImageSample";
         readonly aspectRatio: number;
+        readonly id: string;
         readonly sample: object;
+        readonly urls: ReadonlyArray<{
+          readonly field: string;
+          readonly url: string;
+        }>;
       }
     | {
         readonly __typename: "PointCloudSample";
+        readonly id: string;
         readonly sample: object;
+        readonly urls: ReadonlyArray<{
+          readonly field: string;
+          readonly url: string;
+        }>;
       }
     | {
         readonly __typename: "VideoSample";
         readonly aspectRatio: number;
         readonly frameRate: number;
+        readonly id: string;
         readonly sample: object;
+        readonly urls: ReadonlyArray<{
+          readonly field: string;
+          readonly url: string;
+        }>;
       }
     | {
         // This will never be '%other', but we need some
@@ -45,6 +60,6 @@ const node: ReaderInlineDataFragment = {
   name: "paginateGroupPinnedSample_query",
 };
 
-(node as any).hash = "eb9c0c15bffcff12cd9a2174a2671591";
+(node as any).hash = "1d6bafdc772cdec18ce0362791e8d869";
 
 export default node;

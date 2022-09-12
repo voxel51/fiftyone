@@ -82,6 +82,16 @@ learn how:
     :image_title: TensorFlow
 
 .. customimagelink::
+    :image_link: tutorials/detectron2.html
+    :image_src: https://voxel51.com/images/integrations/detectron2-128.png
+    :image_title: Detectron2
+
+.. customimagelink::
+    :image_link: tutorials/qdrant.html
+    :image_src: https://voxel51.com/images/integrations/qdrant-128.png
+    :image_title: Qdrant
+
+.. customimagelink::
     :image_link: integrations/activitynet.html
     :image_src: https://voxel51.com/images/integrations/activitynet-128.png
     :image_title: ActivityNet

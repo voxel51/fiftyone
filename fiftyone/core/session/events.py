@@ -83,15 +83,11 @@ class ReactivateNotebookCell(Event):
 
 
 @dataclass
-class RefreshApp(Event):
-    """Refresh app event"""
-
-
-@dataclass
 class StateUpdate(Event):
     """State update event"""
 
     state: fos.StateDescription
+    refresh: bool = False
 
 
 @dataclass

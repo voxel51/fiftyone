@@ -41,7 +41,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   );
 
   const create = useCallback(
-    ({ dimensions, frameNumber, frameRate, sample, url }: SampleData): T => {
+    ({ frameNumber, frameRate, sample, urls }: SampleData): T => {
       const video = getMimeType(sample).startsWith("video/");
       let constructor:
         | typeof FrameLooker
@@ -56,7 +56,6 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
       }
 
       const config: ReturnType<T["getInitialState"]>["config"] = {
-        dimensions,
         fieldSchema: {
           ...fieldSchema,
           frames: {
@@ -71,7 +70,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
         frameNumber: constructor === FrameLooker ? frameNumber : undefined,
         frameRate,
         sampleId: sample._id,
-        src: getSampleSrc(sample[mediaField], sample._id, url),
+        src: getSampleSrc(urls[mediaField]),
         support: isClip ? sample.support : undefined,
         thumbnail,
         dataset,

@@ -1,5 +1,4 @@
 import {
-  group,
   groupContainer,
   groupSample,
   groupSampleActive,
@@ -9,6 +8,7 @@ import {
 import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import {
+  getSampleSrc,
   groupField,
   groupId,
   hasPinnedSlice,
@@ -16,7 +16,7 @@ import {
   modalNavigation,
   pinnedSlice,
   pinnedSliceSample,
-  pinnedSliceSampleFragment,
+  selectedMediaField,
   sidebarOverride,
   useClearModal,
   useOnSelectLabel,
@@ -28,6 +28,7 @@ import React, {
   useCallback,
   useRef,
   useState,
+  useEffect,
 } from "react";
 
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
@@ -153,27 +154,24 @@ const withVisualizerPlugin = <
   Component: React.FC<T>
 ) => {
   return (props: T) => {
-    const sample = useRecoilValue(pinnedSliceSample);
+    const { sample, urls } = useRecoilValue(pinnedSliceSample);
     const [plugin] = usePlugin(PluginComponentType.Visualizer);
+    const mediaField = useRecoilValue(selectedMediaField(true));
     const onSelectLabel = useOnSelectLabel();
-
     const pluginAPI = {
-      getSampleSrc: fos.getSampleSrc,
+      dataset: useRecoilValue(fos.dataset),
       sample: sample,
       onSelectLabel,
       useState: useRecoilValue,
       state: fos,
-      dataset: useRecoilValue(fos.dataset),
+      src: getSampleSrc(urls[mediaField]),
     };
+
     const pluginIsActive = plugin && plugin.activator(pluginAPI);
     const PluginComponent = pluginIsActive && plugin.component;
 
     return pluginIsActive ? (
-      <PluginComponent
-        key={sample._id}
-        api={pluginAPI}
-        sampleOverride={sample}
-      />
+      <PluginComponent key={sample._id} api={pluginAPI} />
     ) : (
       <Component {...props} />
     );
@@ -187,11 +185,13 @@ const PluggableSample: React.FC<{
 });
 
 const PinnedSample: React.FC = () => {
-  const sample = useRecoilValue(pinnedSliceSample);
+  const { sample } = useRecoilValue(pinnedSliceSample);
 
   const [pinned, setPinned] = useRecoilState(sidebarOverride);
   const slice = useRecoilValue(pinnedSlice) as string;
   const hover = fos.useHoveredSample(sample.sample);
+
+  useEffect(() => () => setPinned(null), []);
 
   return (
     <GroupSample

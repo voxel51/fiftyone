@@ -267,6 +267,7 @@ const FilterableEntry = React.memo(
         ftype: VALID_PRIMITIVE_TYPES,
       })
     );
+
     const field = useRecoilValue(fos.field(path));
     const data = useMemo(
       () => getFilterData(expandedPath, modal, field, fields, skeleton),

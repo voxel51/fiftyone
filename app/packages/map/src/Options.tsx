@@ -98,7 +98,7 @@ const Options: React.FC<{
 
         <Link
           className={link}
-          href={"https://docs.voxel51.com"}
+          href={"https://voxel51.com/docs/fiftyone/user_guide/app.html#map-tab"}
           title={"Help"}
           to={useExternalLink("https://docs.voxel51.com")}
           target={"_blank"}
