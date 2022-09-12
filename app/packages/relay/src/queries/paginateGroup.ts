@@ -30,16 +30,31 @@ export const paginateGroupPaginationFragment = graphql`
         node {
           __typename
           ... on ImageSample {
+            id
             aspectRatio
             sample
+            urls {
+              field
+              url
+            }
           }
           ... on PointCloudSample {
+            id
             sample
+            urls {
+              field
+              url
+            }
           }
           ... on VideoSample {
+            id
             aspectRatio
             frameRate
             sample
+            urls {
+              field
+              url
+            }
           }
         }
       }
@@ -52,16 +67,31 @@ export const paginateGroupPinnedSampleFragment = graphql`
     sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {
       __typename
       ... on ImageSample {
+        id
         aspectRatio
         sample
+        urls {
+          field
+          url
+        }
       }
       ... on PointCloudSample {
+        id
         sample
+        urls {
+          field
+          url
+        }
       }
       ... on VideoSample {
+        id
         aspectRatio
         frameRate
         sample
+        urls {
+          field
+          url
+        }
       }
     }
   }

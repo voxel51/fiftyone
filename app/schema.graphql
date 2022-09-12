@@ -124,7 +124,9 @@ input GroupElementFilter {
 }
 
 type ImageSample implements Sample {
+  id: ID!
   sample: JSON!
+  urls: [MediaURL!]!
   aspectRatio: Float!
 }
 
@@ -140,6 +142,11 @@ enum MediaType {
   group
   point_cloud
   video
+}
+
+type MediaURL {
+  field: String!
+  url: String!
 }
 
 type Mutation {
@@ -181,7 +188,9 @@ type NamedTargets {
 }
 
 type PointCloudSample implements Sample {
+  id: ID!
   sample: JSON!
+  urls: [MediaURL!]!
 }
 
 type Query {
@@ -222,7 +231,9 @@ interface RunConfig {
 }
 
 interface Sample {
+  id: ID!
   sample: JSON!
+  urls: [MediaURL!]!
 }
 
 type SampleField {
@@ -276,7 +287,9 @@ type Target {
 }
 
 type VideoSample implements Sample {
+  id: ID!
   sample: JSON!
+  urls: [MediaURL!]!
   aspectRatio: Float!
   frameRate: Float!
 }
