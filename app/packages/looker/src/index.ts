@@ -261,7 +261,7 @@ export abstract class Looker<
         this.previousState = this.state;
         this.state = mergeUpdates(this.state, updates);
         if (!this.state.loaded) {
-          this.lookerElement.render(this.state, this.sample);
+          this.lookerElement.render(this.state, undefined);
           return;
         }
 

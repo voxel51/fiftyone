@@ -236,6 +236,9 @@ export const help: Control = {
         return { showHelp: true, options: { showJSON: false, showHelp: true } };
       }
 
+      dispatchEvent("options", {
+        showHelp: false,
+      });
       return { showHelp: false };
     });
   },

@@ -44,3 +44,7 @@ button {
   font-size: 14px;
   color: var(--font);
 }
+
+body {
+  overflow: hidden;
+}

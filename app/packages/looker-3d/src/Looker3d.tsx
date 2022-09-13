@@ -257,18 +257,6 @@ function CameraSetup({ cameraRef, controlsRef, settings }) {
   );
 }
 
-export function getFilepathField(sample, fields) {
-  fields = fields || ["filepath"];
-
-  for (const fieldName of fields) {
-    const filepath = sample[fieldName];
-    if (typeof filepath === "string" && filepath.endsWith(".pcd")) {
-      return fieldName;
-    }
-  }
-  return null;
-}
-
 export const usePathFilter = (): Partial => {
   const fn = useRef((path: string, value: any) => true);
   const loaded = recoil.useRecoilValueLoadable(fos.pathFilter(true));
@@ -288,18 +276,13 @@ export function Looker3d(props) {
   );
 }
 
-function Looker3dCore({ sampleOverride: sample }) {
+function Looker3dCore({ api: { sample, src } }) {
   const settings = fop.usePluginSettings("3d");
 
   const modal = true;
-  const isModal = true;
-  const mediaField = recoil.useRecoilValue(fos.selectedMediaField(isModal));
   // @ts-ignore
-  const src = fos.getSampleSrc(sample[mediaField]);
   const points = useLoader(PCDLoader, src);
-  const [selectedLabels, setSelectedLabels] = recoil.useRecoilState(
-    fos.selectedLabels
-  );
+  const selectedLabels = recoil.useRecoilValue(fos.selectedLabels);
   const pathFilter = usePathFilter();
   const labelAlpha = recoil.useRecoilValue(fos.alpha(modal));
   const onSelectLabel = fos.useOnSelectLabel();
