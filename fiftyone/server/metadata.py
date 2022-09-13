@@ -55,10 +55,12 @@ async def get_metadata(
     """Gets the metadata for the given local or remote media file.
 
     Args:
-        session: an ``aiohttp.ClientSession`` to use if necessary
-        filepath: the path to the file
+        collection: the collection being processed
+        sample: the sample dict
         media_type: the file's media type
-        metadata (None): a pre-existing metadata dict to use if possible
+        metadata_cache: the metadata cache
+        url_cache: the URL cache
+        session: an ``aiohttp.ClientSession`` to use if necessary
 
     Returns:
         metadata dict
