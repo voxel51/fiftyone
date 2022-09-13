@@ -662,6 +662,9 @@ class DatasetView(foc.SampleCollection):
             a dictionary mapping field names to field types, or ``None`` if
             the view does not contain videos
         """
+        if not self._has_frame_fields():
+            return None
+
         field_schema = self._dataset.get_frame_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
