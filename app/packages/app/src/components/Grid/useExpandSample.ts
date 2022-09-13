@@ -23,20 +23,20 @@ export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
         if (id) {
           promise = Promise.resolve(id);
         } else {
-          promise = next().then(() => {
-            const id = store.indices.get(index);
+          promise = next();
 
-            if (!id) {
-              throw new Error("unable to paginate to next sample");
-            }
+          promise
+            ? promise.then(() => {
+                const id = store.indices.get(index);
 
-            return id;
-          });
+                if (!id) {
+                  throw new Error("unable to paginate to next sample");
+                }
+
+                setSample(store.samples.get(id), { index, getIndex });
+              })
+            : clear();
         }
-
-        promise.then((id) => {
-          id ? setSample(store.samples.get(id), { index, getIndex }) : clear();
-        });
       };
 
       const sample = store.samples.get(sampleId);

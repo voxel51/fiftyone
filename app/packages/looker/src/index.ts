@@ -286,7 +286,7 @@ export abstract class Looker<
           Boolean(this.currentOverlays.length) &&
           this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
 
-        postUpdate && postUpdate(this.state, this.currentOverlays);
+        postUpdate && postUpdate(this.state, this.currentOverlays, this.sample);
 
         this.dispatchImpliedEvents(this.previousState, this.state);
 

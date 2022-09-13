@@ -261,7 +261,8 @@ export type StateUpdate<State extends BaseState> = (
     | ((state: Readonly<State>) => Optional<State>),
   postUpdate?: (
     state: Readonly<State>,
-    overlays: Readonly<Overlay<State>[]>
+    overlays: Readonly<Overlay<State>[]>,
+    sample: object
   ) => void
 ) => void;
 

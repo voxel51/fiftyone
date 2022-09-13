@@ -1410,7 +1410,11 @@ class DatasetView(foc.SampleCollection):
 
 
 def make_optimized_select_view(
-    sample_collection, sample_ids, ordered=False, groups=False
+    sample_collection,
+    sample_ids,
+    ordered=False,
+    groups=False,
+    select_groups=False,
 ):
     """Returns a view that selects the provided sample IDs that is optimized
     to reduce the document list as early as possible in the pipeline.
@@ -1428,6 +1432,7 @@ def make_optimized_select_view(
         ordered (False): whether to sort the samples in the returned view to
             match the order of the provided IDs
         groups (False): whether the IDs are group IDs, not sample IDs
+        select_groups (False): whether to select sample groups via sample ids
 
     Returns:
         a :class:`DatasetView`
@@ -1442,10 +1447,15 @@ def make_optimized_select_view(
         #
         if groups:
             return view.select_groups(sample_ids, ordered=ordered)
-        elif view.media_type == fom.GROUP:
+        elif view.media_type == fom.GROUP and not select_groups:
+            return view.select_group_slices(_allow_mixed=True)
+
+        view = view.select(sample_ids, ordered=ordered)
+
+        if view.media_type == fom.GROUP and select_groups:
             view = view.select_group_slices(_allow_mixed=True)
 
-        return view.select(sample_ids, ordered=ordered)
+        return view
 
     #
     # Selecting the samples of interest first can be significantly faster than
@@ -1467,12 +1477,16 @@ def make_optimized_select_view(
         )
     else:
         optimized_view = view._dataset
-        if view.media_type == fom.GROUP:
+        if view.media_type == fom.GROUP and not select_groups:
             optimized_view = optimized_view.select_group_slices(
                 _allow_mixed=True
             )
 
         optimized_view = optimized_view.select(sample_ids, ordered=ordered)
+        if view.media_type == fom.GROUP and select_groups:
+            optimized_view = optimized_view.select_group_slices(
+                _allow_mixed=True
+            )
 
     for stage in view._stages:
         if type(stage) not in fost._STAGES_THAT_SELECT_OR_REORDER:

@@ -6,6 +6,7 @@ export interface SelectEvent {
     id: string;
     field: string;
     frameNumber?: number;
+    sampleId: string;
   };
 }
 
@@ -13,8 +14,7 @@ export function useOnSelectLabel() {
   const send = fos.useSetSelectedLabels();
   return recoil.useRecoilTransaction_UNSTABLE(
     ({ get, set }) =>
-      ({ detail: { id, field, frameNumber } }: SelectEvent) => {
-        const { sample } = get(fos.modal);
+      ({ detail: { id, field, frameNumber, sampleId } }: SelectEvent) => {
         let labels = {
           ...get(fos.selectedLabels),
         };
@@ -23,7 +23,7 @@ export function useOnSelectLabel() {
         } else {
           labels[id] = {
             field,
-            sampleId: sample._id,
+            sampleId: sampleId,
             frameNumber,
           };
         }
