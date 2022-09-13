@@ -13,6 +13,10 @@ Grouped datasets can be used, for example, to represent multiview scenes, where
 data for multiple perspectives of the same scene can be stored, visualized, and
 queried in ways that respect the relationships between the slices of data.
 
+.. image:: /images/groups/groups-modal.gif
+   :alt: groups-sizzle
+   :align: center
+
 .. _groups-overview:
 
 Overview
