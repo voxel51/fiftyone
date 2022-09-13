@@ -358,12 +358,6 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_USE_FRAME_NUMBER",
             default=False,
         )
-        self.disable_plugins = self.parse_bool(
-            d,
-            "disable_plugins",
-            env_var="FIFTYONE_APP_DISABLE_PLUGINS",
-            default=False,
-        )
         self.plugins = d.get("plugins", {})
 
         self._init()
