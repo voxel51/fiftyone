@@ -23,6 +23,27 @@ from decorators import drop_datasets, skip_windows
 
 class DatasetViewTests(unittest.TestCase):
     @drop_datasets
+    def test_eq(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i) for i in range(5)]
+        )
+
+        view1 = dataset.shuffle(seed=51).limit(3)
+        view2 = dataset.shuffle(seed=51).limit(3)
+        view3 = deepcopy(view1)
+
+        self.assertEqual(view1, view2)
+        self.assertEqual(view1, view3)
+
+        view1 = dataset.limit(1).concat(dataset.skip(1).limit(1))
+        view2 = dataset.limit(1).concat(dataset.skip(1).limit(1))
+        view3 = deepcopy(view1)
+
+        self.assertEqual(view1, view2)
+        self.assertEqual(view1, view3)
+
+    @drop_datasets
     def test_iter_samples(self):
         dataset = fo.Dataset()
         dataset.add_samples(
@@ -1353,6 +1374,32 @@ class ViewStageTests(unittest.TestCase):
         self.sample2["numeric_field"] = -1.0
         self.sample2["numeric_list_field"] = [-2, -1, 0, 1]
         self.sample2.save()
+
+    def test_concat(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.jpg", field=1),
+                fo.Sample(filepath="image2.jpg", field=2),
+                fo.Sample(filepath="image3.jpg", field=3),
+                fo.Sample(filepath="image4.jpg", field=4),
+            ]
+        )
+
+        view1 = dataset.skip(0).limit(1)
+        view2 = dataset.skip(1).limit(1)
+        view3 = dataset.skip(2).limit(1)
+        view4 = dataset.skip(3).limit(1)
+
+        view = view1.concat(view2)
+
+        self.assertEqual(len(view), 2)
+        self.assertListEqual(view.values("field"), [1, 2])
+
+        view = view1.concat(view2).concat(view3).concat(view4)
+
+        self.assertEqual(len(view), 4)
+        self.assertListEqual(view.values("field"), [1, 2, 3, 4])
 
     def test_exclude(self):
         result = list(self.dataset.exclude([self.sample1.id]))

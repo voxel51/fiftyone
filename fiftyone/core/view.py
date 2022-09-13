@@ -67,14 +67,17 @@ class DatasetView(foc.SampleCollection):
         self.__media_type = _media_type
         self.__group_slice = _group_slice
 
-    def __eq__(self, other_view):
-        if type(other_view) != type(self):
+    def __eq__(self, other):
+        if type(other) != type(self):
+            return False
+
+        if self._root_dataset != other._root_dataset:
             return False
 
         # Two views into the same dataset are equal if their stage definitions
         # are equal, excluding their UUIDs
         d = self._serialize(include_uuids=False)
-        other_d = other_view._serialize(include_uuids=False)
+        other_d = other._serialize(include_uuids=False)
         return d == other_d
 
     def __len__(self):

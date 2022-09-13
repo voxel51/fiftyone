@@ -259,6 +259,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._deleted = False
 
+    def __eq__(self, other):
+        return type(other) == type(self) and self.name == other.name
+
+    def __copy__(self):
+        return self  # datasets are singletons
+
+    def __deepcopy__(self, memo):
+        return self  # datasets are singletons
+
     def __len__(self):
         return self.count()
 
