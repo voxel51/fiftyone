@@ -1399,9 +1399,6 @@ class DatasetView(foc.SampleCollection):
         return not any((selected_fields, excluded_fields, filtered_fields))
 
     def _get_group_media_types(self):
-        if self._dataset.media_type != fom.GROUP:
-            return None
-
         for stage in reversed(self._stages):
             if isinstance(stage, fost.SelectGroupSlices):
                 return stage._get_group_media_types(self._dataset)

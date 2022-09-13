@@ -3948,8 +3948,10 @@ class SelectGroupSlices(ViewStage):
 
         if etau.is_container(slices):
             slices = set(slices)
-        else:
+        elif slices is not None:
             slices = {slices}
+        else:
+            slices = set(group_media_types.keys())
 
         return {
             slice_name: media_type

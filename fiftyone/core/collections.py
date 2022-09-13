@@ -8142,9 +8142,6 @@ class SampleCollection(object):
         return list(group_slices)
 
     def _get_group_media_types(self):
-        if self.media_type != fom.GROUP:
-            return None
-
         return self._dataset._doc.group_media_types
 
     def _contains_videos(self, any_slice=False):
