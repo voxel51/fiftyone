@@ -433,7 +433,6 @@ class AppConfig(EnvConfig):
                     "map.mapboxAccessToken",
                     os.environ["MAPBOX_TOKEN"],
                 )
-                raise OSError("HAHAHAHA")
             except Exception as e:
                 logger.warning("Failed to set mapbox token: %s", e)
 
