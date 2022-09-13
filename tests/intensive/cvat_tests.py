@@ -1188,6 +1188,48 @@ class CVATTests(unittest.TestCase):
             any([gid == test_group_id for gid in id_group_map.values()])
         )
 
+    def test_task_exists(self):
+        dataset = (
+            foz.load_zoo_dataset("quickstart", max_samples=20)
+            .select_fields("ground_truth")
+            .clone()
+        )
+
+        anno_key = "task_exists"
+        results = dataset.annotate(
+            anno_key,
+            label_field="ground_truth",
+            backend="cvat",
+            task_size=1,
+        )
+
+        tasks_exist = []
+        with results:
+            api = results.connect_to_api()
+            for task_id in results.task_ids:
+                tasks_exist.append(api.task_exists(task_id))
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+        self.assertNotIn(False, tasks_exist)
+
+        view = dataset.take(1)
+
+        anno_key = "task_not_exists"
+        results = view.annotate(
+            anno_key,
+            label_field="ground_truth",
+            backend="cvat",
+        )
+
+        task_id = results.task_ids[0]
+        with results:
+            api = results.connect_to_api()
+            api.delete_task(task_id)
+            self.assertFalse(api.task_exists(task_id))
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
 
 class CVATCloudTests(unittest.TestCase):
     """
