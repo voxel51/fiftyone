@@ -64,9 +64,10 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     sample: Readonly<Sample>
   ) {
     if (
-      arraysAreEqual(activePaths, this.activePaths) &&
-      this.colorByValue === (coloring.by === "label") &&
-      this.colorSeed === coloring.seed
+      (arraysAreEqual(activePaths, this.activePaths) &&
+        this.colorByValue === (coloring.by === "label") &&
+        this.colorSeed === coloring.seed) ||
+      !sample
     ) {
       return this.element;
     }
