@@ -38,6 +38,7 @@ class Frames(HTTPEndpoint):
                 (F("frame_number") >= start_frame)
                 & (F("frame_number") <= end_frame)
             ),
+            _allow_missing=True,
         )
 
         frames = await foo.aggregate(

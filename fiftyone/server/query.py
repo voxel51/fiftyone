@@ -223,7 +223,7 @@ class Dataset:
 
         # old dataset docs, e.g. from imports have frame fields attached even for
         # image datasets. we need to remove them
-        if dataset.media_type != fom.VIDEO:
+        if dataset.media_type == fom.IMAGE:
             dataset.frame_fields = []
 
         return dataset
