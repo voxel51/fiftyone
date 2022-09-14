@@ -185,7 +185,7 @@ def annotate(
             subclass of the backend being used
 
     Returns:
-        an :class:`AnnnotationResults`
+        an :class:`AnnotationResults`
     """
     # @todo support this?
     if samples._dataset._is_frames:
