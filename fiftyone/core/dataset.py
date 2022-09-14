@@ -4978,7 +4978,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if media_type == fom.VIDEO:
             contains_videos = True
         else:
-            contains_videos = self._contains_videos()
+            contains_videos = self._contains_videos(any_slice=True)
 
         if not contains_videos:
             attach_frames = False
