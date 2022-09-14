@@ -1148,7 +1148,7 @@ class DatasetView(foc.SampleCollection):
             _pipelines.append(stage.to_mongo(_view))
             _view = _view.add_stage(stage)
 
-        if _attach_frames_idx is None and attach_frames or frames_only:
+        if _attach_frames_idx is None and (attach_frames or frames_only):
             _attach_frames_idx = len(_pipelines)
 
         #######################################################################
