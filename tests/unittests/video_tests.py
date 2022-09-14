@@ -884,9 +884,7 @@ class VideoTests(unittest.TestCase):
         dataset1 = fo.Dataset()
         dataset1.add_samples([sample11, sample12])
 
-        ref = sample12.frames[3].ground_truth.detections[2]
-        common = ref.copy()
-        common.id = ref.id
+        common = sample12.frames[3].ground_truth.detections[2].copy()
         common.label = "COMMON"
 
         sample22 = fo.Sample(filepath="video2.mp4")

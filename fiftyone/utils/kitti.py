@@ -12,6 +12,7 @@ import multiprocessing
 import struct
 import os
 
+from bson import ObjectId
 import numpy as np
 
 import eta.core.utils as etau
@@ -943,7 +944,8 @@ def _load_kitti_annotations(labels_path, frame_size):
         del detection["rotation_y"]
 
     for detection in gt3d.detections:
-        detection["bounding_box"] = []
+        detection.id = ObjectId()
+        detection.bounding_box = []
         detection["rotation"] = [0, detection["rotation_y"], 0]
         del detection["alpha"]
         del detection["rotation_y"]
@@ -1024,6 +1026,7 @@ def _proj_3d_to_right_camera(detections3d, calib, frame_size):
         w = max(cornersx) - x
         h = max(cornersy) - y
 
+        detection.id = ObjectId()
         detection.bounding_box = [x, y, w, h]
 
         del detection["dimensions"]

@@ -54,10 +54,12 @@ class LabelsTests(unittest.TestCase):
         self.assertIsNot(sample2, sample)
         self.assertNotEqual(sample2.id, sample.id)
         self.assertIsNot(sample2.test_dets, sample.test_dets)
+
         det = sample.test_dets.detections[0]
         det2 = sample2.test_dets.detections[0]
+
         self.assertIsNot(det2, det)
-        self.assertNotEqual(det2.id, det.id)
+        self.assertEqual(det2.id, det.id)
 
 
 class SerializationTests(unittest.TestCase):

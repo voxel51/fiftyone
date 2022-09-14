@@ -5,8 +5,9 @@ ActivityNet-style temporal detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 from collections import defaultdict
+from copy import deepcopy
+import logging
 
 import numpy as np
 
@@ -115,8 +116,8 @@ class ActivityNetEvaluation(DetectionEvaluation):
         if eval_key is None:
             # Don't save results on user's data
             eval_key = "eval"
-            gts = _copy_labels(gts)
-            preds = _copy_labels(preds)
+            gts = deepcopy(gts)
+            preds = deepcopy(preds)
 
         return _activitynet_evaluation_single_iou(
             gts, preds, eval_key, self.config
@@ -178,8 +179,8 @@ class ActivityNetEvaluation(DetectionEvaluation):
         logger.info("Performing IoU sweep...")
         for sample in _samples.iter_samples(progress=True):
             # Don't edit user's data during sweep
-            gts = _copy_labels(sample[self.gt_field])
-            preds = _copy_labels(sample[self.pred_field])
+            gts = deepcopy(sample[self.gt_field])
+            preds = deepcopy(sample[self.pred_field])
 
             video_matches = _activitynet_evaluation_iou_sweep(
                 gts, preds, self.config
@@ -662,17 +663,3 @@ def _compute_matches(cats, pred_ious, iou_thresh, eval_key, id_key, iou_key):
                 matches.append((gt.label, None, None, None, gt.id, None))
 
     return matches
-
-
-def _copy_labels(labels):
-    if labels is None:
-        return None
-
-    field = labels._LABEL_LIST_FIELD
-    _labels = labels.copy()
-
-    # We need the IDs to stay the same
-    for _label, label in zip(_labels[field], labels[field]):
-        _label.id = label.id
-
-    return _labels

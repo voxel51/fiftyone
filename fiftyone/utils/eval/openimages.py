@@ -204,8 +204,8 @@ class OpenImagesEvaluation(DetectionEvaluation):
         if eval_key is None:
             # Don't save results on user's data
             eval_key = "eval"
-            gts = _copy_labels(gts)
-            preds = _copy_labels(preds)
+            gts = deepcopy(gts)
+            preds = deepcopy(preds)
 
         return _open_images_evaluation_single_iou(
             gts,
@@ -809,20 +809,6 @@ def _interpolate_pr(precision, recall, thresholds=None, num_points=101):
         pass
 
     return pre, rec, thr
-
-
-def _copy_labels(labels):
-    if labels is None:
-        return None
-
-    field = labels._LABEL_LIST_FIELD
-    _labels = labels.copy()
-
-    # We need the IDs to stay the same
-    for _label, label in zip(_labels[field], labels[field]):
-        _label.id = label.id
-
-    return _labels
 
 
 # Parse hierarchy, code from:

@@ -5,6 +5,7 @@ FiftyOne Label-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import copy, deepcopy
 import unittest
 
 from bson import Binary, ObjectId
@@ -86,6 +87,56 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(detection2["foo"], detection["foo"])
         self.assertIsInstance(detection2.embedding, np.ndarray)
         self.assertEqual(detection2["custom_id"], detection["custom_id"])
+
+    @drop_datasets
+    def test_copy(self):
+        c1 = fo.Classification(label="cat")
+
+        c2 = c1.copy()
+
+        self.assertEqual(c2, c1)
+        self.assertEqual(c2.id, c1.id)
+        self.assertEqual(c2.label, c1.label)
+
+        c3 = copy(c1)
+
+        self.assertEqual(c3, c1)
+        self.assertEqual(c3.id, c1.id)
+        self.assertEqual(c3.label, c1.label)
+
+        c4 = deepcopy(c1)
+
+        self.assertEqual(c4, c1)
+        self.assertEqual(c4.id, c1.id)
+        self.assertEqual(c4.label, c1.label)
+
+        c1 = fo.Classifications(
+            classifications=[fo.Classification(label="cat")]
+        )
+
+        c2 = c1.copy()
+
+        self.assertEqual(c2, c1)
+        self.assertEqual(c2.classifications[0].id, c1.classifications[0].id)
+        self.assertEqual(
+            c2.classifications[0].label, c1.classifications[0].label
+        )
+
+        c3 = c1.copy()
+
+        self.assertEqual(c3, c1)
+        self.assertEqual(c3.classifications[0].id, c1.classifications[0].id)
+        self.assertEqual(
+            c3.classifications[0].label, c1.classifications[0].label
+        )
+
+        c4 = c1.copy()
+
+        self.assertEqual(c4, c1)
+        self.assertEqual(c4.classifications[0].id, c1.classifications[0].id)
+        self.assertEqual(
+            c4.classifications[0].label, c1.classifications[0].label
+        )
 
 
 if __name__ == "__main__":

@@ -39,7 +39,7 @@ class SerializableDocument(object):
     @property
     def field_names(self):
         """An ordered tuple of the public fields of this document."""
-        raise NotImplementedError("Subclass must implement `field_names`")
+        raise NotImplementedError("Subclass must implement field_names")
 
     def fancy_repr(
         self,
@@ -89,7 +89,7 @@ class SerializableDocument(object):
         Returns:
             True/False
         """
-        raise NotImplementedError("Subclass must implement `has_field()`")
+        raise NotImplementedError("Subclass must implement has_field()")
 
     def get_field(self, field_name):
         """Gets the field of the document.
@@ -103,7 +103,7 @@ class SerializableDocument(object):
         Raises:
             AttributeError: if the field does not exist
         """
-        raise NotImplementedError("Subclass must implement `get_field()`")
+        raise NotImplementedError("Subclass must implement get_field()")
 
     def set_field(self, field_name, value, create=False):
         """Sets the value of a field of the document.
@@ -117,7 +117,7 @@ class SerializableDocument(object):
             ValueError: if ``field_name`` is not an allowed field name or does
                 not exist and ``create == False``
         """
-        raise NotImplementedError("Subclass must implement `set_field()`")
+        raise NotImplementedError("Subclass must implement set_field()")
 
     def clear_field(self, field_name):
         """Clears the field from the document.
@@ -128,7 +128,7 @@ class SerializableDocument(object):
         Raises:
             ValueError: if the field does not exist
         """
-        raise NotImplementedError("Subclass must implement `clear_field()`")
+        raise NotImplementedError("Subclass must implement clear_field()")
 
     def iter_fields(self):
         """Returns an iterator over the ``(name, value)`` pairs of the
@@ -150,7 +150,7 @@ class SerializableDocument(object):
         Returns:
             a tuple of field names
         """
-        raise NotImplementedError("Subclass must implement `_get_field_names`")
+        raise NotImplementedError("Subclass must implement _get_field_names()")
 
     def _get_repr_fields(self):
         """Returns an ordered tuple of field names that should be included in
@@ -159,7 +159,7 @@ class SerializableDocument(object):
         Returns:
             a tuple of field names
         """
-        raise NotImplementedError("Subclass must implement `_get_repr_fields`")
+        raise NotImplementedError("Subclass must implement _get_repr_fields()")
 
     def copy(self):
         """Returns a deep copy of the document.
@@ -167,7 +167,7 @@ class SerializableDocument(object):
         Returns:
             a :class:`SerializableDocument`
         """
-        return deepcopy(self)
+        raise NotImplementedError("Subclass must implement copy()")
 
     def merge(self, doc, merge_lists=True, merge_dicts=True, overwrite=True):
         """Merges the contents of the given document into this document.
@@ -285,15 +285,6 @@ class MongoEngineBaseDocument(SerializableDocument):
     def __delitem__(self, name):
         self.clear_field(name)
 
-    def __deepcopy__(self, memo):
-        # pylint: disable=no-member, unsubscriptable-object
-        kwargs = {
-            f: deepcopy(self.get_field(f), memo)
-            for f in self._fields_ordered
-            if f not in ("_cls", "_id", "id")
-        }
-        return self.__class__(**kwargs)
-
     @property
     def field_names(self):
         return self._get_field_names(include_private=False)
@@ -374,6 +365,12 @@ class MongoEngineBaseDocument(SerializableDocument):
     def _get_repr_fields(self):
         # pylint: disable=no-member
         return self._fields_ordered
+
+    def copy(self):
+        # pylint: disable=no-member, unsubscriptable-object
+        return self.__class__(
+            **{f: deepcopy(self.get_field(f)) for f in self._fields_ordered}
+        )
 
     def to_dict(self, extended=False):
         # pylint: disable=no-member
@@ -489,9 +486,15 @@ class BaseDocument(MongoEngineBaseDocument):
 
         return super().__eq__(other)
 
-    def _get_repr_fields(self):
-        # pylint: disable=no-member
-        return self._fields_ordered
+    def copy(self):
+        # pylint: disable=no-member, unsubscriptable-object
+        return self.__class__(
+            **{
+                f: deepcopy(self.get_field(f))
+                for f in self._fields_ordered
+                if f != "id"
+            }
+        )
 
     @property
     def in_db(self):

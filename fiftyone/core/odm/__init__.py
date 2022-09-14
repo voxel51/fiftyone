@@ -48,7 +48,11 @@ from .document import (
     Document,
     SerializableDocument,
 )
-from .embedded_document import DynamicEmbeddedDocument, EmbeddedDocument
+from .embedded_document import (
+    BaseEmbeddedDocument,
+    DynamicEmbeddedDocument,
+    EmbeddedDocument,
+)
 from .frame import (
     DatasetFrameDocument,
     NoDatasetFrameDocument,

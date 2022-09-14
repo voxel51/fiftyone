@@ -78,9 +78,6 @@ class _Document(object):
         except AttributeError as e:
             raise KeyError(e.args[0])
 
-    def __copy__(self):
-        return self.copy()
-
     @property
     def _id(self):
         """The ObjectId of the document, or ``None`` if it has not been added

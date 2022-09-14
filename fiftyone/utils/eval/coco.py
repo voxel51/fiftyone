@@ -5,8 +5,9 @@ COCO-style detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 from collections import defaultdict
+from copy import deepcopy
+import logging
 
 import numpy as np
 
@@ -158,8 +159,8 @@ class COCOEvaluation(DetectionEvaluation):
         if eval_key is None:
             # Don't save results on user's data
             eval_key = "eval"
-            gts = _copy_labels(gts)
-            preds = _copy_labels(preds)
+            gts = deepcopy(gts)
+            preds = deepcopy(preds)
 
         return _coco_evaluation_single_iou(gts, preds, eval_key, self.config)
 
@@ -660,8 +661,8 @@ def _compute_pr_curves(samples, config, classes=None):
 
         for image in images:
             # Don't edit user's data during sweep
-            gts = _copy_labels(image[gt_field])
-            preds = _copy_labels(image[pred_field])
+            gts = deepcopy(image[gt_field])
+            preds = deepcopy(image[pred_field])
 
             matches_list = _coco_evaluation_iou_sweep(gts, preds, config)
 
@@ -756,17 +757,3 @@ def _compute_pr_curves(samples, config, classes=None):
             thresholds[idx][c_idx] = t
 
     return precision, recall, thresholds, iou_threshs, classes
-
-
-def _copy_labels(labels):
-    if labels is None:
-        return None
-
-    field = labels._LABEL_LIST_FIELD
-    _labels = labels.copy()
-
-    # We need the IDs to stay the same
-    for _label, label in zip(_labels[field], labels[field]):
-        _label.id = label.id
-
-    return _labels

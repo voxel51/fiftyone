@@ -833,9 +833,7 @@ class DatasetTests(unittest.TestCase):
             [sample11, sample12, sample13, sample14, sample15]
         )
 
-        ref = sample13.ground_truth.detections[2]
-        common = ref.copy()
-        common.id = ref.id
+        common = sample13.ground_truth.detections[2].copy()
         common.label = "COMMON"
 
         sample22 = fo.Sample(filepath="image2.png")
@@ -2297,28 +2295,40 @@ class DatasetDeletionTests(unittest.TestCase):
             ground_truth=fo.Classification(label="cat"),
         )
 
-        sample2 = sample1.copy()
-        sample2.filepath = "image2.png"
+        sample2 = fo.Sample(
+            filepath="image2.png",
+            ground_truth=fo.Classification(label="cat"),
+        )
 
-        sample3 = sample1.copy()
-        sample3.filepath = "image3.png"
+        sample3 = fo.Sample(
+            filepath="image3.png",
+            ground_truth=fo.Classification(label="cat"),
+        )
 
         self.dataset.add_samples([sample1, sample2, sample3])
 
     def _setUp_video_classification(self):
         sample1 = fo.Sample(filepath="video1.mp4")
         sample1.frames[1] = fo.Frame(
-            frame_number=1, ground_truth=fo.Classification(label="cat")
+            ground_truth=fo.Classification(label="cat")
         )
         sample1.frames[2] = fo.Frame(
-            frame_number=2, ground_truth=fo.Classification(label="dog")
+            ground_truth=fo.Classification(label="dog")
         )
         sample1.frames[3] = fo.Frame(
-            frame_number=3, ground_truth=fo.Classification(label="rabbit")
+            ground_truth=fo.Classification(label="rabbit")
         )
 
-        sample2 = sample1.copy()
-        sample2.filepath = "video2.mp4"
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame(
+            ground_truth=fo.Classification(label="cat")
+        )
+        sample2.frames[2] = fo.Frame(
+            ground_truth=fo.Classification(label="dog")
+        )
+        sample2.frames[3] = fo.Frame(
+            ground_truth=fo.Classification(label="rabbit")
+        )
 
         self.dataset.add_samples([sample1, sample2])
 
@@ -2344,19 +2354,8 @@ class DatasetDeletionTests(unittest.TestCase):
             ),
         )
 
-        sample2 = sample1.copy()
-        sample2.filepath = "image2.png"
-
-        sample3 = sample1.copy()
-        sample3.filepath = "image3.png"
-
-        self.dataset.add_samples([sample1, sample2, sample3])
-
-    def _setUp_video_detections(self):
-        sample1 = fo.Sample(filepath="video1.mp4")
-
-        frame1 = fo.Frame(
-            frame_number=1,
+        sample2 = fo.Sample(
+            filepath="image2.png",
             ground_truth=fo.Detections(
                 detections=[
                     fo.Detection(
@@ -2375,18 +2374,154 @@ class DatasetDeletionTests(unittest.TestCase):
                 ]
             ),
         )
-        sample1.frames[1] = frame1
 
-        frame2 = frame1.copy()
-        frame2.frame_number = 2
-        sample1.frames[2] = frame2
+        sample3 = fo.Sample(
+            filepath="image3.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
+                    ),
+                    fo.Detection(
+                        label="rabbit",
+                        confidence=0.1,
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                ]
+            ),
+        )
 
-        frame3 = frame1.copy()
-        frame3.frame_number = 3
-        sample1.frames[3] = frame3
+        self.dataset.add_samples([sample1, sample2, sample3])
 
-        sample2 = sample1.copy()
-        sample2.filepath = "video2.mp4"
+    def _setUp_video_detections(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+
+        sample1.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
+                    ),
+                    fo.Detection(
+                        label="rabbit",
+                        confidence=0.1,
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                ]
+            ),
+        )
+
+        sample1.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
+                    ),
+                    fo.Detection(
+                        label="rabbit",
+                        confidence=0.1,
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                ]
+            ),
+        )
+
+        sample1.frames[3] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
+                    ),
+                    fo.Detection(
+                        label="rabbit",
+                        confidence=0.1,
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                ]
+            ),
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+
+        sample2.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
+                    ),
+                    fo.Detection(
+                        label="rabbit",
+                        confidence=0.1,
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                ]
+            ),
+        )
+
+        sample2.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
+                    ),
+                    fo.Detection(
+                        label="rabbit",
+                        confidence=0.1,
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                ]
+            ),
+        )
+
+        sample2.frames[3] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
+                    ),
+                    fo.Detection(
+                        label="rabbit",
+                        confidence=0.1,
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                ]
+            ),
+        )
 
         self.dataset.add_samples([sample1, sample2])
 
