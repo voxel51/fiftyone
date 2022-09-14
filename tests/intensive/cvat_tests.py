@@ -1242,7 +1242,7 @@ class CVATTests(unittest.TestCase):
         prev_ids = dataset.values("ground_truth.detections.id", unwind=True)
 
         anno_key = "anno_key"
-        results = dataset.annotate(
+        results = view.annotate(
             anno_key,
             backend="cvat",
             label_field="ground_truth",
@@ -1255,6 +1255,19 @@ class CVATTests(unittest.TestCase):
             sorted(dataset.values("ground_truth.detections.id", unwind=True)),
             sorted(prev_ids),
         )
+
+        # Test scalar
+        view = dataset.select_fields("uniqueness")
+        anno_key = "anno_key2"
+        results = view.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="uniqueness",
+        )
+        dataset.delete_sample_field("uniqueness")
+        dataset.reload()
+
+        dataset.load_annotations(anno_key, cleanup=True)
 
 
 if __name__ == "__main__":
