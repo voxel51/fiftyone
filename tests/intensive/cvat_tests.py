@@ -1252,8 +1252,8 @@ class CVATTests(unittest.TestCase):
 
         dataset.load_annotations(anno_key, cleanup=True)
         self.assertListEqual(
-            dataset.values("ground_truth.detections.id", unwind=True),
-            prev_ids,
+            sorted(dataset.values("ground_truth.detections.id", unwind=True)),
+            sorted(prev_ids),
         )
 
 
