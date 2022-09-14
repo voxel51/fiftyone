@@ -3903,7 +3903,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the list of task IDs
         """
         resp = self.get(self.project_url(project_id)).json()
-        return [task["id"] for task in resp.get("tasks", [])]
+        tasks = []
+        for task in resp.get("tasks", []):
+            if isinstance(task, int):
+                tasks.append(task)
+            else:
+                tasks.append(task["id"])
+        return tasks
 
     def create_task(
         self,

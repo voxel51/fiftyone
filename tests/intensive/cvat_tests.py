@@ -535,7 +535,12 @@ class CVATTests(unittest.TestCase):
                 )
 
             dataset.load_annotations(anno_key, cleanup=True)
-            self.assertIsNotNone(api.get_project_id(project_name))
+            project_id = api.get_project_id(project_name)
+            self.assertIsNotNone(project_id)
+
+            project_tasks = api.get_project_tasks(project_id)
+            task_ids = results.task_ids + results2.task_ids + results3.task_ids
+            self.assertListEqual(sorted(project_tasks), sorted(task_ids))
 
             dataset.load_annotations(anno_key2, cleanup=True)
             self.assertIsNotNone(api.get_project_id(project_name))
