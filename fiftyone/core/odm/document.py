@@ -231,7 +231,7 @@ class SerializableDocument(object):
         Returns:
             a dict
         """
-        raise NotImplementedError("Subclass must implement `to_dict()`")
+        raise NotImplementedError("Subclass must implement to_dict()")
 
     @classmethod
     def from_dict(cls, d, extended=False):
@@ -245,7 +245,7 @@ class SerializableDocument(object):
         Returns:
             a :class:`SerializableDocument`
         """
-        raise NotImplementedError("Subclass must implement `from_dict()`")
+        raise NotImplementedError("Subclass must implement from_dict()")
 
     def to_json(self, pretty_print=False):
         """Serializes the document to a JSON string.

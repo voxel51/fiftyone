@@ -5,6 +5,8 @@ Sample groups.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
+
 from bson import ObjectId
 
 import fiftyone.core.fields as fof
@@ -21,6 +23,17 @@ class Group(foo.EmbeddedDocument):
 
     id = fof.ObjectIdField(default=lambda: str(ObjectId()), db_field="_id")
     name = fof.StringField()
+
+    def __deepcopy__(self, memo):
+        # Custom implementation that does NOT exclude `id` field, since `Group`
+        # instances often do need to share the same IDs
+        # pylint: disable=no-member, unsubscriptable-object
+        return self.__class__(
+            **{
+                f: deepcopy(self.get_field(f), memo)
+                for f in self._fields_ordered
+            }
+        )
 
     @property
     def _id(self):
