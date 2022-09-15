@@ -127,6 +127,7 @@ const Grid: React.FC<{}> = () => {
       useRecoilValue(fos.refresher),
       useRecoilValue(fos.similarityParameters),
       useRecoilValue(fos.selectedMediaField(false)),
+      useRecoilValue(fos.extendedStagesUnsorted),
     ]
   );
 
