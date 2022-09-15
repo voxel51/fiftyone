@@ -1094,6 +1094,7 @@ class DatasetView(foc.SampleCollection):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        support=None,
         group_slice=None,
         group_slices=None,
         groups_only=False,
@@ -1159,12 +1160,12 @@ class DatasetView(foc.SampleCollection):
             # Two lookups are required; manually do the **last** one and rely
             # on dataset._pipeline() to do the first one
             attach_frames = True
-            _pipeline = self._dataset._attach_frames_pipeline()
+            _pipeline = self._dataset._attach_frames_pipeline(support=support)
             _pipelines.insert(_attach_frames_idx, _pipeline)
         elif _found_select_group_slice and _attach_frames_idx is not None:
             # Must manually attach frames after the group selection
             attach_frames = None  # special syntax: frames already attached
-            _pipeline = self._dataset._attach_frames_pipeline()
+            _pipeline = self._dataset._attach_frames_pipeline(support=support)
             _pipelines.insert(_attach_frames_idx, _pipeline)
         elif _attach_frames_idx0 is not None or _attach_frames_idx is not None:
             # Exactly one lookup is required; rely on dataset._pipeline() to
@@ -1181,14 +1182,18 @@ class DatasetView(foc.SampleCollection):
             attach_frames = None  # special syntax: frames already attached
 
             if _attach_frames_idx0 is not None:
-                _pipeline = self._dataset._attach_frames_pipeline()
+                _pipeline = self._dataset._attach_frames_pipeline(
+                    support=support
+                )
                 _pipelines.insert(_attach_frames_idx0, _pipeline)
 
             if _attach_frames_idx is not None:
                 if _attach_frames_idx0 is not None:
                     _attach_frames_idx += 1
 
-                _pipeline = self._dataset._attach_frames_pipeline()
+                _pipeline = self._dataset._attach_frames_pipeline(
+                    support=support
+                )
                 _pipelines.insert(_attach_frames_idx, _pipeline)
         """
 
@@ -1221,6 +1226,7 @@ class DatasetView(foc.SampleCollection):
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
+            support=support,
             media_type=media_type,
             group_slice=group_slice,
             group_slices=group_slices,
@@ -1236,6 +1242,7 @@ class DatasetView(foc.SampleCollection):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        support=None,
         group_slice=None,
         group_slices=None,
         groups_only=False,
@@ -1248,6 +1255,7 @@ class DatasetView(foc.SampleCollection):
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
+            support=support,
             group_slice=group_slice,
             group_slices=group_slices,
             groups_only=groups_only,
