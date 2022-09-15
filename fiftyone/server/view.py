@@ -221,7 +221,8 @@ def _make_filter_stages(
     stages = []
     cleanup = set()
     filtered_labels = set()
-    for path, args in filters.items():
+    for path in sorted(filters):
+        args = filters[path]
         if path == "tags" or path.startswith("_"):
             continue
 
