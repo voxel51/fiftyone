@@ -3906,8 +3906,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         tasks = []
         for task in resp.get("tasks", []):
             if isinstance(task, int):
+                # For CVATv2 servers, task ids are stored directly as an array
+                # of integers
                 tasks.append(task)
             else:
+                # For CVATv1 servers, project tasks are dictionaries we need to
+                # exctract "id" from
                 tasks.append(task["id"])
         return tasks
 
