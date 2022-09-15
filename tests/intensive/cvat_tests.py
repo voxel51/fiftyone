@@ -229,6 +229,7 @@ class CVATTests(unittest.TestCase):
             ]["sample_id"]
             self.assertEqual(sample_id, dataset.first().id)
 
+        dataset.reload()
         dataset.load_annotations(anno_key, cleanup=True)
 
         self.assertListEqual(
@@ -262,6 +263,7 @@ class CVATTests(unittest.TestCase):
             ]["sample_id"]
             self.assertEqual(sample_id, dataset.first().id)
 
+        dataset.reload()
         dataset.load_annotations(anno_key, cleanup=True)
 
         self.assertListEqual(
@@ -1231,6 +1233,39 @@ class CVATTests(unittest.TestCase):
             api = results.connect_to_api()
             api.delete_task(task_id)
             self.assertFalse(api.task_exists(task_id))
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+    def test_deleted_label_field(self):
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
+        view = dataset.select_fields("ground_truth")
+        prev_ids = dataset.values("ground_truth.detections.id", unwind=True)
+
+        anno_key = "anno_key"
+        results = view.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="ground_truth",
+        )
+        dataset.delete_sample_field("ground_truth")
+        dataset.reload()
+
+        dataset.load_annotations(anno_key, cleanup=True)
+        self.assertListEqual(
+            sorted(dataset.values("ground_truth.detections.id", unwind=True)),
+            sorted(prev_ids),
+        )
+
+        # Test scalar
+        view = dataset.select_fields("uniqueness")
+        anno_key = "anno_key2"
+        results = view.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="uniqueness",
+        )
+        dataset.delete_sample_field("uniqueness")
+        dataset.reload()
 
         dataset.load_annotations(anno_key, cleanup=True)
 
