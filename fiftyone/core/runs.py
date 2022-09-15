@@ -448,7 +448,7 @@ class Run(Configurable):
             key: a run key
             cache (True): whether to cache the results on the collection
             load_view (True): whether to load the run view in the results
-                (True) or the run dataset (False)
+                (True) or the full dataset (False)
 
         Returns:
             a :class:`RunResults`, or None if the run did not save results
@@ -470,11 +470,12 @@ class Run(Configurable):
         run_info = cls.get_run_info(samples, key)
         config = run_info.config
 
-        # Load run result from GridFS
         if load_view:
             run_samples = cls.load_run_view(samples, key)
         else:
             run_samples = dataset
+
+        # Load run result from GridFS
         run_doc.results.seek(0)
         d = json_util.loads(run_doc.results.read().decode())
 
