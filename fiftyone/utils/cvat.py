@@ -4228,12 +4228,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         logger.info("Uploading samples to CVAT...")
 
-        with fou.ProgressBar(
-            total=num_samples,
-            iters_str="samples",
-            quiet=num_samples <= batch_size,
-        ) as pb:
+        pb_kwargs = {"total": num_samples, "iters_str": "samples"}
+        if num_samples <= batch_size:
+            pb_kwargs["quiet"] = True
 
+        with fou.ProgressBar(**pb_kwargs) as pb:
             for idx, offset in enumerate(range(0, num_samples, batch_size)):
                 samples_batch = samples[offset : (offset + batch_size)]
                 anno_tags = []
@@ -4378,11 +4377,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         annotations = {}
         deleted_tasks = []
 
-        with fou.ProgressBar(
-            total=len(task_ids),
-            iters_str="tasks",
-            quiet=len(task_ids) == 1,
-        ) as pb:
+        pb_kwargs = {"total": len(task_ids), "iters_str": "tasks"}
+        if len(task_ids) == 1:
+            pb_kwargs["quiet"] = True
+
+        with fou.ProgressBar(**pb_kwargs) as pb:
             for task_id in pb(task_ids):
                 if not self.task_exists(task_id):
                     deleted_tasks.append(task_id)
