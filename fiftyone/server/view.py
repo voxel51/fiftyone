@@ -216,6 +216,7 @@ def _make_filter_stages(
     tag_expr = (F("tags") != None).if_else(
         F("tags").contains(label_tags), None
     )
+    cache = {}
 
     stages = []
     cleanup = set()
@@ -259,7 +260,7 @@ def _make_filter_stages(
             )
             if expr is not None:
                 if hide_result:
-                    new_field = "__%s" % path.split(".")[-1]
+                    new_field = "__%s" % path.split(".")[1 if frames else 0]
                     if frames:
                         new_field = "%s%s" % (
                             view._FRAMES_PREFIX,
@@ -276,15 +277,16 @@ def _make_filter_stages(
                     )
                 else:
                     stage = fosg.FilterLabels(
-                        prefix + parent.name,
+                        cache.get(prefix + parent.name, prefix + parent.name),
                         expr,
-                        _new_field=new_field,
                         only_matches=only_matches,
+                        _new_field=new_field,
                     )
 
                 stages.append(stage)
                 filtered_labels.add(path)
                 if new_field:
+                    cache[prefix + parent.name] = new_field
                     cleanup.add(new_field)
         else:
             expr = _make_expression(view, path, args)
@@ -293,28 +295,23 @@ def _make_filter_stages(
 
     if label_tags is not None and hide_result:
         for path, _ in iter_label_fields(view):
-            if hide_result and path not in filtered_labels:
+            if hide_result:
                 new_field = _get_filtered_path(
                     view, path, filtered_labels, label_tags
                 )
             else:
                 new_field = None
 
-            if path in filtered_labels:
-                prefix = "__"
-            else:
-                prefix = ""
-
             stages.append(
                 fosg.FilterLabels(
-                    path,
+                    cache.get(path, path),
                     tag_expr,
                     only_matches=False,
                     _new_field=new_field,
-                    _prefix=prefix,
                 )
             )
             if new_field:
+                cache[prefix + parent.name] = new_field
                 cleanup.add(new_field)
 
         match_exprs = []
@@ -322,7 +319,8 @@ def _make_filter_stages(
             prefix = "__" if hide_result else ""
             match_exprs.append(
                 fosg._get_label_field_only_matches_expr(
-                    view, path, prefix=prefix
+                    view,
+                    path,
                 )
             )
 
