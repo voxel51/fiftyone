@@ -6957,7 +6957,9 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.utils.annotations.AnnotationResults`
         """
-        results = foan.AnnotationMethod.load_run_results(self, anno_key)
+        results = foan.AnnotationMethod.load_run_results(
+            self, anno_key, load_view=False
+        )
         results.load_credentials(**kwargs)
         return results
 
