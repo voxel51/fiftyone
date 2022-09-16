@@ -82,7 +82,7 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   });
   const looker = React.useMemo(
     () => createLooker.current(sampleData),
-    [useRecoilValue(fos.selectedMediaField(true)), createLooker, sampleData]
+    [useRecoilValue(fos.selectedMediaField(true)), createLooker]
   );
 
   useEffect(() => {

@@ -27,6 +27,7 @@ import {
   tagStatistics,
   numItemsInSelection,
   selectedSamplesCount,
+  tagParameters,
 } from "./utils";
 import { Button } from "../utils";
 import { PopoutSectionTitle } from "@fiftyone/components";
@@ -356,63 +357,37 @@ const useTagCallback = (
   return useRecoilCallback(
     ({ snapshot, set, reset }) =>
       async ({ changes }) => {
-        const activeLabels = await snapshot.getPromise(
-          fos.labelPaths({ expanded: false })
-        );
-        const f = await snapshot.getPromise(
-          modal ? fos.modalFilters : fos.filters
-        );
-        const view = await snapshot.getPromise(fos.view);
-        const dataset = await snapshot.getPromise(fos.datasetName);
-        const selectedLabels =
-          modal && targetLabels
-            ? await snapshot.getPromise(fos.selectedLabelList)
-            : [];
-
-        const selectedSamples = await snapshot.getPromise(fos.selectedSamples);
-        const hiddenLabels =
-          modal && targetLabels
-            ? await snapshot.getPromise(fos.hiddenLabelsArray)
-            : null;
-        const hasSelected = selectedLabels.length || selectedSamples.size;
-
         const modalData = modal ? await snapshot.getPromise(fos.modal) : null;
-
-        const stats = await snapshot.getPromise(groupStatistics(modal));
-        const groups = stats === "group";
-        const slice = await snapshot.getPromise(currentSlice(modal));
-        let group: string | null = null;
-        let sampleId: string | null = null;
-
-        if (modal) {
-          sampleId = await snapshot.getPromise(fos.sidebarSampleId);
-        }
-
-        if (groups && !hasSelected) {
-          group = modal ? await snapshot.getPromise(groupId) : null;
-        }
+        const isGroup = await snapshot.getPromise(fos.isGroup);
 
         const { samples } = await getFetchFunction()("POST", "/tag", {
-          filters: f,
-          view,
-          dataset,
-          active_label_fields: activeLabels,
-          target_labels: targetLabels,
+          ...tagParameters({
+            activeFields: await snapshot.getPromise(
+              fos.labelPaths({ expanded: false })
+            ),
+            dataset: await snapshot.getPromise(fos.datasetName),
+            filters: await snapshot.getPromise(
+              modal ? fos.modalFilters : fos.filters
+            ),
+            hiddenLabels: await snapshot.getPromise(fos.hiddenLabelsArray),
+            groupData: isGroup
+              ? {
+                  id: await snapshot.getPromise(groupId),
+                  slice: await snapshot.getPromise(currentSlice(modal)),
+                  mode: await snapshot.getPromise(groupStatistics(modal)),
+                }
+              : null,
+            modal,
+            sampleId: modal
+              ? await snapshot.getPromise(fos.sidebarSampleId)
+              : null,
+            selectedLabels: await snapshot.getPromise(fos.selectedLabelList),
+            selectedSamples: await snapshot.getPromise(fos.selectedSamples),
+            targetLabels,
+            view: await snapshot.getPromise(fos.view),
+          }),
+          current_frame: lookerRef?.current?.frameNumber,
           changes,
-          group_id: group,
-          modal,
-          slice: !modal && !hasSelected && !groups ? slice : null,
-          sample_ids:
-            modal && !hasSelected && !group
-              ? [sampleId]
-              : selectedSamples.size
-              ? [...selectedSamples]
-              : null,
-          labels:
-            selectedLabels && selectedLabels.length
-              ? toSnakeCase(selectedLabels)
-              : null,
-          hidden_labels: hiddenLabels ? toSnakeCase(hiddenLabels) : null,
         });
 
         if (samples) {
