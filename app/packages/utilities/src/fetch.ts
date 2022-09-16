@@ -51,6 +51,10 @@ export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
     result = "json"
   ) => {
     let url: string;
+    if (window.FIFTYONE_SERVER_PATH_PREFIX) {
+      path = `${window.FIFTYONE_SERVER_PATH_PREFIX}${path}`;
+    }
+
     try {
       new URL(path);
       url = path;
