@@ -203,7 +203,7 @@ export const tagParameters = ({
     group_id: params.modal && groups && !hasSelected ? groupData?.id : null,
     slice: !params.modal && !hasSelected && !groups ? groupData?.slice : null,
     sample_ids:
-      params.modal && !hasSelected && !groupData?.id
+      params.modal && !hasSelected && !groups
         ? [sampleId]
         : selectedSamples.size
         ? [...selectedSamples]
