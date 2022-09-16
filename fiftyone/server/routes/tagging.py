@@ -49,7 +49,7 @@ class Tagging(HTTPEndpoint):
 
         if sample_ids:
             view = fov.make_optimized_select_view(
-                view, sample_ids, select_groups=not slice
+                view, sample_ids, select_groups=False
             )
         elif view.media_type == fom.GROUP and not slice:
             view = view.select_group_slices(_allow_mixed=True)
@@ -93,7 +93,7 @@ def build_label_tag_aggregations(view: foc.SampleCollection):
     for field_name, field in view.get_field_schema().items():
         _add_to_label_tags_aggregations(field_name, field, counts, tags)
 
-    if view.media_type == fom.VIDEO:
+    if view.media_type != fom.IMAGE:
         for field_name, field in view.get_frame_field_schema().items():
             _add_to_label_tags_aggregations(
                 "frames." + field_name, field, counts, tags
