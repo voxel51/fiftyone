@@ -87,8 +87,7 @@ const Results = <T extends unknown>({
         <div className={style.footer}>
           {Boolean(total) && (
             <>
-              {results.length} of {total.toLocaleString()} result
-              {total > 1 ? "s" : ""}
+              {results.length} of {total.toLocaleString()}
             </>
           )}
           {!Boolean(total) && <>No results</>}

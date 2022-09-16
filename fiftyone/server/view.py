@@ -312,16 +312,15 @@ def _make_filter_stages(
                 )
             )
             if new_field:
-                cache[prefix + parent.name] = new_field
+                cache[path] = new_field
                 cleanup.add(new_field)
 
         match_exprs = []
         for path, _ in iter_label_fields(view):
-            prefix = "__" if hide_result else ""
             match_exprs.append(
                 fosg._get_label_field_only_matches_expr(
                     view,
-                    path,
+                    cache.get(path, path),
                 )
             )
 

@@ -60,5 +60,7 @@
   background: var(--background-dark);
   position: absolute;
   bottom: 0;
-  width: 100%;
+  min-width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
