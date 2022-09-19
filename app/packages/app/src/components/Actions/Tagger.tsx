@@ -372,7 +372,7 @@ const useTagCallback = (
             hiddenLabels: await snapshot.getPromise(fos.hiddenLabelsArray),
             groupData: isGroup
               ? {
-                  id: await snapshot.getPromise(groupId),
+                  id: modal ? await snapshot.getPromise(groupId) : null,
                   slice: await snapshot.getPromise(currentSlice(modal)),
                   mode: await snapshot.getPromise(groupStatistics(modal)),
                 }
