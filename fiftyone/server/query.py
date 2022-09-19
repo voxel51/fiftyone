@@ -209,7 +209,7 @@ class Dataset:
             ]
             dataset.frame_fields = [
                 from_dict(SampleField, s)
-                for s in _flatten_fields([], d["frame_fields"])
+                for s in _flatten_fields([], d.get("frame_fields", []))
             ]
 
             dataset.view_cls = etau.get_class_name(view)
