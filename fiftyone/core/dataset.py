@@ -5551,8 +5551,10 @@ def _create_dataset(
             % name
         )
 
+    _id = ObjectId()
+
     sample_collection_name = _make_sample_collection_name(
-        patches=_patches, frames=_frames, clips=_clips
+        _id, patches=_patches, frames=_frames, clips=_clips
     )
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
 
@@ -5578,6 +5580,7 @@ def _create_dataset(
 
     now = datetime.utcnow()
     dataset_doc = foo.DatasetDocument(
+        id=_id,
         name=name,
         version=focn.VERSION,
         created_at=now,
@@ -5613,10 +5616,9 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         )
 
 
-def _make_sample_collection_name(patches=False, frames=False, clips=False):
-    conn = foo.get_db_conn()
-    now = datetime.now()
-
+def _make_sample_collection_name(
+    dataset_id, patches=False, frames=False, clips=False
+):
     if patches:
         prefix = "patches"
     elif frames:
@@ -5626,13 +5628,7 @@ def _make_sample_collection_name(patches=False, frames=False, clips=False):
     else:
         prefix = "samples"
 
-    create_name = lambda timestamp: ".".join([prefix, timestamp])
-
-    name = create_name(now.strftime("%Y.%m.%d.%H.%M.%S"))
-    if name in conn.list_collection_names():
-        name = create_name(now.strftime("%Y.%m.%d.%H.%M.%S.%f"))
-
-    return name
+    return prefix + "." + str(dataset_id)
 
 
 def _make_frame_collection_name(sample_collection_name):
@@ -5798,7 +5794,9 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     dataset._reload()
 
-    sample_collection_name = _make_sample_collection_name()
+    _id = ObjectId()
+
+    sample_collection_name = _make_sample_collection_name(_id)
     frame_collection_name = _make_frame_collection_name(sample_collection_name)
 
     #
@@ -5807,6 +5805,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     dataset_doc = dataset._doc.copy()
 
+    dataset_doc.id = _id
     dataset_doc.name = name
     dataset_doc.created_at = datetime.utcnow()
     dataset_doc.last_loaded_at = None
