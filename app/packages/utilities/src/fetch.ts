@@ -128,6 +128,10 @@ export const getEventSource = (
   if (polling) {
     pollingEventSource(path, events, signal, body);
   } else {
+    if (window.FIFTYONE_SERVER_PATH_PREFIX) {
+      path = `${window.FIFTYONE_SERVER_PATH_PREFIX}${path}`;
+    }
+
     fetchEventSource(`${getFetchOrigin()}${path}`, {
       headers: { "Content-Type": "text/event-stream" },
       method: "POST",
