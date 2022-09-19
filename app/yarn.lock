@@ -2652,7 +2652,7 @@ __metadata:
     "@react-spring/web": ^9.4.2
     "@types/react": ^18.0.9
     "@types/react-dom": ^18.0.3
-    "@types/react-relay": ^13.0.0
+    "@types/react-relay": ^14.1.0
     "@types/relay-compiler": ^8.0.2
     "@vitejs/plugin-react": ^1.2.0
     history: ^5.3.0
@@ -2664,12 +2664,11 @@ __metadata:
     react-relay: ^13.2.0
     react-use: ^17.3.2
     recoil: 0.7.2
-    relay-compiler: ^13.0.2
-    relay-compiler-language-typescript: ^15.0.1
+    relay-compiler: ^14.1.0
     relay-config: ^12.0.1
     rollup-plugin-commonjs: ^10.1.0
-    typescript: 4.2.4
-    vite: 2.4.2
+    typescript: ^4.7.4
+    vite: ^3.0.0
     vite-plugin-relay: ^1.0.7
   languageName: unknown
   linkType: soft
@@ -4249,6 +4248,16 @@ __metadata:
     "@types/react": "*"
     "@types/relay-runtime": "*"
   checksum: fc60d29ed2be3350051383958583b0da9328cef74f11da29456b5719b2cd04cdd343485cf77c4c9e835928572e36ad7c81fcd542e4e36b57707a94eb89985189
+  languageName: node
+  linkType: hard
+
+"@types/react-relay@npm:^14.1.0":
+  version: 14.1.1
+  resolution: "@types/react-relay@npm:14.1.1"
+  dependencies:
+    "@types/react": "*"
+    "@types/relay-runtime": "*"
+  checksum: 7c3849782f2f9557a4060596ba27fb621605759ed565a808fd93d16240a31d95c9b991d8e3e548f7fcfacd562b6daa23b34a1bf4b4ed6c9a70c155e5a8331a2d
   languageName: node
   linkType: hard
 
@@ -10932,15 +10941,6 @@ __metadata:
     relay-runtime: ">=12.0.0"
     typescript: ">=4.5.0"
   checksum: 17fd22f18c12b46aadaee290a7c842cefa9582b0480312f5c2ffbf76ae7a07cd672be159e21d9a4c474167760460a69eddc7e408d56f905c489dc6a67c733f82
-  languageName: node
-  linkType: hard
-
-"relay-compiler@npm:^13.0.2":
-  version: 13.2.0
-  resolution: "relay-compiler@npm:13.2.0"
-  bin:
-    relay-compiler: cli.js
-  checksum: 54adaf22ef408c7452ae6a27538730fe30f47449a2c129e26fc0b8667abc3faba7862b386d5658b0c5dcfe1a9bc3bcf400ede6f0fdd07a6c24366a4b4a4e0739
   languageName: node
   linkType: hard
 
