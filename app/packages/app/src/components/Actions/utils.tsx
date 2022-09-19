@@ -10,7 +10,8 @@ import {
   currentSlice,
   groupId,
   groupStatistics,
-  sidebarSampleId,
+  isGroup,
+  State,
 } from "@fiftyone/state";
 
 export const SwitcherDiv = styled.div`
@@ -93,44 +94,37 @@ export const tagStatistics = selectorFamily<
   get:
     ({ modal, labels: count_labels }) =>
     async ({ get }) => {
-      const activeLabels = get(fos.activeLabelFields({ modal }));
-      const selected = get(fos.selectedSamples);
+      return await getFetchFunction()(
+        "POST",
+        "/tagging",
+        tagParameters({
+          activeFields: get(fos.activeLabelFields({ modal })),
 
-      let labels: fos.State.SelectedLabel[] = [];
-      if (modal) {
-        labels = Object.entries(get(fos.selectedLabels)).map(
-          ([labelId, data]) => ({
-            labelId,
-            ...data,
-          })
-        );
-      }
+          dataset: get(fos.dataset).name,
+          filters: get(modal ? fos.modalFilters : fos.filters),
 
-      const groupStats = get(groupStatistics(modal)) === "group";
-
-      return await getFetchFunction()("POST", "/tagging", {
-        dataset: get(fos.dataset).name,
-        view: get(fos.view),
-        active_label_fields: activeLabels,
-        sample_ids: selected.size
-          ? [...selected]
-          : modal && !groupStats
-          ? get(sidebarSampleId)
-          : null,
-        labels: toSnakeCase(labels),
-        group_id:
-          modal && !selected.size && groupStats && !labels.length
-            ? get(groupId)
-            : null,
-        slice:
-          !groupStats && !modal && !selected.size && !labels.length
-            ? get(currentSlice(modal))
-            : null,
-        count_labels,
-        filters: get(modal ? fos.modalFilters : fos.filters),
-        hidden_labels:
-          modal && labels ? toSnakeCase(get(fos.hiddenLabelsArray)) : null,
-      });
+          groupData:
+            modal && get(isGroup)
+              ? {
+                  id: get(groupId),
+                  slice: get(currentSlice(modal)),
+                  mode: get(groupStatistics(modal)),
+                }
+              : null,
+          hiddenLabels: get(fos.hiddenLabelsArray),
+          modal,
+          sampleId: modal ? get(fos.sidebarSampleId) : null,
+          selectedSamples: get(fos.selectedSamples),
+          selectedLabels: Object.entries(get(fos.selectedLabels)).map(
+            ([labelId, data]) => ({
+              labelId,
+              ...data,
+            })
+          ),
+          targetLabels: count_labels,
+          view: get(fos.view),
+        })
+      );
     },
 });
 
@@ -171,3 +165,56 @@ export const tagStats = selectorFamily<
       };
     },
 });
+
+export const tagParameters = ({
+  sampleId,
+  targetLabels,
+  hiddenLabels,
+  activeFields,
+  selectedSamples,
+  selectedLabels,
+  groupData,
+  ...params
+}: {
+  dataset: string;
+  modal: boolean;
+  view: State.Stage[];
+  filters: State.Filters;
+  selectedSamples: Set<string>;
+  selectedLabels: State.SelectedLabel[];
+  hiddenLabels: State.SelectedLabel[];
+  activeFields: string[];
+  groupData: {
+    id: string | null;
+    slice: string | null;
+    mode: "group" | "slice";
+  } | null;
+  targetLabels: boolean;
+  sampleId: string | null;
+}) => {
+  const hasSelected =
+    selectedSamples.size || selectedLabels.length || hiddenLabels.length;
+  const groups = groupData?.mode === "group";
+
+  return {
+    ...params,
+    label_fields: activeFields,
+    target_labels: targetLabels,
+    group_id: params.modal && groups && !hasSelected ? groupData?.id : null,
+    slice: !params.modal && !hasSelected && !groups ? groupData?.slice : null,
+    sample_ids:
+      params.modal && !hasSelected && !groups
+        ? [sampleId]
+        : selectedSamples.size
+        ? [...selectedSamples]
+        : null,
+    labels:
+      params.modal && targetLabels && selectedLabels && selectedLabels.length
+        ? toSnakeCase(selectedLabels)
+        : null,
+    hidden_labels:
+      params.modal && targetLabels && hiddenLabels.length
+        ? toSnakeCase(hiddenLabels)
+        : null,
+  };
+};

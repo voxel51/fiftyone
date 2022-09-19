@@ -646,3 +646,234 @@ class ServerViewTests(unittest.TestCase):
         ]
 
         self.assertEqual(expected, returned)
+
+    @drop_datasets
+    def test_extended_view_video_match_label_tags_aggregations(self):
+        filters = {"tags": {"label": ["one"]}}
+
+        dataset = fod.Dataset("test")
+        dataset.media_type = "video"
+        dataset.add_frame_field(
+            "detections", fof.EmbeddedDocumentField, fol.Detections
+        )
+
+        returned = fosv.get_view(
+            "test", filters=filters, count_label_tags=True, only_matches=True
+        )._pipeline()[1:]
+
+        expected = [
+            {
+                "$set": {
+                    "frames": {
+                        "$map": {
+                            "input": "$frames",
+                            "as": "frame",
+                            "in": {
+                                "$mergeObjects": [
+                                    "$$frame",
+                                    {
+                                        "__detections": {
+                                            "$mergeObjects": [
+                                                "$$frame.detections",
+                                                {
+                                                    "detections": {
+                                                        "$filter": {
+                                                            "input": "$$frame.detections.detections",
+                                                            "cond": {
+                                                                "$cond": {
+                                                                    "if": {
+                                                                        "$gt": [
+                                                                            "$$this.tags",
+                                                                            None,
+                                                                        ]
+                                                                    },
+                                                                    "then": {
+                                                                        "$in": [
+                                                                            "one",
+                                                                            "$$this.tags",
+                                                                        ]
+                                                                    },
+                                                                    "else": None,
+                                                                }
+                                                            },
+                                                        }
+                                                    }
+                                                },
+                                            ]
+                                        }
+                                    },
+                                ]
+                            },
+                        }
+                    }
+                }
+            },
+            {
+                "$match": {
+                    "$expr": {
+                        "$gt": [
+                            {
+                                "$reduce": {
+                                    "input": "$frames",
+                                    "initialValue": 0,
+                                    "in": {
+                                        "$add": [
+                                            "$$value",
+                                            {
+                                                "$size": {
+                                                    "$ifNull": [
+                                                        "$$this.__detections.detections",
+                                                        [],
+                                                    ]
+                                                }
+                                            },
+                                        ]
+                                    },
+                                }
+                            },
+                            0,
+                        ]
+                    }
+                }
+            },
+            {"$set": {"_label_tags": []}},
+            {
+                "$set": {
+                    "_label_tags": {
+                        "$concatArrays": [
+                            "$_label_tags",
+                            {
+                                "$reduce": {
+                                    "input": "$frames",
+                                    "initialValue": [],
+                                    "in": {
+                                        "$concatArrays": [
+                                            "$$value",
+                                            {
+                                                "$reduce": {
+                                                    "input": "$$this.__detections.detections",
+                                                    "initialValue": [],
+                                                    "in": {
+                                                        "$concatArrays": [
+                                                            "$$value",
+                                                            "$$this.tags",
+                                                        ]
+                                                    },
+                                                }
+                                            },
+                                        ]
+                                    },
+                                }
+                            },
+                        ]
+                    }
+                }
+            },
+            {
+                "$set": {
+                    "_label_tags": {
+                        "$function": {
+                            "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
+                            "args": ["$_label_tags"],
+                            "lang": "js",
+                        }
+                    }
+                }
+            },
+            {"$unset": "frames.__detections"},
+        ]
+
+        self.assertEqual(expected, returned)
+
+    @drop_datasets
+    def test_extended_view_video_match_label_tags_samples(self):
+        filters = {"tags": {"label": ["one"]}}
+
+        dataset = fod.Dataset("test")
+        dataset.media_type = "video"
+        dataset.add_frame_field(
+            "detections", fof.EmbeddedDocumentField, fol.Detections
+        )
+
+        returned = fosv.get_view(
+            "test", filters=filters, count_label_tags=False, only_matches=True
+        )._pipeline()[1:]
+
+        expected = [
+            {
+                "$set": {
+                    "frames": {
+                        "$map": {
+                            "input": "$frames",
+                            "as": "frame",
+                            "in": {
+                                "$mergeObjects": [
+                                    "$$frame",
+                                    {
+                                        "detections": {
+                                            "$mergeObjects": [
+                                                "$$frame.detections",
+                                                {
+                                                    "detections": {
+                                                        "$filter": {
+                                                            "input": "$$frame.detections.detections",
+                                                            "cond": {
+                                                                "$cond": {
+                                                                    "if": {
+                                                                        "$gt": [
+                                                                            "$$this.tags",
+                                                                            None,
+                                                                        ]
+                                                                    },
+                                                                    "then": {
+                                                                        "$in": [
+                                                                            "one",
+                                                                            "$$this.tags",
+                                                                        ]
+                                                                    },
+                                                                    "else": False,
+                                                                }
+                                                            },
+                                                        }
+                                                    }
+                                                },
+                                            ]
+                                        }
+                                    },
+                                ]
+                            },
+                        }
+                    }
+                }
+            },
+            {
+                "$match": {
+                    "$expr": {
+                        "$gt": [
+                            {
+                                "$reduce": {
+                                    "input": "$frames",
+                                    "initialValue": 0,
+                                    "in": {
+                                        "$add": [
+                                            "$$value",
+                                            {
+                                                "$size": {
+                                                    "$ifNull": [
+                                                        "$$this.detections.detections",
+                                                        [],
+                                                    ]
+                                                }
+                                            },
+                                        ]
+                                    },
+                                }
+                            },
+                            0,
+                        ]
+                    }
+                }
+            },
+        ]
+
+        self.assertEqual(expected, returned)
