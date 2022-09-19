@@ -13,6 +13,7 @@ from mongoengine.fields import StringField as MongoStringField
 
 from fiftyone.core.fields import (
     Field,
+    ArrayField,
     BooleanField,
     ClassesField,
     DateTimeField,
@@ -76,7 +77,10 @@ def create_field(
         a :class:`fiftyone.core.fields.Field` instance
     """
     if db_field is None:
-        db_field = name
+        if issubclass(ftype, ObjectIdField) and not name.startswith("_"):
+            db_field = "_" + name
+        else:
+            db_field = name
 
     # All user-defined fields are nullable
     kwargs = dict(null=True, db_field=db_field)
@@ -100,7 +104,6 @@ def create_field(
                         fields=fields or [],
                         parent=parent,
                     )
-
                 else:
                     subfield = subfield()
 
@@ -135,6 +138,9 @@ def create_field(
 
 class SampleFieldDocument(EmbeddedDocument):
     """Description of a sample field."""
+
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"strict": False}
 
     name = StringField()
     ftype = StringField()
@@ -309,7 +315,16 @@ class SampleFieldDocument(EmbeddedDocument):
 
 
 class SidebarGroupDocument(EmbeddedDocument):
-    """Description of a Sidebar Group in the App."""
+    """Description of a sidebar group in the App.
+
+    Args:
+        name: the name of the sidebar group
+        paths: the list of ``field`` or ``embedded.field.name`` paths in the
+            group
+    """
+
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"strict": False}
 
     name = StringField(required=True)
     paths = ListField(StringField(), default=[])
@@ -353,14 +368,122 @@ class KeypointSkeleton(EmbeddedDocument):
             between nodes
     """
 
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"strict": False}
+
     labels = ListField(StringField(), null=True)
     edges = ListField(ListField(IntField()))
+
+
+class DatasetAppConfig(EmbeddedDocument):
+    """Dataset-specific settings that customize how a dataset is visualized in
+    the App.
+
+    Args:
+        media_fields (["filepath"]): the list of sample fields that contain
+            media and should be available to choose from the App's settings
+            menus
+        grid_media_field ("filepath"): the default sample field from which to
+            serve media in the App's grid view
+        modal_media_field ("filepath"): the default sample field from which to
+            serve media in the App's modal view
+        sidebar_groups (None): an optional list of
+            :class:`SidebarGroupDocument` describing sidebar groups to create
+            in the App
+        plugins ({}): an optional dict mapping plugin names to plugin
+            configuration dicts. Builtin plugins include:
+
+            -   ``"map"``: See the :ref:`map plugin docs <app-map-tab>` for
+                supported options
+            -   ``"point-cloud"``: See the
+                :ref:`3D visualizer docs <3d-visualizer-config>` for supported
+                options
+    """
+
+    media_fields = ListField(StringField(), default=["filepath"])
+    grid_media_field = StringField(default="filepath")
+    modal_media_field = StringField(default="filepath")
+    sidebar_groups = ListField(
+        EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
+    )
+    plugins = DictField()
+
+    def is_custom(self):
+        """Determines whether this app config differs from the default one.
+
+        Returns:
+            True/False
+        """
+        return self != self.__class__()
+
+    def _delete_path(self, path):
+        if self.sidebar_groups:
+            for sidebar_group in self.sidebar_groups:
+                _delete_path(sidebar_group.paths, path)
+
+        _delete_path(self.media_fields, path)
+
+        if _matches_path(self.grid_media_field, path):
+            self.grid_media_field = "filepath"
+
+        if _matches_path(self.modal_media_field, path):
+            self.modal_media_field = "filepath"
+
+    def _delete_paths(self, paths):
+        for path in paths:
+            self._delete_path(path)
+
+    def _rename_path(self, path, new_path):
+        if self.sidebar_groups:
+            for sidebar_group in self.sidebar_groups:
+                _rename_path(sidebar_group.paths, path, new_path)
+
+        _rename_path(self.media_fields, path, new_path)
+
+        if _matches_path(self.grid_media_field, path):
+            self.grid_media_field = _update_path(
+                self.grid_media_field, path, new_path
+            )
+
+        if _matches_path(self.modal_media_field, path):
+            self.modal_media_field = _update_path(
+                self.modal_media_field, path, new_path
+            )
+
+    def _rename_paths(self, paths, new_paths):
+        for path, new_path in zip(paths, new_paths):
+            self._rename_path(path, new_path)
+
+
+def _delete_path(paths, path):
+    del_inds = []
+    for idx, p in enumerate(paths):
+        if _matches_path(p, path):
+            del_inds.append(idx)
+
+    for idx in sorted(del_inds, reverse=True):
+        del paths[idx]
+
+
+def _rename_path(paths, path, new_path):
+    for idx, p in enumerate(paths):
+        if _matches_path(p, path):
+            paths[idx] = _update_path(p, path, new_path)
+
+
+def _matches_path(p, path):
+    return p == path or p.startswith(path + ".")
+
+
+def _update_path(p, path, new_path):
+    return new_path + p[len(path) :]
 
 
 class DatasetDocument(Document):
     """Backing document for datasets."""
 
-    meta = {"collection": "datasets"}
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"collection": "datasets", "strict": False}
 
     name = StringField(unique=True, required=True)
     version = StringField(required=True, null=True)
@@ -370,7 +493,12 @@ class DatasetDocument(Document):
     frame_collection_name = StringField()
     persistent = BooleanField(default=False)
     media_type = StringField()
+    group_field = StringField()
+    group_media_types = DictField(StringField())
+    default_group_slice = StringField()
+    tags = ListField(StringField())
     info = DictField()
+    app_config = EmbeddedDocumentField(document_type=DatasetAppConfig)
     classes = DictField(ClassesField())
     default_classes = ClassesField()
     mask_targets = DictField(TargetsField())
@@ -388,6 +516,3 @@ class DatasetDocument(Document):
     )
     brain_methods = DictField(EmbeddedDocumentField(document_type=RunDocument))
     evaluations = DictField(EmbeddedDocumentField(document_type=RunDocument))
-    app_sidebar_groups = ListField(
-        EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
-    )

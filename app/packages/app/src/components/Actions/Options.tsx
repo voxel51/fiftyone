@@ -2,21 +2,19 @@ import React from "react";
 import { Autorenew, Check } from "@material-ui/icons";
 import { constSelector, useRecoilState, useRecoilValue } from "recoil";
 
-import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
-import * as viewAtoms from "../../recoil/view";
-
 import Checkbox from "../Common/Checkbox";
-import { PopoutSectionTitle, TabOption } from "../utils";
+import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
 
 import { Button } from "../utils";
 import Popout from "./Popout";
 import { Slider } from "../Common/RangeSlider";
 import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { groupStatistics, isGroup } from "@fiftyone/state";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
-    atoms.colorSeed(Boolean(modal))
+    fos.colorSeed(Boolean(modal))
   );
   return (
     <>
@@ -47,7 +45,7 @@ export const RefreshButton = ({ modal }) => {
 
 const ColorBy = ({ modal }) => {
   const [colorBy, setColorBy] = useRecoilState<string>(
-    selectors.appConfigOption({ modal, key: "colorBy" })
+    fos.appConfigOption({ modal, key: "colorBy" })
   );
 
   return (
@@ -70,22 +68,22 @@ const ColorBy = ({ modal }) => {
 
 const Keypoints = ({ modal }) => {
   const [shown, setShown] = useRecoilState<boolean>(
-    selectors.appConfigOption({ key: "showSkeletons", modal })
+    fos.appConfigOption({ key: "showSkeletons", modal })
   );
   const [points, setPoints] = useRecoilState<boolean>(
-    selectors.appConfigOption({ key: "multicolorKeypoints", modal })
+    fos.appConfigOption({ key: "multicolorKeypoints", modal })
   );
 
   return (
     <>
       <Checkbox
         name={"Multicolor keypoints"}
-        value={points}
+        value={Boolean(points)}
         setValue={(value) => setPoints(value)}
       />
       <Checkbox
         name={"Show keypoint skeletons"}
-        value={shown}
+        value={Boolean(shown)}
         setValue={(value) => setShown(value)}
       />
     </>
@@ -94,15 +92,15 @@ const Keypoints = ({ modal }) => {
 
 const Opacity = ({ modal }) => {
   const theme = useTheme();
-  const [alpha, setAlpha] = useRecoilState(atoms.alpha(modal));
+  const [alpha, setAlpha] = useRecoilState(fos.alpha(modal));
 
   return (
     <>
       <PopoutSectionTitle style={{ display: "flex", height: 33 }}>
         <span>Label opacity</span>
-        {alpha !== atoms.DEFAULT_ALPHA && (
+        {alpha !== fos.DEFAULT_ALPHA && (
           <span
-            onClick={() => setAlpha(atoms.DEFAULT_ALPHA)}
+            onClick={() => setAlpha(fos.DEFAULT_ALPHA)}
             style={{ cursor: "pointer", margin: "0.25rem" }}
             title={"Reset label opacity"}
           >
@@ -112,7 +110,7 @@ const Opacity = ({ modal }) => {
       </PopoutSectionTitle>
 
       <Slider
-        valueAtom={atoms.alpha(modal)}
+        valueAtom={fos.alpha(modal)}
         boundsAtom={constSelector([0, 1])}
         color={theme.brand}
         showBounds={false}
@@ -126,54 +124,9 @@ const Opacity = ({ modal }) => {
   );
 };
 
-const ImageFilter = ({ modal, filter }: { modal: boolean; filter: string }) => {
-  const theme = useTheme();
-  const [value, setFilter] = useRecoilState(
-    atoms.imageFilters({ modal, filter })
-  );
-
-  return (
-    <>
-      <PopoutSectionTitle style={{ display: "flex", height: 33 }}>
-        <span>Image {filter}</span>
-        {value !== atoms.IMAGE_FILTERS[filter].default && (
-          <span
-            onClick={() => setFilter(atoms.IMAGE_FILTERS[filter].default)}
-            style={{ cursor: "pointer", margin: "0.25rem" }}
-            title={"Reset label opacity"}
-          >
-            <Check />
-          </span>
-        )}
-      </PopoutSectionTitle>
-      <Slider
-        valueAtom={atoms.imageFilters({ modal, filter })}
-        boundsAtom={constSelector(atoms.IMAGE_FILTERS[filter].bounds)}
-        color={theme.brand}
-        showBounds={false}
-        persistValue={false}
-        showValue={false}
-        onChange={true}
-        style={{ padding: 0 }}
-        int={false}
-      />
-    </>
-  );
-};
-
-const ImageFilters = ({ modal }) => {
-  return (
-    <>
-      {Object.keys(atoms.IMAGE_FILTERS).map((filter) => (
-        <ImageFilter modal={modal} filter={filter} key={filter} />
-      ))}
-    </>
-  );
-};
-
 const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
-    atoms.sortFilterResults(modal)
+    fos.sortFilterResults(modal)
   );
 
   return (
@@ -204,8 +157,8 @@ const SortFilterResults = ({ modal }) => {
 };
 
 const Patches = ({ modal }) => {
-  const isPatches = useRecoilValue(viewAtoms.isPatchesView);
-  const [crop, setCrop] = useRecoilState(atoms.cropToContent(modal));
+  const isPatches = useRecoilValue(fos.isPatchesView);
+  const [crop, setCrop] = useRecoilState(fos.cropToContent(modal));
 
   if (!isPatches) {
     return null;
@@ -223,14 +176,64 @@ const Patches = ({ modal }) => {
   );
 };
 
+const MediaFields = ({ modal }) => {
+  const [selectedMediaField, setSelectedMediaField] = useRecoilState(
+    fos.selectedMediaField(modal)
+  );
+
+  const mediaFields = useRecoilValue(fos.mediaFields);
+
+  if (mediaFields.length <= 1) return null;
+
+  return (
+    <>
+      <PopoutSectionTitle>Media Field</PopoutSectionTitle>
+
+      <TabOption
+        active={selectedMediaField}
+        options={mediaFields.map((value) => {
+          return {
+            text: value,
+            title: `View Media with "${selectedMediaField}"`,
+            onClick: () => {
+              selectedMediaField !== value && setSelectedMediaField(value);
+            },
+          };
+        })}
+      />
+    </>
+  );
+};
+
+const GroupStatistics = ({ modal }) => {
+  const [statistics, setStatistics] = useRecoilState(groupStatistics(modal));
+
+  return (
+    <>
+      <PopoutSectionTitle>Statistics</PopoutSectionTitle>
+      <TabOption
+        active={statistics}
+        options={["slice", "group"].map((value) => ({
+          text: value,
+          title: `View ${value} sidebar statistics`,
+          onClick: () => setStatistics(value as "group" | "slice"),
+        }))}
+      />
+    </>
+  );
+};
+
 type OptionsProps = {
   modal: boolean;
   bounds: [number, number];
 };
 
 const Options = ({ modal, bounds }: OptionsProps) => {
+  const group = useRecoilValue(isGroup);
   return (
     <Popout modal={modal} bounds={bounds}>
+      {group && <GroupStatistics modal={modal} />}
+      <MediaFields modal={modal} />
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
       <Opacity modal={modal} />

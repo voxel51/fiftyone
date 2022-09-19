@@ -15,16 +15,19 @@ app_config = _foc.load_app_config()
 _foo.establish_db_conn(config)
 
 from .core.aggregations import (
+    Aggregation,
     Bounds,
     Count,
     CountValues,
     Distinct,
     HistogramValues,
     Mean,
+    Quantiles,
     Std,
     Sum,
     Values,
 )
+from .core.collections import SaveContext
 from .core.config import AppConfig
 from .core.dataset import (
     Dataset,
@@ -73,6 +76,7 @@ from .core.fields import (
     VectorField,
 )
 from .core.frame import Frame
+from .core.groups import Group
 from .core.labels import (
     Label,
     Attribute,
@@ -96,6 +100,10 @@ from .core.labels import (
     GeoLocation,
     GeoLocations,
 )
+from .core.logging import (
+    get_logging_level,
+    set_logging_level,
+)
 from .core.metadata import (
     Metadata,
     ImageMetadata,
@@ -113,7 +121,10 @@ from .core.models import (
     ModelManagerConfig,
     ModelManager,
 )
-from .core.odm import KeypointSkeleton
+from .core.odm import (
+    DatasetAppConfig,
+    KeypointSkeleton,
+)
 from .core.plots import (
     plot_confusion_matrix,
     plot_pr_curve,
@@ -158,6 +169,8 @@ from .core.stages import (
     SelectBy,
     SelectFields,
     SelectFrames,
+    SelectGroups,
+    SelectGroupSlices,
     SelectLabels,
     SetField,
     Skip,

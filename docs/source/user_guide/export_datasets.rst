@@ -66,10 +66,12 @@ a |DatasetView| into any format of your choice via the basic recipe below.
         :linenos:
 
         # Export **only** labels in the `ground_truth` field in COCO format
+        # with absolute image filepaths in the labels
         dataset_or_view.export(
             dataset_type=fo.types.COCODetectionDataset,
             labels_path="/path/for/export.json",
             label_field="ground_truth",
+            abs_paths=True,
         )
 
     Or you can use the `export_media` parameter to configure whether to copy,
@@ -131,10 +133,13 @@ a |DatasetView| into any format of your choice via the basic recipe below.
     .. code-block:: shell
 
         # Export **only** labels in the `ground_truth` field in COCO format
+        # with absolute image filepaths in the labels
         fiftyone datasets export $NAME \
             --type fiftyone.types.COCODetectionDataset \
             --label-field ground_truth \
-            --kwargs labels_path=/path/for/labels.json
+            --kwargs \
+                labels_path=/path/for/labels.json \
+                abs_paths=True
 
     Or you can use the `export_media` parameter to configure whether to copy,
     move, symlink, or omit the media files from the export:
@@ -349,26 +354,16 @@ Class lists
 -----------
 
 Certain labeled image/video export formats such as
-:ref:`COCO <COCODetectionDataset-export>` or
+:ref:`COCO <COCODetectionDataset-export>` and
 :ref:`YOLO <YOLOv5Dataset-export>` store an explicit list of classes for the
 label field being exported.
 
-In such cases, all exporters provided by FiftyOne use the following strategy
-to retrieve the class list when exporting a given `label_field`:
+By convention, all exporters provided by FiftyOne should provide a `classes`
+parameter that allows for manually specifying the classes list to use.
 
-1.  If the exporter provides a parameter like `classes` that allows for
-    manually specifying the classes, this list is used
-2.  If the :meth:`classes <fiftyone.core.dataset.Dataset.classes>` dict of the
-    sample collection contains `label_field`, this class list is used
-3.  If the collection's
-    :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
-    attribute is non-empty, this class list is used
-4.  If the collection's :meth:`info <fiftyone.core.dataset.Dataset.info>` dict
-    contains a class list under the `classes` key, this list is used
-
-If no explicit class list is available via the above methods, the observed
-classes in the collection being exported are used, which may be a subset of the
-classes in the parent dataset when exporting a view.
+If no explicit class list is provided, the observed classes in the collection
+being exported are used, which may be a subset of the classes in the parent
+dataset when exporting a view.
 
 .. note::
 
@@ -397,26 +392,17 @@ classes in the parent dataset when exporting a view.
     # Create a view that only contains cats and dogs
     view = dataset.filter_labels("ground_truth", F("label").is_in(["cat", "dog"]))
 
-    # By default, `default_classes` will be used to populate the COCO categories
+    # By default, only the observed classes will be stored as COCO categories
     view.export(
         labels_path="/tmp/coco1.json",
         dataset_type=fo.types.COCODetectionDataset,
     )
 
-    # But, since we're only interested in exporting cats and dogs, we can override
-    # this by manually providing the `classes` argument
+    # However, if desired, we can explicitly provide a classes list
     view.export(
         labels_path="/tmp/coco2.json",
         dataset_type=fo.types.COCODetectionDataset,
-        classes=["cat", "dog"],
-    )
-
-    # Equivalently, we can clear `default_classes` first so that the observed
-    # labels (only cats and dogs in this case) will be used
-    dataset.default_classes = None
-    view.export(
-        labels_path="/tmp/coco3.json",
-        dataset_type=fo.types.COCODetectionDataset,
+        classes=dataset.default_classes,
     )
 
 .. _supported-export-formats:
@@ -425,9 +411,8 @@ Supported formats
 -----------------
 
 Each supported dataset type is represented by a subclass of
-:class:`fiftyone.types.Dataset <fiftyone.types.dataset_types.Dataset>`, which
-is used by the Python library and CLI to refer to the corresponding dataset
-format when writing the dataset to disk.
+:class:`fiftyone.types.Dataset`, which is used by the Python library and CLI to
+refer to the corresponding dataset format when writing the dataset to disk.
 
 .. table::
     :widths: 40 60
@@ -511,8 +496,8 @@ format when writing the dataset to disk.
 ImageDirectory
 --------------
 
-The :class:`fiftyone.types.ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`
-type represents a directory of images.
+The :class:`fiftyone.types.ImageDirectory` type represents a directory of
+images.
 
 Datasets of this type are exported in the following format:
 
@@ -569,8 +554,8 @@ disk as follows:
 VideoDirectory
 --------------
 
-The :class:`fiftyone.types.VideoDirectory <fiftyone.types.dataset_types.VideoDirectory>`
-type represents a directory of videos.
+The :class:`fiftyone.types.VideoDirectory` type represents a directory of
+videos.
 
 Datasets of this type are exported in the following format:
 
@@ -632,9 +617,9 @@ FiftyOneImageClassificationDataset
 
     |Classification|, |Classifications|
 
-The :class:`fiftyone.types.FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`
-type represents a labeled dataset consisting of images and their associated
-classification label(s) stored in a simple JSON format.
+The :class:`fiftyone.types.FiftyOneImageClassificationDataset` type represents
+a labeled dataset consisting of images and their associated classification
+label(s) stored in a simple JSON format.
 
 Datasets of this type are exported in the following format:
 
@@ -782,15 +767,24 @@ disk in the above format as follows:
     the strategy outlined in :ref:`this section <export-class-lists>` will be
     used to populate the class list.
 
-You can also perform labels-only exports in this format. If the filenames of
-the images of your dataset are unique, then you can simply provide the
-`labels_path` parameter instead of `export_dir` when calling
-:meth:`export() <fiftyone.core.collections.SampleCollection.export>` and the
-labels JSON will be populated using the basenames of the exported samples'
-image filepaths as keys. You can also include the `data_path` parameter to
-specify a common prefix to strip from each image's filepath to generate keys,
-in which case you must explicitly pass `export_media=False` to declare that you
-would only like to export labels.
+You can also perform labels-only exports in this format by providing the
+`labels_path` parameter instead of `export_dir` to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` to specify
+a location to write (only) the labels.
+
+.. note::
+
+    You can optionally include the `export_media=False` option to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    make it explicit that you only wish to export labels, although this will be
+    inferred if you do not provide an `export_dir` or `data_path`.
+
+By default, the filenames of your images will be used as keys in the exported
+labels. However, you can also provide the optional `rel_dir` parameter to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` to specify
+a prefix to strip from each image path to generate a key for the image. This
+argument allows for populating nested subdirectories that match the shape of
+the input paths.
 
 .. tabs::
 
@@ -815,13 +809,12 @@ would only like to export labels.
         )
 
         # Export labels using the relative path of each image with respect to
-        # the given `data_path` as keys
+        # the given `rel_dir` as keys
         dataset_or_view.export(
             dataset_type=fo.types.FiftyOneImageClassificationDataset,
-            data_path="/common/images/dir",
             labels_path=labels_path,
             label_field=label_field,
-            export_media=False,
+            rel_dir="/common/images/dir",
         )
 
   .. group-tab:: CLI
@@ -839,14 +832,13 @@ would only like to export labels.
             --kwargs labels_path=$LABELS_PATH
 
         # Export labels using the relative path of each image with respect to
-        # the given `data_path` as keys
+        # the given `rel_dir` as keys
         fiftyone datasets export $NAME \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneImageClassificationDataset \
             --kwargs \
-                data_path="/common/images/dir" \
                 labels_path=$LABELS_PATH \
-                export_media=False
+                rel_dir=/common/images/dir
 
 .. _ImageClassificationDirectoryTree-export:
 
@@ -858,9 +850,8 @@ ImageClassificationDirectoryTree
 
     |Classification|
 
-The :class:`fiftyone.types.ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`
-type represents a directory tree whose subfolders define an image
-classification dataset.
+The :class:`fiftyone.types.ImageClassificationDirectoryTree` type represents a
+directory tree whose subfolders define an image classification dataset.
 
 Datasets of this type are exported in the following format:
 
@@ -935,9 +926,8 @@ VideoClassificationDirectoryTree
 
     |Classification|
 
-The :class:`fiftyone.types.VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`
-type represents a directory tree whose subfolders define a video classification
-dataset.
+The :class:`fiftyone.types.VideoClassificationDirectoryTree` type represents a
+directory tree whose subfolders define a video classification dataset.
 
 Datasets of this type are exported in the following format:
 
@@ -1012,9 +1002,9 @@ TFImageClassificationDataset
 
     |Classification|
 
-The :class:`fiftyone.types.TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
-type represents a labeled dataset consisting of images and their associated
-classification labels stored as
+The :class:`fiftyone.types.TFImageClassificationDataset` type represents a
+labeled dataset consisting of images and their associated classification labels
+stored as
 `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.
 
 Datasets of this type are exported in the following format:
@@ -1110,9 +1100,9 @@ FiftyOneImageDetectionDataset
 
     |Detections|
 
-The :class:`fiftyone.types.FiftyOneImageDetectionDataset <fiftyone.types.dataset_types.FiftyOneImageDetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections stored in a simple JSON format.
+The :class:`fiftyone.types.FiftyOneImageDetectionDataset` type represents a
+labeled dataset consisting of images and their associated object detections
+stored in a simple JSON format.
 
 Datasets of this type are exported in the following format:
 
@@ -1226,15 +1216,24 @@ format as follows:
     the strategy outlined in :ref:`this section <export-class-lists>` will be
     used to populate the class list.
 
-You can also perform labels-only exports in this format. If the filenames of
-the images of your dataset are unique, then you can simply provide the
-`labels_path` parameter instead of `export_dir` when calling
-:meth:`export() <fiftyone.core.collections.SampleCollection.export>` and the
-labels JSON will be populated using the basenames of the exported samples'
-image filepaths as keys. You can also include the `data_path` parameter to
-specify a common prefix to strip from each image's filepath to generate keys,
-in which case you must explicitly pass `export_media=False` to declare that you
-would only like to export labels.
+You can also perform labels-only exports in this format by providing the
+`labels_path` parameter instead of `export_dir` to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` to specify
+a location to write (only) the labels.
+
+.. note::
+
+    You can optionally include the `export_media=False` option to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    make it explicit that you only wish to export labels, although this will be
+    inferred if you do not provide an `export_dir` or `data_path`.
+
+By default, the filenames of your images will be used as keys in the exported
+labels. However, you can also provide the optional `rel_dir` parameter to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` to specify
+a prefix to strip from each image path to generate a key for the image. This
+argument allows for populating nested subdirectories that match the shape of
+the input paths.
 
 .. tabs::
 
@@ -1259,13 +1258,12 @@ would only like to export labels.
         )
 
         # Export labels using the relative path of each image with respect to
-        # the given `data_path` as keys
+        # the given `rel_dir` as keys
         dataset_or_view.export(
             dataset_type=fo.types.FiftyOneImageDetectionDataset,
-            data_path="/common/images/dir",
             labels_path=labels_path,
             label_field=label_field,
-            export_media=False,
+            rel_dir="/common/images/dir",
         )
 
   .. group-tab:: CLI
@@ -1283,14 +1281,13 @@ would only like to export labels.
             --kwargs labels_path=$LABELS_PATH
 
         # Export labels using the relative path of each image with respect to
-        # the given `data_path` as keys
+        # the given `rel_dir` as keys
         fiftyone datasets export $NAME \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneImageDetectionDataset \
             --kwargs \
-                data_path=/common/images/dir \
                 labels_path=$LABELS_PATH \
-                export_media=False
+                rel_dir=/common/images/dir
 
 .. _FiftyOneTemporalDetectionDataset-export:
 
@@ -1302,9 +1299,9 @@ FiftyOneTemporalDetectionDataset
 
     |TemporalDetections|
 
-The :class:`fiftyone.types.FiftyOneTemporalDetectionDataset <fiftyone.types.dataset_types.FiftyOneTemporalDetectionDataset>`
-type represents a labeled dataset consisting of videos and their associated
-temporal detections stored in a simple JSON format.
+The :class:`fiftyone.types.FiftyOneTemporalDetectionDataset` type represents a
+labeled dataset consisting of videos and their associated temporal detections
+stored in a simple JSON format.
 
 Datasets of this type are exported in the following format:
 
@@ -1444,15 +1441,24 @@ disk in the above format as follows:
     the strategy outlined in :ref:`this section <export-class-lists>` will be
     used to populate the class list.
 
-You can also perform labels-only exports in this format. If the filenames of
-the images of your dataset are unique, then you can simply provide the
-`labels_path` parameter instead of `export_dir` when calling
-:meth:`export() <fiftyone.core.collections.SampleCollection.export>` and the
-labels JSON will be populated using the basenames of the exported samples'
-image filepaths as keys. You can also include the `data_path` parameter to
-specify a common prefix to strip from each image's filepath to generate keys,
-in which case you must explicitly pass `export_media=False` to declare that you
-would only like to export labels.
+You can also perform labels-only exports in this format by providing the
+`labels_path` parameter instead of `export_dir` to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` to specify
+a location to write (only) the labels.
+
+.. note::
+
+    You can optionally include the `export_media=False` option to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    make it explicit that you only wish to export labels, although this will be
+    inferred if you do not provide an `export_dir` or `data_path`.
+
+By default, the filenames of your images will be used as keys in the exported
+labels. However, you can also provide the optional `rel_dir` parameter to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` to specify
+a prefix to strip from each image path to generate a key for the image. This
+argument allows for populating nested subdirectories that match the shape of
+the input paths.
 
 .. tabs::
 
@@ -1477,13 +1483,12 @@ would only like to export labels.
         )
 
         # Export labels using the relative path of each image with respect to
-        # the given `data_path` as keys
+        # the given `rel_dir` as keys
         dataset_or_view.export(
             dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
-            data_path="/common/images/dir",
             labels_path=labels_path,
             label_field=label_field,
-            export_media=False,
+            rel_dir="/common/images/dir",
         )
 
   .. group-tab:: CLI
@@ -1501,14 +1506,13 @@ would only like to export labels.
             --kwargs labels_path=$LABELS_PATH
 
         # Export labels using the relative path of each image with respect to
-        # the given `data_path` as keys
+        # the given `rel_dir` as keys
         fiftyone datasets export $NAME \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneTemporalDetectionDataset \
             --kwargs \
-                data_path=/common/images/dir \
                 labels_path=$LABELS_PATH \
-                export_media=False
+                rel_dir=/common/images/dir
 
 .. _COCODetectionDataset-export:
 
@@ -1520,9 +1524,8 @@ COCODetectionDataset
 
     |Detections|, |Polylines|
 
-The :class:`fiftyone.types.COCODetectionDataset <fiftyone.types.dataset_types.COCODetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.COCODetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections saved in
 `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
 
 Datasets of this type are exported in the following format:
@@ -1595,8 +1598,8 @@ The `file_name` attribute of the labels file encodes the location of the
 corresponding images, which can be any of the following:
 
 -   The filename of an image in the `data/` folder
--   A relative path like `data/sub/folder/filename.ext` specifying the relative
-    path to the image in a nested subfolder of `data/`
+-   A relative path like `path/to/filename.ext` specifying the relative path to
+    the image in a nested subfolder of `data/`
 -   An absolute path to an image, which may or may not be in the `data/` folder
 
 .. note::
@@ -1702,9 +1705,8 @@ VOCDetectionDataset
 
     |Detections|
 
-The :class:`fiftyone.types.VOCDetectionDataset <fiftyone.types.dataset_types.VOCDetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.VOCDetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections saved in
 `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
 
 Datasets of this type are exported in the following format:
@@ -1867,9 +1869,8 @@ KITTIDetectionDataset
 
     |Detections|
 
-The :class:`fiftyone.types.KITTIDetectionDataset <fiftyone.types.dataset_types.KITTIDetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.KITTIDetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections saved in
 `KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
 Datasets of this type are exported in the following format:
@@ -2022,9 +2023,8 @@ YOLOv4Dataset
 
     |Detections|
 
-The :class:`fiftyone.types.YOLOv4Dataset <fiftyone.types.dataset_types.YOLOv4Dataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.YOLOv4Dataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
 `YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.
 
 Datasets of this type are exported in the following format:
@@ -2177,9 +2177,8 @@ YOLOv5Dataset
 
     |Detections|
 
-The :class:`fiftyone.types.YOLOv5Dataset <fiftyone.types.dataset_types.YOLOv5Dataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections saved in
+The :class:`fiftyone.types.YOLOv5Dataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
 `YOLOv5 format <https://github.com/ultralytics/yolov5>`_.
 
 Datasets of this type are exported in the following format:
@@ -2211,6 +2210,7 @@ where `dataset.yaml` contains the following information:
 
 .. code-block:: text
 
+    path: <dataset_dir>  # optional
     train: ./images/train/
     val: ./images/val/
 
@@ -2224,7 +2224,9 @@ See `this page <https://docs.ultralytics.com/tutorials/train-custom-datasets>`_
 for a full description of the possible format of `dataset.yaml`. In particular,
 the dataset may contain one or more splits with arbitrary names, as the
 specific split being imported or exported is specified by the `split` argument
-to :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`.
+to :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`. Also, `dataset.yaml` can
+be located outside of `<dataset_dir>` as long as the optional `path` is
+provided.
 
 The TXT files in `labels/` are space-delimited files where each row corresponds
 to an object in the image of the same name, in one of the following formats:
@@ -2240,7 +2242,9 @@ where `<target>` is the zero-based integer index of the object class label from
 be included only if you pass the optional `include_confidence=True` flag to
 the export.
 
-Unlabeled images have no corresponding TXT file in `labels/`.
+Unlabeled images have no corresponding TXT file in `labels/`. The label file
+path for each image is obtained by replacing `images/` with `labels/` in the
+respective image path.
 
 .. note::
 
@@ -2320,9 +2324,8 @@ TFObjectDetectionDataset
 
     |Detections|
 
-The :class:`fiftyone.types.TFObjectDetectionDataset <fiftyone.types.dataset_types.TFObjectDetectionDataset>`
-type represents a labeled dataset consisting of images and their associated
-object detections stored as
+The :class:`fiftyone.types.TFObjectDetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections stored as
 `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_ in
 `TF Object Detection API format <https://github.com/tensorflow/models/blob/master/research/object_detection>`_.
 
@@ -2452,9 +2455,9 @@ ImageSegmentationDirectory
 
     |Segmentation|, |Detections|, |Polylines|
 
-The :class:`fiftyone.types.ImageSegmentationDirectory <fiftyone.types.dataset_types.ImageSegmentationDirectory>`
-type represents a labeled dataset consisting of images and their associated
-semantic segmentations stored as images on disk.
+The :class:`fiftyone.types.ImageSegmentationDirectory` type represents a
+labeled dataset consisting of images and their associated semantic
+segmentations stored as images on disk.
 
 Datasets of this type are exported in the following format:
 
@@ -2573,9 +2576,8 @@ CVATImageDataset
 
     |Classifications|, |Detections|, |Polylines|, |Keypoints|
 
-The :class:`fiftyone.types.CVATImageDataset <fiftyone.types.dataset_types.CVATImageDataset>`
-type represents a labeled dataset consisting of images and their associated
-tags and object detections stored in
+The :class:`fiftyone.types.CVATImageDataset` type represents a labeled dataset
+consisting of images and their associated tags and object detections stored in
 `CVAT image format <https://github.com/opencv/cvat>`_.
 
 Datasets of this type are exported in the following format:
@@ -2681,8 +2683,8 @@ The `name` field of the `<image>` tags in the labels file encodes the location
 of the corresponding images, which can be any of the following:
 
 -   The filename of an image in the `data/` folder
--   A relative path like `data/sub/folder/filename.ext` specifying the relative
-    path to the image in a nested subfolder of `data/`
+-   A relative path like `path/to/filename.ext` specifying the relative path to
+    the image in a nested subfolder of `data/`
 -   An absolute path to an image, which may or may not be in the `data/` folder
 
 .. note::
@@ -2780,9 +2782,8 @@ CVATVideoDataset
 
     |Detections|, |Polylines|, |Keypoints|
 
-The :class:`fiftyone.types.CVATVideoDataset <fiftyone.types.dataset_types.CVATVideoDataset>`
-type represents a labeled dataset consisting of videos and their associated
-object detections stored in
+The :class:`fiftyone.types.CVATVideoDataset` type represents a labeled dataset
+consisting of videos and their associated object detections stored in
 `CVAT video format <https://github.com/opencv/cvat>`_.
 
 Datasets of this type are exported in the following format:
@@ -2988,9 +2989,9 @@ FiftyOneImageLabelsDataset
 
     |Classifications|, |Detections|, |Polylines|, |Keypoints|
 
-The :class:`fiftyone.types.FiftyOneImageLabelsDataset <fiftyone.types.dataset_types.FiftyOneImageLabelsDataset>`
-type represents a labeled dataset consisting of images and their associated
-multitask predictions stored in
+The :class:`fiftyone.types.FiftyOneImageLabelsDataset` type represents a
+labeled dataset consisting of images and their associated multitask predictions
+stored in
 `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
 
 Datasets of this type are exported in the following format:
@@ -3089,9 +3090,8 @@ FiftyOneVideoLabelsDataset
 
     |Classifications|, |Detections|, |TemporalDetections|, |Polylines|, |Keypoints|
 
-The :class:`fiftyone.types.FiftyOneVideoLabelsDataset <fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset>`
-type represents a labeled dataset consisting of videos and their associated
-labels stored in
+The :class:`fiftyone.types.FiftyOneVideoLabelsDataset` type represents a
+labeled dataset consisting of videos and their associated labels stored in
 `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
 
 Datasets of this type are exported in the following format:
@@ -3190,9 +3190,8 @@ BDDDataset
 
     |Classifications|, |Detections|, |Polylines|
 
-The :class:`fiftyone.types.BDDDataset <fiftyone.types.dataset_types.BDDDataset>`
-type represents a labeled dataset consisting of images and their associated
-multitask predictions saved in
+The :class:`fiftyone.types.BDDDataset` type represents a labeled dataset
+consisting of images and their associated multitask predictions saved in
 `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
 Datasets of this type are exported in the following format:
@@ -3295,8 +3294,8 @@ The `name` attribute of the labels file encodes the location of the
 corresponding images, which can be any of the following:
 
 -   The filename of an image in the `data/` folder
--   A relative path like `data/sub/folder/filename.ext` specifying the relative
-    path to the image in a nested subfolder of `data/`
+-   A relative path like `path/to/filename.ext` specifying the relative path to
+    the image in a nested subfolder of `data/`
 -   An absolute path to an image, which may or may not be in the `data/` folder
 
 .. note::
@@ -3389,10 +3388,9 @@ the `labels_path` parameter instead of `export_dir`:
 GeoJSONDataset
 --------------
 
-The :class:`fiftyone.types.GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
-type represents a dataset consisting of images or videos and their associated
-geolocation data and optional properties stored in
-`GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
+The :class:`fiftyone.types.GeoJSONDataset` type represents a dataset consisting
+of images or videos and their associated geolocation data and optional
+properties stored in `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
 
 Datasets of this type are exported in the following format:
 
@@ -3541,9 +3539,8 @@ providing the `labels_path` parameter instead of `export_dir`:
 FiftyOneDataset
 ---------------
 
-The :class:`fiftyone.types.FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
-provides a disk representation of an entire |Dataset| in a serialized JSON
-format along with its source media.
+The :class:`fiftyone.types.FiftyOneDataset` provides a disk representation of
+an entire |Dataset| in a serialized JSON format along with its source media.
 
 Datasets of this type are exported in the following format:
 
@@ -3619,9 +3616,12 @@ You can export a FiftyOne dataset to disk in the above format as follows:
             --export-dir $EXPORT_DIR \
             --type fiftyone.types.FiftyOneDataset
 
-You can also export datasets in this this format without copying the source
-media files by including `export_media=False` in your call to
+You can export datasets in this this format without copying the source media
+files by including `export_media=False` in your call to
 :meth:`export() <fiftyone.core.collections.SampleCollection.export>`.
+
+You can also pass `use_dirs=True` to export per-sample/frame JSON files rather
+than storing all samples/frames in single JSON files.
 
 By default, the absolute filepath of each image will be included in the export.
 However, if you want to re-import this dataset on a different machine with the
@@ -3682,18 +3682,17 @@ image's filepath, and then provide the new `rel_dir` when
             --type fiftyone.types.FiftyOneDataset \
             --kwargs \
                 export_media=False \
-                rel_dir="/common/images/dir"
+                rel_dir=/common/images/dir
 
 .. note::
 
-    Exporting in
-    :class:`fiftyone.types.FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
-    format as shown above using the `export_media=False` and `rel_dir`
-    parameters is a convenient way to transfer datasets between work
-    environments, since this enables you to store the media files wherever you
-    wish in each environment and then simply provide the appropriate `rel_dir`
-    value when :ref:`importing <FiftyOneDataset-import>` the dataset into
-    FiftyOne in a new environment.
+    Exporting in :class:`fiftyone.types.FiftyOneDataset` format as shown above
+    using the `export_media=False` and `rel_dir` parameters is a convenient way
+    to transfer datasets between work environments, since this enables you to
+    store the media files wherever you wish in each environment and then simply
+    provide the appropriate `rel_dir` value when
+    :ref:`importing <FiftyOneDataset-import>` the dataset into FiftyOne in a
+    new environment.
 
 .. _custom-dataset-exporter:
 
@@ -3767,11 +3766,10 @@ should implement is determined by the type of dataset that you are exporting.
                 Args:
                     export_dir (None): the directory to write the export. This may be
                         optional for some exporters
-                    *args: additional positional arguments for your exporter
                     **kwargs: additional keyword arguments for your exporter
                 """
 
-                def __init__(self, export_dir=None, *args, **kwargs):
+                def __init__(self, export_dir=None, **kwargs):
                     super().__init__(export_dir=export_dir)
                     # Your initialization here
 
@@ -3917,11 +3915,10 @@ should implement is determined by the type of dataset that you are exporting.
                 Args:
                     export_dir (None): the directory to write the export. This may be
                         optional for some exporters
-                    *args: additional positional arguments for your exporter
                     **kwargs: additional keyword arguments for your exporter
                 """
 
-                def __init__(self, export_dir=None, *args, **kwargs):
+                def __init__(self, export_dir=None, **kwargs):
                     super().__init__(export_dir=export_dir)
                     # Your initialization here
 
@@ -4102,11 +4099,10 @@ should implement is determined by the type of dataset that you are exporting.
                 Args:
                     export_dir (None): the directory to write the export. This may be
                         optional for some exporters
-                    *args: additional positional arguments for your exporter
                     **kwargs: additional keyword arguments for your exporter
                 """
 
-                def __init__(self, export_dir=None, *args, **kwargs):
+                def __init__(self, export_dir=None, **kwargs):
                     super().__init__(export_dir=export_dir)
                     # Your initialization here
 
@@ -4252,11 +4248,10 @@ should implement is determined by the type of dataset that you are exporting.
                 Args:
                     export_dir (None): the directory to write the export. This may be
                         optional for some exporters
-                    *args: additional positional arguments for your exporter
                     **kwargs: additional keyword arguments for your exporter
                 """
 
-                def __init__(self, export_dir=None, *args, **kwargs):
+                def __init__(self, export_dir=None, **kwargs):
                     super().__init__(export_dir=export_dir)
                     # Your initialization here
 
@@ -4450,6 +4445,129 @@ should implement is determined by the type of dataset that you are exporting.
         (e.g., its filename, encoding, shape, etc) are required in order to
         export the sample.
 
+  .. group-tab:: Grouped datasets
+
+        To define a custom exporter for grouped datasets, implement the
+        |GroupDatasetExporter| interface.
+
+        The pseudocode below provides a template for a custom
+        |GroupDatasetExporter|:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.utils.data as foud
+
+            class CustomGroupDatasetExporter(foud.GroupDatasetExporter):
+                """Custom exporter for grouped datasets.
+
+                Args:
+                    export_dir (None): the directory to write the export. This may be
+                        optional for some exporters
+                    **kwargs: additional keyword arguments for your exporter
+                """
+
+                def __init__(self, export_dir=None, **kwargs):
+                    super().__init__(export_dir=export_dir)
+                    # Your initialization here
+
+                def setup(self):
+                    """Performs any necessary setup before exporting the first group in
+                    the dataset.
+
+                    This method is called when the exporter's context manager interface is
+                    entered, :func:`DatasetExporter.__enter__`.
+                    """
+                    # Your custom setup here
+                    pass
+
+                def log_collection(self, sample_collection):
+                    """Logs any relevant information about the
+                    :class:`fiftyone.core.collections.SampleCollection` whose samples will
+                    be exported.
+
+                    Subclasses can optionally implement this method if their export format
+                    can record information such as the
+                    :meth:`fiftyone.core.collections.SampleCollection.info` or
+                    :meth:`fiftyone.core.collections.SampleCollection.classes` of the
+                    collection being exported.
+
+                    By convention, this method must be optional; i.e., if it is not called
+                    before the first call to :meth:`export_sample`, then the exporter must
+                    make do without any information about the
+                    :class:`fiftyone.core.collections.SampleCollection` (which may not be
+                    available, for example, if the samples being exported are not stored in
+                    a collection).
+
+                    Args:
+                        sample_collection: the
+                            :class:`fiftyone.core.collections.SampleCollection` whose
+                            samples will be exported
+                    """
+                    # Log any information from the sample collection here
+                    pass
+
+                def export_group(self, group):
+                    """Exports the given group to the dataset.
+
+                    Args:
+                        group: a dict mapping group slice names to
+                            :class:`fiftyone.core.sample.Sample` instances
+                    """
+                    # Export the provided group
+                    pass
+
+                def close(self, *args):
+                    """Performs any necessary actions after the last group has been
+                    exported.
+
+                    This method is called when the importer's context manager interface is
+                    exited, :func:`DatasetExporter.__exit__`.
+
+                    Args:
+                        *args: the arguments to :func:`DatasetExporter.__exit__`
+                    """
+                    # Your custom code here to complete the export
+                    pass
+
+        When
+        :meth:`export() <fiftyone.core.collections.SampleCollection.export>` is
+        called with a custom |GroupDatasetExporter|, the export is effectively
+        performed via the pseudocode below:
+
+        .. code-block:: python
+
+            import fiftyone as fo
+
+            samples = ...
+            exporter = CustomGroupDatasetExporter(...)
+
+            with exporter:
+                exporter.log_collection(samples)
+
+                for group in samples.iter_groups():
+                    exporter.export_group(group)
+
+        Note that the exporter is invoked via its context manager interface,
+        which automatically calls the
+        :meth:`setup() <fiftyone.utils.data.exporters.GroupDatasetExporter.setup>`
+        and
+        :meth:`close() <fiftyone.utils.data.exporters.GroupDatasetExporter.close>`
+        methods of the exporter to handle setup/completion of the export.
+
+        The
+        :meth:`log_collection() <fiftyone.utils.data.exporters.GroupDatasetExporter.log_collection>`
+        method is called after the exporter's context manager has been entered
+        but before any samples have been exported. This method can optionally
+        be implemented by exporters that store information such as the
+        :meth:`name <fiftyone.core.collections.SampleCollection.name>` or
+        :meth:`info <fiftyone.core.collections.SampleCollection.info>` from the
+        collection being exported.
+
+        Each sample group is exported via the
+        :meth:`export_group() <fiftyone.utils.data.exporters.GroupDatasetExporter.export_group>`
+        method.
+
 .. _writing-a-custom-dataset-type-exporter:
 
 Writing a custom Dataset type
@@ -4634,3 +4752,44 @@ corresponding to the type of dataset that you are working with.
         Note that, as this type represents a labeled video dataset, its
         importer must be a subclass of |LabeledVideoDatasetImporter|, and its
         exporter must be a subclass of |LabeledVideoDatasetExporter|.
+
+  .. group-tab:: Grouped datasets
+
+        The pseudocode below provides a template for a custom |GroupDatasetType|
+        subclass:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.types as fot
+
+            class CustomGroupDataset(fot.GroupDataset):
+                """Custom grouped dataset type."""
+
+                def get_dataset_importer_cls(self):
+                    """Returns the
+                    :class:`fiftyone.utils.data.importers.GroupDatasetImporter`
+                    class for importing datasets of this type from disk.
+
+                    Returns:
+                        a :class:`fiftyone.utils.data.importers.GroupDatasetImporter`
+                        class
+                    """
+                    # Return your custom GroupDatasetImporter class here
+                    pass
+
+                def get_dataset_exporter_cls(self):
+                    """Returns the
+                    :class:`fiftyone.utils.data.exporters.GroupDatasetExporter`
+                    class for exporting datasets of this type to disk.
+
+                    Returns:
+                        a :class:`fiftyone.utils.data.exporters.GroupDatasetExporter`
+                        class
+                    """
+                    # Return your custom GroupDatasetExporter class here
+                    pass
+
+        Note that, as this type represents a grouped dataset, its importer must
+        be a subclass of |GroupDatasetImporter|, and its exporter must be a
+        subclass of |GroupDatasetExporter|.

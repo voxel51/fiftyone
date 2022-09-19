@@ -33,6 +33,34 @@ import fiftyone.utils.eta as foue
 logger = logging.getLogger(__name__)
 
 
+def connect_to_api(backend=None, **kwargs):
+    """Returns an API instance connected to the annotation backend.
+
+    Some annotation backends may not expose this functionality.
+
+    Args:
+        backend (None): the annotation backend to use. The supported values are
+            ``fiftyone.annotation_config.backends.keys()`` and the default
+            is ``fiftyone.annotation_config.default_backend``
+        **kwargs: keyword arguments for the :class:`AnnotationBackendConfig`
+            subclass of the backend being used
+
+    Returns:
+        an :class:`AnnotationAPI`
+    """
+    if backend is None:
+        backend = fo.annotation_config.default_backend
+
+    config = _parse_config(backend, None, **kwargs)
+    anno_backend = config.build()
+
+    api = anno_backend.connect_to_api()
+    if api is None:
+        raise ValueError("The '%s' backend does not expose an API" % backend)
+
+    return api
+
+
 def annotate(
     samples,
     anno_key,
@@ -115,14 +143,11 @@ def annotate(
             ``label_field`` or all fields in ``label_schema`` without classes
             specified. All new label fields must have a class list provided via
             one of the supported methods. For existing label fields, if classes
-            are not provided by this argument nor ``label_schema``, they are
-            parsed from
-            :meth:`fiftyone.core.collections.SampleCollection.get_classes` if
-            possible, or else the observed labels on your dataset are used
-        attributes (True): specifies the label attributes of each label
-            field to include (other than their ``label``, which is always
-            included) in the annotation export. Can be any of the
-            following:
+            are not provided by this argument nor ``label_schema``, the
+            observed labels on your dataset are used
+        attributes (True): specifies the label attributes of each label field
+            to include (other than their ``label``, which is always included)
+            in the annotation export. Can be any of the following:
 
             -   ``True``: export all label attributes
             -   ``False``: don't export any custom label attributes
@@ -130,8 +155,10 @@ def annotate(
             -   a dict mapping attribute names to dicts specifying the details
                 of the attribute field
 
-            If provided, this parameter will apply to all label fields in
-            ``label_schema`` that do not define their attributes
+            If a ``label_schema`` is also provided, this parameter determines
+            which attributes are included for all fields that do not explicitly
+            define their per-field attributes (in addition to any per-class
+            attributes)
         mask_targets (None): a dict mapping pixel values to semantic label
             strings. Only applicable when annotating semantic segmentations
         allow_additions (True): whether to allow new labels to be added. Only
@@ -158,7 +185,7 @@ def annotate(
             subclass of the backend being used
 
     Returns:
-        an :class:`AnnnotationResults`
+        an :class:`AnnotationResults`
     """
     # @todo support this?
     if samples._dataset._is_frames:
@@ -185,6 +212,15 @@ def annotate(
     config = _parse_config(backend, None, media_field=media_field, **kwargs)
     anno_backend = config.build()
     anno_backend.ensure_requirements()
+
+    supported_media_types = anno_backend.supported_media_types
+    if samples.media_type == fomm.GROUP:
+        raise fomm.SelectGroupSlicesError(supported_media_types)
+    elif samples.media_type not in supported_media_types:
+        raise fomm.MediaTypeError(
+            "The '%s' backend does not supported annotating '%s' collections"
+            % (anno_backend.config.name, samples.media_type)
+        )
 
     label_schema, samples = _build_label_schema(
         samples,
@@ -407,21 +443,23 @@ def _build_label_schema(
         _return_type = _RETURN_TYPES_MAP[_label_type]
         _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
 
-        if is_video and not _is_frame_field:
-            if _return_type in _SPATIAL_TYPES:
-                raise ValueError(
-                    "Invalid label field '%s'. Spatial labels of type '%s' "
-                    "being annotated on a video must be stored in a "
-                    "frame-level field, i.e., one that starts with 'frames.'"
-                    % (_label_field, _label_type)
-                )
-            elif not backend.supports_video_sample_fields:
-                raise ValueError(
-                    "Invalid label field '%s'. Backend '%s' does not support "
-                    "annotating video fields at a sample-level. Labels must be "
-                    "stored in a frame-level field, i.e., one that starts with "
-                    "'frames.'" % (_label_field, backend.config.name)
-                )
+        if is_video:
+            if not _is_frame_field:
+                if _return_type in _SPATIAL_TYPES:
+                    raise ValueError(
+                        "Invalid label field '%s'. Spatial labels of type "
+                        "'%s' being annotated on a video must be stored in a "
+                        "frame-level field, i.e., one that starts with "
+                        "'frames.'" % (_label_field, _label_type)
+                    )
+                elif not backend.supports_video_sample_fields:
+                    raise ValueError(
+                        "Invalid label field '%s'. Backend '%s' does not "
+                        "support annotating video fields at a sample-level. "
+                        "Labels must be stored in a frame-level field, i.e., "
+                        "one that starts with 'frames.'"
+                        % (_label_field, backend.config.name)
+                    )
 
         # We found an existing field with multiple label types, so we must
         # select only the relevant labels
@@ -772,10 +810,6 @@ def _get_classes(
             % label_field
         )
 
-    classes = samples.get_classes(label_field)
-    if classes:
-        return classes
-
     _, label_path = samples._get_label_field_path(label_field, "label")
     return sorted(
         set(samples._dataset.distinct(label_path))
@@ -815,12 +849,6 @@ def _get_mask_targets(samples, mask_targets, label_field, label_info):
     if "mask_targets" in label_info:
         mask_targets = label_info["mask_targets"]
 
-    if mask_targets is None and label_field in samples.mask_targets:
-        mask_targets = samples.mask_targets[label_field]
-
-    if mask_targets is None and samples.default_mask_targets:
-        mask_targets = samples.default_mask_targets
-
     if mask_targets is None:
         mask_targets = {i: str(i) for i in range(1, 256)}
         mask_targets[0] = "background"
@@ -842,6 +870,14 @@ def _get_attributes(
 ):
     if "attributes" in label_info:
         attributes = label_info["attributes"]
+
+    if attributes and not backend.supported_attr_types:
+        logger.warning(
+            "The backend '%s' does not support attributes. Provided "
+            "attributes will be ignored.",
+            backend.config.name,
+        )
+        return {}
 
     if attributes in [True, False, None]:
         if label_type == "scalar":
@@ -996,7 +1032,8 @@ def load_annotations(
         ``None``, unless ``unexpected=="return"`` and unexpected labels are
         found, in which case a dict containing the extra labels is returned
     """
-    results = samples.load_annotation_results(anno_key, **kwargs)
+    dataset = samples._root_dataset
+    results = dataset.load_annotation_results(anno_key, **kwargs)
     annotations = results.backend.download_annotations(results)
     label_schema = results.config.label_schema
 
@@ -1016,7 +1053,7 @@ def load_annotations(
             else:
                 logger.warning(
                     "Ignoring string `dest_field=%s` since the label "
-                    "schema contains %d > 1 fields",
+                    "schema contains %d (> 1) fields",
                     dest_field,
                     len(label_schema),
                 )
@@ -1031,7 +1068,7 @@ def load_annotations(
                 # Expected labels
                 if label_type == "scalar":
                     _merge_scalars(
-                        samples,
+                        dataset,
                         annos,
                         results,
                         label_field,
@@ -1039,7 +1076,7 @@ def load_annotations(
                     )
                 else:
                     _merge_labels(
-                        samples,
+                        dataset,
                         annos,
                         results,
                         label_field,
@@ -1054,7 +1091,7 @@ def load_annotations(
                     new_field = None
                 elif unexpected == "prompt":
                     new_field = _prompt_field(
-                        samples, anno_type, label_field, label_schema
+                        dataset, anno_type, label_field, label_schema
                     )
                 elif unexpected == "return":
                     new_field = None
@@ -1071,14 +1108,14 @@ def load_annotations(
 
                 if new_field:
                     new_field = _handle_frame_fields(
-                        new_field, samples, label_field
+                        dataset, new_field, label_field
                     )
 
                     if anno_type == "scalar":
-                        _merge_scalars(samples, annos, results, new_field)
+                        _merge_scalars(dataset, annos, results, new_field)
                     else:
                         _merge_labels(
-                            samples, annos, results, new_field, anno_type
+                            dataset, annos, results, new_field, anno_type
                         )
                 else:
                     if label_field:
@@ -1094,7 +1131,7 @@ def load_annotations(
                     if unexpected == "return":
                         unexpected_annos[label_field][anno_type] = annos
 
-    results.backend.save_run_results(samples, anno_key, results)
+    results.backend.save_run_results(dataset, anno_key, results)
 
     if cleanup:
         results.cleanup()
@@ -1103,14 +1140,14 @@ def load_annotations(
         return dict(unexpected_annos) if unexpected_annos else None
 
 
-def _handle_frame_fields(field, samples, ref_field):
-    if samples.media_type != fomm.VIDEO:
+def _handle_frame_fields(dataset, field, ref_field):
+    if dataset.media_type != fomm.VIDEO:
         return field
 
     if (
-        ref_field is None or samples._is_frame_field(ref_field)
-    ) and not samples._is_frame_field(field):
-        field = samples._FRAMES_PREFIX + field
+        ref_field is None or dataset._is_frame_field(ref_field)
+    ) and not dataset._is_frame_field(field):
+        field = dataset._FRAMES_PREFIX + field
 
     return field
 
@@ -1140,7 +1177,7 @@ def _get_writeable_attributes(attributes):
     return [k for k, v in attributes.items() if not v.get("read_only", False)]
 
 
-def _prompt_field(samples, label_type, label_field, label_schema):
+def _prompt_field(dataset, label_type, label_field, label_schema):
     if label_field:
         new_field = input(
             "Found unexpected labels of type '%s' when loading annotations "
@@ -1162,24 +1199,24 @@ def _prompt_field(samples, label_type, label_field, label_schema):
         fo_label_type = _LABEL_TYPES_MAP[label_type]
 
     if label_field is not None:
-        _, is_frame_field = samples._handle_frame_field(label_field)
+        _, is_frame_field = dataset._handle_frame_field(label_field)
     else:
-        is_frame_field = samples.media_type == fomm.VIDEO
+        is_frame_field = dataset.media_type == fomm.VIDEO
 
     if is_frame_field:
-        schema = samples.get_frame_field_schema()
+        schema = dataset.get_frame_field_schema()
     else:
-        schema = samples.get_field_schema()
+        schema = dataset.get_field_schema()
 
     while True:
         is_good_field = new_field not in label_schema
 
         if is_good_field:
             if is_frame_field:
-                if not samples._is_frame_field(new_field):
-                    new_field = samples._FRAMES_PREFIX + new_field
+                if not dataset._is_frame_field(new_field):
+                    new_field = dataset._FRAMES_PREFIX + new_field
 
-                field, _ = samples._handle_frame_field(new_field)
+                field, _ = dataset._handle_frame_field(new_field)
             else:
                 field = new_field
 
@@ -1224,20 +1261,20 @@ def _prompt_field(samples, label_type, label_field, label_schema):
     return new_field
 
 
-def _merge_scalars(samples, anno_dict, results, label_field, label_info=None):
+def _merge_scalars(dataset, anno_dict, results, label_field, label_info=None):
     if label_info is None:
         label_info = {}
 
     allow_additions = label_info.get("allow_additions", True)
     allow_deletions = label_info.get("allow_deletions", True)
 
-    is_video = samples._is_frame_field(label_field)
+    is_video = dataset._is_frame_field(label_field)
 
     # Retrieve a view that contains all samples involved in the annotation run
     id_map = results.id_map.get(label_field, {})
     uploaded_ids = set(k for k, v in id_map.items() if v is not None)
     sample_ids = list(uploaded_ids | set(anno_dict.keys()))
-    view = samples._dataset.select(sample_ids)
+    view = dataset.select(sample_ids)
 
     if is_video:
         field, _ = view._handle_frame_field(label_field)
@@ -1309,7 +1346,7 @@ def _merge_scalars(samples, anno_dict, results, label_field, label_info=None):
 
 
 def _merge_labels(
-    samples,
+    dataset,
     anno_dict,
     results,
     label_field,
@@ -1336,21 +1373,21 @@ def _merge_labels(
     else:
         is_list = False
 
-    _ensure_label_field(samples, label_field, fo_label_type)
+    _ensure_label_field(dataset, label_field, fo_label_type)
 
-    is_video = samples.media_type == fomm.VIDEO
+    is_video = dataset.media_type == fomm.VIDEO
 
     if is_video and label_type in _TRACKABLE_TYPES:
         if not existing_field:
             # Always include keyframe info when importing new video tracks
             only_keyframes = True
 
-        _update_tracks(samples, label_field, anno_dict, only_keyframes)
+        _update_tracks(dataset, label_field, anno_dict, only_keyframes)
 
     id_map = results.id_map.get(label_field, {})
 
     if is_video:
-        field, _ = samples._handle_frame_field(label_field)
+        field, _ = dataset._handle_frame_field(label_field)
         added_id_map = defaultdict(lambda: defaultdict(list))
     else:
         field = label_field
@@ -1424,11 +1461,11 @@ def _merge_labels(
     # Delete labels that were deleted in the annotation task
     if delete_ids and allow_deletions:
         _del_ids = [key[-1] for key in delete_ids]
-        samples._dataset.delete_labels(ids=_del_ids, fields=label_field)
+        dataset.delete_labels(ids=_del_ids, fields=label_field)
 
     # Add/merge labels from the annotation task
     sample_ids = list(anno_dict.keys())
-    view = samples._dataset.select(sample_ids).select_fields(label_field)
+    view = dataset.select(sample_ids).select_fields(label_field)
     for sample in view.iter_samples(progress=True):
         sample_id = sample.id
         sample_annos = anno_dict[sample_id]
@@ -1538,22 +1575,20 @@ def _merge_labels(
     results._update_id_map(label_field, added_id_map)
 
 
-def _ensure_label_field(samples, label_field, fo_label_type):
-    field, is_frame_field = samples._handle_frame_field(label_field)
+def _ensure_label_field(dataset, label_field, fo_label_type):
+    field, is_frame_field = dataset._handle_frame_field(label_field)
     if is_frame_field:
-        if not samples.has_frame_field(field):
-            samples._dataset.add_frame_field(
-                field,
-                fof.EmbeddedDocumentField,
-                embedded_doc_type=fo_label_type,
-            )
+        dataset.add_frame_field(
+            field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fo_label_type,
+        )
     else:
-        if not samples.has_sample_field(field):
-            samples._dataset.add_sample_field(
-                field,
-                fof.EmbeddedDocumentField,
-                embedded_doc_type=fo_label_type,
-            )
+        dataset.add_sample_field(
+            field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fo_label_type,
+        )
 
 
 def _merge_label(
@@ -1595,13 +1630,13 @@ def _merge_label(
             label.set_attribute_value(name, value)
 
 
-def _update_tracks(samples, label_field, anno_dict, only_keyframes):
-    # Using unfiltered samples is important here because we need to ensure
+def _update_tracks(dataset, label_field, anno_dict, only_keyframes):
+    # Using the full dataset here is important here because we need to ensure
     # that any new indexes never clash with *any* existing tracks
-    view = samples._dataset.select(list(anno_dict.keys()))
+    view = dataset.select(list(anno_dict.keys()))
 
-    _, id_path = samples._get_label_field_path(label_field, "id")
-    _, index_path = samples._get_label_field_path(label_field, "index")
+    _, id_path = dataset._get_label_field_path(label_field, "id")
+    _, index_path = dataset._get_label_field_path(label_field, "index")
 
     sample_ids, frame_ids, label_ids, indexes = view.values(
         ["id", "frames.id", id_path, index_path]
@@ -1755,6 +1790,31 @@ class AnnotationBackend(foa.AnnotationMethod):
         config: an :class:`AnnotationBackendConfig`
     """
 
+    def __init__(self, *args, **kwargs):
+        self._api = None
+        super().__init__(*args, **kwargs)
+
+    def __enter__(self):
+        api = self.connect_to_api()
+        if api is not None:
+            api.__enter__()
+
+        return self
+
+    def __exit__(self, *args):
+        if self._api is not None:
+            self._api.__exit__(*args)
+
+    @property
+    def supported_media_types(self):
+        """The list of media types that this backend supports.
+
+        For example, CVAT supports ``["image", "video"]``.
+        """
+        raise NotImplementedError(
+            "subclass must implement supported_media_types"
+        )
+
     @property
     def supported_label_types(self):
         """The list of label types supported by the backend.
@@ -1829,7 +1889,9 @@ class AnnotationBackend(foa.AnnotationMethod):
         """Whether this backend requires a pre-defined label schema for its
         annotation runs.
         """
-        return True
+        raise NotImplementedError(
+            "subclass must implement requires_label_schema"
+        )
 
     def recommend_attr_tool(self, name, value):
         """Recommends an attribute tool for an attribute with the given name
@@ -1871,6 +1933,40 @@ class AnnotationBackend(foa.AnnotationMethod):
         raise NotImplementedError(
             "subclass must implement requires_attr_values()"
         )
+
+    def connect_to_api(self):
+        """Returns an API instance connected to the annotation backend.
+
+        Existing API instances are reused, if available.
+
+        Some annotation backends may not expose this functionality.
+
+        Returns:
+            an :class:`AnnotationAPI`, or ``None`` if the backend does not
+            expose an API
+        """
+        if self._api is None:
+            # pylint: disable=assignment-from-none
+            self._api = self._connect_to_api()
+
+        return self._api
+
+    def _connect_to_api(self):
+        """Returns a new API instance connected to the annotation backend.
+
+        Returns:
+            an :class:`AnnotationAPI`, or ``None`` if the backend does not
+            expose an API
+        """
+        return None
+
+    def use_api(self, api):
+        """Registers an API instance to use for subsequent operations.
+
+        Args:
+            api: an :class:`AnnotationAPI`
+        """
+        self._api = api
 
     def upload_annotations(self, samples, launch_editor=False):
         """Uploads the samples and relevant existing labels from the label
@@ -2002,6 +2098,13 @@ class AnnotationResults(foa.AnnotationResults):
         self.id_map = id_map
         self._backend = backend
 
+    def __enter__(self):
+        self._backend.__enter__()
+        return self
+
+    def __exit__(self, *args):
+        self._backend.__exit__(*args)
+
     @property
     def config(self):
         """The :class:`AnnotationBackendConfig` for these results."""
@@ -2020,6 +2123,27 @@ class AnnotationResults(foa.AnnotationResults):
             **kwargs: subclass-specific credentials
         """
         raise NotImplementedError("subclass must implement load_credentials()")
+
+    def connect_to_api(self):
+        """Returns an API instance connected to the annotation backend.
+
+        Existing API instances are reused, if available.
+
+        Some annotation backends may not expose this functionality.
+
+        Returns:
+            an :class:`AnnotationAPI`, or ``None`` if the backend does not
+            expose an API
+        """
+        return self._backend.connect_to_api()
+
+    def use_api(self, api):
+        """Registers an API instance to use for subsequent operations.
+
+        Args:
+            api: an :class:`AnnotationAPI`
+        """
+        self._backend.use_api(api)
 
     def launch_editor(self):
         """Launches the annotation backend's editor for these results."""
@@ -2108,7 +2232,17 @@ class AnnotationResults(foa.AnnotationResults):
 
 
 class AnnotationAPI(object):
-    """Base class for APIs that connect to annotation backend."""
+    """Base class for APIs that connect to annotation backends."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def close(self):
+        """Closes the API session."""
+        pass
 
     def _prompt_username_password(self, backend, username=None, password=None):
         prefix = "FIFTYONE_%s_" % backend.upper()
@@ -2168,7 +2302,7 @@ class DrawConfig(etaa.AnnotationConfig):
 
 
 def draw_labeled_images(
-    samples, output_dir, label_fields=None, config=None, **kwargs
+    samples, output_dir, rel_dir=None, label_fields=None, config=None, **kwargs
 ):
     """Renders annotated versions of the images in the collection with the
     specified label data overlaid to the given directory.
@@ -2182,6 +2316,13 @@ def draw_labeled_images(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         output_dir: the directory to write the annotated images
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each annotated image.
+            This argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
         label_fields (None): a label field or list of label fields to render.
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
@@ -2196,7 +2337,9 @@ def draw_labeled_images(
         config, kwargs, samples=samples, label_fields=label_fields
     )
 
-    filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
+    filename_maker = fou.UniqueFilenameMaker(
+        output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+    )
     output_ext = fo.config.default_image_ext
 
     outpaths = []
@@ -2240,7 +2383,7 @@ def draw_labeled_image(
 
 
 def draw_labeled_videos(
-    samples, output_dir, label_fields=None, config=None, **kwargs
+    samples, output_dir, rel_dir=None, label_fields=None, config=None, **kwargs
 ):
     """Renders annotated versions of the videos in the collection with the
     specified label data overlaid to the given directory.
@@ -2254,6 +2397,13 @@ def draw_labeled_videos(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         output_dir: the directory to write the annotated videos
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each annotated video.
+            This argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
         label_fields (None): a label field or list of label fields to render.
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
@@ -2268,7 +2418,9 @@ def draw_labeled_videos(
         config, kwargs, samples=samples, label_fields=label_fields
     )
 
-    filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
+    filename_maker = fou.UniqueFilenameMaker(
+        output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+    )
     output_ext = fo.config.default_video_ext
 
     is_clips = samples._dataset._is_clips

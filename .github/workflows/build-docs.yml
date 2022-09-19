@@ -61,7 +61,7 @@ jobs:
           pip install -r requirements/dev.txt
           pip install fiftyone-brain fiftyone-db
           pip install pycocotools tensorflow torch torchvision
-          pip install -e .
+          pip install .
       - name: Build docs
         run: |
           ./docs/generate_docs.bash
@@ -95,7 +95,7 @@ jobs:
           cp -r docs-download/ source/docs/fiftyone/
           rm -r docs-download/
       - name: Create website PR
-        uses: peter-evans/create-pull-request@v2
+        uses: peter-evans/create-pull-request@v4
         with:
           branch: fiftyone-docs
           commit-message: |

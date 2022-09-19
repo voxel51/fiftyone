@@ -5,6 +5,7 @@ FiftyOne Server queries
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from re import S
 import typing as t
 from dataclasses import asdict
 from datetime import date, datetime
@@ -22,14 +23,20 @@ import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
+import fiftyone.core.media as fom
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
-from fiftyone.server.mixins import HasCollection
+from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
-from fiftyone.server.scalars import JSONArray
+from fiftyone.server.samples import (
+    SampleFilter,
+    SampleItem,
+    paginate_samples,
+)
+from fiftyone.server.scalars import BSONArray, JSON
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -40,10 +47,10 @@ DATASET_FILTER = [{"sample_collection_name": {"$regex": "^samples\\."}}]
 DATASET_FILTER_STAGE = [{"$match": DATASET_FILTER[0]}]
 
 
-@gql.enum
-class MediaType(Enum):
-    image = "image"
-    video = "video"
+@gql.type
+class Group:
+    name: str
+    media_type: MediaType
 
 
 @gql.type
@@ -75,40 +82,40 @@ class RunConfig:
 @gql.interface
 class Run:
     key: str
-    version: str
-    timestamp: datetime
-    config: RunConfig
-    view_stages: t.List[str]
+    version: t.Optional[str]
+    timestamp: t.Optional[datetime]
+    config: t.Optional[RunConfig]
+    view_stages: t.Optional[t.List[str]]
 
 
 @gql.type
 class BrainRunConfig(RunConfig):
     embeddings_field: t.Optional[str]
-    method: str
+    method: t.Optional[str]
     patches_field: t.Optional[str]
 
 
 @gql.type
 class BrainRun(Run):
-    config: BrainRunConfig
+    config: t.Optional[BrainRunConfig]
 
 
 @gql.type
 class EvaluationRunConfig(RunConfig):
-    gt_field: str
-    pred_field: str
-    method: str
+    gt_field: t.Optional[str]
+    pred_field: t.Optional[str]
+    method: t.Optional[str]
 
 
 @gql.type
 class EvaluationRun(Run):
-    config: EvaluationRunConfig
+    config: t.Optional[EvaluationRunConfig]
 
 
 @gql.type
 class SidebarGroup:
     name: str
-    paths: t.List[str]
+    paths: t.Optional[t.List[str]]
 
 
 @gql.type
@@ -123,12 +130,25 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 
 
 @gql.type
-class Dataset(HasCollection):
+class DatasetAppConfig:
+    media_fields: t.List[str]
+    plugins: t.Optional[JSON]
+    sidebar_groups: t.Optional[t.List[SidebarGroup]]
+    modal_media_field: t.Optional[str] = gql.field(default="filepath")
+    grid_media_field: t.Optional[str] = "filepath"
+
+
+@gql.type
+class Dataset:
     id: gql.ID
     name: str
     created_at: t.Optional[date]
     last_loaded_at: t.Optional[datetime]
     persistent: bool
+    group_media_types: t.Optional[t.List[Group]]
+    group_field: t.Optional[str]
+    group_slice: t.Optional[str]
+    default_group_slice: t.Optional[str]
     media_type: t.Optional[MediaType]
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
@@ -136,48 +156,52 @@ class Dataset(HasCollection):
     frame_fields: t.List[SampleField]
     brain_methods: t.List[BrainRun]
     evaluations: t.List[EvaluationRun]
-    app_sidebar_groups: t.Optional[t.List[SidebarGroup]]
     version: t.Optional[str]
     view_cls: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
-
-    @staticmethod
-    def get_collection_name() -> str:
-        return "datasets"
+    app_config: t.Optional[DatasetAppConfig]
 
     @staticmethod
     def modifier(doc: dict) -> dict:
-
         doc["id"] = doc.pop("_id")
-        doc["mask_targets"] = []
-        doc["default_mask_targets"] = []
+        doc["default_mask_targets"] = _convert_targets(
+            doc.get("default_mask_targets", {})
+        )
+        doc["mask_targets"] = [
+            NamedTargets(name, _convert_targets(targets))
+            for name, targets in doc.get("mask_targets", {}).items()
+        ]
         doc["sample_fields"] = _flatten_fields([], doc["sample_fields"])
-        doc["frame_fields"] = _flatten_fields([], doc["frame_fields"])
+        doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
         )
+        doc["group_media_types"] = [
+            Group(name, media_type)
+            for name, media_type in doc.get("group_media_types", {}).items()
+        ]
         doc["default_skeletons"] = doc.get("default_skeletons", None)
         return doc
 
     @classmethod
     async def resolver(
-        cls, name: str, view: t.Optional[JSONArray], info: Info
+        cls, name: str, view: t.Optional[BSONArray], info: Info
     ) -> t.Optional["Dataset"]:
+        assert info is not None
         dataset = await dataset_dataloader(name, info)
         if dataset is None:
             return dataset
 
         ds = fo.load_dataset(name)
+        ds.reload()
         view = fov.DatasetView._build(ds, view or [])
         if view._dataset != ds:
             d = view._dataset._serialize()
-            dataset.id = (
-                ObjectId()
-            )  # if it is not the root dataset, change the id (relay requires it)
+            dataset.id = view._dataset._doc.id
             dataset.media_type = d["media_type"]
             dataset.sample_fields = [
                 from_dict(SampleField, s)
@@ -185,15 +209,29 @@ class Dataset(HasCollection):
             ]
             dataset.frame_fields = [
                 from_dict(SampleField, s)
-                for s in _flatten_fields([], d["frame_fields"])
+                for s in _flatten_fields([], d.get("frame_fields", []))
             ]
 
             dataset.view_cls = etau.get_class_name(view)
 
+        if view.media_type != ds.media_type:
+            dataset.id = ObjectId()
+            dataset.media_type = view.media_type
+
+        if dataset.media_type == fom.GROUP:
+            dataset.group_slice = view.group_slice
+
+        # old dataset docs, e.g. from imports have frame fields attached even for
+        # image datasets. we need to remove them
+        if dataset.media_type == fom.IMAGE:
+            dataset.frame_fields = []
+
         return dataset
 
 
-dataset_dataloader = get_dataloader_resolver(Dataset, "name", DATASET_FILTER)
+dataset_dataloader = get_dataloader_resolver(
+    Dataset, "datasets", "name", DATASET_FILTER
+)
 
 
 @gql.enum
@@ -211,9 +249,11 @@ class AppConfig:
     grid_zoom: int
     loop_videos: bool
     notebook_height: int
+    plugins: t.Optional[JSON]
     show_confidence: bool
     show_index: bool
     show_label: bool
+    show_skeletons: bool
     show_tooltip: bool
     timezone: t.Optional[str]
     use_frame_number: bool
@@ -247,13 +287,36 @@ class Query:
         return fo.config.do_not_track
 
     dataset = gql.field(resolver=Dataset.resolver)
-    datasets: Connection[Dataset] = gql.field(
+    datasets: Connection[Dataset, str] = gql.field(
         resolver=get_paginator_resolver(
-            Dataset,
-            "created_at",
-            DATASET_FILTER_STAGE,
+            Dataset, "created_at", DATASET_FILTER_STAGE, "datasets"
         )
     )
+
+    @gql.field
+    async def samples(
+        self,
+        dataset: str,
+        view: BSONArray,
+        first: t.Optional[int] = 20,
+        after: t.Optional[str] = None,
+        filter: t.Optional[SampleFilter] = None,
+    ) -> Connection[SampleItem, str]:
+        return await paginate_samples(
+            dataset, view, None, first, after, sample_filter=filter
+        )
+
+    @gql.field
+    async def sample(
+        self, dataset: str, view: BSONArray, filter: SampleFilter
+    ) -> t.Optional[SampleItem]:
+        samples = await paginate_samples(
+            dataset, view, None, 1, sample_filter=filter
+        )
+        if samples.edges:
+            return samples.edges[0].node
+
+        return None
 
     @gql.field
     def teams_submission(self) -> bool:
@@ -281,20 +344,37 @@ def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
     data = from_dict(Dataset, doc, config=Config(check_types=False))
     data.view_cls = None
 
-    if view is not None and view._dataset != dataset:
-        d = view._dataset._serialize()
-        data.media_type = d["media_type"]
-        data.id = ObjectId()
-        data.sample_fields = [
-            from_dict(SampleField, s)
-            for s in _flatten_fields([], d["sample_fields"])
-        ]
-        data.frame_fields = [
-            from_dict(SampleField, s)
-            for s in _flatten_fields([], d["frame_fields"])
-        ]
+    collection = dataset.view()
+    if view is not None:
+        if view._dataset != dataset:
+            d = view._dataset._serialize()
+            data.media_type = d["media_type"]
 
-        data.view_cls = etau.get_class_name(view)
+            data.id = view._dataset._doc.id
+            data.sample_fields = [
+                from_dict(SampleField, s)
+                for s in _flatten_fields([], d["sample_fields"])
+            ]
+            data.frame_fields = [
+                from_dict(SampleField, s)
+                for s in _flatten_fields([], d["frame_fields"])
+            ]
+
+            data.view_cls = etau.get_class_name(view)
+
+        if view.media_type != data.media_type:
+            data.id = ObjectId()
+            data.media_type = view.media_type
+
+        collection = view
+
+    if dataset.media_type == fom.GROUP:
+        data.group_slice = collection.group_slice
+
+    # old dataset docs, e.g. from imports have frame fields attached even for
+    # image datasets. we need to remove them
+    if dataset.media_type != fom.VIDEO:
+        data.frame_fields = []
 
     return asdict(data)
 
@@ -314,3 +394,7 @@ def _flatten_fields(
             result = result + _flatten_fields(field_path, fields)
 
     return result
+
+
+def _convert_targets(targets: t.Dict[str, str]) -> Target:
+    return [Target(value=v, target=int(k)) for k, v in targets.items()]

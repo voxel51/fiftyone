@@ -1,5 +1,5 @@
 """
-Session server-sent events client
+Session server-sent events client.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -166,5 +166,5 @@ class Client:
 
         if response.status_code != 200:
             raise RuntimeError(
-                f"Failed to post event `{event.event}` to {self.origin}/event"
+                f"Failed to post event `{event.get_event_name()}` to {self.origin}/event"
             )

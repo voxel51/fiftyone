@@ -9,6 +9,7 @@ from copy import deepcopy
 from datetime import date, datetime, timedelta
 import math
 
+from bson import ObjectId
 import unittest
 import numpy as np
 
@@ -17,26 +18,68 @@ from fiftyone import ViewField as F, VALUE
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 
-from decorators import drop_datasets
+from decorators import drop_datasets, skip_windows
 
 
 class DatasetViewTests(unittest.TestCase):
     @drop_datasets
+    def test_eq(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i) for i in range(5)]
+        )
+
+        view1 = dataset.shuffle(seed=51).limit(3)
+        view2 = dataset.shuffle(seed=51).limit(3)
+        view3 = deepcopy(view1)
+
+        self.assertEqual(view1, view2)
+        self.assertEqual(view1, view3)
+
+        view1 = dataset.limit(1).concat(dataset.skip(1).limit(1))
+        view2 = dataset.limit(1).concat(dataset.skip(1).limit(1))
+        view3 = deepcopy(view1)
+
+        self.assertEqual(view1, view2)
+        self.assertEqual(view1, view3)
+
+    @drop_datasets
     def test_iter_samples(self):
         dataset = fo.Dataset()
         dataset.add_samples(
-            [fo.Sample(filepath="image%d.jpg" % i) for i in range(50)]
+            [fo.Sample(filepath="image%d.jpg" % i) for i in range(51)]
         )
 
-        view = dataset.view()
+        first_sample = dataset.first()
+        view = dataset.limit(50)
 
-        self.assertEqual(len(dataset), len(view))
+        for idx, sample in enumerate(view):
+            sample["int"] = idx + 1
+            sample.save()
 
-        for sample in view:
-            pass
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+        self.assertEqual(first_sample.int, 1)
 
-        for sample in view.iter_samples(progress=True):
-            pass
+        for idx, sample in enumerate(view.iter_samples(progress=True)):
+            sample["int"] = idx + 2
+            sample.save()
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+        self.assertEqual(first_sample.int, 2)
+
+        for idx, sample in enumerate(view.iter_samples(autosave=True)):
+            sample["int"] = idx + 3
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+        self.assertEqual(first_sample.int, 3)
+
+        with view.save_context() as context:
+            for idx, sample in enumerate(view):
+                sample["int"] = idx + 4
+                context.save(sample)
+
+        self.assertTupleEqual(dataset.bounds("int"), (4, 53))
+        self.assertEqual(first_sample.int, 4)
 
     @drop_datasets
     def test_view(self):
@@ -175,10 +218,63 @@ class DatasetViewTests(unittest.TestCase):
         detections = dataset[sample_view.id].test_dets.detections
         self.assertListEqual(detections, [])
 
+    @drop_datasets
+    def test_view_ids(self):
+        sample = fo.Sample(filepath="image.jpg")
+
+        self.assertIsNone(sample.id, str)
+        self.assertIsNone(sample._id, ObjectId)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertIsInstance(sample.id, str)
+        self.assertIsInstance(sample._id, ObjectId)
+
+        view = dataset.select_fields()
+        sample_view = view.first()
+
+        self.assertIsInstance(sample_view.id, str)
+        self.assertIsInstance(sample_view._id, ObjectId)
+
+    @drop_datasets
+    def test_view_ids_video(self):
+        sample = fo.Sample(filepath="video.mp4")
+        frame = fo.Frame()
+        sample.frames[1] = frame
+
+        self.assertIsNone(sample.id, str)
+        self.assertIsNone(sample._id, ObjectId)
+        self.assertIsNone(frame.id, str)
+        self.assertIsNone(frame._id, ObjectId)
+        self.assertIsNone(frame.sample_id, str)
+        self.assertIsNone(frame._sample_id, ObjectId)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertIsInstance(sample.id, str)
+        self.assertIsInstance(sample._id, ObjectId)
+        self.assertIsInstance(frame.id, str)
+        self.assertIsInstance(frame._id, ObjectId)
+        self.assertIsInstance(frame.sample_id, str)
+        self.assertIsInstance(frame._sample_id, ObjectId)
+
+        view = dataset.select_fields()
+        sample_view = view.first()
+        frame_view = sample_view.frames.first()
+
+        self.assertIsInstance(sample_view.id, str)
+        self.assertIsInstance(sample_view._id, ObjectId)
+        self.assertIsInstance(frame_view.id, str)
+        self.assertIsInstance(frame_view._id, ObjectId)
+        self.assertIsInstance(frame_view.sample_id, str)
+        self.assertIsInstance(frame_view._sample_id, ObjectId)
+
 
 class ViewFieldTests(unittest.TestCase):
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields(self):
         dataset = fo.Dataset()
         sample1 = fo.Sample(
@@ -202,8 +298,8 @@ class ViewFieldTests(unittest.TestCase):
         self.assertIsNone(sample1.predictions.field)
         self.assertIsNotNone(sample2.predictions.field)
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields_array(self):
         dataset = fo.Dataset()
         sample1 = fo.Sample(
@@ -747,6 +843,7 @@ class SetValuesTests(unittest.TestCase):
         )
 
         filepaths = dataset.values("filepath")
+
         values = {
             filepaths[0]: {2: 3, 4: 5},
             filepaths[1]: {3: 4, 5: 6, 7: 8},
@@ -773,6 +870,30 @@ class SetValuesTests(unittest.TestCase):
 
         int_fields = dataset.values("frames.int_field", unwind=True)
         self.assertListEqual(int_fields, [-1, 4, -1, 4, 6, 8, 2, -1, 6])
+
+        values = {
+            filepaths[0]: {1: fo.Classification(label="cat")},
+            filepaths[1]: {
+                1: fo.Classification(label="cat"),
+                2: fo.Classification(label="dog"),
+            },
+            filepaths[2]: {
+                1: fo.Classification(label="cat"),
+                2: fo.Classification(label="dog"),
+                3: fo.Classification(label="rabbit"),
+            },
+        }
+
+        dataset.set_values(
+            "frames.classification_field",
+            values,
+            key_field="filepath",
+        )
+
+        labels = dataset.values("frames.classification_field.label")
+        self.assertListEqual(labels[0][:1], ["cat"])
+        self.assertListEqual(labels[1][:2], ["cat", "dog"])
+        self.assertListEqual(labels[2][:3], ["cat", "dog", "rabbit"])
 
     def test_set_values_dataset(self):
         n = len(self.dataset)
@@ -1103,9 +1224,11 @@ class ViewSaveTest(unittest.TestCase):
         dataset.add_samples([sample1, sample2])
 
         view = dataset.limit(1).match_frames(F("frame_number") == 1)
+        sample = view.first()
 
         self.assertEqual(dataset.count("frames"), 4)
         self.assertEqual(view.count("frames"), 1)
+        self.assertEqual(len(sample.frames), 1)
 
         view.keep_frames()
 
@@ -1123,14 +1246,10 @@ class ViewSaveTest(unittest.TestCase):
         view = dataset.exclude_fields("classifications")
         view.keep_fields()
 
-        self.assertNotIn("classifications", view.get_field_schema())
         self.assertNotIn("classifications", dataset.get_field_schema())
 
-        sample_view = view.first()
-        with self.assertRaises(KeyError):
-            sample_view["classifications"]
-
         sample = dataset.first()
+
         with self.assertRaises(KeyError):
             sample["classifications"]
 
@@ -1256,6 +1375,32 @@ class ViewStageTests(unittest.TestCase):
         self.sample2["numeric_list_field"] = [-2, -1, 0, 1]
         self.sample2.save()
 
+    def test_concat(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.jpg", field=1),
+                fo.Sample(filepath="image2.jpg", field=2),
+                fo.Sample(filepath="image3.jpg", field=3),
+                fo.Sample(filepath="image4.jpg", field=4),
+            ]
+        )
+
+        view1 = dataset.skip(0).limit(1)
+        view2 = dataset.skip(1).limit(1)
+        view3 = dataset.skip(2).limit(1)
+        view4 = dataset.skip(3).limit(1)
+
+        view = view1.concat(view2)
+
+        self.assertEqual(len(view), 2)
+        self.assertListEqual(view.values("field"), [1, 2])
+
+        view = view1.concat(view2).concat(view3).concat(view4)
+
+        self.assertEqual(len(view), 4)
+        self.assertListEqual(view.values("field"), [1, 2, 3, 4])
+
     def test_exclude(self):
         result = list(self.dataset.exclude([self.sample1.id]))
         self.assertIs(len(result), 1)
@@ -1264,6 +1409,10 @@ class ViewStageTests(unittest.TestCase):
     def test_exclude_fields(self):
         self.dataset.add_sample_field("exclude_fields_field1", fo.IntField)
         self.dataset.add_sample_field("exclude_fields_field2", fo.IntField)
+
+        for default_field in ("id", "filepath", "tags", "metadata"):
+            with self.assertRaises(ValueError):
+                self.dataset.exclude_fields(default_field)
 
         for sample in self.dataset.exclude_fields(["exclude_fields_field1"]):
             self.assertIsNone(sample.selected_field_names)
@@ -1274,6 +1423,22 @@ class ViewStageTests(unittest.TestCase):
                 sample.exclude_fields_field1
 
             self.assertIsNone(sample.exclude_fields_field2)
+
+    def test_exclude_frame_fields(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(int_field=1)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        for default_field in ("frames.id", "frames.frame_number"):
+            with self.assertRaises(ValueError):
+                dataset.exclude_fields(default_field)
+
+        for sample in dataset.exclude_fields("frames.int_field"):
+            for frame in sample.frames.values():
+                with self.assertRaises(AttributeError):
+                    frame.int_field
 
     def test_exists(self):
         self.sample1["exists"] = True
@@ -2119,6 +2284,27 @@ class ViewStageTests(unittest.TestCase):
         self.assertIs(len(view), 2)
         for sample, _id in zip(view, ids):
             self.assertEqual(sample.id, _id)
+
+    def test_select_by(self):
+        filepaths = self.dataset.values("filepath")
+
+        values = [filepaths[1], filepaths[0]]
+        unordered_values = [filepaths[0], filepaths[1]]
+
+        result = self.dataset.select_by("filepath", values)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("filepath"), unordered_values)
+
+    def test_select_by_ordered(self):
+        filepaths = self.dataset.values("filepath")
+
+        values = [filepaths[1], filepaths[0]]
+
+        result = self.dataset.select_by("filepath", values, ordered=True)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("filepath"), values)
 
     def test_select_fields(self):
         self.dataset.add_sample_field("select_fields_field", fo.IntField)

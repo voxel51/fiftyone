@@ -440,13 +440,15 @@ class Run(Configurable):
         dataset._doc.save()
 
     @classmethod
-    def load_run_results(cls, samples, key, cache=True):
+    def load_run_results(cls, samples, key, cache=True, load_view=True):
         """Loads the :class:`RunResults` for the given key on the collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
             cache (True): whether to cache the results on the collection
+            load_view (True): whether to load the run view in the results
+                (True) or the full dataset (False)
 
         Returns:
             a :class:`RunResults`, or None if the run did not save results
@@ -468,13 +470,17 @@ class Run(Configurable):
         run_info = cls.get_run_info(samples, key)
         config = run_info.config
 
+        if load_view:
+            run_samples = cls.load_run_view(samples, key)
+        else:
+            run_samples = dataset
+
         # Load run result from GridFS
-        view = cls.load_run_view(samples, key)
         run_doc.results.seek(0)
         d = json_util.loads(run_doc.results.read().decode())
 
         try:
-            run_results = RunResults.from_dict(d, view, config)
+            run_results = RunResults.from_dict(d, run_samples, config)
         except Exception as e:
             if run_doc.version == foc.VERSION:
                 raise e
@@ -527,29 +533,25 @@ class Run(Configurable):
         #
 
         fields = cls._get_run_fields(samples, key)
-        root_fields = [f for f in fields if "." not in f]
-        _select_fields = root_fields
-        for field in fields:
-            if not any(f.startswith(field) for f in root_fields):
-                _select_fields.append(field)
+        root_fields = samples._get_root_fields(fields)
 
-        view = view.select_fields(_select_fields)
+        view = view.select_fields(root_fields)
 
         #
         # Hide any ancillary info on the same fields
         #
 
-        _exclude_fields = []
+        exclude_fields = []
         for _key in cls.list_runs(samples):
             if _key == key:
                 continue
 
             for field in cls._get_run_fields(samples, _key):
-                if "." in field and field.startswith(root_fields):
-                    _exclude_fields.append(field)
+                if any(field.startswith(r + ".") for r in root_fields):
+                    exclude_fields.append(field)
 
-        if _exclude_fields:
-            view = view.exclude_fields(_exclude_fields)
+        if exclude_fields:
+            view = view.exclude_fields(exclude_fields)
 
         return view
 

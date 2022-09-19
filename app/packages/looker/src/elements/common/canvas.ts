@@ -26,8 +26,12 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   getEvents(): Events<State> {
     return {
       click: ({ event, update, dispatchEvent }) => {
-        update({ showOptions: false }, (state, overlays) => {
-          if (state.config.thumbnail || state.disableOverlays) {
+        update({ showOptions: false }, (state, overlays, sample) => {
+          if (
+            state.config.thumbnail ||
+            state.disableOverlays ||
+            !state.options.showOverlays
+          ) {
             return;
           }
           let moved = false;
@@ -40,7 +44,10 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
           if (!moved && overlays.length) {
             const top = overlays[0];
             top.containsPoint(state) &&
-              dispatchEvent("select", top.getSelectData(state));
+              dispatchEvent("select", {
+                ...top.getSelectData(state),
+                sampleId: sample.id,
+              });
           }
         });
       },
@@ -97,7 +104,8 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
         requestAnimationFrame(() => {
           update(
             ({
-              config: { thumbnail, dimensions },
+              config: { thumbnail },
+              dimensions,
               pan: [px, py],
               scale,
               windowBBox: [tlx, tly, width, height],

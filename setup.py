@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.16.2"
+VERSION = "0.17.0"
 
 
 def get_version():
@@ -48,7 +48,7 @@ INSTALL_REQUIRES = [
     "packaging",
     "pandas",
     "Pillow>=6.2",
-    "plotly>=4.14,<5",
+    "plotly>=4.14",
     "pprintpp",
     "psutil",
     "pymongo>=3.11,<4",
@@ -66,9 +66,9 @@ INSTALL_REQUIRES = [
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
-    "fiftyone-brain>=0.8,<0.9",
+    "fiftyone-brain>=0.9,<0.10",
     "fiftyone-db>=0.3,<0.4",
-    "voxel51-eta>=0.7.0,<0.8",
+    "voxel51-eta>=0.8.1,<0.9",
 ]
 
 
@@ -105,7 +105,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.21.2,<0.22"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.23,<0.24"]}
 
 
 with open("README.md", "r") as fh:
@@ -153,9 +153,9 @@ setup(
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.7",

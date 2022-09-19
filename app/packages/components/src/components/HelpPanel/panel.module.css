@@ -1,0 +1,127 @@
+/**
+ * Copyright 2017-2022, Voxel51, Inc.
+ */
+
+.lookerPanel {
+  padding: 1rem;
+  line-height: 1;
+  font-weight: bold;
+  color: #eee;
+  background-color: hsl(210, 11%, 11%);
+  border: 1px solid #191c1f;
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  border-radius: 3px;
+  overflow: auto;
+  scrollbar-width: none;
+  position: relative;
+  pointer-events: all;
+  opacity: 0.9;
+}
+
+.lookerPanel::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+  display: none;
+}
+.lookerPanel::-webkit-scrollbar-thumb {
+  width: 0px;
+  display: none;
+}
+
+.lookerPanelContainer {
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  position: absolute;
+  overflow: hidden;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.lookerPanelVerticalContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  margin: 3.5rem;
+}
+
+.lookerPanelHeader {
+  font-size: 18px;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid rgb(225, 100, 40);
+}
+
+.lookerPanelClose {
+  position: absolute;
+  top: 0;
+  right: 0;
+  cursor: pointer;
+  margin: 3px;
+  border-radius: 3px;
+
+  -webkit-transition: 0.2s ease-in-out;
+  -moz-transition: 0.2s ease-in-out;
+  -o-transition: 0.2s ease-in-out;
+  transition: 0.2s ease-in-out;
+}
+
+.lookerPanelClose:hover {
+  background-color: rgb(225, 100, 40);
+  transform: translate(0, -1px);
+}
+
+.lookerPanelFlex {
+  display: flex;
+  max-height: 100%;
+  flex-direction: column;
+}
+
+/**
+ * Copyright 2017-2022, Voxel51, Inc.
+ */
+
+.lookerHelpPanelItems {
+  padding: 1rem 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto auto auto auto auto auto;
+  grid-row-gap: 2rem;
+  grid-column-gap: 2rem;
+  font-size: 1rem;
+  width: 100%;
+  scrollbar-width: none;
+  flex-grow: 1;
+  height: 100%;
+  overflow-y: auto;
+}
+
+@media only screen and (max-width: 1000px) {
+  .lookerHelpPanelItems {
+    grid-template-columns: auto auto auto;
+  }
+}
+
+.lookerHelpPanelItems::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+  display: none;
+}
+
+.lookerShortcutValue {
+  font-weight: normal;
+  color: rgb(225, 100, 40);
+}
+
+.lookerShortcutTitle {
+  color: rgb(238, 238, 238);
+  font-weight: bold;
+}
+
+.lookerShortcutDetail {
+  font-weight: normal;
+  color: hsl(220, 2%, 68%);
+}
