@@ -100,17 +100,16 @@ export const tagStatistics = selectorFamily<
         tagParameters({
           activeFields: get(fos.activeLabelFields({ modal })),
 
-          dataset: get(fos.dataset).name,
+          dataset: get(fos.datasetName),
           filters: get(modal ? fos.modalFilters : fos.filters),
 
-          groupData:
-            modal && get(isGroup)
-              ? {
-                  id: get(groupId),
-                  slice: get(currentSlice(modal)),
-                  mode: get(groupStatistics(modal)),
-                }
-              : null,
+          groupData: get(isGroup)
+            ? {
+                id: modal ? get(groupId) : null,
+                slice: get(currentSlice(modal)),
+                mode: get(groupStatistics(modal)),
+              }
+            : null,
           hiddenLabels: get(fos.hiddenLabelsArray),
           modal,
           sampleId: modal ? get(fos.sidebarSampleId) : null,
@@ -200,8 +199,7 @@ export const tagParameters = ({
     ...params,
     label_fields: activeFields,
     target_labels: targetLabels,
-    group_id: params.modal && groups && !hasSelected ? groupData?.id : null,
-    slice: !params.modal && !hasSelected && !groups ? groupData?.slice : null,
+    slice: !params.modal && !groups ? groupData?.slice : null,
     sample_ids:
       params.modal && !hasSelected && !groups
         ? [sampleId]

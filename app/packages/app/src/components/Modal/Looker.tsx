@@ -1,17 +1,7 @@
-import React, {
-  useState,
-  useRef,
-  MutableRefObject,
-  useEffect,
-  useMemo,
-} from "react";
-import ReactDOM from "react-dom";
-import styled from "styled-components";
+import React, { useState, useRef, MutableRefObject, useEffect } from "react";
 import { useRecoilValue, useRecoilCallback } from "recoil";
-import { animated, useSpring } from "@react-spring/web";
 import { v4 as uuid } from "uuid";
 
-import { ContentDiv, ContentHeader } from "../utils";
 import { useEventHandler } from "../../utils/hooks";
 
 import { useErrorHandler } from "react-error-boundary";
@@ -132,23 +122,24 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   useEventHandler(looker, "error", (event) => handleError(event.detail));
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
-  useEventHandler(looker, "options", (e) => {
-    const { detail } = e;
-    const { showJSON, showHelp, SHORTCUTS } = detail || {};
-
-    if (showJSON === true) {
-      jsonPanel.open(sample);
+  useEventHandler(
+    looker,
+    "options",
+    ({ detail: { showJSON, showHelp, SHORTCUTS } }) => {
+      if (showJSON === true) {
+        jsonPanel.open(sample);
+      }
+      if (showJSON === false) {
+        jsonPanel.close();
+      }
+      if (showHelp === true) {
+        helpPanel.open(shortcutToHelpItems(SHORTCUTS));
+      }
+      if (showHelp === false) {
+        helpPanel.close();
+      }
     }
-    if (showJSON === false) {
-      jsonPanel.close();
-    }
-    if (showHelp === true) {
-      helpPanel.open(shortcutToHelpItems(SHORTCUTS));
-    }
-    if (showHelp === false) {
-      helpPanel.close();
-    }
-  });
+  );
 
   onClose && useEventHandler(looker, "close", onClose);
 
