@@ -373,6 +373,32 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(sample.group_field.name, "ego")
 
     @drop_datasets
+    def test_field_schemas(self):
+        dataset = _make_group_dataset()
+
+        self.assertEqual(dataset.media_type, "group")
+        self.assertIn("field", dataset.get_field_schema())
+        self.assertIn("field", dataset.get_frame_field_schema())
+
+        grouped_view = dataset.limit(1)
+
+        self.assertEqual(grouped_view.media_type, "group")
+        self.assertIn("field", grouped_view.get_field_schema())
+        self.assertIn("field", grouped_view.get_frame_field_schema())
+
+        image_view = dataset.select_group_slices(media_type="image")
+
+        self.assertEqual(image_view.media_type, "image")
+        self.assertIn("field", image_view.get_field_schema())
+        self.assertIsNone(image_view.get_frame_field_schema())
+
+        mixed_view = dataset.select_group_slices(_allow_mixed=True)
+
+        self.assertEqual(mixed_view.media_type, "mixed")
+        self.assertIn("field", mixed_view.get_field_schema())
+        self.assertIn("field", mixed_view.get_frame_field_schema())
+
+    @drop_datasets
     def test_attached_groups(self):
         dataset = _make_group_dataset()
 

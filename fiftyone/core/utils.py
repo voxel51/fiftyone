@@ -31,10 +31,19 @@ import zlib
 
 try:
     import pprintpp as _pprint
+    from mongoengine.base.datastructures import BaseDict, BaseList
 
     # Monkey patch to prevent sorting keys
     # https://stackoverflow.com/a/25688431
     _pprint._sorted = lambda x: x
+
+    try:
+        # Monkey patch to render `BaseList` as `list` and `BaseDict` as `dict`
+        _d = _pprint.PrettyPrinter._open_close_empty
+        _d[BaseList] = (BaseList, "list", "[", "]", "[]")
+        _d[BaseDict] = (BaseDict, "dict", "{", "}", "{}")
+    except:
+        pass
 except:
     import pprint as _pprint
 

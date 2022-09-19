@@ -315,7 +315,11 @@ function Looker3dCore({ api: { sample, src } }) {
 
   const handleSelect = (label) => {
     onSelectLabel({
-      detail: { id: label._id, field: label.path[label.path.length - 1] },
+      detail: {
+        id: label._id,
+        field: label.path[label.path.length - 1],
+        sampleId: sample._id,
+      },
     });
   };
 

@@ -259,6 +259,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._deleted = False
 
+    def __eq__(self, other):
+        return type(other) == type(self) and self.name == other.name
+
+    def __copy__(self):
+        return self  # datasets are singletons
+
+    def __deepcopy__(self, memo):
+        return self  # datasets are singletons
+
     def __len__(self):
         return self.count()
 
@@ -4955,6 +4964,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        support=None,
         group_slice=None,
         group_slices=None,
         groups_only=False,
@@ -4970,7 +4980,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if media_type == fom.VIDEO:
             contains_videos = True
         else:
-            contains_videos = self._contains_videos()
+            contains_videos = self._contains_videos(any_slice=True)
 
         if not contains_videos:
             attach_frames = False
@@ -5004,7 +5014,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _pipeline.extend(self._group_select_pipeline(group_slice))
 
         if attach_frames:
-            _pipeline.extend(self._attach_frames_pipeline())
+            _pipeline.extend(self._attach_frames_pipeline(support=support))
 
         if group_slices:
             _pipeline.extend(
@@ -5026,65 +5036,44 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return _pipeline
 
-    def _attach_frames_pipeline(self):
+    def _attach_frames_pipeline(self, support=None):
         """A pipeline that attaches the frame documents for each document."""
         if self._is_clips:
-            return [
-                {
-                    "$lookup": {
-                        "from": self._frame_collection_name,
-                        "let": {
-                            "sample_id": "$_sample_id",
-                            "first": {"$arrayElemAt": ["$support", 0]},
-                            "last": {"$arrayElemAt": ["$support", 1]},
-                        },
-                        "pipeline": [
-                            {
-                                "$match": {
-                                    "$expr": {
-                                        "$and": [
-                                            {
-                                                "$eq": [
-                                                    "$_sample_id",
-                                                    "$$sample_id",
-                                                ]
-                                            },
-                                            {
-                                                "$gte": [
-                                                    "$frame_number",
-                                                    "$$first",
-                                                ]
-                                            },
-                                            {
-                                                "$lte": [
-                                                    "$frame_number",
-                                                    "$$last",
-                                                ]
-                                            },
-                                        ]
-                                    }
-                                }
-                            },
-                            {"$sort": {"frame_number": 1}},
-                        ],
-                        "as": "frames",
-                    }
-                }
-            ]
+            first = {"$arrayElemAt": ["$support", 0]}
+            last = {"$arrayElemAt": ["$support", 1]}
+
+            if support is not None:
+                first = {"$max": [first, support[0]]}
+                last = {"$min": [last, support[1]]}
+
+            let = {"sample_id": "$_sample_id", "first": first, "last": last}
+            match_expr = {
+                "$and": [
+                    {"$eq": ["$$sample_id", "$_sample_id"]},
+                    {"$gte": ["$frame_number", "$$first"]},
+                    {"$lte": ["$frame_number", "$$last"]},
+                ]
+            }
+        elif support is not None:
+            let = {"sample_id": "$_id"}
+            match_expr = {
+                "$and": [
+                    {"$eq": ["$$sample_id", "$_sample_id"]},
+                    {"$gte": ["$frame_number", support[0]]},
+                    {"$lte": ["$frame_number", support[1]]},
+                ]
+            }
+        else:
+            let = {"sample_id": "$_id"}
+            match_expr = {"$eq": ["$$sample_id", "$_sample_id"]}
 
         return [
             {
                 "$lookup": {
                     "from": self._frame_collection_name,
-                    "let": {"sample_id": "$_id"},
+                    "let": let,
                     "pipeline": [
-                        {
-                            "$match": {
-                                "$expr": {
-                                    "$eq": ["$$sample_id", "$_sample_id"]
-                                }
-                            }
-                        },
+                        {"$match": {"$expr": match_expr}},
                         {"$sort": {"frame_number": 1}},
                     ],
                     "as": "frames",
@@ -5206,6 +5195,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        support=None,
         group_slice=None,
         group_slices=None,
         groups_only=False,
@@ -5218,6 +5208,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
+            support=support,
             group_slice=group_slice,
             group_slices=group_slices,
             groups_only=groups_only,

@@ -227,6 +227,7 @@ const Loadable = ({ path }: { path: string }) => {
 const useData = <T extends unknown>(path: string): T => {
   const keys = path.split(".");
   let data = useRecoilValue(fos.activeModalSample);
+
   let field = useRecoilValue(fos.field(keys[0]));
 
   for (let index = 0; index < keys.length; index++) {

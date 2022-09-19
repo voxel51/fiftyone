@@ -62,7 +62,7 @@ export const pathColor = selectorFamily<
     ({ modal, path, tag }) =>
     ({ get }) => {
       const map = get(colorMap(modal));
-      const video = get(selectors.isVideoDataset);
+      const video = get(selectors.mediaType) !== "image";
 
       const parentPath =
         video && path.startsWith("frames.")

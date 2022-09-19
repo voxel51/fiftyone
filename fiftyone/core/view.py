@@ -67,14 +67,17 @@ class DatasetView(foc.SampleCollection):
         self.__media_type = _media_type
         self.__group_slice = _group_slice
 
-    def __eq__(self, other_view):
-        if type(other_view) != type(self):
+    def __eq__(self, other):
+        if type(other) != type(self):
+            return False
+
+        if self._root_dataset != other._root_dataset:
             return False
 
         # Two views into the same dataset are equal if their stage definitions
         # are equal, excluding their UUIDs
         d = self._serialize(include_uuids=False)
-        other_d = other_view._serialize(include_uuids=False)
+        other_d = other._serialize(include_uuids=False)
         return d == other_d
 
     def __len__(self):
@@ -659,6 +662,9 @@ class DatasetView(foc.SampleCollection):
             a dictionary mapping field names to field types, or ``None`` if
             the view does not contain videos
         """
+        if not self._has_frame_fields():
+            return None
+
         field_schema = self._dataset.get_frame_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
@@ -1088,6 +1094,7 @@ class DatasetView(foc.SampleCollection):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        support=None,
         group_slice=None,
         group_slices=None,
         groups_only=False,
@@ -1142,7 +1149,7 @@ class DatasetView(foc.SampleCollection):
             _pipelines.append(stage.to_mongo(_view))
             _view = _view.add_stage(stage)
 
-        if _attach_frames_idx is None and attach_frames or frames_only:
+        if _attach_frames_idx is None and (attach_frames or frames_only):
             _attach_frames_idx = len(_pipelines)
 
         #######################################################################
@@ -1153,12 +1160,12 @@ class DatasetView(foc.SampleCollection):
             # Two lookups are required; manually do the **last** one and rely
             # on dataset._pipeline() to do the first one
             attach_frames = True
-            _pipeline = self._dataset._attach_frames_pipeline()
+            _pipeline = self._dataset._attach_frames_pipeline(support=support)
             _pipelines.insert(_attach_frames_idx, _pipeline)
         elif _found_select_group_slice and _attach_frames_idx is not None:
             # Must manually attach frames after the group selection
             attach_frames = None  # special syntax: frames already attached
-            _pipeline = self._dataset._attach_frames_pipeline()
+            _pipeline = self._dataset._attach_frames_pipeline(support=support)
             _pipelines.insert(_attach_frames_idx, _pipeline)
         elif _attach_frames_idx0 is not None or _attach_frames_idx is not None:
             # Exactly one lookup is required; rely on dataset._pipeline() to
@@ -1175,14 +1182,18 @@ class DatasetView(foc.SampleCollection):
             attach_frames = None  # special syntax: frames already attached
 
             if _attach_frames_idx0 is not None:
-                _pipeline = self._dataset._attach_frames_pipeline()
+                _pipeline = self._dataset._attach_frames_pipeline(
+                    support=support
+                )
                 _pipelines.insert(_attach_frames_idx0, _pipeline)
 
             if _attach_frames_idx is not None:
                 if _attach_frames_idx0 is not None:
                     _attach_frames_idx += 1
 
-                _pipeline = self._dataset._attach_frames_pipeline()
+                _pipeline = self._dataset._attach_frames_pipeline(
+                    support=support
+                )
                 _pipelines.insert(_attach_frames_idx, _pipeline)
         """
 
@@ -1215,6 +1226,7 @@ class DatasetView(foc.SampleCollection):
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
+            support=support,
             media_type=media_type,
             group_slice=group_slice,
             group_slices=group_slices,
@@ -1230,6 +1242,7 @@ class DatasetView(foc.SampleCollection):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        support=None,
         group_slice=None,
         group_slices=None,
         groups_only=False,
@@ -1242,6 +1255,7 @@ class DatasetView(foc.SampleCollection):
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
+            support=support,
             group_slice=group_slice,
             group_slices=group_slices,
             groups_only=groups_only,
@@ -1396,9 +1410,6 @@ class DatasetView(foc.SampleCollection):
         return not any((selected_fields, excluded_fields, filtered_fields))
 
     def _get_group_media_types(self):
-        if self._dataset.media_type != fom.GROUP:
-            return None
-
         for stage in reversed(self._stages):
             if isinstance(stage, fost.SelectGroupSlices):
                 return stage._get_group_media_types(self._dataset)
@@ -1407,7 +1418,11 @@ class DatasetView(foc.SampleCollection):
 
 
 def make_optimized_select_view(
-    sample_collection, sample_ids, ordered=False, groups=False
+    sample_collection,
+    sample_ids,
+    ordered=False,
+    groups=False,
+    select_groups=False,
 ):
     """Returns a view that selects the provided sample IDs that is optimized
     to reduce the document list as early as possible in the pipeline.
@@ -1425,6 +1440,7 @@ def make_optimized_select_view(
         ordered (False): whether to sort the samples in the returned view to
             match the order of the provided IDs
         groups (False): whether the IDs are group IDs, not sample IDs
+        select_groups (False): whether to select sample groups via sample ids
 
     Returns:
         a :class:`DatasetView`
@@ -1439,10 +1455,15 @@ def make_optimized_select_view(
         #
         if groups:
             return view.select_groups(sample_ids, ordered=ordered)
-        elif view.media_type == fom.GROUP:
+        elif view.media_type == fom.GROUP and not select_groups:
+            return view.select_group_slices(_allow_mixed=True)
+
+        view = view.select(sample_ids, ordered=ordered)
+
+        if view.media_type == fom.GROUP and select_groups:
             view = view.select_group_slices(_allow_mixed=True)
 
-        return view.select(sample_ids, ordered=ordered)
+        return view
 
     #
     # Selecting the samples of interest first can be significantly faster than
@@ -1464,12 +1485,16 @@ def make_optimized_select_view(
         )
     else:
         optimized_view = view._dataset
-        if view.media_type == fom.GROUP:
+        if view.media_type == fom.GROUP and not select_groups:
             optimized_view = optimized_view.select_group_slices(
                 _allow_mixed=True
             )
 
         optimized_view = optimized_view.select(sample_ids, ordered=ordered)
+        if view.media_type == fom.GROUP and select_groups:
+            optimized_view = optimized_view.select_group_slices(
+                _allow_mixed=True
+            )
 
     for stage in view._stages:
         if type(stage) not in fost._STAGES_THAT_SELECT_OR_REORDER:

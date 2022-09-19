@@ -90,7 +90,6 @@ const useSortBySimilarity = (close) => {
             });
             set(fos.modal, null);
             set(fos.similaritySorting, false);
-            set(fos.aggregationsTick, (cur) => cur + 1);
             close();
 
             return data;

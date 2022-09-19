@@ -7303,7 +7303,9 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.utils.annotations.AnnotationResults`
         """
-        results = foan.AnnotationMethod.load_run_results(self, anno_key)
+        results = foan.AnnotationMethod.load_run_results(
+            self, anno_key, load_view=False
+        )
         results.load_credentials(**kwargs)
         return results
 
@@ -8009,6 +8011,7 @@ class SampleCollection(object):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        support=None,
         group_slice=None,
         group_slices=None,
         groups_only=False,
@@ -8030,6 +8033,8 @@ class SampleCollection(object):
                 videos
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the collection
+            support (None): an optional ``[first, last]`` range of frames to
+                attach. Only applicable when attaching frames
             group_slice (None): the current group slice of the collection, if
                 different than the source dataset's group slice. Only
                 applicable for grouped collections
@@ -8056,6 +8061,7 @@ class SampleCollection(object):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        support=None,
         group_slice=None,
         group_slices=None,
         groups_only=False,
@@ -8078,6 +8084,8 @@ class SampleCollection(object):
                 videos
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the colection
+            support (None): an optional ``[first, last]`` range of frames to
+                attach. Only applicable when attaching frames
             group_slice (None): the current group slice of the collection, if
                 different than the source dataset's group slice. Only
                 applicable for grouped collections
@@ -8265,9 +8273,6 @@ class SampleCollection(object):
         return list(group_slices)
 
     def _get_group_media_types(self):
-        if self.media_type != fom.GROUP:
-            return None
-
         return self._dataset._doc.group_media_types
 
     def _contains_videos(self, any_slice=False):
@@ -8448,8 +8453,13 @@ class SampleCollection(object):
         return schema[root]
 
     def _get_label_field_type(self, field_name):
+
         field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
+
+        if field_name.startswith("__"):
+            field_name = field_name[2:]
+
         if is_frame_field:
             schema = self.get_frame_field_schema()
         else:

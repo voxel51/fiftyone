@@ -31,12 +31,13 @@ const fitBoundsOptions = { animate: false, padding: 30 };
 
 const computeBounds = (
   data: GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>
-) =>
-  data.features.reduce(
+) => {
+  return data.features.reduce(
     (bounds, { geometry: { coordinates } }) =>
       bounds.extend(coordinates as [number, number]),
     new LngLatBounds()
   );
+};
 
 const fitBounds = (
   map: MapRef,
@@ -63,7 +64,6 @@ const Plot: React.FC<{}> = () => {
   const dataset = useRecoilValue(fos.dataset);
   const view = useRecoilValue(fos.view);
   const filters = useRecoilValue(fos.filters);
-  const handleError = useErrorHandler();
 
   let { loading, samples } = useGeoLocations({
     dataset,
@@ -173,7 +173,6 @@ const Plot: React.FC<{}> = () => {
         <foc.Loading style={{ opacity: 0.5 }}>Pixelating...</foc.Loading>
       ) : (
         <Map
-          onError={({ error }) => handleError(error)}
           ref={mapRef}
           mapLib={mapbox}
           mapStyle={`mapbox://styles/mapbox/${MAP_STYLES[style]}`}

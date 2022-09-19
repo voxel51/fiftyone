@@ -94,20 +94,8 @@ async def paginate_samples(
     if media == fom.MIXED:
         media = root_view.group_media_types[root_view.default_group_slice]
 
-    has_video_slice = False
     if media == fom.GROUP:
         media = view.group_media_types[view.group_slice]
-        has_video_slice = any(
-            [slice == fom.VIDEO for slice in view.group_media_types.values()]
-        )
-
-    if media == fom.VIDEO or has_video_slice:
-        if isinstance(view, focl.ClipsView):
-            expr = F("frame_number") == F("$support")[0]
-        else:
-            expr = F("frame_number") == 1
-
-        view = view.set_field("frames", F("frames").filter(expr))
 
     if after is None:
         after = "-1"
@@ -122,6 +110,7 @@ async def paginate_samples(
             manual_group_select=sample_filter
             and sample_filter.group
             and (sample_filter.group.id and not sample_filter.group.slice),
+            support=[1, 1],
         ),
     ).to_list(first + 1)
 

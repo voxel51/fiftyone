@@ -677,7 +677,8 @@ The FiftyOne App can be configured in the ways described below:
 | `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only |
 |                           |                                        |                             | applicable to video samples.                                                             |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations.                                                         |
+| `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for       |
+|                           |                                        |                             | details.                                                                                 |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 
 Viewing your App config
@@ -903,3 +904,36 @@ current session.
 
     fo.app_config.show_confidence = False
     fo.app_config.show_attributes = False
+
+.. _configuring-plugins:
+
+Configuring plugins
+-------------------
+
+You can store system-wide plugin configurations under the `plugins` key of your
+App config.
+
+Plugins that you can configure include:
+
+-   The builtin :ref:`Map tab <app-map-tab>`
+-   The builtin :ref:`3D visualizer <3d-visualizer-config>`
+-   Any :ref:`custom plugins <app-plugins>` that you've registered
+
+For example, you may add the following to your JSON App config
+(`~/.fiftyone/app_config.json`) to register a Mapbox token globally on your
+system:
+
+.. code-block:: text
+
+    {
+        "plugins": {
+            "map": {
+                "mapboxAccessToken": "XXXXXXXX"
+            }
+        }
+    }
+
+.. note::
+
+    You can also store dataset-specific plugin settings by storing any subset
+    of the above values on a :ref:`dataset's App config <custom-app-config>`.

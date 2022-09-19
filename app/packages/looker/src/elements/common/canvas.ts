@@ -26,7 +26,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   getEvents(): Events<State> {
     return {
       click: ({ event, update, dispatchEvent }) => {
-        update({ showOptions: false }, (state, overlays) => {
+        update({ showOptions: false }, (state, overlays, sample) => {
           if (
             state.config.thumbnail ||
             state.disableOverlays ||
@@ -44,7 +44,10 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
           if (!moved && overlays.length) {
             const top = overlays[0];
             top.containsPoint(state) &&
-              dispatchEvent("select", top.getSelectData(state));
+              dispatchEvent("select", {
+                ...top.getSelectData(state),
+                sampleId: sample.id,
+              });
           }
         });
       },

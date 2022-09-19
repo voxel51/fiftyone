@@ -39,8 +39,8 @@
   visibility: visible;
 }
 
-.lookerThumbnailSelector:last-child {
-  padding-right: 1rem;
+.lookerThumbnailSelector > div:last-child {
+  padding-right: 0.5rem;
 }
 
 .lookerThumbnailSelector span {

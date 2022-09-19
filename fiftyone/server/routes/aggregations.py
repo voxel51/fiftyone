@@ -99,8 +99,9 @@ async def get_app_statistics(view, filters):
     for path, field in view.get_field_schema().items():
         aggregations.update(_build_field_aggregations(path, field, filters))
 
-    if view.media_type == fom.VIDEO:
-        for path, field in view.get_frame_field_schema().items():
+    frame_fields = view.get_frame_field_schema()
+    if view.media_type != fom.IMAGE and frame_fields is not None:
+        for path, field in frame_fields.items():
             aggregations.update(
                 _build_field_aggregations("frames." + path, field, filters)
             )

@@ -227,10 +227,13 @@ export const numeric = selectorFamily<
       const inf = get(nonfiniteAtom({ ...params, key: "inf" }));
       const ninf = get(nonfiniteAtom({ ...params, key: "ninf" }));
       const nan = get(nonfiniteAtom({ ...params, key: "ninf" }));
+      const noRange = start === null || end === null;
 
       return (value) => {
         if (typeof value === "number") {
-          return exclude
+          return noRange
+            ? true
+            : exclude
             ? value < start || value > end
             : value >= start && value <= end;
         }
