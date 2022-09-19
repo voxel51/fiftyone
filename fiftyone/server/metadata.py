@@ -68,25 +68,13 @@ async def get_metadata(
     filepath = sample["filepath"]
     is_video = media_type == fom.VIDEO
     metadata = sample.get("metadata", None)
-    urls = _create_media_urls(collection, sample, url_cache)
-
-    use_local = foc.media_cache.is_local_or_cached(filepath)
-    if media_type == fom.IMAGE and foc.media_cache.config.cache_app_images:
-        use_local = True
-
-    d = {}
-
-    if use_local:
-        # Get local path to media on disk, downloading any uncached remote
-        # files if necessary
-        local_path = await foc.media_cache._async_get_local_path(
-            filepath, session, download=True
-        )
-    else:
-        # Get a URL to use to retrieve metadata (if necessary) and for the App
-        # to use to serve the media
-        url = foc.media_cache.get_url(filepath, method="GET", hours=24)
-        d["url"] = url
+    filepath_url, urls = await _create_media_urls(
+        collection, sample, url_cache, session
+    )
+    local_only = (
+        collection.media_type == fom.IMAGE
+        and foc.media_cache.config.cache_app_images
+    )
 
     # If sufficient pre-existing metadata exists, use it
     if filepath not in metadata_cache and metadata:
@@ -112,15 +100,18 @@ async def get_metadata(
 
     if filepath not in metadata_cache:
         try:
-            if use_local:
+            if local_only or foc.media_cache.is_local_or_cached(filepath):
                 # Retrieve media metadata from local disk
+                local_path = await foc.media_cache._async_get_local_path(
+                    filepath, session, download=True
+                )
                 metadata_cache[filepath] = await read_local_metadata(
                     local_path, is_video
                 )
             else:
                 # Retrieve metadata from remote source
                 metadata_cache[filepath] = await read_url_metadata(
-                    session, url, is_video
+                    session, filepath_url, is_video
                 )
         except Exception as exc:
             # Immediately fail so the user knows they should install FFmpeg
@@ -477,15 +468,41 @@ class FFmpegNotFoundException(RuntimeError):
     pass
 
 
-def _create_media_urls(
-    collection: SampleCollection, sample: t.Dict, cache: t.Dict
-) -> t.Dict[str, str]:
+async def _create_media_urls(
+    collection: SampleCollection,
+    sample: t.Dict,
+    cache: t.Dict,
+    session: aiohttp.ClientSession,
+) -> t.Tuple[str, t.Dict[str, str]]:
     media_urls = []
+    local_only = (
+        collection.media_type == fom.IMAGE
+        and foc.media_cache.config.cache_app_images
+    )
+    filepath_url = None
+
     for field in collection.app_config.media_fields:
         path = sample.get(field, None)
-        if path not in cache:
-            cache[path] = path
+        if path in cache:
+            if field == "filepath":
+                filepath_url = cache[path]
+            media_urls.append(dict(field=field, url=cache[path]))
+            continue
 
-        media_urls.append(dict(field=field, url=path))
+        if local_only or foc.media_cache.is_local_or_cached(path):
+            # Get local path to media on disk, downloading any uncached remote
+            # files if necessary
+            url = await foc.media_cache._async_get_local_path(
+                path, session, download=True
+            )
+        else:
+            # Get a URL to use to retrieve metadata (if necessary) and for the App
+            # to use to serve the media
+            url = foc.media_cache.get_url(path, method="GET", hours=24)
 
-    return media_urls
+        cache[path] = url
+        media_urls.append(dict(field=field, url=url))
+        if field == "filepath":
+            filepath_url = cache[path]
+
+    return filepath_url, media_urls
