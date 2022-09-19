@@ -25,6 +25,7 @@ import fiftyone.core.brain as fob
 import fiftyone.core.dataset as fod
 import fiftyone.core.evaluation as foe
 import fiftyone.core.frame as fof
+import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
@@ -125,7 +126,11 @@ def import_samples(
         except:
             num_samples = None
 
-        samples = map(parse_sample, iter(dataset_importer))
+        if isinstance(dataset_importer, GroupDatasetImporter):
+            samples = _generate_group_samples(dataset_importer, parse_sample)
+        else:
+            samples = map(parse_sample, iter(dataset_importer))
+
         sample_ids = dataset.add_samples(
             samples, expand_schema=expand_schema, num_samples=num_samples
         )
@@ -295,7 +300,10 @@ def merge_samples(
         except:
             num_samples = None
 
-        samples = map(parse_sample, iter(dataset_importer))
+        if isinstance(dataset_importer, GroupDatasetImporter):
+            samples = _generate_group_samples(dataset_importer, parse_sample)
+        else:
+            samples = map(parse_sample, iter(dataset_importer))
 
         dataset.merge_samples(
             samples,
@@ -334,11 +342,20 @@ def _handle_legacy_formats(dataset_importer):
     return dataset_importer
 
 
+def _generate_group_samples(dataset_importer, parse_sample):
+    group_field = dataset_importer.group_field
+    for group in dataset_importer:
+        _group = fog.Group()
+        for name, sample in group.items():
+            sample[group_field] = _group.element(name)
+            yield parse_sample(sample)
+
+
 def _build_parse_sample_fcn(
     dataset, dataset_importer, label_field, tags, expand_schema
 ):
     if isinstance(dataset_importer, GenericSampleDatasetImporter):
-        # Generic sample dataset
+        # Generic sample/group dataset
 
         #
         # If the importer provides a sample field schema, apply it now
@@ -348,10 +365,13 @@ def _build_parse_sample_fcn(
         # the appropriate types, even if all of the imported samples have
         # `None` values
         #
+        # @todo add support for pre-declaring frame field schemas?
+        #
         if expand_schema and dataset_importer.has_sample_field_schema:
             dataset._apply_field_schema(
                 dataset_importer.get_sample_field_schema()
             )
+
             expand_schema = False
 
         def parse_sample(sample):
@@ -614,6 +634,21 @@ def parse_dataset_info(dataset, info, overwrite=True):
             dataset.default_skeleton = dataset._parse_default_skeleton(
                 default_skeleton
             )
+
+    app_config = info.pop("app_config", None)
+
+    if app_config is not None:
+        try:
+            app_config = foo.DatasetAppConfig.from_dict(
+                app_config,
+                extended=True,
+            )
+        except Exception as e:
+            app_config = None
+            logger.warning("Failed to parse app_config: %s", e)
+
+    if app_config is not None:
+        dataset.app_config.merge(app_config, overwrite=overwrite)
 
     if overwrite:
         dataset.info.update(info)
@@ -947,8 +982,8 @@ class GenericSampleDatasetImporter(DatasetImporter):
         raise NotImplementedError("subclass must implement has_dataset_info")
 
     def get_sample_field_schema(self):
-        """Returns dictionary describing the field schema of the samples loaded
-        by this importer.
+        """Returns a dictionary describing the field schema of the samples
+        loaded by this importer.
 
         The returned dictionary should map field names to to string
         representations of :class:`fiftyone.core.fields.Field` instances
@@ -966,6 +1001,59 @@ class GenericSampleDatasetImporter(DatasetImporter):
         raise NotImplementedError(
             "subclass must implement get_sample_field_schema()"
         )
+
+
+class GroupDatasetImporter(GenericSampleDatasetImporter):
+    """Interface for importing datasets that contain arbitrary grouped
+    :class:`fiftyone.core.sample.Sample` instances.
+
+    Typically, dataset importers should implement the parameters documented on
+    this class, although this is not mandatory.
+
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
+
+    .. automethod:: __len__
+    .. automethod:: __next__
+
+    Args:
+        dataset_dir (None): the dataset directory. This may be optional for
+            some importers
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __len__(self):
+        """The total number of samples that will be imported across all group
+        slices.
+
+        Raises:
+            TypeError: if the total number is not known
+        """
+        raise TypeError(
+            "The number of samples in this %s is not known a priori"
+            % type(self)
+        )
+
+    def __next__(self):
+        """Returns information about the next group in the dataset.
+
+        Returns:
+            a dict mapping slice names to :class:`fiftyone.core.sample.Sample`
+            instances
+
+        Raises:
+            StopIteration: if there are no more samples to import
+        """
+        raise NotImplementedError("subclass must implement __next__()")
+
+    @property
+    def group_field(self):
+        """The name of the group field to populate on each sample."""
+        return "group"
 
 
 class UnlabeledImageDatasetImporter(DatasetImporter):
@@ -1285,7 +1373,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self._samples = None
         self._iter_samples = None
         self._num_samples = None
-        self._is_video_dataset = False
+        self._media_type = None
 
     def __iter__(self):
         self._iter_samples = iter(self._samples)
@@ -1295,25 +1383,32 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         return self._num_samples
 
     def __next__(self):
-        d = next(self._iter_samples)
+        sd = next(self._iter_samples)
 
-        if not os.path.isabs(d["filepath"]):
-            d["filepath"] = os.path.join(self._rel_dir, d["filepath"])
+        if not os.path.isabs(sd["filepath"]):
+            sd["filepath"] = os.path.join(self._rel_dir, sd["filepath"])
 
-        if self._is_video_dataset:
-            labels_relpath = d.pop("frames")
-            labels_path = os.path.join(self.dataset_dir, labels_relpath)
+        if (self._media_type == fomm.VIDEO) or (
+            self._media_type == fomm.GROUP
+            and fomm.get_media_type(sd["filepath"]) == fomm.VIDEO
+        ):
+            labels_path = os.path.join(self.dataset_dir, sd.pop("frames"))
 
-            sample = Sample.from_dict(d)
+            sample = Sample.from_dict(sd)
             self._import_frame_labels(sample, labels_path)
         else:
-            sample = Sample.from_dict(d)
+            sample = Sample.from_dict(sd)
 
         return sample
 
     @property
     def has_sample_field_schema(self):
-        if self._is_video_dataset:
+        if self._media_type == fomm.VIDEO:
+            # Must return False so frame field schema is inferred
+            return False
+
+        if self._media_type == fomm.GROUP:
+            # Need to let importer infer group media types
             return False
 
         return "sample_fields" in self._metadata
@@ -1326,10 +1421,10 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         metadata_path = os.path.join(self.dataset_dir, "metadata.json")
         if os.path.isfile(metadata_path):
             metadata = etas.read_json(metadata_path)
-            media_type = metadata.get("media_type", fomm.IMAGE)
+            self._media_type = metadata.get("media_type", None)
             self._metadata = metadata
-            self._is_video_dataset = media_type == fomm.VIDEO
         else:
+            self._media_type = None
             self._metadata = {}
 
         if self.rel_dir is not None:

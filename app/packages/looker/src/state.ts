@@ -4,11 +4,11 @@
 
 import { Overlay } from "./overlays/base";
 
-import { Schema } from "@fiftyone/utilities";
+import { Schema, Stage } from "@fiftyone/utilities";
 
+// vite won't import these from fou
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
-
 export interface Coloring {
   by: "field" | "instance" | "label";
   pool: string[];
@@ -71,6 +71,7 @@ export interface Control<State extends BaseState = BaseState> {
   detail: string;
   action: Action<State>;
   afterAction?: Action<State>;
+  alwaysHandle?: boolean;
 }
 
 export interface ControlMap<State extends BaseState> {
@@ -83,6 +84,7 @@ export interface KeypointSkeleton {
 }
 
 interface BaseOptions {
+  highlight: boolean;
   activePaths: string[];
   filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
@@ -109,6 +111,7 @@ interface BaseOptions {
   skeletons: { [key: string]: KeypointSkeleton };
   showSkeletons: boolean;
   pointFilter: (path: string, point: Point) => boolean;
+  thumbnailTitle?: (sample: any) => string;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -120,9 +123,10 @@ export type Dimensions = [number, number];
 interface BaseConfig {
   thumbnail: boolean;
   src: string;
-  dimensions: Dimensions;
   sampleId: string;
   fieldSchema: Schema;
+  view: Stage[];
+  dataset: string;
 }
 
 export interface FrameConfig extends BaseConfig {
@@ -170,6 +174,7 @@ export interface TooltipOverlay {
 
 export interface BaseState {
   disabled: boolean;
+  dimensions?: Dimensions;
   cursorCoordinates: Coordinates;
   pixelCoordinates: Coordinates;
   disableControls: boolean;
@@ -242,7 +247,7 @@ export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
 };
 
-interface Point {
+export interface Point {
   point: [number | NONFINITE, number | NONFINITE];
   label: string;
   [key: string]: any;
@@ -256,11 +261,13 @@ export type StateUpdate<State extends BaseState> = (
     | ((state: Readonly<State>) => Optional<State>),
   postUpdate?: (
     state: Readonly<State>,
-    overlays: Readonly<Overlay<State>[]>
+    overlays: Readonly<Overlay<State>[]>,
+    sample: object
   ) => void
 ) => void;
 
 const DEFAULT_BASE_OPTIONS: BaseOptions = {
+  highlight: false,
   activePaths: [],
   selectedLabels: [],
   showConfidence: false,
@@ -294,6 +301,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   defaultSkeleton: null,
   skeletons: {},
   showSkeletons: true,
+  showOverlays: true,
   pointFilter: (path: string, point: Point) => true,
 };
 

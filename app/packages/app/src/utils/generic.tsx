@@ -1,5 +1,4 @@
 import React from "react";
-import mime from "mime";
 import styled from "styled-components";
 import { useExternalLink, prettify as pretty } from "@fiftyone/utilities";
 import { matchPath, RoutingContext } from "@fiftyone/components";
@@ -52,14 +51,6 @@ export const genSort = (a, b, asc) => {
   }
 
   return asc ? -1 : 1;
-};
-
-export const getMimeType = (sample: any) => {
-  return (
-    (sample.metadata && sample.metadata.mime_type) ||
-    mime.getType(sample.filepath) ||
-    "image/jpg"
-  );
 };
 
 export const formatDateTime = (timeStamp: number, timeZone: string): string => {
@@ -188,20 +179,3 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
     ];
   };
 })();
-
-export const getDatasetName = (context: RoutingContext<any>): string => {
-  const result = matchPath(
-    context.pathname,
-    {
-      path: "/datasets/:name",
-      exact: true,
-    },
-    {}
-  );
-
-  if (result) {
-    return result.variables.name;
-  }
-
-  return null;
-};

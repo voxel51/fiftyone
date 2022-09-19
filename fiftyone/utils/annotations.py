@@ -213,6 +213,15 @@ def annotate(
     anno_backend = config.build()
     anno_backend.ensure_requirements()
 
+    supported_media_types = anno_backend.supported_media_types
+    if samples.media_type == fomm.GROUP:
+        raise fomm.SelectGroupSlicesError(supported_media_types)
+    elif samples.media_type not in supported_media_types:
+        raise fomm.MediaTypeError(
+            "The '%s' backend does not supported annotating '%s' collections"
+            % (anno_backend.config.name, samples.media_type)
+        )
+
     label_schema, samples = _build_label_schema(
         samples,
         anno_backend,
@@ -435,12 +444,6 @@ def _build_label_schema(
         _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
 
         if is_video:
-            if not backend.supports_video:
-                raise ValueError(
-                    "Backend '%s' does not support annotating videos."
-                    % backend.config.name
-                )
-
             if not _is_frame_field:
                 if _return_type in _SPATIAL_TYPES:
                     raise ValueError(
@@ -868,7 +871,7 @@ def _get_attributes(
     if "attributes" in label_info:
         attributes = label_info["attributes"]
 
-    if attributes and not backend.supports_attributes:
+    if attributes and not backend.supported_attr_types:
         logger.warning(
             "The backend '%s' does not support attributes. Provided "
             "attributes will be ignored.",
@@ -1803,6 +1806,16 @@ class AnnotationBackend(foa.AnnotationMethod):
             self._api.__exit__(*args)
 
     @property
+    def supported_media_types(self):
+        """The list of media types that this backend supports.
+
+        For example, CVAT supports ``["image", "video"]``.
+        """
+        raise NotImplementedError(
+            "subclass must implement supported_media_types"
+        )
+
+    @property
     def supported_label_types(self):
         """The list of label types supported by the backend.
 
@@ -1872,23 +1885,13 @@ class AnnotationBackend(foa.AnnotationMethod):
         )
 
     @property
-    def supports_video(self):
-        """Whether this backend supports annotating videos."""
-        return True
-
-    @property
-    def supports_attributes(self):
-        """Whether this backend supports uploading and editing label
-        attributes.
-        """
-        return True
-
-    @property
     def requires_label_schema(self):
         """Whether this backend requires a pre-defined label schema for its
         annotation runs.
         """
-        return True
+        raise NotImplementedError(
+            "subclass must implement requires_label_schema"
+        )
 
     def recommend_attr_tool(self, name, value):
         """Recommends an attribute tool for an attribute with the given name

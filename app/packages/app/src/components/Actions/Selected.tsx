@@ -1,4 +1,4 @@
-import React, { MutableRefObject, useLayoutEffect } from "react";
+import React, { MutableRefObject, useCallback, useLayoutEffect } from "react";
 import {
   RecoilValueReadOnly,
   useRecoilCallback,
@@ -8,42 +8,41 @@ import {
 
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
-import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
-import { State } from "../../recoil/types";
-import * as viewAtoms from "../../recoil/view";
-import { useEventHandler, useSetView } from "../../utils/hooks";
+import { useEventHandler } from "../../utils/hooks";
 
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
+import * as fos from "@fiftyone/state";
+import { State } from "@fiftyone/state";
 
 const useClearSampleSelection = (close) => {
   return useRecoilTransaction_UNSTABLE(
-    ({ set }) => async () => {
-      set(atoms.selectedSamples, new Set());
-      close();
-    },
+    ({ set }) =>
+      async () => {
+        set(fos.selectedSamples, new Set());
+        close();
+      },
     [close]
   );
 };
 
 const useGridActions = (close: () => void) => {
-  const elementNames = useRecoilValue(viewAtoms.elementNames);
+  const elementNames = useRecoilValue(fos.elementNames);
   const clearSelection = useClearSampleSelection(close);
-  const setView = useSetView();
-  const addStage = useRecoilTransaction_UNSTABLE(
-    ({ get }) => (name: string) => {
-      const view = get(viewAtoms.view);
-
-      setView([
-        ...(view || []),
+  const setView = fos.useSetView();
+  const selected = useRecoilValue(fos.selectedSamples);
+  const addStage = useCallback(
+    (name: string) => {
+      setView((cur) => [
+        ...cur,
         {
           _cls: `fiftyone.core.stages.${name}`,
-          kwargs: [["sample_ids", Array.from(get(atoms.selectedSamples))]],
+          kwargs: [["sample_ids", [...selected]]],
         },
       ]);
       close();
-    }
+    },
+    [selected]
   );
   return [
     {
@@ -64,19 +63,21 @@ const useGridActions = (close: () => void) => {
   ];
 };
 
-const toLabelMap = (labels: State.SelectedLabel[]): State.SelectedLabelMap =>
+const toLabelMap = (
+  labels: fos.State.SelectedLabel[]
+): fos.State.SelectedLabelMap =>
   Object.fromEntries(labels.map(({ labelId, ...rest }) => [labelId, rest]));
 
 const useSelectVisible = (
-  visibleAtom?: RecoilValueReadOnly<State.SelectedLabel[]>,
-  visible?: State.SelectedLabel[]
+  visibleAtom?: RecoilValueReadOnly<fos.State.SelectedLabel[]> | null,
+  visible?: fos.State.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
-    const selected = await snapshot.getPromise(atoms.selectedLabels);
+    const selected = await snapshot.getPromise(fos.selectedLabels);
     visible = visibleAtom ? await snapshot.getPromise(visibleAtom) : visible;
-    set(atoms.selectedLabels, {
+    set(fos.selectedLabels, {
       ...selected,
-      ...toLabelMap(visible),
+      ...toLabelMap(visible || []),
     });
   });
 };
@@ -86,7 +87,7 @@ const useUnselectVisible = (
   visibleIds?: Set<string>
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
-    const selected = await snapshot.getPromise(atoms.selectedLabels);
+    const selected = await snapshot.getPromise(fos.selectedLabels);
     visibleIds = visibleIdsAtom
       ? await snapshot.getPromise(visibleIdsAtom)
       : visibleIds;
@@ -94,26 +95,27 @@ const useUnselectVisible = (
     const filtered = Object.entries(selected).filter(
       ([label_id]) => !visibleIds.has(label_id)
     );
-    set(atoms.selectedLabels, Object.fromEntries(filtered));
+    set(fos.selectedLabels, Object.fromEntries(filtered));
   });
 };
 
 const useClearSelectedLabels = (close) => {
   return useRecoilCallback(
-    ({ set }) => async () => {
-      set(atoms.selectedLabels, {});
-      close();
-    },
+    ({ set }) =>
+      async () => {
+        set(fos.selectedLabels, {});
+        close();
+      },
     []
   );
 };
 
 const useHideSelected = () => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
-    const selected = await snapshot.getPromise(atoms.selectedLabels);
-    const hidden = await snapshot.getPromise(atoms.hiddenLabels);
-    set(atoms.selectedLabels, {});
-    set(atoms.hiddenLabels, { ...hidden, ...selected });
+    const selected = await snapshot.getPromise(fos.selectedLabels);
+    const hidden = await snapshot.getPromise(fos.hiddenLabels);
+    set(fos.selectedLabels, {});
+    set(fos.hiddenLabels, { ...hidden, ...selected });
   });
 };
 
@@ -122,10 +124,10 @@ const useHideOthers = (
   visible?: State.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
-    const selected = await snapshot.getPromise(selectors.selectedLabelIds);
+    const selected = await snapshot.getPromise(fos.selectedLabelIds);
     visible = visibleAtom ? await snapshot.getPromise(visibleAtom) : visible;
-    const hidden = await snapshot.getPromise(atoms.hiddenLabels);
-    set(atoms.hiddenLabels, {
+    const hidden = await snapshot.getPromise(fos.hiddenLabels);
+    set(fos.hiddenLabels, {
       ...hidden,
       ...toLabelMap(visible.filter(({ labelId }) => !selected.has(labelId))),
     });
@@ -142,21 +144,24 @@ const toIds = (labels: State.SelectedLabel[]) =>
   new Set([...labels].map(({ labelId }) => labelId));
 
 const useModalActions = (
-  lookerRef: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>,
+  lookerRef: MutableRefObject<
+    VideoLooker | ImageLooker | FrameLooker | undefined
+  >,
   close
 ) => {
-  const selected = useRecoilValue(atoms.selectedSamples);
+  const selected = useRecoilValue(fos.selectedSamples);
   const clearSelection = useClearSampleSelection(close);
 
-  const selectedLabels = useRecoilValue(selectors.selectedLabelIds);
-  const visibleSampleLabels = lookerRef.current.getCurrentSampleLabels();
+  const selectedLabels = useRecoilValue(fos.selectedLabelIds);
+  const visibleSampleLabels = lookerRef.current
+    ? lookerRef.current.getCurrentSampleLabels()
+    : [];
   const isVideo =
-    useRecoilValue(selectors.isVideoDataset) &&
-    useRecoilValue(viewAtoms.isRootView);
+    useRecoilValue(fos.isVideoDataset) && useRecoilValue(fos.isRootView);
   const visibleFrameLabels =
     lookerRef.current instanceof VideoLooker
       ? lookerRef.current.getCurrentFrameLabels()
-      : new Array<State.SelectedLabel>();
+      : new Array<fos.State.SelectedLabel>();
 
   const closeAndCall = (callback) => {
     return React.useCallback(() => {
@@ -164,7 +169,7 @@ const useModalActions = (
       callback();
     }, []);
   };
-  const elementNames = useRecoilValue(viewAtoms.elementNames);
+  const elementNames = useRecoilValue(fos.elementNames);
 
   const hasVisibleUnselected = hasSetDiff(
     toIds(visibleSampleLabels),
@@ -235,7 +240,9 @@ const useModalActions = (
 interface SelectionActionsProps {
   modal: boolean;
   close: () => void;
-  lookerRef: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
+  lookerRef?: MutableRefObject<
+    VideoLooker | ImageLooker | FrameLooker | undefined
+  >;
   bounds: any;
 }
 

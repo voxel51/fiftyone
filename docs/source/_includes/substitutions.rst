@@ -21,6 +21,8 @@
 
 .. |Frame| replace:: :class:`Frame <fiftyone.core.frame.Frame>`
 
+.. |Group| replace:: :class:`Group <fiftyone.core.groups.Group>`
+
 .. |Field| replace:: :class:`Field <fiftyone.core.fields.Field>`
 .. |BooleanField| replace:: :class:`BooleanField <fiftyone.core.fields.BooleanField>`
 .. |IntField| replace:: :class:`IntField <fiftyone.core.fields.IntField>`
@@ -32,6 +34,7 @@
 .. |DictField| replace:: :class:`DictField <fiftyone.core.fields.DictField>`
 .. |VectorField| replace:: :class:`VectorField <fiftyone.core.fields.VectorField>`
 .. |ArrayField| replace:: :class:`ArrayField <fiftyone.core.fields.ArrayField>`
+.. |GroupField| replace:: :class:`GroupField <fiftyone.core.fields.GroupField>`
 
 .. |ViewExpression| replace:: :class:`ViewExpression <fiftyone.core.expressions.ViewExpression>`
 .. |ViewField| replace:: :class:`ViewField <fiftyone.core.expressions.ViewField>`
@@ -59,6 +62,7 @@
 .. |NumericAttribute| replace:: :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`
 
 .. |KeypointSkeleton| replace:: :class:`KeypointSkeleton <fiftyone.core.odm.dataset.KeypointSkeleton>`
+.. |DatasetAppConfig| replace:: :class:`DatasetAppConfig <fiftyone.core.odm.dataset.DatasetAppConfig>`
 
 .. |tags| replace:: :class:`tags <fiftyone.core.sample.Sample>`
 .. |Tags| replace:: :class:`Tags <fiftyone.core.sample.Sample>`
@@ -68,12 +72,14 @@
 .. |LabeledImageDatasetImporter| replace:: :class:`LabeledImageDatasetImporter <fiftyone.utils.data.importers.LabeledImageDatasetImporter>`
 .. |UnlabeledVideoDatasetImporter| replace:: :class:`UnlabeledVideoDatasetImporter <fiftyone.utils.data.importers.UnlabeledVideoDatasetImporter>`
 .. |LabeledVideoDatasetImporter| replace:: :class:`LabeledVideoDatasetImporter <fiftyone.utils.data.importers.LabeledVideoDatasetImporter>`
+.. |GroupDatasetImporter| replace:: :class:`GroupDatasetImporter <fiftyone.utils.data.importers.GroupDatasetImporter>`
 
 .. |DatasetExporter| replace:: :class:`DatasetExporter <fiftyone.utils.data.exporters.DatasetExporter>`
 .. |UnlabeledImageDatasetExporter| replace:: :class:`UnlabeledImageDatasetExporter <fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter>`
 .. |LabeledImageDatasetExporter| replace:: :class:`LabeledImageDatasetExporter <fiftyone.utils.data.exporters.LabeledImageDatasetExporter>`
 .. |UnlabeledVideoDatasetExporter| replace:: :class:`UnlabeledVideoDatasetExporter <fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter>`
 .. |LabeledVideoDatasetExporter| replace:: :class:`LabeledVideoDatasetExporter <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter>`
+.. |GroupDatasetExporter| replace:: :class:`GroupDatasetExporter <fiftyone.utils.data.exporters.GroupDatasetExporter>`
 
 .. |SampleParser| replace:: :class:`SampleParser <fiftyone.utils.data.parsers.SampleParser>`
 .. |UnlabeledImageSampleParser| replace:: :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`
@@ -86,6 +92,7 @@
 .. |LabeledImageDatasetType| replace:: :class:`LabeledImageDataset <fiftyone.types.LabeledImageDataset>`
 .. |UnlabeledVideoDatasetType| replace:: :class:`UnlabeledVideoDataset <fiftyone.types.UnlabeledVideoDataset>`
 .. |LabeledVideoDatasetType| replace:: :class:`LabeledVideoDataset <fiftyone.types.LabeledVideoDataset>`
+.. |GroupDatasetType| replace:: :class:`GroupDataset <fiftyone.types.GroupDataset>`
 
 .. |Metadata| replace:: :class:`Metadata <fiftyone.core.metadata.Metadata>`
 .. |ImageMetadata| replace:: :class:`ImageMetadata <fiftyone.core.metadata.ImageMetadata>`

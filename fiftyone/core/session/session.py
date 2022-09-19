@@ -37,7 +37,6 @@ from fiftyone.core.session.events import (
     CloseSession,
     DeactivateNotebookCell,
     ReactivateNotebookCell,
-    RefreshApp,
     StateUpdate,
 )
 
@@ -594,7 +593,7 @@ class Session(object):
     @update_state()
     def refresh(self) -> None:
         """Refreshes the current App window."""
-        self._client.send_event(RefreshApp())
+        self._client.send_event(StateUpdate(state=self._state, refresh=True))
 
     @property
     def selected(self) -> t.List[str]:
@@ -861,7 +860,7 @@ class Session(object):
         webbrowser.open(self.url, new=2)
 
     @update_state()
-    def show(self, height: int = None) -> str:
+    def show(self, height: int = None) -> None:
         """Opens the App in the output of the current notebook cell.
 
         This method has no effect in non-notebook contexts.
@@ -888,8 +887,7 @@ class Session(object):
             subscription=uuid,
         )
 
-        fosn.display(self._notebook_cells[uuid])
-        return uuid
+        fosn.display(self._client, self._notebook_cells[uuid])
 
     def no_show(self) -> fou.SetAttributes:
         """Returns a context manager that temporarily prevents new App
@@ -958,7 +956,7 @@ class Session(object):
         if self.remote:
             return
 
-        if self._client._connected:
+        if self._client._connected and focx._get_context() == focx._NONE:
             self._client.send_event(CloseSession())
 
         self.plots.disconnect()
@@ -997,9 +995,10 @@ def _attach_listeners(session: "Session"):
         )
 
         def on_reactivate_notebook_cell(event: ReactivateNotebookCell) -> None:
-            session._client.send_event(DeactivateNotebookCell())
             fosn.display(
-                session._notebook_cells[event.subscription], reactivate=True
+                session._client,
+                session._notebook_cells[event.subscription],
+                reactivate=True,
             )
 
         session._client.add_event_listener(

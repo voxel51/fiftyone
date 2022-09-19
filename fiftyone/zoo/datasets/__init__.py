@@ -176,7 +176,7 @@ def load_zoo_dataset(
             with the same name if it exists
         overwrite (False): whether to overwrite any existing files if the
             dataset is to be downloaded
-        cleanup (None): whether to cleanup any temporary files generated during
+        cleanup (True): whether to cleanup any temporary files generated during
             download
         **kwargs: optional arguments to pass to the
             :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.

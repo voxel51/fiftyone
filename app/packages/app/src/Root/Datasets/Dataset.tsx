@@ -1,19 +1,14 @@
-import { Route, RouterContext } from "@fiftyone/components";
 import { NotFoundError, toCamelCase } from "@fiftyone/utilities";
-import React, { useContext, useEffect, useRef } from "react";
+import React, { useContext, useEffect } from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 
 import DatasetComponent from "../../components/Dataset";
-import { useStateUpdate } from "../../utils/hooks";
 import { DatasetQuery } from "./__generated__/DatasetQuery.graphql";
-import { datasetName } from "../../recoil/selectors";
-import * as viewAtoms from "../../recoil/view";
-import { getDatasetName } from "../../utils/generic";
-import { filters } from "../../recoil/filters";
-import { similarityParameters } from "../../components/Actions/Similar";
-import transformDataset from "./transformDataset";
-import { State } from "../../recoil/types";
+
+import * as fos from "@fiftyone/state";
+import { refresher, Route, RouterContext } from "@fiftyone/state";
+import { getDatasetName } from "@fiftyone/state";
 
 const Query = graphql`
   query DatasetQuery($name: String!, $view: BSONArray = null) {
@@ -21,6 +16,18 @@ const Query = graphql`
       id
       name
       mediaType
+      defaultGroupSlice
+      groupField
+      groupSlice
+      groupMediaTypes {
+        name
+        mediaType
+      }
+      appConfig {
+        gridMediaField
+        mediaFields
+        plugins
+      }
       sampleFields {
         ftype
         subfield
@@ -34,10 +41,6 @@ const Query = graphql`
         embeddedDocType
         path
         dbField
-      }
-      appSidebarGroups {
-        name
-        paths
       }
       maskTargets {
         name
@@ -86,6 +89,15 @@ const Query = graphql`
       }
       version
       viewCls
+      appConfig {
+        mediaFields
+        gridMediaField
+        plugins
+        sidebarGroups {
+          name
+          paths
+        }
+      }
     }
   }
 `;
@@ -93,37 +105,32 @@ const Query = graphql`
 export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const { dataset } = usePreloadedQuery(Query, prepared);
   const router = useContext(RouterContext);
-  const name = useRecoilValue(datasetName);
-  const view = useRecoilValue(viewAtoms.view);
-  const viewRef = useRef(view);
-  viewRef.current = view;
+  const name = useRecoilValue(fos.datasetName);
   if (!dataset) {
     throw new NotFoundError(`/datasets/${getDatasetName(router)}`);
   }
 
-  const update = useStateUpdate();
+  const update = fos.useStateUpdate();
 
   useEffect(() => {
-    update(({ reset }) => {
-      reset(filters);
-      reset(similarityParameters);
+    update(({ set }) => {
+      if (router.state.refresh) {
+        set(refresher, (cur) => cur + 1);
+      }
       return {
-        colorscale:
-          router.state && router.state.colorscale
-            ? router.state.colorscale
-            : undefined,
-        config:
-          router.state && router.state.config
-            ? (toCamelCase(router.state.config) as State.Config)
-            : undefined,
-        dataset: transformDataset(dataset),
-        state:
-          router.state && router.state.state ? router?.state.state || {} : {},
+        colorscale: router?.state?.colorscale
+          ? router.state.colorscale
+          : undefined,
+        config: router?.state?.config
+          ? (toCamelCase(router.state.config) as fos.State.Config)
+          : undefined,
+        dataset: fos.transformDataset(dataset),
+        state: router?.state?.state ? router.state.state || {} : {},
       };
     });
-  }, [dataset]);
+  }, [dataset, router.state]);
 
-  if (!name) {
+  if (!name || name !== dataset.name) {
     return null;
   }
 

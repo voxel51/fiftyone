@@ -1,7 +1,8 @@
-import { useTheme } from "@fiftyone/components";
+import { Loading, useTheme } from "@fiftyone/components";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
+  Field,
   formatDate,
   formatDateTime,
   FRAME_SUPPORT_FIELD,
@@ -9,19 +10,20 @@ import {
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@material-ui/icons";
 import { useSpring } from "@react-spring/core";
-import React, { useLayoutEffect, useMemo, useState } from "react";
+
+import React, { Suspense, useMemo, useState } from "react";
+
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
-import * as atoms from "../../../recoil/atoms";
-import * as colorAtoms from "../../../recoil/color";
-import * as schemaAtoms from "../../../recoil/schema";
-import * as selectors from "../../../recoil/selectors";
 import { prettify } from "../../../utils/generic";
 
 import { NameAndCountContainer } from "../../utils";
+import * as fos from "@fiftyone/state";
 
 import RegularEntry from "./RegularEntry";
+
+import LoadingCircle from "../../Common/LoadingCircle";
 
 const ScalarDiv = styled.div`
   & > div {
@@ -64,11 +66,9 @@ const ScalarValueEntry = ({
   entryKey,
   path,
   trigger,
-  value,
 }: {
   entryKey: string;
   path: string;
-  value: unknown;
   trigger: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
@@ -79,14 +79,9 @@ const ScalarValueEntry = ({
   const { backgroundColor } = useSpring({
     backgroundColor: theme.backgroundLight,
   });
-  const color = useRecoilValue(colorAtoms.pathColor({ path, modal: true }));
-  const timeZone = useRecoilValue(selectors.timeZone);
-  const none = value === null || value === undefined;
-  const { ftype, subfield, embeddedDocType } = useRecoilValue(
-    schemaAtoms.field(path)
-  );
+  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
 
-  const formatted = format({ ftype, value, timeZone });
+  const { ftype, subfield, embeddedDocType } = useRecoilValue(fos.field(path));
 
   return (
     <RegularEntry
@@ -97,14 +92,16 @@ const ScalarValueEntry = ({
           : subfield
           ? `${ftype}(${subfield})`
           : ftype
-      })${value === undefined ? "" : `: ${formatted}`}`}
+      })`}
       backgroundColor={backgroundColor}
       color={color}
       heading={null}
       trigger={trigger}
     >
       <ScalarDiv>
-        <div style={none ? { color } : {}}>{none ? "None" : formatted}</div>
+        <Suspense fallback={<div>Loading...</div>}>
+          <Loadable path={path} />
+        </Suspense>
         <div
           style={{
             fontSize: "0.8rem",
@@ -129,11 +126,9 @@ const ListContainer = styled.div`
 
 const ListValueEntry = ({
   entryKey,
-  data,
   path,
   trigger,
 }: {
-  data: unknown[];
   entryKey: string;
   path: string;
   trigger: (
@@ -145,29 +140,12 @@ const ListValueEntry = ({
   const [expanded, setExpanded] = useState(false);
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
 
-  const values = useMemo(() => {
-    return data ? data.map((value) => prettify(value as string)) : [];
-  }, [data]);
-  const expandable = values && values.length;
-  const count = prettify(values.length);
-  const color = useRecoilValue(colorAtoms.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
   const theme = useTheme();
   const { backgroundColor } = useSpring({
     backgroundColor: theme.backgroundLight,
   });
-  const { ftype, subfield, embeddedDocType } = useRecoilValue(
-    schemaAtoms.field(path)
-  );
-
-  const canExpand = Boolean(values.length);
-
-  useLayoutEffect(() => {
-    !canExpand && expanded && setExpanded(false);
-  }, [canExpand, expanded]);
-
-  if (!data) {
-    return <ScalarValueEntry value={null} path={path} />;
-  }
+  const { ftype, subfield, embeddedDocType } = useRecoilValue(fos.field(path));
 
   return (
     <RegularEntry
@@ -178,60 +156,79 @@ const ListValueEntry = ({
           : subfield
           ? `${ftype}(${subfield})`
           : ftype
-      }): ${count}`}
+      })`}
       backgroundColor={backgroundColor}
       color={color}
       heading={
         <NameAndCountContainer>
           <span key="path">{path}</span>
-          <span key="value">{values.length}</span>
-          {expandable && (
-            <Arrow
-              key="arrow"
-              style={{ cursor: "pointer", margin: 0 }}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                setExpanded(!expanded);
-              }}
-              onMouseDown={(event) => {
-                event.stopPropagation();
-                event.preventDefault();
-              }}
-            />
-          )}
+          <span key="value">
+            <Suspense fallback={<LoadingCircle />}>
+              <LengthLoadable path={path} />
+            </Suspense>
+          </span>
+          <Arrow
+            key="arrow"
+            style={{ cursor: "pointer", margin: 0 }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setExpanded(!expanded);
+            }}
+            onMouseDown={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+            }}
+          />
         </NameAndCountContainer>
       }
       trigger={trigger}
     >
       {expanded && (
-        <ListContainer>
-          {values.map((v) => (
-            <div>{v}</div>
-          ))}
-        </ListContainer>
+        <Suspense fallback={null}>
+          <ListLoadable path={path} />
+        </Suspense>
       )}
     </RegularEntry>
   );
 };
 
-const PathValueEntry = ({
-  entryKey,
-  path,
-  trigger,
-}: {
-  entryKey: string;
-  path: string;
-  trigger: (
-    event: React.MouseEvent<HTMLDivElement>,
-    key: string,
-    cb: () => void
-  ) => void;
-}) => {
-  const keys = path.split(".");
+const LengthLoadable = ({ path }: { path: string }) => {
+  const data = useData<any[]>(path);
+  return <>{data?.length || 0}</>;
+};
 
-  let field = useRecoilValue(schemaAtoms.field(keys[0]));
-  let { sample: data } = useRecoilValue(atoms.modal);
+const ListLoadable = ({ path }: { path: string }) => {
+  const data = useData<any[]>(path);
+  const values = useMemo(() => {
+    return data ? data.map((value) => prettify(value as string)) : [];
+  }, [data]);
+
+  return (
+    <ListContainer>
+      {values.map((v, i) => (
+        <div key={i}>{v}</div>
+      ))}
+    </ListContainer>
+  );
+};
+
+const Loadable = ({ path }: { path: string }) => {
+  const value = useData<string | number | null>(path);
+  const none = value === null || value === undefined;
+  const { ftype } = useRecoilValue(fos.field(path));
+  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const timeZone = useRecoilValue(fos.timeZone);
+  const formatted = format({ ftype, value, timeZone });
+
+  return <div style={none ? { color } : {}}>{none ? "None" : formatted}</div>;
+};
+
+const useData = <T extends unknown>(path: string): T => {
+  const keys = path.split(".");
+  let data = useRecoilValue(fos.activeModalSample);
+
+  let field = useRecoilValue(fos.field(keys[0]));
 
   for (let index = 0; index < keys.length; index++) {
     if (!data) {
@@ -247,24 +244,28 @@ const PathValueEntry = ({
     }
   }
 
-  if (field.ftype !== LIST_FIELD) {
-    return (
-      <ScalarValueEntry
-        entryKey={entryKey}
-        path={path}
-        trigger={trigger}
-        value={data as unknown}
-      />
-    );
-  }
+  return data as T;
+};
 
-  return (
-    <ListValueEntry
-      entryKey={entryKey}
-      data={(data as unknown) as unknown[]}
-      path={path}
-      trigger={trigger}
-    />
+const PathValueEntry = ({
+  entryKey,
+  path,
+  trigger,
+}: {
+  entryKey: string;
+  path: string;
+  trigger: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void;
+}) => {
+  const field = useRecoilValue(fos.field(path));
+
+  return field.ftype !== LIST_FIELD ? (
+    <ScalarValueEntry entryKey={entryKey} path={path} trigger={trigger} />
+  ) : (
+    <ListValueEntry entryKey={entryKey} path={path} trigger={trigger} />
   );
 };
 

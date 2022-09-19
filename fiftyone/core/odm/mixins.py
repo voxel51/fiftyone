@@ -10,6 +10,7 @@ from collections import OrderedDict
 from bson import ObjectId
 
 import fiftyone.core.fields as fof
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 from .database import get_db_conn
@@ -23,6 +24,7 @@ from .utils import (
 )
 
 fod = fou.lazy_import("fiftyone.core.dataset")
+fog = fou.lazy_import("fiftyone.core.groups")
 
 
 def get_default_fields(cls, include_private=False, use_db_fields=False):
@@ -76,7 +78,11 @@ def validate_fields_match(
         )
 
     if isinstance(field, fof.EmbeddedDocumentField):
-        if not issubclass(field.document_type, existing_field.document_type):
+        if not issubclass(
+            field.document_type, existing_field.document_type
+        ) and not issubclass(
+            existing_field.document_type, field.document_type
+        ):
             raise ValueError(
                 "Embedded document field '%s' type %s does not match existing "
                 "field type %s"
@@ -247,6 +253,9 @@ class DatasetMixin(object):
                 ``expand_schema == False``
         """
         dataset_doc = cls._dataset_doc()
+        media_type = dataset_doc.media_type
+        is_frame_field = cls._is_frames_doc
+
         existing_schema = cls._fields
 
         add_fields = []
@@ -268,9 +277,25 @@ class DatasetMixin(object):
             else:
                 validate_field_name(
                     field_name,
-                    media_type=dataset_doc.media_type,
-                    is_frame_field=cls._is_frames_doc,
+                    media_type=media_type,
+                    is_frame_field=is_frame_field,
                 )
+
+                if fog.is_group_field(field):
+                    if is_frame_field:
+                        raise ValueError(
+                            "Cannot create frame-level group field '%s'. "
+                            "Group fields must be top-level sample fields"
+                            % field_name
+                        )
+
+                    # `group_field` could be None here if we're in the process
+                    # of merging one dataset's schema into another
+                    if dataset_doc.group_field not in (None, field_name):
+                        raise ValueError(
+                            "Cannot add group field '%s'. Datasets may only "
+                            "have one group field" % field_name
+                        )
 
                 add_fields.append(field_name)
 
@@ -357,6 +382,21 @@ class DatasetMixin(object):
         return cls.merge_field_schema({field_name: field}, expand_schema=True)
 
     @classmethod
+    def _get_default_fields(cls, dataset_doc=None):
+        default_fields = set(
+            get_default_fields(cls.__bases__[0], include_private=True)
+        )
+
+        if (
+            dataset_doc is not None
+            and dataset_doc.media_type == fom.GROUP
+            and not cls._is_frames_doc
+        ):
+            default_fields.add(dataset_doc.group_field)
+
+        return default_fields
+
+    @classmethod
     def _rename_fields(cls, field_names, new_field_names):
         """Renames the fields of the documents in this collection.
 
@@ -365,19 +405,22 @@ class DatasetMixin(object):
             new_field_names: an iterable of new field names
         """
         dataset_doc = cls._dataset_doc()
-        default_fields = get_default_fields(
-            cls.__bases__[0], include_private=True
-        )
+        media_type = dataset_doc.media_type
+        is_frame_field = cls._is_frames_doc
+
+        default_fields = cls._get_default_fields()
 
         for field_name, new_field_name in zip(field_names, new_field_names):
+            # pylint: disable=no-member
+            existing_field = cls._fields.get(field_name, None)
+
             if field_name in default_fields:
                 raise ValueError(
                     "Cannot rename default %s field '%s'"
                     % (cls._doc_name().lower(), field_name)
                 )
 
-            # pylint: disable=no-member
-            if field_name not in cls._fields:
+            if existing_field is None:
                 raise AttributeError(
                     "%s field '%s' does not exist"
                     % (cls._doc_name(), field_name)
@@ -392,15 +435,19 @@ class DatasetMixin(object):
 
             validate_field_name(
                 new_field_name,
-                media_type=dataset_doc.media_type,
-                is_frame_field=cls._is_frames_doc,
+                media_type=media_type,
+                is_frame_field=is_frame_field,
             )
+
+            if fog.is_group_field(existing_field):
+                dataset_doc.group_field = new_field_name
 
         cls._rename_fields_simple(field_names, new_field_names)
 
         for field_name, new_field_name in zip(field_names, new_field_names):
             cls._rename_field_schema(field_name, new_field_name, dataset_doc)
 
+        dataset_doc.app_config._rename_paths(field_names, new_field_names)
         dataset_doc.save()
 
     @classmethod
@@ -420,6 +467,11 @@ class DatasetMixin(object):
             field_names, new_field_names, sample_collection
         )
 
+        if isinstance(sample_collection, fod.Dataset):
+            dataset_doc = cls._dataset_doc()
+            dataset_doc.app_config._rename_paths(field_names, new_field_names)
+            dataset_doc.save()
+
     @classmethod
     def _clone_fields(
         cls, field_names, new_field_names, sample_collection=None
@@ -434,10 +486,14 @@ class DatasetMixin(object):
                 upon
         """
         dataset_doc = cls._dataset_doc()
+        media_type = dataset_doc.media_type
+        is_frame_field = cls._is_frames_doc
 
         for field_name, new_field_name in zip(field_names, new_field_names):
             # pylint: disable=no-member
-            if field_name not in cls._fields:
+            existing_field = cls._fields.get(field_name, None)
+
+            if existing_field is None:
                 raise AttributeError(
                     "%s field '%s' does not exist"
                     % (cls._doc_name(), field_name)
@@ -450,10 +506,16 @@ class DatasetMixin(object):
                     % (cls._doc_name(), new_field_name)
                 )
 
+            if fog.is_group_field(existing_field):
+                raise ValueError(
+                    "Cannot clone group field '%s'. Datasets may only have "
+                    "one group field" % field_name
+                )
+
             validate_field_name(
                 new_field_name,
-                media_type=dataset_doc.media_type,
-                is_frame_field=cls._is_frames_doc,
+                media_type=media_type,
+                is_frame_field=is_frame_field,
             )
 
         if sample_collection is None:
@@ -532,9 +594,8 @@ class DatasetMixin(object):
             -   1: log warning if a field cannot be deleted
             -   2: ignore fields that cannot be deleted
         """
-        default_fields = get_default_fields(
-            cls.__bases__[0], include_private=True
-        )
+        dataset_doc = cls._dataset_doc()
+        default_fields = cls._get_default_fields(dataset_doc=dataset_doc)
 
         del_fields = []
         for field_name in field_names:
@@ -561,13 +622,12 @@ class DatasetMixin(object):
         if not del_fields:
             return
 
-        dataset_doc = cls._dataset_doc()
-
         cls._delete_fields_simple(del_fields)
 
         for field_name in del_fields:
             cls._delete_field_schema(field_name, dataset_doc)
 
+        dataset_doc.app_config._delete_paths(field_names)
         dataset_doc.save()
 
     @classmethod
@@ -578,6 +638,10 @@ class DatasetMixin(object):
             field_names: an iterable of "embedded.field.names"
         """
         cls._delete_fields_simple(field_names)
+
+        dataset_doc = cls._dataset_doc()
+        dataset_doc.app_config._delete_paths(field_names)
+        dataset_doc.save()
 
     @classmethod
     def _rename_fields_simple(cls, field_names, new_field_names):

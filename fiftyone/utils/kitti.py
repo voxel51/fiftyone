@@ -8,15 +8,22 @@ Utilities for working with datasets in
 """
 import csv
 import logging
+import multiprocessing
+import struct
 import os
+
+import numpy as np
 
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+
+o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_import("open3d"))
 
 
 logger = logging.getLogger(__name__)
@@ -403,24 +410,149 @@ def load_kitti_detection_annotations(txt_path, frame_size, extra_attrs=True):
     return fol.Detections(detections=detections)
 
 
-_LABELS_ZIP_URL = (
-    "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_label_2.zip"
-)
-_IMAGES_ZIP_URL = (
-    "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_image_2.zip"
-)
+def download_kitti_multiview_dataset(
+    dataset_dir,
+    splits=None,
+    scratch_dir=None,
+    overwrite=False,
+    cleanup=False,
+):
+    """Downloads and prepares the multiview KITTI dataset.
 
-# unused
-_DEVKIT_ZIP_URL = (
-    "https://s3.eu-central-1.amazonaws.com/avg-kitti/devkit_object.zip"
-)
-_CALIB_ZIP_URL = (
-    "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_calib.zip"
-)
+    The dataset will be organized on disk in as follows, with each split stored
+    in :ref:`FiftyOneDataset format <FiftyOneDataset-import>`::
+
+        dataset_dir/
+            train/
+                labels/
+                    000000.txt
+                    000001.txt
+                    ...
+                calib/
+                    000000.txt
+                    000001.txt
+                    ...
+                left/
+                    000000.png
+                    000001.png
+                    ...
+                right/
+                    000000.png
+                    000001.png
+                    ...
+                velodyne/
+                    000000.bin
+                    000001.bin
+                    ...
+                pcd/
+                    000000.pcd
+                    000001.pcd
+                    ...
+                metadata.json
+                samples.json
+            test/
+                ...
+
+    Args:
+        dataset_dir: the directory in which to construct the dataset
+        splits (None): the split or list of splits to download. Supported
+            values are ``("train", "test")``
+        scratch_dir (None): a scratch directory to use to downoad any necessary
+            temporary files
+        overwrite (False): whether to redownload/regnerate files if they
+            already exist
+        cleanup (False): whether to delete the downloaded zips and scratch
+            directory
+    """
+    if splits is None:
+        splits = ("test", "train")
+
+    if not etau.is_container(splits):
+        splits = [splits]
+
+    if scratch_dir is None:
+        scratch_dir = os.path.join(dataset_dir, "tmp-download")
+
+    train_dir = os.path.join(dataset_dir, "train")
+    test_dir = os.path.join(dataset_dir, "test")
+
+    if "train" in splits:
+        _download_and_unpack_kitti_zip(
+            _LABELS,
+            dataset_dir,
+            scratch_dir,
+            "train",
+            "labels",
+            cleanup=cleanup,
+            overwrite=overwrite,
+        )
+
+    # Always unpack both splits because they come in a single zip
+    all_splits = ("train", "test")
+
+    _download_and_unpack_kitti_zip(
+        _CALIB,
+        dataset_dir,
+        scratch_dir,
+        all_splits,
+        "calib",
+        cleanup=cleanup,
+        overwrite=overwrite,
+    )
+
+    _download_and_unpack_kitti_zip(
+        _LEFT_IMAGES,
+        dataset_dir,
+        scratch_dir,
+        all_splits,
+        "left",
+        cleanup=cleanup,
+        overwrite=overwrite,
+    )
+
+    _download_and_unpack_kitti_zip(
+        _RIGHT_IMAGES,
+        dataset_dir,
+        scratch_dir,
+        all_splits,
+        "right",
+        cleanup=cleanup,
+        overwrite=overwrite,
+    )
+
+    _download_and_unpack_kitti_zip(
+        _VELODYNE,
+        dataset_dir,
+        scratch_dir,
+        all_splits,
+        "velodyne",
+        cleanup=cleanup,
+        overwrite=overwrite,
+    )
+
+    for split in splits:
+        velodyne_dir = os.path.join(dataset_dir, split, "velodyne")
+        pcd_dir = os.path.join(dataset_dir, split, "pcd")
+        _convert_velodyne_dir_to_pcd_dir(
+            velodyne_dir,
+            pcd_dir,
+            overwrite=overwrite,
+        )
+
+    for split in splits:
+        split_dir = os.path.join(dataset_dir, split)
+        _prepare_kitti_split(split_dir, overwrite=overwrite)
+
+    if cleanup:
+        etau.delete_dir(scratch_dir)
 
 
 def download_kitti_detection_dataset(
-    dataset_dir, overwrite=True, cleanup=True
+    dataset_dir,
+    splits=None,
+    scratch_dir=None,
+    overwrite=False,
+    cleanup=False,
 ):
     """Downloads the KITTI object detection dataset from the web.
 
@@ -444,40 +576,143 @@ def download_kitti_detection_dataset(
 
     Args:
         dataset_dir: the directory in which to construct the dataset
-        overwrite (True): whether to redownload the zips if they already exist
-        cleanup (True): whether to delete the downloaded zips
+        splits (None): the split or list of splits to download. Supported
+            values are ``("train", "test")``
+        scratch_dir (None): a scratch directory to use to downoad any necessary
+            temporary files
+        overwrite (False): whether to redownload the zips if they already exist
+        cleanup (False): whether to delete the downloaded zips and scratch
+            directory
     """
-    labels_zip_path = os.path.join(dataset_dir, "data_object_label_2.zip")
-    if overwrite or not os.path.exists(labels_zip_path):
-        logger.info("Downloading labels to '%s'...", labels_zip_path)
-        etaw.download_file(_LABELS_ZIP_URL, path=labels_zip_path)
-    else:
-        logger.info("Using existing labels '%s'", labels_zip_path)
+    if splits is None:
+        splits = ("test", "train")
 
-    images_zip_path = os.path.join(dataset_dir, "data_object_image_2.zip")
-    if overwrite or not os.path.exists(images_zip_path):
-        logger.info("Downloading images to '%s'...", images_zip_path)
-        etaw.download_file(_IMAGES_ZIP_URL, path=images_zip_path)
-    else:
-        logger.info("Using existing images '%s'", images_zip_path)
+    if not etau.is_container(splits):
+        splits = [splits]
 
-    logger.info("Extracting data")
-    scratch_dir = os.path.join(dataset_dir, "tmp-download")
-    etau.extract_zip(labels_zip_path, outdir=scratch_dir, delete_zip=cleanup)
-    etau.extract_zip(images_zip_path, outdir=scratch_dir, delete_zip=cleanup)
-    etau.move_dir(
-        os.path.join(scratch_dir, "training", "label_2"),
-        os.path.join(dataset_dir, "train", "labels"),
+    if scratch_dir is None:
+        scratch_dir = os.path.join(dataset_dir, "tmp-download")
+
+    if "train" in splits:
+        _download_and_unpack_kitti_zip(
+            _LABELS,
+            dataset_dir,
+            scratch_dir,
+            "train",
+            "labels",
+            cleanup=cleanup,
+            overwrite=overwrite,
+        )
+
+    # Always download and unpack both splits because they come in a single zip
+    _download_and_unpack_kitti_zip(
+        _LEFT_IMAGES,
+        dataset_dir,
+        scratch_dir,
+        ("train", "test"),
+        "data",
+        cleanup=cleanup,
+        overwrite=overwrite,
     )
-    etau.move_dir(
-        os.path.join(scratch_dir, "training", "image_2"),
-        os.path.join(dataset_dir, "train", "data"),
-    )
-    etau.move_dir(
-        os.path.join(scratch_dir, "testing", "image_2"),
-        os.path.join(dataset_dir, "test", "data"),
-    )
-    etau.delete_dir(scratch_dir)
+
+    if cleanup:
+        etau.delete_dir(scratch_dir)
+
+
+_LABELS = {
+    "url": "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_label_2.zip",
+    "contents": {
+        "train": ["training", "label_2"],
+    },
+}
+
+_LEFT_IMAGES = {
+    "url": "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_image_2.zip",
+    "contents": {
+        "train": ["training", "image_2"],
+        "test": ["testing", "image_2"],
+    },
+}
+
+_RIGHT_IMAGES = {
+    "url": "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_image_3.zip",
+    "contents": {
+        "train": ["training", "image_3"],
+        "test": ["testing", "image_3"],
+    },
+}
+
+_VELODYNE = {
+    "url": "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_velodyne.zip",
+    "contents": {
+        "train": ["training", "velodyne"],
+        "test": ["testing", "velodyne"],
+    },
+}
+
+_CALIB = {
+    "url": "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_calib.zip",
+    "contents": {
+        "train": ["training", "calib"],
+        "test": ["testing", "calib"],
+    },
+}
+
+
+def _download_and_unpack_kitti_zip(
+    data,
+    dataset_dir,
+    scratch_dir,
+    splits,
+    name,
+    cleanup=False,
+    overwrite=False,
+):
+    url = data["url"]
+    zip_path = os.path.join(scratch_dir, os.path.basename(url))
+
+    if not etau.is_container(splits):
+        splits = [splits]
+
+    should_unzip = False
+    move_dirs = []
+
+    for split in splits:
+        unzipped_dir = os.path.join(scratch_dir, *data["contents"][split])
+        final_dir = os.path.join(dataset_dir, split, name)
+
+        if overwrite:
+            move_dirs.append((unzipped_dir, final_dir))
+
+            if os.path.isdir(final_dir):
+                logger.info("Overwriting existing directory '%s'", final_dir)
+                etau.delete_dir(final_dir)
+        elif not os.path.isdir(final_dir):
+            move_dirs.append((unzipped_dir, final_dir))
+
+        if overwrite:
+            should_unzip = True
+
+            if os.path.isdir(unzipped_dir):
+                etau.delete_dir(unzipped_dir)
+        elif not os.path.isdir(unzipped_dir) and not os.path.isdir(final_dir):
+            should_unzip = True
+
+    if overwrite or (should_unzip and not os.path.isfile(zip_path)):
+        logger.info("Downloading %s to '%s'", name, zip_path)
+        etaw.download_file(url, path=zip_path)
+    elif should_unzip:
+        logger.info("Using existing %s '%s'", name, zip_path)
+
+    if should_unzip:
+        logger.info("Extracting '%s'", zip_path)
+        etau.extract_zip(zip_path, outdir=scratch_dir)
+
+    if cleanup and os.path.isfile(zip_path):
+        etau.delete_file(zip_path)
+
+    for indir, outdir in move_dirs:
+        etau.move_dir(indir, outdir)
 
 
 def _parse_kitti_detection_row(row, frame_size, extra_attrs):
@@ -576,3 +811,277 @@ def _make_kitti_detection_row(detection, frame_size):
         cols.append(detection.confidence)
 
     return " ".join(map(str, cols))
+
+
+#
+# References for parsing the KITTI multiview data:
+# http://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=2d
+# https://github.com/kuixu/kitti_object_vis/blob/master/kitti_util.py
+# http://www.cvlibs.net/publications/Geiger2013IJRR.pdf
+#
+
+
+def _prepare_kitti_split(split_dir, overwrite=False):
+    samples_path = os.path.join(split_dir, "samples.json")
+    if not overwrite and os.path.isfile(samples_path):
+        return
+
+    group_field = "group"
+    label_field = "ground_truth"
+
+    dataset = fo.Dataset()
+    dataset.add_group_field(group_field, default="left")
+
+    dataset.app_config.plugins["3d"] = {
+        "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
+        "pointCloud": {
+            "rotation": [0, 0, 90],
+        },
+        "overlay": {
+            "rotation": [-90, 0, 0],
+            "itemRotation": [0, 90, 90],
+        },
+    }
+    dataset.save()
+
+    labels_dir = os.path.join(split_dir, "labels")
+    left_images_dir = os.path.join(split_dir, "left")
+    right_images_dir = os.path.join(split_dir, "right")
+    pcd_dir = os.path.join(split_dir, "pcd")
+    calib_dir = os.path.join(split_dir, "calib")
+
+    make_map = lambda d: {
+        os.path.splitext(os.path.basename(p))[0]: p
+        for p in etau.list_files(d, abs_paths=True)
+    }
+
+    is_labeled = os.path.isdir(labels_dir)
+
+    if is_labeled:
+        labels_map = make_map(labels_dir)
+        calib_map = make_map(calib_dir)
+
+    left_map = make_map(left_images_dir)
+    right_map = make_map(right_images_dir)
+    pcd_map = make_map(pcd_dir)
+
+    samples = []
+    uuids = sorted(left_map.keys())
+
+    logger.info("Parsing samples...")
+    with fou.ProgressBar() as pb:
+        for uuid in pb(uuids):
+            group = fo.Group()
+
+            left_filepath = left_map[uuid]
+            right_filepath = right_map[uuid]
+            pcd_filepath = pcd_map[uuid]
+
+            left_sample = fo.Sample(filepath=left_filepath)
+            left_sample[group_field] = group.element("left")
+
+            right_sample = fo.Sample(filepath=right_filepath)
+            right_sample[group_field] = group.element("right")
+
+            pcd_sample = fo.Sample(filepath=pcd_filepath)
+            pcd_sample[group_field] = group.element("pcd")
+
+            if is_labeled:
+                labels_path = labels_map[uuid]
+                calib_path = calib_map[uuid]
+
+                left_metadata = fom.ImageMetadata.build_for(left_filepath)
+                left_frame_size = (left_metadata.width, left_metadata.height)
+                gt_left, gt_3d = _load_kitti_annotations(
+                    labels_path, left_frame_size
+                )
+
+                right_metadata = fom.ImageMetadata.build_for(right_filepath)
+                right_frame_size = (
+                    right_metadata.width,
+                    right_metadata.height,
+                )
+
+                calib = _load_calibration_matrices(calib_path)
+                gt_right = _proj_3d_to_right_camera(
+                    gt_3d, calib, right_frame_size
+                )
+
+                left_sample["metadata"] = left_metadata
+                left_sample[label_field] = gt_left
+
+                right_sample["metadata"] = right_metadata
+                right_sample[label_field] = gt_right
+
+                pcd_sample[label_field] = gt_3d
+
+            samples.extend([left_sample, right_sample, pcd_sample])
+
+    dataset.add_samples(samples)
+
+    if is_labeled:
+        dataset.compute_metadata()
+
+    dataset.export(
+        export_dir=split_dir,
+        dataset_type=fo.types.FiftyOneDataset,
+        export_media=False,
+        rel_dir=split_dir,
+    )
+
+    dataset.delete()
+
+
+def _load_kitti_annotations(labels_path, frame_size):
+    gt2d = load_kitti_detection_annotations(labels_path, frame_size)
+    gt3d = gt2d.copy()
+
+    for detection in gt2d.detections:
+        del detection["alpha"]
+        del detection["dimensions"]
+        del detection["location"]
+        del detection["rotation_y"]
+
+    for detection in gt3d.detections:
+        detection["bounding_box"] = []
+        detection["rotation"] = [0, detection["rotation_y"], 0]
+        del detection["alpha"]
+        del detection["rotation_y"]
+        del detection["truncated"]
+        del detection["occluded"]
+
+    return gt2d, gt3d
+
+
+def _load_calibration_matrices(inpath):
+    with open(inpath, "r") as f:
+        lines = [l.strip() for l in f.readlines()]
+        lines = [l for l in lines if l]
+
+    calib = {}
+    for l in lines:
+        key, vals = l.split(":", 1)
+        vals = [float(v) for v in vals.split()]
+
+        if key.startswith("R"):
+            m = np.eye(4)
+            m[:3, :3] = np.reshape(vals, (3, 3))
+        elif key.startswith("P"):
+            m = np.reshape(vals, (3, 4))
+        elif key.startswith("T"):
+            m = np.eye(4)
+            m[:3, :4] = np.reshape(vals, (3, 4))
+
+        calib[key] = m
+
+    return calib
+
+
+def _roty(t):
+    c = np.cos(t)
+    s = np.sin(t)
+    return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
+
+
+def _proj_3d_to_right_camera(detections3d, calib, frame_size):
+    # Velodyne -> right camera
+    # P = calib["P3"] @ calib["R0_rect"] @ calib["Tr_velo_to_cam"]
+
+    # Reference 3D coordinates -> right camera
+    # P = calib["P3"] @ calib["R0_rect"]
+
+    # Rectified 3D coordinates -> right camera
+    P = calib["P3"]
+
+    width, height = frame_size
+
+    detections2d = detections3d.copy()
+    for detection in detections2d.detections:
+        h, w, l = detection["dimensions"]
+        t = np.array(detection["location"])
+        R = _roty(detection["rotation"][1])
+
+        # Construct (x, y, z) coordinates of 3d box corners
+        corners3d = np.array(
+            [
+                [l / 2, l / 2, -l / 2, -l / 2, l / 2, l / 2, -l / 2, -l / 2],
+                [0, 0, 0, 0, -h, -h, -h, -h],
+                [w / 2, -w / 2, -w / 2, w / 2, w / 2, -w / 2, -w / 2, w / 2],
+            ]
+        )
+        corners3d = R @ corners3d + t[:, np.newaxis]
+
+        # Project to image coordinates
+        corners2d = P @ np.vstack((corners3d, np.ones((1, 8))))
+        cornersx = corners2d[0, :] / corners2d[2, :]
+        cornersy = corners2d[1, :] / corners2d[2, :]
+
+        # Convert to [0, 1] x [0, 1]
+        cornersx = np.clip(cornersx / width, 0, 1)
+        cornersy = np.clip(cornersy / height, 0, 1)
+        x = min(cornersx)
+        y = min(cornersy)
+        w = max(cornersx) - x
+        h = max(cornersy) - y
+
+        detection.bounding_box = [x, y, w, h]
+
+        del detection["dimensions"]
+        del detection["location"]
+        del detection["rotation"]
+
+    return detections2d
+
+
+def _convert_velodyne_dir_to_pcd_dir(velodyne_dir, pcd_dir, overwrite=False):
+    inputs = []
+    for inpath in etau.list_files(velodyne_dir, abs_paths=True):
+        outname = os.path.splitext(os.path.basename(inpath))[0] + ".pcd"
+        outpath = os.path.join(pcd_dir, outname)
+
+        if overwrite or not os.path.isfile(outpath):
+            inputs.append((inpath, outpath))
+
+    if not inputs:
+        return
+
+    logger.info(
+        "Converting Velodyne scans in '%s' to PCD format in '%s'",
+        velodyne_dir,
+        pcd_dir,
+    )
+
+    etau.ensure_dir(pcd_dir)
+
+    num_workers = multiprocessing.cpu_count()
+    with fou.ProgressBar(total=len(inputs)) as pb:
+        with multiprocessing.Pool(processes=num_workers) as pool:
+            for _ in pb(pool.imap_unordered(_do_conversion, inputs)):
+                pass
+
+
+def _do_conversion(input):
+    inpath, outpath = input
+    _convert_velodyne_to_pcd(inpath, outpath)
+
+
+def _convert_velodyne_to_pcd(velodyne_path, pcd_path):
+    size_float = 4
+    list_pcd = []
+    list_colors = []
+    with open(velodyne_path, "rb") as f:
+        byte = f.read(size_float * 4)
+        while byte:
+            x, y, z, intensity = struct.unpack("ffff", byte)
+            r = intensity
+            g = intensity
+            b = intensity
+            list_colors.append([r, g, b])
+            list_pcd.append([x, y, z])
+            byte = f.read(size_float * 4)
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(np.asarray(list_pcd))
+    pcd.colors = o3d.utility.Vector3dVector(np.asarray(list_colors))
+
+    o3d.io.write_point_cloud(pcd_path, pcd)

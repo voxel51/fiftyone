@@ -1,4 +1,4 @@
-import { makeRouteDefinitions, RouteDefinition } from "@fiftyone/components";
+import { makeRouteDefinitions, RouteDefinition } from "@fiftyone/state";
 import { Environment } from "react-relay";
 
 const makeRoutes = (environment: Environment): RouteDefinition<any>[] => {

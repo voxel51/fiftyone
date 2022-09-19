@@ -1,7 +1,7 @@
+import { textFilter } from "@fiftyone/state";
 import React, { useState } from "react";
 import { useDebounce } from "react-use";
 import { useRecoilState } from "recoil";
-import { textFilter } from "../recoil";
 import { InputDiv } from "./utils";
 
 const Filter = ({ modal }: { modal: boolean }) => {

@@ -17,6 +17,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
+import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
 
 
@@ -161,6 +162,10 @@ class _PatchesView(fov.DatasetView):
     @property
     def name(self):
         return self.dataset_name + "-patches"
+
+    @property
+    def media_type(self):
+        return fom.IMAGE
 
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
@@ -493,6 +498,8 @@ def make_patches_dataset(
             "convert your video dataset to frames via `to_frames()`"
         )
 
+    fova.validate_collection(sample_collection, media_type=fom.IMAGE)
+
     if etau.is_str(other_fields):
         other_fields = [other_fields]
 
@@ -504,12 +511,7 @@ def make_patches_dataset(
         field_type = _get_single_label_field_type(sample_collection, field)
 
     dataset = fod.Dataset(name=name, _patches=True)
-    dataset._doc.app_sidebar_groups = (
-        sample_collection._dataset._doc.app_sidebar_groups
-    )
-
     dataset.media_type = fom.IMAGE
-    dataset._set_metadata(sample_collection.media_type)
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
 
@@ -644,9 +646,6 @@ def make_evaluation_patches_dataset(
 
     # Setup dataset with correct schema
     dataset = fod.Dataset(name=name, _patches=True)
-    dataset._doc.app_sidebar_groups = (
-        sample_collection._dataset._doc.app_sidebar_groups
-    )
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
@@ -913,14 +912,14 @@ def _merge_matched_labels(dataset, src_collection, eval_key, field):
 
 
 def _write_samples(dataset, src_collection):
-    pipeline = src_collection._pipeline(detach_frames=True)
+    pipeline = src_collection._pipeline(detach_frames=True, detach_groups=True)
     pipeline.append({"$out": dataset._sample_collection_name})
 
     src_collection._dataset._aggregate(pipeline=pipeline)
 
 
 def _add_samples(dataset, src_collection):
-    pipeline = src_collection._pipeline(detach_frames=True)
+    pipeline = src_collection._pipeline(detach_frames=True, detach_groups=True)
     pipeline.append(
         {
             "$merge": {
