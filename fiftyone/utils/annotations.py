@@ -185,7 +185,7 @@ def annotate(
             subclass of the backend being used
 
     Returns:
-        an :class:`AnnnotationResults`
+        an :class:`AnnotationResults`
     """
     # @todo support this?
     if samples._dataset._is_frames:
@@ -1032,7 +1032,8 @@ def load_annotations(
         ``None``, unless ``unexpected=="return"`` and unexpected labels are
         found, in which case a dict containing the extra labels is returned
     """
-    results = samples.load_annotation_results(anno_key, **kwargs)
+    dataset = samples._root_dataset
+    results = dataset.load_annotation_results(anno_key, **kwargs)
     annotations = results.backend.download_annotations(results)
     label_schema = results.config.label_schema
 
@@ -1067,7 +1068,7 @@ def load_annotations(
                 # Expected labels
                 if label_type == "scalar":
                     _merge_scalars(
-                        samples,
+                        dataset,
                         annos,
                         results,
                         label_field,
@@ -1075,7 +1076,7 @@ def load_annotations(
                     )
                 else:
                     _merge_labels(
-                        samples,
+                        dataset,
                         annos,
                         results,
                         label_field,
@@ -1090,7 +1091,7 @@ def load_annotations(
                     new_field = None
                 elif unexpected == "prompt":
                     new_field = _prompt_field(
-                        samples, anno_type, label_field, label_schema
+                        dataset, anno_type, label_field, label_schema
                     )
                 elif unexpected == "return":
                     new_field = None
@@ -1107,14 +1108,14 @@ def load_annotations(
 
                 if new_field:
                     new_field = _handle_frame_fields(
-                        new_field, samples, label_field
+                        dataset, new_field, label_field
                     )
 
                     if anno_type == "scalar":
-                        _merge_scalars(samples, annos, results, new_field)
+                        _merge_scalars(dataset, annos, results, new_field)
                     else:
                         _merge_labels(
-                            samples, annos, results, new_field, anno_type
+                            dataset, annos, results, new_field, anno_type
                         )
                 else:
                     if label_field:
@@ -1130,7 +1131,7 @@ def load_annotations(
                     if unexpected == "return":
                         unexpected_annos[label_field][anno_type] = annos
 
-    results.backend.save_run_results(samples, anno_key, results)
+    results.backend.save_run_results(dataset, anno_key, results)
 
     if cleanup:
         results.cleanup()
@@ -1139,14 +1140,14 @@ def load_annotations(
         return dict(unexpected_annos) if unexpected_annos else None
 
 
-def _handle_frame_fields(field, samples, ref_field):
-    if samples.media_type != fomm.VIDEO:
+def _handle_frame_fields(dataset, field, ref_field):
+    if dataset.media_type != fomm.VIDEO:
         return field
 
     if (
-        ref_field is None or samples._is_frame_field(ref_field)
-    ) and not samples._is_frame_field(field):
-        field = samples._FRAMES_PREFIX + field
+        ref_field is None or dataset._is_frame_field(ref_field)
+    ) and not dataset._is_frame_field(field):
+        field = dataset._FRAMES_PREFIX + field
 
     return field
 
@@ -1176,7 +1177,7 @@ def _get_writeable_attributes(attributes):
     return [k for k, v in attributes.items() if not v.get("read_only", False)]
 
 
-def _prompt_field(samples, label_type, label_field, label_schema):
+def _prompt_field(dataset, label_type, label_field, label_schema):
     if label_field:
         new_field = input(
             "Found unexpected labels of type '%s' when loading annotations "
@@ -1198,24 +1199,24 @@ def _prompt_field(samples, label_type, label_field, label_schema):
         fo_label_type = _LABEL_TYPES_MAP[label_type]
 
     if label_field is not None:
-        _, is_frame_field = samples._handle_frame_field(label_field)
+        _, is_frame_field = dataset._handle_frame_field(label_field)
     else:
-        is_frame_field = samples.media_type == fomm.VIDEO
+        is_frame_field = dataset.media_type == fomm.VIDEO
 
     if is_frame_field:
-        schema = samples.get_frame_field_schema()
+        schema = dataset.get_frame_field_schema()
     else:
-        schema = samples.get_field_schema()
+        schema = dataset.get_field_schema()
 
     while True:
         is_good_field = new_field not in label_schema
 
         if is_good_field:
             if is_frame_field:
-                if not samples._is_frame_field(new_field):
-                    new_field = samples._FRAMES_PREFIX + new_field
+                if not dataset._is_frame_field(new_field):
+                    new_field = dataset._FRAMES_PREFIX + new_field
 
-                field, _ = samples._handle_frame_field(new_field)
+                field, _ = dataset._handle_frame_field(new_field)
             else:
                 field = new_field
 
@@ -1260,20 +1261,20 @@ def _prompt_field(samples, label_type, label_field, label_schema):
     return new_field
 
 
-def _merge_scalars(samples, anno_dict, results, label_field, label_info=None):
+def _merge_scalars(dataset, anno_dict, results, label_field, label_info=None):
     if label_info is None:
         label_info = {}
 
     allow_additions = label_info.get("allow_additions", True)
     allow_deletions = label_info.get("allow_deletions", True)
 
-    is_video = samples._is_frame_field(label_field)
+    is_video = dataset._is_frame_field(label_field)
 
     # Retrieve a view that contains all samples involved in the annotation run
     id_map = results.id_map.get(label_field, {})
     uploaded_ids = set(k for k, v in id_map.items() if v is not None)
     sample_ids = list(uploaded_ids | set(anno_dict.keys()))
-    view = samples._dataset.select(sample_ids)
+    view = dataset.select(sample_ids)
 
     if is_video:
         field, _ = view._handle_frame_field(label_field)
@@ -1345,7 +1346,7 @@ def _merge_scalars(samples, anno_dict, results, label_field, label_info=None):
 
 
 def _merge_labels(
-    samples,
+    dataset,
     anno_dict,
     results,
     label_field,
@@ -1372,21 +1373,21 @@ def _merge_labels(
     else:
         is_list = False
 
-    _ensure_label_field(samples, label_field, fo_label_type)
+    _ensure_label_field(dataset, label_field, fo_label_type)
 
-    is_video = samples.media_type == fomm.VIDEO
+    is_video = dataset.media_type == fomm.VIDEO
 
     if is_video and label_type in _TRACKABLE_TYPES:
         if not existing_field:
             # Always include keyframe info when importing new video tracks
             only_keyframes = True
 
-        _update_tracks(samples, label_field, anno_dict, only_keyframes)
+        _update_tracks(dataset, label_field, anno_dict, only_keyframes)
 
     id_map = results.id_map.get(label_field, {})
 
     if is_video:
-        field, _ = samples._handle_frame_field(label_field)
+        field, _ = dataset._handle_frame_field(label_field)
         added_id_map = defaultdict(lambda: defaultdict(list))
     else:
         field = label_field
@@ -1460,11 +1461,11 @@ def _merge_labels(
     # Delete labels that were deleted in the annotation task
     if delete_ids and allow_deletions:
         _del_ids = [key[-1] for key in delete_ids]
-        samples._dataset.delete_labels(ids=_del_ids, fields=label_field)
+        dataset.delete_labels(ids=_del_ids, fields=label_field)
 
     # Add/merge labels from the annotation task
     sample_ids = list(anno_dict.keys())
-    view = samples._dataset.select(sample_ids).select_fields(label_field)
+    view = dataset.select(sample_ids).select_fields(label_field)
     for sample in view.iter_samples(progress=True):
         sample_id = sample.id
         sample_annos = anno_dict[sample_id]
@@ -1574,22 +1575,20 @@ def _merge_labels(
     results._update_id_map(label_field, added_id_map)
 
 
-def _ensure_label_field(samples, label_field, fo_label_type):
-    field, is_frame_field = samples._handle_frame_field(label_field)
+def _ensure_label_field(dataset, label_field, fo_label_type):
+    field, is_frame_field = dataset._handle_frame_field(label_field)
     if is_frame_field:
-        if not samples.has_frame_field(field):
-            samples._dataset.add_frame_field(
-                field,
-                fof.EmbeddedDocumentField,
-                embedded_doc_type=fo_label_type,
-            )
+        dataset.add_frame_field(
+            field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fo_label_type,
+        )
     else:
-        if not samples.has_sample_field(field):
-            samples._dataset.add_sample_field(
-                field,
-                fof.EmbeddedDocumentField,
-                embedded_doc_type=fo_label_type,
-            )
+        dataset.add_sample_field(
+            field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fo_label_type,
+        )
 
 
 def _merge_label(
@@ -1631,13 +1630,13 @@ def _merge_label(
             label.set_attribute_value(name, value)
 
 
-def _update_tracks(samples, label_field, anno_dict, only_keyframes):
-    # Using unfiltered samples is important here because we need to ensure
+def _update_tracks(dataset, label_field, anno_dict, only_keyframes):
+    # Using the full dataset here is important here because we need to ensure
     # that any new indexes never clash with *any* existing tracks
-    view = samples._dataset.select(list(anno_dict.keys()))
+    view = dataset.select(list(anno_dict.keys()))
 
-    _, id_path = samples._get_label_field_path(label_field, "id")
-    _, index_path = samples._get_label_field_path(label_field, "index")
+    _, id_path = dataset._get_label_field_path(label_field, "id")
+    _, index_path = dataset._get_label_field_path(label_field, "index")
 
     sample_ids, frame_ids, label_ids, indexes = view.values(
         ["id", "frames.id", id_path, index_path]
