@@ -344,6 +344,7 @@ def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
     data = from_dict(Dataset, doc, config=Config(check_types=False))
     data.view_cls = None
 
+    collection = dataset.view()
     if view is not None:
         if view._dataset != dataset:
             d = view._dataset._serialize()
@@ -364,6 +365,11 @@ def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
         if view.media_type != data.media_type:
             data.id = ObjectId()
             data.media_type = view.media_type
+
+        collection = view
+
+    if dataset.media_type == fom.GROUP:
+        data.group_slice = collection.group_slice
 
     # old dataset docs, e.g. from imports have frame fields attached even for
     # image datasets. we need to remove them
