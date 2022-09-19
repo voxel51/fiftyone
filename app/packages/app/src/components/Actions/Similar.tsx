@@ -6,7 +6,6 @@ import {
   useRecoilCallback,
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
-  useResetRecoilState,
 } from "recoil";
 
 import { SORT_BY_SIMILARITY } from "../../utils/links";
@@ -210,13 +209,11 @@ const SortBySimilarity = React.memo(
     );
 
     const hasSorting = Boolean(current);
-    const reset = useRecoilTransaction_UNSTABLE(({ set }) => () => {
-      set(fos.extendedStages, (current) => {
-        const copy = { ...current };
-        delete copy["fiftyone.core.stages.SortBySimilarity"];
-        return copy;
-      });
-    });
+    const reset = useRecoilCallback(
+      ({ reset }) =>
+        () =>
+          reset(fos.similarityParameters)
+    );
     const hasSimilarityKeys =
       useRecoilValue(availableSimilarityKeys(modal)).length > 0;
 

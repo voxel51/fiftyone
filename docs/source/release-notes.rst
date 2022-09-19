@@ -3,6 +3,87 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.17.0:
+
+FiftyOne 0.17.0
+---------------
+*Released September 19, 2022*
+
+App
+
+- Added support for :ref:`visualizing grouped datasets <groups-app>` in the
+  App `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added support for :ref:`visualizing point cloud samples <3d-visualizer>` in
+  the modal `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added support for visualizing and interacting with |GeoLocation| data in a
+  new :ref:`Map tab <app-map-tab>`
+  `#1976 <https://github.com/voxel51/fiftyone/pull/1976>`_
+- Added initial support for :ref:`custom App plugins <app-plugins>`
+  `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added support for configuring
+  :ref:`multiple media fields <app-multiple-media-fields>`
+  `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Fixed Google Colab screenshotting and cell updates
+  `#2069 <https://github.com/voxel51/fiftyone/pull/2069>`_
+
+Core
+
+- Added support for :ref:`grouped datasets <groups>`, e.g., multiple camera
+  view scenes `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added support for :ref:`point cloud samples <groups-point-clouds>` in grouped
+  datasets `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added an :attr:`app_config <fiftyone.core.dataset.Dataset.app_config>`
+  property to datasets for :ref:`configuring App behavior <custom-app-config>`
+  on a per-dataset basis
+  `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added an optional `rel_dir` parameter to
+  :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+  and
+  :meth:`draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
+  `#2060 <https://github.com/voxel51/fiftyone/pull/2060>`_
+- Added an optional `abs_paths=True` option to
+  :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+  `#2060 <https://github.com/voxel51/fiftyone/pull/2060>`_
+- Added an optional ``use_dirs=True`` parameter to
+  :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+  that causes metadata to be exported in per-sample/frame JSON files
+  `#2028 <https://github.com/voxel51/fiftyone/pull/2028>`_
+- Updated the :ref:`COCO importer <COCODetectionDataset-import>` to load all
+  available label types by default
+  `#1869 <https://github.com/voxel51/fiftyone/pull/1869>`_
+- Fixed a bug when passing `ordered=True` to
+  :meth:`select_by() <fiftyone.core.collections.SampleCollection.select_by>`
+  `#2059 <https://github.com/voxel51/fiftyone/pull/2059>`_
+- Fixed an error that would occur when storing
+  :ref:`custom embedded documents <custom-embedded-documents>` on dynamic
+  label attributes `#2051 <https://github.com/voxel51/fiftyone/pull/2051>`_
+- Fixed a
+  :meth:`match_frames() <fiftyone.core.collections.SampleCollection.match_frames>`
+  bug that caused all frames to be included, even if the view filters the
+  frames `#2029 <https://github.com/voxel51/fiftyone/pull/2029>`_
+
+Docs
+
+- Added a :doc:`tutorial </tutorials/detectron2>` showing how to integrate
+  FiftyOne into a Detectron2 model training pipeline
+  `#2054 <https://github.com/voxel51/fiftyone/pull/2054>`_
+
+Annotation
+
+- Fixed a bug that occured when checking if tasks exist on CVAT v2 servers
+  `#2070 <https://github.com/voxel51/fiftyone/pull/2070>`_
+- Fixed an error that occured when deseriailizing Label Studio annotation
+  results `#2074 <https://github.com/voxel51/fiftyone/pull/2074>`_
+
+Zoo
+
+- Added :ref:`clip-vit-base32-torch <model-zoo-clip-vit-base32-torch>` to the
+  model zoo! `#2072 <https://github.com/voxel51/fiftyone/pull/2072>`_
+- Added the :ref:`Quickstart Groups dataset <dataset-zoo-quickstart-groups>`
+  to the dataset zoo! `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added the :ref:`KITTI Multiview dataset <dataset-zoo-kitti-multiview>` to the
+  dataset zoo! `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+
 .. _release-notes-v0.16.6:
 
 FiftyOne 0.16.6

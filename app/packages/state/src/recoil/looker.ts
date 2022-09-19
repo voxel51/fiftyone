@@ -43,9 +43,11 @@ export const lookerOptions = selectorFamily<
       );
       const video = get(selectors.isVideoDataset)
         ? {
-            loop: get(
-              selectors.appConfigOption({ modal: true, key: "loopVideos" })
-            ),
+            loop: modal
+              ? get(
+                  selectors.appConfigOption({ modal: true, key: "loopVideos" })
+                )
+              : true,
           }
         : {};
 
@@ -64,7 +66,6 @@ export const lookerOptions = selectorFamily<
         filter: withFilter ? get(pathFilter(modal)) : undefined,
         activePaths: get(schemaAtoms.activeFields({ modal })),
         zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(modal)),
-        loop: true,
         timeZone: get(selectors.timeZone),
         showOverlays: modal ? get(atoms.showOverlays) : true,
         alpha: get(atoms.alpha(modal)),

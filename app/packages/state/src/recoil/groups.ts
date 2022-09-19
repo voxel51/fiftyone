@@ -53,8 +53,11 @@ export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
 export const groupSlices = selector<string[]>({
   key: "groupSlices",
   get: ({ get }) => {
+    console.log(get(groupMediaTypes));
     return get(groupMediaTypes)
-      .filter(({ mediaType }) => mediaType !== "point_cloud")
+      .filter(
+        ({ mediaType }) => !["point_cloud", "point-cloud"].includes(mediaType)
+      )
       .map(({ name }) => name)
       .sort();
   },
@@ -66,7 +69,7 @@ export const pinnedSlice = selector<string | null>({
     const { groupMediaTypes } = get(dataset);
 
     for (const { name, mediaType } of groupMediaTypes) {
-      if (mediaType === "point_cloud" || mediaType === "point-cloud") {
+      if (["point_cloud", "point-cloud"].includes(mediaType)) {
         return name;
       }
     }

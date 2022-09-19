@@ -24,6 +24,7 @@ import {
   groupSlice,
   similarityParameters,
   extendedSelection,
+  selectedMediaField,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -112,6 +113,14 @@ const useStateUpdate = () => {
           set(groupSlice(false), slice);
 
           reset(similarityParameters);
+          set(
+            selectedMediaField(false),
+            dataset.appConfig.gridMediaField || "filepath"
+          );
+          reset(
+            selectedMediaField(true),
+            dataset.appConfig.modalMediaField || "filepath"
+          );
           reset(extendedSelection);
           reset(filters);
         }
