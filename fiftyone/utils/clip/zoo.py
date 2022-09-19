@@ -73,7 +73,7 @@ class TorchCLIPModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
 
 
 class TorchCLIPModel(fout.TorchImageModel):
-    """Torch implementation of CLIP from `https://github.com/openai/CLIP`_.
+    """Torch implementation of CLIP from https://github.com/openai/CLIP.
 
     Args:
         config: a :class:`TorchCLIPModelConfig`
