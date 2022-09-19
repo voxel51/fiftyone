@@ -173,7 +173,7 @@ class Dataset:
             for name, targets in doc.get("mask_targets", {}).items()
         ]
         doc["sample_fields"] = _flatten_fields([], doc["sample_fields"])
-        doc["frame_fields"] = _flatten_fields([], doc["frame_fields"])
+        doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
         doc["skeletons"] = list(
