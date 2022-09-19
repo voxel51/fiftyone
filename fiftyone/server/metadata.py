@@ -151,8 +151,7 @@ async def read_url_metadata(session, url, is_video):
     if is_video:
         info = await get_stream_info(url, session=session)
         return {
-            "width": info.frame_size[0],
-            "height": info.frame_size[1],
+            "aspect_ratio": info.frame_size[0] / info.frame_size[1],
             "frame_rate": info.frame_rate,
         }
 
@@ -171,7 +170,7 @@ async def read_url_metadata(session, url, is_video):
     )
     """
 
-    return {"width": width, "height": height}
+    return {"aspect_ratio": width / height}
 
 
 async def read_local_metadata(local_path, is_video):
