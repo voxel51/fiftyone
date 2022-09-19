@@ -8,29 +8,12 @@ import {
   Control,
   ControlEventKeyType,
   ControlMap,
-  StateUpdate,
   VideoState,
 } from "../../state";
 import { clampScale } from "../../util";
-import { BaseElement, Events } from "../base";
 import { getFrameNumber } from "../util";
 
-import {
-  lookerHelpPanelItems,
-  lookerShortcutValue,
-  lookerShortcutTitle,
-  lookerShortcutDetail,
-} from "./actions.module.css";
-import {
-  lookerPanel,
-  lookerPanelContainer,
-  lookerPanelHeader,
-  lookerPanelVerticalContainer,
-  lookerPanelClose,
-  lookerPanelFlex,
-} from "./panel.module.css";
 import { dispatchTooltipEvent } from "./util";
-import closeIcon from "../../icons/close.svg";
 
 const readActions = <State extends BaseState>(
   actions: ControlMap<State>
@@ -38,7 +21,7 @@ const readActions = <State extends BaseState>(
   return Object.fromEntries(
     Object.entries(actions).reduce((acc, [_, v]) => {
       if (Array.isArray(v.eventKeys)) {
-        return [...acc, ...v.eventKeys.map((key) => [key, v])];
+        return [...acc, [v.eventKeys[0], v]];
       }
 
       return [...acc, [v.eventKeys || v.shortcut, v]];
@@ -236,6 +219,9 @@ export const help: Control = {
         return { showHelp: true, options: { showJSON: false, showHelp: true } };
       }
 
+      dispatchEvent("options", {
+        showHelp: false,
+      });
       return { showHelp: false };
     });
   },
@@ -698,23 +684,3 @@ export const VIDEO = {
 };
 
 export const VIDEO_SHORTCUTS = readActions(VIDEO);
-
-const addItem =
-  <State extends BaseState>(items: HTMLDivElement) =>
-  (value: Control<State>) => {
-    const shortcut = document.createElement("div");
-    shortcut.classList.add(lookerShortcutValue);
-    shortcut.innerHTML = value.shortcut;
-
-    const title = document.createElement("div");
-    title.classList.add(lookerShortcutTitle);
-    title.innerText = value.title;
-
-    const detail = document.createElement("div");
-    detail.classList.add(lookerShortcutDetail);
-    detail.innerText = value.detail;
-
-    items.appendChild(shortcut);
-    items.appendChild(title);
-    items.appendChild(detail);
-  };

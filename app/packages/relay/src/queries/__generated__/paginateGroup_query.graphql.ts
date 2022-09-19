@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<89ab927b7b20f31b25218c10824f51de>>
+ * @generated SignedSource<<c62d61558f2189e329945c0e1cc98580>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,17 +18,32 @@ export type paginateGroup_query$data = {
         | {
             readonly __typename: "ImageSample";
             readonly aspectRatio: number;
+            readonly id: string;
             readonly sample: object;
+            readonly urls: ReadonlyArray<{
+              readonly field: string;
+              readonly url: string;
+            }>;
           }
         | {
             readonly __typename: "PointCloudSample";
+            readonly id: string;
             readonly sample: object;
+            readonly urls: ReadonlyArray<{
+              readonly field: string;
+              readonly url: string;
+            }>;
           }
         | {
             readonly __typename: "VideoSample";
             readonly aspectRatio: number;
             readonly frameRate: number;
+            readonly id: string;
             readonly sample: object;
+            readonly urls: ReadonlyArray<{
+              readonly field: string;
+              readonly url: string;
+            }>;
           }
         | {
             // This will never be '%other', but we need some
@@ -53,14 +68,46 @@ const node: ReaderFragment = (function () {
       alias: null,
       args: null,
       kind: "ScalarField",
-      name: "aspectRatio",
+      name: "id",
       storageKey: null,
     },
     v2 = {
       alias: null,
       args: null,
       kind: "ScalarField",
+      name: "aspectRatio",
+      storageKey: null,
+    },
+    v3 = {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
       name: "sample",
+      storageKey: null,
+    },
+    v4 = {
+      alias: null,
+      args: null,
+      concreteType: "MediaURL",
+      kind: "LinkedField",
+      name: "urls",
+      plural: true,
+      selections: [
+        {
+          alias: null,
+          args: null,
+          kind: "ScalarField",
+          name: "field",
+          storageKey: null,
+        },
+        {
+          alias: null,
+          args: null,
+          kind: "ScalarField",
+          name: "url",
+          storageKey: null,
+        },
+      ],
       storageKey: null,
     };
   return {
@@ -174,13 +221,18 @@ const node: ReaderFragment = (function () {
                   },
                   {
                     kind: "InlineFragment",
-                    selections: [v1 /*: any*/, v2 /*: any*/],
+                    selections: [
+                      v1 /*: any*/,
+                      v2 /*: any*/,
+                      v3 /*: any*/,
+                      v4 /*: any*/,
+                    ],
                     type: "ImageSample",
                     abstractKey: null,
                   },
                   {
                     kind: "InlineFragment",
-                    selections: [v2 /*: any*/],
+                    selections: [v1 /*: any*/, v3 /*: any*/, v4 /*: any*/],
                     type: "PointCloudSample",
                     abstractKey: null,
                   },
@@ -188,6 +240,7 @@ const node: ReaderFragment = (function () {
                     kind: "InlineFragment",
                     selections: [
                       v1 /*: any*/,
+                      v2 /*: any*/,
                       {
                         alias: null,
                         args: null,
@@ -195,7 +248,8 @@ const node: ReaderFragment = (function () {
                         name: "frameRate",
                         storageKey: null,
                       },
-                      v2 /*: any*/,
+                      v3 /*: any*/,
+                      v4 /*: any*/,
                     ],
                     type: "VideoSample",
                     abstractKey: null,
@@ -240,6 +294,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "5d0f0fb34624c33ec148745af357c70e";
+(node as any).hash = "20891cc18082d493738d44781ff64148";
 
 export default node;

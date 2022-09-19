@@ -12,10 +12,11 @@ import typing as t
 
 
 import fiftyone.core.clips as focl
+from fiftyone.core.collections import SampleCollection
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.server.filters import GroupElementFilter, SampleFilter
+from fiftyone.server.filters import SampleFilter
 
 import fiftyone.server.metadata as fosm
 from fiftyone.server.paginator import Connection, Edge, PageInfo
@@ -23,9 +24,17 @@ import fiftyone.server.view as fosv
 from fiftyone.server.scalars import BSON, JSON, BSONArray
 
 
+@gql.type
+class MediaURL:
+    field: str
+    url: str
+
+
 @gql.interface
 class Sample:
+    id: gql.ID
     sample: JSON
+    urls: t.List[MediaURL]
 
 
 @gql.type
@@ -84,22 +93,8 @@ async def paginate_samples(
     if media == fom.MIXED:
         media = root_view.group_media_types[root_view.default_group_slice]
 
-    has_video_slice = False
     if media == fom.GROUP:
         media = view.group_media_types[view.group_slice]
-        has_video_slice = any(
-            [slice == fom.VIDEO for slice in view.group_media_types.values()]
-        )
-
-    media_type = MEDIA_TYPES[media]
-
-    if media == fom.VIDEO or has_video_slice:
-        if isinstance(view, focl.ClipsView):
-            expr = F("frame_number") == F("$support")[0]
-        else:
-            expr = F("frame_number") == 1
-
-        view = view.set_field("frames", F("frames").filter(expr))
 
     if after is None:
         after = "-1"
@@ -114,6 +109,7 @@ async def paginate_samples(
             manual_group_select=sample_filter
             and sample_filter.group
             and (sample_filter.group.id and not sample_filter.group.slice),
+            support=[1, 1],
         ),
     ).to_list(first + 1)
 
@@ -122,44 +118,23 @@ async def paginate_samples(
         samples = samples[:first]
         more = True
 
-    metadata_map = {s["filepath"]: s.get("metadata", None) for s in samples}
-    media_types = {f: fom.get_media_type(f) for f in metadata_map}
-    metadatas = await asyncio.gather(
+    metadata_cache = {}
+    url_cache = {}
+    nodes = await asyncio.gather(
         *[
-            fosm.get_metadata(
-                filepath, media_type, metadata=metadata_map[filepath]
-            )
-            for filepath, media_type in media_types.items()
+            _create_sample_item(view, sample, metadata_cache, url_cache)
+            for sample in samples
         ]
     )
-    metadata_map = {f: m for f, m in zip(media_types, metadatas)}
 
     edges = []
-    for idx, doc in enumerate(samples):
-        cls = (
-            media_type
-            if media_type is not None
-            else VideoSample
-            if media_types[doc["filepath"]] == fom.VIDEO
-            else ImageSample
-        )
+    for idx, node in enumerate(nodes):
         edges.append(
             Edge(
-                node=from_dict(
-                    cls,
-                    {"sample": doc, **metadata_map[doc["filepath"]]},
-                    Config(check_types=False),
-                ),
+                node=node,
                 cursor=str(idx + int(after) + 1),
             )
         )
-
-    results = []
-    for sample in samples:
-        filepath = sample["filepath"]
-        sample_result = {"sample": sample}
-        sample_result.update(metadata_map[filepath])
-        results.append(sample_result)
 
     return Connection(
         page_info=PageInfo(
@@ -169,4 +144,32 @@ async def paginate_samples(
             end_cursor=edges[-1].cursor if len(edges) > 1 else None,
         ),
         edges=edges,
+    )
+
+
+async def _create_sample_item(
+    dataset: SampleCollection,
+    sample: t.Dict,
+    metadata_cache: t.Dict[str, t.Dict],
+    url_cache: t.Dict[str, str],
+) -> SampleItem:
+    media_type = fom.get_media_type(sample["filepath"])
+
+    if media_type == fom.IMAGE:
+        cls = ImageSample
+    elif media_type == fom.VIDEO:
+        cls = VideoSample
+    elif media_type == fom.POINT_CLOUD:
+        cls = PointCloudSample
+    else:
+        raise ValueError(f"unknown media type '{media_type}'")
+
+    metadata = await fosm.get_metadata(
+        dataset, sample, media_type, metadata_cache, url_cache
+    )
+
+    return from_dict(
+        cls,
+        {"id": sample["_id"], "sample": sample, **metadata},
+        Config(check_types=False),
     )

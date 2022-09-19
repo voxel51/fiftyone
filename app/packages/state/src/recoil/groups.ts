@@ -8,7 +8,7 @@ import {
   paginateGroup_query$key,
 } from "@fiftyone/relay";
 
-import { atomFamily, selector, selectorFamily } from "recoil";
+import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { VariablesOf, readInlineData } from "react-relay";
 
 import { graphQLSelector } from "recoil-relay";
@@ -45,11 +45,16 @@ export const groupSlice = atomFamily<string, boolean>({
   default: null,
 });
 
+export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
+  key: "groupMediaTypes",
+  get: ({ get }) => get(dataset).groupMediaTypes,
+});
+
 export const groupSlices = selector<string[]>({
   key: "groupSlices",
   get: ({ get }) => {
-    return get(dataset)
-      .groupMediaTypes.filter(({ mediaType }) => mediaType !== "point_cloud")
+    return get(groupMediaTypes)
+      .filter(({ mediaType }) => mediaType !== "point_cloud")
       .map(({ name }) => name)
       .sort();
   },
@@ -102,6 +107,11 @@ export const groupId = selector<string>({
   },
 });
 
+export const refreshGroupQuery = atom<number>({
+  key: "refreshGroupQuery",
+  default: 0,
+});
+
 export const groupQuery = graphQLSelector<
   VariablesOf<paginateGroupQuery>,
   ResponseFrom<paginateGroupQuery>
@@ -136,7 +146,7 @@ export const groupQuery = graphQLSelector<
 export const pinnedSliceSample = selector({
   key: "pinnedSliceSampleFragment",
   get: ({ get }) => {
-    const data = readInlineData<paginateGroupPinnedSample_query$key>(
+    let data = readInlineData<paginateGroupPinnedSample_query$key>(
       paginateGroupPinnedSampleFragment,
       get(groupQuery)
     ).sample;
@@ -145,7 +155,17 @@ export const pinnedSliceSample = selector({
       throw new Error("unsupported pinned sample type");
     }
 
-    return data.sample;
+    if (typeof data.sample === "string") {
+      data = {
+        ...data,
+        sample: JSON.parse(data.sample),
+      };
+    }
+
+    return {
+      sample: data.sample,
+      urls: Object.fromEntries(data.urls.map(({ field, url }) => [field, url])),
+    };
   },
 });
 
@@ -160,7 +180,7 @@ export const activeModalSample = selector<
   key: "activeModalSample",
   get: ({ get }) => {
     if (get(sidebarOverride)) {
-      return get(pinnedSliceSample);
+      return get(pinnedSliceSample).sample;
     }
 
     return get(modal)?.sample;

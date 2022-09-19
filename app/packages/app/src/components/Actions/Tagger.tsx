@@ -27,6 +27,7 @@ import {
   tagStatistics,
   numItemsInSelection,
   selectedSamplesCount,
+  tagParameters,
 } from "./utils";
 import { Button } from "../utils";
 import { PopoutSectionTitle } from "@fiftyone/components";
@@ -39,6 +40,7 @@ import {
   groupId,
   groupStatistics,
   Lookers,
+  sidebarSampleId,
 } from "@fiftyone/state";
 
 const IconDiv = styled.div`
@@ -340,6 +342,7 @@ const useTagCallback = (
   const setAggs = useSetRecoilState(fos.aggregationsTick);
   const setLabels = fos.useSetSelectedLabels();
   const setSamples = fos.useSetSelected();
+  const updateSample = fos.useUpdateSample();
 
   const finalize = [
     () => setLabels([]),
@@ -354,58 +357,41 @@ const useTagCallback = (
   return useRecoilCallback(
     ({ snapshot, set, reset }) =>
       async ({ changes }) => {
-        const activeLabels = await snapshot.getPromise(
-          fos.labelPaths({ expanded: false })
-        );
-        const f = await snapshot.getPromise(
-          modal ? fos.modalFilters : fos.filters
-        );
-        const view = await snapshot.getPromise(fos.view);
-        const dataset = await snapshot.getPromise(fos.datasetName);
-        const selectedLabels =
-          modal && targetLabels
-            ? await snapshot.getPromise(fos.selectedLabelList)
-            : [];
-
-        const selectedSamples = await snapshot.getPromise(fos.selectedSamples);
-        const hiddenLabels =
-          modal && targetLabels
-            ? await snapshot.getPromise(fos.hiddenLabelsArray)
-            : null;
-        const hasSelected = selectedLabels.length || selectedSamples.size;
-
         const modalData = modal ? await snapshot.getPromise(fos.modal) : null;
-        const stats = await snapshot.getPromise(groupStatistics(modal));
-        let slice: string | null = null;
-        let group: string | null = null;
+        const isGroup = await snapshot.getPromise(fos.isGroup);
 
-        if (stats !== "group" && !hasSelected) {
-          slice = await snapshot.getPromise(currentSlice(modal));
-          group = modal ? await snapshot.getPromise(groupId) : null;
-        }
         const { samples } = await getFetchFunction()("POST", "/tag", {
-          filters: f,
-          view,
-          dataset,
-          active_label_fields: activeLabels,
-          target_labels: targetLabels,
-          changes,
-          group_id: group,
-          slice,
-          modal: modal ? modalData.sample._id : null,
-          sample_ids: modal
-            ? null
-            : selectedSamples.size
-            ? [...selectedSamples]
-            : null,
-          labels:
-            selectedLabels && selectedLabels.length
-              ? toSnakeCase(selectedLabels)
+          ...tagParameters({
+            activeFields: await snapshot.getPromise(
+              fos.labelPaths({ expanded: false })
+            ),
+            dataset: await snapshot.getPromise(fos.datasetName),
+            filters: await snapshot.getPromise(
+              modal ? fos.modalFilters : fos.filters
+            ),
+            hiddenLabels: await snapshot.getPromise(fos.hiddenLabelsArray),
+            groupData: isGroup
+              ? {
+                  id: await snapshot.getPromise(groupId),
+                  slice: await snapshot.getPromise(currentSlice(modal)),
+                  mode: await snapshot.getPromise(groupStatistics(modal)),
+                }
               : null,
-          hidden_labels: hiddenLabels ? toSnakeCase(hiddenLabels) : null,
+            modal,
+            sampleId: modal
+              ? await snapshot.getPromise(fos.sidebarSampleId)
+              : null,
+            selectedLabels: await snapshot.getPromise(fos.selectedLabelList),
+            selectedSamples: await snapshot.getPromise(fos.selectedSamples),
+            targetLabels,
+            view: await snapshot.getPromise(fos.view),
+          }),
+          current_frame: lookerRef?.current?.frameNumber,
+          changes,
         });
 
-        samples &&
+        if (samples) {
+          set(fos.refreshGroupQuery, (cur) => cur + 1);
           samples.forEach((sample) => {
             if (modalData.sample._id === sample._id) {
               set(fos.modal, { ...modalData, sample });
@@ -413,17 +399,9 @@ const useTagCallback = (
                 lookerRef.current &&
                 lookerRef.current.updateSample(sample);
             }
-            const current = fos.getSample(sample._id);
-
-            if (!current) {
-              throw new Error("sample not found");
-            }
-
-            fos.updateSample(sample._id, {
-              ...current,
-              sample,
-            });
+            updateSample(sample);
           });
+        }
 
         set(fos.anyTagging, false);
         reset(fos.selectedLabels);
@@ -431,7 +409,7 @@ const useTagCallback = (
 
         finalize.forEach((r) => r());
       },
-    [modal, targetLabels, lookerRef]
+    [modal, targetLabels, lookerRef, updateSample]
   );
 };
 

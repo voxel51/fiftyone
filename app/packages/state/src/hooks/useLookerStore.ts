@@ -20,18 +20,10 @@ export interface LookerStore<T extends Lookers> {
   reset: () => void;
 }
 
-const stores = new Set<{
+export const stores = new Set<{
   samples: Map<string, SampleData>;
   lookers: LRUCache<string, Lookers>;
 }>();
-
-export const updateSample = (id: string, sample: SampleData) =>
-  stores.forEach((store) => {
-    if (store.samples.get(id)) {
-      store.samples.set(id, sample);
-      store.lookers.get(id)?.updateSample(sample.sample);
-    }
-  });
 
 export const getSample = (id: string): SampleData | undefined => {
   for (const { samples: store } of stores.keys()) {

@@ -257,18 +257,6 @@ function CameraSetup({ cameraRef, controlsRef, settings }) {
   );
 }
 
-export function getFilepathField(sample, fields) {
-  fields = fields || ["filepath"];
-
-  for (const fieldName of fields) {
-    const filepath = sample[fieldName];
-    if (typeof filepath === "string" && filepath.endsWith(".pcd")) {
-      return fieldName;
-    }
-  }
-  return null;
-}
-
 export const usePathFilter = (): Partial => {
   const fn = useRef((path: string, value: any) => true);
   const loaded = recoil.useRecoilValueLoadable(fos.pathFilter(true));
@@ -288,18 +276,13 @@ export function Looker3d(props) {
   );
 }
 
-function Looker3dCore({ sampleOverride: sample }) {
+function Looker3dCore({ api: { sample, src } }) {
   const settings = fop.usePluginSettings("3d");
 
   const modal = true;
-  const isModal = true;
-  const mediaField = recoil.useRecoilValue(fos.selectedMediaField(isModal));
   // @ts-ignore
-  const src = fos.getSampleSrc(sample[mediaField]);
   const points = useLoader(PCDLoader, src);
-  const [selectedLabels, setSelectedLabels] = recoil.useRecoilState(
-    fos.selectedLabels
-  );
+  const selectedLabels = recoil.useRecoilValue(fos.selectedLabels);
   const pathFilter = usePathFilter();
   const labelAlpha = recoil.useRecoilValue(fos.alpha(modal));
   const onSelectLabel = fos.useOnSelectLabel();
@@ -332,7 +315,11 @@ function Looker3dCore({ sampleOverride: sample }) {
 
   const handleSelect = (label) => {
     onSelectLabel({
-      detail: { id: label._id, field: label.path[label.path.length - 1] },
+      detail: {
+        id: label._id,
+        field: label.path[label.path.length - 1],
+        sampleId: sample._id,
+      },
     });
   };
 
@@ -826,7 +813,8 @@ function useHotkey(code, fn, deps) {
   const EVENT_NAME = "keydown";
   const cb = recoil.useRecoilTransaction_UNSTABLE((ctx) => () => fn(ctx), deps);
   function handle(e) {
-    if (e.code === code) {
+    const shouldIgnore = e.target.tagName.toLowerCase() === "input";
+    if (!shouldIgnore && e.code === code) {
       cb();
     }
   }

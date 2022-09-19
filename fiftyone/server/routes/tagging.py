@@ -15,48 +15,43 @@ import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
-import fiftyone.server.view as fosv
+import fiftyone.server.tags as fost
 
 
 class Tagging(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
         filters = data.get("filters", None)
-        extended = data.get("extended", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
         sample_ids = data.get("sample_ids", None)
         labels = data.get("labels", None)
-        count_labels = data.get("count_labels", False)
-        active_label_fields = data.get("active_label_fields", [])
+        target_labels = data.get("target_labels", False)
+        label_fields = data.get("label_fields", [])
         hidden_labels = data.get("hidden_labels", None)
+        extended = data.get("extended", None)
         slice = data.get("slice", None)
         group_id = data.get("group_id", None)
 
-        view = fosv.get_view(
+        view = fost.get_tag_view(
             dataset,
             stages=stages,
             filters=filters,
             extended_stages=extended,
+            label_fields=label_fields,
+            labels=labels,
+            hidden_labels=hidden_labels,
+            sample_ids=sample_ids,
             sample_filter=SampleFilter(
                 group=GroupElementFilter(id=group_id, slice=slice)
             ),
+            target_labels=target_labels,
         )
 
-        if sample_ids:
-            view = fov.make_optimized_select_view(view, sample_ids)
-
-        if count_labels and labels:
-            view = view.select_labels(labels)
-        elif count_labels and hidden_labels:
-            view = view.exclude_labels(hidden_labels)
-
-        if count_labels:
-            view = view.select_fields(active_label_fields)
+        if target_labels:
             count_aggs, tag_aggs = build_label_tag_aggregations(view)
             results = await view._async_aggregate(count_aggs + tag_aggs)
             items = None
@@ -89,7 +84,7 @@ def build_label_tag_aggregations(view: foc.SampleCollection):
     for field_name, field in view.get_field_schema().items():
         _add_to_label_tags_aggregations(field_name, field, counts, tags)
 
-    if view.media_type == fom.VIDEO:
+    if view.media_type != fom.IMAGE and view.get_frame_field_schema():
         for field_name, field in view.get_frame_field_schema().items():
             _add_to_label_tags_aggregations(
                 "frames." + field_name, field, counts, tags

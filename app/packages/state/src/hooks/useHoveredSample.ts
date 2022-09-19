@@ -1,12 +1,12 @@
 import { AppSample } from "../recoil";
 import * as fos from "../..";
-import { useRecoilState } from "recoil";
+import { useSetRecoilState } from "recoil";
 
 export default function useHoveredSample(
   sample: AppSample,
   auxHandlers: any = {}
 ) {
-  const [hoveredSample, setSample] = useRecoilState(fos.hoveredSample);
+  const setSample = useSetRecoilState(fos.hoveredSample);
   const { update, clear } = auxHandlers;
   function onMouseEnter() {
     setSample(sample);
@@ -21,5 +21,5 @@ export default function useHoveredSample(
     update && update();
   }
 
-  return { handlers: { onMouseEnter, onMouseLeave } };
+  return { handlers: { onMouseEnter, onMouseLeave, onMouseMove } };
 }

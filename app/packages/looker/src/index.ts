@@ -261,7 +261,7 @@ export abstract class Looker<
         this.previousState = this.state;
         this.state = mergeUpdates(this.state, updates);
         if (!this.state.loaded) {
-          this.lookerElement.render(this.state, this.sample);
+          this.lookerElement.render(this.state, undefined);
           return;
         }
 
@@ -286,7 +286,7 @@ export abstract class Looker<
           Boolean(this.currentOverlays.length) &&
           this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
 
-        postUpdate && postUpdate(this.state, this.currentOverlays);
+        postUpdate && postUpdate(this.state, this.currentOverlays, this.sample);
 
         this.dispatchImpliedEvents(this.previousState, this.state);
 

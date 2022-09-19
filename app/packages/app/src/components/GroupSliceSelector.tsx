@@ -15,7 +15,10 @@ const GroupSlice: React.FC = () => {
     <Selector
       inputStyle={{ height: 28 }}
       component={Slice}
-      containerStyle={{ marginLeft: "0.5rem", position: "relative" }}
+      containerStyle={{
+        marginLeft: "0.5rem",
+        position: "relative",
+      }}
       onSelect={setSlice}
       overflow={true}
       placeholder={"slice"}

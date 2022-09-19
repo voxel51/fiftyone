@@ -28,6 +28,7 @@ import { getDatasetName } from "@fiftyone/state";
 // built in plugins
 import "@fiftyone/map";
 import "@fiftyone/looker-3d";
+import { useErrorHandler } from "react-error-boundary";
 
 enum AppReadyState {
   CONNECTING = 0,
@@ -37,7 +38,6 @@ enum AppReadyState {
 
 enum Events {
   DEACTIVATE_NOTEBOOK_CELL = "deactivate_notebook_cell",
-  REFRESH_APP = "refresh_app",
   STATE_UPDATE = "state_update",
 }
 
@@ -68,9 +68,9 @@ const App: React.FC = ({}) => {
   );
 
   const isModalActive = Boolean(useRecoilValue(modal));
+  const handleError = useErrorHandler();
 
   useEffect(() => {
-    document.body.classList.toggle("noscroll", isModalActive);
     document
       .getElementById("modal")
       ?.classList.toggle("modalon", isModalActive);
@@ -93,13 +93,9 @@ const App: React.FC = ({}) => {
               controller.abort();
               screenshot();
               break;
-            case Events.REFRESH_APP:
-              refresh();
-              break;
             case Events.STATE_UPDATE: {
-              const { colorscale, config, ...data } = JSON.parse(
-                msg.data
-              ).state;
+              const payload = JSON.parse(msg.data);
+              const { colorscale, config, ...data } = payload.state;
 
               const state = {
                 ...toCamelCase(data),
@@ -126,6 +122,7 @@ const App: React.FC = ({}) => {
                 state,
                 colorscale,
                 config,
+                refresh: payload.refresh,
                 variables: dataset ? { view: state.view || null } : undefined,
               });
 
@@ -133,6 +130,7 @@ const App: React.FC = ({}) => {
             }
           }
         },
+        onerror: (e) => handleError(e),
         onclose: () => {
           clearModal();
           setReadyState(AppReadyState.CLOSED);
@@ -142,11 +140,7 @@ const App: React.FC = ({}) => {
       {
         initializer: getDatasetName(contextRef.current),
         subscription,
-        events: [
-          Events.DEACTIVATE_NOTEBOOK_CELL,
-          Events.REFRESH_APP,
-          Events.STATE_UPDATE,
-        ],
+        events: [Events.DEACTIVATE_NOTEBOOK_CELL, Events.STATE_UPDATE],
       }
     );
 

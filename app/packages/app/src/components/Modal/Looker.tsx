@@ -82,7 +82,7 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   });
   const looker = React.useMemo(
     () => createLooker.current(sampleData),
-    [useRecoilValue(fos.selectedMediaField(true)), createLooker, sampleData]
+    [useRecoilValue(fos.selectedMediaField(true)), createLooker]
   );
 
   useEffect(() => {
@@ -91,7 +91,7 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);
-  }, [sampleData.sample]);
+  }, [sample]);
 
   useEffect(() => {
     return () => looker && looker.destroy();
@@ -135,6 +135,7 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   useEventHandler(looker, "options", (e) => {
     const { detail } = e;
     const { showJSON, showHelp, SHORTCUTS } = detail || {};
+
     if (showJSON === true) {
       jsonPanel.open(sample);
     }
@@ -196,5 +197,12 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
 export default React.memo(Looker);
 
 function shortcutToHelpItems(SHORTCUTS) {
+  return Object.values(
+    Object.values(SHORTCUTS).reduce((acc, v) => {
+      acc[v.shortcut] = v;
+
+      return acc;
+    }, {})
+  );
   return Object.values(SHORTCUTS);
 }

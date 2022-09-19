@@ -5,6 +5,7 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import copy, deepcopy
 from datetime import date, datetime
 import gc
 import os
@@ -67,6 +68,24 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(
             issubclass(dataset._sample_doc_cls, foo.DatasetSampleDocument)
         )
+
+    @drop_datasets
+    def test_eq(self):
+        dataset_name = self.test_eq.__name__
+
+        dataset1 = fo.Dataset(dataset_name)
+        dataset2 = fo.load_dataset(dataset_name)
+        dataset3 = copy(dataset1)
+        dataset4 = deepcopy(dataset1)
+
+        self.assertEqual(dataset1, dataset2)
+        self.assertEqual(dataset1, dataset3)
+        self.assertEqual(dataset1, dataset4)
+
+        # Datasets are singletons
+        self.assertIs(dataset1, dataset2)
+        self.assertIs(dataset1, dataset3)
+        self.assertIs(dataset1, dataset4)
 
     @drop_datasets
     def test_dataset_tags(self):
