@@ -26,6 +26,7 @@ def get_tag_view(
     dataset: str,
     stages: t.List,
     filters: t.Dict,
+    slice: str = None,
     extended_stages: t.List = None,
     sample_ids: t.Optional[t.List[str]] = None,
     label_fields: t.List[str] = None,
@@ -33,6 +34,7 @@ def get_tag_view(
     hidden_labels: t.Optional[t.List[Label]] = None,
     sample_filter: SampleFilter = None,
     target_labels: bool = False,
+    modal: bool = False,
 ) -> foc.SampleCollection:
     view = fosv.get_view(
         dataset,
@@ -49,7 +51,7 @@ def get_tag_view(
 
     if sample_ids:
         view = fov.make_optimized_select_view(
-            view, sample_ids, select_groups=False
+            view, sample_ids, select_groups=not modal and not slice
         )
     elif view.media_type == fom.GROUP and not slice:
         view = view.select_group_slices(_allow_mixed=True)

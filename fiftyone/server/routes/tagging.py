@@ -35,11 +35,13 @@ class Tagging(HTTPEndpoint):
         extended = data.get("extended", None)
         slice = data.get("slice", None)
         group_id = data.get("group_id", None)
+        modal = data.get("modal", False)
 
         view = fost.get_tag_view(
             dataset,
             stages=stages,
             filters=filters,
+            slice=slice,
             extended_stages=extended,
             label_fields=label_fields,
             labels=labels,
@@ -49,6 +51,7 @@ class Tagging(HTTPEndpoint):
                 group=GroupElementFilter(id=group_id, slice=slice)
             ),
             target_labels=target_labels,
+            modal=modal,
         )
 
         if target_labels:

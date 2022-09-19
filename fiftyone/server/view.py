@@ -208,7 +208,7 @@ def _make_filter_stages(
     view, filters, label_tags=None, hide_result=False, only_matches=True
 ):
     field_schema = view.get_field_schema()
-    if view.media_type == fom.VIDEO:
+    if view.media_type != fom.IMAGE:
         frame_field_schema = view.get_frame_field_schema()
     else:
         frame_field_schema = None
