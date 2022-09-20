@@ -3,6 +3,17 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.17.1:
+
+FiftyOne 0.17.1
+---------------
+*Released September 20, 2022*
+
+Core
+
+- Removed `TypedDict` usage introduced in v0.17.0 that is not supported in
+  Python 3.7 `#2100 <https://github.com/voxel51/fiftyone/pull/2100>`_
+
 .. _release-notes-v0.17.0:
 
 FiftyOne 0.17.0
