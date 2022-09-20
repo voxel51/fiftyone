@@ -15,13 +15,6 @@ from fiftyone.server.filters import SampleFilter
 import fiftyone.server.view as fosv
 
 
-class Label(t.TypedDict):
-    id: str
-    field: str
-    sample_id: str
-    frame_number: t.Optional[int]
-
-
 def get_tag_view(
     dataset: str,
     stages: t.List,
@@ -30,8 +23,8 @@ def get_tag_view(
     extended_stages: t.List = None,
     sample_ids: t.Optional[t.List[str]] = None,
     label_fields: t.List[str] = None,
-    labels: t.Optional[t.List[Label]] = None,
-    hidden_labels: t.Optional[t.List[Label]] = None,
+    labels: t.Optional[t.List[t.Dict]] = None,
+    hidden_labels: t.Optional[t.List[t.Dict]] = None,
     sample_filter: SampleFilter = None,
     target_labels: bool = False,
     modal: bool = False,
