@@ -9,21 +9,18 @@
         "build-bare": "vite build",
         "copy-to-python": "rm -rf ../../../package/teams/fiftyone/teams/static && cp -r ./dist ../../../package/teams/fiftyone/teams/static"
     },
+    "peerDependencies": {
+        "react": "^18.1.0",
+        "react-dom": "^18.1.0",
+        "react-error-boundary": "^3.1.4",
+        "react-relay": "^14.0.0",
+        "recoil": "0.7.2"
+    },
     "dependencies": {
         "@auth0/auth0-react": "^1.9.0",
         "@fiftyone/app": "*",
         "@fiftyone/components": "*",
-        "@fiftyone/utilities": "*",
-        "@material-ui/icons": "^4.11.2",
-        "@react-spring/web": "^9.4.2",
-        "history": "^5.3.0",
-        "re-resizable": "^6.9.1",
-        "react": "^18.1.0",
-        "react-dom": "^18.1.0",
-        "react-error-boundary": "^3.1.4",
-        "react-relay": "^13.2.0",
-        "react-use": "^17.3.2",
-        "recoil": "0.7.2"
+        "@fiftyone/utilities": "*"
     },
     "devDependencies": {
         "@types/react": "^18.0.9",

@@ -114,7 +114,7 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
 
   useEffect(() => {
     update(({ set }) => {
-      if (router.state.refresh) {
+      if (router.state?.refresh) {
         set(refresher, (cur) => cur + 1);
       }
       return {
