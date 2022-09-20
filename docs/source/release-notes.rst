@@ -3,6 +3,17 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.17.2:
+
+FiftyOne 0.17.2
+---------------
+*Released September 20, 2022*
+
+App
+
+- Fixed dataset backward compatability 
+  `#2103 <https://github.com/voxel51/fiftyone/pull/2103>`_
+
 .. _release-notes-v0.17.1:
 
 FiftyOne 0.17.1
