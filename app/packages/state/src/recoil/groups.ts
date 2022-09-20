@@ -53,7 +53,6 @@ export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
 export const groupSlices = selector<string[]>({
   key: "groupSlices",
   get: ({ get }) => {
-    console.log(get(groupMediaTypes));
     return get(groupMediaTypes)
       .filter(
         ({ mediaType }) => !["point_cloud", "point-cloud"].includes(mediaType)
