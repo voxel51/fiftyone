@@ -71,6 +71,8 @@ jobs:
         exclude:
           - os: windows-latest
             python: 3.7
+          - os: windows-latest
+            python: 3.9
     defaults:
       run:
         shell: bash
