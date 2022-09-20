@@ -35,8 +35,7 @@ logger = logging.getLogger(__name__)
 class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
     """Base class for importing datasets in Open Images V6 format.
 
-    See :class:`fiftyone.types.dataset_types.OpenImagesV6Dataset` for format
-    details.
+    See :class:`fiftyone.types.OpenImagesV6Dataset` for format details.
 
     Args:
         dataset_dir: the dataset directory
@@ -463,8 +462,8 @@ def download_open_images_split(
     """Utility that downloads full or partial splits of the
     `Open Images dataset <https://storage.googleapis.com/openimages/web/index.html>`_.
 
-    See :class:`fiftyone.types.dataset_types.OpenImagesV6Dataset` for the
-    format in which ``dataset_dir`` will be arranged.
+    See :class:`fiftyone.types.OpenImagesV6Dataset` for the format in which
+    ``dataset_dir`` will be arranged.
 
     Any existing files are not re-downloaded.
 

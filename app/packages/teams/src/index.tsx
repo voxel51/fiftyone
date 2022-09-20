@@ -1,5 +1,5 @@
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
-import { EventsContext, Loading, Theme } from "@fiftyone/components";
+import { Loading, Theme } from "@fiftyone/components";
 import { darkTheme, setFetchFunction } from "@fiftyone/utilities";
 import React, { Suspense, useEffect } from "react";
 import { createRoot } from "react-dom/client";
@@ -16,7 +16,7 @@ import "./index.css";
 import Login from "./Login";
 import { useState } from "react";
 import configQuery, { srcQuery } from "./__generated__/srcQuery.graphql";
-import { getEnvironment } from "@fiftyone/components/src/use/useRouter";
+import { EventsContext, getEnvironment } from "@fiftyone/state";
 
 const Authenticate = () => {
   const auth0 = useAuth0();

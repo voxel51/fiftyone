@@ -14,6 +14,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
@@ -58,6 +59,10 @@ class StateDescription(etas.Serializable):
                     )
                     d["view_cls"] = etau.get_class_name(self.view)
 
+                view = self.view if self.view is not None else self.dataset
+                if view.media_type == fom.GROUP:
+                    d["group_slice"] = view.group_slice
+
             d["config"]["timezone"] = fo.config.timezone
 
             if self.config.colorscale:
@@ -92,6 +97,14 @@ class StateDescription(etas.Serializable):
             view = fov.DatasetView._build(dataset, stages)
         else:
             view = None
+
+        group_slice = d.get("group_slice", None)
+        if group_slice:
+            if dataset is not None:
+                dataset.group_slice = group_slice
+
+            if view is not None:
+                view.group_slice = group_slice
 
         config = with_config or fo.app_config.copy()
         for field, value in d.get("config", {}).items():

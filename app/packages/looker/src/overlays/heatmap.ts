@@ -1,7 +1,12 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import { get32BitColor, getColor, getRGBA, getRGBAColor } from "../color";
+import {
+  get32BitColor,
+  getColor,
+  getRGBA,
+  getRGBAColor,
+} from "@fiftyone/utilities";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { isFloatArray } from "../util";
@@ -33,7 +38,8 @@ interface HeatmapInfo extends BaseLabel {
 }
 
 export default class HeatmapOverlay<State extends BaseState>
-  implements Overlay<State> {
+  implements Overlay<State>
+{
   readonly field: string;
   private label: HeatmapLabel;
   private targets?: TypedArray;
@@ -85,9 +91,7 @@ export default class HeatmapOverlay<State extends BaseState>
   containsPoint(state: Readonly<State>): CONTAINS {
     const {
       pixelCoordinates: [x, y],
-      config: {
-        dimensions: [w, h],
-      },
+      dimensions: [w, h],
     } = state;
     if (x >= 0 && x <= w && y >= 0 && y <= h && this.getTarget(state)) {
       return CONTAINS.CONTENT;
@@ -184,9 +188,7 @@ export default class HeatmapOverlay<State extends BaseState>
 
   private getMapCoordinates({
     pixelCoordinates: [x, y],
-    config: {
-      dimensions: [mw, mh],
-    },
+    dimensions: [mw, mh],
   }: Readonly<State>): Coordinates {
     const [h, w] = this.label.map.data.shape;
     const sx = Math.floor(x * (w / mw));
@@ -201,7 +203,7 @@ export default class HeatmapOverlay<State extends BaseState>
       return 0;
     }
 
-    if (state.options.coloring.byLabel) {
+    if (state.options.coloring.by === "label") {
       const index = Math.round(
         (Math.max(value - start, 0) / (stop - start)) *
           (state.options.coloring.scale.length - 1)

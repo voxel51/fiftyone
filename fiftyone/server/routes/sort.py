@@ -24,17 +24,17 @@ class Sort(HTTPEndpoint):
         dataset_name = data.get("dataset", None)
         filters = data.get("filters", {})
         stages = data.get("view", None)
-        similarity = data.get("similarity", None)
+        extended = data.get("extended", None)
+        dist_field = data.get("dist_field", None)
 
         dataset = fod.load_dataset(dataset_name)
-        dist_field = similarity.get("dist_field", None)
 
         changed = False
         if dist_field and not dataset.get_field(dist_field):
             dataset.add_sample_field(dist_field, fof.FloatField)
             changed = True
 
-        fosv.get_view(dataset_name, stages, filters, similarity=similarity)
+        fosv.get_view(dataset_name, stages, filters, extended_stages=None)
 
         state = fose.get_state().copy()
         view = fosv.get_view(dataset_name, stages, filters)

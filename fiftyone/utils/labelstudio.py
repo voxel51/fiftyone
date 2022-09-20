@@ -21,8 +21,9 @@ import numpy as np
 
 import fiftyone as fo
 import fiftyone.core.cache as foc
-import fiftyone.core.utils as fou
 import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
+import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 
 ls = fou.lazy_import(
@@ -78,6 +79,10 @@ class LabelStudioBackend(foua.AnnotationBackend):
     """Class for interacting with the Label Studio annotation backend."""
 
     @property
+    def supported_media_types(self):
+        return [fom.IMAGE]
+
+    @property
     def supported_label_types(self):
         return [
             "classification",
@@ -96,6 +101,10 @@ class LabelStudioBackend(foua.AnnotationBackend):
         ]
 
     @property
+    def supported_scalar_types(self):
+        return []
+
+    @property
     def supported_attr_types(self):
         return []
 
@@ -104,20 +113,12 @@ class LabelStudioBackend(foua.AnnotationBackend):
         return False
 
     @property
-    def supports_video(self):
-        return False
-
-    @property
     def supports_video_sample_fields(self):
         return False
 
     @property
-    def supports_attributes(self):
-        return False
-
-    @property
-    def supported_scalar_types(self):
-        return []
+    def requires_label_schema(self):
+        return True
 
     def _connect_to_api(self):
         return LabelStudioAnnotationAPI(
@@ -522,12 +523,18 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
 
     @classmethod
     def _from_dict(cls, d, samples, config):
+        # int keys were serialized as strings...
+        uploaded_tasks = {
+            int(task_id): source_id
+            for task_id, source_id in d["uploaded_tasks"].items()
+        }
+
         return cls(
             samples,
             config,
             d["id_map"],
             d["project_id"],
-            d["uploaded_tasks"],
+            uploaded_tasks,
         )
 
 

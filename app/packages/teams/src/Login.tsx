@@ -2,11 +2,12 @@ import { useAuth0 } from "@auth0/auth0-react";
 import React, { Suspense, useEffect, useState, useContext } from "react";
 import { graphql } from "relay-runtime";
 
-import { Loading, RouterContext } from "@fiftyone/components";
+import { Loading } from "@fiftyone/components";
 
 import { NetworkRenderer } from "@fiftyone/app/src/Network";
 import makeRoutes from "@fiftyone/app/src/makeRoutes";
 import { useMutation } from "react-relay";
+import { RouterContext } from "@fiftyone/state";
 
 const LoginMutation = graphql`
   mutation LoginMutation($user: UserInput!) {

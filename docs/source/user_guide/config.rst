@@ -88,6 +88,9 @@ FiftyOne supports the configuration options described below:
 | `module_path`                 | `FIFTYONE_MODULE_PATH`              | `None`                        | A list of modules that should be automatically imported whenever FiftyOne is imported. |
 |                               |                                     |                               | See :ref:`this page <custom-embedded-documents>` for an example usage.                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `plugins_dir`                 | `FIFTYONE_PLUGINS_DIR`              | `None`                        | A directory containing custom App plugins. See :ref:`this page <app-plugins>` for more |
+|                               |                                     |                               | information.                                                                           |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `requirement_error_level`     | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                           | A default error level to use when ensuring/installing requirements such as third-party |
 |                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -145,6 +148,7 @@ and the CLI:
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,
+            "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
@@ -187,6 +191,7 @@ and the CLI:
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,
+            "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
@@ -617,10 +622,22 @@ created when you launch the App. A session's config can be inspected and
 modified via the :meth:`session.config <fiftyone.core.session.Session.config>`
 property.
 
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    print(fo.app_config)
+
+    session = fo.launch_app(dataset)
+    print(session.config)
+
 .. note::
 
-    For changes to a session's config to take effect in the App, you must call
-    :meth:`session.refresh() <fiftyone.core.session.Session.refresh>` or
+    For changes to a live session's config to take effect in the App, you must
+    call :meth:`session.refresh() <fiftyone.core.session.Session.refresh>` or
     invoke another state-updating action such as ``session.view = my_view``.
 
 The FiftyOne App can be configured in the ways described below:
@@ -659,6 +676,9 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only |
 |                           |                                        |                             | applicable to video samples.                                                             |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for       |
+|                           |                                        |                             | details.                                                                                 |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 
 Viewing your App config
@@ -709,7 +729,8 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
-            "use_frame_number": false
+            "use_frame_number": false,
+            "plugins": {}
         }
 
         True
@@ -753,7 +774,8 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
-            "use_frame_number": false
+            "use_frame_number": false,
+            "plugins": {}
         }
 
         True
@@ -769,6 +791,12 @@ Modifying your App config
 
 You can modify your App config in a variety of ways. The following sections
 describe these options in detail.
+
+.. note::
+
+    Did you know? You can also configure the behavior of the App on a
+    per-dataset basis by customizing your
+    :ref:`dataset's App config <custom-app-config>`.
 
 Order of precedence
 ~~~~~~~~~~~~~~~~~~~
@@ -799,7 +827,7 @@ via the following pattern:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Create a custom App config
-    app_config = fo.AppConfig()
+    app_config = fo.app_config.copy()
     app_config.show_confidence = False
     app_config.show_attributes = False
 
@@ -813,12 +841,10 @@ apply the changes:
 .. code-block:: python
     :linenos:
 
-    # Customize the config of a live Session
+    # Customize the config of a live session
     session.config.show_confidence = True
     session.config.show_attributes = True
-
-    # Refresh the session to apply the changes
-    session.refresh()
+    session.refresh()  # must refresh after edits
 
 Editing your JSON App config
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -878,3 +904,36 @@ current session.
 
     fo.app_config.show_confidence = False
     fo.app_config.show_attributes = False
+
+.. _configuring-plugins:
+
+Configuring plugins
+-------------------
+
+You can store system-wide plugin configurations under the `plugins` key of your
+App config.
+
+Plugins that you can configure include:
+
+-   The builtin :ref:`Map tab <app-map-tab>`
+-   The builtin :ref:`3D visualizer <3d-visualizer-config>`
+-   Any :ref:`custom plugins <app-plugins>` that you've registered
+
+For example, you may add the following to your JSON App config
+(`~/.fiftyone/app_config.json`) to register a Mapbox token globally on your
+system:
+
+.. code-block:: text
+
+    {
+        "plugins": {
+            "map": {
+                "mapboxAccessToken": "XXXXXXXX"
+            }
+        }
+    }
+
+.. note::
+
+    You can also store dataset-specific plugin settings by storing any subset
+    of the above values on a :ref:`dataset's App config <custom-app-config>`.

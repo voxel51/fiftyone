@@ -24,7 +24,7 @@ class Sidebar(HTTPEndpoint):
         stages = data.get("view", None)
         view = fosv.get_view(dataset, stages=stages)
 
-        view._dataset._doc.app_sidebar_groups = groups
+        view._dataset._doc.app_config.sidebar_groups = groups
         view._dataset._doc.save()
 
         return {"success": True}

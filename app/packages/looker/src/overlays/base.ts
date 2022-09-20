@@ -2,7 +2,7 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
-import { getColor } from "../color";
+import { getColor } from "@fiftyone/utilities";
 import { BaseState, Coordinates, NONFINITE } from "../state";
 import { sizeBytes } from "./util";
 
@@ -72,7 +72,8 @@ export interface Overlay<State extends BaseState> {
 export abstract class CoordinateOverlay<
   State extends BaseState,
   Label extends RegularLabel
-> implements Overlay<State> {
+> implements Overlay<State>
+{
   readonly field: string;
   protected label: Label;
 

@@ -19,15 +19,11 @@ import {
   Header,
   SlackLink,
   iconContainer,
-  Route,
-  Link,
-  RouterContext,
 } from "@fiftyone/components";
 
 import gaConfig from "../ga";
 import style from "./Root.module.css";
 import ViewBar from "../components/ViewBar/ViewBar";
-import { appTeamsIsOpen, refresher, useRefresh } from "../recoil/atoms";
 import Teams from "../components/Teams/Teams";
 
 import { RootQuery } from "./__generated__/RootQuery.graphql";
@@ -35,15 +31,12 @@ import { RootConfig_query$key } from "./__generated__/RootConfig_query.graphql";
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
-import {
-  useSetDataset,
-  useStateUpdate,
-  useUnprocessedStateUpdate,
-} from "../utils/hooks";
 import { clone, isElectron } from "@fiftyone/utilities";
-import { getDatasetName } from "../utils/generic";
 import { RGB } from "@fiftyone/looker";
-import { State } from "../recoil/types";
+import * as fos from "@fiftyone/state";
+import { getDatasetName, Route, RouterContext } from "@fiftyone/state";
+
+import DatasetSelector from "../components/DatasetSelector";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int, $cursor: String) {
@@ -55,7 +48,7 @@ const rootQuery = graphql`
 `;
 
 const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
-  const refresh = useRecoilValue(refresher);
+  const refresh = useRecoilValue(fos.refresher);
 
   return (search: string) => {
     const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);
@@ -89,22 +82,11 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
 
     return useMemo(() => {
       return {
-        total: data.datasets.total,
+        total: data.datasets.total === null ? undefined : data.datasets.total,
         values: data.datasets.edges.map((edge) => edge.node.name),
       };
     }, [data]);
   };
-};
-
-const DatasetLink: React.FC<{ value: string; className: string }> = ({
-  className,
-  value,
-}) => {
-  return (
-    <Link title={value} className={className}>
-      {value}
-    </Link>
-  );
 };
 
 export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
@@ -165,9 +147,8 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
     `,
     query as RootNav_query$key
   );
-  const [teams, setTeams] = useRecoilState(appTeamsIsOpen);
-  const refresh = useRefresh();
-  const setDataset = useSetDataset();
+  const [teams, setTeams] = useRecoilState(fos.appTeamsIsOpen);
+  const refresh = fos.useRefresh();
   const context = useContext(RouterContext);
   const dataset = getDatasetName(context);
 
@@ -175,18 +156,8 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
     <>
       <Header
         title={"FiftyOne Teams"}
-        onRefresh={() => {
-          refresh();
-        }}
-        datasetSelectorProps={{
-          component: DatasetLink,
-          onSelect: (name) => {
-            name !== dataset && setDataset(name);
-          },
-          placeholder: "Select dataset",
-          useSearch,
-          value: dataset || "",
-        }}
+        onRefresh={refresh}
+        navChildren={<DatasetSelector useSearch={useSearch} />}
       >
         {dataset && <ViewBar />}
         {!dataset && <div style={{ flex: 1 }}></div>}
@@ -231,6 +202,7 @@ const Root: Route<RootQuery> = ({ children, prepared }) => {
           gridZoom
           loopVideos
           notebookHeight
+          plugins
           showConfidence
           showIndex
           showLabel
@@ -245,7 +217,7 @@ const Root: Route<RootQuery> = ({ children, prepared }) => {
     query as RootConfig_query$key
   );
 
-  const update = useStateUpdate();
+  const update = fos.useStateUpdate();
   useEffect(() => {
     update({
       colorscale: clone(data.colorscale) as RGB[],

@@ -24,7 +24,7 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 
-import { getColor } from "../../color";
+import { getColor } from "@fiftyone/utilities";
 import { Classification, Regression } from "../../overlays/classifications";
 import { BaseState, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
@@ -64,9 +64,10 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     sample: Readonly<Sample>
   ) {
     if (
-      arraysAreEqual(activePaths, this.activePaths) &&
-      this.colorByValue === (coloring.by === "label") &&
-      this.colorSeed === coloring.seed
+      (arraysAreEqual(activePaths, this.activePaths) &&
+        this.colorByValue === (coloring.by === "label") &&
+        this.colorSeed === coloring.seed) ||
+      !sample
     ) {
       return this.element;
     }
@@ -179,15 +180,17 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           ),
         };
       },
-      [STRING_FIELD]: (path, value: string) => ({
-        value,
-        title: `${path}: ${value}`,
-        color: getColor(
-          coloring.pool,
-          coloring.seed,
-          coloring.by === "label" ? value : path
-        ),
-      }),
+      [STRING_FIELD]: (path, value: string) => {
+        return {
+          value,
+          title: `${path}: ${value}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.by === "label" ? value : path
+          ),
+        };
+      },
     };
 
     const LABEL_RENDERERS: {
@@ -376,7 +379,14 @@ const unwind = (name: string, value: unknown) => {
     return value.map((val) => unwind(name, val));
   }
 
-  return value[name];
+  let v = value[name];
+  if (v) {
+    return v;
+  }
+
+  if (name == "_id" && value.id) {
+    return value.id;
+  }
 };
 
 const getFieldAndValue = (
@@ -396,7 +406,7 @@ const getFieldAndValue = (
     }
 
     if (![undefined, null].includes(value)) {
-      value = unwind(field.name !== "id" ? field.dbField || key : "id", value);
+      value = unwind(field.dbField, value);
       list = list || field.ftype === LIST_FIELD;
     }
 

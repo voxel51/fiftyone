@@ -113,12 +113,18 @@ class _SampleMixin(object):
         """
         return foc.media_cache.is_local_or_cached(self.filepath)
 
-    def get_local_path(self, download=True, skip_failures=True):
+    def get_local_path(
+        self,
+        media_field="filepath",
+        download=True,
+        skip_failures=True,
+    ):
         """Returns the local path to the sample's media.
 
         This method is only useful for samples backed by remote media.
 
         Args:
+            media_field ("filepath"): the media field to use
             download (True): whether to download the remote file to FiftyOne's
                 local media cache, if necessary
             skip_failures (True): whether to gracefully continue without
@@ -128,7 +134,7 @@ class _SampleMixin(object):
             the local filepath
         """
         return foc.media_cache.get_local_path(
-            self.filepath, download=download, skip_failures=skip_failures
+            self[media_field], download=download, skip_failures=skip_failures
         )
 
     def get_field(self, field_name):
@@ -384,6 +390,44 @@ class _SampleMixin(object):
                 expand_schema=expand_schema,
             )
 
+    def copy(self, fields=None, omit_fields=None):
+        """Returns a deep copy of the sample that has not been added to the
+        database.
+
+        Args:
+            fields (None): an optional field or iterable of fields to which to
+                restrict the copy. This can also be a dict mapping existing
+                field names to new field names
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the copy
+
+        Returns:
+            a :class:`Sample`
+        """
+        if self.media_type == fomm.VIDEO:
+            (
+                fields,
+                frame_fields,
+                omit_fields,
+                omit_frame_fields,
+            ) = self._parse_fields_video(
+                fields=fields, omit_fields=omit_fields
+            )
+
+        sample = super().copy(fields=fields, omit_fields=omit_fields)
+
+        if self.media_type == fomm.VIDEO:
+            sample.frames.update(
+                {
+                    frame_number: frame.copy(
+                        fields=frame_fields, omit_fields=omit_frame_fields
+                    )
+                    for frame_number, frame in self.frames.items()
+                }
+            )
+
+        return sample
+
     def to_dict(self, include_frames=False, include_private=False):
         """Serializes the sample to a JSON dictionary.
 
@@ -485,44 +529,6 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
         d = self._dataset._sample_collection.find_one({"_id": self._id})
         self._doc = self._dataset._sample_dict_to_doc(d)
-
-    def copy(self, fields=None, omit_fields=None):
-        """Returns a deep copy of the sample that has not been added to the
-        database.
-
-        Args:
-            fields (None): an optional field or iterable of fields to which to
-                restrict the copy. This can also be a dict mapping existing
-                field names to new field names
-            omit_fields (None): an optional field or iterable of fields to
-                exclude from the copy
-
-        Returns:
-            a :class:`Sample`
-        """
-        if self.media_type == fomm.VIDEO:
-            (
-                fields,
-                frame_fields,
-                omit_fields,
-                omit_frame_fields,
-            ) = self._parse_fields_video(
-                fields=fields, omit_fields=omit_fields
-            )
-
-        sample = super().copy(fields=fields, omit_fields=omit_fields)
-
-        if self.media_type == fomm.VIDEO:
-            sample.frames.update(
-                {
-                    frame_number: frame.copy(
-                        fields=frame_fields, omit_fields=omit_frame_fields
-                    )
-                    for frame_number, frame in self.frames.items()
-                }
-            )
-
-        return sample
 
     def reload(self, hard=False):
         """Reloads the sample from the database.
