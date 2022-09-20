@@ -27,7 +27,7 @@ import strawberry.permission as gqlp
 
 from fiftyone.server.data import Info
 
-import fiftyone.teams.constants as fotc
+import fiftyone.teams as fot
 from fiftyone.teams.data import JWKS
 
 
@@ -56,8 +56,8 @@ def decode(token: str, rsa_key):
         token,
         rsa_key,
         algorithms=ALGORITHMS,
-        audience=fotc.FIFTYONE_TEAMS_API_AUDIENCE,
-        issuer=f"https://{fotc.FIFTYONE_TEAMS_API_DOMAIN}",
+        audience=fot.teams_config.audience,
+        issuer=f"https://{fot.teams_config.domain}",
     )
 
 
@@ -119,7 +119,7 @@ def has_scope(token: str, scope: str):
 
 async def set_jwks(web: aio.ClientSession):
     async with web.get(
-        f"https://{fotc.FIFTYONE_TEAMS_API_DOMAIN}/.well-known/jwks.json"
+        f"https://{fot.teams_config.domain}/.well-known/jwks.json"
     ) as response:
         data = await response.json()
         return from_dict(JWKS, data)
