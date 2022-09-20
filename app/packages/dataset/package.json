@@ -30,7 +30,8 @@
   },
   "exports": {
     ".": {
-      "import": "./dist/dataset.js"
+      "import": "./dist/dataset.js",
+      "require": "./dist/dataset.js"
     },
     "./style.css": {
       "import": "./dist/style.css"
