@@ -17,7 +17,7 @@ VERSION = "0.2.0"
 
 INSTALL_REQUIRES = [
     "python-jose>=3.3.0,<4",
-    "fiftyone>=0.9.0,<0.9.1",
+    "fiftyone>=0.9.1,<0.10",
 ]
 
 
