@@ -489,7 +489,7 @@ class BDD100KDataset(FiftyOneDataset):
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
-        if not os.path.exists(split_dir):
+        if not os.path.isdir(split_dir):
             foub.parse_bdd100k_dataset(
                 self.source_dir, dataset_dir, copy_files=self.copy_files
             )
@@ -763,7 +763,7 @@ class CityscapesDataset(FiftyOneDataset):
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
-        if not os.path.exists(split_dir):
+        if not os.path.isdir(split_dir):
             foucs.parse_cityscapes_dataset(
                 self.source_dir,
                 dataset_dir,
@@ -916,6 +916,9 @@ class COCO2014Dataset(FiftyOneDataset):
         seed=None,
         max_samples=None,
     ):
+        if label_types is None:
+            label_types = ["detections"]
+
         self.label_types = label_types
         self.classes = classes
         self.image_ids = image_ids
@@ -939,6 +942,10 @@ class COCO2014Dataset(FiftyOneDataset):
     @property
     def supports_partial_downloads(self):
         return True
+
+    @property
+    def importer_kwargs(self):
+        return {"label_types": self.label_types}
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         num_samples, classes, downloaded = fouc.download_coco_dataset_split(
@@ -1104,6 +1111,9 @@ class COCO2017Dataset(FiftyOneDataset):
         seed=None,
         max_samples=None,
     ):
+        if label_types is None:
+            label_types = ["detections"]
+
         self.label_types = label_types
         self.classes = classes
         self.image_ids = image_ids
@@ -1127,6 +1137,10 @@ class COCO2017Dataset(FiftyOneDataset):
     @property
     def supports_partial_downloads(self):
         return True
+
+    @property
+    def importer_kwargs(self):
+        return {"label_types": self.label_types}
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         num_samples, classes, downloaded = fouc.download_coco_dataset_split(
@@ -1360,7 +1374,7 @@ class HMDB51Dataset(FiftyOneDataset):
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
-        if not os.path.exists(split_dir):
+        if not os.path.isdir(split_dir):
             fouh.download_hmdb51_dataset(
                 dataset_dir,
                 scratch_dir=scratch_dir,
@@ -2096,12 +2110,10 @@ class KITTIDataset(FiftyOneDataset):
     """KITTI contains a suite of vision tasks built using an autonomous
     driving platform.
 
-    The full benchmark contains many tasks such as stereo, optical flow, visual
-    odometry, etc. This dataset contains the object detection dataset,
-    including the monocular images and bounding boxes.
+    This dataset contains the left camera images and the associated 2D object
+    detections.
 
-    The training split contains 7,481 images annotated with 2D and 3D bounding
-    boxes (currently only the 2D detections are loaded), and the test split
+    The training split contains 7,481 annotated images, and the test split
     contains 7,518 unlabeled images.
 
     A full description of the annotations can be found in the README of the
@@ -2117,7 +2129,7 @@ class KITTIDataset(FiftyOneDataset):
         session = fo.launch_app(dataset)
 
     Dataset size
-        11.71 GB
+        12.57 GB
 
     Source
         http://www.cvlibs.net/datasets/kitti
@@ -2136,18 +2148,88 @@ class KITTIDataset(FiftyOneDataset):
         return ("train", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        split_dir = os.path.join(scratch_dir, split)
-        if not os.path.isdir(split_dir):
-            foukt.download_kitti_detection_dataset(
-                scratch_dir, overwrite=False, cleanup=False
-            )
-
-        etau.move_dir(split_dir, dataset_dir)
+        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
+        split_dir = os.path.join(dataset_dir, split)
+        foukt.download_kitti_detection_dataset(
+            dataset_dir,
+            splits=split,
+            scratch_dir=scratch_dir,
+            overwrite=False,
+            cleanup=False,
+        )
 
         logger.info("Parsing dataset metadata")
         dataset_type = fot.KITTIDetectionDataset()
         importer = foukt.KITTIDetectionDatasetImporter
-        num_samples = importer._get_num_samples(dataset_dir)
+        num_samples = importer._get_num_samples(split_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class KITTIMultiviewDataset(FiftyOneDataset):
+    """KITTI contains a suite of vision tasks built using an autonomous
+    driving platform.
+
+    This dataset contains the following multiview data for each scene:
+
+    -   Left camera images annotated with 2D object detections
+    -   Right camera images annotated with 2D object detections
+    -   Velodyne LIDAR point clouds annotated with 3D object detections
+
+    The training split contains 7,481 annotated scenes, and the test split
+    contains 7,518 unlabeled scenes.
+
+    A full description of the annotations can be found in the README of the
+    object development kit on the KITTI homepage.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("kitti-multiview", split="train")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        53.34 GB
+
+    Source
+        http://www.cvlibs.net/datasets/kitti
+    """
+
+    @property
+    def name(self):
+        return "kitti-multiview"
+
+    @property
+    def tags(self):
+        return ("image", "point-cloud", "detection")
+
+    @property
+    def supported_splits(self):
+        return ("train", "test")
+
+    @property
+    def supports_partial_downloads(self):
+        return True
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
+        split_dir = os.path.join(dataset_dir, split)
+        foukt.download_kitti_multiview_dataset(
+            dataset_dir,
+            splits=split,
+            scratch_dir=scratch_dir,
+            overwrite=False,
+            cleanup=False,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(split_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, None
@@ -2199,7 +2281,7 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
-        if not os.path.exists(split_dir):
+        if not os.path.isdir(split_dir):
             foul.download_lfw_dataset(
                 dataset_dir, scratch_dir=scratch_dir, cleanup=False
             )
@@ -2574,6 +2656,61 @@ class QuickstartVideoDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class QuickstartGroupsDataset(FiftyOneDataset):
+    """A small dataset with grouped image and point cloud data.
+
+    The dataset consists of 200 scenes from the train split of the KITTI
+    dataset, each containing left camera, right camera, point cloud, and 2D/3D
+    object annotation data.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-groups")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        516.3 MB
+    """
+
+    _GDRIVE_ID = "1df8JucJwjHTkl3MgOJdH477vcv4McNCa"
+    _ARCHIVE_NAME = "quickstart-groups.zip"
+    _DIR_IN_ARCHIVE = "quickstart-groups"
+
+    @property
+    def name(self):
+        return "quickstart-groups"
+
+    @property
+    def tags(self):
+        return ("image", "point-cloud", "quickstart")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_and_extract_archive(
+            self._GDRIVE_ID,
+            self._ARCHIVE_NAME,
+            self._DIR_IN_ARCHIVE,
+            dataset_dir,
+            scratch_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        classes = importer._get_classes(dataset_dir)
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
+
+
 class UCF101Dataset(FiftyOneDataset):
     """UCF101 is an action recognition data set of realistic action videos,
     collected from YouTube, having 101 action categories. This data set is an
@@ -2640,7 +2777,7 @@ class UCF101Dataset(FiftyOneDataset):
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
-        if not os.path.exists(split_dir):
+        if not os.path.isdir(split_dir):
             fouu.download_ucf101_dataset(
                 dataset_dir,
                 scratch_dir=scratch_dir,
@@ -2675,11 +2812,13 @@ AVAILABLE_DATASETS = {
     "kinetics-700": Kinetics700Dataset,
     "kinetics-700-2020": Kinetics7002020Dataset,
     "kitti": KITTIDataset,
+    "kitti-multiview": KITTIMultiviewDataset,
     "lfw": LabeledFacesInTheWildDataset,
     "open-images-v6": OpenImagesV6Dataset,
     "quickstart": QuickstartDataset,
     "quickstart-geo": QuickstartGeoDataset,
     "quickstart-video": QuickstartVideoDataset,
+    "quickstart-groups": QuickstartGroupsDataset,
     "ucf101": UCF101Dataset,
 }
 
@@ -2688,7 +2827,7 @@ def _download_and_extract_archive(
     fid, archive_name, dir_in_archive, dataset_dir, scratch_dir
 ):
     archive_path = os.path.join(scratch_dir, archive_name)
-    if not os.path.exists(archive_path):
+    if not os.path.isfile(archive_path):
         logger.info("Downloading dataset...")
         etaw.download_google_drive_file(fid, path=archive_path)
     else:

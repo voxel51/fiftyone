@@ -176,7 +176,7 @@ def load_zoo_dataset(
             with the same name if it exists
         overwrite (False): whether to overwrite any existing files if the
             dataset is to be downloaded
-        cleanup (None): whether to cleanup any temporary files generated during
+        cleanup (True): whether to cleanup any temporary files generated during
             download
         **kwargs: optional arguments to pass to the
             :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.
@@ -224,6 +224,12 @@ def load_zoo_dataset(
     importer_kwargs, unused_kwargs = fou.extract_kwargs_for_class(
         dataset_importer_cls, kwargs
     )
+
+    # Inject default importer kwargs, if any
+    if zoo_dataset.importer_kwargs:
+        for key, value in zoo_dataset.importer_kwargs.items():
+            if key not in importer_kwargs:
+                importer_kwargs[key] = value
 
     for key, value in unused_kwargs.items():
         if (
@@ -535,8 +541,7 @@ class ZooDatasetInfo(etas.Serializable):
 
     Args:
         zoo_dataset: the :class:`ZooDataset` instance for the dataset
-        dataset_type: the :class:`fiftyone.types.dataset_types.Dataset` type of
-            the dataset
+        dataset_type: the :class:`fiftyone.types.Dataset` type of the dataset
         num_samples: the total number of samples in all downloaded splits of
             the dataset
         downloaded_splits (None): a dict of :class:`ZooDatasetSplitInfo`
@@ -583,7 +588,7 @@ class ZooDatasetInfo(etas.Serializable):
     @property
     def dataset_type(self):
         """The fully-qualified class string of the
-        :class:`fiftyone.types.dataset_types.Dataset` type.
+        :class:`fiftyone.types.Dataset` type.
         """
         return etau.get_class_name(self._dataset_type)
 
@@ -603,11 +608,11 @@ class ZooDatasetInfo(etas.Serializable):
         return self._zoo_dataset
 
     def get_dataset_type(self):
-        """Returns the :class:`fiftyone.types.dataset_types.Dataset` type
-        instance for the dataset.
+        """Returns the :class:`fiftyone.types.Dataset` type instance for the
+        dataset.
 
         Returns:
-            a :class:`fiftyone.types.dataset_types.Dataset` instance
+            a :class:`fiftyone.types.Dataset` instance
         """
         return self._dataset_type
 
@@ -830,6 +835,13 @@ class ZooDataset(object):
         by the user before the dataset can be loaded.
         """
         return False
+
+    @property
+    def importer_kwargs(self):
+        """A dict of default kwargs to pass to this dataset's
+        :class:`fiftyone.utils.data.importers.DatasetImporter`.
+        """
+        return {}
 
     def has_tag(self, tag):
         """Whether the dataset has the given tag.
@@ -1078,8 +1090,8 @@ class ZooDataset(object):
         Returns:
             tuple of
 
-            -   dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
-                type of the dataset
+            -   dataset_type: the :class:`fiftyone.types.Dataset` type of the
+                dataset
             -   num_samples: the number of samples in the split. For datasets
                 that support partial downloads, this can be ``None``, which
                 indicates that all content was already downloaded
@@ -1199,7 +1211,7 @@ def _migrate_zoo_dataset_info(d):
         migrated = True
 
     # @legacy dataset type names
-    _dt = "fiftyone.types.dataset_types"
+    _dt = "fiftyone.types"
     if dataset_type.endswith(".ImageClassificationDataset"):
         dataset_type = _dt + ".FiftyOneImageClassificationDataset"
         migrated = True

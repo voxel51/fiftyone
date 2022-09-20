@@ -15,16 +15,18 @@ from sse_starlette import ServerSentEvent
 from starlette.requests import Request
 
 import fiftyone as fo
+import fiftyone.core.context as focx
 from fiftyone.core.json import FiftyOneJSONEncoder
 from fiftyone.core.session.events import (
     CloseSession,
+    DeactivateNotebookCell,
+    ReactivateNotebookCell,
     dict_factory,
     EventType,
     ListenPayload,
     StateUpdate,
 )
 import fiftyone.core.state as fos
-from fiftyone.core.view import DatasetView
 from fiftyone.server.query import serialize_dataset
 
 
@@ -35,6 +37,7 @@ class Listener:
 
 
 _listeners: t.Dict[str, t.Set[Listener]] = defaultdict(set)
+_requests: t.Dict[str, t.Set[t.Tuple[str, Listener]]] = {}
 _polling_listener: t.Optional[
     t.Tuple[str, t.Set[t.Tuple[str, Listener]]]
 ] = None
@@ -55,14 +58,14 @@ async def dispatch_event(
         global _state
         _state = event.state
 
-    events = []
+    if isinstance(event, ReactivateNotebookCell):
+        await dispatch_event(subscription, DeactivateNotebookCell())
+
     for listener in _listeners[event.get_event_name()]:
         if listener.subscription == subscription:
             continue
 
-        events.append(listener.queue.put((datetime.now(), event)))
-
-    await asyncio.gather(*events)
+        listener.queue.put_nowait((datetime.now(), event))
 
 
 async def add_event_listener(
@@ -152,16 +155,13 @@ async def dispatch_polling_event_listener(
         A server sent event source
     """
     global _polling_listener
-
+    global _requests
     sub = None
-    listeners = None
+
     if _polling_listener is not None:
-        sub, listeners = _polling_listener
+        sub, _ = _polling_listener
 
-    if sub != payload.subscription:
-        if sub is not None and listeners:
-            await _disconnect(True, listeners)
-
+    if sub != payload.subscription and payload.subscription not in _requests:
         data = await _initialize_listener(payload)
         _polling_listener = (payload.subscription, data.request_listeners)
 
@@ -177,24 +177,28 @@ async def dispatch_polling_event_listener(
             ]
         }
 
-    if not listeners:
-        raise ValueError("no listeners")
-
     events: t.List[t.Tuple[datetime, EventType]] = []
-    for _, listener in listeners:
-        if listener.queue.qsize():
-            events.append(listener.queue.get_nowait())
+    disconnect = False
+    for _, listener in _requests[payload.subscription]:
+        while listener.queue.qsize():
+            event_tuple = listener.queue.get_nowait()
+            if isinstance(event_tuple[1], DeactivateNotebookCell):
+                disconnect = True
+
+            events.append(event_tuple)
+
+    if disconnect:
+        del _requests[payload.subscription]
 
     events = sorted(events, key=lambda event: event[0])
-
     return {
         "events": [
             {
                 "event": e.get_event_name(),
                 "data": asdict(e, dict_factory=dict_factory),
             }
-            for e in events
-        ]
+            for (_, e) in events
+        ],
     }
 
 
@@ -221,7 +225,7 @@ async def _disconnect(
         global _app_count
         _app_count -= 1
 
-        if not _app_count:
+        if not _app_count and focx._get_context() == focx._NONE:
             await dispatch_event(None, CloseSession())
 
 
@@ -259,10 +263,13 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
     request_listeners: t.Set[t.Tuple[str, Listener]] = set()
     for event_name in payload.events:
         listener = Listener(
-            queue=asyncio.LifoQueue(maxsize=1),
+            queue=asyncio.LifoQueue(maxsize=1000),
             subscription=payload.subscription,
         )
         _listeners[event_name].add(listener)
         request_listeners.add((event_name, listener))
+
+    global _requests
+    _requests[payload.subscription] = request_listeners
 
     return InitializedListener(is_app, request_listeners, state)

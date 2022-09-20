@@ -13,32 +13,35 @@ import {
   useRecoilRefresher_UNSTABLE,
   useRecoilState,
   useRecoilValue,
+  useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 import { useSpring } from "@react-spring/web";
-
-import * as aggregationAtoms from "../../recoil/aggregations";
-import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
-import * as schemaAtoms from "../../recoil/schema";
-import * as viewAtoms from "../../recoil/view";
 
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
 import {
   tagStats,
-  numLabelsInSelectedSamples,
   SwitchDiv,
   SwitcherDiv,
   tagStatistics,
+  numItemsInSelection,
+  selectedSamplesCount,
+  tagParameters,
 } from "./utils";
 import { Button } from "../utils";
-import { PopoutSectionTitle } from "../utils";
+import { PopoutSectionTitle } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { filters, modalFilters } from "../../recoil/filters";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
-import { store } from "../Flashlight.store";
 import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import {
+  currentSlice,
+  groupId,
+  groupStatistics,
+  Lookers,
+  sidebarSampleId,
+} from "@fiftyone/state";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -106,7 +109,7 @@ interface SectionProps {
   countAndPlaceholder: () => [number, string];
   taggingAtom: RecoilState<boolean>;
   itemsAtom: RecoilValue<{ [key: string]: number }>;
-  submit: ({ changes: Changes }) => Promise<void>;
+  submit: ({ changes }) => Promise<void>;
   close: () => void;
   labels: boolean;
 }
@@ -120,7 +123,7 @@ const Section = ({
   labels,
 }: SectionProps) => {
   const items = useRecoilValue(itemsAtom);
-  const elementNames = useRecoilValue(viewAtoms.elementNames);
+  const elementNames = useRecoilValue(fos.elementNames);
   const [tagging, setTagging] = useRecoilState(taggingAtom);
   const [value, setValue] = useState("");
   const [count, placeholder] = countAndPlaceholder();
@@ -314,12 +317,11 @@ const labelsModalPlaceholder = (selection, numLabels) => {
   }`;
 };
 
-const samplesPlaceholder = (selection, _, numSamples, elementNames) => {
+const samplesPlaceholder = (numSamples, elementNames, selected = false) => {
   if (numSamples === 0) {
     return `no ${elementNames.plural}`;
   }
-  if (selection) {
-    numSamples = selection;
+  if (selected) {
     const formatted = numeral(numSamples).format("0,0");
     return `+ tag ${numSamples > 1 ? `${formatted} ` : ""}selected ${
       numSamples === 1 ? elementNames.singular : elementNames.plural
@@ -332,90 +334,82 @@ const samplesPlaceholder = (selection, _, numSamples, elementNames) => {
   }`;
 };
 
-const samplePlaceholder = (elementNames) => {
-  return `+ tag ${elementNames.singular}`;
-};
+const useTagCallback = (
+  modal,
+  targetLabels,
+  lookerRef?: React.MutableRefObject<Lookers | undefined>
+) => {
+  const setAggs = useSetRecoilState(fos.aggregationsTick);
+  const setLabels = fos.useSetSelectedLabels();
+  const setSamples = fos.useSetSelected();
+  const updateSample = fos.useUpdateSample();
 
-const useTagCallback = (modal, targetLabels, lookerRef = null) => {
-  const refreshers = [true, false]
-    .map((modal) =>
-      [true, false].map((extended) =>
-        useRecoilRefresher_UNSTABLE(
-          aggregationAtoms.aggregations({ modal, extended })
-        )
-      )
-    )
-    .flat();
-  refreshers.push(
-    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false }))
-  );
-  refreshers.push(
-    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: targetLabels }))
-  );
+  const finalize = [
+    () => setLabels([]),
+    () => setSamples([]),
+    () => setAggs((cur) => cur + 1),
+    ...[
+      useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
+      useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: true })),
+    ],
+  ];
 
   return useRecoilCallback(
-    ({ snapshot, set }) =>
+    ({ snapshot, set, reset }) =>
       async ({ changes }) => {
-        const activeLabels = await snapshot.getPromise(
-          schemaAtoms.labelPaths({ expanded: false })
-        );
-        const f = await snapshot.getPromise(modal ? modalFilters : filters);
-        const view = await snapshot.getPromise(viewAtoms.view);
-        const dataset = await snapshot.getPromise(selectors.datasetName);
-        const selectedLabels =
-          modal && targetLabels
-            ? await snapshot.getPromise(selectors.selectedLabelList)
-            : null;
-        const selectedSamples = await snapshot.getPromise(
-          atoms.selectedSamples
-        );
-        const hiddenLabels =
-          modal && targetLabels
-            ? await snapshot.getPromise(selectors.hiddenLabelsArray)
-            : null;
-
-        const modalData = modal ? await snapshot.getPromise(atoms.modal) : null;
+        const modalData = modal ? await snapshot.getPromise(fos.modal) : null;
+        const isGroup = await snapshot.getPromise(fos.isGroup);
 
         const { samples } = await getFetchFunction()("POST", "/tag", {
-          filters: f,
-          view,
-          dataset,
-          active_label_fields: activeLabels,
-          target_labels: targetLabels,
-          changes,
-          modal: modal ? modalData.sample._id : null,
-          sample_ids: modal
-            ? null
-            : selectedSamples.size
-            ? [...selectedSamples]
-            : null,
-          labels:
-            selectedLabels && selectedLabels.length
-              ? toSnakeCase(selectedLabels)
+          ...tagParameters({
+            activeFields: await snapshot.getPromise(
+              fos.labelPaths({ expanded: false })
+            ),
+            dataset: await snapshot.getPromise(fos.datasetName),
+            filters: await snapshot.getPromise(
+              modal ? fos.modalFilters : fos.filters
+            ),
+            hiddenLabels: await snapshot.getPromise(fos.hiddenLabelsArray),
+            groupData: isGroup
+              ? {
+                  id: modal ? await snapshot.getPromise(groupId) : null,
+                  slice: await snapshot.getPromise(currentSlice(modal)),
+                  mode: await snapshot.getPromise(groupStatistics(modal)),
+                }
               : null,
-          hidden_labels: hiddenLabels ? toSnakeCase(hiddenLabels) : null,
+            modal,
+            sampleId: modal
+              ? await snapshot.getPromise(fos.sidebarSampleId)
+              : null,
+            selectedLabels: await snapshot.getPromise(fos.selectedLabelList),
+            selectedSamples: await snapshot.getPromise(fos.selectedSamples),
+            targetLabels,
+            view: await snapshot.getPromise(fos.view),
+          }),
+          current_frame: lookerRef?.current?.frameNumber,
+          changes,
         });
 
-        samples &&
+        if (samples) {
+          set(fos.refreshGroupQuery, (cur) => cur + 1);
           samples.forEach((sample) => {
             if (modalData.sample._id === sample._id) {
-              set(atoms.modal, { ...modalData, sample });
-              lookerRef.current.updateSample(sample);
+              set(fos.modal, { ...modalData, sample });
+              lookerRef &&
+                lookerRef.current &&
+                lookerRef.current.updateSample(sample);
             }
-
-            store.samples.set(sample._id, {
-              ...store.samples.get(sample._id),
-              sample,
-            });
-            store.lookers.has(sample._id) &&
-              store.lookers.get(sample._id).updateSample(sample);
+            updateSample(sample);
           });
+        }
 
-        set(selectors.anyTagging, false);
+        set(fos.anyTagging, false);
+        reset(fos.selectedLabels);
+        reset(fos.selectedSamples);
 
-        refreshers.forEach((r) => r());
+        finalize.forEach((r) => r());
       },
-    [modal, targetLabels, lookerRef]
+    [modal, targetLabels, lookerRef, updateSample]
   );
 };
 
@@ -434,33 +428,28 @@ const usePlaceHolder = (
   elementNames: { plural: string; singular: string }
 ) => {
   return (): [number, string] => {
-    const selectedSamples = useRecoilValue(atoms.selectedSamples).size;
+    const selectedSamples = useRecoilValue(fos.selectedSamples).size;
+    const selectedLabels = useRecoilValue(fos.selectedLabelIds).size;
+    const totalSamples = useRecoilValue(
+      fos.count({ path: "", extended: false, modal })
+    );
+    const filteredSamples = useRecoilValue(
+      fos.count({ path: "", extended: true, modal })
+    );
 
-    const selectedLabels = useRecoilValue(selectors.selectedLabelIds).size;
+    const count = filteredSamples ?? totalSamples;
+    const itemCount = useRecoilValue(selectedSamplesCount(modal));
+    const selectedLabelCount = useRecoilValue(numItemsInSelection(true));
+    const totalLabelCount = useRecoilValue(
+      fos.labelCount({ modal, extended: true })
+    );
     if (modal && labels && (!selectedSamples || selectedLabels)) {
-      const labelCount =
-        selectedLabels > 0
-          ? selectedLabels
-          : useRecoilValue(
-              aggregationAtoms.labelCount({ modal: true, extended: true })
-            );
+      const labelCount = selectedLabels > 0 ? selectedLabels : totalLabelCount;
       return [labelCount, labelsModalPlaceholder(selectedLabels, labelCount)];
     } else if (modal && !selectedSamples) {
-      return [1, samplePlaceholder(elementNames)];
+      return [itemCount, samplesPlaceholder(count, elementNames)];
     } else {
-      const totalSamples = useRecoilValue(
-        aggregationAtoms.count({ path: "", extended: false, modal: false })
-      );
-      const filteredSamples = useRecoilValue(
-        aggregationAtoms.count({ path: "", extended: true, modal: false })
-      );
-      const count = filteredSamples ?? totalSamples;
-      const selectedLabelCount = useRecoilValue(numLabelsInSelectedSamples);
-      const labelCount = selectedSamples
-        ? selectedLabelCount
-        : useRecoilValue(
-            aggregationAtoms.labelCount({ modal, extended: true })
-          );
+      const labelCount = selectedSamples ? selectedLabelCount : totalLabelCount;
       if (labels) {
         return [
           labelCount,
@@ -468,8 +457,8 @@ const usePlaceHolder = (
         ];
       } else {
         return [
-          selectedSamples > 0 ? selectedSamples : count,
-          samplesPlaceholder(selectedSamples, labelCount, count, elementNames),
+          itemCount,
+          samplesPlaceholder(itemCount, elementNames, Boolean(selectedSamples)),
         ];
       }
     }
@@ -480,12 +469,14 @@ type TaggerProps = {
   modal: boolean;
   bounds: any;
   close: () => void;
-  lookerRef?: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
+  lookerRef?: MutableRefObject<
+    VideoLooker | ImageLooker | FrameLooker | undefined
+  >;
 };
 
 const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
-  const elementNames = useRecoilValue(viewAtoms.elementNames);
+  const elementNames = useRecoilValue(fos.elementNames);
   const theme = useTheme();
   const sampleProps = useSpring({
     borderBottomColor: labels ? theme.backgroundDark : theme.brand,
@@ -520,7 +511,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}
-            taggingAtom={atoms.tagging({ modal, labels })}
+            taggingAtom={fos.tagging({ modal, labels })}
             itemsAtom={tagStats({ modal, labels })}
             close={close}
             labels={true}
@@ -532,7 +523,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}
-            taggingAtom={atoms.tagging({ modal, labels })}
+            taggingAtom={fos.tagging({ modal, labels })}
             itemsAtom={tagStats({ modal, labels })}
             close={close}
             labels={false}

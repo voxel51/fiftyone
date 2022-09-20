@@ -5,8 +5,8 @@ Dataset importers.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import copy
 import inspect
+import itertools
 import logging
 import os
 import random
@@ -24,6 +24,7 @@ import fiftyone.core.brain as fob
 import fiftyone.core.dataset as fod
 import fiftyone.core.evaluation as foe
 import fiftyone.core.frame as fof
+import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
@@ -125,7 +126,11 @@ def import_samples(
         except:
             num_samples = None
 
-        samples = map(parse_sample, iter(dataset_importer))
+        if isinstance(dataset_importer, GroupDatasetImporter):
+            samples = _generate_group_samples(dataset_importer, parse_sample)
+        else:
+            samples = map(parse_sample, iter(dataset_importer))
+
         sample_ids = dataset.add_samples(
             samples, expand_schema=expand_schema, num_samples=num_samples
         )
@@ -295,7 +300,10 @@ def merge_samples(
         except:
             num_samples = None
 
-        samples = map(parse_sample, iter(dataset_importer))
+        if isinstance(dataset_importer, GroupDatasetImporter):
+            samples = _generate_group_samples(dataset_importer, parse_sample)
+        else:
+            samples = map(parse_sample, iter(dataset_importer))
 
         dataset.merge_samples(
             samples,
@@ -334,11 +342,20 @@ def _handle_legacy_formats(dataset_importer):
     return dataset_importer
 
 
+def _generate_group_samples(dataset_importer, parse_sample):
+    group_field = dataset_importer.group_field
+    for group in dataset_importer:
+        _group = fog.Group()
+        for name, sample in group.items():
+            sample[group_field] = _group.element(name)
+            yield parse_sample(sample)
+
+
 def _build_parse_sample_fcn(
     dataset, dataset_importer, label_field, tags, expand_schema
 ):
     if isinstance(dataset_importer, GenericSampleDatasetImporter):
-        # Generic sample dataset
+        # Generic sample/group dataset
 
         #
         # If the importer provides a sample field schema, apply it now
@@ -348,10 +365,13 @@ def _build_parse_sample_fcn(
         # the appropriate types, even if all of the imported samples have
         # `None` values
         #
+        # @todo add support for pre-declaring frame field schemas?
+        #
         if expand_schema and dataset_importer.has_sample_field_schema:
             dataset._apply_field_schema(
                 dataset_importer.get_sample_field_schema()
             )
+
             expand_schema = False
 
         def parse_sample(sample):
@@ -486,7 +506,7 @@ def build_dataset_importer(
     """Builds the :class:`DatasetImporter` instance for the given parameters.
 
     Args:
-        dataset_type: the :class:`fiftyone.types.dataset_types.Dataset` type
+        dataset_type: the :class:`fiftyone.types.Dataset` type
         strip_none (True): whether to exclude None-valued items from ``kwargs``
         warn_unused (True): whether to issue warnings for any non-None unused
             parameters encountered
@@ -614,6 +634,21 @@ def parse_dataset_info(dataset, info, overwrite=True):
             dataset.default_skeleton = dataset._parse_default_skeleton(
                 default_skeleton
             )
+
+    app_config = info.pop("app_config", None)
+
+    if app_config is not None:
+        try:
+            app_config = foo.DatasetAppConfig.from_dict(
+                app_config,
+                extended=True,
+            )
+        except Exception as e:
+            app_config = None
+            logger.warning("Failed to parse app_config: %s", e)
+
+    if app_config is not None:
+        dataset.app_config.merge(app_config, overwrite=overwrite)
 
     if overwrite:
         dataset.info.update(info)
@@ -830,21 +865,26 @@ class DatasetImporter(object):
         applying the values of the ``shuffle``, ``seed``, and ``max_samples``
         parameters of the importer.
 
+        You may also provide an iterable, in which case the output will also be
+        an iterable, unless the elements must be shuffled, in which case the
+        iterable must be read in-memory into a list and returned as a list.
+
         Args:
-            l: a list
+            l: a list or iterable
 
         Returns:
-            a processed copy of the list
+            a processed copy of the list/iterable
         """
         if self.shuffle:
-            if self.seed is not None:
-                random.seed(self.seed)
-
-            l = copy(l)
-            random.shuffle(l)
+            _random = _get_rng(self.seed)
+            l = list(l).copy()
+            _random.shuffle(l)
 
         if self.max_samples is not None:
-            l = l[: self.max_samples]
+            if isinstance(l, (list, tuple)):
+                l = l[: self.max_samples]
+            else:
+                l = itertools.islice(l, self.max_samples)
 
         return l
 
@@ -855,7 +895,8 @@ class DatasetImporter(object):
         Args:
             filepaths: a list of filepaths or dict mapping keys to filepaths
             keys (None): an optional subset of keys for which to get metadata.
-                Only applicable when ``filepaths`` is a dict
+                May also contain absolute paths to add to ``filepaths``. Only
+                applicable when ``filepaths`` is a dict
 
         Returns:
             a dict mapping filepaths (or keys, if ``filepaths`` was a dict) to
@@ -863,7 +904,7 @@ class DatasetImporter(object):
         """
         if isinstance(filepaths, dict):
             if keys is not None:
-                filepaths = {k: filepaths[k] for k in keys}
+                filepaths = _restrict_filepaths(filepaths, keys)
 
             keys_map = {
                 p: k for k, p in filepaths.items() if not fos.is_local(p)
@@ -883,6 +924,28 @@ class DatasetImporter(object):
             metadata = {keys_map[p]: m for p, m in metadata.items()}
 
         return metadata
+
+
+def _restrict_filepaths(filepaths, keys):
+    _filepaths = {}
+
+    for key in keys:
+        filepath = filepaths.get(key, None)
+        if filepath is not None:
+            _filepaths[key] = filepath
+        elif fos.isabs(key):
+            _filepaths[key] = key
+
+    return _filepaths
+
+
+def _get_rng(seed):
+    if seed is None:
+        return random
+
+    _random = random.Random()
+    _random.seed(seed)
+    return _random
 
 
 class BatchDatasetImporter(DatasetImporter):
@@ -968,8 +1031,8 @@ class GenericSampleDatasetImporter(DatasetImporter):
         raise NotImplementedError("subclass must implement has_dataset_info")
 
     def get_sample_field_schema(self):
-        """Returns dictionary describing the field schema of the samples loaded
-        by this importer.
+        """Returns a dictionary describing the field schema of the samples
+        loaded by this importer.
 
         The returned dictionary should map field names to to string
         representations of :class:`fiftyone.core.fields.Field` instances
@@ -987,6 +1050,59 @@ class GenericSampleDatasetImporter(DatasetImporter):
         raise NotImplementedError(
             "subclass must implement get_sample_field_schema()"
         )
+
+
+class GroupDatasetImporter(GenericSampleDatasetImporter):
+    """Interface for importing datasets that contain arbitrary grouped
+    :class:`fiftyone.core.sample.Sample` instances.
+
+    Typically, dataset importers should implement the parameters documented on
+    this class, although this is not mandatory.
+
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
+
+    .. automethod:: __len__
+    .. automethod:: __next__
+
+    Args:
+        dataset_dir (None): the dataset directory. This may be optional for
+            some importers
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __len__(self):
+        """The total number of samples that will be imported across all group
+        slices.
+
+        Raises:
+            TypeError: if the total number is not known
+        """
+        raise TypeError(
+            "The number of samples in this %s is not known a priori"
+            % type(self)
+        )
+
+    def __next__(self):
+        """Returns information about the next group in the dataset.
+
+        Returns:
+            a dict mapping slice names to :class:`fiftyone.core.sample.Sample`
+            instances
+
+        Raises:
+            StopIteration: if there are no more samples to import
+        """
+        raise NotImplementedError("subclass must implement __next__()")
+
+    @property
+    def group_field(self):
+        """The name of the group field to populate on each sample."""
+        return "group"
 
 
 class UnlabeledImageDatasetImporter(DatasetImporter):
@@ -1260,8 +1376,8 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
     .. warning::
 
-        The :class:`fiftyone.types.dataset_types.FiftyOneDataset` format was
-        upgraded in ``fiftyone==0.8`` and this importer is now deprecated.
+        The :class:`fiftyone.types.FiftyOneDataset` format was upgraded in
+        ``fiftyone==0.8`` and this importer is now deprecated.
 
         However, to maintain backwards compatibility,
         :class:`FiftyOneDatasetImporter` will check for instances of datasets
@@ -1269,6 +1385,10 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        rel_dir (None): a relative directory to prepend to the ``filepath`` of
+            each sample if the filepath is not absolute. This path is converted
+            to an absolute path (if necessary) via
+            :func:`fiftyone.core.storage.normalize_path`
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1277,7 +1397,12 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
     """
 
     def __init__(
-        self, dataset_dir, shuffle=False, seed=None, max_samples=None
+        self,
+        dataset_dir,
+        rel_dir=None,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
     ):
         super().__init__(
             dataset_dir=dataset_dir,
@@ -1286,7 +1411,10 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
             max_samples=max_samples,
         )
 
+        self.rel_dir = rel_dir
+
         self._metadata = None
+        self._rel_dir = None
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
@@ -1294,7 +1422,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self._samples = None
         self._iter_samples = None
         self._num_samples = None
-        self._is_video_dataset = False
+        self._media_type = None
 
     def __iter__(self):
         self._iter_samples = iter(self._samples)
@@ -1304,25 +1432,32 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         return self._num_samples
 
     def __next__(self):
-        d = next(self._iter_samples)
+        sd = next(self._iter_samples)
 
-        # Convert filepath to absolute path
-        d["filepath"] = fos.join(self.dataset_dir, d["filepath"])
+        if not fos.isabs(sd["filepath"]):
+            sd["filepath"] = fos.join(self._rel_dir, sd["filepath"])
 
-        if self._is_video_dataset:
-            labels_relpath = d.pop("frames")
-            labels_path = fos.join(self.dataset_dir, labels_relpath)
+        if (self._media_type == fomm.VIDEO) or (
+            self._media_type == fomm.GROUP
+            and fomm.get_media_type(sd["filepath"]) == fomm.VIDEO
+        ):
+            labels_path = fos.join(self.dataset_dir, sd.pop("frames"))
 
-            sample = Sample.from_dict(d)
+            sample = Sample.from_dict(sd)
             self._import_frame_labels(sample, labels_path)
         else:
-            sample = Sample.from_dict(d)
+            sample = Sample.from_dict(sd)
 
         return sample
 
     @property
     def has_sample_field_schema(self):
-        if self._is_video_dataset:
+        if self._media_type == fomm.VIDEO:
+            # Must return False so frame field schema is inferred
+            return False
+
+        if self._media_type == fomm.GROUP:
+            # Need to let importer infer group media types
             return False
 
         return "sample_fields" in self._metadata
@@ -1335,11 +1470,16 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         metadata_path = fos.join(self.dataset_dir, "metadata.json")
         if fos.isfile(metadata_path):
             metadata = fos.read_json(metadata_path)
-            media_type = metadata.get("media_type", fomm.IMAGE)
+            self._media_type = metadata.get("media_type", None)
             self._metadata = metadata
-            self._is_video_dataset = media_type == fomm.VIDEO
         else:
+            self._media_type = None
             self._metadata = {}
+
+        if self.rel_dir is not None:
+            self._rel_dir = fos.normalize_path(self.rel_dir)
+        else:
+            self._rel_dir = self.dataset_dir
 
         self._anno_dir = fos.join(self.dataset_dir, "annotations")
         self._brain_dir = fos.join(self.dataset_dir, "brain")
@@ -1477,10 +1617,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
-        rel_dir (None): a relative directory to prepend to the ``filepath``
-            of each sample if the filepath is not absolute. This path is
-            converted to an absolute path (if necessary) via
+        rel_dir (None): a relative directory to prepend to the ``filepath`` of
+            each sample if the filepath is not absolute. This path is converted
+            to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
+        ordered (True): whether to preserve document order when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1492,6 +1633,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self,
         dataset_dir,
         rel_dir=None,
+        ordered=True,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -1504,6 +1646,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         )
 
         self.rel_dir = rel_dir
+        self.ordered = ordered
 
         self._data_dir = None
         self._anno_dir = None
@@ -1512,6 +1655,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._metadata_path = None
         self._samples_path = None
         self._frames_path = None
+        self._has_frames = None
 
     def setup(self):
         self._data_dir = fos.join(self.dataset_dir, "data")
@@ -1519,8 +1663,20 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._brain_dir = fos.join(self.dataset_dir, "brain")
         self._eval_dir = fos.join(self.dataset_dir, "evaluations")
         self._metadata_path = fos.join(self.dataset_dir, "metadata.json")
+
         self._samples_path = fos.join(self.dataset_dir, "samples.json")
+        if not fos.isfile(self._samples_path):
+            self._samples_path = fos.join(self.dataset_dir, "samples")
+
         self._frames_path = fos.join(self.dataset_dir, "frames.json")
+        if fos.isfile(self._frames_path):
+            self._has_frames = True
+        else:
+            self._frames_path = fos.join(self.dataset_dir, "frames")
+            if fos.isdir(self._frames_path):
+                self._has_frames = True
+            else:
+                self._has_frames = False
 
     def import_samples(self, dataset, tags=None):
         dataset_dict = foo.import_document(self._metadata_path)
@@ -1602,9 +1758,14 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         #
 
         logger.info("Importing samples...")
-        samples = foo.import_collection(self._samples_path).get("samples", [])
+        samples, num_samples = foo.import_collection(
+            self._samples_path, key="samples"
+        )
 
         samples = self._preprocess_list(samples)
+
+        if self.max_samples is not None:
+            num_samples = self.max_samples
 
         if self.rel_dir is not None:
             # Prepend `rel_dir` to all relative paths
@@ -1613,38 +1774,49 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             # Prepend `dataset_dir` to all relative paths
             rel_dir = self.dataset_dir
 
-        for sample in samples:
-            filepath = sample["filepath"]
-            if not fos.isabs(filepath):
-                sample["filepath"] = fos.join(rel_dir, filepath)
+        def parse_sample(sample):
+            if not fos.isabs(sample["filepath"]):
+                sample["filepath"] = fos.join(rel_dir, sample["filepath"])
 
-        if tags is not None:
-            for sample in samples:
+            if tags is not None:
                 sample["tags"].extend(tags)
 
-        foo.insert_documents(samples, dataset._sample_collection, ordered=True)
+            return sample
 
-        sample_ids = [s["_id"] for s in samples]
+        sample_ids = foo.insert_documents(
+            map(parse_sample, samples),
+            dataset._sample_collection,
+            ordered=self.ordered,
+            progress=True,
+            num_docs=num_samples,
+        )
 
         #
         # Import frames
         #
 
-        if fos.isfile(self._frames_path):
+        if self._has_frames:
             logger.info("Importing frames...")
-            frames = foo.import_collection(self._frames_path).get("frames", [])
+            frames, num_frames = foo.import_collection(
+                self._frames_path, key="frames"
+            )
 
+            # @todo optimize by only loading these docs in the first place
             if self.max_samples is not None:
-                frames = [
-                    f for f in frames if f["_sample_id"] in set(sample_ids)
-                ]
+                _sample_ids = set(sample_ids)
+                frames = [f for f in frames if f["_sample_id"] in _sample_ids]
+                num_frames = len(frames)
 
             foo.insert_documents(
-                frames, dataset._frame_collection, ordered=True
+                frames,
+                dataset._frame_collection,
+                ordered=self.ordered,
+                progress=True,
+                num_docs=num_frames,
             )
 
         #
-        # Import Run results
+        # Import run results
         #
 
         if empty_import:
@@ -1951,6 +2123,9 @@ class FiftyOneImageClassificationDatasetImporter(
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
+        include_all_data (False): whether to generate samples for all images in
+            the data directory (True) rather than only creating samples for
+            images with labels (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1964,6 +2139,7 @@ class FiftyOneImageClassificationDatasetImporter(
         data_path=None,
         labels_path=None,
         compute_metadata=False,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -1996,6 +2172,7 @@ class FiftyOneImageClassificationDatasetImporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.compute_metadata = compute_metadata
+        self.include_all_data = include_all_data
 
         self._classes = None
         self._sample_parser = None
@@ -2016,15 +2193,22 @@ class FiftyOneImageClassificationDatasetImporter(
     def __next__(self):
         uuid = next(self._iter_uuids)
 
-        image_path = self._image_paths_map[uuid]
+        if fos.isabs(uuid):
+            image_path = uuid
+        else:
+            image_path = self._image_paths_map[uuid]
+
         image_metadata = self._metadata_map.get(uuid, None)
-        target = self._labels_map[uuid]
+        target = self._labels_map.get(uuid, None)
 
         if self.compute_metadata and image_metadata is None:
             image_metadata = fom.ImageMetadata.build_for(image_path)
 
-        self._sample_parser.with_sample((image_path, target))
-        label = self._sample_parser.get_label()
+        if target is not None:
+            self._sample_parser.with_sample((image_path, target))
+            label = self._sample_parser.get_label()
+        else:
+            label = None
 
         return image_path, image_metadata, label
 
@@ -2052,10 +2236,15 @@ class FiftyOneImageClassificationDatasetImporter(
 
         labels_map = labels.get("labels", {})
         classes = labels.get("classes", None)
-        uuids = self._preprocess_list(sorted(labels_map.keys()))
+
+        uuids = set(labels_map.keys())
+
+        if self.include_all_data:
+            uuids.update(image_paths_map.keys())
+
+        uuids = self._preprocess_list(sorted(uuids))
 
         self._classes = classes
-
         self._sample_parser = FiftyOneImageClassificationSampleParser()
         self._sample_parser.classes = self._classes
 
@@ -2066,10 +2255,10 @@ class FiftyOneImageClassificationDatasetImporter(
         else:
             metadata_map = {}
 
-        self._uuids = uuids
         self._image_paths_map = image_paths_map
         self._metadata_map = metadata_map
         self._labels_map = labels_map
+        self._uuids = uuids
         self._num_samples = len(uuids)
 
     def get_dataset_info(self):
@@ -2211,10 +2400,10 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         else:
             classes = sorted(classes)
 
+        self._classes = classes
         self._samples = samples
         self._metadata_map = metadata_map
         self._num_samples = len(samples)
-        self._classes = classes
 
     def get_dataset_info(self):
         return {"classes": self._classes}
@@ -2365,10 +2554,10 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
         else:
             classes = sorted(classes)
 
+        self._classes = classes
         self._samples = samples
         self._metadata_map = metadata_map
         self._num_samples = len(samples)
-        self._classes = classes
 
     def get_dataset_info(self):
         return {"classes": self._classes}
@@ -2425,6 +2614,9 @@ class FiftyOneImageDetectionDatasetImporter(
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
+        include_all_data (False): whether to generate samples for all images in
+            the data directory (True) rather than only creating samples for
+            images with labels (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -2438,6 +2630,7 @@ class FiftyOneImageDetectionDatasetImporter(
         data_path=None,
         labels_path=None,
         compute_metadata=False,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -2470,6 +2663,7 @@ class FiftyOneImageDetectionDatasetImporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.compute_metadata = compute_metadata
+        self.include_all_data = include_all_data
 
         self._classes = None
         self._sample_parser = None
@@ -2479,7 +2673,6 @@ class FiftyOneImageDetectionDatasetImporter(
         self._uuids = None
         self._iter_uuids = None
         self._num_samples = None
-        self._has_labels = False
 
     def __iter__(self):
         self._iter_uuids = iter(self._uuids)
@@ -2491,14 +2684,18 @@ class FiftyOneImageDetectionDatasetImporter(
     def __next__(self):
         uuid = next(self._iter_uuids)
 
-        image_path = self._image_paths_map[uuid]
+        if fos.isabs(uuid):
+            image_path = uuid
+        else:
+            image_path = self._image_paths_map[uuid]
+
         image_metadata = self._metadata_map.get(uuid, None)
-        target = self._labels_map[uuid]
+        target = self._labels_map.get(uuid, None)
 
         if self.compute_metadata and image_metadata is None:
             image_metadata = fom.ImageMetadata.build_for(image_path)
 
-        if self._has_labels:
+        if target is not None:
             self._sample_parser.with_sample((image_path, target))
             label = self._sample_parser.get_label()
         else:
@@ -2531,8 +2728,12 @@ class FiftyOneImageDetectionDatasetImporter(
         classes = labels.get("classes", None)
         labels_map = labels.get("labels", {})
 
-        uuids = self._preprocess_list(sorted(labels_map.keys()))
-        has_labels = any(labels_map.values())
+        uuids = set(labels_map.keys())
+
+        if self.include_all_data:
+            uuids.update(image_paths_map.keys())
+
+        uuids = self._preprocess_list(sorted(uuids))
 
         if self.compute_metadata:
             metadata_map = self._get_remote_metadata(
@@ -2542,11 +2743,8 @@ class FiftyOneImageDetectionDatasetImporter(
             metadata_map = {}
 
         self._classes = classes
-        self._has_labels = has_labels
-
         self._sample_parser = FiftyOneImageDetectionSampleParser()
         self._sample_parser.classes = classes
-
         self._image_paths_map = image_paths_map
         self._metadata_map = metadata_map
         self._labels_map = labels_map
@@ -2612,6 +2810,9 @@ class FiftyOneTemporalDetectionDatasetImporter(
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.VideoMetadata` instances for each
             video when importing
+        include_all_data (False): whether to generate samples for all videos in
+            the data directory (True) rather than only creating samples for
+            videos with labels (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -2625,6 +2826,7 @@ class FiftyOneTemporalDetectionDatasetImporter(
         data_path=None,
         labels_path=None,
         compute_metadata=False,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -2657,16 +2859,16 @@ class FiftyOneTemporalDetectionDatasetImporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.compute_metadata = compute_metadata
+        self.include_all_data = include_all_data
 
+        self._classes = None
+        self._sample_parser = None
         self._video_paths_map = None
         self._metadata_map = None
         self._labels_map = None
         self._uuids = None
         self._iter_uuids = None
-        self._sample_parser = None
-        self._classes = None
         self._num_samples = None
-        self._has_labels = False
 
     def __iter__(self):
         self._iter_uuids = iter(self._uuids)
@@ -2678,14 +2880,18 @@ class FiftyOneTemporalDetectionDatasetImporter(
     def __next__(self):
         uuid = next(self._iter_uuids)
 
-        video_path = self._video_paths_map[uuid]
+        if fos.isabs(uuid):
+            video_path = uuid
+        else:
+            video_path = self._video_paths_map[uuid]
+
         video_metadata = self._metadata_map.get(uuid, None)
-        labels = self._labels_map[uuid]
+        labels = self._labels_map.get(uuid, None)
 
         if self.compute_metadata and video_metadata is None:
             video_metadata = fom.VideoMetadata.build_for(video_path)
 
-        if self._has_labels:
+        if labels is not None:
             sample = (video_path, labels)
             self._sample_parser.with_sample(sample, metadata=video_metadata)
             label = self._sample_parser.get_label()
@@ -2722,10 +2928,13 @@ class FiftyOneTemporalDetectionDatasetImporter(
 
         classes = labels.get("classes", None)
         labels_map = labels.get("labels", {})
-        has_labels = any(labels_map.values())
 
-        uuids = sorted(labels_map.keys())
-        uuids = self._preprocess_list(uuids)
+        uuids = set(labels_map.keys())
+
+        if self.include_all_data:
+            uuids.update(video_paths_map.keys())
+
+        uuids = self._preprocess_list(sorted(uuids))
 
         if self.compute_metadata:
             metadata_map = self._get_remote_metadata(
@@ -2734,14 +2943,12 @@ class FiftyOneTemporalDetectionDatasetImporter(
         else:
             metadata_map = {}
 
+        self._classes = classes
         self._sample_parser = FiftyOneTemporalDetectionSampleParser()
         self._sample_parser.classes = classes
-
-        self._classes = classes
         self._video_paths_map = video_paths_map
         self._metadata_map = metadata_map
         self._labels_map = labels_map
-        self._has_labels = has_labels
         self._uuids = uuids
         self._num_samples = len(uuids)
 

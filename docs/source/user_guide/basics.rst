@@ -270,7 +270,7 @@ metadata about the source media of the sample.
         'id': '60302b9dca4a8b5f74e84f16',
         'media_type': 'image',
         'filepath': '/path/to/image.png',
-        'tags': BaseList([]),
+        'tags': [],
         'metadata': <ImageMetadata: {
             'size_bytes': 544559,
             'mime_type': 'image/png',
@@ -338,20 +338,20 @@ Using FiftyOne's |Label| types enables you to visualize your labels in the
         'metadata': None,
         'weather': <Classification: {'label': 'sunny', 'confidence': None, 'logits': None}>,
         'animals': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'label': 'cat',
-                    'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+                    'bounding_box': [0.5, 0.5, 0.4, 0.3],
                     'confidence': None,
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                 }>,
                 <Detection: {
                     'label': 'dog',
-                    'bounding_box': BaseList([0.2, 0.2, 0.2, 0.4]),
+                    'bounding_box': [0.2, 0.2, 0.2, 0.4],
                     'confidence': None,
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                 }>,
-            ]),
+            ],
         }>,
     }>
 

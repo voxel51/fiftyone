@@ -27,7 +27,6 @@ import fiftyone.core.context as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
 import fiftyone.core.patches as fop
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
@@ -539,7 +538,7 @@ def lines(
         raise ValueError("You must provide 'y' values")
 
     if etau.is_str(y) or isinstance(y, foe.ViewExpression):
-        if samples is not None and samples.media_type == fom.VIDEO:
+        if samples is not None and samples._contains_videos():
             is_frames = foe.is_frames_expr(y)
         else:
             is_frames = False

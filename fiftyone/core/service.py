@@ -326,6 +326,7 @@ class ServerService(Service):
         super().__init__()
 
     def start(self):
+        focx._get_context()  # ensure context is defined
         address = self._address or "127.0.0.1"
         port = self._port
 

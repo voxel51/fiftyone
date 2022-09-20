@@ -189,7 +189,7 @@ export default class DetectionOverlay<
       return false;
     }
 
-    const [w, h] = state.config.dimensions;
+    const [w, h] = state.dimensions;
     const [px, py] = state.pixelCoordinates;
     let [bx, by, bw, bh] = this.labelBoundingBox;
     [bx, by, bw, bh] = [bx * w, by * h, bw * w, bh * h];
@@ -217,7 +217,7 @@ export default class DetectionOverlay<
   }
 
   private getDrawnBBox(state: Readonly<State>): BoundingBox {
-    const [w, h] = state.config.dimensions;
+    const [w, h] = state.dimensions;
     let [bx, by, bw, bh] = this.label.bounding_box;
 
     const ow = state.strokeWidth / state.canvasBBox[2];

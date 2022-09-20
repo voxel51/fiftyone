@@ -1,4 +1,4 @@
-import { useRouter, Loading, EventsContext, Theme } from "@fiftyone/components";
+import { Loading, Theme } from "@fiftyone/components";
 import { darkTheme, getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -6,15 +6,29 @@ import { RecoilRoot, useRecoilValue } from "recoil";
 
 import Setup from "./components/Setup";
 
-import { useReset, useScreenshot } from "./utils/hooks";
+import { useScreenshot } from "./utils/hooks";
 
 import "./index.css";
-import { State } from "./recoil/types";
-import { stateSubscription } from "./recoil/selectors";
 import makeRoutes from "./makeRoutes";
-import { getDatasetName } from "./utils/generic";
-import { modal, refresher, useRefresh } from "./recoil/atoms";
 import Network from "./Network";
+import {
+  modal,
+  refresher,
+  State,
+  stateSubscription,
+  useRefresh,
+  useReset,
+  useClearModal,
+} from "@fiftyone/state";
+import { usePlugins } from "@fiftyone/plugins";
+import { useRouter } from "@fiftyone/state";
+import { EventsContext } from "@fiftyone/state";
+import { getDatasetName } from "@fiftyone/state";
+
+// built in plugins
+import "@fiftyone/map";
+import "@fiftyone/looker-3d";
+import { useErrorHandler } from "react-error-boundary";
 
 enum AppReadyState {
   CONNECTING = 0,
@@ -24,7 +38,6 @@ enum AppReadyState {
 
 enum Events {
   DEACTIVATE_NOTEBOOK_CELL = "deactivate_notebook_cell",
-  REFRESH_APP = "refresh_app",
   STATE_UPDATE = "state_update",
 }
 
@@ -44,6 +57,7 @@ const App: React.FC = ({}) => {
   const contextRef = useRef(context);
   contextRef.current = context;
   const reset = useReset();
+  const clearModal = useClearModal();
 
   useEffect(() => {
     readyState === AppReadyState.CLOSED && reset();
@@ -54,9 +68,9 @@ const App: React.FC = ({}) => {
   );
 
   const isModalActive = Boolean(useRecoilValue(modal));
+  const handleError = useErrorHandler();
 
   useEffect(() => {
-    document.body.classList.toggle("noscroll", isModalActive);
     document
       .getElementById("modal")
       ?.classList.toggle("modalon", isModalActive);
@@ -79,13 +93,10 @@ const App: React.FC = ({}) => {
               controller.abort();
               screenshot();
               break;
-            case Events.REFRESH_APP:
-              refresh();
-              break;
             case Events.STATE_UPDATE: {
-              const { colorscale, config, ...data } = JSON.parse(
-                msg.data
-              ).state;
+              const payload = JSON.parse(msg.data);
+              const { colorscale, config, ...data } = payload.state;
+
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
@@ -111,6 +122,7 @@ const App: React.FC = ({}) => {
                 state,
                 colorscale,
                 config,
+                refresh: payload.refresh,
                 variables: dataset ? { view: state.view || null } : undefined,
               });
 
@@ -118,7 +130,9 @@ const App: React.FC = ({}) => {
             }
           }
         },
+        onerror: (e) => handleError(e),
         onclose: () => {
+          clearModal();
           setReadyState(AppReadyState.CLOSED);
         },
       },
@@ -126,21 +140,22 @@ const App: React.FC = ({}) => {
       {
         initializer: getDatasetName(contextRef.current),
         subscription,
-        events: [
-          Events.DEACTIVATE_NOTEBOOK_CELL,
-          Events.REFRESH_APP,
-          Events.STATE_UPDATE,
-        ],
+        events: [Events.DEACTIVATE_NOTEBOOK_CELL, Events.STATE_UPDATE],
       }
     );
 
     return () => controller.abort();
   }, []);
 
+  const plugins = usePlugins();
+  const loadingElement = <Loading>Pixelating...</Loading>;
+
   switch (readyState) {
     case AppReadyState.CONNECTING:
-      return <Loading>Pixelating...</Loading>;
+      return loadingElement;
     case AppReadyState.OPEN:
+      if (plugins.isLoading) return loadingElement;
+      if (plugins.error) return <Loading>Plugin error...</Loading>;
       return <Network environment={environment} context={context} />;
     default:
       return <Setup />;

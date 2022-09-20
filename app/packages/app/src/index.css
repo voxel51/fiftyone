@@ -24,11 +24,13 @@ body,
   background-color: var(--background-transparent);
   top: 0;
   z-index: 1000;
-  display: none;
+  display: block;
+  visibility: hidden;
 }
 
 #modal.modalon {
   display: block;
+  visibility: visible;
 }
 
 * {
@@ -41,4 +43,8 @@ button {
   font-family: "Palanquin", sans-serif;
   font-size: 14px;
   color: var(--font);
+}
+
+body {
+  overflow: hidden;
 }

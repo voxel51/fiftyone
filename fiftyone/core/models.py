@@ -106,8 +106,19 @@ def apply_model(
             % (Model, _BASE_FLASH_TYPE, type(model))
         )
 
+    if samples.media_type == fom.IMAGE:
+        fov.validate_image_collection(samples)
+    elif samples.media_type == fom.GROUP:
+        raise fom.SelectGroupSlicesError((fom.IMAGE, fom.VIDEO))
+    elif samples.media_type != fom.VIDEO:
+        raise fom.MediaTypeError(
+            "Unsupported media type '%s'" % samples.media_type
+        )
+
     if model.media_type == "video" and samples.media_type != fom.VIDEO:
-        raise ValueError("Video models can only be applied to video datasets")
+        raise ValueError(
+            "Video models can only be applied to video collections"
+        )
 
     if model.media_type not in ("image", "video"):
         raise ValueError(
@@ -129,9 +140,6 @@ def apply_model(
         logger.warning(
             "Ignoring `num_workers` parameter; only supported for Torch models"
         )
-
-    if samples.media_type == fom.IMAGE:
-        fov.validate_image_collection(samples)
 
     samples.download_media(skip_failures=skip_failures)
 
@@ -624,8 +632,19 @@ def compute_embeddings(
             % model.has_embeddings
         )
 
+    if samples.media_type == fom.IMAGE:
+        fov.validate_image_collection(samples)
+    elif samples.media_type == fom.GROUP:
+        raise fom.SelectGroupSlicesError((fom.IMAGE, fom.VIDEO))
+    elif samples.media_type != fom.VIDEO:
+        raise fom.MediaTypeError(
+            "Unsupported media type '%s'" % samples.media_type
+        )
+
     if model.media_type == "video" and samples.media_type != fom.VIDEO:
-        raise ValueError("Video models can only be applied to video datasets")
+        raise ValueError(
+            "Video models can only be applied to video collections"
+        )
 
     if model.media_type not in ("image", "video"):
         raise ValueError(
@@ -641,9 +660,6 @@ def compute_embeddings(
         logger.warning(
             "Ignoring `num_workers` parameter; only supported for Torch models"
         )
-
-    if samples.media_type == fom.IMAGE:
-        fov.validate_image_collection(samples)
 
     samples.download_media(skip_failures=skip_failures)
 
@@ -1109,7 +1125,12 @@ def compute_patch_embeddings(
             "Ignoring `num_workers` parameter; only supported for Torch models"
         )
 
-    if samples.media_type == fom.VIDEO:
+    if samples.media_type == fom.IMAGE:
+        fov.validate_image_collection(samples)
+        fov.validate_collection_label_fields(
+            samples, patches_field, _ALLOWED_PATCH_TYPES
+        )
+    elif samples.media_type == fom.VIDEO:
         patches_field, _ = samples._handle_frame_field(patches_field)
         if embeddings_field is not None:
             embeddings_field, _ = samples._handle_frame_field(embeddings_field)
@@ -1119,10 +1140,11 @@ def compute_patch_embeddings(
             samples._FRAMES_PREFIX + patches_field,
             _ALLOWED_PATCH_TYPES,
         )
+    elif samples.media_type == fom.GROUP:
+        raise fom.SelectGroupSlicesError((fom.IMAGE, fom.VIDEO))
     else:
-        fov.validate_image_collection(samples)
-        fov.validate_collection_label_fields(
-            samples, patches_field, _ALLOWED_PATCH_TYPES
+        raise fom.MediaTypeError(
+            "Unsupported media type '%s'" % samples.media_type
         )
 
     batch_size = _parse_batch_size(batch_size, model, use_data_loader)

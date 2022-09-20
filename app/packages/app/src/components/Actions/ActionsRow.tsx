@@ -1,6 +1,5 @@
 import React, {
   MutableRefObject,
-  RefCallback,
   useLayoutEffect,
   useRef,
   useState,
@@ -20,7 +19,6 @@ import {
 } from "@material-ui/icons";
 import useMeasure from "react-use-measure";
 import {
-  atom,
   selectorFamily,
   useRecoilCallback,
   useRecoilState,
@@ -32,20 +30,18 @@ import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
 import OptionsActions from "./Options";
 import ExportAction from "./Export";
-import Patcher, { patchesFields, patching, sendPatch } from "./Patcher";
+import Patcher, { patchesFields, sendPatch } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import { PillButton } from "../utils";
-import * as atoms from "../../recoil/atoms";
-import * as filterAtoms from "../../recoil/filters";
-import * as selectors from "../../recoil/selectors";
 import {
   useEventHandler,
   useOutsideClick,
   useUnprocessedStateUpdate,
 } from "../../utils/hooks";
-import Similar, { similarityParameters } from "./Similar";
+import Similar from "./Similar";
 import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 
 const Loading = () => {
   const theme = useTheme();
@@ -62,8 +58,8 @@ const ActionDiv = styled.div`
 
 const Patches = () => {
   const [open, setOpen] = useState(false);
-  const loading = useRecoilValue(patching);
-  const isVideo = useRecoilValue(selectors.isVideoDataset);
+  const loading = useRecoilValue(fos.patching);
+  const isVideo = useRecoilValue(fos.isVideoDataset);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const fields = useRecoilValue(patchesFields);
@@ -85,12 +81,14 @@ const Patches = () => {
 
 const hasSimilarityKeys = selectorFamily<boolean, boolean>({
   key: "hasSimilarityKeys",
-  get: (modal) => ({ get }) => {
-    if (modal) {
-      return true;
-    }
-    return Boolean(get(atoms.selectedSamples).size);
-  },
+  get:
+    (modal) =>
+    ({ get }) => {
+      if (modal) {
+        return true;
+      }
+      return Boolean(get(fos.selectedSamples).size);
+    },
 });
 
 const Similarity = ({ modal }: { modal: boolean }) => {
@@ -98,7 +96,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const hasSimilarity = useRecoilValue(hasSimilarityKeys(modal));
-  const hasSorting = useRecoilValue(similarityParameters);
+  const hasSorting = useRecoilValue(fos.similarityParameters);
   const [mRef, bounds] = useMeasure();
   const close = false;
 
@@ -132,15 +130,17 @@ const Tag = ({
   lookerRef,
 }: {
   modal: boolean;
-  lookerRef?: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
+  lookerRef?: MutableRefObject<
+    VideoLooker | ImageLooker | FrameLooker | undefined
+  >;
 }) => {
   const [open, setOpen] = useState(false);
   const [available, setAvailable] = useState(true);
-  const labels = useRecoilValue(selectors.selectedLabelIds);
-  const samples = useRecoilValue(atoms.selectedSamples);
+  const labels = useRecoilValue(fos.selectedLabelIds);
+  const samples = useRecoilValue(fos.selectedSamples);
 
   const selected = labels.size > 0 || samples.size > 0;
-  const tagging = useRecoilValue(selectors.anyTagging);
+  const tagging = useRecoilValue(fos.anyTagging);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
 
@@ -184,12 +184,14 @@ const Selected = ({
   lookerRef,
 }: {
   modal: boolean;
-  lookerRef?: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
+  lookerRef?: MutableRefObject<
+    VideoLooker | ImageLooker | FrameLooker | undefined
+  >;
 }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const samples = useRecoilValue(atoms.selectedSamples);
-  const labels = useRecoilValue(selectors.selectedLabelIds);
+  const samples = useRecoilValue(fos.selectedSamples);
+  const labels = useRecoilValue(fos.selectedLabelIds);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
@@ -243,7 +245,7 @@ const Selected = ({
 
 const Options = ({ modal }) => {
   const [open, setOpen] = useState(false);
-  const ref = useRef();
+  const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
 
@@ -263,7 +265,7 @@ const Options = ({ modal }) => {
 };
 
 const Hidden = () => {
-  const [hiddenObjects, setHiddenObjects] = useRecoilState(atoms.hiddenLabels);
+  const [hiddenObjects, setHiddenObjects] = useRecoilState(fos.hiddenLabels);
   const count = Object.keys(hiddenObjects).length;
 
   if (count < 1) {
@@ -282,33 +284,30 @@ const Hidden = () => {
   );
 };
 
-export const savingFilters = atom<boolean>({
-  key: "savingFilters",
-  default: false,
-});
-
 const SaveFilters = () => {
-  const hasFiltersValue = useRecoilValue(filterAtoms.hasFilters(false));
-  const similarity = useRecoilValue(similarityParameters);
-  const loading = useRecoilValue(savingFilters);
+  const hasFiltersValue = useRecoilValue(fos.hasFilters(false));
+  const extended = Object.keys(useRecoilValue(fos.extendedStages)).length > 0;
+  const loading = useRecoilValue(fos.savingFilters);
   const updateState = useUnprocessedStateUpdate();
 
   const saveFilters = useRecoilCallback(
-    ({ snapshot, set }) => async () => {
-      const loading = await snapshot.getPromise(savingFilters);
-      if (loading) {
-        return;
-      }
-      set(savingFilters, true);
-      sendPatch(snapshot, updateState, null).then(() => {
-        set(savingFilters, false);
-        set(similarityParameters, null);
-      });
-    },
+    ({ snapshot, set, reset }) =>
+      async () => {
+        const loading = await snapshot.getPromise(fos.savingFilters);
+        if (loading) {
+          return;
+        }
+        set(fos.savingFilters, true);
+        sendPatch(snapshot, updateState, undefined).then(() => {
+          set(fos.savingFilters, false);
+          reset(fos.similarityParameters);
+          reset(fos.extendedSelection);
+        });
+      },
     []
   );
 
-  return hasFiltersValue || similarity ? (
+  return hasFiltersValue || extended ? (
     <ActionDiv>
       <PillButton
         open={false}
@@ -324,8 +323,8 @@ const SaveFilters = () => {
 
 const ToggleSidebar: React.FC<{
   modal: boolean;
-}> = React.forwardRef(({ modal, ...props }, ref) => {
-  const [visible, setVisible] = useRecoilState(atoms.sidebarVisible(modal));
+}> = React.forwardRef(({ modal }, ref) => {
+  const [visible, setVisible] = useRecoilState(fos.sidebarVisible(modal));
 
   return (
     <PillButton
@@ -384,7 +383,7 @@ const ActionsRowDiv = styled.div`
 `;
 
 export const GridActionsRow = () => {
-  const isVideo = useRecoilValue(selectors.isVideoDataset);
+  const isVideo = useRecoilValue(fos.isVideoDataset);
 
   return (
     <ActionsRowDiv>
@@ -403,9 +402,9 @@ export const GridActionsRow = () => {
 export const ModalActionsRow = ({
   lookerRef,
 }: {
-  lookerRef?: MutableRefObject<VideoLooker>;
+  lookerRef?: MutableRefObject<VideoLooker | undefined>;
 }) => {
-  const isVideo = useRecoilValue(selectors.isVideoDataset);
+  const isVideo = useRecoilValue(fos.isVideoDataset);
 
   return (
     <ActionsRowDiv
