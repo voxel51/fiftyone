@@ -1,4 +1,4 @@
-import { useTheme } from "../Theme";
+import { useTheme } from "../ThemeProvider";
 import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring, useSprings } from "@react-spring/web";

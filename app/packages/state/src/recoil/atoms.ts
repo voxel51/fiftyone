@@ -238,3 +238,8 @@ export const lookerPanels = atom({
     help: { isOpen: false },
   },
 });
+
+export const theme = atom<"dark" | "light">({
+  key: "theme",
+  default: "dark",
+});
