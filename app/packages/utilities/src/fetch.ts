@@ -33,6 +33,12 @@ export const getFetchOrigin = () => {
   }
   return fetchOrigin;
 };
+export function getFetchPathPrefix(): string {
+  if (typeof window.FIFTYONE_SERVER_PATH_PREFIX === "string") {
+    return window.FIFTYONE_SERVER_PATH_PREFIX;
+  }
+  return "";
+}
 
 export const getFetchParameters = () => {
   return {
