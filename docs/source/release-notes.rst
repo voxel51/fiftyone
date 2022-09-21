@@ -11,7 +11,7 @@ FiftyOne 0.17.2
 
 App
 
-- Fixed dataset backward compatability 
+- Fixed dataset backward compatability
   `#2103 <https://github.com/voxel51/fiftyone/pull/2103>`_
 
 .. _release-notes-v0.17.1:
