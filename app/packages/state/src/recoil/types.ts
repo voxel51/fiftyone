@@ -79,6 +79,7 @@ export namespace State {
 
   export interface DatasetAppConfig {
     gridMediaField?: string;
+    modalMediaField?: string;
     mediaFields?: string[];
     plugins?: PluginConfig;
     sidebarGroups?: { name: string; paths: string[] }[];
