@@ -1,4 +1,4 @@
-import { getFetchOrigin } from "@fiftyone/utilities";
+import { getFetchOrigin, getFetchPathPrefix } from "@fiftyone/utilities";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { selector, useRecoilTransaction_UNSTABLE } from "recoil";
 
@@ -13,7 +13,7 @@ export const getSampleSrc = (filepath: string, id: string, url?: string) => {
     return url;
   }
 
-  return `${getFetchOrigin()}/media?filepath=${encodeURIComponent(
+  return `${getFetchOrigin()}${getFetchPathPrefix()}/media?filepath=${encodeURIComponent(
     filepath
   )}&id=${id}`;
 };
