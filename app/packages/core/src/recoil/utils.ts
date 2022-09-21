@@ -8,16 +8,6 @@ import { useUnprocessedStateUpdate } from "../utils/hooks";
 
 type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
 
-export const getSampleSrc = (filepath: string, id: string, url?: string) => {
-  if (url) {
-    return url;
-  }
-
-  return `${getFetchOrigin()}${getFetchPathPrefix()}/media?filepath=${encodeURIComponent(
-    filepath
-  )}&id=${id}`;
-};
-
 export const lookerType = selector<(mimetype: string) => LookerTypes>({
   key: "lookerType",
   get: ({ get }) => {
