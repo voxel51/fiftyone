@@ -7,6 +7,7 @@ File storage utilities.
 """
 from contextlib import contextmanager
 import io
+import itertools
 import json
 import logging
 import multiprocessing.dummy
@@ -29,6 +30,7 @@ import eta.core.storage as etast
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 
@@ -1651,6 +1653,7 @@ def upload_media(
     sample_collection,
     remote_dir,
     rel_dir=None,
+    media_field="filepath",
     update_filepaths=False,
     overwrite=False,
     skip_failures=False,
@@ -1670,6 +1673,7 @@ def upload_media(
         remote_dir: a remote "folder" into which to upload
         rel_dir (None): an optional relative directory to strip from each
             filepath when constructing the corresponding remote path
+        media_field ("filepath"): the field containing the media paths
         update_filepaths (False): whether to update the ``filepath`` of each
             sample in the collection to its remote path
         overwrite (False): whether to overwrite (True) or skip (False) existing
@@ -1682,7 +1686,12 @@ def upload_media(
     Returns:
         the list of remote paths
     """
-    filepaths = sample_collection.values("filepath")
+    if sample_collection.media_type == fom.GROUP:
+        sample_collection = sample_collection.select_group_slices(
+            _allow_mixed=True
+        )
+
+    filepaths = sample_collection.values(media_field)
 
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=remote_dir,
@@ -1710,7 +1719,7 @@ def upload_media(
         )
 
     if update_filepaths:
-        sample_collection.set_values("filepath", remote_paths)
+        sample_collection.set_values(media_field, remote_paths)
 
     return remote_paths
 
