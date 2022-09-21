@@ -13,9 +13,3 @@ import fiftyone.constants as foc
 FIFTYONE_TEAMS_CONFIG_PATH = os.path.join(
     foc.FIFTYONE_CONFIG_DIR, "teams_config.json"
 )
-FIFTYONE_TEAMS_API_AUDIENCE = (
-    "api.dev.fiftyone.ai" if foc.DEV_INSTALL else "api.fiftyone.ai"
-)
-FIFTYONE_TEAMS_API_DOMAIN = (
-    "dev-uqppzklh.us.auth0.com" if foc.DEV_INSTALL else "login.fiftyone.ai"
-)

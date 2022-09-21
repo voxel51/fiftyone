@@ -7,7 +7,6 @@ FiftyOne Server JIT metadata utilities.
 """
 from enum import Enum
 import logging
-import re
 import requests
 import shutil
 import struct
@@ -474,14 +473,20 @@ async def _create_media_urls(
     cache: t.Dict,
     session: aiohttp.ClientSession,
 ) -> t.Tuple[str, t.Dict[str, str]]:
-    media_urls = []
+    filepath_url = None
     local_only = (
         collection.media_type == fom.IMAGE
         and foc.media_cache.config.cache_app_images
     )
-    filepath_url = None
+    media_fields = (
+        collection.app_config.media_fields
+        if collection.app_config
+        else ["filepath"]
+    )
+    media_urls = []
 
-    for field in collection.app_config.media_fields:
+    for field in media_fields:
+
         path = sample.get(field, None)
         if path in cache:
             if field == "filepath":
