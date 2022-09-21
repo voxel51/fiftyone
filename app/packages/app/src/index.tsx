@@ -1,16 +1,12 @@
-import { Loading, ThemeProvider } from "@fiftyone/components";
+import { ThemeProvider } from "@fiftyone/components";
+import { Loading, Setup, useScreenshot, makeRoutes } from "@fiftyone/core";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot, useRecoilValue } from "recoil";
-
-import Setup from "./components/Setup";
-
-import { useScreenshot } from "./utils/hooks";
+import Network from "./Network";
 
 import "./index.css";
-import makeRoutes from "./makeRoutes";
-import Network from "./Network";
 import {
   modal,
   refresher,

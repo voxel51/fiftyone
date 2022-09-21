@@ -28,8 +28,17 @@ export const getFetchHeaders = () => {
 };
 
 export const getFetchOrigin = () => {
+  if (window.FIFTYONE_SERVER_ADDRESS) {
+    return window.FIFTYONE_SERVER_ADDRESS;
+  }
   return fetchOrigin;
 };
+export function getFetchPathPrefix(): string {
+  if (typeof window.FIFTYONE_SERVER_PATH_PREFIX === "string") {
+    return window.FIFTYONE_SERVER_PATH_PREFIX;
+  }
+  return "";
+}
 
 export const getFetchParameters = () => {
   return {
@@ -48,6 +57,10 @@ export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
     result = "json"
   ) => {
     let url: string;
+    if (window.FIFTYONE_SERVER_PATH_PREFIX) {
+      path = `${window.FIFTYONE_SERVER_PATH_PREFIX}${path}`;
+    }
+
     try {
       new URL(path);
       url = path;
@@ -85,7 +98,9 @@ export const getAPI = () => {
   if (import.meta.env.VITE_API) {
     return import.meta.env.VITE_API;
   }
-
+  if (window.FIFTYONE_SERVER_ADDRESS) {
+    return window.FIFTYONE_SERVER_ADDRESS;
+  }
   return isElectron()
     ? `http://${process.env.FIFTYONE_SERVER_ADDRESS || "localhost"}:${
         process.env.FIFTYONE_SERVER_PORT || 5151
@@ -119,6 +134,10 @@ export const getEventSource = (
   if (polling) {
     pollingEventSource(path, events, signal, body);
   } else {
+    if (window.FIFTYONE_SERVER_PATH_PREFIX) {
+      path = `${window.FIFTYONE_SERVER_PATH_PREFIX}${path}`;
+    }
+
     fetchEventSource(`${getFetchOrigin()}${path}`, {
       headers: { "Content-Type": "text/event-stream" },
       method: "POST",

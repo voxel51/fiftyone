@@ -1,0 +1,15 @@
+.page {
+  position: relative;
+  width: 100%;
+  height: calc(100% - 74px);
+  flex: 1;
+}
+
+.rest {
+  display: flex;
+  flex: 1;
+}
+
+.icons {
+  flex-shrink: 0;
+}

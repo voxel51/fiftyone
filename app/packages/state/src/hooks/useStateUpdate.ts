@@ -86,6 +86,7 @@ const useStateUpdate = () => {
       }
 
       if (dataset) {
+        console.log("dataset?", dataset);
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
         dataset.evaluations = Object.values(dataset.evaluations || {});
 
@@ -115,11 +116,11 @@ const useStateUpdate = () => {
           reset(similarityParameters);
           set(
             selectedMediaField(false),
-            dataset.appConfig.gridMediaField || "filepath"
+            dataset?.appConfig?.gridMediaField || "filepath"
           );
-          reset(
+          set(
             selectedMediaField(true),
-            dataset.appConfig.modalMediaField || "filepath"
+            dataset?.appConfig?.modalMediaField || "filepath"
           );
           reset(extendedSelection);
           reset(filters);

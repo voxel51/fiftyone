@@ -15,6 +15,7 @@
     },
     "dependencies": {
         "@fiftyone/components": "*",
+        "@fiftyone/core": "*",
         "@fiftyone/flashlight": "*",
         "@fiftyone/looker": "*",
         "@fiftyone/map": "*",
