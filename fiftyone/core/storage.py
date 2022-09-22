@@ -7,7 +7,6 @@ File storage utilities.
 """
 from contextlib import contextmanager
 import io
-import itertools
 import json
 import logging
 import multiprocessing.dummy
@@ -1674,7 +1673,7 @@ def upload_media(
         rel_dir (None): an optional relative directory to strip from each
             filepath when constructing the corresponding remote path
         media_field ("filepath"): the field containing the media paths
-        update_filepaths (False): whether to update the ``filepath`` of each
+        update_filepaths (False): whether to update the ``media_field`` of each
             sample in the collection to its remote path
         overwrite (False): whether to overwrite (True) or skip (False) existing
             remote files
