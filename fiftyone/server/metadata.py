@@ -486,7 +486,6 @@ async def _create_media_urls(
     media_urls = []
 
     for field in media_fields:
-
         path = sample.get(field, None)
         if path in cache:
             if field == "filepath":
