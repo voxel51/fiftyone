@@ -25,7 +25,7 @@ const SamplesHeader = styled.div`
     to top,
     rgba(0, 0, 0, 0),
     30%,
-    ${({ theme }) => theme.backgroundDark}
+    ${({ theme }) => theme.background.level2}
   );
   margin-left: -1rem;
 `;
@@ -35,7 +35,7 @@ const RightDiv = styled.div`
   justify-content: center;
   align-content: center;
   flex-direction: column;
-  border-color: ${({ theme }) => theme.backgroundDarkBorder};
+  border-color: ${({ theme }) => theme.primary.plainBorder};
   border-right-style: solid;
   border-right-width: 1px;
   margin: 0 0.25rem;
@@ -125,7 +125,7 @@ const ImageContainerHeader = () => {
             <Slider
               valueAtom={gridZoom}
               boundsAtom={gridZoomRange}
-              color={theme.brand}
+              color={theme.primary.plainColor}
               showBounds={false}
               persistValue={false}
               showValue={false}

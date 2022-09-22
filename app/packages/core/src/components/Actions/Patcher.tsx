@@ -240,11 +240,15 @@ const Patcher = ({ bounds, close }: PatcherProps) => {
   const [labels, setLabels] = useState(true);
 
   const labelProps = useSpring({
-    borderBottomColor: labels ? theme.brand : theme.backgroundDark,
+    borderBottomColor: labels
+      ? theme.primary.plainColor
+      : theme.background.level2,
     cursor: labels ? "default" : "pointer",
   });
   const evaluationProps = useSpring({
-    borderBottomColor: labels ? theme.backgroundDark : theme.brand,
+    borderBottomColor: labels
+      ? theme.background.level2
+      : theme.primary.plainColor,
     cursor: labels ? "pointer" : "default",
   });
   return (

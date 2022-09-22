@@ -35,7 +35,7 @@ const SelectableBar: React.FC<
           disableRipple
           title={selected ? "Select sample" : "Selected"}
           checked={selected}
-          style={{ color: theme.brand }}
+          style={{ color: theme.primary.plainColor }}
           onClick={() => select(sampleId)}
         />
       </div>

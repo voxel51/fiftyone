@@ -37,8 +37,11 @@
     "styled-components": "*"
   },
   "dependencies": {
+    "@emotion/react": "^11.10.4",
+    "@emotion/styled": "^11.10.4",
     "@fiftyone/state": "*",
     "@mui/icons-material": "^5.10.2",
+    "@mui/joy": "^5.0.0-alpha.46",
     "@mui/material": "^5.9.0",
     "classnames": "^2.3.1",
     "framer-motion": "^6.2.7",

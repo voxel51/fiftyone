@@ -74,7 +74,7 @@ interface RadioGroupProps {
 const RadioGroup = React.memo(
   ({ choices, color = null, value, setValue }: RadioGroupProps) => {
     const theme = useTheme();
-    color = color ?? theme.brand;
+    color = color ?? theme.primary.plainColor;
 
     useLayoutEffect(() => {
       choices.length >= 1 && !value && setValue(choices[0]);

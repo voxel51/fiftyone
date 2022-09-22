@@ -15,7 +15,7 @@ import {
 } from "@fiftyone/state";
 
 export const SwitcherDiv = styled.div`
-  border-bottom: 1px solid ${({ theme }) => theme.background};
+  border-bottom: 1px solid ${({ theme }) => theme.background.body};
   display: flex;
   margin: 0 -0.5rem;
   padding: 0 0.5rem;
@@ -28,7 +28,7 @@ export const SwitchDiv = animated(styled.div`
   padding-left: 0.4rem;
   line-height: 2;
   font-weight: bold;
-  border-bottom-color: ${({ theme }) => theme.brand};
+  border-bottom-color: ${({ theme }) => theme.primary.plainColor};
   border-bottom-style: solid;
   border-bottom-width: 2px;
   text-transform: capitalize;
@@ -42,12 +42,8 @@ export const useHighlightHover = (disabled, override = null, color = null) => {
       ? override && !disabled
       : hovering && !disabled;
   const style = useSpring({
-    backgroundColor: on
-      ? theme.backgroundLight
-      : disabled
-      ? theme.backgroundDark
-      : theme.backgroundDark,
-    color: color ? color : on ? theme.font : theme.fontDark,
+    backgroundColor: on ? theme.background.level1 : theme.background.level2,
+    color: color ? color : on ? theme.text.primary : theme.text.secondary,
   });
 
   const onMouseEnter = () => setHovering(true);

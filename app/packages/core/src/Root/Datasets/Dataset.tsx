@@ -1,6 +1,5 @@
 import { NotFoundError, toCamelCase } from "@fiftyone/utilities";
 import React, { useContext, useEffect } from "react";
-import { graphql, usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 
 import DatasetComponent from "../../components/Dataset";

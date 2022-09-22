@@ -24,7 +24,7 @@ const SliderContainer = styled.div`
 
 const SliderStyled = styled(SliderUnstyled)`
   && {
-    color: ${({ theme }) => theme.brand};
+    color: ${({ theme }) => theme.primary.plainColor};
     margin: 0 1.5rem 0 1.3rem;
     height: 8px;
   }
@@ -39,7 +39,7 @@ const SliderStyled = styled(SliderUnstyled)`
   .track {
     height: 8px;
     border-radius: 8px;
-    background: ${({ theme }) => theme.brand};
+    background: ${({ theme }) => theme.primary.plainColor};
   }
 
   .thumb {
@@ -48,7 +48,7 @@ const SliderStyled = styled(SliderUnstyled)`
     top: 50%;
     margin-top: -8.4px;
     border-radius: 8px;
-    background: ${({ theme }) => theme.brand};
+    background: ${({ theme }) => theme.primary.plainColor};
     box-shadow: none;
     color: transparent;
   }
@@ -74,9 +74,9 @@ const SliderStyled = styled(SliderUnstyled)`
 
   .valueLabel > span > span {
     text-align: center;
-    color: ${({ theme }) => theme.font};
-    background: ${({ theme }) => theme.backgroundDark};
-    border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+    color: ${({ theme }) => theme.text.primary};
+    background: ${({ theme }) => theme.background.level2};
+    border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   }
 ` as typeof SliderUnstyled;
 
@@ -142,7 +142,7 @@ const BaseSlider = <T extends Range | number>({
                 width: "100%",
                 textAlign: "center",
                 padding: "0.25rem",
-                color: theme.font,
+                color: theme.text.primary,
               }}
             >
               {getDateTimeRangeFormattersWithPrecision(

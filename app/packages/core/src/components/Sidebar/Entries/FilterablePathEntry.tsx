@@ -259,7 +259,7 @@ const FilterableEntry = React.memo(
     const skeleton = useRecoilValue(fos.getSkeleton);
     const expandedPath = useRecoilValue(fos.expandPath(path));
     const color = disabled
-      ? theme.backgroundDark
+      ? theme.background.level2
       : useRecoilValue(fos.pathColor({ path, modal }));
     const fields = useRecoilValue(
       fos.fields({
@@ -288,7 +288,7 @@ const FilterableEntry = React.memo(
       }
     }, [expandable.state, expandable.contents, expanded]);
     const { backgroundColor } = useSpring({
-      backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
+      backgroundColor: fieldIsFiltered ? "#6C757D" : theme.background.level1,
     });
 
     if (!field) {
@@ -308,7 +308,7 @@ const FilterableEntry = React.memo(
                 checked={active}
                 title={`Show ${path}`}
                 style={{
-                  color: active ? color : theme.fontDark,
+                  color: active ? color : theme.text.secondary,
                   marginLeft: 2,
                   padding: 0,
                 }}

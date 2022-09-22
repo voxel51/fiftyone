@@ -9,7 +9,7 @@ const IconDiv = styled.div`
   right: 50%;
 
   & > svg {
-    color: ${({ theme }) => theme.font};
+    color: ${({ theme }) => theme.text.primary};
   }
 `;
 
@@ -21,7 +21,7 @@ const Loading = React.memo(
         {loading && (
           <CircularProgress
             style={{
-              color: theme.font,
+              color: theme.text.primary,
               height: "100%",
               width: "100%",
             }}

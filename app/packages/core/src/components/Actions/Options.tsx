@@ -112,7 +112,7 @@ const Opacity = ({ modal }) => {
       <Slider
         valueAtom={fos.alpha(modal)}
         boundsAtom={constSelector([0, 1])}
-        color={theme.brand}
+        color={theme.primary.plainColor}
         showBounds={false}
         persistValue={false}
         showValue={false}

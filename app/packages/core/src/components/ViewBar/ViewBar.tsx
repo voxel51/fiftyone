@@ -15,9 +15,9 @@ import * as fos from "@fiftyone/state";
 
 const ViewBarDiv = styled.div`
   position: relative;
-  background-color: ${({ theme }) => theme.backgroundDark};
+  background-color: ${({ theme }) => theme.background.level2};
   border-radius: 3px;
-  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   box-sizing: border-box;
   height: 52px;
   width: 100%;
@@ -51,7 +51,7 @@ const IconsContainer = styled.div`
     to right,
     rgba(0, 0, 0, 0),
     30%,
-    ${({ theme }) => theme.backgroundDark}
+    ${({ theme }) => theme.background.level2}
   );
   column-gap: 0.5rem;
   padding: 0 0.5rem;

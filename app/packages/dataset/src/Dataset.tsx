@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import { Loading, Theme } from "@fiftyone/components";
+import { Loading } from "@fiftyone/components";
 import {
   Dataset as CoreDataset,
   useDatasetLoader,
@@ -10,7 +10,7 @@ import {
 } from "@fiftyone/core";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
-import { darkTheme, getEventSource, toCamelCase } from "@fiftyone/utilities";
+import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import { useEffect, useState, Suspense } from "react";
 import { State } from "@fiftyone/state";
 import { usePlugins } from "@fiftyone/plugins";
@@ -24,9 +24,7 @@ enum Events {
   STATE_UPDATE = "state_update",
 }
 
-export function Dataset({ datasetName, environment, theme }) {
-  theme = theme || darkTheme;
-
+export function Dataset({ datasetName, environment }) {
   const [initialState, setInitialState] = useState();
   const [datasetQueryRef, loadDataset] = useDatasetLoader(environment);
 
@@ -59,20 +57,18 @@ export function Dataset({ datasetName, environment, theme }) {
   `;
 
   return (
-    <Theme theme={theme}>
-      <Container>
-        <Suspense fallback={loadingElement}>
-          <DatasetLoader
-            datasetQueryRef={datasetQueryRef}
-            initialState={initialState}
-          >
-            <ViewBar />
-            <CoreDataset />
-          </DatasetLoader>
-        </Suspense>
-        <div id="modal" />
-      </Container>
-    </Theme>
+    <Container>
+      <Suspense fallback={loadingElement}>
+        <DatasetLoader
+          datasetQueryRef={datasetQueryRef}
+          initialState={initialState}
+        >
+          <ViewBar />
+          <CoreDataset />
+        </DatasetLoader>
+      </Suspense>
+      <div id="modal" />
+    </Container>
   );
 }
 

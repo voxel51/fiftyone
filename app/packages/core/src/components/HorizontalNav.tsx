@@ -15,8 +15,8 @@ import * as fos from "@fiftyone/state";
 export type Props = {};
 
 const Container = styled(Resizable)`
-  background-color: ${({ theme }) => theme.backgroundDark};
-  border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
+  background-color: ${({ theme }) => theme.background.level2};
+  border-bottom: 1px ${({ theme }) => theme.primary.plainBorder} solid;
   overflow: hidden;
   position: relative;
   width: 100%;
@@ -46,14 +46,14 @@ const PlotButton = styled.div`
   display: inline-block;
   margin-right: 5px;
   padding: 0 1em;
-  color: ${({ theme }) => theme.font};
-  background-color: ${({ theme }) => theme.backgroundLight};
+  color: ${({ theme }) => theme.text.primary};
+  background-color: ${({ theme }) => theme.background.level2};
   text-decoration: none;
   border-radius: 2px;
   font-weight: bold;
 
   &.active {
-    background-color: ${({ theme }) => theme.secondary};
+    background-color: ${({ theme }) => theme.background.level1};
   }
 `;
 

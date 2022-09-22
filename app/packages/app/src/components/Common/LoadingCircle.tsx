@@ -7,7 +7,7 @@ const LoadingCircle: React.FC = () => {
   return (
     <CircularProgress
       style={{
-        color: theme.fontDark,
+        color: theme.palette.text.secondary,
         height: 16,
         width: 16,
         margin: 4,

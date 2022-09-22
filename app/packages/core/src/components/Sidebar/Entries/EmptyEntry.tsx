@@ -8,14 +8,14 @@ import RegularEntry from "./RegularEntry";
 const EmptyEntry = ({ text }: { text: string }) => {
   const theme = useTheme();
   const { backgroundColor } = useSpring({
-    backgroundColor: theme.backgroundLight,
+    backgroundColor: theme.background.level1,
   });
 
   return (
     <RegularEntry
       heading={
         <NameAndCountContainer>
-          <span style={{ color: theme.fontDarkest }}>{text}</span>
+          <span style={{ color: theme.text.tertiary }}>{text}</span>
         </NameAndCountContainer>
       }
       title={text}

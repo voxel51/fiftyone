@@ -20,7 +20,7 @@ const Container = styled.div`
   justify-content: space-between;
   flex-grow: 1;
   overflow: hidden;
-  background: ${({ theme }) => theme.backgroundDark};
+  background: ${({ theme }) => theme.background.level2};
 `;
 
 const SamplesContainer = React.memo(() => {

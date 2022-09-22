@@ -1,9 +1,9 @@
-import React, { useContext, useLayoutEffect } from "react";
+import React from "react";
 import * as fos from "@fiftyone/state";
-import { toSnakeCase } from "@fiftyone/utilities";
 import { extendTheme as extendJoyTheme } from "@mui/joy/styles";
 import { Experimental_CssVarsProvider as CssVarsProvider } from "@mui/material/styles";
 import { useRecoilValue } from "recoil";
+import { ThemeContext as LegacyTheme } from "styled-components";
 
 const white100 = "hsl(0, 0%, 100%)";
 const grey11 = "hsl(210, 11%, 11%)";
@@ -56,21 +56,10 @@ export const darkTheme = {
   error: red,
 };
 
-const dynamicTheme = (accessor: string) => {
-  const parts = accessor.split(".");
-  parts.unshift("--mui");
-  return `var(${parts.join("-")})`;
-};
-
 const theme = extendJoyTheme({
   colorSchemes: {
     light: {
       palette: {
-        success: {
-          solidBg: "#2DA44E",
-          solidHoverBg: "#2C974B",
-          solidActiveBg: "#298E46",
-        },
         neutral: {
           outlinedBg: "#F6F8FA",
           outlinedHoverBg: "#F3F4F6",
@@ -83,98 +72,54 @@ const theme = extendJoyTheme({
     },
     dark: {
       palette: {
-        divider: "#FFFFFF",
+        background: {
+          body: darkTheme.background,
+          level1: darkTheme.backgroundLight,
+          level2: darkTheme.backgroundDark,
+          level3: darkTheme.backgroundDarker,
+          tooltip: darkTheme.backgroundDark,
+        },
+        divider: grey37,
+        danger: {
+          plainColor: red,
+        },
+        neutral: {
+          softBg: darkTheme.backgroundTransparent,
+          softBorder: darkTheme.borderLight,
+        },
+        primary: {
+          plainColor: darkTheme.brand,
+          plainBorder: darkTheme.backgroundDarkBorder,
+          softBg: darkTheme.brandTransparent,
+          softBorder: darkTheme.border,
+        },
+        focusVisible: "rgba(3, 102, 214, 0.3)",
+        text: {
+          primary: darkTheme.font,
+          secondary: darkTheme.fontDark,
+          tertiary: darkTheme.fontDarkest,
+        },
       },
-    },
-  },
-  focus: {
-    default: {
-      outlineWidth: "3px",
     },
   },
   fontFamily: {
     body: "Palanquin, sans-serif",
-    display: "Palanquin, sans-serif",
-  },
-  typography: {
-    body1: {
-      fontFamily: "Palanquin, sans-serif",
-      fontSize: 16,
-      color: "#101828",
-    },
-  },
-  components: {
-    JoyInput: {
-      styleOverrides: {
-        root: {
-          border: `1px solid ${dynamicTheme("palette.divider")}`,
-        },
-        input: {
-          "&::placeholder": {
-            color: dynamicTheme("palette.text.secondary"),
-            fontSize: 14,
-            whiteSpace: "nowrap",
-            textOverflow: "ellipsis",
-            overflow: "hidden",
-          },
-        },
-      },
-    },
-    JoyButton: {
-      styleOverrides: {
-        root: ({ ownerState }) => ({
-          borderRadius: "6px",
-          boxShadow: "0 1px 0 0 rgba(27, 31, 35, 0.04)",
-          transition: "80ms cubic-bezier(0.33, 1, 0.68, 1)",
-          transitionProperty: "color,background-color,box-shadow,border-color",
-          ...(ownerState.size === "md" && {
-            fontWeight: 600,
-            minHeight: "32px",
-            fontSize: "14px",
-            "--Button-paddingInline": "1rem",
-          }),
-          ...(ownerState.color === "success" &&
-            ownerState.variant === "solid" && {
-              "--gh-palette-focusVisible": "rgba(46, 164, 79, 0.4)",
-              border: "1px solid rgba(27, 31, 36, 0.15)",
-              "&:active": {
-                boxShadow: "inset 0px 1px 0px rgba(20, 70, 32, 0.2)",
-              },
-            }),
-          ...(ownerState.color === "neutral" &&
-            ownerState.variant === "outlined" && {
-              "&:active": {
-                boxShadow: "none",
-              },
-            }),
-        }),
-      },
-    },
   },
 });
 
-export const ThemeContext = React.createContext(darkTheme);
-
 export const useTheme = () => {
-  return useContext(ThemeContext);
+  return theme.colorSchemes[useRecoilValue(fos.theme)].palette;
 };
 
 const ThemeProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const current = useRecoilValue(fos.theme);
-  useLayoutEffect(() => {
-    const snake = toSnakeCase(theme);
-    for (const key in snake) {
-      document.documentElement.style.setProperty(
-        `--${key.replace(/_/g, "-")}`,
-        snake[key]
-      );
-    }
-  }, [theme]);
 
   return (
-    <CssVarsProvider theme={theme} defaultMode={current}>
-      {children}
-    </CssVarsProvider>
+    <LegacyTheme.Provider value={theme.colorSchemes[current].palette}>
+      <CssVarsProvider theme={theme} defaultMode={current}>
+        {children}
+      </CssVarsProvider>
+    </LegacyTheme.Provider>
   );
 };
 

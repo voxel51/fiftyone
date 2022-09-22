@@ -28,10 +28,10 @@ const NamedRangeSliderHeader = styled.div`
 `;
 
 const RangeSliderContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
+  background: ${({ theme }) => theme.background.level2};
   border: 1px solid #191c1f;
   border-radius: 2px;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem 0 0.5rem;
 `;

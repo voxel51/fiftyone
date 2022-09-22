@@ -258,7 +258,7 @@ const Group: React.FC = () => {
       }}
       style={{
         zIndex: 1000,
-        borderBottom: `1px solid ${theme.backgroundDarkBorder}`,
+        borderBottom: `1px solid ${theme.primary.plainBorder}`,
       }}
       onResizeStop={(e, direction, ref, { height: delta }) => {
         setHeight(Math.max(height + delta, 100));

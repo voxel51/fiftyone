@@ -14,7 +14,7 @@ import { groupStatistics } from "@fiftyone/state";
 const TagValueEntry = ({ path, tag }: { path: string; tag: string }) => {
   const theme = useTheme();
   const { backgroundColor } = useSpring({
-    backgroundColor: theme.backgroundLight,
+    backgroundColor: theme.background.level1,
   });
   const color = useRecoilValue(fos.pathColor({ path, modal: true }));
   const group = useRecoilValue(groupStatistics(true)) === "group";

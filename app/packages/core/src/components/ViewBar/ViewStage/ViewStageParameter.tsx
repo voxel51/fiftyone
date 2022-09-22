@@ -23,7 +23,7 @@ const ViewStageParameterContainer = styled.div`
 
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 1px solid ${({ theme }) => theme.brand};
+  border: 1px solid ${({ theme }) => theme.primary.plainColor};
   display: flex;
   overflow: visible;
   height: 100%;
@@ -34,7 +34,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
     background-color: transparent;
     border: none;
     padding: 0.5rem 0 0.5rem 0.5rem;
-    color: ${({ theme }) => theme.font};
+    color: ${({ theme }) => theme.text.primary};
     height: 1rem;
     font-weight: bold;
   }
@@ -45,7 +45,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
   }
 
   & ::placeholder {
-    color: ${({ theme }) => theme.font};
+    color: ${({ theme }) => theme.text.primary};
   }
 `);
 
@@ -69,7 +69,7 @@ const ObjectEditorTextArea = animated(styled.textarea`
   overflow: visible;
   line-height: 1rem;
   border: none;
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.text.primary};
   height: 100%;
   font-size: 14px;
   will-change: tranform;
@@ -93,9 +93,9 @@ const ObjectEditorTextArea = animated(styled.textarea`
 
 const SubmitButton = animated(styled.button`
   box-sizing: border-box;
-  border: 1px solid ${({ theme }) => theme.brand};
-  color: ${({ theme }) => theme.font};
-  background-color: ${({ theme }) => theme.backgroundLight};
+  border: 1px solid ${({ theme }) => theme.primary.plainColor};
+  color: ${({ theme }) => theme.text.primary};
+  background-color: ${({ theme }) => theme.background.level1};
   border-radius: 3px;
   position: relative;
   line-height: 1rem;
@@ -160,14 +160,14 @@ const ObjectEditor = ({
     height: state.matches("editing") ? 200 : 36,
     position: state.matches("editing") ? "fixed" : "relative",
     backgroundColor: state.matches("editing")
-      ? theme.backgroundDark
+      ? theme.background.level2
       : state.matches("reading.submitted")
-      ? theme.backgroundLight
-      : theme.background,
+      ? theme.background.level1
+      : theme.background.body,
     borderColor:
       active && stageState.matches("focusedViewBar.yes")
-        ? theme.brand
-        : theme.fontDarkest,
+        ? theme.primary.plainColor
+        : theme.text.tertiary,
     opacity: 1,
     from: {
       opacity: 0,
@@ -187,14 +187,14 @@ const ObjectEditor = ({
     containerSet({
       position: state.matches("editing") ? "fixed" : "relative",
       backgroundColor: state.matches("editing")
-        ? theme.backgroundDark
+        ? theme.background.level2
         : state.matches("reading.submitted")
-        ? theme.backgroundLight
-        : theme.background,
+        ? theme.background.level1
+        : theme.background.body,
       borderColor:
         active && stageState.matches("focusedViewBar.yes")
-          ? theme.brand
-          : theme.fontDarkest,
+          ? theme.primary.plainColor
+          : theme.text.tertiary,
       height: state.matches("editing") ? 200 : 36,
       opacity: 1,
     });
@@ -268,7 +268,7 @@ const ObjectEditor = ({
               <ArrowDropUp
                 style={{
                   cursor: "pointer",
-                  color: theme.font,
+                  color: theme.text.primary,
                   marginTop: "0.2em",
                   position: "absolute",
                   right: "0.2rem",
@@ -290,7 +290,7 @@ const ObjectEditor = ({
 };
 
 const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
-  const theme = useContext(ThemeContext);
+  const theme = useTheme;
   const [state, send] = useService(parameterRef);
   const [stageState] = useService(stageRef);
   const inputRef = useRef();
@@ -317,15 +317,15 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
 
   const props = useSpring({
     backgroundColor: state.matches("editing")
-      ? theme.backgroundDark
+      ? theme.background.level2
       : state.matches("reading.submitted")
-      ? theme.backgroundLight
-      : theme.background,
+      ? theme.background.level1
+      : theme.background.body,
     borderStyle: "solid",
     borderColor:
       active && stageState.matches("focusedViewBar.yes")
-        ? theme.brand
-        : theme.fontDarkest,
+        ? theme.primary.plainColor
+        : theme.text.tertiary,
     height: isObjectEditor && state.matches("editing") ? 200 : 36,
     borderWidth: isObjectEditor ? 0 : 1,
     borderRightWidth: 0,
@@ -417,7 +417,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
               <ArrowDropDown
                 style={{
                   cursor: "pointer",
-                  color: theme.font,
+                  color: theme.text.primary,
                   marginTop: "0.2em",
                 }}
                 onMouseEnter={() => send("MOUSEENTER")}
