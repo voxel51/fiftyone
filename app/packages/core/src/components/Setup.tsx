@@ -18,7 +18,7 @@ import { isNotebook } from "@fiftyone/state";
 const SectionTitle = styled.div`
   font-size: 2rem;
   line-height: 3rem;
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.text.primary};
   font-weight: bold;
 `;
 
@@ -27,18 +27,18 @@ const Text = styled.p`
   line-height: 1.5rem;
   margin: 0;
   padding: 0;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.text.secondary};
 
   & > a {
-    color: ${({ theme }) => theme.brand};
+    color: ${({ theme }) => theme.primary.plainColor};
   }
 `;
 
 const Code = styled.pre`
   padding: 2rem;
-  background-color: ${({ theme }) => theme.backgroundDarker};
-  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
-  color: ${({ theme }) => theme.font};
+  background-color: ${({ theme }) => theme.background.level3};
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
+  color: ${({ theme }) => theme.text.primary};
   border-radius: 3px;
   overflow: auto;
 
@@ -125,8 +125,8 @@ const NotebookInstructions = () => {
 const SetupWrapper = styled.div`
   width: 100%;
   overflow: auto;
-  background: ${({ theme }) => theme.backgroundDark};
-  border-top: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  background: ${({ theme }) => theme.background.level2};
+  border-top: 1px solid ${({ theme }) => theme.primary.plainBorder};
 
   ${scrollbarStyles};
 `;
@@ -140,13 +140,13 @@ const SetupContainer = styled.div`
 const Title = styled.div`
   font-size: 2.5rem;
   line-height: 3.5rem;
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.text.primary};
   font-weight: bold;
 `;
 
 const Subtitle = styled.div`
   font-size: 1.5rem;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.text.secondary};
   font-weight: 500;
 `;
 
@@ -156,7 +156,7 @@ const TabsContainer = styled.div`
   margin: 1em 0 3em 0;
   border-bottom-width: 2px;
   border-bottom-style: solid;
-  border-bottom-color: ${({ theme }) => theme.backgroundDarkBorder};
+  border-bottom-color: ${({ theme }) => theme.primary.plainBorder};
   height: 53px;
 `;
 
@@ -175,13 +175,17 @@ const Setup = () => {
   const [activeTab, setActiveTab] = useState<string>("local");
   const localProps = useSpring({
     borderBottomColor:
-      activeTab === "local" ? theme.brand : theme.backgroundDark,
-    color: activeTab === "local" ? theme.font : theme.fontDark,
+      activeTab === "local"
+        ? theme.primary.plainColor
+        : theme.background.level2,
+    color: activeTab === "local" ? theme.text.primary : theme.text.secondary,
   });
   const remoteProps = useSpring({
     borderBottomColor:
-      activeTab === "remote" ? theme.brand : theme.backgroundDark,
-    color: activeTab === "remote" ? theme.font : theme.fontDark,
+      activeTab === "remote"
+        ? theme.primary.plainColor
+        : theme.background.level2,
+    color: activeTab === "remote" ? theme.text.primary : theme.text.secondary,
   });
   const notebook = useRecoilValue(isNotebook);
 

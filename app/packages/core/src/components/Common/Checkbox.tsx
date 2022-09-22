@@ -48,7 +48,7 @@ const Checkbox = <T extends unknown>({
   formatter,
 }: CheckboxProps<T>) => {
   const theme = useTheme();
-  color = color ?? theme.brand;
+  color = color ?? theme.primary.plainColor;
   const props = useHighlightHover(disabled);
   const [text, coloring] = getValueString(formatter ? formatter(name) : name);
 

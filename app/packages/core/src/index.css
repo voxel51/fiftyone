@@ -5,7 +5,7 @@ body,
 #root {
   width: 100%;
   height: 100%;
-  background: var(--background-dark);
+  background: var(--joy-palette-background-level2);
   margin: 0;
   padding: 0;
   font-family: "Palanquin", sans-serif;
@@ -21,7 +21,7 @@ body,
   position: absolute;
   width: 100%;
   height: 100%;
-  background-color: var(--background-transparent);
+  background-color: var(--joy-palette-neutral-softBg);
   top: 0;
   z-index: 1000;
   display: block;
@@ -42,5 +42,5 @@ input,
 button {
   font-family: "Palanquin", sans-serif;
   font-size: 14px;
-  color: var(--font);
+  color: var(--joy-palette-text-primary);
 }

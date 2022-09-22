@@ -36,7 +36,7 @@ const Options: React.FC<{
   const [selection, setSelection] = useRecoilState(hasSelection);
 
   const selectorStyle = {
-    background: theme.backgroundTransparent,
+    background: theme.neutral.softBg,
     borderTopLeftRadius: 3,
     borderTopRightRadius: 3,
     padding: "0.25rem",

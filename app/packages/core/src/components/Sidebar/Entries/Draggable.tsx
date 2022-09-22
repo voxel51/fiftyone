@@ -51,14 +51,14 @@ const Draggable: React.FC<
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          boxShadow: `0 2px 20px ${theme.backgroundDark}`,
+          boxShadow: `0 2px 20px ${theme.background.level2}`,
           overflow: "hidden",
           ...style,
         }}
         title={trigger ? "Drag to reorder" : null}
       >
         {active && (dragging || hovering) && (
-          <DragIndicator style={{ color: theme.backgroundLight }} />
+          <DragIndicator style={{ color: theme.background.level1 }} />
         )}
       </animated.div>
       <div style={{ width: "100%" }}>{children}</div>

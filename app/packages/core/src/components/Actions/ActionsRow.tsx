@@ -45,7 +45,7 @@ const Loading = () => {
   const theme = useTheme();
   return (
     <CircularProgress
-      style={{ padding: 2, height: 22, width: 22, color: theme.font }}
+      style={{ padding: 2, height: 22, width: 22, color: theme.text.primary }}
     />
   );
 };

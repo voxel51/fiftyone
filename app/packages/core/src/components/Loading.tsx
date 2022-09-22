@@ -12,11 +12,11 @@ const Text = styled.div`
   padding-top: 1rem;
   font-weight: bold;
   text-align: center;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.text.secondary};
   font-size: 1.5rem;
 
   & a {
-    color: ${({ theme }) => theme.brand};
+    color: ${({ theme }) => theme.primary.plainColor};
     text-decoration: underline;
     cursor: pointer;
   }
@@ -38,7 +38,7 @@ const Loading = React.memo(
             margin: "auto",
             width: "100%",
             cursor: onClick ? "pointer" : "default",
-            color: theme.fontDark,
+            color: theme.text.secondary,
           }}
           onClick={onClick}
         >

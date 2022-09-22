@@ -5,17 +5,17 @@
   border-radius: 3px;
   text-align: center;
   padding: 0 0.5rem;
-  border: 1px solid var(--brand);
-  background: var(--brand-transparent);
-  box-shadow: 0 2px 40px var(--background-dark);
+  border: 1px solid var(--joy-palette-primary-plainColor);
+  background: var(--joy-palette-primary-softBg);
+  box-shadow: 0 2px 40px var(--joy-palette-background-level2);
 }
 
 .button:hover {
-  background: var(--brand);
+  background: var(--joy-palette-primary-plainColor);
 }
 
 .button:disabled {
-  border: 1px solid var(--font-dark);
+  border: 1px solid var(--joy-palette-primary-plainColor);
   cursor: default;
-  background: var(--background-dark);
+  background: var(--joy-palette-background-level2);
 }

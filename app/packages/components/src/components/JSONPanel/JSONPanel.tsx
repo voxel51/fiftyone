@@ -5,7 +5,6 @@ import {
   lookerPanel,
   lookerPanelContainer,
   lookerPanelVerticalContainer,
-  lookerPanelClose,
 } from "./panel.module.css";
 import {
   lookerCopyJSON,

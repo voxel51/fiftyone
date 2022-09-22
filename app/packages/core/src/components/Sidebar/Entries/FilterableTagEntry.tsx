@@ -49,7 +49,7 @@ type MatchEyeProps = {
 
 const MatchEye = ({ elementsName, name, matched, onClick }: MatchEyeProps) => {
   const theme = useTheme();
-  const color = matched ? theme.font : theme.fontDark;
+  const color = matched ? theme.text.primary : theme.text.secondary;
   const title = `Only show ${elementsName} with the "${name}" tag ${
     matched ? "or other selected tags" : ""
   }`;
@@ -110,7 +110,7 @@ const FilterableTagEntry = ({
     fos.pathColor({ path: tag, modal, tag: tagKey })
   );
   const { backgroundColor } = useSpring({
-    backgroundColor: matched ? "#6C757D" : theme.backgroundLight,
+    backgroundColor: matched ? "#6C757D" : theme.background.level1,
   });
 
   return (
@@ -128,7 +128,7 @@ const FilterableTagEntry = ({
               title={`Show ${elementsName} with the "${tag}" tag`}
               checked={active}
               style={{
-                color: active ? color : theme.fontDark,
+                color: active ? color : theme.text.secondary,
                 padding: 0,
               }}
             />
