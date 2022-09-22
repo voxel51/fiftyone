@@ -118,6 +118,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         year: "numeric",
         month: twoDigit,
         day: twoDigit,
+        ...diff,
       };
       locale = "en-CA";
     } else if (delta < MS) {
@@ -125,6 +126,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         year: "numeric",
         day: twoDigit,
         month: twoDigit,
+        ...common,
       };
       diff = {
         hour: twoDigit,
@@ -132,6 +134,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         second: twoDigit,
         // @ts-ignore
         fractionalSecondDigits: 3,
+        ...diff,
       };
       locale = "en-ZA";
     } else if (delta < S) {
@@ -141,11 +144,13 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         month: twoDigit,
         hour: twoDigit,
         minute: twoDigit,
+        ...common,
       };
       diff = {
         second: twoDigit,
         // @ts-ignore
         fractionalSecondDigits: 3,
+        ...diff,
       };
       locale = "en-ZA";
     } else if (delta < M) {
@@ -153,11 +158,13 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         year: "numeric",
         day: twoDigit,
         month: twoDigit,
+        ...common,
       };
       diff = {
         hour: twoDigit,
         minute: twoDigit,
         second: twoDigit,
+        ...diff,
       };
       locale = "en-ZA";
     } else {
@@ -169,6 +176,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         hour: twoDigit,
         minute: twoDigit,
         second: twoDigit,
+        ...diff,
       };
       locale = "en-ZA";
     }
