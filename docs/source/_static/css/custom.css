@@ -41,7 +41,7 @@ article.pytorch-article .wy-table-responsive table thead th {
 }
 
 .pytorch-page-level-bar {
-  z-index: 500;
+  z-index: 200;
 }
 
 .pytorch-left-menu {
@@ -366,6 +366,22 @@ article.pytorch-article .reference.download.internal {
 
 .nav__main .fa-header-icon {
   font-size: 25px;
+}
+
+.nav__dropdown__menu {
+  z-index: 201;
+  text-align: left;
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  min-width: 10rem;
+}
+
+.nav__dropdown__menu li {
+  padding: 2px;
+}
+
+.nav__dropdown__menu a {
+  color: var(--color-primary);
 }
 
 .footer-wrapper {
