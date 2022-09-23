@@ -60,14 +60,32 @@ const theme = extendJoyTheme({
   colorSchemes: {
     light: {
       palette: {
+        background: {
+          body: "#F6F8FA",
+          level1: "#F3F4F6",
+          level2: "rgba(238, 239, 242, 1)",
+          level3: "rgba(27, 31, 36, 0.15)",
+        },
         neutral: {
-          outlinedBg: "#F6F8FA",
-          outlinedHoverBg: "#F3F4F6",
-          outlinedActiveBg: "rgba(238, 239, 242, 1)",
-          outlinedBorder: "rgba(27, 31, 36, 0.15)",
+          softBg: "rgba(27, 31, 36, 0.15)",
+          softBorder: "#F3F4F6",
+        },
+        primary: {
+          plainColor: darkTheme.brand,
+          plainBorder: darkTheme.backgroundDarkBorder,
+          softBg: darkTheme.brandTransparent,
+          softBorder: darkTheme.border,
         },
         focusVisible: "rgba(3, 102, 214, 0.3)",
         divider: "#EAECF0",
+        danger: {
+          plainColor: red,
+        },
+        text: {
+          primary: "#000",
+          secondary: "#000",
+          tertiary: darkTheme.fontDarkest,
+        },
       },
     },
     dark: {

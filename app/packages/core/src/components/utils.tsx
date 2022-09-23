@@ -147,7 +147,7 @@ export const PillButton = React.memo(
 
 export const PopoutDiv = animated(styled.div`
   background-color: ${({ theme }) => theme.background.level2};
-  border: 1px solid ${({ theme }) => theme.primary.plainColor};
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   border-radius: 2px;
   box-shadow: 0 2px 20px ${({ theme }) => theme.background.level2};
   box-sizing: border-box;

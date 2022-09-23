@@ -191,7 +191,11 @@ const BaseSlider = <T extends Range | number>({
           max={bounds[1]}
           min={bounds[0]}
           step={step}
-          theme={{ ...theme, brand: color }}
+          theme={{
+            ...theme,
+            color,
+            primary: { ...theme.primary, plainColor: color },
+          }}
         />
         {showBounds && formatter(bounds[1])}
       </SliderContainer>
