@@ -122,24 +122,28 @@ export const PillButton = React.memo(
       const props = useSpring({
         backgroundColor: !highlight ? theme.divider : theme.primary.plainColor,
       });
-      return (
-        <Tooltip text={title}>
-          <PillButtonDiv
-            onClick={(e) => {
-              onClick(e);
-            }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-            }}
-            ref={ref}
-            style={{ ...props, ...style }}
-            title={title}
-          >
-            {text && <span>{text}</span>}
-            {icon}
-            {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
-          </PillButtonDiv>
-        </Tooltip>
+
+      const children = (
+        <PillButtonDiv
+          onClick={(e) => {
+            onClick(e);
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+          }}
+          ref={ref}
+          style={{ ...props, ...style }}
+          title={title}
+        >
+          {text && <span>{text}</span>}
+          {icon}
+          {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
+        </PillButtonDiv>
+      );
+      return title ? (
+        <Tooltip text={title}>{children}</Tooltip>
+      ) : (
+        <>{children}</>
       );
     }
   )

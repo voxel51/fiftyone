@@ -69,6 +69,7 @@ const theme = extendJoyTheme({
         neutral: {
           softBg: "rgba(27, 31, 36, 0.15)",
           softBorder: "#F3F4F6",
+          plainColor: blue53,
         },
         primary: {
           plainColor: darkTheme.brand,
@@ -104,6 +105,7 @@ const theme = extendJoyTheme({
         neutral: {
           softBg: darkTheme.backgroundTransparent,
           softBorder: darkTheme.borderLight,
+          plainColor: blue53,
         },
         primary: {
           plainColor: darkTheme.brand,
