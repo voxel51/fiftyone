@@ -53,7 +53,7 @@ const PlotButton = styled.div`
   font-weight: bold;
 
   &.active {
-    background-color: ${({ theme }) => theme.primary.plainColor};
+    background-color: ${({ theme }) => theme.neutral.plainColor};
   }
 `;
 
