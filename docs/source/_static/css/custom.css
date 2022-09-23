@@ -4,7 +4,7 @@ body {
 }
 
 a.reference.external:after {
-  font-family: "FontAwesome";
+  font: var(--fa-font-solid);
   content: " \f08e";
 }
 
