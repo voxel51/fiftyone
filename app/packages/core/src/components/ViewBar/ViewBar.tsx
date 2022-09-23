@@ -12,6 +12,7 @@ import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
 
 import * as fos from "@fiftyone/state";
+import { useTheme } from "@fiftyone/components";
 
 const ViewBarDiv = styled.div`
   position: relative;
@@ -98,6 +99,7 @@ const ViewBar = React.memo(() => {
     }, []),
   };
 
+  const theme = useTheme();
   useOutsideClick(
     barRef,
     () => state.matches("running.focus.focused") && send("TOGGLE_FOCUS")
@@ -174,7 +176,7 @@ const ViewBar = React.memo(() => {
           href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar"
           style={{ display: "flex" }}
         >
-          <Help />
+          <Help style={{ color: theme.text.primary }} />
         </ExternalLink>
       </IconsContainer>
     </div>

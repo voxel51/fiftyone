@@ -47,13 +47,13 @@ const PlotButton = styled.div`
   margin-right: 5px;
   padding: 0 1em;
   color: ${({ theme }) => theme.text.primary};
-  background-color: ${({ theme }) => theme.background.level2};
+  background-color: ${({ theme }) => theme.background.level1};
   text-decoration: none;
   border-radius: 2px;
   font-weight: bold;
 
   &.active {
-    background-color: ${({ theme }) => theme.background.level1};
+    background-color: ${({ theme }) => theme.primary.plainColor};
   }
 `;
 
