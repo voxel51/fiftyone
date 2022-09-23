@@ -221,78 +221,6 @@
   align-items: center;
 }
 
-.nav__product {
-  background-color: var(--bg-light-primary);
-  color: var(--text-primary);
-  font-size: var(--fontsize-body-smaller);
-
-  padding: 1rem var(--padding-x);
-
-  z-index: 100;
-  min-width: 100vw;
-  height: 60px; /* this is a fixed height */
-
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.nav__usecases {
-  background-color: var(--bg-dark-primary);
-  color: var(--text-primary-on-dark);
-  font-size: var(--fontsize-body-submenu);
-
-  padding: 1rem var(--padding-x);
-
-  z-index: 99;
-  min-width: 100vw;
-  height: 60px; /* this is a fixed height */
-
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  justify-content: space-between;
-  align-items: center;
-}
-
-@media screen and (min-width: 1240px) {
-  .nav__product {
-    padding: 1rem calc((100vw - 1040px) / 2);
-  }
-}
-
-@media screen and (min-width: 1240px) {
-  .nav__usecases {
-    padding: 1rem calc((100vw - 1040px) / 2);
-  }
-}
-
-.nav__product img {
-  max-width: 110px; /* XXX ask */
-}
-
-.nav__product__items {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-.nav__usecases img {
-  max-width: 110px; /* XXX ask */
-}
-
-.nav__usecases__items {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-  align-items: center;
-}
-
 .nav__divider {
   color: var(--text-secondary-on-dark);
   padding-x: 1rem;
@@ -346,32 +274,6 @@
 }
 
 .nav__item a:hover {
-  text-decoration: underline;
-}
-
-.nav__product__items > .nav__item {
-  color: var(--text-primary);
-}
-
-.nav__product__items > .nav__item a {
-  color: var(--text-primary);
-  text-decoration: none;
-}
-
-.nav__product__items > .nav__item a:hover {
-  text-decoration: underline;
-}
-
-.nav__usecases__items > .nav__item {
-  color: var(--text-primary-on-dark);
-}
-
-.nav__usecases__items > .nav__item a {
-  color: var(--text-primary-on-dark);
-  text-decoration: none;
-}
-
-.nav__usecases__items > .nav__item a:hover {
   text-decoration: underline;
 }
 
@@ -587,12 +489,6 @@
     object-fit: contain;
     max-width: 100%;
     max-height: 100%;
-  }
-
-  .nav__usecases,
-  .nav__usecases__items {
-    flex-wrap: wrap;
-    margin-bottom: 2.4rem;
   }
 } /* end of media query for mobile responsive nav */
 
