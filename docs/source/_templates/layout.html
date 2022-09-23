@@ -107,24 +107,33 @@ endblock %} {% block custom_footer %}
     <div class="footer__address">
       {{address_main_line1}}<br />
       {{address_main_line2}}
+      <br />
+      <br />
+      <a href="mailto:{{email_info}}">{{email_info}}</a>
     </div>
 
+    <!--
     <div class="footer__contact">
-      <a href="mailto:{{email_info}}">{{email_info}}</a><br />
-      {{phone_main}}
+      <a href="mailto:{{email_info}}">{{email_info}}</a>
     </div>
+    -->
 
     <div class="footer__links">
       <div class="footer__links--col2">
-        <p class="nav__item--brand">Product</p>
+        <p class="nav__item--brand">Products</p>
         <a href="{{link_fiftyone}}">FiftyOne</a>
-        <a href="{{link_fiftyone_tutorials}}">Tutorials</a>
-        <a href="{{link_fiftyone_examples}}">Examples</a>
+        <a href="{{link_fiftyone_teams}}">FiftyOne Teams</a>
+        <a href="{{link_usecases}}">Use Cases</a>
       </div>
       <div class="footer__links--col3">
         <p class="nav__item--brand">Resources</p>
-        <a href="{{link_ourstory}}">About Us</a>
         <a href="{{link_voxel51_medium}}">Blog</a>
+        <a href="{{link_docs_fiftyone}}">Docs</a>
+        <a href="{{link_voxel51_github}}">GitHub</a>
+        <a href="{{link_voxel51_slack}}">Slack</a>
+        <a href="{{link_ourstory}}">About Us</a>
+
+        <a href="{{link_voxel51_jobs}}">Careers</a>
         <a href="{{link_press}}">Press</a>
       </div>
     </div>
@@ -133,22 +142,22 @@ endblock %} {% block custom_footer %}
       <ul class="list-inline">
         <li>
           <a href="{{link_voxel51_linkedin}}">
-            <i class="fa fa-linkedin"></i>
+            <i class="fa-brands fa-linkedin"></i>
           </a>
         </li>
         <li>
           <a href="{{link_voxel51_github}}">
-            <i class="fa fa-github"></i>
+            <i class="fa-brands fa-github"></i>
           </a>
         </li>
         <li>
           <a href="{{link_voxel51_twitter}}">
-            <i class="fa fa-twitter"></i>
+            <i class="fa-brands fa-twitter"></i>
           </a>
         </li>
         <li>
           <a href="{{link_voxel51_facebook}}">
-            <i class="fa fa-facebook"></i>
+            <i class="fa-brands fa-facebook"></i>
           </a>
         </li>
       </ul>
