@@ -276,6 +276,8 @@ class COCODetectionDatasetImporter(
                 two formats
         include_id (False): whether to include the COCO ID of each sample in
             the loaded labels
+        include_annotation_id (False): whether to include the COCO annotation ID of each annotation in
+            the loaded labels
         include_license (False): whether to include the license ID of each
             sample in the loaded labels, if available. Supported values are:
 
