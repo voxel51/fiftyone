@@ -25,7 +25,7 @@ import fiftyone.server.view as fosv
 
 @gql.input
 class SelectedLabel:
-    id: gql.ID
+    label_id: gql.ID
     field: str
     sample_id: gql.ID
     frame_number: t.Optional[int]
@@ -35,7 +35,7 @@ class SelectedLabel:
 class AggregationForm:
     dataset: str
     extended_stages: BSONArray
-    filters: BSON
+    filters: t.Optional[BSON]
     group_id: t.Optional[gql.ID]
     hidden_labels: t.List[SelectedLabel]
     mixed: bool
@@ -64,15 +64,15 @@ class DataAggregation(Aggregation):
 
 @gql.type
 class IntAggregation(Aggregation):
-    min: int
-    max: int
+    max: float
+    min: float
 
 
 @gql.type
 class FloatAggregation(Aggregation):
     inf: int
-    min: float
     max: float
+    min: float
     nan: int
     ninf: int
 
@@ -84,8 +84,8 @@ class RootAggregation(Aggregation):
 
 @gql.type
 class StringAggregationValue:
-    value: str
     count: int
+    value: str
 
 
 @gql.type
@@ -122,7 +122,7 @@ async def aggregation_resolver(
     if form.hidden_labels:
         view = view.exclude_labels(form.hidden_labels)
 
-    resolve = [_resolve_path_aggregation(view, form.filters)]
+    resolve = [_resolve_path_aggregation(form.path, view)]
     if form.mixed and not form.path:
         view = view.select_group_slices(_allow_mixed=True)
         slice_view = fosv.get_view(
@@ -160,6 +160,10 @@ async def _resolve_path_aggregation(
 ) -> AggreationResult:
     aggregations: t.List[foa.Aggregation] = [foa.Count(path)]
     field = view.get_field(path)
+
+    while isinstance(field, fof.ListField):
+        field = field.field
+
     cls = RESULT_MAPPING[field.__class__] if path else RootAggregation
 
     if meets_type(field, fof.BooleanField):

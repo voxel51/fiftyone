@@ -1,11 +1,4 @@
-import {
-  atom,
-  GetRecoilValue,
-  RecoilValueReadOnly,
-  selectorFamily,
-  useRecoilValueLoadable,
-} from "recoil";
-
+import * as foq from "@fiftyone/relay";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
@@ -14,16 +7,31 @@ import {
   toSnakeCase,
   VALID_KEYPOINTS,
 } from "@fiftyone/utilities";
+import { VariablesOf } from "react-relay";
+import {
+  atom,
+  GetRecoilValue,
+  RecoilValueReadOnly,
+  selectorFamily,
+  useRecoilValueLoadable,
+} from "recoil";
+import { graphQLSelectorFamily } from "recoil-relay";
 
 import * as atoms from "./atoms";
 import * as filterAtoms from "./filters";
+import {
+  currentSlice,
+  groupStatistics,
+  groupId,
+  ResponseFrom,
+  isGroup,
+  groupSlice,
+} from "./groups";
+import { sidebarSampleId } from "./modal";
+import { RelayEnvironmentKey } from "./relay";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
-
-import { currentSlice, groupStatistics, groupId } from "./groups";
-
-import { sidebarSampleId } from "./modal";
 
 type DateTimeBound = { datetime: number } | null;
 
@@ -120,68 +128,39 @@ export const aggregationsTick = atom<number>({
   default: 0,
 });
 
-export const aggregations = selectorFamily<
-  AggregationsData,
-  { modal: boolean; extended: boolean }
+export const aggregation = graphQLSelectorFamily<
+  VariablesOf<foq.aggregationQuery>,
+  { extended: boolean; modal: boolean; path: string },
+  ResponseFrom<foq.aggregationQuery>
 >({
-  key: "aggregations",
-  get:
-    ({ modal, extended }) =>
-    async ({ get }) => {
-      let filters = null;
-      let hiddenLabels = null;
-      get(atoms.refresher);
-      get(aggregationsTick);
+  key: "groupQuery",
+  environment: RelayEnvironmentKey,
+  mapResponse: (response) => response,
+  query: foq.aggregation,
+  variables:
+    ({ extended, modal, path }) =>
+    ({ get }) => {
+      const group = get(isGroup);
+      const groupMode = get(groupStatistics(modal));
 
-      if (extended && get(filterAtoms.hasFilters(modal))) {
-        filters = get(modal ? filterAtoms.modalFilters : filterAtoms.filters);
-        hiddenLabels = modal
-          ? toSnakeCase(
-              Object.entries(get(atoms.hiddenLabels)).map(
-                ([labelId, data]) => ({
-                  labelId,
-                  ...data,
-                })
-              )
-            )
-          : null;
-      } else if (extended) {
-        return get(
-          aggregations({ extended: false, modal })
-        ) as AggregationsData;
-      }
-
-      const dataset = get(selectors.datasetName);
-
-      if (!dataset) {
-        return null;
-      }
-      const groupStats = get(groupStatistics(modal)) === "group";
-
-      const { aggregations: data } = (await getFetchFunction()(
-        "POST",
-        "/aggregations",
-        {
-          filters,
-          sample_ids: modal && !groupStats ? get(sidebarSampleId) : null,
-          groupId: modal && groupStats ? get(groupId) : null,
-          slice: get(currentSlice(modal)),
-          dataset,
+      return {
+        form: {
+          dataset: get(selectors.datasetName),
+          extendedStages: get(selectors.extendedStagesUnsorted),
+          filters: extended
+            ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
+            : null,
+          groupId: group && modal ? get(groupId) : null,
+          hiddenLabels: get(selectors.hiddenLabelsArray),
+          path,
+          mixed: false,
+          sampleIds: [...get(atoms.selectedSamples)],
+          slice: group && groupMode === "slice" ? get(groupSlice(modal)) : null,
           view: get(viewAtoms.view),
-          hidden_labels: hiddenLabels,
-          extended: get(selectors.extendedStagesUnsorted),
-          mixed: groupStats,
-        }
-      )) as { aggregations: AggregationsData };
-
-      data && addNoneCounts(data, get(selectors.isVideoDataset));
-
-      return data;
+        },
+      };
     },
-}) as (param: {
-  modal: boolean;
-  extended: boolean;
-}) => RecoilValueReadOnly<AggregationsData>;
+});
 
 export const noneCount = selectorFamily<
   number,
@@ -189,9 +168,10 @@ export const noneCount = selectorFamily<
 >({
   key: "noneCount",
   get:
-    ({ extended, path, modal }) =>
+    (params) =>
     ({ get }) => {
-      return get(aggregations({ modal, extended }))[path].None;
+      const data = get(aggregation(params));
+      return data.aggregation.count - data.aggregation.exists;
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -206,20 +186,22 @@ export const labelTagCounts = selectorFamily<
   get:
     ({ modal, extended }) =>
     ({ get }) => {
-      const data = get(aggregations({ modal, extended }));
-      const paths = get(schemaAtoms.labelPaths({})).map(
-        (path) => `${path}.tags`
+      const data = get(schemaAtoms.labelPaths({})).map((path) =>
+        get(aggregation({ extended, modal, path: `${path}.tags` }))
       );
       const result = {};
 
-      for (const path of paths) {
-        const pathData = data[path] as CategoricalAggregations<string>;
-        for (const [tag, count] of pathData.CountValues[1]) {
-          if (!result[tag]) {
-            result[tag] = 0;
+      for (let i = 0; i < data.length; i++) {
+        const {
+          aggregation: { values },
+        } = data[i];
+        for (let j = 0; j < values.length; j++) {
+          const { value, count } = values[j];
+          if (!result[value]) {
+            result[value] = 0;
           }
 
-          result[tag] += count;
+          result[value] += count;
         }
       }
 
@@ -236,12 +218,13 @@ export const sampleTagCounts = selectorFamily<
 >({
   key: "sampleTagCounts",
   get:
-    ({ modal, extended }) =>
-    ({ get }) => {
-      const data = get(aggregations({ modal, extended }))
-        .tags as CategoricalAggregations;
-      return Object.fromEntries(data.CountValues[1]);
-    },
+    (params) =>
+    ({ get }) =>
+      Object.fromEntries(
+        get(aggregation({ ...params, path: "tags" })).aggregation.values.map(
+          ({ value, count }) => [value, count]
+        )
+      ),
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -254,44 +237,40 @@ const makeCountResults = <T extends string | null | boolean>(key) =>
   >({
     key,
     get:
-      ({ extended, path, modal }) =>
+      (params) =>
       ({ get }) => {
-        const { CountValues, None } = get(aggregations({ modal, extended }))[
-          path
-        ] as CategoricalAggregations<T>;
-
-        if (!CountValues) {
-          const keys = path.split(".");
-          let parent = keys[0];
-
-          let field = get(schemaAtoms.field(parent));
-          if (!field && parent === "frames") {
-            parent = `frames.${keys[1]}`;
-            field = get(schemaAtoms.field(parent));
-          }
-
-          if (
-            VALID_KEYPOINTS.includes(
-              get(schemaAtoms.field(parent)).embeddedDocType
-            )
-          ) {
-            const skeleton = get(selectors.skeleton(parent));
-
-            return {
-              count: skeleton.labels.length,
-              results: skeleton.labels.map((label) => [
-                label as unknown as T,
-                -1,
-              ]),
-            };
-          }
+        const keys = params.path.split(".");
+        let parent = keys[0];
+        let field = get(schemaAtoms.field(parent));
+        if (!field && parent === "frames") {
+          parent = `frames.${keys[1]}`;
         }
 
-        const results = [...CountValues[1]];
+        if (
+          VALID_KEYPOINTS.includes(
+            get(schemaAtoms.field(parent)).embeddedDocType
+          )
+        ) {
+          const skeleton = get(selectors.skeleton(parent));
 
-        let count = CountValues[0];
-        if (None) {
-          results.push([null, None]);
+          return {
+            count: skeleton.labels.length,
+            results: skeleton.labels.map((label) => [
+              label as unknown as T,
+              -1,
+            ]),
+          };
+        }
+
+        let {
+          aggregation: { values, count },
+        } = get(aggregation(params));
+
+        const results = values.map(({ count, value }) => [value, count]);
+        const none = get(noneCount(params));
+
+        if (none) {
+          results.push([null, none]);
           count++;
         }
 
@@ -319,13 +298,15 @@ export const labelCount = selectorFamily<
 >({
   key: "labelCount",
   get:
-    ({ modal, extended }) =>
+    (params) =>
     ({ get }) => {
       let sum = 0;
-      const data = get(aggregations({ modal, extended }));
 
-      for (const label of get(schemaAtoms.activeLabelPaths({ modal }))) {
-        sum += data[label].Count;
+      for (const path of get(
+        schemaAtoms.activeLabelPaths({ modal: params.modal })
+      )) {
+        const data = get(aggregation({ ...params, path }));
+        sum += data.aggregation.count;
       }
 
       return sum;
@@ -340,17 +321,12 @@ export const values = selectorFamily<
 >({
   key: "values",
   get:
-    ({ extended, path, modal }) =>
-    ({ get }) => {
-      const data = get(aggregations({ modal, extended }));
+    (params) =>
+    ({ get }) =>
+      get(aggregation(params))
+        .aggregation.values.map(({ value }) => value)
+        .sort(),
 
-      if (data) {
-        const agg = data[path] as CategoricalAggregations<string>;
-        return agg.CountValues[1].map(([value]) => value).sort();
-      }
-
-      return [];
-    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -367,19 +343,15 @@ export const count = selectorFamily<
 >({
   key: "count",
   get:
-    ({ extended, path, modal, value }) =>
+    ({ value, ...params }) =>
     ({ get }) => {
-      const data = get(aggregations({ modal, extended }));
-      if (!data) {
-        return null;
-      }
+      const exists = Boolean(get(schemaAtoms.field(params.path)));
 
-      const result = data[path];
-      if (!result) {
-        const split = path.split(".");
+      if (!exists) {
+        const split = params.path.split(".");
 
         if (split[0] === "tags") {
-          return get(counts({ extended, path: "tags", modal }))[
+          return get(counts({ ...params, path: "tags" }))[
             split.slice(1).join(".")
           ];
         }
@@ -393,22 +365,20 @@ export const count = selectorFamily<
 
         const parent = split.slice(0, split.length - 1).join(".");
 
-        if (data[parent]) {
-          return get(counts({ extended, path: parent, modal }))[
-            split[split.length - 1]
-          ];
-        }
+        return get(counts({ ...params, path: parent }))[
+          split[split.length - 1]
+        ];
       }
 
       if (value === null) {
-        return result.None;
+        return get(noneCount(params));
       }
 
       if (value !== undefined) {
-        return get(counts({ extended, path, modal }))[value] || 0;
+        return get(counts(params))[value] || 0;
       }
 
-      return data[path].Count;
+      return get(aggregation(params)).aggregation.count;
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -421,14 +391,12 @@ export const counts = selectorFamily<
 >({
   key: "counts",
   get:
-    ({ extended, modal, path }) =>
+    (params) =>
     ({ get }) => {
-      const { CountValues } = get(aggregations({ modal, extended }))[
-        path
-      ] as CategoricalAggregations;
+      const exists = Boolean(get(schemaAtoms.field(params.path)));
 
-      if (!CountValues) {
-        const parent = path.split(".")[0];
+      if (!exists) {
+        const parent = params.path.split(".")[0];
 
         if (
           VALID_KEYPOINTS.includes(
@@ -444,7 +412,12 @@ export const counts = selectorFamily<
         }
       }
 
-      return CountValues ? Object.fromEntries(CountValues[1]) : null;
+      return Object.fromEntries(
+        get(aggregation(params)).aggregation.values.map(({ count, value }) => [
+          value,
+          count,
+        ])
+      );
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -542,31 +515,12 @@ export const bounds = selectorFamily<
 >({
   key: "bounds",
   get:
-    ({ extended, modal, path }) =>
+    (params) =>
     ({ get }) => {
-      const data = get(aggregations({ modal, extended }))[
-        path
-      ] as NumericAggregations;
-
-      const isDateOrDateTime = get(
-        schemaAtoms.meetsType({ path, ftype: [DATE_FIELD, DATE_TIME_FIELD] })
-      );
-
-      if (isDateOrDateTime) {
-        const [lower, upper] = data.Bounds as DateTimeBounds;
-
-        return [lower.datetime, upper.datetime] as [Bound, Bound];
-      }
-
-      const isFloatField = get(
-        schemaAtoms.meetsType({ path, ftype: FLOAT_FIELD })
-      );
-
-      if (isFloatField) {
-        return (data.Bounds as FloatBounds).bounds;
-      }
-
-      return data.Bounds as [Bound, Bound];
+      return [
+        get(aggregation(params)).aggregation.min,
+        get(aggregation(params)).aggregation.min,
+      ];
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -588,29 +542,17 @@ export const nonfiniteCounts = selectorFamily<
 >({
   key: "nonfiniteCounts",
   get:
-    ({ extended, modal, path }) =>
+    (params) =>
     ({ get }) => {
-      const data = get(aggregations({ modal, extended }))[
-        path
-      ] as NumericAggregations;
-
-      const isFloatField = get(
-        schemaAtoms.meetsType({ path, ftype: FLOAT_FIELD })
-      );
-
-      const result = { none: data.None };
-
-      if (isFloatField) {
-        const bounds = data.Bounds as FloatBounds;
-        return {
-          ...result,
-          nan: bounds.nan,
-          ninf: bounds["-inf"],
-          inf: bounds.inf,
-        };
-      }
-
-      return result;
+      const {
+        aggregation: { inf, nan, ninf, exists, count },
+      } = get(aggregation(params));
+      return {
+        inf,
+        nan,
+        ninf,
+        none: count - exists,
+      };
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -650,9 +592,3 @@ export const boundedCount = selectorFamily<
     eviction: "most-recent",
   },
 });
-
-export const useLoading = (params: { extended: boolean; modal: boolean }) => {
-  const { state } = useRecoilValueLoadable(aggregations(params));
-
-  return state === "loading";
-};

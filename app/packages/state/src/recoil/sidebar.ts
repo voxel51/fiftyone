@@ -65,9 +65,8 @@ export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | InputEntry;
 
 export const useTagText = (modal: boolean) => {
   const { singular } = useRecoilValue(viewAtoms.elementNames);
-  const loadingTags = aggregationAtoms.useLoading({ extended: false, modal });
 
-  if (loadingTags) {
+  if (true) {
     return {
       sample: `Loading ${singular} tags...`,
       label: "Loading label tags...",

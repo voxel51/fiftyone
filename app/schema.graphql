@@ -6,7 +6,7 @@ interface Aggregation {
 input AggregationForm {
   dataset: String!
   extendedStages: BSONArray!
-  filters: BSON!
+  filters: BSON
   groupId: ID
   hiddenLabels: [SelectedLabel!]!
   mixed: Boolean!
@@ -157,8 +157,8 @@ type FloatAggregation implements Aggregation {
   count: Int!
   exists: Int!
   inf: Int!
-  min: Float!
   max: Float!
+  min: Float!
   nan: Int!
   ninf: Int!
 }
@@ -183,8 +183,8 @@ type ImageSample implements Sample {
 type IntAggregation implements Aggregation {
   count: Int!
   exists: Int!
-  min: Int!
-  max: Int!
+  max: Float!
+  min: Float!
 }
 
 scalar JSON
@@ -336,7 +336,7 @@ type SampleItemStrPageInfo {
 }
 
 input SelectedLabel {
-  id: ID!
+  labelId: ID!
   field: String!
   sampleId: ID!
   frameNumber: Int
@@ -354,8 +354,8 @@ type StringAggregation implements Aggregation {
 }
 
 type StringAggregationValue {
-  value: String!
   count: Int!
+  value: String!
 }
 
 type Target {
