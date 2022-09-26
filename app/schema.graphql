@@ -1,3 +1,21 @@
+interface Aggregation {
+  count: Int!
+  exists: Int!
+}
+
+input AggregationForm {
+  dataset: String!
+  extendedStages: BSONArray!
+  filters: BSON!
+  groupId: ID
+  hiddenLabels: [SelectedLabel!]!
+  mixed: Boolean!
+  path: String!
+  sampleIds: [ID!]!
+  slice: String
+  view: BSONArray!
+}
+
 type AppConfig {
   colorBy: ColorBy!
   colorPool: [String!]!
@@ -15,7 +33,24 @@ type AppConfig {
   useFrameNumber: Boolean!
 }
 
+scalar BSON
+
 scalar BSONArray
+
+type BooleanAggregation implements Aggregation {
+  count: Int!
+  exists: Int!
+  false: Int!
+  true: Int!
+}
+
+union BooleanAggregationDataAggregationIntAggregationFloatAggregationRootAggregationStringAggregation =
+    BooleanAggregation
+  | DataAggregation
+  | IntAggregation
+  | FloatAggregation
+  | RootAggregation
+  | StringAggregation
 
 type BrainRun implements Run {
   key: String!
@@ -36,6 +71,11 @@ enum ColorBy {
   field
   instance
   label
+}
+
+type DataAggregation implements Aggregation {
+  count: Int!
+  exists: Int!
 }
 
 type Dataset {
@@ -113,6 +153,16 @@ type EvaluationRunConfig implements RunConfig {
   method: String
 }
 
+type FloatAggregation implements Aggregation {
+  count: Int!
+  exists: Int!
+  inf: Int!
+  min: Float!
+  max: Float!
+  nan: Int!
+  ninf: Int!
+}
+
 type Group {
   name: String!
   mediaType: MediaType!
@@ -128,6 +178,13 @@ type ImageSample implements Sample {
   sample: JSON!
   urls: [MediaURL!]!
   aspectRatio: Float!
+}
+
+type IntAggregation implements Aggregation {
+  count: Int!
+  exists: Int!
+  min: Int!
+  max: Int!
 }
 
 scalar JSON
@@ -199,6 +256,9 @@ type Query {
     first: Int = 200
     after: String = null
   ): DatasetStrConnection!
+  aggregation(
+    form: AggregationForm!
+  ): BooleanAggregationDataAggregationIntAggregationFloatAggregationRootAggregationStringAggregation!
   colorscale: [[Int!]!]
   config: AppConfig!
   context: String!
@@ -216,6 +276,12 @@ type Query {
   teamsSubmission: Boolean!
   uid: String!
   version: String!
+}
+
+type RootAggregation implements Aggregation {
+  count: Int!
+  exists: Int!
+  slice: Int
 }
 
 interface Run {
@@ -270,15 +336,26 @@ type SampleItemStrPageInfo {
 }
 
 input SelectedLabel {
+  id: ID!
   field: String!
-  labelId: String!
-  sampleId: String!
-  frameNumber: Int = null
+  sampleId: ID!
+  frameNumber: Int
 }
 
 type SidebarGroup {
   name: String!
   paths: [String!]
+}
+
+type StringAggregation implements Aggregation {
+  count: Int!
+  exists: Int!
+  values: [StringAggregationValue!]!
+}
+
+type StringAggregationValue {
+  value: String!
+  count: Int!
 }
 
 type Target {
