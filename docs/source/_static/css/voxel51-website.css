@@ -235,6 +235,7 @@
 .nav__item {
   padding: 0 1rem;
   color: var(--text-primary-on-dark);
+  height: 100%;
 }
 
 @media only screen and (min-width: 850px) {
@@ -297,6 +298,7 @@
 
 .nav__dropdown__trigger {
   cursor: pointer;
+  line-height: 7.125rem;
 }
 
 .nav__dropdown__menu {
@@ -305,11 +307,10 @@
   z-index: 101;
 
   min-width: 16rem;
-  left: -20%;
 
   background-color: var(--bg-light-primary);
-  margin-top: 0.5rem;
-  padding: 1rem;
+  margin-top: -0.8rem;
+  padding: 1rem 1rem 7.3rem 1rem;
   border-radius: 3px;
   box-shadow: 0rem 0rem 1rem 0.005rem var(--bg-dark-primary);
 }
@@ -411,6 +412,7 @@
 
   #nav__main__items .nav__item {
     z-index: 102;
+    padding-right: 0px;
   }
 
   .nav__spacer {
@@ -431,7 +433,7 @@
   }
 
   .nav__dropdown__trigger {
-    cursor: inherit;
+    display: none;
   }
 
   .nav__dropdown__menu {
