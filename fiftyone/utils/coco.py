@@ -276,6 +276,8 @@ class COCODetectionDatasetImporter(
                 two formats
         include_id (False): whether to include the COCO ID of each sample in
             the loaded labels
+        include_annotation_id (False): whether to include the COCO annotation ID of each annotation in
+            the loaded labels
         include_license (False): whether to include the license ID of each
             sample in the loaded labels, if available. Supported values are:
 
@@ -324,6 +326,7 @@ class COCODetectionDatasetImporter(
         classes=None,
         image_ids=None,
         include_id=False,
+        include_annotation_id=False,
         include_license=False,
         extra_attrs=True,
         only_matching=False,
@@ -358,6 +361,9 @@ class COCODetectionDatasetImporter(
         if include_id:
             _label_types.append("coco_id")
 
+        if include_annotation_id:
+            _label_types.append("coco_annotation_id")
+
         if include_license:
             _label_types.append("license")
 
@@ -374,6 +380,7 @@ class COCODetectionDatasetImporter(
         self.classes = classes
         self.image_ids = image_ids
         self.include_id = include_id
+        self.include_annotation_id = include_annotation_id
         self.include_license = include_license
         self.extra_attrs = extra_attrs
         self.only_matching = only_matching
@@ -436,6 +443,7 @@ class COCODetectionDatasetImporter(
                     self._classes,
                     self._supercategory_map,
                     False,  # no segmentations
+                    self.include_annotation_id,
                 )
                 if detections is not None:
                     label["detections"] = detections
@@ -456,6 +464,7 @@ class COCODetectionDatasetImporter(
                         self._classes,
                         self._supercategory_map,
                         True,  # load segmentations
+                        self.include_annotation_id,
                     )
 
                 if segmentations is not None:
@@ -990,6 +999,7 @@ class COCOObject(object):
         classes=None,
         supercategory_map=None,
         load_segmentation=False,
+        include_annotations_id=False,
     ):
         """Returns a :class:`fiftyone.core.labels.Detection` representation of
         the object.
@@ -1010,7 +1020,7 @@ class COCOObject(object):
             return None
 
         label, attributes = self._get_object_label_and_attributes(
-            classes, supercategory_map
+            classes, supercategory_map, include_annotations_id
         )
         attributes.update(self.attributes)
 
@@ -1218,13 +1228,17 @@ class COCOObject(object):
 
         return str(self.category_id)
 
-    def _get_object_label_and_attributes(self, classes, supercategory_map):
+    def _get_object_label_and_attributes(
+        self, classes, supercategory_map, include_id=False
+    ):
         if classes:
             label = classes[self.category_id]
         else:
             label = str(self.category_id)
 
         attributes = {}
+        if include_id:
+            attributes["coco_annotation_id"] = self.id
 
         if supercategory_map is not None and label in supercategory_map:
             supercategory = supercategory_map[label].get("supercategory", None)
@@ -1950,7 +1964,12 @@ def _coco_objects_to_polylines(
 
 
 def _coco_objects_to_detections(
-    coco_objects, frame_size, classes, supercategory_map, load_segmentations
+    coco_objects,
+    frame_size,
+    classes,
+    supercategory_map,
+    load_segmentations,
+    include_annotation_id=False,
 ):
     detections = []
     for coco_obj in coco_objects:
@@ -1959,6 +1978,7 @@ def _coco_objects_to_detections(
             classes=classes,
             supercategory_map=supercategory_map,
             load_segmentation=load_segmentations,
+            include_annotations_id=include_annotation_id,
         )
 
         if detection is not None and (
