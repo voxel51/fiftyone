@@ -32,7 +32,7 @@ import {
 import { Button } from "../utils";
 import { PopoutSectionTitle } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
+import { getFetchFunction } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
@@ -363,7 +363,7 @@ const useTagCallback = (
         const { samples } = await getFetchFunction()("POST", "/tag", {
           ...tagParameters({
             activeFields: await snapshot.getPromise(
-              fos.labelPaths({ expanded: false })
+              fos.activeLabelFields({ modal })
             ),
             dataset: await snapshot.getPromise(fos.datasetName),
             filters: await snapshot.getPromise(
