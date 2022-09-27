@@ -12,9 +12,9 @@ export default <UserConfig>{
       react: "React",
       "react-dom": "ReactDOM",
       recoil: "recoil",
-      'recoil-relay': 'recoilRelay',
-      'relay-runtime': 'relayRuntime'
-    })
+      "recoil-relay": "recoilRelay",
+      "relay-runtime": "relayRuntime",
+    }),
   ],
   build: {
     lib: {
@@ -23,6 +23,7 @@ export default <UserConfig>{
     },
     target: "es2015",
     minify: false,
+    sourcemap: "inline",
   },
   resolve: {
     alias: {
