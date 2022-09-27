@@ -10,7 +10,7 @@
   },
   "main": "./dist/dataset.js",
   "scripts": {
-    "build": "vite build"
+    "build": "NODE_OPTIONS='--max-old-space-size=9728' vite build"
   },
   "prettier": "@fiftyone/prettier-config",
   "private": true,
