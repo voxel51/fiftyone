@@ -23,10 +23,10 @@ const Body = styled.div`
   position: relative;
 `;
 
-const LoadingContainer = ({ path }: { path: string }) => {
+const LoadingContainer = ({ path }: { path?: string }) => {
   return (
     <Container>
-      <Header>{path.split(".").slice(-1)[0]}</Header>
+      {path && <Header>{path.split(".").slice(-1)[0]}</Header>}
       <Body>
         <div>Loading...</div>
       </Body>
@@ -34,10 +34,16 @@ const LoadingContainer = ({ path }: { path: string }) => {
   );
 };
 
-const withSuspense = <T extends { path: string }>(Component: React.FC<T>) => {
+const withSuspense = <T extends { path: string; named: boolean }>(
+  Component: React.FC<T>
+) => {
   return (props: T) => {
     return (
-      <Suspense fallback={<LoadingContainer path={props.path} />}>
+      <Suspense
+        fallback={
+          <LoadingContainer path={props.named ? props.path : undefined} />
+        }
+      >
         <Component {...props} />
       </Suspense>
     );
