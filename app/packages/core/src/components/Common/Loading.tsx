@@ -4,9 +4,10 @@ import { CircularProgress } from "@material-ui/core";
 import { useTheme } from "@fiftyone/components";
 
 const IconDiv = styled.div`
-  position: absolute;
-  top: 50%;
-  right: 50%;
+  display: block;
+  padding: 2px;
+  height: 16px;
+  width: 16px;
 
   & > svg {
     color: ${({ theme }) => theme.text.primary};
@@ -16,8 +17,9 @@ const IconDiv = styled.div`
 const Loading = React.memo(
   ({ loading = true, size = 32 }: { loading?: boolean; size?: number }) => {
     const theme = useTheme();
+
     return (
-      <IconDiv style={{ marginTop: -size / 2, marginLeft: size / 2 }}>
+      <IconDiv>
         {loading && (
           <CircularProgress
             style={{

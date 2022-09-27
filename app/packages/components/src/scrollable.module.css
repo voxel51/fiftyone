@@ -1,5 +1,6 @@
 .scrollable {
-  scrollbar-color: var(--font-darkest) var(--background);
+  scrollbar-color: var(--joy-palette-text-tertiary)
+    var(--joy-palette-background-body);
 
   scrollbar-gutter: stable;
 
@@ -11,7 +12,7 @@
 }
 
 .scrollable::-webkit-scrollbar-track {
-  border: solid 4px transparent var(--font-darkest);
+  border: solid 4px transparent var(--joy-palette-text-tertiary);
 }
 
 .scrollable::-webkit-scrollbar-thumb {
@@ -22,5 +23,5 @@
 }
 
 .scrollable:hover::-webkit-scrollbar-thumb {
-  box-shadow: inset 0 0 10px 10px var(--font-darkest);
+  box-shadow: inset 0 0 10px 10px var(--joy-palette-text-tertiary);
 }
