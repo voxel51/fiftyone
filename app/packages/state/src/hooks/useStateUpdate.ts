@@ -86,7 +86,6 @@ const useStateUpdate = () => {
       }
 
       if (dataset) {
-        console.log("dataset?", dataset);
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
         dataset.evaluations = Object.values(dataset.evaluations || {});
 
