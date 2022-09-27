@@ -14,6 +14,7 @@ import {
 } from "../../../utils/hooks";
 import ErrorMessage from "./ErrorMessage";
 import SearchResults from "./SearchResults";
+import { useTheme } from "@fiftyone/components";
 
 const ViewStageParameterContainer = styled.div`
   display: flex;
@@ -290,7 +291,7 @@ const ObjectEditor = ({
 };
 
 const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
-  const theme = useTheme;
+  const theme = useTheme();
   const [state, send] = useService(parameterRef);
   const [stageState] = useService(stageRef);
   const inputRef = useRef();

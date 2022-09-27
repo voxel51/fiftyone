@@ -358,6 +358,8 @@ const CategoricalFilter = <T extends V = V>({
   const skeleton = useRecoilValue(isKeypointLabel(path));
   const theme = useTheme();
 
+  if (countsLoadable.state === "hasError") throw countsLoadable.contents;
+
   if (countsLoadable.state !== "hasValue") return null;
 
   const { count, results } = countsLoadable.contents;

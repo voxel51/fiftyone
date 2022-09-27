@@ -5,6 +5,7 @@ FiftyOne Server aggregations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from datetime import date, datetime
 import typing as t
 
 import asyncio
@@ -14,6 +15,7 @@ import strawberry as gql
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
+from fiftyone.core.utils import datetime_to_timestamp
 import fiftyone.core.view as fov
 
 from fiftyone.server.constants import LIST_LIMIT
@@ -151,6 +153,8 @@ async def aggregation_resolver(
 RESULT_MAPPING = {
     fof.BooleanField: BooleanAggregation,
     fof.EmbeddedDocumentField: DataAggregation,
+    fof.DateField: IntAggregation,
+    fof.DateTimeField: IntAggregation,
     fof.IntField: IntAggregation,
     fof.FloatField: FloatAggregation,
     fof.ObjectIdField: StringAggregation,
@@ -203,15 +207,27 @@ async def _resolve_path_aggregation(
                 data["ninf"] = result["-inf"]
             else:
                 mn, mx = result
-                data["min"] = mn
-                data["max"] = mx
+                data["min"] = (
+                    datetime_to_timestamp(mn)
+                    if meets_type(mn, (datetime, date))
+                    else mn
+                )
+                data["max"] = (
+                    datetime_to_timestamp(mx)
+                    if meets_type(mx, (datetime, date))
+                    else mx
+                )
         elif isinstance(aggregation, foa.Count):
             data["count"] = result
         elif isinstance(aggregation, foa.CountValues):
-            count, result = result
-            data["values"] = [
-                {"value": value, "count": count} for value, count in result
-            ]
+            if isinstance(field, fof.BooleanField):
+                data["true"] = result.get(True, 0)
+                data["false"] = result.get(False, 0)
+            else:
+                count, result = result
+                data["values"] = [
+                    {"value": value, "count": count} for value, count in result
+                ]
         elif isinstance(aggregation, _CountExists):
             data["exists"] = result
 

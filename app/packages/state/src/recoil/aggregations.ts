@@ -184,7 +184,11 @@ export const noneCount = selectorFamily<
     (params) =>
     ({ get }) => {
       const data = get(aggregation(params));
-      return data.aggregation.count - data.aggregation.exists;
+      const parent = params.path.split(".").slice(0, -1).join(".");
+      return (
+        (get(count({ ...params, path: parent })) as number) -
+        data.aggregation.count
+      );
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -243,67 +247,75 @@ export const sampleTagCounts = selectorFamily<
   },
 });
 
-const makeCountResults = <T extends string | null | boolean>(key) =>
-  selectorFamily<
-    { count: number; results: [T, number][] },
-    { path: string; modal: boolean; extended: boolean }
-  >({
-    key,
-    get:
-      (params) =>
-      ({ get }) => {
-        const keys = params.path.split(".");
-        let parent = keys[0];
-        let field = get(schemaAtoms.field(parent));
-        if (!field && parent === "frames") {
-          parent = `frames.${keys[1]}`;
-        }
+export const stringCountResults = selectorFamily<
+  { count: number; results: [string | null, number][] },
+  { path: string; modal: boolean; extended: boolean }
+>({
+  key: "stringCountResults",
+  get:
+    (params) =>
+    ({ get }) => {
+      const keys = params.path.split(".");
+      let parent = keys[0];
+      let field = get(schemaAtoms.field(parent));
+      if (!field && parent === "frames") {
+        parent = `frames.${keys[1]}`;
+      }
 
-        if (
-          VALID_KEYPOINTS.includes(
-            get(schemaAtoms.field(parent)).embeddedDocType
-          )
-        ) {
-          const skeleton = get(selectors.skeleton(parent));
-
-          return {
-            count: skeleton.labels.length,
-            results: skeleton.labels.map((label) => [
-              label as unknown as T,
-              -1,
-            ]),
-          };
-        }
-
-        let {
-          aggregation: { values, count },
-        } = get(aggregation(params));
-
-        const results = values.map(({ count, value }) => [value, count]);
-        const none = get(noneCount(params));
-
-        if (none) {
-          results.push([null, none]);
-          count++;
-        }
+      if (
+        VALID_KEYPOINTS.includes(get(schemaAtoms.field(parent)).embeddedDocType)
+      ) {
+        const skeleton = get(selectors.skeleton(parent));
 
         return {
-          count,
-          results,
+          count: skeleton.labels.length,
+          results: skeleton.labels.map((label) => [label as string | null, -1]),
         };
-      },
-    cachePolicy_UNSTABLE: {
-      eviction: "most-recent",
+      }
+
+      let {
+        aggregation: { values, count },
+      } = get(aggregation(params));
+
+      const results: [string | null, number][] = values.map(
+        ({ count, value }) => [value, count]
+      );
+      const none: number = get(noneCount(params));
+
+      if (none) {
+        results.push([null, none]);
+        count++;
+      }
+
+      return {
+        count,
+        results,
+      };
     },
-  });
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
 
-export const booleanCountResults = makeCountResults<boolean | null>(
-  "booleanCountResults"
-);
-
-export const stringCountResults = makeCountResults<string | null>(
-  "stringCountResults"
-);
+export const booleanCountResults = selectorFamily<
+  { count: number; results: [boolean | null, number][] },
+  { path: string; modal: boolean; extended: boolean }
+>({
+  key: "booleanCountResults",
+  get:
+    (params) =>
+    ({ get }) => {
+      const data = get(aggregation(params));
+      return {
+        count: data.aggregation.false + data.aggregation.true,
+        results: [
+          [false, data.aggregation.false],
+          [true, data.aggregation.true],
+          [null, get(noneCount(params))],
+        ],
+      };
+    },
+});
 
 export const labelCount = selectorFamily<
   number | null,
@@ -393,7 +405,7 @@ export const count = selectorFamily<
         return get(counts(params))[value] || 0;
       }
 
-      return get(aggregation(params)).aggregation.count;
+      return get(aggregation(params)).aggregation.count as number;
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -427,12 +439,15 @@ export const counts = selectorFamily<
         }
       }
 
-      return Object.fromEntries(
-        get(aggregation(params)).aggregation.values.map(({ count, value }) => [
-          value,
-          count,
-        ])
-      );
+      const data = get(aggregation(params)).aggregation;
+
+      if (data.values) {
+        return Object.fromEntries(
+          data.values.map(({ count, value }) => [value, count])
+        );
+      }
+
+      return Object.fromEntries(get(booleanCountResults(params)).results);
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
