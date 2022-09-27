@@ -68,7 +68,7 @@ export const GroupBar: React.FC<{
         position: "relative",
         top: "unset",
         left: "unset",
-        borderBottom: `1px solid var(--background-dark-border)`,
+        borderBottom: `1px solid var(--joy-pallete-primary-plainBorder)`,
         zIndex: 10000,
       }}
     >
@@ -76,7 +76,7 @@ export const GroupBar: React.FC<{
         {hasPinned && (
           <div
             style={{
-              color: "var(--font)",
+              color: "var(--joy-palette-text-primary)",
               display: "flex",
               fontSize: "1.2rem",
               fontWeight: "bold",
@@ -105,7 +105,7 @@ export const GroupSampleBar: React.FC<{
       {pinned && (
         <div
           style={{
-            color: "var(--font)",
+            color: "var(--joy-palette-text-primary)",
             display: "flex",
             fontSize: "1.2rem",
             fontWeight: "bold",

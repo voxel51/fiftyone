@@ -62,9 +62,9 @@ const theme = extendJoyTheme({
       palette: {
         background: {
           body: "#F6F8FA",
-          level1: "#F3F4F6",
-          level2: "rgba(238, 239, 242, 1)",
-          level3: "rgba(27, 31, 36, 0.15)",
+          level1: "#FFF",
+          level2: "#FFF",
+          level3: "#FFF",
         },
         neutral: {
           softBg: "rgba(27, 31, 36, 0.15)",
@@ -72,10 +72,10 @@ const theme = extendJoyTheme({
           plainColor: blue53,
         },
         primary: {
-          plainColor: darkTheme.brand,
-          plainBorder: darkTheme.backgroundDarkBorder,
-          softBg: darkTheme.brandTransparent,
-          softBorder: darkTheme.border,
+          plainColor: "rgba(27, 31, 36, 0.15)",
+          plainBorder: "rgba(27, 31, 36, 0.15)",
+          softBg: "rgba(27, 31, 36, 0.15)",
+          softBorder: "rgba(27, 31, 36, 0.15)",
         },
         focusVisible: "rgba(3, 102, 214, 0.3)",
         divider: "#EAECF0",
@@ -85,7 +85,7 @@ const theme = extendJoyTheme({
         text: {
           primary: "#000",
           secondary: "#000",
-          tertiary: darkTheme.fontDarkest,
+          tertiary: "rgba(27, 31, 36, 0.15)",
         },
       },
     },
