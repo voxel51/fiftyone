@@ -1,0 +1,47 @@
+import React, { Suspense } from "react";
+import styled from "styled-components";
+
+const Container = styled.div`
+  margin: 3px;
+  font-weight: bold;
+`;
+
+const Header = styled.div`
+  display: flex;
+  justify-content: space-between;
+  text-overflow: ellipsis;
+`;
+
+const Body = styled.div`
+  position: relative;
+  background: ${({ theme }) => theme.background.level2};
+  border: 1px solid #191c1f;
+  border-radius: 2px;
+  color: ${({ theme }) => theme.text.secondary};
+  margin-top: 0.25rem;
+  padding: 0.5rem;
+  position: relative;
+`;
+
+const LoadingContainer = ({ path }: { path: string }) => {
+  return (
+    <Container>
+      <Header>{path.split(".").slice(-1)[0]}</Header>
+      <Body>
+        <div>Loading...</div>
+      </Body>
+    </Container>
+  );
+};
+
+const withSuspense = <T extends { path: string }>(Component: React.FC<T>) => {
+  return (props: T) => {
+    return (
+      <Suspense fallback={<LoadingContainer path={props.path} />}>
+        <Component {...props} />
+      </Suspense>
+    );
+  };
+};
+
+export default withSuspense;

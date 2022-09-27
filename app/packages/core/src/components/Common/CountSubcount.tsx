@@ -14,7 +14,7 @@ const EntryCounts = ({
   ];
 
   if (typeof count !== "number") {
-    return null;
+    return "...";
   }
 
   if (count === subcount || count === 0) {

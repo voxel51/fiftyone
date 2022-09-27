@@ -16,6 +16,7 @@ import Checkbox from "../Common/Checkbox";
 import { Button } from "../utils";
 import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
 import { formatDateTime } from "../../utils/generic";
+import withSuspense from "./withSuspense";
 
 const NamedRangeSliderContainer = styled.div`
   margin: 3px;
@@ -239,4 +240,4 @@ const NumericFieldFilter = ({
   );
 };
 
-export default React.memo(NumericFieldFilter);
+export default React.memo(withSuspense(NumericFieldFilter));

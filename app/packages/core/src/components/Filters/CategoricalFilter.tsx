@@ -21,6 +21,7 @@ import ExcludeOption from "./Exclude";
 import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import withSuspense from "./withSuspense";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -351,18 +352,12 @@ const CategoricalFilter = <T extends V = V>({
 }: Props<T>) => {
   const name = path.split(".").slice(-1)[0];
   const color = useRecoilValue(fos.pathColor({ modal, path }));
-  const countsLoadable = useRecoilValueLoadable(countsAtom);
+  const { count, results } = useRecoilValue(countsAtom);
   const selectedCounts = useRef(new Map<V["value"], number>());
   const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
   const useSearch = getUseSearch({ modal, path });
   const skeleton = useRecoilValue(isKeypointLabel(path));
   const theme = useTheme();
-
-  if (countsLoadable.state === "hasError") throw countsLoadable.contents;
-
-  if (countsLoadable.state !== "hasValue") return null;
-
-  const { count, results } = countsLoadable.contents;
 
   return (
     <NamedCategoricalFilterContainer title={title}>
@@ -404,4 +399,4 @@ const CategoricalFilter = <T extends V = V>({
   );
 };
 
-export default CategoricalFilter;
+export default withSuspense(CategoricalFilter);

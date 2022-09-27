@@ -347,25 +347,19 @@ const FilterableEntry = React.memo(
         })`}
         trigger={trigger}
       >
-        <Suspense fallback={expanded ? <ExpandedLoading /> : null}>
-          {expanded &&
-            data.map(({ ftype, listField, ...props }) => {
-              return React.createElement(FILTERS[ftype], {
-                key: props.path,
-                onFocus,
-                onBlur,
-                title: listField ? `${LIST_FIELD}(${ftype})` : ftype,
-                ...props,
-              });
-            })}
-        </Suspense>
+        {expanded &&
+          data.map(({ ftype, listField, ...props }) => {
+            return React.createElement(FILTERS[ftype], {
+              key: props.path,
+              onFocus,
+              onBlur,
+              title: listField ? `${LIST_FIELD}(${ftype})` : ftype,
+              ...props,
+            });
+          })}
       </RegularEntry>
     );
   }
 );
-
-const ExpandedLoading = () => {
-  return <Loading style={{ height: 40 }}>Loading...</Loading>;
-};
 
 export default React.memo(FilterableEntry);
