@@ -3,7 +3,7 @@ import { toCamelCase } from "@fiftyone/utilities";
 import { useEffect, useState } from "react";
 import { usePreloadedQuery, useQueryLoader, graphql } from "react-relay";
 
-const datasetQuery = graphql`
+export const datasetQuery = graphql`
   query datasetQuery($name: String!, $view: BSONArray = null) {
     dataset(name: $name, view: $view) {
       id
