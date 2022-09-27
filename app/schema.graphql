@@ -157,8 +157,8 @@ type FloatAggregation implements Aggregation {
   count: Int!
   exists: Int!
   inf: Int!
-  max: Float!
-  min: Float!
+  max: Float
+  min: Float
   nan: Int!
   ninf: Int!
 }
@@ -183,8 +183,8 @@ type ImageSample implements Sample {
 type IntAggregation implements Aggregation {
   count: Int!
   exists: Int!
-  max: Float!
-  min: Float!
+  max: Float
+  min: Float
 }
 
 scalar JSON

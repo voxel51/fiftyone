@@ -317,11 +317,9 @@ export const isKeypointLabel = selectorFamily<boolean, string>({
   get:
     (path) =>
     ({ get }) => {
-      const { CountValues } = get(
-        fos.aggregations({ modal: false, extended: false })
-      )[path] as fos.CategoricalAggregations;
+      const field = get(fos.field(path));
 
-      if (!CountValues) {
+      if (!field) {
         const keys = path.split(".");
         let parent = keys[0];
 

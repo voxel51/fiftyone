@@ -27,7 +27,6 @@ import {
   isGroup,
   groupSlice,
 } from "./groups";
-import { sidebarSampleId } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
@@ -128,12 +127,12 @@ export const aggregationsTick = atom<number>({
   default: 0,
 });
 
-export const aggregation = graphQLSelectorFamily<
+export const aggregationQuery = graphQLSelectorFamily<
   VariablesOf<foq.aggregationQuery>,
   { extended: boolean; modal: boolean; path: string },
   ResponseFrom<foq.aggregationQuery>
 >({
-  key: "groupQuery",
+  key: "aggregationQuery",
   environment: RelayEnvironmentKey,
   mapResponse: (response) => response,
   query: foq.aggregation,
@@ -159,6 +158,20 @@ export const aggregation = graphQLSelectorFamily<
           view: get(viewAtoms.view),
         },
       };
+    },
+});
+
+const aggregation = selectorFamily({
+  key: "aggregation",
+  get:
+    (params: { extended: boolean; modal: boolean; path: string }) =>
+    ({ get }) => {
+      let extended = params.extended;
+      if (extended && !get(filterAtoms.hasFilters(params.modal))) {
+        extended = false;
+      }
+
+      return get(aggregationQuery({ ...params, extended }));
     },
 });
 
@@ -322,10 +335,11 @@ export const values = selectorFamily<
   key: "values",
   get:
     (params) =>
-    ({ get }) =>
-      get(aggregation(params))
+    ({ get }) => {
+      return get(aggregation(params))
         .aggregation.values.map(({ value }) => value)
-        .sort(),
+        .sort();
+    },
 
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -345,7 +359,8 @@ export const count = selectorFamily<
   get:
     ({ value, ...params }) =>
     ({ get }) => {
-      const exists = Boolean(get(schemaAtoms.field(params.path)));
+      const exists =
+        Boolean(get(schemaAtoms.field(params.path))) || !params.path;
 
       if (!exists) {
         const split = params.path.split(".");
@@ -517,10 +532,11 @@ export const bounds = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      return [
-        get(aggregation(params)).aggregation.min,
-        get(aggregation(params)).aggregation.min,
-      ];
+      const {
+        aggregation: { min, max },
+      } = get(aggregation(params));
+
+      return [min, max];
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -545,13 +561,22 @@ export const nonfiniteCounts = selectorFamily<
     (params) =>
     ({ get }) => {
       const {
-        aggregation: { inf, nan, ninf, exists, count },
+        aggregation: { inf, nan, ninf, exists },
       } = get(aggregation(params));
+
+      const {
+        aggregation: { count: parentCount },
+      } = get(
+        aggregation({
+          ...params,
+          path: params.path.split(".").slice(0, -1).join("."),
+        })
+      );
       return {
-        inf,
-        nan,
-        ninf,
-        none: count - exists,
+        inf: inf === undefined ? 0 : inf,
+        nan: nan === undefined ? 0 : nan,
+        ninf: ninf === undefined ? 0 : ninf,
+        none: parentCount - exists,
       };
     },
   cachePolicy_UNSTABLE: {

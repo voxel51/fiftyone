@@ -47,7 +47,7 @@ import {
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { NameAndCountContainer, PillButton } from "../../utils";
-import { useTheme } from "@fiftyone/components";
+import { Loading, useTheme } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 
@@ -319,23 +319,21 @@ const FilterableEntry = React.memo(
               <span key="path">{path}</span>
               {hidden}
               <PathEntryCounts key="count" modal={modal} path={expandedPath} />
-              {!disabled &&
-                expandable.state !== "loading" &&
-                expandable.contents && (
-                  <Arrow
-                    key="arrow"
-                    style={{ cursor: "pointer", margin: 0 }}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      setExpanded(!expanded);
-                    }}
-                    onMouseDown={(event) => {
-                      event.stopPropagation();
-                      event.preventDefault();
-                    }}
-                  />
-                )}
+              {!disabled && expandable.contents && (
+                <Arrow
+                  key="arrow"
+                  style={{ cursor: "pointer", margin: 0 }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setExpanded(!expanded);
+                  }}
+                  onMouseDown={(event) => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                  }}
+                />
+              )}
             </NameAndCountContainer>
           </>
         }
@@ -349,7 +347,7 @@ const FilterableEntry = React.memo(
         })`}
         trigger={trigger}
       >
-        <Suspense fallback={null}>
+        <Suspense fallback={expanded ? <ExpandedLoading /> : null}>
           {expanded &&
             data.map(({ ftype, listField, ...props }) => {
               return React.createElement(FILTERS[ftype], {
@@ -365,5 +363,9 @@ const FilterableEntry = React.memo(
     );
   }
 );
+
+const ExpandedLoading = () => {
+  return <Loading style={{ height: 40 }}>Loading...</Loading>;
+};
 
 export default React.memo(FilterableEntry);

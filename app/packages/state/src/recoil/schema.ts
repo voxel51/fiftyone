@@ -283,7 +283,7 @@ export const fields = selectorFamily<
     },
 });
 
-export const field = selectorFamily<Field, string>({
+export const field = selectorFamily<Field | null, string>({
   key: "field",
   get:
     (path) =>
@@ -297,12 +297,12 @@ export const field = selectorFamily<Field, string>({
           if (schema[name]) {
             field = schema[name];
             schema = field.fields;
+          } else {
+            return null;
           }
         }
 
-        if (field) {
-          return field;
-        }
+        return field;
       }
 
       let field: Field = null;
@@ -311,6 +311,8 @@ export const field = selectorFamily<Field, string>({
         if (schema[name]) {
           field = schema[name];
           schema = field.fields;
+        } else {
+          return null;
         }
       }
 

@@ -64,15 +64,15 @@ class DataAggregation(Aggregation):
 
 @gql.type
 class IntAggregation(Aggregation):
-    max: float
-    min: float
+    max: t.Optional[float]
+    min: t.Optional[float]
 
 
 @gql.type
 class FloatAggregation(Aggregation):
     inf: int
-    max: float
-    min: float
+    max: t.Optional[float]
+    min: t.Optional[float]
     nan: int
     ninf: int
 
@@ -142,6 +142,8 @@ async def aggregation_resolver(
     if form.mixed and not form.path:
         result, slice = result
         result.slice = slice
+    else:
+        result = result[0]
 
     return result
 
@@ -151,16 +153,16 @@ RESULT_MAPPING = {
     fof.EmbeddedDocumentField: DataAggregation,
     fof.IntField: IntAggregation,
     fof.FloatField: FloatAggregation,
+    fof.ObjectIdField: StringAggregation,
     fof.StringField: StringAggregation,
 }
 
 
 async def _resolve_path_aggregation(
-    path: str, view: foc.SampleCollection
+    path: t.Union[None, str], view: foc.SampleCollection
 ) -> AggreationResult:
-    aggregations: t.List[foa.Aggregation] = [foa.Count(path)]
+    aggregations: t.List[foa.Aggregation] = [foa.Count(path if path else None)]
     field = view.get_field(path)
-
     while isinstance(field, fof.ListField):
         field = field.field
 
@@ -181,7 +183,7 @@ async def _resolve_path_aggregation(
             )
         )
 
-    elif meets_type(field, fof.StringField):
+    elif meets_type(field, (fof.ObjectIdField, fof.StringField)):
         aggregations.append(foa.CountValues(path, _first=LIST_LIMIT))
 
     if isinstance(field, fof.ListField):
@@ -192,9 +194,24 @@ async def _resolve_path_aggregation(
     data = {}
     for aggregation, result in zip(aggregations, results):
         if isinstance(aggregation, foa.Bounds):
-            data[""]
+            if isinstance(field, fof.FloatField):
+                mn, mx = result["bounds"]
+                data["inf"] = result["inf"]
+                data["min"] = mn
+                data["max"] = mx
+                data["nan"] = result["nan"]
+                data["ninf"] = result["-inf"]
+            else:
+                mn, mx = result
+                data["min"] = mn
+                data["max"] = mx
         elif isinstance(aggregation, foa.Count):
             data["count"] = result
+        elif isinstance(aggregation, foa.CountValues):
+            count, result = result
+            data["values"] = [
+                {"value": value, "count": count} for value, count in result
+            ]
         elif isinstance(aggregation, _CountExists):
             data["exists"] = result
 
