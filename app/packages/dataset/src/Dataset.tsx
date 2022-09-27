@@ -87,6 +87,7 @@ function DatasetLoader({ datasetQueryRef, children, initialState }) {
 }
 
 function useEventSource(datasetName, subscription, setState) {
+  const clearModal = fos.useClearModal();
   useEffect(() => {
     const controller = new AbortController();
     getEventSource(
@@ -116,7 +117,7 @@ function useEventSource(datasetName, subscription, setState) {
           }
         },
         onclose: () => {
-          // clearModal();
+          clearModal();
         },
       },
       controller.signal,
