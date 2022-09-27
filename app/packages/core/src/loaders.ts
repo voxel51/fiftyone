@@ -1,10 +1,8 @@
 import * as fos from "@fiftyone/state";
-import { dataset } from "@fiftyone/state";
-import { Resource, toCamelCase } from "@fiftyone/utilities";
+import { toCamelCase } from "@fiftyone/utilities";
 import { useEffect, useState } from "react";
-import { loadQuery, usePreloadedQuery, useQueryLoader } from "react-relay";
-import { useRecoilValue } from "recoil";
-
+import { usePreloadedQuery, useQueryLoader, graphql } from "react-relay";
+/*
 const DatasetQueryNode = graphql`
   query DatasetQuery($name: String!, $view: BSONArray = null) {
     dataset(name: $name, view: $view) {
@@ -137,3 +135,4 @@ export function useDatasetLoader(environment) {
     },
   ];
 }
+*/
