@@ -5,6 +5,7 @@ import {
   selectorFamily,
   useRecoilStateLoadable,
   useRecoilValue,
+  useRecoilValueLoadable,
 } from "recoil";
 import {
   DICT_FIELD,
@@ -65,15 +66,20 @@ export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | InputEntry;
 
 export const useTagText = (modal: boolean) => {
   const { singular } = useRecoilValue(viewAtoms.elementNames);
+  const loadingTags =
+    useRecoilValueLoadable(
+      aggregationAtoms.aggregation({ modal, path: "tags", extended: false })
+    ).state === "loading";
 
-  if (true) {
-    return {
-      sample: `Loading ${singular} tags...`,
-      label: "Loading label tags...",
-    };
-  }
+  const loadingLabelTags =
+    useRecoilValueLoadable(
+      aggregationAtoms.labelTagCounts({ modal, extended: false })
+    ).state === "loading";
 
-  return { sample: `No ${singular} tags`, label: "No label tags" };
+  return {
+    sample: loadingTags ? `Loading ${singular} tags...` : `No ${singular} tags`,
+    label: loadingLabelTags ? "Loading label tags..." : "No label tags",
+  };
 };
 
 export const useEntries = (

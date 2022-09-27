@@ -1,31 +1,18 @@
 import * as foq from "@fiftyone/relay";
-import {
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  FLOAT_FIELD,
-  getFetchFunction,
-  toSnakeCase,
-  VALID_KEYPOINTS,
-} from "@fiftyone/utilities";
+import { VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { VariablesOf } from "react-relay";
-import {
-  atom,
-  GetRecoilValue,
-  RecoilValueReadOnly,
-  selectorFamily,
-  useRecoilValueLoadable,
-} from "recoil";
+import { atom, GetRecoilValue, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 
 import * as atoms from "./atoms";
 import * as filterAtoms from "./filters";
 import {
-  currentSlice,
   groupStatistics,
   groupId,
   ResponseFrom,
   isGroup,
   groupSlice,
+  activeModalSample,
 } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import * as selectors from "./selectors";
@@ -153,7 +140,7 @@ export const aggregationQuery = graphQLSelectorFamily<
           hiddenLabels: get(selectors.hiddenLabelsArray),
           path,
           mixed: false,
-          sampleIds: [...get(atoms.selectedSamples)],
+          sampleIds: modal ? [get(activeModalSample)._id] : [],
           slice: group && groupMode === "slice" ? get(groupSlice(modal)) : null,
           view: get(viewAtoms.view),
         },
@@ -161,7 +148,7 @@ export const aggregationQuery = graphQLSelectorFamily<
     },
 });
 
-const aggregation = selectorFamily({
+export const aggregation = selectorFamily({
   key: "aggregation",
   get:
     (params: { extended: boolean; modal: boolean; path: string }) =>
