@@ -30,12 +30,15 @@ class Distributions(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
         filters = data.get("filters", None)
+        extended = data.get("extended", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
         group = data.get("group", None)
         limit = data.get("limit", 1)
 
-        view = fosv.get_view(dataset, stages=stages, filters=filters)
+        view = fosv.get_view(
+            dataset, stages=stages, filters=filters, extended_stages=extended
+        )
 
         if group == "label tags":
 
@@ -47,7 +50,7 @@ class Distributions(HTTPEndpoint):
 
                 return path
 
-            aggs, fields, paths = _count_values(filter, view)
+            aggs, fields, paths = _count_values(filter, view, limit)
             results = await _gather_results(aggs, fields, paths, view)
 
         elif group == "labels":
@@ -60,7 +63,7 @@ class Distributions(HTTPEndpoint):
 
                 return path
 
-            aggs, fields, paths = _count_values(filter, view)
+            aggs, fields, paths = _count_values(filter, view, limit)
             results = await _gather_results(aggs, fields, paths, view)
 
         elif group == "sample tags":
@@ -84,7 +87,7 @@ class Distributions(HTTPEndpoint):
 
                 return None
 
-            aggs, fields, paths = _count_values(filter, view)
+            aggs, fields, paths = _count_values(filter, view, limit)
 
             (
                 hist_aggs,
@@ -224,7 +227,7 @@ async def _gather_results(aggs, fields, paths, view, ticks=None):
     return results
 
 
-def _count_values(f, view):
+def _count_values(f, view, limit):
     aggregations = []
     fields = []
     schemas = [(view.get_field_schema(), "")]
@@ -242,7 +245,7 @@ def _count_values(f, view):
             paths.append(prefix + path)
             aggregations.append(
                 foa.CountValues(
-                    "%s%s" % (prefix, path), _first=LIST_LIMIT, _asc=False
+                    "%s%s" % (prefix, path), _first=limit, _asc=False
                 )
             )
 
@@ -284,7 +287,7 @@ async def _numeric_histograms(view, schema, prefix=""):
                 range_ = [0, 1]
 
         if isinstance(range_[1], datetime):
-            range_ = (range_[0], range_[1] + timedelta(milliseconds=1))
+            range_ = (range_[0], range_[1] + timedelta(milliseconds=100))
         elif isinstance(range_[1], date):
             range_ = (range_[0], range_[1] + timedelta(days=1))
         else:

@@ -13,16 +13,14 @@ import {
   isFloat,
   prettify,
 } from "../utils/generic";
-import * as viewAtoms from "../recoil/view";
-import * as filterAtoms from "../recoil/filters";
-import * as selectors from "../recoil/selectors";
-import { meetsType } from "../recoil/schema";
+
+import * as fos from "@fiftyone/state";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
   getFetchFunction,
 } from "@fiftyone/utilities";
-import { refresher } from "../recoil/atoms";
+import { extendedStagesUnsorted } from "@fiftyone/state";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -49,6 +47,7 @@ const getAxisTick = (isDateTime, timeZone) => {
     render() {
       const { x, y, payload, fill } = this.props;
       const v = payload.value;
+
       return (
         <g transform={`translate(${x},${y})`}>
           <text
@@ -59,7 +58,7 @@ const getAxisTick = (isDateTime, timeZone) => {
             fill={fill}
             transform="rotate(-80)"
           >
-            {isDateTime
+            {isDateTime && typeof v !== "string"
               ? formatDateTime(v, timeZone)
               : isFloat(v)
               ? v.toFixed(3)
@@ -87,10 +86,10 @@ const Distribution: React.FC<{ distribution: Distribution }> = (props) => {
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
   const isDateTime = useRecoilValue(
-    meetsType({ path, ftype: DATE_TIME_FIELD })
+    fos.meetsType({ path, ftype: DATE_TIME_FIELD })
   );
-  const isDate = useRecoilValue(meetsType({ path, ftype: DATE_FIELD }));
-  const timeZone = useRecoilValue(selectors.timeZone);
+  const isDate = useRecoilValue(fos.meetsType({ path, ftype: DATE_FIELD }));
+  const timeZone = useRecoilValue(fos.timeZone);
   const ticksSetting =
     ticks === 0
       ? { interval: ticks }
@@ -153,7 +152,7 @@ const Distribution: React.FC<{ distribution: Distribution }> = (props) => {
 
             if (map[key]) {
               if (isDateTime || isDate) {
-                const [{ $date: start }, { $date: end }] = map[key];
+                const [{ datetime: start }, { datetime: end }] = map[key];
                 const [cFmt, dFmt] = getDateTimeRangeFormattersWithPrecision(
                   isDate ? "UTC" : timeZone,
                   start,
@@ -209,22 +208,25 @@ interface Distribution {
 
 const distributions = selectorFamily<Distribution[], string>({
   key: "distributions",
-  get: (group) => async ({ get }) => {
-    get(refresher);
-    const { distributions } = await getFetchFunction()(
-      "POST",
-      "/distributions",
-      {
-        group: group.toLowerCase(),
-        limit: LIMIT,
-        view: get(viewAtoms.view),
-        dataset: get(selectors.datasetName),
-        get: get(filterAtoms.filters),
-      }
-    );
+  get:
+    (group) =>
+    async ({ get }) => {
+      get(fos.refresher);
+      const { distributions } = await getFetchFunction()(
+        "POST",
+        "/distributions",
+        {
+          group: group.toLowerCase(),
+          limit: LIMIT,
+          view: get(fos.view),
+          dataset: get(fos.datasetName),
+          filters: get(fos.filters),
+          extended: get(extendedStagesUnsorted),
+        }
+      );
 
-    return distributions as Distribution[];
-  },
+      return distributions as Distribution[];
+    },
 });
 
 const Distributions = ({ group }: { group: string }) => {

@@ -369,16 +369,16 @@ predictions to take advantage of FiftyOne's
         dataset.export(
             export_dir="/tmp/coco",
             dataset_type=fo.types.COCODetectionDataset,
-            classes=classes,
             label_field="ground_truth",
+            classes=classes,
         )
 
         # Export predictions
         dataset.export(
             dataset_type=fo.types.COCODetectionDataset,
             labels_path="/tmp/coco/predictions.json",
-            classes=classes,
             label_field="predictions",
+            classes=classes,
         )
 
         # Now load ground truth labels into a new dataset
@@ -393,7 +393,7 @@ predictions to take advantage of FiftyOne's
             dataset2,
             "predictions",
             "/tmp/coco/predictions.json",
-            classes=classes,
+            classes,
         )
 
         # Verify that ground truth and predictions were imported as expected
@@ -432,16 +432,16 @@ predictions to take advantage of FiftyOne's
         dataset.export(
             export_dir="/tmp/yolov4",
             dataset_type=fo.types.YOLOv4Dataset,
-            classes=classes,
             label_field="ground_truth",
+            classes=classes,
         )
 
         # Export predictions
         dataset.export(
             dataset_type=fo.types.YOLOv4Dataset,
             labels_path="/tmp/yolov4/predictions",
-            classes=classes,
             label_field="predictions",
+            classes=classes,
         )
 
         # Now load ground truth labels into a new dataset
@@ -456,7 +456,7 @@ predictions to take advantage of FiftyOne's
             dataset2,
             "predictions",
             "/tmp/yolov4/predictions",
-            classes=classes,
+            classes,
         )
 
         # Verify that ground truth and predictions were imported as expected

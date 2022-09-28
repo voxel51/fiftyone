@@ -9,7 +9,7 @@ import mongoengine
 
 import fiftyone.core.utils as fou
 
-from .document import MongoEngineBaseDocument
+from .document import DynamicMixin, MongoEngineBaseDocument
 
 
 food = fou.lazy_import("fiftyone.core.odm.dataset")
@@ -19,6 +19,8 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
     """Base class for documents that are embedded within other documents and
     therefore are not stored in their own collection in the database.
     """
+
+    pass
 
 
 class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
@@ -34,6 +36,7 @@ class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
 
 
 class DynamicEmbeddedDocument(
+    DynamicMixin,
     BaseEmbeddedDocument,
     mongoengine.DynamicEmbeddedDocument,
 ):

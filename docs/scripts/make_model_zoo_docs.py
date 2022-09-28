@@ -111,6 +111,21 @@ _MODEL_TEMPLATE = """
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
+
+{% if 'zero-shot' in tags %}
+    #
+    # Make zero-shot predictions with custom classes
+    #
+
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        text_prompt="A photo of a",
+        classes=["person", "dog", "cat", "bird", "car", "tree", "chair"],
+    )
+
+    dataset.apply_model(model, label_field="predictions")
+    session.refresh()
+{% endif %}
 """
 
 

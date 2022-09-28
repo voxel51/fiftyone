@@ -225,7 +225,7 @@ All models in the FiftyOne Model Zoo are instances of the |Model| class, which
 defines a common interface for loading models and generating predictions with
 defined input and output data formats.
 
-.. note:
+.. note::
 
     The following sections describe the interface that all models in the Model
     Zoo implement. If you write a wrapper for your custom model that implements
@@ -357,7 +357,7 @@ and the output ``labels`` can be any of the following:
 
     # Multiple sample-level labels
     for key, value in labels.items():
-        sample[label_field + "_" + key] = value
+        sample[label_key(key)] = value
 
 -   A dict mapping frame numbers to |Label| instances. In this case, the
     provided labels are interpreted as frame-level labels that should be added
@@ -384,19 +384,29 @@ and the output ``labels`` can be any of the following:
     # Multiple per-frame labels
     sample.frames.merge(
         {
-            frame_number: {
-                label_field + "_" + name: label
-                for name, label in frame_dict.items()
-            }
+            frame_number: {label_key(k): v for k, v in frame_dict.items()}
             for frame_number, frame_dict in labels.items()
         }
     )
+
+In the above snippets, the ``label_key`` function maps label dict keys to field
+names, and is defined from ``label_field`` as follows:
+
+.. code-block:: python
+    :linenos:
+
+    if isinstance(label_field, dict):
+        label_key = lambda k: label_field.get(k, k)
+    elif label_field is not None:
+        label_key = lambda k: label_field + "_" + k
+    else:
+        label_key = lambda k: k
 
 For models that support batching, the |Model| interface also provides a
 :meth:`predict_all() <fiftyone.core.models.Model.predict_all>` method that can
 provide an efficient implementation of predicting on a batch of data.
 
-.. note:
+.. note::
 
     Builtin methods like
     :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
@@ -404,7 +414,7 @@ provide an efficient implementation of predicting on a batch of data.
     size used when performing inference with models that support efficient
     batching.
 
-.. note:
+.. note::
 
     PyTorch models can implement the |TorchModelMixin| mixin, in which case
     `DataLoaders <https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader>`_
@@ -440,7 +450,7 @@ By convention,
 :meth:`Model.embed() <fiftyone.core.models.EmbeddingsMixin.embed>` should
 return a numpy array containing the embedding.
 
-.. note:
+.. note::
 
     Sample embeddings are typically 1D vectors, but this is not strictly
     required.

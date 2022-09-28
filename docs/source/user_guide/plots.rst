@@ -5,8 +5,7 @@ Interactive Plots
 
 .. default-role:: code
 
-FiftyOne provides a powerful
-:mod:`fiftyone.core.plots <fiftyone.core.plots.base>` framework that contains
+FiftyOne provides a powerful :mod:`fiftyone.core.plots` framework that contains
 a variety of interactive plotting methods that enable you to visualize your
 datasets and uncover patterns that are not apparent from inspecting either the
 :ref:`raw media files <fiftyone-app>` or
@@ -139,37 +138,28 @@ below for your environment:
 
   .. group-tab:: Jupyter notebooks
 
-    To use interactive plots in Jupyter notebooks, ensure that you have the
-    ``notebook`` and ``ipywidgets`` packages installed:
+    To use interactive plots in Jupyter notebooks, ensure that you have
+    sufficiently new versions of the ``notebook`` and ``ipywidgets`` packages
+    installed:
 
     .. code-block:: shell
 
-        pip install "notebook>=5.3" "ipywidgets>=7.5"
+        pip install "notebook>=5.3" "ipywidgets>=7.5,<8"
 
   .. group-tab:: JupyterLab
 
-    To use interactive plots in JupyterLab, ensure that you have the
-    ``jupyterlab`` and ``ipywidgets`` packages installed:
+    To use interactive plots in JupyterLab, ensure that you have sufficiently
+    new versions of the ``jupyterlab`` and ``ipywidgets`` packages installed:
 
     .. code-block:: shell
 
-        pip install jupyterlab "ipywidgets>=7.5"
+        pip install "jupyterlab>=3" "ipywidgets>=7.6,<8"
 
-    In additional, you'll need to run the following commands to install the
-    required JupyterLab extensions:
-
-    .. code-block:: shell
-
-        jupyter labextension install jupyterlab-plotly@4.14.3
-        jupyter labextension install @jupyter-widgets/jupyterlab-manager plotlywidget@4.14.3
-        jupyter lab build
-
-    The above instructions assume that you have ``plotly==4.14.3`` installed.
-    If you have a different version (``pip show plotly``), substitute the
-    appropriate version number in the commands above.
-
-    If you run into any issues in JupyterLab, refer to
-    `this troubleshooting guide <https://plotly.com/python/troubleshooting>`_.
+    If you run into any issues in JupyterLab, especially if you are trying to
+    use JupyterLab 2.X rather than 3.0+, you may need to manually install the
+    `jupyterlab-plotly` extension. Refer to
+    `this troubleshooting guide <https://plotly.com/python/troubleshooting>`_
+    for more details.
 
 If you wish to use the ``matplotlib`` backend for any interactive plots, refer
 to :ref:`this section <matplotlib-in-notebooks>` for setup instructions.
@@ -369,6 +359,10 @@ contains |GeoLocation| data in its ``location`` field:
     from fiftyone import ViewField as F
 
     dataset = foz.load_zoo_dataset("quickstart-geo")
+    fob.compute_uniqueness(dataset)
+
+    # Index the dataset by visual uniqueness
+    fob.compute_uniqueness(dataset)
 
     # A list of ``[longitude, latitude]`` coordinates
     locations = dataset.values("location.point.coordinates")
@@ -446,8 +440,6 @@ notebook:
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart-geo")
-
-    # Index the dataset by visual uniqueness
     fob.compute_uniqueness(dataset)
 
     session = fo.launch_app(dataset)
@@ -998,7 +990,6 @@ For example, you can save a :ref:`histogram view plot <view-plots>`:
     :linenos:
 
     import fiftyone as fo
-    import fiftyone.brain as fob
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
@@ -1021,6 +1012,8 @@ Or you can save an :ref:`embedding scatterplot <embeddings-plots>`:
 
 .. code-block:: python
     :linenos:
+
+    import fiftyone.brain as fob
 
     results = fob.compute_visualization(dataset)
 
@@ -1236,8 +1229,7 @@ property of the plot:
 Plotting backend
 ----------------
 
-Most plotting methods in the
-:meth:`fiftyone.core.plots <fiftyone.core.plots.base>` module provide an
+Most plotting methods in the :meth:`fiftyone.core.plots` module provide an
 optional ``backend`` parameter that you can use to control the plotting backend
 used to render plots.
 

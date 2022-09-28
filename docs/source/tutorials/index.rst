@@ -54,7 +54,7 @@ your datasets and turn your good models into *great models*.
     :description: Visualize your data in new ways. This tutorial shows how to use FiftyOne's powerful embeddings visualization capabilities to improve your image datasets.
     :link: image_embeddings.html
     :image: ../_static/images/tutorials/image_embeddings.png
-    :tags: Visualization,Brain
+    :tags: Visualization,Brain,Embeddings
 
 .. customcarditem::
     :header: Annotating with CVAT
@@ -64,11 +64,18 @@ your datasets and turn your good models into *great models*.
     :tags: Annotation,Dataset-Evaluation
 
 .. customcarditem::
-    :header: Annotating with Labelbox 
+    :header: Annotating with Labelbox
     :description: Unlock the power of the Labelbox platform. See how you can get your FiftyOne datasets annotated with just one line of code.
     :link: labelbox_annotation.html
     :image: ../_static/images/tutorials/labelbox_square.png
     :tags: Annotation,Dataset-Evaluation
+
+.. customcarditem::
+    :header: Training with Detectron2
+    :description: Put your FiftyOne datasets to work and learn how to train and evaluate Detectron2 models directly on your data.
+    :link: detectron2.html
+    :image: ../_static/images/tutorials/detectron2.png
+    :tags: Model-Training,Model-Evaluation
 
 .. customcarditem::
     :header: Downloading and evaluating Open Images
@@ -97,6 +104,13 @@ your datasets and turn your good models into *great models*.
     :link: detection_mistakes.html
     :image: ../_static/images/tutorials/detection_mistakes.png
     :tags: Dataset-Evaluation,Brain
+
+.. customcarditem::
+    :header: Nearest Neighbor Embeddings Classification with Qdrant
+    :description: Easily pre-annotate your FiftyOne datasets using approximate nearest neighbors search on embeddings with Qdrant.
+    :link: qdrant.html
+    :image: ../_static/images/tutorials/qdrant.png
+    :tags: Dataset-Evaluation,Model-Evaluation,Embeddings
 
 .. End of tutorial cards
 
@@ -128,6 +142,8 @@ your datasets and turn your good models into *great models*.
    Annotating with CVAT <cvat_annotation.ipynb>
    Annotating with Labelbox <labelbox_annotation.ipynb>
    Working with Open Images <open_images.ipynb>
+   Training with Detectron2 <detectron2.ipynb>
    Exploring image uniqueness <uniqueness.ipynb>
    Finding class mistakes <classification_mistakes.ipynb>
    Finding detection mistakes <detection_mistakes.ipynb>
+   Embeddings with Qdrant <qdrant.ipynb>

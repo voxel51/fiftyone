@@ -143,15 +143,19 @@ to the above command.
 Restricting the App address
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-By default, the App will listen to any connection to its port. However, you can
-provide the optional `address` parameter to
+By default, the App will listen on `localhost`. However, you can provide the
+optional `address` parameter to
 :meth:`launch_app() <fiftyone.core.session.launch_app>` to specify a particular
-IP address or hostname to which to restrict access to your session.
+IP address or hostname for the App to listen on.
 
-For example, a common pattern is to set the App address to `"localhost"` so
-that the App can only be accessed via http://localhost:5151 on either the local
-machine itself or a machine that was able to setup ssh port forwarding as
+Using the default of `localhost` means the App can only be accessed from the
+local machine or a machine that was able to setup ssh port forwarding as
 described in the previous section.
+
+An alternative is to set the App address to `"0.0.0.0"` so that the App can be
+accessed from a remote host or from the local machine itself.  Using `"0.0.0.0"`
+will bind the App to all available interfaces and will allow access to the App
+from any remote resource with access to your network.
 
 .. code-block:: python
     :linenos:
@@ -160,8 +164,8 @@ described in the previous section.
 
     dataset = fo.load_dataset(...)
 
-    # Restrict to http://localhost:5151 connections made via port forwarding
-    session = fo.launch_app(dataset, remote=True, address="localhost")
+    # Enable connections from remote hosts
+    session = fo.launch_app(dataset, remote=True, address="0.0.0.0")
 
 If desired, you can permanently configure an App address by setting the
 `default_app_address` of your :ref:`FiftyOne config <configuring-fiftyone>`.
@@ -171,14 +175,14 @@ You can achieve this by adding the following entry to your
 .. code-block:: json
 
     {
-        "default_app_address": "localhost"
+        "default_app_address": "0.0.0.0"
     }
 
 or by setting the following environment variable:
 
 .. code-block:: shell
 
-    export FIFTYONE_DEFAULT_APP_ADDRESS=localhost
+    export FIFTYONE_DEFAULT_APP_ADDRESS='0.0.0.0'
 
 .. _notebooks:
 

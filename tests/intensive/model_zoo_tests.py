@@ -49,7 +49,7 @@ def test_keypoint_models():
 def test_embedding_models():
     all_models = foz.list_zoo_models()
     _apply_embedding_models(all_models)
-
+    
 
 def test_logits_models():
     models = _get_models_with_tag("logits")
@@ -78,6 +78,11 @@ def test_confidence_thresh():
 def test_batch_size():
     all_models = foz.list_zoo_models()
     _apply_models(all_models, batch_size=5)
+
+
+def test_zero_shot_labels():
+    models = _get_models_with_tag("zero-shot")
+    _apply_zero_shot_models(models)
 
 
 def _get_models_with_tag(tag):
@@ -183,6 +188,32 @@ def _apply_embedding_models(model_names):
 
         embeddings = dataset.compute_embeddings(model)
         print("Embeddings shape: %s" % embeddings.shape)
+
+
+def _apply_zero_shot_models(model_names):
+    # Load a small test dataset
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        dataset_name=fo.get_default_dataset_name(),
+        shuffle=True,
+        max_samples=10,
+    )
+    custom_labels = dataset.distinct("ground_truth.detections.label")
+
+    for idx, model_name in enumerate(model_names, 1):
+        print(
+            "Running model %d/%d: '%s'" % (idx, len(model_names), model_name)
+        )
+
+        model = foz.load_zoo_model(model_name, class_labels=custom_labels)
+
+        label_field = model_name.lower().replace("-", "_").replace(".", "_")
+
+        dataset.apply_model(model, label_field=label_field, batch_size=4)
+
+        assert len(dataset.exists(label_field)) == len(dataset)
+        assert all([label in custom_labels for label in dataset.distinct(f"{label_field}.label")])
 
 
 def _apply_person_keypoint_models(model_names):

@@ -441,6 +441,126 @@ uniqueness values will be displayed under the `Scalars` tab.
     :alt: app-stats
     :align: center
 
+.. _app-map-tab:
+
+Map tab
+_______
+
+When you load a dataset in the App that contains a |GeoLocation| field with
+:attr:`point <fiftyone.core.labels.GeoLocation.point>` data populated, you can
+open the `Map` tab to visualize a scatterplot of the location data:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-geo")
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    You must configure a
+    `Mapbox access token <https://docs.mapbox.com/help/getting-started/access-tokens>`_
+    in order to use the Map UI. See below for instructions.
+
+    FiftyOne uses the Mapbox GL JS API,
+    `which is free <https://www.mapbox.com/pricing/#maps>`_ up to 50,000 map
+    loads each month.
+
+.. image:: /images/app/app-map.gif
+    :alt: app-map
+    :align: center
+
+You can lasso points in the map to show only the corresponding samples in the
+grid view below. Confirm the selection by either double-clicking the last
+vertex or pressing `ENTER`:
+
+.. image:: /images/app/app-map-selection.gif
+    :alt: app-map-selection
+    :align: center
+
+The map UI also provides a number of additional controls:
+
+-   Use the menu in the upper-left corner to choose between the available
+    map types
+-   Press the `locate` icon to reset the map's viewport to a tight crop of the
+    current view's location data
+-   Press the `x` icon to clear the current selection in the map
+
+.. image:: /images/app/app-map-controls.gif
+    :alt: app-map-controls
+    :align: center
+
+The map UI can be configured by including any subset of the settings shown
+below under the `plugins.map` key of your
+:ref:`App config <configuring-fiftyone-app>`:
+
+.. code-block:: json
+
+    // The default values are shown below
+    {
+        "plugins": {
+            "map": {
+                // Your mapbox token. This is required
+                "mapboxAccessToken": "XXXXXXXX",
+
+                // Whether to enable clustering
+                "clustering": true,
+
+                // Never use clustering beyond this zoom level
+                // https://docs.mapbox.com/help/glossary/zoom-level
+                "clusterMaxZoom": 11,
+
+                // Controls the look and feel of clusters
+                "clusters": {
+                    "paint": {
+                        "circle-color": "rgb(244, 113, 6)",
+                        "circle-opacity": 0.7,
+
+                        // Step expressions can be used
+                        // https://docs.mapbox.com/mapbox-gl-js/style-spec/#expressions-step
+                        // 20px circles when point count is less than 10
+                        // 30px circles when point count is between 10 and 25
+                        // 40px circles when point count is greater than or equal to 25
+                        "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 25, 40]
+                    }
+                },
+
+                // Controls the look and feel of individual scatter points
+                "pointPaint": {
+                    "circle-color": "rgb(244, 113, 6)",
+                    "circle-opacity": 0.7,
+                    "circle-radius": 4
+                }
+            }
+        }
+    }
+
+If you prefer, you can provide your Mapbox token by setting the `MAPBOX_TOKEN`
+environment variable:
+
+.. code-block:: shell
+
+    export MAPBOX_TOKEN=XXXXXXXX
+
+You can also store dataset-specific plugin settings by storing any subset of
+the above values on a :ref:`dataset's App config <custom-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Disable clustering for this dataset
+    dataset.app_config.plugins["map"] = {"clustering": False}
+    dataset.save()
+
+.. note::
+
+    Dataset-specific plugin settings will override any settings from your
+    :ref:`global App config <configuring-fiftyone-app>`.
+
 .. _app-select-samples:
 
 Selecting samples
@@ -885,13 +1005,108 @@ appears in the upper-right corner of the modal:
     a similarity index in a session. Subsequent similarity searches will use
     cached results and will be faster!
 
+.. _app-multiple-media-fields:
+
+Multiple media fields
+_____________________
+
+There are use cases where you may want to associate multiple media versions
+with each sample in your dataset, such as:
+
+-   Thumbnail images
+-   Anonymized (e.g., blurred) versions of the images
+
+You can work with multiple media sources in FiftyOne by simply adding extra
+field(s) to your dataset containing the paths to each media source and then
+configuring your dataset to expose these multiple media fields in the App.
+
+For example, let's create thumbnail images for use in the App's grid view and
+store their paths in a `thumbnail_path` field:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.image as foui
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Generate some thumbnail images
+    foui.transform_images(
+        dataset,
+        size=(-1, 32),
+        output_field="thumbnail_path",
+        output_dir="/tmp/thumbnails",
+    )
+
+    print(dataset)
+
+.. code-block:: text
+
+    Name:        quickstart
+    Media type:  image
+    Num samples: 200
+    Persistent:  False
+    Tags:        []
+    Sample fields:
+        id:             fiftyone.core.fields.ObjectIdField
+        filepath:       fiftyone.core.fields.StringField
+        tags:           fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:       fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        ground_truth:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        uniqueness:     fiftyone.core.fields.FloatField
+        predictions:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        thumbnail_path: fiftyone.core.fields.StringField
+
+We can expose the thumbnail images to the App by modifying the
+:ref:`dataset's App config <custom-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Modify the dataset's App config
+    dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+    dataset.app_config.grid_media_field = "thumbnail_path"
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+Adding `thumbnail_path` to the
+:class:`media_fields <fiftyone.core.odm.dataset.DatasetAppConfig>` property
+adds it to the `Media Field` selector under the App's settings menu, and
+setting the
+:meth:`grid_media_field <fiftyone.core.odm.dataset.DatasetAppConfig>` property
+to `thumbnail_path` instructs the App to use the thumbnail images by default in
+the grid view:
+
+.. image:: /images/app/app-multiple-media-fields.gif
+    :alt: multiple-media-fields
+    :align: center
+
+.. warning::
+
+    When populating multiple media fields on samples, keep in mind that all
+    media sources must have the same **type** (e.g., image) and
+    **aspect ratio** as the sample's primary `filepath`, since the media must
+    be compatible with the dataset's spatial labels (e.g., object detections).
+
 .. _app-config:
 
 Configuring the App
 ___________________
 
-The behavior of the App can be configured in various ways. The code sample
-below shows the basic pattern for customizing the App on a one-off basis:
+The behavior of the App can be configured globally, on a per-session basis, and
+on a per-dataset basis.
+
+Global App config
+-----------------
+
+FiftyOne provides a :ref:`global App config <configuring-fiftyone-app>` that
+you can use to customize the default App behavior for all sessions and datasets
+on your machine.
+
+You can also customize the global App config on a per-session basis:
 
 .. code-block:: python
     :linenos:
@@ -901,12 +1116,18 @@ below shows the basic pattern for customizing the App on a one-off basis:
 
     dataset = foz.load_zoo_dataset("quickstart")
 
+    # Your default App config
+    print(fo.app_config)
+
     # Create a custom App config
-    app_config = fo.AppConfig()
+    app_config = fo.app_config.copy()
     app_config.show_confidence = False
     app_config.show_label = True
+    print(app_config)
 
+    # Launch App with custom config
     session = fo.launch_app(dataset, config=app_config)
+    print(session.config)
 
 You can also reconfigure a live |Session| by editing its
 :meth:`session.config <fiftyone.core.session.Session.config>` property and
@@ -916,12 +1137,62 @@ apply the changes:
 .. code-block:: python
     :linenos:
 
-    # Customize the config of a live Session
+    # Customize the config of a live session
     session.config.show_confidence = True
     session.config.show_label = True
+    session.refresh()  # must refresh after edits
 
-    # Refresh the session to apply the changes
-    session.refresh()
+See :ref:`this page <configuring-fiftyone-app>` for information about the
+available App configuration options.
 
-See :ref:`this page <configuring-fiftyone-app>` for more information about
-configuring the App.
+Dataset App config
+------------------
+
+Datasets also provide an :ref:`app_config property <custom-app-config>` that
+you can use to customize the behavior of the App for that particular dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.image as foui
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # View the dataset's current App config
+    print(dataset.app_config)
+
+    # Generate some thumbnail images
+    foui.transform_images(
+        dataset,
+        size=(-1, 32),
+        output_field="thumbnail_path",
+        output_dir="/tmp/thumbnails",
+    )
+
+    # Modify the dataset's App config
+    dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+    dataset.app_config.grid_media_field = "thumbnail_path"
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    Any settings stored in a dataset's
+    :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
+    the corresponding settings from your
+    :ref:`global App config <configuring-fiftyone-app>`.
+
+.. _app-plugins:
+
+Custom App plugins
+__________________
+
+FiftyOne provides a plugin system that you can use to customize and extend its
+behavior!
+
+Check out
+`this page <https://github.com/voxel51/fiftyone/blob/develop/app/packages/plugins/README.md>`_
+for documentation on developing and installing custom plugins.

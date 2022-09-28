@@ -82,6 +82,41 @@ def is_frames_expr(expr):
     return False
 
 
+def get_group_slices(expr):
+    """Extracts the group slices from the given expression, if any.
+
+    Args:
+        expr: a :class:`ViewExpression` or an already serialized
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+
+    Returns:
+        a (possibly-empty) list of group slices
+    """
+    if isinstance(expr, ViewExpression):
+        expr = expr.to_mongo()
+
+    group_slices = set()
+    _do_get_group_slices(expr, group_slices)
+
+    return list(group_slices)
+
+
+def _do_get_group_slices(expr, group_slices):
+    if etau.is_str(expr):
+        if expr.startswith("$groups."):
+            group_slice = expr.split(".", 2)[1]
+            group_slices.add(group_slice)
+
+    if isinstance(expr, dict):
+        for k, v in expr.items():
+            _do_get_group_slices(k, group_slices)
+            _do_get_group_slices(v, group_slices)
+
+    if etau.is_container(expr):
+        for e in expr:
+            _do_get_group_slices(e, group_slices)
+
+
 class ViewExpression(object):
     """An expression defining a possibly-complex manipulation of a document.
 
@@ -2584,7 +2619,7 @@ class ViewExpression(object):
         """
         return ViewExpression({"$reverseArray": self})
 
-    def sort(self, key=None, reverse=False):
+    def sort(self, key=None, numeric=False, reverse=False):
         """Sorts this expression, which must resolve to an array.
 
         If no ``key`` is provided, this array must contain elements whose
@@ -2628,7 +2663,7 @@ class ViewExpression(object):
 
             view = dataset.set_field(
                 "predictions.detections",
-                F("detections").sort(key="confidence", reverse=True)
+                F("detections").sort(key="confidence", numeric=True, reverse=True)
             )
 
             sample = view.first()
@@ -2637,13 +2672,23 @@ class ViewExpression(object):
 
         Args:
             key (None): an optional field or ``embedded.field.name`` to sort by
+            numeric (False): whether the array contains numeric values. By
+                default, the values will be sorted alphabetically by their
+                string representations
             reverse (False): whether to sort in descending order
 
         Returns:
             a :class:`ViewExpression`
         """
         if key is not None:
-            comp = "(a, b) => a.{key} - b.{key}".format(key=key)
+            if numeric:
+                comp = "(a, b) => a.{key} - b.{key}"
+            else:
+                comp = "(a, b) => ('' + a.{key}).localeCompare(b.{key})"
+
+            comp = comp.format(key=key)
+        elif numeric:
+            comp = "(a, b) => a - b"
         else:
             comp = ""
 

@@ -64,17 +64,20 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_app_port`            | `FIFTYONE_DEFAULT_APP_PORT`         | `5151`                        | The default port to use to serve the :ref:`FiftyOne App <fiftyone-app>`.               |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `default_app_address`         | `FIFTYONE_DEFAULT_APP_ADDRESS`      | `None`                        | The default address to use to serve the :ref:`FiftyOne App <fiftyone-app>`. This may   |
+| `default_app_address`         | `FIFTYONE_DEFAULT_APP_ADDRESS`      | `localhost`                   | The default address to use to serve the :ref:`FiftyOne App <fiftyone-app>`. This may   |
 |                               |                                     |                               | be either an IP address or hostname. If it's a hostname, the App will listen to all    |
-|                               |                                     |                               | IP addresses associated with the name. The default is `None`, which means the App will |
-|                               |                                     |                               | listen on all available interfaces. See :ref:`this page <restricting-app-address>` for |
-|                               |                                     |                               | more information.                                                                      |
+|                               |                                     |                               | IP addresses associated with the name. The default is `localhost`, which means the App |
+|                               |                                     |                               | will only listen on the local interface. See :ref:`this page <restricting-app-address>`|
+|                               |                                     |                               | for more information.                                                                  |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `desktop_app`                 | `FIFTYONE_DESKTOP_APP`              | `False`                       | Whether to launch the FiftyOne App in the browser (False) or as a desktop App (True)   |
 |                               |                                     |                               | by default. If True, the :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>`     |
 |                               |                                     |                               | must be installed.                                                                     |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `do_not_track`                | `FIFTYONE_DO_NOT_TRACK`             | `False`                       | Controls whether UUID based import and App usage events are tracked.                   |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `logging_level`               | `FIFTYONE_LOGGING_LEVEL`            | `INFO`                        | Controls FiftyOne's package-wide logging level. Can be any valid ``logging`` level as  |
+|                               |                                     |                               | a string: ``DEBUG, INFO, WARNING, ERROR, CRITICAL``.                                   |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `model_zoo_dir`               | `FIFTYONE_MODEL_ZOO_DIR`            | `~/fiftyone/__models__`       | The default directory in which to store models that are downloaded from the            |
 |                               |                                     |                               | :ref:`FiftyOne Model Zoo <model-zoo>`.                                                 |
@@ -84,6 +87,9 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `module_path`                 | `FIFTYONE_MODULE_PATH`              | `None`                        | A list of modules that should be automatically imported whenever FiftyOne is imported. |
 |                               |                                     |                               | See :ref:`this page <custom-embedded-documents>` for an example usage.                 |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `plugins_dir`                 | `FIFTYONE_PLUGINS_DIR`              | `None`                        | A directory containing custom App plugins. See :ref:`this page <app-plugins>` for more |
+|                               |                                     |                               | information.                                                                           |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `requirement_error_level`     | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                           | A default error level to use when ensuring/installing requirements such as third-party |
 |                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
@@ -138,9 +144,11 @@ and the CLI:
             "default_video_ext": ".mp4",
             "desktop_app": false,
             "do_not_track": false,
+            "logging_level": "INFO",
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,
+            "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
@@ -179,9 +187,11 @@ and the CLI:
             "default_video_ext": ".mp4",
             "desktop_app": false,
             "do_not_track": false,
+            "logging_level": "INFO",
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,
+            "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
@@ -412,7 +422,7 @@ New FiftyOne versions occasionally introduce data model changes that require
 database migrations when you :ref:`upgrade <upgrading-fiftyone>` or
 :ref:`downgrade <downgrading-fiftyone>`.
 
-Database upgrades happen automatically in two steps:
+By default, database upgrades happen automatically in two steps:
 
 -   **Database**: when you import FiftyOne for the first time using a newer
     version of the Python package, the database's version is automatically
@@ -425,15 +435,25 @@ Database downgrades must be manually performed. See
 :ref:`this page <downgrading-fiftyone>` for instructions.
 
 You can use the :ref:`fiftyone migrate <cli-fiftyone-migrate>` command to view
-the current versions of your database and datasets:
+the current versions of your client, database, and datasets:
 
 .. code-block:: shell
 
-    # View your client version
-    fiftyone --version
-
-    # View your database and dataset versions
+    # View your client, database, and dataset versions
     fiftyone migrate --info
+
+.. code-block:: text
+
+    Client version: 0.16.6
+    Compatible versions: >=0.16.3,<0.17
+
+    Database version: 0.16.6
+
+    dataset                      version
+    ---------------------------  ---------
+    bdd100k-validation           0.16.5
+    quickstart                   0.16.5
+    ...
 
 Restricting migrations
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -443,10 +463,14 @@ allowed to upgrade/downgrade your FiftyOne database. The default is `True`,
 which means that upgrades are automatically peformed when you connect to your
 database with newer Python client versions.
 
-If you set `database_admin` to `False`, your database will refuse connections
-from your FiftyOne client if its version does not match the database's current
-version, and datasets will refuse migrations to versions other than the
-database's current version.
+If you set `database_admin` to `False`, your client will **never** cause the
+database to be migrated to a new version. Instead, you'll see the following
+behavior:
+
+-   If your client is compatible with the current database version, you will be
+    allowed to connect to the database and use FiftyOne
+-   If your client is not compatible with the current database version, you
+    will see an informative error message when you import the library
 
 You can restrict migrations by adding the following entry to your
 `~/.fiftyone/config.json` file:
@@ -471,6 +495,70 @@ or by setting the following environment variable:
     `database_admin` config setting to `False` to ensure that they cannot
     trigger automatic database upgrades by connecting to the database with
     newer Python client versions.
+
+Coordinating a migration
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are working in an environment where multiple services are connecting to
+your MongoDB database at any given time, use this strategy to upgrade your
+deployment:
+
+1.  Ensure that all clients are running without database admin privileges,
+    e.g., by adding this to their `~/.fiftyone/config.json`:
+
+.. code-block:: json
+
+    {
+        "database_admin": false
+    }
+
+2.  Perform a test upgrade of one client and ensure that it is compatible with
+    your current database version:
+
+.. code-block:: shell
+
+    # In a test environment
+    pip install --upgrade fiftyone
+
+    # View client's compatibility info
+    fiftyone migrate --info
+
+.. code-block:: python
+
+    import fiftyone as fo
+
+    # Convince yourself that the new client can load a dataset
+    dataset = fo.load_dataset(...)
+
+3.  Now upgrade the client version used by all services:
+
+.. code-block:: shell
+
+    # In all client environments
+    pip install --upgrade fiftyone
+
+4.  Once all services are running the new client version, upgrade the database
+    with admin privileges:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATABASE_ADMIN=true
+
+    pip install --upgrade fiftyone
+    fiftyone migrate --all
+
+.. note::
+
+    Newly created datasets will always bear the
+    :meth:`version <fiftyone.core.dataset.Dataset.version>` of the Python
+    client that created them, which may differ from your database's version
+    if you are undergoing a migration.
+
+    If the new client's version is not in the compatibility range for the old
+    clients that are still in use, the old clients will not be able to load
+    the new datasets.
+
+    Therefore, it is recommended to upgrade all clients as soon as possible!
 
 .. _configuring-timezone:
 
@@ -534,10 +622,22 @@ created when you launch the App. A session's config can be inspected and
 modified via the :meth:`session.config <fiftyone.core.session.Session.config>`
 property.
 
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    print(fo.app_config)
+
+    session = fo.launch_app(dataset)
+    print(session.config)
+
 .. note::
 
-    For changes to a session's config to take effect in the App, you must call
-    :meth:`session.refresh() <fiftyone.core.session.Session.refresh>` or
+    For changes to a live session's config to take effect in the App, you must
+    call :meth:`session.refresh() <fiftyone.core.session.Session.refresh>` or
     invoke another state-updating action such as ``session.view = my_view``.
 
 The FiftyOne App can be configured in the ways described below:
@@ -576,6 +676,9 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only |
 |                           |                                        |                             | applicable to video samples.                                                             |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for       |
+|                           |                                        |                             | details.                                                                                 |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 
 Viewing your App config
@@ -626,7 +729,8 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
-            "use_frame_number": false
+            "use_frame_number": false,
+            "plugins": {}
         }
 
         True
@@ -670,7 +774,8 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
-            "use_frame_number": false
+            "use_frame_number": false,
+            "plugins": {}
         }
 
         True
@@ -686,6 +791,12 @@ Modifying your App config
 
 You can modify your App config in a variety of ways. The following sections
 describe these options in detail.
+
+.. note::
+
+    Did you know? You can also configure the behavior of the App on a
+    per-dataset basis by customizing your
+    :ref:`dataset's App config <custom-app-config>`.
 
 Order of precedence
 ~~~~~~~~~~~~~~~~~~~
@@ -716,7 +827,7 @@ via the following pattern:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Create a custom App config
-    app_config = fo.AppConfig()
+    app_config = fo.app_config.copy()
     app_config.show_confidence = False
     app_config.show_attributes = False
 
@@ -730,12 +841,10 @@ apply the changes:
 .. code-block:: python
     :linenos:
 
-    # Customize the config of a live Session
+    # Customize the config of a live session
     session.config.show_confidence = True
     session.config.show_attributes = True
-
-    # Refresh the session to apply the changes
-    session.refresh()
+    session.refresh()  # must refresh after edits
 
 Editing your JSON App config
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -795,3 +904,36 @@ current session.
 
     fo.app_config.show_confidence = False
     fo.app_config.show_attributes = False
+
+.. _configuring-plugins:
+
+Configuring plugins
+-------------------
+
+You can store system-wide plugin configurations under the `plugins` key of your
+App config.
+
+Plugins that you can configure include:
+
+-   The builtin :ref:`Map tab <app-map-tab>`
+-   The builtin :ref:`3D visualizer <3d-visualizer-config>`
+-   Any :ref:`custom plugins <app-plugins>` that you've registered
+
+For example, you may add the following to your JSON App config
+(`~/.fiftyone/app_config.json`) to register a Mapbox token globally on your
+system:
+
+.. code-block:: text
+
+    {
+        "plugins": {
+            "map": {
+                "mapboxAccessToken": "XXXXXXXX"
+            }
+        }
+    }
+
+.. note::
+
+    You can also store dataset-specific plugin settings by storing any subset
+    of the above values on a :ref:`dataset's App config <custom-app-config>`.

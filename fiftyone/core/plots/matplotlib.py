@@ -27,7 +27,6 @@ import fiftyone.core.context as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
 import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
 import fiftyone.core.video as fov
@@ -538,7 +537,7 @@ def lines(
         raise ValueError("You must provide 'y' values")
 
     if etau.is_str(y) or isinstance(y, foe.ViewExpression):
-        if samples is not None and samples.media_type == fom.VIDEO:
+        if samples is not None and samples._contains_videos():
             is_frames = foe.is_frames_expr(y)
         else:
             is_frames = False
@@ -614,27 +613,15 @@ def lines(
             plt.tight_layout()
             return fig
 
-        selection_mode = None
-        init_fcn = None
-
-        if link_field is None:
-            if isinstance(samples, fov.FramesView):
-                link_type = "frames"
-            elif isinstance(samples, fop.PatchesView):
-                link_type = "labels"
-                link_field = samples._label_fields
-            else:
-                link_type = "samples"
-        elif link_field == "frames":
-            if isinstance(samples, fov.FramesView):
-                link_type = "frames"
-            else:
-                link_type = "frames"
-                init_fcn = lambda view: view.to_frames()
-        else:
-            link_type = "labels"
-            selection_mode = "patches"
-            init_fcn = lambda view: view.to_patches(link_field)
+        (
+            link_type,
+            label_fields,
+            selection_mode,
+            init_fcn,
+        ) = InteractiveCollection.recommend_link_type(
+            label_field=link_field,
+            samples=samples,
+        )
 
         return InteractiveCollection(
             collection,
@@ -642,7 +629,7 @@ def lines(
             buttons=buttons,
             link_type=link_type,
             init_view=samples,
-            label_fields=link_field,
+            label_fields=label_fields,
             selection_mode=selection_mode,
             init_fcn=init_fcn,
         )
@@ -785,27 +772,15 @@ def scatterplot(
         if ids is not None and inds is not None:
             ids = ids[inds]
 
-        selection_mode = None
-        init_fcn = None
-
-        if link_field is None:
-            if isinstance(samples, fov.FramesView):
-                link_type = "frames"
-            elif isinstance(samples, fop.PatchesView):
-                link_type = "labels"
-                link_field = samples._label_fields
-            else:
-                link_type = "samples"
-        elif link_field == "frames":
-            if isinstance(samples, fov.FramesView):
-                link_type = "frames"
-            else:
-                link_type = "frames"
-                init_fcn = lambda view: view.to_frames()
-        else:
-            link_type = "labels"
-            selection_mode = "patches"
-            init_fcn = lambda view: view.to_patches(link_field)
+        (
+            link_type,
+            label_fields,
+            selection_mode,
+            init_fcn,
+        ) = InteractiveCollection.recommend_link_type(
+            label_field=link_field,
+            samples=samples,
+        )
 
         return InteractiveCollection(
             collection,
@@ -813,7 +788,7 @@ def scatterplot(
             buttons=buttons,
             link_type=link_type,
             init_view=samples,
-            label_fields=link_field,
+            label_fields=label_fields,
             selection_mode=selection_mode,
             init_fcn=init_fcn,
         )

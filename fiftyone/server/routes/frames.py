@@ -23,26 +23,20 @@ class Frames(HTTPEndpoint):
         start_frame = int(data.get("frameNumber", 1))
         frame_count = int(data.get("frameCount", 1))
         num_frames = int(data.get("numFrames"))
+        extended = data.get("extended", None)
         dataset = data.get("dataset")
         stages = data.get("view")
         sample_id = data.get("sampleId")
 
-        view = fosv.get_view(dataset, stages=stages)
+        view = fosv.get_view(dataset, stages=stages, extended_stages=extended)
         view = fov.make_optimized_select_view(view, sample_id)
 
         end_frame = min(num_frames + start_frame, frame_count)
-        view = view.set_field(
-            "frames",
-            F("frames").filter(
-                (F("frame_number") >= start_frame)
-                & (F("frame_number") <= end_frame)
-            ),
-        )
-
         frames = await foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
-            view._pipeline(frames_only=True),
+            view._pipeline(frames_only=True, support=[start_frame, end_frame]),
         ).to_list(end_frame - start_frame + 1)
+
         return {
             "frames": foj.stringify(frames),
             "range": [start_frame, end_frame],

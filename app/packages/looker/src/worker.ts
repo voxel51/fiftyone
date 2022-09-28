@@ -8,8 +8,8 @@ import {
   getFetchFunction,
   setFetchFunction,
   Stage,
+  get32BitColor,
 } from "@fiftyone/utilities";
-import { get32BitColor } from "./color";
 import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
 import { Coloring, FrameChunk } from "./state";
@@ -250,7 +250,7 @@ const createReader = ({
   const privateStream = new ReadableStream<FrameChunkResponse>(
     {
       pull: async (controller: ReadableStreamDefaultController) => {
-        if (frameNumber > frameCount || cancelled) {
+        if (!frameCount || frameNumber > frameCount || cancelled) {
           controller.close();
           return Promise.resolve();
         }
@@ -292,31 +292,28 @@ const createReader = ({
   };
 };
 
-const getSendChunk = (uuid: string) => ({
-  value,
-}: {
-  done: boolean;
-  value?: FrameChunkResponse;
-}) => {
-  if (value) {
-    Promise.all(
-      value.frames.map((frame) =>
-        processLabels(frame, value.coloring, "frames.")
-      )
-    ).then((buffers) => {
-      postMessage(
-        {
-          method: "frameChunk",
-          frames: value.frames,
-          range: value.range,
-          uuid,
-        },
-        // @ts-ignore
-        buffers.flat()
-      );
-    });
-  }
-};
+const getSendChunk =
+  (uuid: string) =>
+  ({ value }: { done: boolean; value?: FrameChunkResponse }) => {
+    if (value) {
+      Promise.all(
+        value.frames.map((frame) =>
+          processLabels(frame, value.coloring, "frames.")
+        )
+      ).then((buffers) => {
+        postMessage(
+          {
+            method: "frameChunk",
+            frames: value.frames,
+            range: value.range,
+            uuid,
+          },
+          // @ts-ignore
+          buffers.flat()
+        );
+      });
+    }
+  };
 
 interface RequestFrameChunk {
   uuid: string;
