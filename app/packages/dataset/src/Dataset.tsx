@@ -39,8 +39,6 @@ export function Dataset({ datasetName, environment }) {
   if (plugins.isLoading || !initialState) return loadingElement;
   if (plugins.error) return <div>Plugin error...</div>;
 
-  console.log({ initialState });
-
   const Container = styled.div`
     width: 100%;
     height: 100%;
@@ -106,8 +104,6 @@ function useEventSource(datasetName, subscription, setState) {
                 ...toCamelCase(data),
                 view: data.view,
               } as State.Description;
-
-              console.log({ colorscale, config, state });
 
               setState((s) => ({ colorscale, config, state }));
 
