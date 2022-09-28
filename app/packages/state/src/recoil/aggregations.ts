@@ -4,20 +4,13 @@ import { VariablesOf } from "react-relay";
 import { atom, GetRecoilValue, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 
-import * as atoms from "./atoms";
 import * as filterAtoms from "./filters";
-import {
-  groupStatistics,
-  groupId,
-  ResponseFrom,
-  isGroup,
-  groupSlice,
-  activeModalSample,
-} from "./groups";
+import { groupStatistics, groupId, ResponseFrom, currentSlice } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
+import { sidebarSampleId } from "./modal";
 
 type DateTimeBound = { datetime: number } | null;
 
@@ -126,8 +119,7 @@ export const aggregationQuery = graphQLSelectorFamily<
   variables:
     ({ extended, modal, path }) =>
     ({ get }) => {
-      const group = get(isGroup);
-      const groupMode = get(groupStatistics(modal));
+      const mixed = get(groupStatistics(modal)) === "group";
 
       return {
         form: {
@@ -136,12 +128,12 @@ export const aggregationQuery = graphQLSelectorFamily<
           filters: extended
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
             : null,
-          groupId: group && modal ? get(groupId) : null,
+          groupId: modal && mixed ? get(groupId) : null,
           hiddenLabels: get(selectors.hiddenLabelsArray),
           path,
-          mixed: false,
-          sampleIds: modal ? [get(activeModalSample)._id] : [],
-          slice: group && groupMode === "slice" ? get(groupSlice(modal)) : null,
+          mixed,
+          sampleIds: modal && !mixed ? [get(sidebarSampleId)] : [],
+          slice: get(currentSlice(modal)),
           view: get(viewAtoms.view),
         },
       };

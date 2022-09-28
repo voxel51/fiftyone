@@ -124,9 +124,12 @@ async def aggregation_resolver(
     if form.hidden_labels:
         view = view.exclude_labels(form.hidden_labels)
 
-    resolve = [_resolve_path_aggregation(form.path, view)]
-    if form.mixed and not form.path:
+    if form.mixed:
         view = view.select_group_slices(_allow_mixed=True)
+
+    resolve = [_resolve_path_aggregation(form.path, view)]
+
+    if form.mixed and not form.path:
         slice_view = fosv.get_view(
             form.dataset,
             stages=form.view,
