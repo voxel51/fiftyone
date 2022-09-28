@@ -265,6 +265,7 @@ class SampleCollection(object):
         """The media type of the collection."""
         raise NotImplementedError("Subclass must implement media_type")
 
+    @property
     def group_field(self):
         """The group field of the collection, or None if the collection is not
         grouped.
