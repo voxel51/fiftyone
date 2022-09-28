@@ -2206,7 +2206,7 @@ class DatasetExtrasTests(unittest.TestCase):
         dataset = self.dataset
 
         names = ["my-view1", "my_view2", "My  %&#  View3!"]
-        url_names = ["my-view1", "my_view2", "My-View3"]
+        url_names = ["my-view1", "my-view2", "my-view3"]
 
         for idx, name in enumerate(names, 1):
             dataset.save_view(name, dataset.limit(idx))
