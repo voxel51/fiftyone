@@ -39,7 +39,7 @@ class SerializableDocument(object):
     @property
     def field_names(self):
         """An ordered tuple of the public fields of this document."""
-        raise NotImplementedError("Subclass must implement `field_names`")
+        raise NotImplementedError("Subclass must implement field_names")
 
     def fancy_repr(
         self,
@@ -89,7 +89,7 @@ class SerializableDocument(object):
         Returns:
             True/False
         """
-        raise NotImplementedError("Subclass must implement `has_field()`")
+        raise NotImplementedError("Subclass must implement has_field()")
 
     def get_field(self, field_name):
         """Gets the field of the document.
@@ -103,7 +103,7 @@ class SerializableDocument(object):
         Raises:
             AttributeError: if the field does not exist
         """
-        raise NotImplementedError("Subclass must implement `get_field()`")
+        raise NotImplementedError("Subclass must implement get_field()")
 
     def set_field(self, field_name, value, create=False):
         """Sets the value of a field of the document.
@@ -117,7 +117,7 @@ class SerializableDocument(object):
             ValueError: if ``field_name`` is not an allowed field name or does
                 not exist and ``create == False``
         """
-        raise NotImplementedError("Subclass must implement `set_field()`")
+        raise NotImplementedError("Subclass must implement set_field()")
 
     def clear_field(self, field_name):
         """Clears the field from the document.
@@ -128,7 +128,7 @@ class SerializableDocument(object):
         Raises:
             ValueError: if the field does not exist
         """
-        raise NotImplementedError("Subclass must implement `clear_field()`")
+        raise NotImplementedError("Subclass must implement clear_field()")
 
     def iter_fields(self):
         """Returns an iterator over the ``(name, value)`` pairs of the
@@ -150,7 +150,7 @@ class SerializableDocument(object):
         Returns:
             a tuple of field names
         """
-        raise NotImplementedError("Subclass must implement `_get_field_names`")
+        raise NotImplementedError("Subclass must implement _get_field_names()")
 
     def _get_repr_fields(self):
         """Returns an ordered tuple of field names that should be included in
@@ -159,7 +159,7 @@ class SerializableDocument(object):
         Returns:
             a tuple of field names
         """
-        raise NotImplementedError("Subclass must implement `_get_repr_fields`")
+        raise NotImplementedError("Subclass must implement _get_repr_fields()")
 
     def copy(self):
         """Returns a deep copy of the document.
@@ -231,7 +231,7 @@ class SerializableDocument(object):
         Returns:
             a dict
         """
-        raise NotImplementedError("Subclass must implement `to_dict()`")
+        raise NotImplementedError("Subclass must implement to_dict()")
 
     @classmethod
     def from_dict(cls, d, extended=False):
@@ -245,7 +245,7 @@ class SerializableDocument(object):
         Returns:
             a :class:`SerializableDocument`
         """
-        raise NotImplementedError("Subclass must implement `from_dict()`")
+        raise NotImplementedError("Subclass must implement from_dict()")
 
     def to_json(self, pretty_print=False):
         """Serializes the document to a JSON string.

@@ -435,6 +435,10 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                 return {
                   loaded: true,
                   playing: autoplay || playing,
+                  dimensions: [
+                    this.element.videoWidth,
+                    this.element.videoHeight,
+                  ],
                   waitingForVideo: false,
                 };
               }
@@ -524,20 +528,18 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   createHTMLElement(update: StateUpdate<VideoState>) {
     this.update = update;
     this.element = null;
-    update(({ config: { thumbnail, dimensions, src, frameRate, support } }) => {
+    update(({ config: { thumbnail, src, frameRate, support } }) => {
       this.src = src;
       this.posterFrame = support ? support[0] : 1;
       if (thumbnail) {
         this.canvas = document.createElement("canvas");
-        this.canvas.width = dimensions[0];
-        this.canvas.height = dimensions[1];
         this.canvas.style.imageRendering = "pixelated";
         acquireThumbnailer().then(([video, release]) => {
           const error = () => {
             video.removeEventListener("error", error);
             video.removeEventListener("seeked", seeked);
             release();
-            update({ error: true });
+            update({ error: true, loaded: true, dimensions: [512, 512] });
           };
 
           const seeked = () => {
@@ -564,6 +566,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             video.addEventListener("seeked", seeked);
             video.currentTime = support ? getTime(support[0], frameRate) : 0;
             video.removeEventListener("loadedmetadata", load);
+
+            this.canvas.width = video.videoWidth;
+            this.canvas.height = video.videoHeight;
+
+            update({ dimensions: [video.videoWidth, video.videoHeight] });
           };
 
           video.src = src;

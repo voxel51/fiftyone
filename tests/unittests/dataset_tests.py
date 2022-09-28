@@ -5,6 +5,7 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import copy, deepcopy
 from datetime import date, datetime
 import gc
 import os
@@ -18,6 +19,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 from fiftyone import ViewField as F
+import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 
 from decorators import drop_datasets, skip_windows
@@ -106,6 +108,24 @@ class DatasetTests(unittest.TestCase):
         )
 
     @drop_datasets
+    def test_eq(self):
+        dataset_name = self.test_eq.__name__
+
+        dataset1 = fo.Dataset(dataset_name)
+        dataset2 = fo.load_dataset(dataset_name)
+        dataset3 = copy(dataset1)
+        dataset4 = deepcopy(dataset1)
+
+        self.assertEqual(dataset1, dataset2)
+        self.assertEqual(dataset1, dataset3)
+        self.assertEqual(dataset1, dataset4)
+
+        # Datasets are singletons
+        self.assertIs(dataset1, dataset2)
+        self.assertIs(dataset1, dataset3)
+        self.assertIs(dataset1, dataset4)
+
+    @drop_datasets
     def test_dataset_tags(self):
         dataset_name = self.test_dataset_tags.__name__
 
@@ -181,6 +201,45 @@ class DatasetTests(unittest.TestCase):
 
         self.assertTrue("classes" in dataset2.info)
         self.assertEqual(classes, dataset2.info["classes"])
+
+    @drop_datasets
+    def test_dataset_app_config(self):
+        dataset_name = self.test_dataset_app_config.__name__
+
+        dataset = fo.Dataset(dataset_name)
+
+        self.assertFalse(dataset.app_config.is_custom())
+        self.assertListEqual(dataset.app_config.media_fields, ["filepath"])
+        self.assertEqual(dataset.app_config.grid_media_field, "filepath")
+        self.assertEqual(dataset.app_config.modal_media_field, "filepath")
+
+        dataset.add_sample_field("thumbnail_path", fo.StringField)
+
+        dataset.app_config.media_fields.append("thumbnail_path")
+        dataset.app_config.grid_media_field = "thumbnail_path"
+        dataset.save()
+
+        del dataset
+        gc.collect()  # force garbage collection
+
+        dataset = fo.load_dataset(dataset_name)
+
+        self.assertListEqual(
+            dataset.app_config.media_fields, ["filepath", "thumbnail_path"]
+        )
+        self.assertEqual(dataset.app_config.grid_media_field, "thumbnail_path")
+
+        dataset.rename_sample_field("thumbnail_path", "tp")
+
+        self.assertListEqual(
+            dataset.app_config.media_fields, ["filepath", "tp"]
+        )
+        self.assertEqual(dataset.app_config.grid_media_field, "tp")
+
+        dataset.delete_sample_field("tp")
+
+        self.assertListEqual(dataset.app_config.media_fields, ["filepath"])
+        self.assertEqual(dataset.app_config.grid_media_field, "filepath")
 
     @drop_datasets
     def test_meta_dataset(self):
@@ -2173,18 +2232,6 @@ class DatasetExtrasTests(unittest.TestCase):
         self.assertIsNotNone(also_view2)
 
         #
-        # Verify that saved views are included in empty merges
-        #
-
-        dataset3 = fo.Dataset()
-        dataset3.merge_samples(dataset2)
-
-        view3 = dataset3.load_view("test")
-
-        self.assertEqual(len(view3), 1)
-        self.assertTrue("image2" in view3.first().filepath)
-
-        #
         # Verify that saved views are deleted when a dataset is deleted
         #
 
@@ -2202,7 +2249,7 @@ class DatasetExtrasTests(unittest.TestCase):
         dataset = self.dataset
 
         names = ["my-view1", "my_view2", "My  %&#  View3!"]
-        url_names = ["my-view1", "my_view2", "My-View3"]
+        url_names = ["my-view1", "my-view2", "my-view3"]
 
         for idx, name in enumerate(names, 1):
             dataset.save_view(name, dataset.limit(idx))
@@ -2295,17 +2342,6 @@ class DatasetExtrasTests(unittest.TestCase):
         info = dataset2.get_evaluation_info("eval")
         results = dataset2.load_evaluation_results("eval")
         self.assertIsNotNone(info)
-        self.assertIsNotNone(results)
-
-        #
-        # Verify that runs are included in empty merges
-        #
-
-        dataset3 = fo.Dataset()
-        dataset3.merge_samples(dataset2)
-
-        results = dataset3.load_evaluation_results("eval")
-
         self.assertIsNotNone(results)
 
         #
@@ -3081,6 +3117,50 @@ class DatasetDeletionTests(unittest.TestCase):
         num_labels_after = self.dataset.count("frames.ground_truth.detections")
 
         self.assertEqual(num_labels_after, num_labels - num_selected)
+
+
+class CustomEmbeddedDocumentTests(unittest.TestCase):
+    @drop_datasets
+    def test_custom_embedded_documents(self):
+        sample = fo.Sample(
+            filepath="/path/to/image.png",
+            camera_info=_CameraInfo(
+                camera_id="123456789",
+                quality=99.0,
+            ),
+            weather=fo.Classification(
+                label="sunny",
+                confidence=0.95,
+                metadata=_LabelMetadata(
+                    model_name="resnet50",
+                    description="A dynamic field",
+                ),
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertIsInstance(sample.camera_info, _CameraInfo)
+        self.assertIsInstance(sample.weather.metadata, _LabelMetadata)
+
+        view = dataset.limit(1)
+        sample_view = view.first()
+
+        self.assertIsInstance(sample_view.camera_info, _CameraInfo)
+        self.assertIsInstance(sample_view.weather.metadata, _LabelMetadata)
+
+
+class _CameraInfo(foo.EmbeddedDocument):
+    camera_id = fof.StringField(required=True)
+    quality = fof.FloatField()
+    description = fof.StringField()
+
+
+class _LabelMetadata(foo.DynamicEmbeddedDocument):
+    created_at = fof.DateTimeField(default=datetime.utcnow)
+
+    model_name = fof.StringField()
 
 
 if __name__ == "__main__":

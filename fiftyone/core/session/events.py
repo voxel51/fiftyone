@@ -1,5 +1,5 @@
 """
-Session events
+Session events.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -83,15 +83,11 @@ class ReactivateNotebookCell(Event):
 
 
 @dataclass
-class RefreshApp(Event):
-    """Refresh app event"""
-
-
-@dataclass
 class StateUpdate(Event):
     """State update event"""
 
     state: fos.StateDescription
+    refresh: bool = False
 
 
 @dataclass

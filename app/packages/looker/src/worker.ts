@@ -8,8 +8,8 @@ import {
   getFetchFunction,
   setFetchFunction,
   Stage,
+  get32BitColor,
 } from "@fiftyone/utilities";
-import { get32BitColor } from "./color";
 import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
 import { Coloring, FrameChunk } from "./state";

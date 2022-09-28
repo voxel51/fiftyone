@@ -109,6 +109,9 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MODULE_PATH",
             default=None,
         )
+        self.plugins_dir = self.parse_string(
+            d, "plugins_dir", env_var="FIFTYONE_PLUGINS_DIR", default=None
+        )
         self.dataset_zoo_manifest_paths = self.parse_path_array(
             d,
             "dataset_zoo_manifest_paths",
@@ -355,6 +358,7 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_USE_FRAME_NUMBER",
             default=False,
         )
+        self.plugins = d.get("plugins", {})
 
         self._init()
 
@@ -415,6 +419,16 @@ class AppConfig(EnvConfig):
                 "`grid_zoom` must be in [0, 10]; found %d", self.grid_zoom
             )
             self.grid_zoom = 5
+
+        if "MAPBOX_TOKEN" in os.environ:
+            try:
+                _set_nested_dict_value(
+                    self.plugins,
+                    "map.mapboxAccessToken",
+                    os.environ["MAPBOX_TOKEN"],
+                )
+            except Exception as e:
+                logger.warning("Failed to set mapbox token: %s", e)
 
 
 class AppConfigError(etac.EnvConfigError):
@@ -661,3 +675,15 @@ def _get_installed_packages():
     except:
         logger.debug("Failed to get installed packages")
         return set()
+
+
+def _set_nested_dict_value(d, path, value):
+    keys = path.split(".")
+
+    for key in keys[:-1]:
+        if key not in d:
+            d[key] = {}
+
+        d = d[key]
+
+    d[keys[-1]] = value

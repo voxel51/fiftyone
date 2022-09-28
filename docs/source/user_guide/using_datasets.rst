@@ -280,6 +280,54 @@ Datasets can also store more specific types of ancillary information such as
     the dataset's :meth:`info <fiftyone.core.dataset.Dataset.info>` property
     in-place to save the changes to the database.
 
+.. _custom-app-config:
+
+Custom App config
+-----------------
+
+All |Dataset| instances have an
+:meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property that
+contains a |DatasetAppConfig| you can use to store dataset-specific settings
+that customize how the dataset is visualized in the
+:ref:`FiftyOne App <fiftyone-app>`.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.image as foui
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # View the dataset's current App config
+    print(dataset.app_config)
+
+    # Generate some thumbnail images
+    foui.transform_images(
+        dataset,
+        size=(-1, 32),
+        output_field="thumbnail_path",
+        output_dir="/tmp/thumbnails",
+    )
+
+    # Modify the dataset's App config
+    dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+    dataset.app_config.grid_media_field = "thumbnail_path"
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+Check out :ref:`this section <app-config>` for more information about
+customizing the behavior of the App.
+
+.. note::
+
+    Any settings stored in a dataset's
+    :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
+    the corresponding settings from your
+    :ref:`global App config <configuring-fiftyone-app>`.
+
 .. _storing-classes:
 
 Storing class lists
@@ -1366,13 +1414,13 @@ visualized in the App or used, for example, when
         'metadata': None,
         'ground_truth': <Regression: {
             'id': '616c4bef36297ec40a26d112',
-            'tags': BaseList([]),
+            'tags': [],
             'value': 51.0,
             'confidence': None,
         }>,
         'prediction': <Classification: {
             'id': '616c4bef36297ec40a26d113',
-            'tags': BaseList([]),
+            'tags': [],
             'label': None,
             'confidence': 0.9,
             'logits': None,
@@ -1488,7 +1536,7 @@ overarching model (if applicable) in the
         'tags': [],
         'metadata': None,
         'ground_truth': <Classifications: {
-            'classifications': BaseList([
+            'classifications': [
                 <Classification: {
                     'id': '5f8708f62018186b6ef66823',
                     'label': 'animal',
@@ -1507,11 +1555,11 @@ overarching model (if applicable) in the
                     'confidence': None,
                     'logits': None,
                 }>,
-            ]),
+            ],
             'logits': None,
         }>,
         'prediction': <Classifications: {
-            'classifications': BaseList([
+            'classifications': [
                 <Classification: {
                     'id': '5f8708f62018186b6ef66826',
                     'label': 'animal',
@@ -1530,7 +1578,7 @@ overarching model (if applicable) in the
                     'confidence': 0.72,
                     'logits': None,
                 }>,
-            ]),
+            ],
             'logits': None,
         }>,
     }>
@@ -1600,30 +1648,30 @@ detection can be stored in the
         'tags': [],
         'metadata': None,
         'ground_truth': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'id': '5f8709172018186b6ef66829',
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                     'label': 'cat',
-                    'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+                    'bounding_box': [0.5, 0.5, 0.4, 0.3],
                     'mask': None,
                     'confidence': None,
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
         'prediction': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'id': '5f8709172018186b6ef6682a',
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                     'label': 'cat',
-                    'bounding_box': BaseList([0.48, 0.513, 0.397, 0.288]),
+                    'bounding_box': [0.48, 0.513, 0.397, 0.288],
                     'mask': None,
                     'confidence': 0.96,
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
     }>
 
@@ -1653,10 +1701,10 @@ by dynamically adding new fields to each |Detection| instance:
 
     <Detection: {
         'id': '60f7458c467d81f41c200551',
-        'attributes': BaseDict({}),
-        'tags': BaseList([]),
+        'attributes': {},
+        'tags': [],
         'label': 'cat',
-        'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+        'bounding_box': [0.5, 0.5, 0.4, 0.3],
         'mask': None,
         'confidence': None,
         'index': None,
@@ -1719,12 +1767,12 @@ object's bounding box when visualizing in the App.
         'tags': [],
         'metadata': None,
         'prediction': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'id': '5f8709282018186b6ef6682b',
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                     'label': 'cat',
-                    'bounding_box': BaseList([0.48, 0.513, 0.397, 0.288]),
+                    'bounding_box': [0.48, 0.513, 0.397, 0.288],
                     'mask': array([[False,  True, False, ...,  True,  True, False],
                            [ True, False,  True, ..., False,  True,  True],
                            [False,  True, False, ..., False,  True, False],
@@ -1735,7 +1783,7 @@ object's bounding box when visualizing in the App.
                     'confidence': 0.96,
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
     }>
 
@@ -1762,10 +1810,10 @@ by dynamically adding new fields to each |Detection| instance:
 
     <Detection: {
         'id': '60f74568467d81f41c200550',
-        'attributes': BaseDict({}),
-        'tags': BaseList([]),
+        'attributes': {},
+        'tags': [],
         'label': 'cat',
-        'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+        'bounding_box': [0.5, 0.5, 0.4, 0.3],
         'mask': array([[False, False,  True, ...,  True,  True, False],
                [ True,  True, False, ...,  True, False,  True],
                [False, False,  True, ..., False, False, False],
@@ -1848,26 +1896,26 @@ Polylines can also have string labels, which are stored in their
         'tags': [],
         'metadata': None,
         'polylines': <Polylines: {
-            'polylines': BaseList([
+            'polylines': [
                 <Polyline: {
                     'id': '5f87094e2018186b6ef6682e',
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                     'label': None,
-                    'points': BaseList([BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)])]),
+                    'points': [[(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)]],
                     'index': None,
                     'closed': False,
                     'filled': False,
                 }>,
                 <Polyline: {
                     'id': '5f87094e2018186b6ef6682f',
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                     'label': 'triangle',
-                    'points': BaseList([BaseList([(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)])]),
+                    'points': [[(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)]],
                     'index': None,
                     'closed': True,
                     'filled': True,
                 }>,
-            ]),
+            ],
         }>,
     }>
 
@@ -1893,10 +1941,10 @@ dynamically adding new fields to each |Polyline| instance:
 
     <Polyline: {
         'id': '60f746b4467d81f41c200555',
-        'attributes': BaseDict({}),
-        'tags': BaseList([]),
+        'attributes': {},
+        'tags': [],
         'label': 'triangle',
-        'points': BaseList([BaseList([(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)])]),
+        'points': [[(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)]],
         'confidence': None,
         'index': None,
         'closed': True,
@@ -1965,16 +2013,16 @@ optionally have a list of per-point confidences in `[0, 1]` in its
         'tags': [],
         'metadata': None,
         'keypoints': <Keypoints: {
-            'keypoints': BaseList([
+            'keypoints': [
                 <Keypoint: {
                     'id': '5f8709702018186b6ef66831',
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                     'label': 'square',
-                    'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
-                    'confidence': BaseList([0.6, 0.7, 0.8, 0.9]),
+                    'points': [(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)],
+                    'confidence': [0.6, 0.7, 0.8, 0.9],
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
     }>
 
@@ -2003,14 +2051,14 @@ attributes and rendered as such in the App:
 
     <Keypoint: {
         'id': '60f74723467d81f41c200556',
-        'attributes': BaseDict({}),
-        'tags': BaseList([]),
+        'attributes': {},
+        'tags': [],
         'label': 'rectangle',
-        'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
-        'confidence': BaseList([0.6, 0.7, 0.8, 0.9]),
+        'points': [(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)],
+        'confidence': [0.6, 0.7, 0.8, 0.9],
         'index': None,
         'kind': 'square',
-        'occluded': BaseList([False, False, True, False]),
+        'occluded': [False, False, True, False],
     }>
 
 .. note::
@@ -2128,7 +2176,7 @@ extent when visualizing in the App.
         'metadata': None,
         'heatmap': <Heatmap: {
             'id': '6129495c9e526ca632663cca',
-            'tags': BaseList([]),
+            'tags': [],
             'map': array([[  9,  65,  55, ...,  75, 203,  49],
                           [151,  50,   3, ..., 136, 145, 144],
                           [242, 110, 150, ...,  90, 214, 151],
@@ -2270,9 +2318,9 @@ App.
         'metadata': None,
         'events': <TemporalDetection: {
             'id': '61321c8ea36cb17df655f44f',
-            'tags': BaseList([]),
+            'tags': [],
             'label': 'meeting',
-            'support': BaseList([10, 20]),
+            'support': [10, 20],
             'confidence': None,
         }>,
         'frames': <Frames: 0>,
@@ -2322,9 +2370,9 @@ based on the sample's :ref:`video metadata <using-metadata>`:
         }>,
         'events': <TemporalDetection: {
             'id': '61321e498d5f587970b29183',
-            'tags': BaseList([]),
+            'tags': [],
             'label': 'meeting',
-            'support': BaseList([31, 60]),
+            'support': [31, 60],
             'confidence': None,
         }>,
         'frames': <Frames: 0>,
@@ -2357,22 +2405,22 @@ sample:
         'tags': [],
         'metadata': None,
         'events': <TemporalDetections: {
-            'detections': BaseList([
+            'detections': [
                 <TemporalDetection: {
                     'id': '61321ed78d5f587970b29184',
-                    'tags': BaseList([]),
+                    'tags': [],
                     'label': 'meeting',
-                    'support': BaseList([10, 20]),
+                    'support': [10, 20],
                     'confidence': None,
                 }>,
                 <TemporalDetection: {
                     'id': '61321ed78d5f587970b29185',
-                    'tags': BaseList([]),
+                    'tags': [],
                     'label': 'party',
-                    'support': BaseList([30, 60]),
+                    'support': [30, 60],
                     'confidence': None,
                 }>,
-            ]),
+            ],
         }>,
         'frames': <Frames: 0>,
     }>
@@ -2449,7 +2497,7 @@ properites to do so.
         'metadata': None,
         'location': <GeoLocation: {
             'id': '60481f3936dc48428091e926',
-            'tags': BaseList([]),
+            'tags': [],
             'point': [-73.9855, 40.758],
             'line': None,
             'polygon': [
@@ -2655,42 +2703,42 @@ schema of the attributes that you're storing.
         'tags': [],
         'metadata': None,
         'ground_truth': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'id': '60f738e7467d81f41c20054c',
-                    'attributes': BaseDict({
+                    'attributes': {
                         'age': <NumericAttribute: {'value': 51}>,
                         'mood': <CategoricalAttribute: {
                             'value': 'salty', 'confidence': None, 'logits': None
                         }>,
-                    }),
-                    'tags': BaseList([]),
+                    },
+                    'tags': [],
                     'label': 'cat',
-                    'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+                    'bounding_box': [0.5, 0.5, 0.4, 0.3],
                     'mask': None,
                     'confidence': None,
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
         'prediction': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'id': '60f738e7467d81f41c20054d',
-                    'attributes': BaseDict({
+                    'attributes': {
                         'age': <NumericAttribute: {'value': 51}>,
                         'mood': <CategoricalAttribute: {
                             'value': 'surly', 'confidence': 0.95, 'logits': None
                         }>,
-                    }),
-                    'tags': BaseList([]),
+                    },
+                    'tags': [],
                     'label': 'cat',
-                    'bounding_box': BaseList([0.48, 0.513, 0.397, 0.288]),
+                    'bounding_box': [0.48, 0.513, 0.397, 0.288],
                     'mask': None,
                     'confidence': 0.96,
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
     }>
 
@@ -2799,7 +2847,7 @@ future sessions and manipulated as usual:
         'id': '6217b696d181786cff360740',
         'media_type': 'image',
         'filepath': '/path/to/image.png',
-        'tags': BaseList([]),
+        'tags': [],
         'metadata': None,
         'camera_info': <CameraInfo: {
             'camera_id': '123456789',
@@ -2808,7 +2856,7 @@ future sessions and manipulated as usual:
         }>,
         'weather': <Classification: {
             'id': '6217b696d181786cff36073e',
-            'tags': BaseList([]),
+            'tags': [],
             'label': 'sunny',
             'confidence': 0.95,
             'logits': None,
@@ -2915,34 +2963,34 @@ You can iterate over the frames in a video sample using the expected syntax:
         'quality': 97.12,
         'weather': <Classification: {
             'id': '609078d54653b0094e9baa52',
-            'tags': BaseList([]),
+            'tags': [],
             'label': 'sunny',
             'confidence': None,
             'logits': None,
         }>,
         'objects': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'id': '609078d54653b0094e9baa53',
-                    'attributes': BaseDict({}),
-                    'tags': BaseList([]),
+                    'attributes': {},
+                    'tags': [],
                     'label': 'cat',
-                    'bounding_box': BaseList([0.1, 0.1, 0.2, 0.2]),
+                    'bounding_box': [0.1, 0.1, 0.2, 0.2],
                     'mask': None,
                     'confidence': None,
                     'index': None,
                 }>,
                 <Detection: {
                     'id': '609078d54653b0094e9baa54',
-                    'attributes': BaseDict({}),
-                    'tags': BaseList([]),
+                    'attributes': {},
+                    'tags': [],
                     'label': 'dog',
-                    'bounding_box': BaseList([0.7, 0.7, 0.2, 0.2]),
+                    'bounding_box': [0.7, 0.7, 0.2, 0.2],
                     'mask': None,
                     'confidence': None,
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
     }>
 

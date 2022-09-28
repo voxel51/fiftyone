@@ -5,8 +5,10 @@
   align-items: center;
   width: 100%;
   height: 100%;
+  padding: 0 2rem;
   color: var(--font-dark);
   background: transparent;
+  word-break: break-all;
 }
 
 .loading > div {

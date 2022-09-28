@@ -854,6 +854,15 @@ class CVATImageDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` to
+            generate an output path for each exported image. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
+        abs_paths (False): whether to store absolute paths to the images in the
+            exported labels
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -865,6 +874,8 @@ class CVATImageDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
+        abs_paths=False,
         image_format=None,
     ):
         data_path, export_media = self._parse_data_path(
@@ -885,6 +896,8 @@ class CVATImageDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
+        self.abs_paths = abs_paths
         self.image_format = image_format
 
         self._name = None
@@ -910,6 +923,7 @@ class CVATImageDatasetExporter(
         self._media_exporter = foud.ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             default_ext=self.image_format,
         )
         self._media_exporter.setup()
@@ -919,7 +933,7 @@ class CVATImageDatasetExporter(
         self._task_labels = sample_collection.info.get("task_labels", None)
 
     def export_sample(self, image_or_path, labels, metadata=None):
-        _, uuid = self._media_exporter.export(image_or_path)
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
 
         if labels is None:
             return  # unlabeled
@@ -933,10 +947,14 @@ class CVATImageDatasetExporter(
         if metadata is None:
             metadata = fomt.ImageMetadata.build_for(image_or_path)
 
-        cvat_image = CVATImage.from_labels(labels, metadata)
+        if self.abs_paths:
+            name = out_image_path
+        else:
+            name = uuid
 
+        cvat_image = CVATImage.from_labels(labels, metadata)
         cvat_image.id = len(self._cvat_images)
-        cvat_image.name = uuid
+        cvat_image.name = name
 
         self._cvat_images.append(cvat_image)
 
@@ -1018,6 +1036,13 @@ class CVATVideoDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each video. When
+            exporting media, this identifier is joined with ``data_path`` to
+            generate an output path for each exported video. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
     """
 
     def __init__(
@@ -1026,6 +1051,7 @@ class CVATVideoDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
     ):
         data_path, export_media = self._parse_data_path(
             export_dir=export_dir,
@@ -1045,6 +1071,7 @@ class CVATVideoDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
 
         self._task_labels = None
         self._num_samples = 0
@@ -1069,9 +1096,10 @@ class CVATVideoDatasetExporter(
 
     def setup(self):
         self._writer = CVATVideoAnnotationWriter()
-        self._media_exporter = foud.ImageExporter(
+        self._media_exporter = foud.VideoExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
         )
         self._media_exporter.setup()
 
@@ -1079,7 +1107,7 @@ class CVATVideoDatasetExporter(
         self._task_labels = sample_collection.info.get("task_labels", None)
 
     def export_sample(self, video_path, _, frames, metadata=None):
-        _, filename = self._media_exporter.export(video_path)
+        _, uuid = self._media_exporter.export(video_path)
 
         if frames is None:
             return  # unlabeled
@@ -1088,7 +1116,7 @@ class CVATVideoDatasetExporter(
             metadata = fomt.VideoMetadata.build_for(video_path)
 
         out_anno_path = os.path.join(
-            self.labels_path, os.path.splitext(filename)[0] + ".xml"
+            self.labels_path, os.path.splitext(uuid)[0] + ".xml"
         )
 
         # Generate object tracks
@@ -1114,7 +1142,7 @@ class CVATVideoDatasetExporter(
             metadata,
             out_anno_path,
             id=self._num_samples - 1,
-            name=filename,
+            name=uuid,
         )
 
     def close(self, *args):
@@ -3119,6 +3147,10 @@ class CVATBackend(foua.AnnotationBackend):
     """Class for interacting with the CVAT annotation backend."""
 
     @property
+    def supported_media_types(self):
+        return [fom.IMAGE, fom.VIDEO]
+
+    @property
     def supported_label_types(self):
         return [
             "classification",
@@ -3512,6 +3544,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def task_url(self, task_id):
         return "%s/%d" % (self.tasks_url, task_id)
 
+    def task_status_url(self, task_id):
+        return "%s/status" % self.task_url(task_id)
+
     def task_data_url(self, task_id):
         return "%s/data" % self.task_url(task_id)
 
@@ -3872,7 +3907,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the list of task IDs
         """
         resp = self.get(self.project_url(project_id)).json()
-        return [task["id"] for task in resp.get("tasks", [])]
+        tasks = []
+        for task in resp.get("tasks", []):
+            if isinstance(task, int):
+                # For CVATv2 servers, task ids are stored directly as an array
+                # of integers
+                tasks.append(task)
+            else:
+                # For CVATv1 servers, project tasks are dictionaries we need to
+                # exctract "id" from
+                tasks.append(task["id"])
+        return tasks
 
     def create_task(
         self,
@@ -3971,15 +4016,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             True/False
         """
-        return (
-            self._get_value_from_search(
-                self.task_id_search_url,
-                task_id,
-                "id",
-                "id",
+        try:
+            response = self.get(
+                self.task_status_url(task_id), print_error_info=False
             )
-            is not None
-        )
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                return False
+            else:
+                raise e
+
+        return True
 
     def delete_task(self, task_id):
         """Deletes the given task from the CVAT server.
@@ -4189,12 +4236,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         logger.info("Uploading samples to CVAT...")
 
-        with fou.ProgressBar(
-            total=num_samples,
-            iters_str="samples",
-            quiet=num_samples <= batch_size,
-        ) as pb:
+        pb_kwargs = {"total": num_samples, "iters_str": "samples"}
+        if num_samples <= batch_size:
+            pb_kwargs["quiet"] = True
 
+        with fou.ProgressBar(**pb_kwargs) as pb:
             for idx, offset in enumerate(range(0, num_samples, batch_size)):
                 samples_batch = samples[offset : (offset + batch_size)]
                 anno_tags = []
@@ -4339,152 +4385,163 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         annotations = {}
         deleted_tasks = []
 
-        for task_id in task_ids:
-            if not self.task_exists(task_id):
-                deleted_tasks.append(task_id)
-                logger.warning(
-                    "Skipping task %d, which no longer exists", task_id
+        pb_kwargs = {"total": len(task_ids), "iters_str": "tasks"}
+        if len(task_ids) == 1:
+            pb_kwargs["quiet"] = True
+
+        with fou.ProgressBar(**pb_kwargs) as pb:
+            for task_id in pb(task_ids):
+                if not self.task_exists(task_id):
+                    deleted_tasks.append(task_id)
+                    logger.warning(
+                        "Skipping task %d, which no longer exists", task_id
+                    )
+                    continue
+
+                # Download task data
+                attr_id_map, _class_map_rev = self._get_attr_class_maps(
+                    task_id
                 )
-                continue
+                task_resp = self.get(self.task_annotation_url(task_id)).json()
+                all_shapes = task_resp["shapes"]
+                all_tags = task_resp["tags"]
+                all_tracks = task_resp["tracks"]
 
-            # Download task data
-            attr_id_map, _class_map_rev = self._get_attr_class_maps(task_id)
-            task_resp = self.get(self.task_annotation_url(task_id)).json()
-            all_shapes = task_resp["shapes"]
-            all_tags = task_resp["tags"]
-            all_tracks = task_resp["tracks"]
+                data_resp = self.get(self.task_data_meta_url(task_id)).json()
+                frames = data_resp["frames"]
 
-            data_resp = self.get(self.task_data_meta_url(task_id)).json()
-            frames = data_resp["frames"]
-
-            label_fields = labels_task_map_rev[task_id]
-            label_types = self._get_return_label_types(
-                label_schema, label_fields
-            )
-
-            for lf_ind, label_field in enumerate(label_fields):
-                label_info = label_schema[label_field]
-                label_type = label_info.get("type", None)
-                scalar_attrs = assigned_scalar_attrs.get(label_field, False)
-                _occluded_attrs = occluded_attrs.get(label_field, {})
-                _group_id_attrs = group_id_attrs.get(label_field, {})
-                _id_map = id_map.get(label_field, {})
-
-                label_field_results = {}
-
-                # Dict mapping class labels to the classes used in CVAT.
-                # These are equal unless a class appears in multiple fields
-                _classes = label_field_classes[label_field]
-
-                # Maps CVAT IDs to FiftyOne labels
-                class_map = {
-                    _class_map_rev[name_lf]: name
-                    for name, name_lf in _classes.items()
-                }
-
-                _cvat_classes = class_map.keys()
-                tags, shapes, tracks = self._filter_field_classes(
-                    all_tags,
-                    all_shapes,
-                    all_tracks,
-                    _cvat_classes,
+                label_fields = labels_task_map_rev[task_id]
+                label_types = self._get_return_label_types(
+                    label_schema, label_fields
                 )
 
-                is_last_field = lf_ind == len(label_fields) - 1
-                ignore_types = self._get_ignored_types(
-                    project_id, label_types, label_type, is_last_field
-                )
+                for lf_ind, label_field in enumerate(label_fields):
+                    label_info = label_schema[label_field]
+                    label_type = label_info.get("type", None)
+                    scalar_attrs = assigned_scalar_attrs.get(
+                        label_field, False
+                    )
+                    _occluded_attrs = occluded_attrs.get(label_field, {})
+                    _group_id_attrs = group_id_attrs.get(label_field, {})
+                    _id_map = id_map.get(label_field, {})
 
-                tag_results = self._parse_shapes_tags(
-                    "tags",
-                    tags,
-                    frame_id_map[task_id],
-                    label_type,
-                    _id_map,
-                    server_id_map.get("tags", {}),
-                    class_map,
-                    attr_id_map,
-                    frames,
-                    ignore_types,
-                    assigned_scalar_attrs=scalar_attrs,
-                )
-                label_field_results = self._merge_results(
-                    label_field_results, tag_results
-                )
+                    label_field_results = {}
 
-                shape_results = self._parse_shapes_tags(
-                    "shapes",
-                    shapes,
-                    frame_id_map[task_id],
-                    label_type,
-                    _id_map,
-                    server_id_map.get("shapes", {}),
-                    class_map,
-                    attr_id_map,
-                    frames,
-                    ignore_types,
-                    assigned_scalar_attrs=scalar_attrs,
-                    occluded_attrs=_occluded_attrs,
-                    group_id_attrs=_group_id_attrs,
-                )
-                label_field_results = self._merge_results(
-                    label_field_results, shape_results
-                )
+                    # Dict mapping class labels to the classes used in CVAT.
+                    # These are equal unless a class appears in multiple fields
+                    _classes = label_field_classes[label_field]
 
-                for track_index, track in enumerate(tracks, 1):
-                    label_id = track["label_id"]
-                    shapes = track["shapes"]
-                    track_group_id = track.get("group", None)
-                    for shape in shapes:
-                        shape["label_id"] = label_id
+                    # Maps CVAT IDs to FiftyOne labels
+                    class_map = {
+                        _class_map_rev[name_lf]: name
+                        for name, name_lf in _classes.items()
+                    }
 
-                    immutable_attrs = track["attributes"]
+                    _cvat_classes = class_map.keys()
+                    tags, shapes, tracks = self._filter_field_classes(
+                        all_tags,
+                        all_shapes,
+                        all_tracks,
+                        _cvat_classes,
+                    )
 
-                    track_shape_results = self._parse_shapes_tags(
-                        "track",
-                        shapes,
+                    is_last_field = lf_ind == len(label_fields) - 1
+                    ignore_types = self._get_ignored_types(
+                        project_id, label_types, label_type, is_last_field
+                    )
+
+                    tag_results = self._parse_shapes_tags(
+                        "tags",
+                        tags,
                         frame_id_map[task_id],
                         label_type,
                         _id_map,
-                        server_id_map.get("tracks", {}),
+                        server_id_map.get("tags", {}),
                         class_map,
                         attr_id_map,
                         frames,
                         ignore_types,
                         assigned_scalar_attrs=scalar_attrs,
-                        track_index=track_index,
-                        track_group_id=track_group_id,
-                        immutable_attrs=immutable_attrs,
+                    )
+                    label_field_results = self._merge_results(
+                        label_field_results, tag_results
+                    )
+
+                    shape_results = self._parse_shapes_tags(
+                        "shapes",
+                        shapes,
+                        frame_id_map[task_id],
+                        label_type,
+                        _id_map,
+                        server_id_map.get("shapes", {}),
+                        class_map,
+                        attr_id_map,
+                        frames,
+                        ignore_types,
+                        assigned_scalar_attrs=scalar_attrs,
                         occluded_attrs=_occluded_attrs,
                         group_id_attrs=_group_id_attrs,
                     )
                     label_field_results = self._merge_results(
-                        label_field_results, track_shape_results
+                        label_field_results, shape_results
                     )
 
-                frames_metadata = {}
-                for cvat_frame_id, frame_data in frame_id_map[task_id].items():
-                    sample_id = frame_data["sample_id"]
-                    if "frame_id" in frame_data and len(frames) == 1:
-                        frames_metadata[sample_id] = frames[0]
-                        break
+                    for track_index, track in enumerate(tracks, 1):
+                        label_id = track["label_id"]
+                        shapes = track["shapes"]
+                        track_group_id = track.get("group", None)
+                        for shape in shapes:
+                            shape["label_id"] = label_id
 
-                    if len(frames) > cvat_frame_id:
-                        frame_metadata = frames[cvat_frame_id]
-                    else:
-                        frame_metadata = None
+                        immutable_attrs = track["attributes"]
 
-                    frames_metadata[sample_id] = frame_metadata
+                        track_shape_results = self._parse_shapes_tags(
+                            "track",
+                            shapes,
+                            frame_id_map[task_id],
+                            label_type,
+                            _id_map,
+                            server_id_map.get("tracks", {}),
+                            class_map,
+                            attr_id_map,
+                            frames,
+                            ignore_types,
+                            assigned_scalar_attrs=scalar_attrs,
+                            track_index=track_index,
+                            track_group_id=track_group_id,
+                            immutable_attrs=immutable_attrs,
+                            occluded_attrs=_occluded_attrs,
+                            group_id_attrs=_group_id_attrs,
+                        )
+                        label_field_results = self._merge_results(
+                            label_field_results, track_shape_results
+                        )
 
-                # Polyline(s) corresponding to instance/semantic masks need to
-                # be converted to their final format
-                self._convert_polylines_to_masks(
-                    label_field_results, label_info, frames_metadata
-                )
+                    frames_metadata = {}
+                    for cvat_frame_id, frame_data in frame_id_map[
+                        task_id
+                    ].items():
+                        sample_id = frame_data["sample_id"]
+                        if "frame_id" in frame_data and len(frames) == 1:
+                            frames_metadata[sample_id] = frames[0]
+                            break
 
-                annotations = self._merge_results(
-                    annotations, {label_field: label_field_results}
-                )
+                        if len(frames) > cvat_frame_id:
+                            frame_metadata = frames[cvat_frame_id]
+                        else:
+                            frame_metadata = None
+
+                        frames_metadata[sample_id] = frame_metadata
+
+                    # Polyline(s) corresponding to instance/semantic masks need to
+                    # be converted to their final format
+                    self._convert_polylines_to_masks(
+                        label_field_results, label_info, frames_metadata
+                    )
+
+                    annotations = self._merge_results(
+                        annotations, {label_field: label_field_results}
+                    )
 
         if deleted_tasks:
             results._forget_tasks(deleted_tasks)
@@ -5345,7 +5402,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         # For non-outside tracked objects, the last track goes to the end of
         # the video, so fill remaining frames with copies of the last instance
-        if prev_frame is not None and not prev_outside:
+        if (
+            anno_type == "track"
+            and prev_frame is not None
+            and not prev_outside
+        ):
             for frame in range(prev_frame + 1, max(frame_id_map) + 1):
                 anno = deepcopy(prev_anno)
                 anno["frame"] = frame

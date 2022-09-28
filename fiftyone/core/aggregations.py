@@ -168,7 +168,7 @@ class Aggregation(object):
         Returns:
             True/False
         """
-        if sample_collection.media_type != fom.VIDEO:
+        if not sample_collection._contains_videos():
             return False
 
         if self._field_name is not None:
@@ -180,6 +180,28 @@ class Aggregation(object):
             return foe.is_frames_expr(expr)
 
         return False
+
+    def _needs_group_slices(self, sample_collection):
+        """Whether the aggregation requires group slice(s) to be attached.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the aggregation is being applied
+
+        Returns:
+            None, or a list of group slices
+        """
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        if self._field_name is not None:
+            return sample_collection._get_group_slices(self._field_name)
+
+        if self._expr is not None:
+            return foe.get_group_slices(self._expr)
+
+        return None
 
     def _serialize(self, include_uuid=True):
         """Returns a JSON dict representation of the :class:`Aggregation`.
@@ -236,8 +258,6 @@ class Aggregation(object):
 
 class AggregationError(Exception):
     """An error raised during the execution of an :class:`Aggregation`."""
-
-    pass
 
 
 class Bounds(Aggregation):
@@ -321,8 +341,6 @@ class Bounds(Aggregation):
     ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
         self._count_nonfinites = _count_nonfinites
-
-        self._field_type = None
 
     def _kwargs(self):
         return super()._kwargs() + [
@@ -539,7 +557,7 @@ class Count(Aggregation):
             unwind=self._unwind,
         )
 
-        if sample_collection.media_type != fom.VIDEO or path != "frames":
+        if not sample_collection._contains_videos() or path != "frames":
             pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
 
         pipeline.append({"$count": "count"})
