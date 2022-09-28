@@ -156,6 +156,7 @@ async def aggregation_resolver(
 RESULT_MAPPING = {
     fof.BooleanField: BooleanAggregation,
     fof.EmbeddedDocumentField: DataAggregation,
+    fof.FrameNumberField: IntAggregation,
     fof.DateField: IntAggregation,
     fof.DateTimeField: IntAggregation,
     fof.IntField: IntAggregation,
