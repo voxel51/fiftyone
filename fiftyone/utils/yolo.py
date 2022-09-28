@@ -814,8 +814,8 @@ class YOLOv5DatasetExporter(
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
-        include_path (True): whether to add export_dir as value to 'path'.
-            export_dir must have been set.
+        include_path (True): whether to include the directory name containing
+            the YAML file in the ``path`` key of the exported YAML
     """
 
     def __init__(
@@ -830,7 +830,7 @@ class YOLOv5DatasetExporter(
         classes=None,
         include_confidence=False,
         image_format=None,
-        include_path=True
+        include_path=True,
     ):
         data_path, export_media = self._parse_data_path(
             export_dir=export_dir,
@@ -939,12 +939,12 @@ class YOLOv5DatasetExporter(
                 % (self.split, self.yaml_path)
             )
 
+        if self.include_path:
+            d["path"] = os.path.dirname(self.yaml_path)
+
         d[self.split] = _make_yolo_v5_path(self.data_path, self.yaml_path)
         d["nc"] = len(classes)
         d["names"] = classes
-        
-        if self.export_dir and self.include_path:
-            d["path"] = self.export_dir
 
         _write_yaml_file(d, self.yaml_path, default_flow_style=False)
 
