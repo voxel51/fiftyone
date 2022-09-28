@@ -111,7 +111,10 @@ class FiftyOneJSONEncoder(JSONEncoder):
         if isinstance(o, etas.Serializable):
             return o.serialize()
 
-        return super().default(o)
+        try:
+            return super().default(o)
+        except:
+            return None
 
     @staticmethod
     def dumps(data, *args, **kwargs) -> str:

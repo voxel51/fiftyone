@@ -229,6 +229,7 @@ class CVATTests(unittest.TestCase):
             ]["sample_id"]
             self.assertEqual(sample_id, dataset.first().id)
 
+        dataset.reload()
         dataset.load_annotations(anno_key, cleanup=True)
 
         self.assertListEqual(
@@ -262,6 +263,7 @@ class CVATTests(unittest.TestCase):
             ]["sample_id"]
             self.assertEqual(sample_id, dataset.first().id)
 
+        dataset.reload()
         dataset.load_annotations(anno_key, cleanup=True)
 
         self.assertListEqual(
@@ -535,7 +537,12 @@ class CVATTests(unittest.TestCase):
                 )
 
             dataset.load_annotations(anno_key, cleanup=True)
-            self.assertIsNotNone(api.get_project_id(project_name))
+            project_id = api.get_project_id(project_name)
+            self.assertIsNotNone(project_id)
+
+            project_tasks = api.get_project_tasks(project_id)
+            task_ids = results.task_ids + results2.task_ids + results3.task_ids
+            self.assertListEqual(sorted(project_tasks), sorted(task_ids))
 
             dataset.load_annotations(anno_key2, cleanup=True)
             self.assertIsNotNone(api.get_project_id(project_name))
@@ -1186,6 +1193,81 @@ class CVATTests(unittest.TestCase):
         self.assertFalse(
             any([gid == test_group_id for gid in id_group_map.values()])
         )
+
+    def test_task_exists(self):
+        dataset = (
+            foz.load_zoo_dataset("quickstart", max_samples=20)
+            .select_fields("ground_truth")
+            .clone()
+        )
+
+        anno_key = "task_exists"
+        results = dataset.annotate(
+            anno_key,
+            label_field="ground_truth",
+            backend="cvat",
+            task_size=1,
+        )
+
+        tasks_exist = []
+        with results:
+            api = results.connect_to_api()
+            for task_id in results.task_ids:
+                tasks_exist.append(api.task_exists(task_id))
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+        self.assertNotIn(False, tasks_exist)
+
+        view = dataset.take(1)
+
+        anno_key = "task_not_exists"
+        results = view.annotate(
+            anno_key,
+            label_field="ground_truth",
+            backend="cvat",
+        )
+
+        task_id = results.task_ids[0]
+        with results:
+            api = results.connect_to_api()
+            api.delete_task(task_id)
+            self.assertFalse(api.task_exists(task_id))
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+    def test_deleted_label_field(self):
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
+        view = dataset.select_fields("ground_truth")
+        prev_ids = dataset.values("ground_truth.detections.id", unwind=True)
+
+        anno_key = "anno_key"
+        results = view.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="ground_truth",
+        )
+        dataset.delete_sample_field("ground_truth")
+        dataset.reload()
+
+        dataset.load_annotations(anno_key, cleanup=True)
+        self.assertListEqual(
+            sorted(dataset.values("ground_truth.detections.id", unwind=True)),
+            sorted(prev_ids),
+        )
+
+        # Test scalar
+        view = dataset.select_fields("uniqueness")
+        anno_key = "anno_key2"
+        results = view.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="uniqueness",
+        )
+        dataset.delete_sample_field("uniqueness")
+        dataset.reload()
+
+        dataset.load_annotations(anno_key, cleanup=True)
 
 
 if __name__ == "__main__":

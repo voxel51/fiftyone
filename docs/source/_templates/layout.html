@@ -4,7 +4,7 @@
   rel="stylesheet"
 />
 <link
-  href="https://voxel51.com/vendor/font-awesome/css/font-awesome.min.css"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
   rel="stylesheet"
 />
 {% endblock %} {% block custom_header %}
@@ -31,56 +31,86 @@
       </a>
     </div>
 
+    <div class="nav__spacer desktop_only"></div>
+
     <div id="nav__main__mobilebutton--on">
       <a href="javascript:void(0);" onclick="navMobileButton()">
-        <i class="fa fa-bars"></i>
+        <i class="fa-solid fa-bars"></i>
       </a>
     </div>
 
     <div id="nav__main__mobilebutton--off">
       <a href="javascript:void(0);" onclick="navMobileButton()">
-        <i class="fa fa-times"></i>
+        <i class="fa-solid fa-times"></i>
       </a>
     </div>
 
     <div id="nav__main__items">
-      <div class="nav__item">
-        <a href="{{link_fiftyone}}">Product</a>
+
+      <div class="nav__item nav__dropdown">
+        <div class="nav__dropdown__trigger">FiftyOne</div>
+        <div class="nav__item nav__dropdown__menu has-arrows">
+          <div class="arrow-up--light-primary arrow-left20"></div>
+          <ul>
+            <li><a href="{{link_fiftyone}}">Open Source</a>
+            <li><a href="{{link_fiftyone_teams}}">FiftyOne Teams</a>
+          </ul>
+        </div>
       </div>
+
       <div class="nav__item">
-        <a href="{{link_docs_fiftyone}}">Docs</a>
+        <a href="{{link_usecases}}">Use Cases</a>
       </div>
+
       <div class="nav__item">
         <a href="{{link_voxel51_medium}}">Blog</a>
       </div>
+
       <div class="nav__item">
-        <a href="{{link_voxel51_slack}}">Community</a>
+        <a href="{{link_docs_fiftyone}}">Docs</a>
+      </div>
+
+      <div class="nav__item nav__dropdown">
+        <div class="nav__dropdown__trigger">Company</div>
+        <div class="nav__item nav__dropdown__menu has-arrows">
+          <div class="arrow-up--light-primary arrow-left20"></div>
+          <ul>
+            <li><a href="{{link_ourstory}}">About Us</a>
+            <li><a href="{{link_voxel51_jobs}}">Careers</a>
+          </ul>
+        </div>
       </div>
 
       <div class="nav__item mobile_only">
         <a href="{{link_voxel51_github}}fiftyone">GitHub</a>
       </div>
 
-      <div class="nav__item">
-        <a href="{{link_press}}">Press</a>
+      <div class="nav__item mobile_only">
+        <a href="{{link_voxel51_slack}}">Slack</a>
       </div>
+
 
       <div class="nav__item desktop_only" id="octocat">
-        &nbsp
-        <a href="{{link_voxel51_github}}fiftyone"
-          ><i class="fa fa-github fa-header-icon"></i
-        ></a>
+        <a href="{{link_voxel51_github}}fiftyone">
+          <i class="fa-brands fa-github">
+          </i>
+        </a>
+        &nbsp;
+        <a href="{{link_voxel51_slack}}">
+          <i class="fa-brands fa-slack">
+          </i>
+        </a>
       </div>
 
-      <div class="nav__spacer"></div>
-
-      <div class="nav__item nav__item--brand desktop_only" id="try-fiftyone">
+      <!--
+      <div class="nav__item nav__item--brand" id="try-fiftyone">
         <a class="button-secondary" href="{{link_fiftyone_quickstart}}"
           >Try FiftyOne!</a
         >
       </div>
+      -->
 
-      <div class="nav__item nav__item--brand desktop_only">
+      <div class="nav__item full_nav_only">
         <a
           class="button-primary"
           href="https://voxel51.com/#teams-form"
@@ -88,6 +118,7 @@
           >Have a team?</a
         >
       </div>
+
     </div>
   </nav>
 </div>
@@ -107,24 +138,33 @@ endblock %} {% block custom_footer %}
     <div class="footer__address">
       {{address_main_line1}}<br />
       {{address_main_line2}}
+      <br />
+      <br />
+      <a href="mailto:{{email_info}}">{{email_info}}</a>
     </div>
 
+    <!--
     <div class="footer__contact">
-      <a href="mailto:{{email_info}}">{{email_info}}</a><br />
-      {{phone_main}}
+      <a href="mailto:{{email_info}}">{{email_info}}</a>
     </div>
+    -->
 
     <div class="footer__links">
       <div class="footer__links--col2">
-        <p class="nav__item--brand">Product</p>
+        <p class="nav__item--brand">Products</p>
         <a href="{{link_fiftyone}}">FiftyOne</a>
-        <a href="{{link_fiftyone_tutorials}}">Tutorials</a>
-        <a href="{{link_fiftyone_examples}}">Examples</a>
+        <a href="{{link_fiftyone_teams}}">FiftyOne Teams</a>
+        <a href="{{link_usecases}}">Use Cases</a>
       </div>
       <div class="footer__links--col3">
         <p class="nav__item--brand">Resources</p>
-        <a href="{{link_ourstory}}">About Us</a>
         <a href="{{link_voxel51_medium}}">Blog</a>
+        <a href="{{link_docs_fiftyone}}">Docs</a>
+        <a href="{{link_voxel51_github}}">GitHub</a>
+        <a href="{{link_voxel51_slack}}">Slack</a>
+        <a href="{{link_ourstory}}">About Us</a>
+
+        <a href="{{link_voxel51_jobs}}">Careers</a>
         <a href="{{link_press}}">Press</a>
       </div>
     </div>
@@ -133,22 +173,22 @@ endblock %} {% block custom_footer %}
       <ul class="list-inline">
         <li>
           <a href="{{link_voxel51_linkedin}}">
-            <i class="fa fa-linkedin"></i>
+            <i class="fa-brands fa-linkedin"></i>
           </a>
         </li>
         <li>
           <a href="{{link_voxel51_github}}">
-            <i class="fa fa-github"></i>
+            <i class="fa-brands fa-github"></i>
           </a>
         </li>
         <li>
           <a href="{{link_voxel51_twitter}}">
-            <i class="fa fa-twitter"></i>
+            <i class="fa-brands fa-twitter"></i>
           </a>
         </li>
         <li>
           <a href="{{link_voxel51_facebook}}">
-            <i class="fa fa-facebook"></i>
+            <i class="fa-brands fa-facebook"></i>
           </a>
         </li>
       </ul>

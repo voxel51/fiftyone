@@ -28,6 +28,7 @@ import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 import fiftyone.utils.annotations as foua
 
 lb = fou.lazy_import(
@@ -107,6 +108,10 @@ class LabelboxBackend(foua.AnnotationBackend):
     """Class for interacting with the Labelbox annotation backend."""
 
     @property
+    def supported_media_types(self):
+        return [fomm.IMAGE, fomm.VIDEO]
+
+    @property
     def supported_label_types(self):
         return [
             "classification",
@@ -145,6 +150,10 @@ class LabelboxBackend(foua.AnnotationBackend):
     @property
     def supports_video_sample_fields(self):
         return False  # @todo resolve FiftyOne bug to allow this to be True
+
+    @property
+    def requires_label_schema(self):
+        return True
 
     def recommend_attr_tool(self, name, value):
         if isinstance(value, bool):
@@ -1448,6 +1457,9 @@ def import_from_labelbox(
         labelbox_id_field ("labelbox_id"): the sample field to lookup/store the
             IDs of the Labelbox DataRows
     """
+    fov.validate_collection(dataset, media_type=(fomm.IMAGE, fomm.VIDEO))
+    is_video = dataset.media_type == fomm.VIDEO
+
     if download_dir:
         filename_maker = fou.UniqueFilenameMaker(output_dir=download_dir)
 
@@ -1460,8 +1472,6 @@ def import_from_labelbox(
         label_key = lambda k: label_prefix + "_" + k
     else:
         label_key = lambda k: k
-
-    is_video = dataset.media_type == fomm.VIDEO
 
     # Load labels
     d_list = etas.read_json(json_path)
@@ -1591,6 +1601,9 @@ def export_to_labelbox(
 
             By default, no frame labels are exported
     """
+    fov.validate_collection(
+        sample_collection, media_type=(fomm.IMAGE, fomm.VIDEO)
+    )
     is_video = sample_collection.media_type == fomm.VIDEO
 
     # Get label fields to export

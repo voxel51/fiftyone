@@ -40,10 +40,7 @@ class _Document(object):
         return self.has_field(name)
 
     def __getattr__(self, name):
-        try:
-            return super().__getattr__(name)
-        except AttributeError:
-            return self.get_field(name)
+        return self.get_field(name)
 
     def __setattr__(self, name, value):
         if name.startswith("_"):

@@ -596,6 +596,61 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(list(sample.frames.keys()), [1, 5])
 
     @drop_datasets
+    def test_add_video_samples(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(frame_number=1)
+        sample.frames[3] = fo.Frame(hello="world")
+        sample.frames[5] = fo.Frame()
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        sample_id = sample.id
+        frame_id = sample.frames.first().id
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample)
+
+        sample2 = dataset2.first()
+        frame2 = sample2.frames.first()
+
+        self.assertEqual(len(sample2.frames), 3)
+        self.assertNotEqual(sample2.id, sample_id)
+        self.assertNotEqual(frame2.id, frame_id)
+
+        sample2_copy = sample2.copy()
+        frame2_copy = sample2_copy.frames.first()
+
+        self.assertEqual(len(sample2_copy.frames), 3)
+        self.assertIsNone(sample2_copy.id)
+        self.assertIsNone(frame2_copy.id)
+
+        view = dataset.match_frames(F("hello") == "world")
+
+        sample_view = view.first()
+
+        self.assertEqual(len(sample_view.frames), 1)
+
+        sample_view_copy = sample_view.copy()
+        frame_view_copy = sample_view_copy.frames.first()
+
+        self.assertEqual(len(sample_view_copy.frames), 1)
+        self.assertIsNone(sample_view_copy.id)
+        self.assertIsNone(frame_view_copy.id)
+
+        dataset3 = fo.Dataset()
+        dataset3.add_samples(view)
+
+        self.assertEqual(len(dataset3), 1)
+
+        sample3 = dataset3.first()
+        frame3 = sample3.frames.first()
+
+        self.assertEqual(len(sample3.frames), 1)
+        self.assertNotEqual(sample3.id, sample_id)
+        self.assertNotEqual(frame3.id, frame_id)
+
+    @drop_datasets
     def test_save_frame_view(self):
         dataset = fo.Dataset()
 

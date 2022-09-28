@@ -3,15 +3,16 @@ import { selector, selectorFamily } from "recoil";
 import { animated, useSpring } from "@react-spring/web";
 import styled from "styled-components";
 
-import * as atoms from "../../recoil/atoms";
-import * as aggregationAtoms from "../../recoil/aggregations";
-import * as filterAtoms from "../../recoil/filters";
-import * as schemaAtoms from "../../recoil/schema";
-import { hiddenLabelsArray } from "../../recoil/selectors";
-import { State } from "../../recoil/types";
-import { view } from "../../recoil/view";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import {
+  currentSlice,
+  groupId,
+  groupStatistics,
+  isGroup,
+  State,
+} from "@fiftyone/state";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};
@@ -66,13 +67,9 @@ export const useHighlightHover = (disabled, override = null, color = null) => {
 export const allTags = selector<{ sample: string[]; label: string[] } | null>({
   key: "tagAggs",
   get: async ({ get }) => {
-    const labels = get(
-      aggregationAtoms.labelTagCounts({ modal: false, extended: false })
-    );
+    const labels = get(fos.labelTagCounts({ modal: false, extended: false }));
 
-    const sample = get(
-      aggregationAtoms.sampleTagCounts({ modal: false, extended: false })
-    );
+    const sample = get(fos.sampleTagCounts({ modal: false, extended: false }));
 
     if (!labels || !sample) {
       return null;
@@ -88,6 +85,7 @@ export const allTags = selector<{ sample: string[]; label: string[] } | null>({
 export const tagStatistics = selectorFamily<
   {
     count: number;
+    items: number;
     tags: { [key: string]: number };
   },
   { modal: boolean; labels: boolean }
@@ -96,44 +94,55 @@ export const tagStatistics = selectorFamily<
   get:
     ({ modal, labels: count_labels }) =>
     async ({ get }) => {
-      const activeLabels = get(schemaAtoms.activeLabelFields({ modal }));
-      const selected = get(atoms.selectedSamples);
+      return await getFetchFunction()(
+        "POST",
+        "/tagging",
+        tagParameters({
+          activeFields: get(fos.activeLabelFields({ modal })),
 
-      let labels: State.SelectedLabel[] = [];
-      if (modal) {
-        labels = Object.entries(get(atoms.selectedLabels)).map(
-          ([labelId, data]) => ({
-            labelId,
-            ...data,
-          })
-        );
-      }
+          dataset: get(fos.datasetName),
+          filters: get(modal ? fos.modalFilters : fos.filters),
 
-      const { count, tags } = await getFetchFunction()("POST", "/tagging", {
-        dataset: get(atoms.dataset).name,
-        view: get(view),
-        active_label_fields: activeLabels,
-        sample_ids: selected.size
-          ? [...selected]
-          : modal
-          ? [get(atoms.modal).sample._id]
-          : null,
-        labels: toSnakeCase(labels),
-        count_labels,
-        filters: get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
-        hidden_labels:
-          modal && labels ? toSnakeCase(get(hiddenLabelsArray)) : null,
-      });
-
-      return { count, tags };
+          groupData: get(isGroup)
+            ? {
+                id: modal ? get(groupId) : null,
+                slice: get(currentSlice(modal)),
+                mode: get(groupStatistics(modal)),
+              }
+            : null,
+          hiddenLabels: get(fos.hiddenLabelsArray),
+          modal,
+          sampleId: modal ? get(fos.sidebarSampleId) : null,
+          selectedSamples: get(fos.selectedSamples),
+          selectedLabels: Object.entries(get(fos.selectedLabels)).map(
+            ([labelId, data]) => ({
+              labelId,
+              ...data,
+            })
+          ),
+          targetLabels: count_labels,
+          view: get(fos.view),
+        })
+      );
     },
 });
 
-export const numLabelsInSelectedSamples = selector<number>({
+export const numItemsInSelection = selectorFamily<number, boolean>({
   key: "numLabelsInSelectedSamples",
-  get: ({ get }) => {
-    return get(tagStatistics({ modal: false, labels: true })).count;
-  },
+  get:
+    (labels) =>
+    ({ get }) => {
+      return get(tagStatistics({ modal: false, labels })).count;
+    },
+});
+
+export const selectedSamplesCount = selectorFamily<number, boolean>({
+  key: "selectedSampleCount",
+  get:
+    (modal) =>
+    ({ get }) => {
+      return get(tagStatistics({ modal, labels: false })).items;
+    },
 });
 
 export const tagStats = selectorFamily<
@@ -155,3 +164,55 @@ export const tagStats = selectorFamily<
       };
     },
 });
+
+export const tagParameters = ({
+  sampleId,
+  targetLabels,
+  hiddenLabels,
+  activeFields,
+  selectedSamples,
+  selectedLabels,
+  groupData,
+  ...params
+}: {
+  dataset: string;
+  modal: boolean;
+  view: State.Stage[];
+  filters: State.Filters;
+  selectedSamples: Set<string>;
+  selectedLabels: State.SelectedLabel[];
+  hiddenLabels: State.SelectedLabel[];
+  activeFields: string[];
+  groupData: {
+    id: string | null;
+    slice: string | null;
+    mode: "group" | "slice";
+  } | null;
+  targetLabels: boolean;
+  sampleId: string | null;
+}) => {
+  const hasSelected =
+    selectedSamples.size || selectedLabels.length || hiddenLabels.length;
+  const groups = groupData?.mode === "group";
+
+  return {
+    ...params,
+    label_fields: activeFields,
+    target_labels: targetLabels,
+    slice: !params.modal && !groups ? groupData?.slice : null,
+    sample_ids:
+      params.modal && !hasSelected && !groups
+        ? [sampleId]
+        : selectedSamples.size
+        ? [...selectedSamples]
+        : null,
+    labels:
+      params.modal && targetLabels && selectedLabels && selectedLabels.length
+        ? toSnakeCase(selectedLabels)
+        : null,
+    hidden_labels:
+      params.modal && targetLabels && hiddenLabels.length
+        ? toSnakeCase(hiddenLabels)
+        : null,
+  };
+};

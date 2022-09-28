@@ -4,10 +4,9 @@ import { useRecoilState, useSetRecoilState } from "recoil";
 
 import { Button } from "@fiftyone/components";
 
-import * as atoms from "../../recoil/atoms";
-
 import { form, header, text } from "./Teams.module.css";
 import { graphql, useMutation } from "react-relay";
+import * as fos from "@fiftyone/state";
 
 const Teams = () => {
   const [formState, setFormState] = useState({
@@ -18,8 +17,8 @@ const Teams = () => {
     role: "",
   });
   const [submitText, setSubmitText] = useState("Submit");
-  const [teams, setTeams] = useRecoilState(atoms.teams);
-  const setOpen = useSetRecoilState(atoms.appTeamsIsOpen);
+  const [teams, setTeams] = useRecoilState(fos.teams);
+  const setOpen = useSetRecoilState(fos.appTeamsIsOpen);
   const portalId = 4972700;
   const formId = "87aa5367-a8f1-4ed4-9e23-1fdf8448d807";
   const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;

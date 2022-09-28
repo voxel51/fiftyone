@@ -23,6 +23,27 @@ from decorators import drop_datasets, skip_windows
 
 class DatasetViewTests(unittest.TestCase):
     @drop_datasets
+    def test_eq(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i) for i in range(5)]
+        )
+
+        view1 = dataset.shuffle(seed=51).limit(3)
+        view2 = dataset.shuffle(seed=51).limit(3)
+        view3 = deepcopy(view1)
+
+        self.assertEqual(view1, view2)
+        self.assertEqual(view1, view3)
+
+        view1 = dataset.limit(1).concat(dataset.skip(1).limit(1))
+        view2 = dataset.limit(1).concat(dataset.skip(1).limit(1))
+        view3 = deepcopy(view1)
+
+        self.assertEqual(view1, view2)
+        self.assertEqual(view1, view3)
+
+    @drop_datasets
     def test_iter_samples(self):
         dataset = fo.Dataset()
         dataset.add_samples(
@@ -1203,9 +1224,11 @@ class ViewSaveTest(unittest.TestCase):
         dataset.add_samples([sample1, sample2])
 
         view = dataset.limit(1).match_frames(F("frame_number") == 1)
+        sample = view.first()
 
         self.assertEqual(dataset.count("frames"), 4)
         self.assertEqual(view.count("frames"), 1)
+        self.assertEqual(len(sample.frames), 1)
 
         view.keep_frames()
 
@@ -1223,14 +1246,10 @@ class ViewSaveTest(unittest.TestCase):
         view = dataset.exclude_fields("classifications")
         view.keep_fields()
 
-        self.assertNotIn("classifications", view.get_field_schema())
         self.assertNotIn("classifications", dataset.get_field_schema())
 
-        sample_view = view.first()
-        with self.assertRaises(KeyError):
-            sample_view["classifications"]
-
         sample = dataset.first()
+
         with self.assertRaises(KeyError):
             sample["classifications"]
 
@@ -1355,6 +1374,32 @@ class ViewStageTests(unittest.TestCase):
         self.sample2["numeric_field"] = -1.0
         self.sample2["numeric_list_field"] = [-2, -1, 0, 1]
         self.sample2.save()
+
+    def test_concat(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.jpg", field=1),
+                fo.Sample(filepath="image2.jpg", field=2),
+                fo.Sample(filepath="image3.jpg", field=3),
+                fo.Sample(filepath="image4.jpg", field=4),
+            ]
+        )
+
+        view1 = dataset.skip(0).limit(1)
+        view2 = dataset.skip(1).limit(1)
+        view3 = dataset.skip(2).limit(1)
+        view4 = dataset.skip(3).limit(1)
+
+        view = view1.concat(view2)
+
+        self.assertEqual(len(view), 2)
+        self.assertListEqual(view.values("field"), [1, 2])
+
+        view = view1.concat(view2).concat(view3).concat(view4)
+
+        self.assertEqual(len(view), 4)
+        self.assertListEqual(view.values("field"), [1, 2, 3, 4])
 
     def test_exclude(self):
         result = list(self.dataset.exclude([self.sample1.id]))
@@ -2239,6 +2284,27 @@ class ViewStageTests(unittest.TestCase):
         self.assertIs(len(view), 2)
         for sample, _id in zip(view, ids):
             self.assertEqual(sample.id, _id)
+
+    def test_select_by(self):
+        filepaths = self.dataset.values("filepath")
+
+        values = [filepaths[1], filepaths[0]]
+        unordered_values = [filepaths[0], filepaths[1]]
+
+        result = self.dataset.select_by("filepath", values)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("filepath"), unordered_values)
+
+    def test_select_by_ordered(self):
+        filepaths = self.dataset.values("filepath")
+
+        values = [filepaths[1], filepaths[0]]
+
+        result = self.dataset.select_by("filepath", values, ordered=True)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("filepath"), values)
 
     def test_select_fields(self):
         self.dataset.add_sample_field("select_fields_field", fo.IntField)

@@ -78,6 +78,7 @@ from .core.fields import (
     VectorField,
 )
 from .core.frame import Frame
+from .core.groups import Group
 from .core.labels import (
     Label,
     Attribute,
@@ -122,7 +123,10 @@ from .core.models import (
     ModelManagerConfig,
     ModelManager,
 )
-from .core.odm import KeypointSkeleton
+from .core.odm import (
+    DatasetAppConfig,
+    KeypointSkeleton,
+)
 from .core.plots import (
     plot_confusion_matrix,
     plot_pr_curve,
@@ -167,6 +171,8 @@ from .core.stages import (
     SelectBy,
     SelectFields,
     SelectFrames,
+    SelectGroups,
+    SelectGroupSlices,
     SelectLabels,
     SetField,
     Skip,

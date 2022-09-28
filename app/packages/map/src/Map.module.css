@@ -1,0 +1,14 @@
+.container {
+  height: 100%;
+  width: 100%;
+  position: relative;
+  pointer-events: none;
+}
+
+.container > div * {
+  pointer-events: all;
+}
+
+.container canvas {
+  outline: none;
+}

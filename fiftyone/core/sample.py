@@ -334,6 +334,44 @@ class _SampleMixin(object):
                 expand_schema=expand_schema,
             )
 
+    def copy(self, fields=None, omit_fields=None):
+        """Returns a deep copy of the sample that has not been added to the
+        database.
+
+        Args:
+            fields (None): an optional field or iterable of fields to which to
+                restrict the copy. This can also be a dict mapping existing
+                field names to new field names
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the copy
+
+        Returns:
+            a :class:`Sample`
+        """
+        if self.media_type == fomm.VIDEO:
+            (
+                fields,
+                frame_fields,
+                omit_fields,
+                omit_frame_fields,
+            ) = self._parse_fields_video(
+                fields=fields, omit_fields=omit_fields
+            )
+
+        sample = super().copy(fields=fields, omit_fields=omit_fields)
+
+        if self.media_type == fomm.VIDEO:
+            sample.frames.update(
+                {
+                    frame_number: frame.copy(
+                        fields=frame_fields, omit_fields=omit_frame_fields
+                    )
+                    for frame_number, frame in self.frames.items()
+                }
+            )
+
+        return sample
+
     def to_dict(self, include_frames=False, include_private=False):
         """Serializes the sample to a JSON dictionary.
 
@@ -435,44 +473,6 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
         d = self._dataset._sample_collection.find_one({"_id": self._id})
         self._doc = self._dataset._sample_dict_to_doc(d)
-
-    def copy(self, fields=None, omit_fields=None):
-        """Returns a deep copy of the sample that has not been added to the
-        database.
-
-        Args:
-            fields (None): an optional field or iterable of fields to which to
-                restrict the copy. This can also be a dict mapping existing
-                field names to new field names
-            omit_fields (None): an optional field or iterable of fields to
-                exclude from the copy
-
-        Returns:
-            a :class:`Sample`
-        """
-        if self.media_type == fomm.VIDEO:
-            (
-                fields,
-                frame_fields,
-                omit_fields,
-                omit_frame_fields,
-            ) = self._parse_fields_video(
-                fields=fields, omit_fields=omit_fields
-            )
-
-        sample = super().copy(fields=fields, omit_fields=omit_fields)
-
-        if self.media_type == fomm.VIDEO:
-            sample.frames.update(
-                {
-                    frame_number: frame.copy(
-                        fields=frame_fields, omit_fields=omit_frame_fields
-                    )
-                    for frame_number, frame in self.frames.items()
-                }
-            )
-
-        return sample
 
     def reload(self, hard=False):
         """Reloads the sample from the database.
