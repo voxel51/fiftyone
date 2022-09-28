@@ -297,7 +297,7 @@ class DatasetMixin(object):
         """
         field = create_field(
             field_name,
-            ftype=ftype,
+            ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
             fields=fields,
