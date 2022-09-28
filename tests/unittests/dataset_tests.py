@@ -2177,18 +2177,6 @@ class DatasetExtrasTests(unittest.TestCase):
         self.assertIsNotNone(also_view2)
 
         #
-        # Verify that saved views are included in empty merges
-        #
-
-        dataset3 = fo.Dataset()
-        dataset3.merge_samples(dataset2)
-
-        view3 = dataset3.load_view("test")
-
-        self.assertEqual(len(view3), 1)
-        self.assertTrue("image2" in view3.first().filepath)
-
-        #
         # Verify that saved views are deleted when a dataset is deleted
         #
 
@@ -2299,17 +2287,6 @@ class DatasetExtrasTests(unittest.TestCase):
         info = dataset2.get_evaluation_info("eval")
         results = dataset2.load_evaluation_results("eval")
         self.assertIsNotNone(info)
-        self.assertIsNotNone(results)
-
-        #
-        # Verify that runs are included in empty merges
-        #
-
-        dataset3 = fo.Dataset()
-        dataset3.merge_samples(dataset2)
-
-        results = dataset3.load_evaluation_results("eval")
-
         self.assertIsNotNone(results)
 
         #
