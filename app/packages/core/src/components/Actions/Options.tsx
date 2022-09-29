@@ -10,7 +10,8 @@ import Popout from "./Popout";
 import { Slider } from "../Common/RangeSlider";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { groupStatistics, isGroup } from "@fiftyone/state";
+import { groupStatistics, isGroup, sidebarMode } from "@fiftyone/state";
+import RadioGroup from "../Common/RadioGroup";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
@@ -188,18 +189,10 @@ const MediaFields = ({ modal }) => {
   return (
     <>
       <PopoutSectionTitle>Media Field</PopoutSectionTitle>
-
-      <TabOption
-        active={selectedMediaField}
-        options={mediaFields.map((value) => {
-          return {
-            text: value,
-            title: `View Media with "${selectedMediaField}"`,
-            onClick: () => {
-              selectedMediaField !== value && setSelectedMediaField(value);
-            },
-          };
-        })}
+      <RadioGroup
+        choices={mediaFields}
+        value={selectedMediaField}
+        setValue={(v) => v !== selectedMediaField && setSelectedMediaField(v)}
       />
     </>
   );
@@ -223,6 +216,24 @@ const GroupStatistics = ({ modal }) => {
   );
 };
 
+const SidebarMode = ({ modal }) => {
+  const [mode, setMode] = useRecoilState(sidebarMode(modal));
+
+  return (
+    <>
+      <PopoutSectionTitle>Sidebar Mode</PopoutSectionTitle>
+      <TabOption
+        active={mode}
+        options={["best", "fast", "slow"].map((value) => ({
+          text: value,
+          title: value,
+          onClick: () => setMode(value as "best" | "fast" | "slow"),
+        }))}
+      />
+    </>
+  );
+};
+
 type OptionsProps = {
   modal: boolean;
   bounds: [number, number];
@@ -232,14 +243,15 @@ const Options = ({ modal, bounds }: OptionsProps) => {
   const group = useRecoilValue(isGroup);
   return (
     <Popout modal={modal} bounds={bounds}>
-      {group && <GroupStatistics modal={modal} />}
-      <MediaFields modal={modal} />
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
       <Opacity modal={modal} />
-      <SortFilterResults modal={modal} />
+      {group && <GroupStatistics modal={modal} />}
       <Keypoints modal={modal} />
+      <MediaFields modal={modal} />
       <Patches modal={modal} />
+      <SidebarMode modal={modal} />
+      <SortFilterResults modal={modal} />
     </Popout>
   );
 };

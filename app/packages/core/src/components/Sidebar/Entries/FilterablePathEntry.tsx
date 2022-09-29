@@ -47,18 +47,10 @@ import {
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { NameAndCountContainer, PillButton } from "../../utils";
-import { Loading, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
-
-const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
-  key: "sidebarCanExpand",
-  get:
-    ({ modal, path }) =>
-    ({ get }) => {
-      return get(fos.count({ path, extended: false, modal })) > 0;
-    },
-});
+import { pathIsExpanded } from "./utils";
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
@@ -173,32 +165,28 @@ const getFilterData = (
 
 const hiddenPathLabels = selectorFamily<string[], string>({
   key: "hiddenPathLabels",
-  get:
-    (path) =>
-    ({ get }) => {
-      const data = get(fos.pathHiddenLabelsMap);
-      const sampleId = get(fos.modal).sample._id;
+  get: (path) => ({ get }) => {
+    const data = get(fos.pathHiddenLabelsMap);
+    const sampleId = get(fos.modal).sample._id;
 
-      if (data[sampleId]) {
-        return data[sampleId][path] || [];
-      }
+    if (data[sampleId]) {
+      return data[sampleId][path] || [];
+    }
 
-      return [];
-    },
-  set:
-    (path) =>
-    ({ set, get }, value) => {
-      const data = get(fos.pathHiddenLabelsMap);
-      const sampleId = get(fos.modal).sample._id;
+    return [];
+  },
+  set: (path) => ({ set, get }, value) => {
+    const data = get(fos.pathHiddenLabelsMap);
+    const sampleId = get(fos.modal).sample._id;
 
-      set(fos.pathHiddenLabelsMap, {
-        ...data,
-        [sampleId]: {
-          ...data[sampleId],
-          [path]: value instanceof DefaultValue ? [] : value,
-        },
-      });
-    },
+    set(fos.pathHiddenLabelsMap, {
+      ...data,
+      [sampleId]: {
+        ...data[sampleId],
+        [path]: value instanceof DefaultValue ? [] : value,
+      },
+    });
+  },
 });
 
 const useHidden = (path: string) => {
@@ -223,11 +211,6 @@ const useHidden = (path: string) => {
   ) : null;
 };
 
-const pathIsExpanded = atomFamily<boolean, { modal: boolean; path: string }>({
-  key: "pathIsExpanded",
-  default: false,
-});
-
 const FilterableEntry = React.memo(
   ({
     entryKey,
@@ -251,13 +234,14 @@ const FilterableEntry = React.memo(
       cb: () => void
     ) => void;
   }) => {
-    const [expanded, setExpanded] = useRecoilState(
-      pathIsExpanded({ modal, path })
-    );
     const theme = useTheme();
-    const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
+
     const skeleton = useRecoilValue(fos.getSkeleton);
     const expandedPath = useRecoilValue(fos.expandPath(path));
+    const [expanded, setExpanded] = useRecoilState(
+      pathIsExpanded({ modal, path: expandedPath })
+    );
+    const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
     const color = disabled
       ? theme.background.level2
       : useRecoilValue(fos.pathColor({ path, modal }));
@@ -279,14 +263,8 @@ const FilterableEntry = React.memo(
     const [active, setActive] = useRecoilState(
       fos.activeField({ modal, path })
     );
-    const expandable = useRecoilValueLoadable(canExpand({ modal, path }));
     const hidden = modal ? useHidden(path) : null;
 
-    useLayoutEffect(() => {
-      if (expandable.state !== "loading" && !expandable.contents && expanded) {
-        setExpanded(false);
-      }
-    }, [expandable.state, expandable.contents, expanded]);
     const { backgroundColor } = useSpring({
       backgroundColor: fieldIsFiltered ? "#6C757D" : theme.background.level1,
     });
@@ -319,7 +297,7 @@ const FilterableEntry = React.memo(
               <span key="path">{path}</span>
               {hidden}
               <PathEntryCounts key="count" modal={modal} path={expandedPath} />
-              {!disabled && expandable.contents && (
+              {!disabled && (
                 <Arrow
                   key="arrow"
                   style={{ cursor: "pointer", margin: 0 }}

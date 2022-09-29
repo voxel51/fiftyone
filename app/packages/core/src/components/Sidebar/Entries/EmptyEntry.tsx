@@ -5,8 +5,9 @@ import React from "react";
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
 
-const EmptyEntry = ({ text }: { text: string }) => {
+const EmptyEntry = ({ useText }: { useText: () => string }) => {
   const theme = useTheme();
+  const text = useText();
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
   });

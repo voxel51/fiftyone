@@ -10,7 +10,6 @@ import {
 import {
   DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
-  getFetchFunction,
   LABELS_PATH,
   LABEL_DOC_TYPES,
   LIST_FIELD,
@@ -29,9 +28,9 @@ import {
   filterPaths,
   pathIsShown,
 } from "./schema";
+
 import { State } from "./types";
 import * as viewAtoms from "./view";
-import { datasetName } from "./selectors";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -64,6 +63,15 @@ export interface PathEntry {
 
 export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | InputEntry;
 
+export const useLabelTagText = (modal: boolean) => {
+  const loadingLabelTags =
+    useRecoilValueLoadable(
+      aggregationAtoms.labelTagCounts({ modal, extended: false })
+    ).state === "loading";
+
+  return loadingLabelTags ? "Loading label tags..." : "No label tags";
+};
+
 export const useTagText = (modal: boolean) => {
   const { singular } = useRecoilValue(viewAtoms.elementNames);
   const loadingTags =
@@ -71,15 +79,7 @@ export const useTagText = (modal: boolean) => {
       aggregationAtoms.aggregation({ modal, path: "tags", extended: false })
     ).state === "loading";
 
-  const loadingLabelTags =
-    useRecoilValueLoadable(
-      aggregationAtoms.labelTagCounts({ modal, extended: false })
-    ).state === "loading";
-
-  return {
-    sample: loadingTags ? `Loading ${singular} tags...` : `No ${singular} tags`,
-    label: loadingLabelTags ? "Loading label tags..." : "No label tags",
-  };
+  return loadingTags ? `Loading ${singular} tags...` : `No ${singular} tags`;
 };
 
 export const useEntries = (
@@ -132,13 +132,6 @@ export const RESERVED_GROUPS = new Set([
   "clips tags",
   "tags",
 ]);
-
-export const groupShown = atomFamily<boolean, { name: string; modal: boolean }>(
-  {
-    key: "sidebarGroupShown",
-    default: true,
-  }
-);
 
 const fieldsReducer =
   (ftypes: string[], docTypes: string[] = []) =>
@@ -283,27 +276,16 @@ const groupUpdater = (groups: State.SidebarGroups, schema: Schema) => {
   };
 };
 
-export const sidebarGroupsDefinition = atomFamily<State.SidebarGroups, boolean>(
-  {
-    key: "sidebarGroupsDefinition",
-    default: [],
-  }
-);
-
-export const persistGroups = (
-  dataset: string,
-  view: State.Stage[],
-  groups: State.SidebarGroups
-) => {
-  getFetchFunction()("POST", "/sidebar", {
-    dataset,
-    groups: groups.map(([name, paths]) => ({ name, paths })),
-    view,
-  });
-};
+export const sidebarGroupsDefinition = atomFamily<
+  State.SidebarGroup[],
+  boolean
+>({
+  key: "sidebarGroupsDefinition",
+  default: [],
+});
 
 export const sidebarGroups = selectorFamily<
-  State.SidebarGroups,
+  State.SidebarGroup[],
   { modal: boolean; loadingTags: boolean; filtered?: boolean }
 >({
   key: "sidebarGroups",
@@ -403,7 +385,6 @@ export const sidebarGroups = selectorFamily<
       });
 
       set(sidebarGroupsDefinition(modal), groups);
-      !modal && persistGroups(get(datasetName), get(viewAtoms.view), groups);
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -568,6 +549,17 @@ export const groupIsEmpty = selectorFamily<
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
+});
+
+export const groupShown = selectorFamily<
+  boolean,
+  { modal: boolean; group: string }
+>({
+  key: "groupShown",
+  get:
+    (params) =>
+    ({ get }) =>
+      true,
 });
 
 export const textFilter = atomFamily<string, boolean>({

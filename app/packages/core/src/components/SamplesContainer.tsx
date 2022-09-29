@@ -24,7 +24,6 @@ const Container = styled.div`
 `;
 
 const SamplesContainer = React.memo(() => {
-  const tagText = fos.useTagText(false);
   const showSidebar = useRecoilValue(fos.sidebarVisible(false));
   const disabled = useRecoilValue(fos.disabledPaths);
 
@@ -122,12 +121,12 @@ const SamplesContainer = React.memo(() => {
           return {
             children: (
               <Entries.Empty
-                text={
+                useText={
                   group === "tags"
-                    ? tagText.sample
+                    ? () => fos.useTagText(false)
                     : group === "label tags"
-                    ? tagText.label
-                    : "No fields"
+                    ? () => fos.useLabelTagText(false)
+                    : () => "No fields"
                 }
                 key={key}
               />
@@ -138,7 +137,7 @@ const SamplesContainer = React.memo(() => {
           throw new Error("invalid entry");
       }
     },
-    [tagText]
+    []
   );
 
   return (

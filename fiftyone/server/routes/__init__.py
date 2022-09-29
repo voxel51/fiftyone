@@ -16,7 +16,6 @@ from .pin import Pin
 from .plugins import Plugins
 from .samples import Samples
 from .select import Select
-from .sidebar import Sidebar
 from .sort import Sort
 from .stages import Stages
 from .tag import Tag
@@ -36,7 +35,6 @@ routes = [
     ("/plugins", Plugins),
     ("/samples", Samples),
     ("/select", Select),
-    ("/sidebar", Sidebar),
     ("/sort", Sort),
     ("/stages", Stages),
     ("/tag", Tag),

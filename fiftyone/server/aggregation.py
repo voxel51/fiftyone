@@ -95,19 +95,22 @@ class StringAggregation(Aggregation):
     values: t.List[StringAggregationValue]
 
 
-AggreationResult = t.Union[
-    BooleanAggregation,
-    DataAggregation,
-    IntAggregation,
-    FloatAggregation,
-    RootAggregation,
-    StringAggregation,
-]
+AggregationResult = gql.union(
+    "AggregationResult",
+    (
+        BooleanAggregation,
+        DataAggregation,
+        IntAggregation,
+        FloatAggregation,
+        RootAggregation,
+        StringAggregation,
+    ),
+)
 
 
 async def aggregation_resolver(
     form: AggregationForm,
-) -> AggreationResult:
+) -> AggregationResult:
     view = fosv.get_view(
         form.dataset,
         stages=form.view,
@@ -168,7 +171,7 @@ RESULT_MAPPING = {
 
 async def _resolve_path_aggregation(
     path: t.Union[None, str], view: foc.SampleCollection
-) -> AggreationResult:
+) -> AggregationResult:
     aggregations: t.List[foa.Aggregation] = [foa.Count(path if path else None)]
     field = view.get_field(path)
     while isinstance(field, fof.ListField):

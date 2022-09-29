@@ -86,9 +86,11 @@ export const datasetQuery = graphql`
         gridMediaField
         plugins
         sidebarGroups {
+          expanded
           name
           paths
         }
+        sidebarMode
       }
     }
   }

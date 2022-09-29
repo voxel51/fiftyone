@@ -150,8 +150,7 @@ const NumericFieldFilter = ({
   const one = bounds[0] === bounds[1];
   const timeZone = useRecoilValue(fos.timeZone);
 
-  if (!hasBounds && nonfinites.length === 1 && nonfinites[0][0] === "none")
-    return null;
+  console.log(nonfinites);
 
   return (
     <NamedRangeSliderContainer title={title}>
@@ -160,15 +159,31 @@ const NumericFieldFilter = ({
           {name.replaceAll("_", " ")}
         </NamedRangeSliderHeader>
       )}
+
       <RangeSliderContainer
         onMouseDown={(event) => event.stopPropagation()}
         style={{ cursor: "default" }}
       >
+        {!hasBounds && nonfinites.length === 0 && (
+          <Checkbox
+            key={"No results"}
+            color={color}
+            value={false}
+            disabled={true}
+            name={"No results"}
+            setValue={() => {}}
+          />
+        )}
         {hasBounds && !one ? (
           <RangeSlider
             showBounds={false}
             fieldType={ftype}
-            valueAtom={fos.rangeAtom({ modal, path, defaultRange })}
+            valueAtom={fos.rangeAtom({
+              modal,
+              path,
+              defaultRange,
+              withBounds: true,
+            })}
             boundsAtom={fos.boundsAtom({
               path,
               defaultRange,

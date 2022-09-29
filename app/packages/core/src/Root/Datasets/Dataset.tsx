@@ -8,9 +8,9 @@ import * as fos from "@fiftyone/state";
 import { Route, RouterContext } from "@fiftyone/state";
 import { getDatasetName } from "@fiftyone/state";
 import { usePreLoadedDataset } from "../../dataset";
-import { datasetQuery } from "../../__generated__/DatasetQuery.graphql";
+import { DatasetQuery } from "../../__generated__/DatasetQuery.graphql";
 
-export const Dataset: Route<datasetQuery> = ({ prepared }) => {
+export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const router = useContext(RouterContext);
   const [dataset, ready] = usePreLoadedDataset(prepared, router?.state);
   const name = useRecoilValue(fos.datasetName);

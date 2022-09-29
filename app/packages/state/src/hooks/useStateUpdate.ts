@@ -1,7 +1,12 @@
 import { RGB } from "@fiftyone/looker";
+import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
+import { useEffect } from "react";
+import { useMutation } from "react-relay";
 import {
   TransactionInterface_UNSTABLE,
+  useRecoilCallback,
   useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
 } from "recoil";
 import {
   aggregationsTick,
@@ -25,6 +30,8 @@ import {
   similarityParameters,
   extendedSelection,
   selectedMediaField,
+  dataset,
+  datasetName,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";

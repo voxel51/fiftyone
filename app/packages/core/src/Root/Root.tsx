@@ -217,6 +217,7 @@ const Root: Route<RootQuery> = ({ children, prepared }) => {
           showLabel
           showSkeletons
           showTooltip
+          sidebarMode
           timezone
           useFrameNumber
         }

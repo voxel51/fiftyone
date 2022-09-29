@@ -16,6 +16,8 @@ input AggregationForm {
   view: BSONArray!
 }
 
+union AggregationResult = BooleanAggregation | DataAggregation | IntAggregation | FloatAggregation | RootAggregation | StringAggregation
+
 type AppConfig {
   colorBy: ColorBy!
   colorPool: [String!]!
@@ -29,6 +31,7 @@ type AppConfig {
   showLabel: Boolean!
   showSkeletons: Boolean!
   showTooltip: Boolean!
+  sidebarMode: SidebarMode!
   timezone: String
   useFrameNumber: Boolean!
 }
@@ -43,14 +46,6 @@ type BooleanAggregation implements Aggregation {
   false: Int!
   true: Int!
 }
-
-union BooleanAggregationDataAggregationIntAggregationFloatAggregationRootAggregationStringAggregation =
-    BooleanAggregation
-  | DataAggregation
-  | IntAggregation
-  | FloatAggregation
-  | RootAggregation
-  | StringAggregation
 
 type BrainRun implements Run {
   key: String!
@@ -106,6 +101,7 @@ type DatasetAppConfig {
   mediaFields: [String!]!
   plugins: JSON
   sidebarGroups: [SidebarGroup!]
+  sidebarMode: SidebarMode
   modalMediaField: String
   gridMediaField: String
 }
@@ -128,14 +124,10 @@ type DatasetStrPageInfo {
   endCursor: String
 }
 
-"""
-Date (isoformat)
-"""
+"""Date (isoformat)"""
 scalar Date
 
-"""
-Date with time (isoformat)
-"""
+"""Date with time (isoformat)"""
 scalar DateTime
 
 type EvaluationRun implements Run {
@@ -208,29 +200,12 @@ type MediaURL {
 
 type Mutation {
   setDataset(subscription: String!, session: String, name: String): Boolean!
-  setSelected(
-    subscription: String!
-    session: String
-    selected: [String!]!
-  ): Boolean!
-  setSelectedLabels(
-    subscription: String!
-    session: String
-    selectedLabels: [SelectedLabel!]!
-  ): Boolean!
-  setView(
-    subscription: String!
-    session: String
-    view: BSONArray!
-    dataset: String!
-  ): ViewResponse!
+  setSidebarGroups(dataset: String!, stages: BSONArray!, sidebarGroups: [SidebarGroupInput!]!): Boolean!
+  setSelected(subscription: String!, session: String, selected: [String!]!): Boolean!
+  setSelectedLabels(subscription: String!, session: String, selectedLabels: [SelectedLabel!]!): Boolean!
+  setView(subscription: String!, session: String, view: BSONArray!, dataset: String!): ViewResponse!
   storeTeamsSubmission: Boolean!
-  setGroupSlice(
-    subscription: String!
-    session: String
-    view: BSONArray!
-    slice: String!
-  ): Dataset!
+  setGroupSlice(subscription: String!, session: String, view: BSONArray!, slice: String!): Dataset!
 }
 
 type NamedKeypointSkeleton {
@@ -251,27 +226,15 @@ type PointCloudSample implements Sample {
 }
 
 type Query {
-  datasets(
-    search: String
-    first: Int = 200
-    after: String = null
-  ): DatasetStrConnection!
-  aggregation(
-    form: AggregationForm!
-  ): BooleanAggregationDataAggregationIntAggregationFloatAggregationRootAggregationStringAggregation!
+  datasets(search: String, first: Int = 200, after: String = null): DatasetStrConnection!
+  aggregation(form: AggregationForm!): AggregationResult!
   colorscale: [[Int!]!]
   config: AppConfig!
   context: String!
   dev: Boolean!
   doNotTrack: Boolean!
   dataset(name: String!, view: BSONArray): Dataset
-  samples(
-    dataset: String!
-    view: BSONArray!
-    first: Int = 20
-    after: String = null
-    filter: SampleFilter = null
-  ): SampleItemStrConnection!
+  samples(dataset: String!, view: BSONArray!, first: Int = 20, after: String = null, filter: SampleFilter = null): SampleItemStrConnection!
   sample(dataset: String!, view: BSONArray!, filter: SampleFilter!): SampleItem
   teamsSubmission: Boolean!
   uid: String!
@@ -345,6 +308,19 @@ input SelectedLabel {
 type SidebarGroup {
   name: String!
   paths: [String!]
+  expanded: Boolean
+}
+
+input SidebarGroupInput {
+  name: String!
+  paths: [String!]
+  expanded: Boolean = true
+}
+
+enum SidebarMode {
+  best
+  fast
+  slow
 }
 
 type StringAggregation implements Aggregation {

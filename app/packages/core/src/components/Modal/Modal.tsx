@@ -43,7 +43,6 @@ const ContentColumn = styled.div`
 `;
 
 const SampleModal = () => {
-  const tagText = fos.useTagText(true);
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
   const clearModal = fos.useClearModal();
   const override = useRecoilValue(fos.sidebarOverride);
@@ -154,12 +153,12 @@ const SampleModal = () => {
           return {
             children: (
               <Entries.Empty
-                text={
+                useText={
                   group === "tags"
-                    ? tagText.sample
+                    ? () => fos.useTagText(true)
                     : group === "label tags"
-                    ? tagText.label
-                    : "No fields"
+                    ? () => fos.useLabelTagText(true)
+                    : () => "No fields"
                 }
                 key={key}
               />
@@ -175,7 +174,7 @@ const SampleModal = () => {
           throw new Error("invalid entry");
       }
     },
-    [tagText]
+    []
   );
 
   const screen = useRecoilValue(fos.fullscreen)

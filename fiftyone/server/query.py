@@ -116,6 +116,7 @@ class EvaluationRun(Run):
 class SidebarGroup:
     name: str
     paths: t.Optional[t.List[str]]
+    expanded: t.Optional[bool] = True
 
 
 @gql.type
@@ -129,11 +130,19 @@ class NamedKeypointSkeleton(KeypointSkeleton):
     name: str
 
 
+@gql.enum
+class SidebarMode(Enum):
+    best = "best"
+    fast = "fast"
+    slow = "slow"
+
+
 @gql.type
 class DatasetAppConfig:
     media_fields: t.List[str]
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
+    sidebar_mode: t.Optional[SidebarMode]
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
 
@@ -255,6 +264,7 @@ class AppConfig:
     show_label: bool
     show_skeletons: bool
     show_tooltip: bool
+    sidebar_mode: SidebarMode
     timezone: t.Optional[str]
     use_frame_number: bool
 

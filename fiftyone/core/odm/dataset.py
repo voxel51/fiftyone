@@ -326,6 +326,7 @@ class SidebarGroupDocument(EmbeddedDocument):
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"strict": False}
 
+    expanded = StringField(default=True, required=True)
     name = StringField(required=True)
     paths = ListField(StringField(), default=[])
 
@@ -390,6 +391,8 @@ class DatasetAppConfig(EmbeddedDocument):
         sidebar_groups (None): an optional list of
             :class:`SidebarGroupDocument` describing sidebar groups to create
             in the App
+        sidebar_mode ("best"): the loading behavior of the sidebar. "best",
+            "fast", or "slow"
         plugins ({}): an optional dict mapping plugin names to plugin
             configuration dicts. Builtin plugins include:
 
@@ -403,6 +406,7 @@ class DatasetAppConfig(EmbeddedDocument):
     media_fields = ListField(StringField(), default=["filepath"])
     grid_media_field = StringField(default="filepath")
     modal_media_field = StringField(default="filepath")
+    sidebar_mode = StringField(default=None)
     sidebar_groups = ListField(
         EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
     )

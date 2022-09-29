@@ -11,6 +11,7 @@ from copy import deepcopy
 import itertools
 import random
 import reprlib
+from tracemalloc import start
 import uuid
 import warnings
 
@@ -6939,6 +6940,53 @@ class ToFrames(ViewStage):
                 "placeholder": "config (default=None)",
             },
             {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
+
+
+class UnwindFrames(ViewStage):
+    def __init__(self, start=None, end=None):
+        self._start = start
+        self._end = end
+
+    @property
+    def start(self):
+        return self._start
+
+    @property
+    def end(self):
+        return self._end
+
+    def to_mongo(self, _):
+        if self._size <= 0:
+            return [{"$match": {"_id": None}}]
+
+        # @todo can we avoid creating a new field here?
+        return [
+            {"$unwind": "$frames"},
+            {"$sort": {"_rand_take": 1}},
+            {"$limit": self._size},
+            {"$unset": "_rand_take"},
+        ]
+
+    def _kwargs(self):
+        return [
+            ["start", self._start],
+            ["end", self._end],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {
+                "name": "start",
+                "type": "int",
+                "default": "None",
+            },
+            {
+                "name": "end",
+                "type": "int",
+                "default": "None",
+            },
         ]
 
 
