@@ -100,23 +100,11 @@ yarn add ssh://github.com/user/my-plugin#my-branch
 
 ## Configuring plugins
 
-In your `FIFTYONE_PLUGINS_DIR`, create a file named `settings.json`. Each top
-level property in this file corresponds to the name (package.json "name") of
-one of your installed plugins.
+You can store system-wide plugin configurations under the plugins key of your App config or dataset. This allows for configuring plugins at the application wide level or per dataset.
 
-Each plugin should describe what settings it supports. All plugins share the
-"enabled" setting. If set to `false` the plugin will not be loaded.
+See the [configuring plugins](https://voxel51.com/docs/fiftyone/user_guide/config.html#configuring-plugins) user guide for info on changing a plugin's configuration.
 
-Below is an example `settings.json` file:
-
-```json
-{
-  "3d": {
-    "enabled": true,
-    "defaultCameraPosition": { "x": 0, "y": 0, "z": 20 }
-  }
-}
-```
+> NOTE: you can see an example of dataset level plugin configuration in the [map plugin](https://voxel51.com/docs/fiftyone/user_guide/app.html#map-tab) user guide.
 
 ## Developing plugins
 
@@ -353,22 +341,38 @@ or tokens. Below is an example for how to provide and read these credentials.
 The same mechanism can be used to expose configuration to plugin users, such as
 color choices, and default values.
 
-You can store your credentials in your plugin settings located at
-`${FIFTYONE_PLUGINS_DIR}/settings.json`:
+You can store a setting in either the App config or an individual dataset. Here's an example of both.
 
-```json
+```js
+// app_config.json
 {
-  "my-map-box-plugin": {
-    "mapboxAPIKey": "..."
+  "plugins": {
+    "my-plugin": {
+      "mysetting": "foo"
+    }
   }
 }
+```
+
+Now lets take that setting and change it for the `quickstart` dataset.
+
+```py
+import fiftyone as fo
+dataset = fo.load_dataset("quickstart")
+
+# Modify the dataset's App config
+dataset.app_config.plugins["my-plugin"] = {
+  "mysetting": "bar"
+}
+
+dataset.save()
 ```
 
 Then in your plugin implementation, you can read settings with the
 `useSettings` hook:
 
 ```js
-const { mapboxAPIKey } = fop.useSettings("my-map-box-plugin");
+const { mysetting } = fop.useSettings("my-plugin");
 ```
 
 ## Querying FiftyOne
