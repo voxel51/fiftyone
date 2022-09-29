@@ -5,13 +5,7 @@ behavior!
 
 This document describes how to develop, publish, and install custom plugins.
 
-## Installing plugins
-
-In order to install plugins you must have one of the following tools available
-in the environment you are running FiftyOne:
-
-- `npm`
-- `yarn`
+## Configuring your plugin directory
 
 First, create a directory where you want to store your plugins.
 
@@ -31,7 +25,44 @@ You can also permanently configure this directory by adding it to your
 }
 ```
 
-NOTE: your plugins directory must be readable by the FiftyOne server.
+If you are running an instance of your fiftyone app server, you will need to restart it to
+pick up this new setting.
+
+> NOTE: your plugins directory must be readable by the FiftyOne server.
+
+## Installing plugins manually
+
+Fiftyone will try and find your plugin's `package.json` file within the plugin directory
+described above. Below is an example of a typical plugin directory.
+
+```txt
+/my-fiftyone-plugins
+  /my-plugin-1
+    /package.json
+    /dist
+      /my-plugin.min.js
+  /my-plugin-2
+    /package.json
+    /dist
+      /my-plugin2.min.js
+```
+
+In order to manually install a plugin, you must copy the plugin's directory into your plugin directory so that it matches the structure above.
+
+If your fiftyone app server is already running, you should restart the server and refresh any connected browser clients to see the plugins show up.
+
+> NOTE: if you do not see your plugin - make sure the package.json file is present and
+> has the appropriate `fiftyone.script` setting described below.
+
+## Installing plugins with a package manager or git
+
+In order to install plugins with a package manager,
+you must have one of the following tools available
+in the environment you are running FiftyOne:
+
+- `npm`
+- `yarn`
+- `git` - if installing from a git repo
 
 Once you have a plugins directory setup, you must create a shell package to
 version your plugins:
@@ -118,7 +149,7 @@ Then follow the steps below, in separate terminal sessions as needed.
 FIFTYONE_PLUGINS_DIR=/path/to/your/plugins
 
 # start the FiftyOne App in dev mode
-cd $FIFTYONE/app/packaages/app
+cd $FIFTYONE/app/packages/app
 yarn dev
 
 # start the FiftyOne python server (in a separate session)
@@ -126,7 +157,7 @@ cd $FIFTYONE
 python fiftyone/server/main.py
 
 # ensure your plugin has a symlink to the @fiftyone/plugins package
-cd $FIFTYONE/app/packaages/plugins
+cd $FIFTYONE/app/packages/plugins
 npm link
 cd $MY_PLUGIN
 npm link @fiftyone/plugins
