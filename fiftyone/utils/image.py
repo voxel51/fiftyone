@@ -98,6 +98,7 @@ def transform_images(
     delete_originals=False,
     num_workers=None,
     skip_failures=False,
+    interpolation=1,
 ):
     """Transforms the images in the sample collection according to the provided
     parameters.
@@ -147,6 +148,7 @@ def transform_images(
             ``multiprocessing.cpu_count()`` is used
         skip_failures (False): whether to gracefully continue without raising
             an error if an image cannot be transformed
+        interpolation (int): the interpolation method used for image resizing
     """
     fov.validate_image_collection(sample_collection)
 
@@ -164,6 +166,7 @@ def transform_images(
         delete_originals=delete_originals,
         num_workers=num_workers,
         skip_failures=skip_failures,
+        interpolation=interpolation,
     )
 
 
@@ -178,7 +181,12 @@ def reencode_image(input_path, output_path):
 
 
 def transform_image(
-    input_path, output_path, size=None, min_size=None, max_size=None
+    input_path,
+    output_path,
+    size=None,
+    min_size=None,
+    max_size=None,
+    interpolation=1,
 ):
     """Transforms the image according to the provided parameters.
 
@@ -193,6 +201,7 @@ def transform_image(
         max_size (None): an optional maximum ``(width, height)`` for the image.
             A dimension can be -1 if no constraint should be applied. The image
             is resized (aspect-preserving) if necessary to meet this constraint
+        interpolation (int): the interpolation method used for image resizing
     """
     _transform_image(
         input_path,
@@ -200,6 +209,7 @@ def transform_image(
         size=size,
         min_size=min_size,
         max_size=max_size,
+        interpolation=interpolation,
     )
 
 
@@ -217,6 +227,7 @@ def _transform_images(
     delete_originals=False,
     num_workers=None,
     skip_failures=False,
+    interpolation=1,
 ):
     ext = _parse_ext(ext)
 
@@ -237,6 +248,7 @@ def _transform_images(
             rel_dir=rel_dir,
             delete_originals=delete_originals,
             skip_failures=skip_failures,
+            interpolation=interpolation,
         )
     else:
         _transform_images_multi(
@@ -253,6 +265,7 @@ def _transform_images(
             rel_dir=rel_dir,
             delete_originals=delete_originals,
             skip_failures=skip_failures,
+            interpolation=interpolation,
         )
 
 
@@ -269,6 +282,7 @@ def _transform_images_single(
     rel_dir=None,
     delete_originals=False,
     skip_failures=False,
+    interpolation=1,
 ):
     if output_field is None:
         output_field = media_field
@@ -297,6 +311,7 @@ def _transform_images_single(
                 force_reencode=force_reencode,
                 delete_original=delete_originals,
                 skip_failures=skip_failures,
+                interpolation=interpolation,
             )
 
             if diff_field or outpath != inpath:
@@ -318,6 +333,7 @@ def _transform_images_multi(
     rel_dir=None,
     delete_originals=False,
     skip_failures=False,
+    interpolation=1,
 ):
     if output_field is None:
         output_field = media_field
@@ -344,6 +360,7 @@ def _transform_images_multi(
                 force_reencode,
                 delete_originals,
                 skip_failures,
+                interpolation,
             )
         )
 
@@ -378,6 +395,7 @@ def _transform_image(
     force_reencode=False,
     delete_original=False,
     skip_failures=False,
+    interpolation=1,
 ):
     inpath = fou.normalize_path(inpath)
     outpath = fou.normalize_path(outpath)
@@ -398,7 +416,9 @@ def _transform_image(
             size = _parse_parameters(img, size, min_size, max_size)
 
         if size is not None:
-            img = etai.resize(img, width=size[0], height=size[1])
+            img = etai.resize(
+                img, width=size[0], height=size[1], interpolation=interpolation
+            )
             etai.write(img, outpath)
             did_transform = True
         elif force_reencode or (in_ext != out_ext):
