@@ -150,6 +150,15 @@ const NumericFieldFilter = ({
   const one = bounds[0] === bounds[1];
   const timeZone = useRecoilValue(fos.timeZone);
 
+  const hasNonfinites = !(
+    nonfinites.length === 0 ||
+    (nonfinites.length === 1 && nonfinites[0][0] === "none")
+  );
+
+  if (!hasNonfinites && !hasBounds && named) {
+    return null;
+  }
+
   return (
     <NamedRangeSliderContainer title={title}>
       {named && name && (
@@ -162,7 +171,7 @@ const NumericFieldFilter = ({
         onMouseDown={(event) => event.stopPropagation()}
         style={{ cursor: "default" }}
       >
-        {!hasBounds && nonfinites.length === 0 && (
+        {!hasBounds && !named && !hasNonfinites && (
           <Checkbox
             key={"No results"}
             color={color}

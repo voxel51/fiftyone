@@ -68,10 +68,9 @@ class Mutation:
         stages: BSONArray,
         sidebar_groups: t.List[SidebarGroupInput],
     ) -> bool:
-        dataset = fo.load_dataset(dataset)
         view = get_view(dataset, stages)
 
-        view._dataset.doc.app_config.sidebar_groups = [
+        view._dataset.app_config.sidebar_groups = [
             foo.SidebarGroupDocument(
                 name=group.name, expanded=group.expanded, paths=group.paths
             )

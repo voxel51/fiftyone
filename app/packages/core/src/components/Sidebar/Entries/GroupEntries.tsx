@@ -25,7 +25,12 @@ import { PillButton } from "../../utils";
 
 import { useTheme } from "@fiftyone/components";
 import Draggable from "./Draggable";
-import { getDatasetName } from "@fiftyone/state";
+import {
+  datasetName,
+  getDatasetName,
+  readableTags,
+  State,
+} from "@fiftyone/state";
 import { RouterContext } from "@fiftyone/state";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
@@ -132,8 +137,6 @@ const numGroupFieldsActive = selectorFamily<
 export const replace = {};
 
 export const useRenameGroup = (modal: boolean, group: string) => {
-  const context = useContext(RouterContext);
-
   return useRecoilCallback(
     ({ set, snapshot }) =>
       async (newName: string) => {
@@ -144,28 +147,33 @@ export const useRenameGroup = (modal: boolean, group: string) => {
         );
         if (
           !fos.validateGroupName(
-            current.map(([name]) => name).filter((name) => name !== group),
+            current.map(({ name }) => name).filter((name) => name !== group),
             newName
           )
         ) {
           return false;
         }
 
-        const newGroups = current.map<[string, string[]]>(([name, paths]) => [
-          name === group ? newName : name,
-          paths,
-        ]);
+        const newGroups = current.map(({ name, ...rest }) => ({
+          name: name === group ? newName : name,
+          ...rest,
+        }));
 
         const view = await snapshot.getPromise(fos.view);
         const shown = await snapshot.getPromise(
-          fos.groupShown({ modal, name: group })
+          fos.groupShown({ modal, group })
         );
 
         replace[newName] = group;
 
-        set(fos.groupShown({ name: newName, modal }), shown);
+        set(fos.groupShown({ group: newName, modal }), shown);
         set(fos.sidebarGroupsDefinition(modal), newGroups);
-        !modal && fos.persistGroups(getDatasetName(context), view, newGroups);
+        !modal &&
+          fos.persistSidebarGroups({
+            dataset: await snapshot.getPromise(datasetName),
+            stages: view,
+            sidebarGroups: newGroups,
+          });
         return true;
       },
     []
@@ -223,15 +231,6 @@ const useClearActive = (modal: boolean, group: string) => {
   );
 };
 
-const getTags = (modal, tagKey) =>
-  tagKey === fos.State.TagKey.LABEL
-    ? fos.cumulativeValues({
-        extended: false,
-        modal,
-        ...fos.MATCH_LABEL_TAGS,
-      })
-    : fos.values({ extended: false, modal, path: "tags" });
-
 const useClearMatched = ({
   modal,
   tagKey,
@@ -242,12 +241,12 @@ const useClearMatched = ({
   const [matched, setMatched] = useRecoilState(
     fos.matchedTags({ key: tagKey, modal })
   );
+  const group = tagKey === State.TagKey.LABEL ? "label tags" : "tags";
 
-  const current = useRecoilValueLoadable(getTags(modal, tagKey));
-  const all = useRecoilValueLoadable(getTags(modal, tagKey));
+  const current = useRecoilValueLoadable(readableTags({ modal, group }));
 
   useLayoutEffect(() => {
-    if (current.state === "loading" || all.state === "loading") return;
+    if (current.state === "loading") return;
 
     const newMatches = new Set<string>();
     matched.forEach((tag) => {
@@ -255,7 +254,7 @@ const useClearMatched = ({
     });
 
     newMatches.size !== matched.size && setMatched(newMatches);
-  }, [matched, current, all]);
+  }, [matched]);
 
   return () => setMatched(new Set());
 };
@@ -504,11 +503,11 @@ export const TagGroupEntry = React.memo(
     ) => void;
   }) => {
     const [expanded, setExpanded] = useRecoilState(
-      fos.groupShown({ name: TAGS[tagKey], modal })
+      fos.groupShown({ group: TAGS[tagKey], modal })
     );
-    const { plural } = useRecoilValue(fos.elementNames);
+    const { singular } = useRecoilValue(fos.elementNames);
     const name = `${
-      tagKey === fos.State.TagKey.SAMPLE ? plural : "label"
+      tagKey === fos.State.TagKey.SAMPLE ? singular : "label"
     } tags`;
 
     return (
@@ -564,7 +563,7 @@ interface PathGroupProps {
 export const PathGroupEntry = React.memo(
   ({ entryKey, name, modal, mutable = true, trigger }: PathGroupProps) => {
     const [expanded, setExpanded] = useRecoilState(
-      fos.groupShown({ name, modal })
+      fos.groupShown({ group: name, modal })
     );
     const renameGroup = useRenameGroup(modal, name);
     const onDelete = !modal ? useDeleteGroup(modal, name) : null;

@@ -42,7 +42,6 @@ const App: React.FC = ({}) => {
   const readyStateRef = useRef<AppReadyState>();
   readyStateRef.current = readyState;
   const subscription = useRecoilValue(stateSubscription);
-  const refresh = useRefresh();
   const refreshRouter = useRecoilValue(refresher);
 
   const { context, environment } = useRouter(makeRoutes, [

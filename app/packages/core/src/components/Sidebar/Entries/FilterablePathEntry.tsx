@@ -282,6 +282,7 @@ const FilterableEntry = React.memo(
         backgroundColor={backgroundColor}
         color={color}
         entryKey={entryKey}
+        clickable={true}
         heading={
           <>
             {!disabled && (

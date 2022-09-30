@@ -250,7 +250,7 @@ const Options = ({ modal, bounds }: OptionsProps) => {
       <Keypoints modal={modal} />
       <MediaFields modal={modal} />
       <Patches modal={modal} />
-      <SidebarMode modal={modal} />
+      {!modal && <SidebarMode modal={modal} />}
       <SortFilterResults modal={modal} />
     </Popout>
   );

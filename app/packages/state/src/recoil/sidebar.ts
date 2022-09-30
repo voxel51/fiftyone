@@ -31,6 +31,10 @@ import {
 
 import { State } from "./types";
 import * as viewAtoms from "./view";
+import { commitMutation, VariablesOf } from "react-relay";
+import { getCurrentEnvironment } from "../hooks/useRouter";
+import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
+import { datasetName } from "./selectors";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -63,11 +67,34 @@ export interface PathEntry {
 
 export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | InputEntry;
 
+export const readableTags = selectorFamily<
+  string[],
+  { group: "tags" | "label tags"; modal: boolean }
+>({
+  key: "readableTags",
+  get:
+    ({ modal, group }) =>
+    ({ get }) => {
+      if (!modal && !get(groupShown({ group, modal }))) {
+        return [];
+      }
+
+      return get(
+        group === "label tags"
+          ? aggregationAtoms.cumulativeValues({
+              extended: false,
+              modal,
+              ...MATCH_LABEL_TAGS,
+            })
+          : aggregationAtoms.values({ extended: false, modal, path: "tags" })
+      );
+    },
+});
+
 export const useLabelTagText = (modal: boolean) => {
   const loadingLabelTags =
-    useRecoilValueLoadable(
-      aggregationAtoms.labelTagCounts({ modal, extended: false })
-    ).state === "loading";
+    useRecoilValueLoadable(readableTags({ modal, group: "label tags" }))
+      .state === "loading";
 
   return loadingLabelTags ? "Loading label tags..." : "No label tags";
 };
@@ -75,9 +102,8 @@ export const useLabelTagText = (modal: boolean) => {
 export const useTagText = (modal: boolean) => {
   const { singular } = useRecoilValue(viewAtoms.elementNames);
   const loadingTags =
-    useRecoilValueLoadable(
-      aggregationAtoms.aggregation({ modal, path: "tags", extended: false })
-    ).state === "loading";
+    useRecoilValueLoadable(readableTags({ modal, group: "tags" })).state ===
+    "loading";
 
   return loadingTags ? `Loading ${singular} tags...` : `No ${singular} tags`;
 };
@@ -301,8 +327,7 @@ export const sidebarGroups = selectorFamily<
             : paths,
         }))
         .filter(
-          ({ name, paths, expanded }) =>
-            (paths.length || name !== "other") && expanded
+          ({ name, paths }) => paths.length || name !== "other"
         ) as State.SidebarGroup[];
 
       if (!groups.length) return [];
@@ -313,22 +338,24 @@ export const sidebarGroups = selectorFamily<
       const labelTagsIndex = groupNames.indexOf("label tags");
 
       if (!loadingTags) {
-        groups[tagsIndex].paths = get(
-          aggregationAtoms.values({ extended: false, modal, path: "tags" })
-        )
-          .filter((tag) => !filtered || tag.includes(f))
-          .map((tag) => `tags.${tag}`);
-        groups[labelTagsIndex].paths = get(
-          aggregationAtoms.cumulativeValues({
-            extended: false,
-            modal: false,
-            path: "tags",
-            ftype: EMBEDDED_DOCUMENT_FIELD,
-            embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
-          })
-        )
-          .filter((tag) => !filtered || tag.includes(f))
-          .map((tag) => `_label_tags.${tag}`);
+        groups[tagsIndex].expanded &&
+          (groups[tagsIndex].paths = get(
+            aggregationAtoms.values({ extended: false, modal, path: "tags" })
+          )
+            .filter((tag) => !filtered || tag.includes(f))
+            .map((tag) => `tags.${tag}`));
+        groups[labelTagsIndex].expanded &&
+          (groups[labelTagsIndex].paths = get(
+            aggregationAtoms.cumulativeValues({
+              extended: false,
+              modal: false,
+              path: "tags",
+              ftype: EMBEDDED_DOCUMENT_FIELD,
+              embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
+            })
+          )
+            .filter((tag) => !filtered || tag.includes(f))
+            .map((tag) => `_label_tags.${tag}`));
       }
 
       return groups;
@@ -386,11 +413,31 @@ export const sidebarGroups = selectorFamily<
       });
 
       set(sidebarGroupsDefinition(modal), groups);
+
+      if (groups instanceof DefaultValue) {
+        return;
+      }
+
+      !modal &&
+        persistSidebarGroups({
+          dataset: get(datasetName),
+          stages: get(viewAtoms.view),
+          sidebarGroups: groups,
+        });
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
 });
+
+export const persistSidebarGroups = (
+  variables: VariablesOf<setSidebarGroupsMutation>
+) => {
+  commitMutation<setSidebarGroupsMutation>(getCurrentEnvironment(), {
+    mutation: setSidebarGroups,
+    variables,
+  });
+};
 
 export const sidebarEntries = selectorFamily<
   SidebarEntry[],
@@ -435,14 +482,23 @@ export const sidebarEntries = selectorFamily<
     },
   set:
     (params) =>
-    ({ set }, value) => {
+    ({ set, get }, value) => {
       if (value instanceof DefaultValue) return;
 
       set(
         sidebarGroups(params),
         value.reduce((result, entry) => {
           if (entry.kind === EntryKind.GROUP) {
-            return [...result, [entry.name, []]];
+            return [
+              ...result,
+              {
+                name: entry.name,
+                expanded: get(
+                  groupShown({ modal: params.modal, group: entry.name })
+                ),
+                paths: [],
+              },
+            ];
           }
 
           if (entry.kind !== EntryKind.PATH) {
@@ -497,6 +553,21 @@ export const disabledPaths = selector<Set<string>>({
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
+});
+
+export const sidebarGroupMapping = selectorFamily<
+  { [name: string]: Omit<State.SidebarGroup, "name"> },
+  { modal: boolean; loadingTags: boolean; filtered?: boolean }
+>({
+  key: "sidebarGroupMapping",
+  get:
+    (params) =>
+    ({ get }) => {
+      const groups = get(sidebarGroups(params));
+      return Object.fromEntries(
+        groups.map(({ name, ...rest }) => [name, rest])
+      );
+    },
 });
 
 export const sidebarGroup = selectorFamily<
@@ -556,9 +627,24 @@ export const groupShown = selectorFamily<
 >({
   key: "groupShown",
   get:
-    (params) =>
-    ({ get }) =>
-      true,
+    ({ group, modal }) =>
+    ({ get }) => {
+      return get(sidebarGroupMapping({ modal, loadingTags: true }))[group]
+        .expanded;
+    },
+  set:
+    ({ modal, group }) =>
+    ({ get, set }, expanded) => {
+      const current = get(sidebarGroups({ modal, loadingTags: true }));
+      set(
+        sidebarGroups({ modal, loadingTags: true }),
+        current.map(({ name, ...data }) =>
+          name === group
+            ? { name, ...data, expanded: Boolean(expanded) }
+            : { name, ...data }
+        )
+      );
+    },
 });
 
 export const textFilter = atomFamily<string, boolean>({

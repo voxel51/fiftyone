@@ -6,7 +6,8 @@ import * as fos from "@fiftyone/state";
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 
 import { pathIsExpanded } from "./utils";
-import { sidebarMode } from "@fiftyone/state";
+
+const BEST_COUNT = 51000;
 
 const showEntryCounts = selectorFamily<
   boolean,
@@ -16,11 +17,26 @@ const showEntryCounts = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      if (params.path === "" || get(sidebarMode(params.modal)) === "slow") {
+      const mode = get(fos.sidebarMode(params.modal));
+      if (
+        params.modal ||
+        params.path === "" ||
+        mode === "slow" ||
+        get(pathIsExpanded(params))
+      ) {
         return true;
       }
 
-      return get(pathIsExpanded(params));
+      if (
+        mode === "best" &&
+        (get(
+          fos.count({ modal: false, extended: false, path: "" })
+        ) as number) <= BEST_COUNT
+      ) {
+        return true;
+      }
+
+      return false;
     },
 });
 
