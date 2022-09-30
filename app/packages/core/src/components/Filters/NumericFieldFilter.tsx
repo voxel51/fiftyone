@@ -150,8 +150,6 @@ const NumericFieldFilter = ({
   const one = bounds[0] === bounds[1];
   const timeZone = useRecoilValue(fos.timeZone);
 
-  console.log(nonfinites);
-
   return (
     <NamedRangeSliderContainer title={title}>
       {named && name && (

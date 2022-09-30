@@ -181,20 +181,18 @@ const DEFAULT_VIDEO_GROUPS = [
   { name: "other", paths: [] },
 ];
 
-export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
-  let source = dataset?.appConfig?.sidebarGroups;
+export const resolveGroups = (dataset: State.Dataset): State.SidebarGroup[] => {
+  let groups = dataset?.appConfig?.sidebarGroups;
 
-  if (!source) {
-    source = dataset.frameFields.length
+  if (!groups) {
+    groups = dataset.frameFields.length
       ? DEFAULT_VIDEO_GROUPS
       : DEFAULT_IMAGE_GROUPS;
+
+    groups = groups.map((params) => ({ expanded: true, ...params }));
   }
 
-  const groups = source.map(({ name, paths }) => [
-    name,
-    paths,
-  ]) as State.SidebarGroups;
-  const present = new Set(groups.map(([_, paths]) => paths).flat());
+  const present = new Set(groups.map(({ paths }) => paths).flat());
 
   const updater = groupUpdater(groups, buildSchema(dataset));
 
@@ -255,11 +253,11 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
   return groups;
 };
 
-const groupUpdater = (groups: State.SidebarGroups, schema: Schema) => {
-  const groupNames = groups.map(([name]) => name);
+const groupUpdater = (groups: State.SidebarGroup[], schema: Schema) => {
+  const groupNames = groups.map(({ name }) => name);
 
   for (let i = 0; i < groups.length; i++) {
-    groups[i][1] = filterPaths(groups[i][1], schema);
+    groups[i].paths = filterPaths(groups[i].paths, schema);
   }
 
   return (name: string, paths: string[]) => {
@@ -267,12 +265,12 @@ const groupUpdater = (groups: State.SidebarGroups, schema: Schema) => {
 
     const index = groupNames.indexOf(name);
     if (index < 0) {
-      groups.push([name, paths]);
+      groups.push({ name, paths, expanded: true });
       return;
     }
 
-    const group = groups[index][1];
-    groups[index][1] = [...group, ...paths];
+    const group = groups[index].paths;
+    groups[index].paths = [...group, ...paths];
   };
 };
 
@@ -293,31 +291,34 @@ export const sidebarGroups = selectorFamily<
     ({ modal, loadingTags, filtered = true }) =>
     ({ get }) => {
       const f = get(textFilter(modal));
+
       let groups = get(sidebarGroupsDefinition(modal))
-        .map(([name, paths]) => [
-          name,
-          filtered
+        .map(({ paths, ...rest }) => ({
+          ...rest,
+
+          paths: filtered
             ? paths.filter((path) => get(pathIsShown(path)) && path.includes(f))
             : paths,
-        ])
+        }))
         .filter(
-          ([name, entries]) => entries.length || name !== "other"
-        ) as State.SidebarGroups;
+          ({ name, paths, expanded }) =>
+            (paths.length || name !== "other") && expanded
+        ) as State.SidebarGroup[];
 
       if (!groups.length) return [];
 
-      const groupNames = groups.map(([name]) => name);
+      const groupNames = groups.map(({ name }) => name);
 
       const tagsIndex = groupNames.indexOf("tags");
       const labelTagsIndex = groupNames.indexOf("label tags");
 
       if (!loadingTags) {
-        groups[tagsIndex][1] = get(
+        groups[tagsIndex].paths = get(
           aggregationAtoms.values({ extended: false, modal, path: "tags" })
         )
           .filter((tag) => !filtered || tag.includes(f))
           .map((tag) => `tags.${tag}`);
-        groups[labelTagsIndex][1] = get(
+        groups[labelTagsIndex].paths = get(
           aggregationAtoms.cumulativeValues({
             extended: false,
             modal: false,
@@ -337,11 +338,11 @@ export const sidebarGroups = selectorFamily<
     ({ set, get }, groups) => {
       if (groups instanceof DefaultValue) return;
 
-      const allPaths = new Set(groups.map(([_, paths]) => paths).flat());
+      const allPaths = new Set(groups.map(({ paths }) => paths).flat());
 
-      groups = groups.map(([name, paths]) => {
+      groups = groups.map(({ name, paths, expanded }) => {
         if (["tags", "label tags"].includes(name)) {
-          return [name, []];
+          return { name, paths: [], expanded };
         }
 
         const result = [];
@@ -381,7 +382,7 @@ export const sidebarGroups = selectorFamily<
 
         fill();
 
-        return [name, result];
+        return { name, paths: result, expanded };
       });
 
       set(sidebarGroupsDefinition(modal), groups);
@@ -402,21 +403,19 @@ export const sidebarEntries = selectorFamily<
       const entries = [
         { type: "filter", kind: EntryKind.INPUT } as InputEntry,
         ...get(sidebarGroups(params))
-          .map(([groupName, paths]) => {
+          .map(({ name, paths }) => {
             const group: GroupEntry = {
-              name: groupName,
+              name: name,
               kind: EntryKind.GROUP,
             };
-            const shown = get(
-              groupShown({ name: groupName, modal: params.modal })
-            );
+            const shown = get(groupShown({ group: name, modal: params.modal }));
 
             return [
               group,
               {
                 kind: EntryKind.EMPTY,
                 shown: paths.length === 0 && shown,
-                group: groupName,
+                group: name,
               } as EmptyEntry,
               ...paths.map<PathEntry>((path) => ({
                 path,
@@ -457,9 +456,9 @@ export const sidebarEntries = selectorFamily<
             return result;
           }
 
-          result[result.length - 1][1].push(entry.path);
+          result[result.length - 1].paths.push(entry.path);
           return result;
-        }, [])
+        }, [] as State.SidebarGroup[])
       );
     },
   cachePolicy_UNSTABLE: {
@@ -509,10 +508,10 @@ export const sidebarGroup = selectorFamily<
     ({ group, ...params }) =>
     ({ get }) => {
       const match = get(sidebarGroups(params)).filter(
-        ([name]) => name === group
+        ({ name }) => name === group
       );
 
-      return match.length ? match[0][1] : [];
+      return match.length ? match[0].paths : [];
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -525,7 +524,7 @@ export const sidebarGroupNames = selectorFamily<string[], boolean>({
     (modal) =>
     ({ get }) => {
       return get(sidebarGroups({ modal, loadingTags: true })).map(
-        ([name]) => name
+        ({ name }) => name
       );
     },
   cachePolicy_UNSTABLE: {

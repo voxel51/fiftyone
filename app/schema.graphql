@@ -16,7 +16,13 @@ input AggregationForm {
   view: BSONArray!
 }
 
-union AggregationResult = BooleanAggregation | DataAggregation | IntAggregation | FloatAggregation | RootAggregation | StringAggregation
+union AggregationResult =
+    BooleanAggregation
+  | DataAggregation
+  | IntAggregation
+  | FloatAggregation
+  | RootAggregation
+  | StringAggregation
 
 type AppConfig {
   colorBy: ColorBy!
@@ -124,10 +130,14 @@ type DatasetStrPageInfo {
   endCursor: String
 }
 
-"""Date (isoformat)"""
+"""
+Date (isoformat)
+"""
 scalar Date
 
-"""Date with time (isoformat)"""
+"""
+Date with time (isoformat)
+"""
 scalar DateTime
 
 type EvaluationRun implements Run {
@@ -200,12 +210,34 @@ type MediaURL {
 
 type Mutation {
   setDataset(subscription: String!, session: String, name: String): Boolean!
-  setSidebarGroups(dataset: String!, stages: BSONArray!, sidebarGroups: [SidebarGroupInput!]!): Boolean!
-  setSelected(subscription: String!, session: String, selected: [String!]!): Boolean!
-  setSelectedLabels(subscription: String!, session: String, selectedLabels: [SelectedLabel!]!): Boolean!
-  setView(subscription: String!, session: String, view: BSONArray!, dataset: String!): ViewResponse!
+  setSidebarGroups(
+    dataset: String!
+    stages: BSONArray!
+    sidebarGroups: [SidebarGroupInput!]!
+  ): Boolean!
+  setSelected(
+    subscription: String!
+    session: String
+    selected: [String!]!
+  ): Boolean!
+  setSelectedLabels(
+    subscription: String!
+    session: String
+    selectedLabels: [SelectedLabel!]!
+  ): Boolean!
+  setView(
+    subscription: String!
+    session: String
+    view: BSONArray!
+    dataset: String!
+  ): ViewResponse!
   storeTeamsSubmission: Boolean!
-  setGroupSlice(subscription: String!, session: String, view: BSONArray!, slice: String!): Dataset!
+  setGroupSlice(
+    subscription: String!
+    session: String
+    view: BSONArray!
+    slice: String!
+  ): Dataset!
 }
 
 type NamedKeypointSkeleton {
@@ -226,7 +258,11 @@ type PointCloudSample implements Sample {
 }
 
 type Query {
-  datasets(search: String, first: Int = 200, after: String = null): DatasetStrConnection!
+  datasets(
+    search: String
+    first: Int = 200
+    after: String = null
+  ): DatasetStrConnection!
   aggregation(form: AggregationForm!): AggregationResult!
   colorscale: [[Int!]!]
   config: AppConfig!
@@ -234,7 +270,13 @@ type Query {
   dev: Boolean!
   doNotTrack: Boolean!
   dataset(name: String!, view: BSONArray): Dataset
-  samples(dataset: String!, view: BSONArray!, first: Int = 20, after: String = null, filter: SampleFilter = null): SampleItemStrConnection!
+  samples(
+    dataset: String!
+    view: BSONArray!
+    first: Int = 20
+    after: String = null
+    filter: SampleFilter = null
+  ): SampleItemStrConnection!
   sample(dataset: String!, view: BSONArray!, filter: SampleFilter!): SampleItem
   teamsSubmission: Boolean!
   uid: String!

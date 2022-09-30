@@ -76,7 +76,7 @@ export namespace State {
   }
 
   export interface SidebarGroup {
-    expanded: boolean;
+    expanded?: boolean;
     name: string;
     paths: string[];
   }

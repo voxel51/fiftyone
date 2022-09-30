@@ -13,13 +13,15 @@ const showEntryCounts = selectorFamily<
   { path: string; modal: boolean }
 >({
   key: "showEntryCounts",
-  get: (params) => ({ get, ...ee }) => {
-    if (get(sidebarMode(params.modal)) === "slow") {
-      return true;
-    }
+  get:
+    (params) =>
+    ({ get }) => {
+      if (params.path === "" || get(sidebarMode(params.modal)) === "slow") {
+        return true;
+      }
 
-    return get(pathIsExpanded(params));
-  },
+      return get(pathIsExpanded(params));
+    },
 });
 
 export const PathEntryCounts = ({
@@ -53,14 +55,16 @@ const labelTagCount = selectorFamily<
   { modal: boolean; tag: string; extended: boolean }
 >({
   key: `labelTagCount`,
-  get: ({ tag, ...rest }) => ({ get }) =>
-    get(
-      fos.cumulativeCounts({
-        path: tag,
-        ...fos.MATCH_LABEL_TAGS,
-        ...rest,
-      })
-    )[tag] || 0,
+  get:
+    ({ tag, ...rest }) =>
+    ({ get }) =>
+      get(
+        fos.cumulativeCounts({
+          path: tag,
+          ...fos.MATCH_LABEL_TAGS,
+          ...rest,
+        })
+      )[tag] || 0,
 });
 
 export const tagIsMatched = selectorFamily<
@@ -68,19 +72,23 @@ export const tagIsMatched = selectorFamily<
   { key: fos.State.TagKey; tag: string; modal: boolean }
 >({
   key: "tagIsActive",
-  get: ({ key, tag, modal }) => ({ get }) =>
-    get(fos.matchedTags({ key, modal })).has(tag),
-  set: ({ key, tag, modal }) => ({ get, set }, toggle) => {
-    const atom = fos.matchedTags({ key, modal });
-    const current = get(atom);
+  get:
+    ({ key, tag, modal }) =>
+    ({ get }) =>
+      get(fos.matchedTags({ key, modal })).has(tag),
+  set:
+    ({ key, tag, modal }) =>
+    ({ get, set }, toggle) => {
+      const atom = fos.matchedTags({ key, modal });
+      const current = get(atom);
 
-    set(
-      atom,
-      toggle
-        ? new Set([tag, ...current])
-        : new Set([...current].filter((t) => t !== tag))
-    );
-  },
+      set(
+        atom,
+        toggle
+          ? new Set([tag, ...current])
+          : new Set([...current].filter((t) => t !== tag))
+      );
+    },
 });
 
 export const LabelTagCounts = ({
