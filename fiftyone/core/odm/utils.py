@@ -321,14 +321,25 @@ def validate_fields_match(name, field, existing_field):
     Raises:
         ValueError: if the fields do not match
     """
-    if type(field) is not type(existing_field):
+    if not issubclass(type(field), type(existing_field)) and not issubclass(
+        type(existing_field), type(field)
+    ):
+        if isinstance(existing_field, fof.ObjectIdField) and isinstance(
+            field, fof.StringField
+        ):
+            return
+
         raise ValueError(
             "Field '%s' type %s does not match existing field type %s"
             % (name, field, existing_field)
         )
 
     if isinstance(field, fof.EmbeddedDocumentField):
-        if not issubclass(field.document_type, existing_field.document_type):
+        if not issubclass(
+            field.document_type, existing_field.document_type
+        ) and not issubclass(
+            existing_field.document_type, field.document_type
+        ):
             raise ValueError(
                 "Embedded document field '%s' type %s does not match existing "
                 "field type %s"
