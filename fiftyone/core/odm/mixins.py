@@ -177,11 +177,12 @@ class DatasetMixin(object):
         """Merges the field schema into this document.
 
         Args:
-            schema: a dictionary mapping field names to
+            schema: a dictionary mapping field names or
+                ``embedded.field.names``to
                 :class:`fiftyone.core.fields.Field` instances
             expand_schema (True): whether to add new fields to the schema
-                (True) or simply validate that the field already exists with a
-                consistent type (False)
+                (True) or simply validate that fields already exist with
+                consistent types (False)
 
         Returns:
             True/False whether any new fields were added
@@ -192,64 +193,23 @@ class DatasetMixin(object):
                 ``expand_schema == False``
         """
         dataset_doc = cls._dataset_doc()
-        media_type = dataset_doc.media_type
-        is_frame_field = cls._is_frames_doc
 
-        existing_schema = cls._fields
+        add_paths = []
+        for path, field in schema.items():
+            if cls._validate_field(path, field, dataset_doc):
+                add_paths.append(path)
 
-        # @todo must handle embedded keys in `schema`
-        add_fields = []
-        for field_name, field in schema.items():
-            if isinstance(field, fof.ObjectIdField) and field_name.startswith(
-                "_"
-            ):
-                field_name = field_name[1:]
-
-            if field_name == "id":
-                continue
-
-            if field_name in existing_schema:
-                validate_fields_match(
-                    field_name,
-                    field,
-                    existing_schema[field_name],
-                )
-            else:
-                validate_field_name(
-                    field_name,
-                    media_type=media_type,
-                    is_frame_field=is_frame_field,
-                )
-
-                if fog.is_group_field(field):
-                    if is_frame_field:
-                        raise ValueError(
-                            "Cannot create frame-level group field '%s'. "
-                            "Group fields must be top-level sample fields"
-                            % field_name
-                        )
-
-                    # `group_field` could be None here if we're in the process
-                    # of merging one dataset's schema into another
-                    if dataset_doc.group_field not in (None, field_name):
-                        raise ValueError(
-                            "Cannot add group field '%s'. Datasets may only "
-                            "have one group field" % field_name
-                        )
-
-                add_fields.append(field_name)
-
-        if not expand_schema and add_fields:
+        if not expand_schema and add_paths:
             raise ValueError(
-                "%s fields %s do not exist" % (cls._doc_name(), add_fields)
+                "%s fields %s do not exist" % (cls._doc_name(), add_paths)
             )
 
-        if not add_fields:
+        if not add_paths:
             return False
 
-        for field_name in add_fields:
-            field = schema[field_name].copy()
-            cls._add_field_schema(field_name, field, dataset_doc)
+        for path in add_paths:
+            field = schema[path].copy()
+            cls._add_field_schema(path, field, dataset_doc)
 
         dataset_doc.save()
         return True
@@ -257,7 +217,7 @@ class DatasetMixin(object):
     @classmethod
     def add_field(
         cls,
-        field_name,
+        path,
         ftype,
         embedded_doc_type=None,
         subfield=None,
@@ -268,7 +228,7 @@ class DatasetMixin(object):
         """Adds a new field or embedded field to the document, if necessary.
 
         Args:
-            field_name: the field name or ``embedded.field.name``
+            path: the field name or ``embedded.field.name``
             ftype: the field type to create. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): the
@@ -295,25 +255,27 @@ class DatasetMixin(object):
             ValueError: if a field in the schema is not compliant with an
                 existing field of the same name
         """
+        field_name = path.rsplit(".", 1)[-1]
         field = create_field(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
             fields=fields,
-            expand_schema=expand_schema,
             **kwargs,
         )
 
-        return cls.merge_field_schema({field_name: field}, expand_schema=True)
+        return cls.merge_field_schema(
+            {path: field}, expand_schema=expand_schema
+        )
 
     @classmethod
-    def add_implied_field(cls, field_name, value, expand_schema=True):
+    def add_implied_field(cls, path, value, expand_schema=True):
         """Adds the field or embedded field to the document, if necessary,
         inferring the field type from the provided value.
 
         Args:
-            field_name: the field name or ``embedded.field.name``
+            path: the field name or ``embedded.field.name``
             value: the field value
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that the field already exists with a
@@ -327,9 +289,12 @@ class DatasetMixin(object):
             ValueError: if a field in the schema is not compliant with an
                 existing field of the same name
         """
+        field_name = path.rsplit(".", 1)[-1]
         field = create_field(field_name, **get_implied_field_kwargs(value))
 
-        return cls.merge_field_schema({field_name: field}, expand_schema=True)
+        return cls.merge_field_schema(
+            {path: field}, expand_schema=expand_schema
+        )
 
     @classmethod
     def _get_default_fields(cls, dataset_doc=None):
@@ -791,15 +756,9 @@ class DatasetMixin(object):
         return tuple(cls._handle_db_field(f) for f in field_names)
 
     @classmethod
-    def _add_field_schema(
-        cls,
-        path,
-        field,
-        dataset_doc,
-        expand_schema=True,
-    ):
+    def _validate_field(cls, path, field, dataset_doc):
         chunks = path.split(".")
-        name = chunks[-1]
+        field_name = chunks[-1]
 
         # Handle embedded fields
         root = None
@@ -810,7 +769,7 @@ class DatasetMixin(object):
             else:
                 root += "." + chunk
 
-            schema = doc.get_field_schema()
+            schema = doc._fields
 
             if chunk not in schema:
                 raise ValueError(
@@ -837,39 +796,53 @@ class DatasetMixin(object):
                     )
                 )
 
-        # Allow for the possibility that name != field.name
-        field.db_field = _get_db_field(field, name)
-        field.name = name
+        if isinstance(field, fof.ObjectIdField) and field_name.startswith("_"):
+            field_name = field_name[1:]
 
-        return cls._add_field(
-            path,
-            field,
-            doc,
-            dataset_doc,
-            expand_schema=expand_schema,
-        )
+        # @todo remove this?
+        if field_name == "id":
+            return False
 
-    @classmethod
-    def _add_field(cls, path, field, doc, dataset_doc, expand_schema=True):
-        if field.name in doc._fields:
-            existing_field = doc._fields[field.name]
+        if field_name in doc._fields:
+            existing_field = doc._fields[field_name]
             validate_fields_match(path, field, existing_field)
 
             # @todo implement this?
             """
             if isinstance(existing_field, fof.EmbeddedDocumentField):
-                return existing_field._merge_fields(
-                    field, expand_schema=expand_schema
-                )
+                return existing_field._merge_fields(field)
             """
 
             return False
 
-        if not expand_schema:
-            raise ValueError(
-                "%s field '%s' does not exist" % (cls._doc_name(), path)
-            )
+        media_type = dataset_doc.media_type
+        is_frame_field = cls._is_frames_doc
 
+        validate_field_name(
+            field_name,
+            media_type=media_type,
+            is_frame_field=is_frame_field,
+        )
+
+        if fog.is_group_field(field):
+            if is_frame_field:
+                raise ValueError(
+                    "Cannot create frame-level group field '%s'. "
+                    "Group fields must be top-level sample fields" % field_name
+                )
+
+            # `group_field` could be None here if we're in the process
+            # of merging one dataset's schema into another
+            if dataset_doc.group_field not in (None, field_name):
+                raise ValueError(
+                    "Cannot add group field '%s'. Datasets may only "
+                    "have one group field" % field_name
+                )
+
+        return True
+
+    @classmethod
+    def _add_field_schema(cls, path, field, dataset_doc):
         chunks = path.split(".")
         name = chunks[-1]
 
@@ -877,6 +850,7 @@ class DatasetMixin(object):
 
         # Handle embedded fields
         root = None
+        doc = cls
         for chunk in chunks[:-1]:
             if root is None:
                 root = chunk
@@ -896,12 +870,30 @@ class DatasetMixin(object):
                     "not been defined" % (cls._doc_name(), path, root)
                 )
 
+            doc = doc._fields[chunk]
+
+            if isinstance(doc, fof.ListField):
+                doc = doc.field
+
+            if not isinstance(doc, fof.EmbeddedDocumentField):
+                raise ValueError(
+                    "Cannot define schema for embedded %s field '%s' because "
+                    "field '%s' is a %s, not an %s"
+                    % (
+                        cls._doc_name(),
+                        path,
+                        root,
+                        type(doc),
+                        fof.EmbeddedDocumentField,
+                    )
+                )
+
+        # Allow for the possibility that name != field.name
+        field.db_field = _get_db_field(field, name)
+        field.name = name
+
         doc._declare_field(field)
-
         field_docs.append(SampleFieldDocument.from_field(field))
-        dataset_doc.save()
-
-        return True
 
     @classmethod
     def _declare_field(cls, field_or_doc):
