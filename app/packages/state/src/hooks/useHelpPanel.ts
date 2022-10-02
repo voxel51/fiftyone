@@ -24,23 +24,9 @@ export default function useHelpPanel() {
     setState((s) => ({ ...s, isOpen: false }));
   }
 
-  function handleEscape(e) {
-    if (e.key === "Escape") close();
-  }
   function handleClick() {
     close();
   }
-
-  useEffect(() => {
-    if (isOpen) {
-      window.addEventListener("keydown", handleEscape);
-      window.addEventListener("click", handleClick);
-    }
-    return () => {
-      window.removeEventListener("keydown", handleEscape);
-      window.removeEventListener("click", handleClick);
-    };
-  }, [isOpen]);
 
   return {
     open(items) {

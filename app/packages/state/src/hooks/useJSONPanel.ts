@@ -36,19 +36,14 @@ export default function useJSONPanel() {
     [json]
   );
   function close() {
-    setState((s) => ({ ...s, isOpen: false }));
+    setState((s) => {
+      ({ ...s, isOpen: false });
+    });
   }
 
   function handleClick() {
     close();
   }
-
-  useEffect(() => {
-    window.addEventListener("click", handleClick);
-    return () => {
-      window.removeEventListener("click", handleClick);
-    };
-  }, []);
 
   return {
     open(sample) {
