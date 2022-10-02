@@ -160,14 +160,16 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   });
 
   const hoveredSample = useRecoilValue(fos.hoveredSample);
+
   useEffect(() => {
-    looker.updater((state) => ({
-      ...state,
-      shouldHandleKeyEvents: hoveredSample._id === sample._id,
-      options: {
-        ...state.options,
-      },
-    }));
+    hoveredSample &&
+      looker.updater((state) => ({
+        ...state,
+        shouldHandleKeyEvents: hoveredSample._id === sample._id,
+        options: {
+          ...state.options,
+        },
+      }));
   }, [hoveredSample, sample, looker]);
 
   return (
