@@ -21,6 +21,10 @@ import {
   iconContainer,
 } from "@fiftyone/components";
 
+// built in plugins
+import "@fiftyone/map";
+import "@fiftyone/looker-3d";
+
 import gaConfig from "../ga";
 import style from "./Root.module.css";
 import ViewBar from "../components/ViewBar/ViewBar";

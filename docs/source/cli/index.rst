@@ -74,7 +74,7 @@ The FiftyOne command-line interface.
     optional arguments:
       -h, --help            show this help message and exit
       -v, --version         show version info
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {quickstart,annotation,app,config,constants,convert,datasets,migrate,utils,zoo}
@@ -295,7 +295,7 @@ Tools for working with FiftyOne datasets.
 
     optional arguments:
       -h, --help            show this help message and exit
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {list,info,create,head,tail,stream,export,delete}
@@ -1335,7 +1335,7 @@ Tools for working with the FiftyOne Zoo.
 
     optional arguments:
       -h, --help         show this help message and exit
-      --all-help         show help recurisvely and exit
+      --all-help         show help recursively and exit
 
     available commands:
       {datasets,models}
@@ -1360,7 +1360,7 @@ Tools for working with the FiftyOne Dataset Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {list,find,info,download,load}
@@ -1666,7 +1666,7 @@ Tools for working with the FiftyOne Model Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {list,find,info,requirements,download,apply,embed,delete}

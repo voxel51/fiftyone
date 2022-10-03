@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import { Loading } from "@fiftyone/components";
+import { Loading, ThemeProvider } from "@fiftyone/components";
 import {
   Dataset as CoreDataset,
   useDatasetLoader,
@@ -55,18 +55,20 @@ export function Dataset({ datasetName, environment }) {
   `;
 
   return (
-    <Container>
-      <Suspense fallback={loadingElement}>
-        <DatasetLoader
-          datasetQueryRef={datasetQueryRef}
-          initialState={initialState}
-        >
-          <ViewBar />
-          <CoreDataset />
-        </DatasetLoader>
-      </Suspense>
-      <div id="modal" />
-    </Container>
+    <ThemeProvider>
+      <Container>
+        <Suspense fallback={loadingElement}>
+          <DatasetLoader
+            datasetQueryRef={datasetQueryRef}
+            initialState={initialState}
+          >
+            <ViewBar />
+            <CoreDataset />
+          </DatasetLoader>
+        </Suspense>
+        <div id="modal" />
+      </Container>
+    </ThemeProvider>
   );
 }
 
@@ -83,6 +85,8 @@ function DatasetLoader({ datasetQueryRef, children, initialState }) {
 }
 
 function useEventSource(datasetName, subscription, setState) {
+  const clearModal = fos.useClearModal();
+
   useEffect(() => {
     const controller = new AbortController();
     getEventSource(
@@ -112,7 +116,7 @@ function useEventSource(datasetName, subscription, setState) {
           }
         },
         onclose: () => {
-          // clearModal();
+          clearModal();
         },
       },
       controller.signal,

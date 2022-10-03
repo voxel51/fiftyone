@@ -1,9 +1,9 @@
 import * as fos from "@fiftyone/state";
 import { toCamelCase } from "@fiftyone/utilities";
 import { useEffect, useState } from "react";
-import { usePreloadedQuery, useQueryLoader, graphql } from "react-relay";
+import { graphql, usePreloadedQuery, useQueryLoader } from "react-relay";
 
-export const datasetQuery = graphql`
+const datasetQueryNode = graphql`
   query datasetQuery($name: String!, $view: BSONArray = null) {
     dataset(name: $name, view: $view) {
       id
@@ -86,11 +86,9 @@ export const datasetQuery = graphql`
         gridMediaField
         plugins
         sidebarGroups {
-          expanded
           name
           paths
         }
-        sidebarMode
       }
     }
   }
@@ -124,12 +122,12 @@ export function usePreLoadedDataset(
   { colorscale, config, state } = {}
 ) {
   const [ready, setReady] = useState(false);
-  const { dataset } = usePreloadedQuery(datasetQuery, queryRef);
+  const { dataset } = usePreloadedQuery(datasetQueryNode, queryRef);
   usePrepareDataset(dataset, { colorscale, config, state }, setReady);
   return [dataset, ready];
 }
 export function useDatasetLoader(environment) {
-  const [queryRef, loadQuery] = useQueryLoader(datasetQuery);
+  const [queryRef, loadQuery] = useQueryLoader(datasetQueryNode);
   return [
     queryRef,
     (name) => {

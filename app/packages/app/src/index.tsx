@@ -21,9 +21,6 @@ import { useRouter } from "@fiftyone/state";
 import { EventsContext } from "@fiftyone/state";
 import { getDatasetName } from "@fiftyone/state";
 
-// built in plugins
-import "@fiftyone/map";
-import "@fiftyone/looker-3d";
 import { useErrorHandler } from "react-error-boundary";
 
 enum AppReadyState {
