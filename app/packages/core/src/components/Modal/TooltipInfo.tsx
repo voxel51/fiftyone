@@ -4,7 +4,7 @@ import styled from "styled-components";
 import { animated, useSpring } from "@react-spring/web";
 
 import { ContentDiv, ContentHeader } from "../utils";
-import { useEventHandler } from "../../utils/hooks";
+import { useEventHandler } from "@fiftyone/utilities";
 import * as fos from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 

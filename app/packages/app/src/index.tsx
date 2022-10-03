@@ -1,4 +1,5 @@
-import { Loading, Setup, useScreenshot, makeRoutes } from "@fiftyone/core";
+import { Loading, Setup, makeRoutes } from "@fiftyone/core";
+import { useScreenshot } from "@fiftyone/state";
 import { Theme } from "@fiftyone/components";
 import { darkTheme, getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";

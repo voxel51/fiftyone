@@ -1,3 +1,4 @@
+export * from "./hooks-utils";
 export { default as useClearModal } from "./useClearModal";
 export { default as useCreateLooker } from "./useCreateLooker";
 export { default as useExpandSample } from "./useExpandSample";

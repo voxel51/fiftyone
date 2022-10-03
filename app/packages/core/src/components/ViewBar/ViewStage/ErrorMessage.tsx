@@ -4,7 +4,7 @@ import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
 import { ReportProblem } from "@material-ui/icons";
 
-import { useFollow, useOutsideClick } from "../../../utils/hooks";
+import { useFollow, useOutsideClick } from "@fiftyone/state";
 
 const ErrorMessageDiv = animated(styled.div`
   box-sizing: border-box;

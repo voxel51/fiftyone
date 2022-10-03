@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useRef } from "react";
 import { animated, config, useSpring } from "@react-spring/web";
 import styled, { ThemeContext } from "styled-components";
 
-import { useFollow } from "../../../utils/hooks";
+import { useFollow } from "@fiftyone/state";
 
 const SearchResultDiv = animated(styled.div`
   cursor: pointer;
