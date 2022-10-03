@@ -2,7 +2,7 @@ import React, { useState, useRef, MutableRefObject, useEffect } from "react";
 import { useRecoilValue, useRecoilCallback } from "recoil";
 import { v4 as uuid } from "uuid";
 
-import { useEventHandler } from "../../utils/hooks";
+import { useEventHandler } from "@fiftyone/state";
 
 import { useErrorHandler } from "react-error-boundary";
 import { useTheme } from "@fiftyone/components";

@@ -6,7 +6,7 @@ import styled from "styled-components";
 
 import { PillButton } from "./utils";
 import Distributions from "./Distributions";
-import { useWindowSize } from "../utils/hooks";
+import { useWindowSize } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 

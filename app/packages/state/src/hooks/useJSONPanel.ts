@@ -1,9 +1,10 @@
 import { Sample } from "@fiftyone/looker/src/state";
-import { useState, useMemo, useEffect } from "react";
-import { atom, useRecoilState } from "recoil";
+import { useMemo, useRef } from "react";
+import { useRecoilState } from "recoil";
 import copyToClipboard from "copy-to-clipboard";
 import highlightJSON from "json-format-highlight";
 import * as fos from "../../";
+import { useOutsideClick } from "@fiftyone/state";
 
 type JSONPanelState = {
   sample?: Sample;
@@ -20,6 +21,7 @@ export const JSON_COLORS = {
 };
 
 export default function useJSONPanel() {
+  const containerRef = useRef();
   const [state, setFullState] = useRecoilState(fos.lookerPanels);
   const { sample, isOpen } = state.json || {};
   const setState = (update) =>
@@ -40,12 +42,14 @@ export default function useJSONPanel() {
       ({ ...s, isOpen: false });
     });
   }
+  useOutsideClick(containerRef, () => close());
 
   function handleClick() {
     close();
   }
 
   return {
+    containerRef,
     open(sample) {
       setFullState((s) => ({
         ...s,

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, createRef, useRef } from "react";
 import { atom, useRecoilState } from "recoil";
 import * as fos from "../../";
 
@@ -13,6 +13,7 @@ type HelpPanelState = {
 };
 
 export default function useHelpPanel() {
+  const containerRef = useRef();
   const [state, setFullState] = useRecoilState(fos.lookerPanels);
   const setState = (update) =>
     setFullState((fullState) => ({
@@ -28,7 +29,10 @@ export default function useHelpPanel() {
     close();
   }
 
+  fos.useOutsideClick(containerRef, () => close());
+
   return {
+    containerRef,
     open(items) {
       setFullState((s) => ({
         ...s,

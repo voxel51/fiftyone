@@ -2,16 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 import html2canvas from "html2canvas";
-
 import { getFetchFunction, sendEvent, toCamelCase } from "@fiftyone/utilities";
 
-import * as fos from "@fiftyone/state";
-import {
-  State,
-  StateResolver,
-  transformDataset,
-  useStateUpdate,
-} from "@fiftyone/state";
+import * as fos from "../";
+import { State, StateResolver, transformDataset, useStateUpdate } from "../";
 
 export const useEventHandler = (
   target,
