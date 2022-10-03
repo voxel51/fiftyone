@@ -259,7 +259,7 @@ wish to include in your build.
 
 ### Running an image
 
-The image is designed to persist all data in a single `/fityone` directory with
+The image is designed to persist all data in a single `/fiftyone` directory with
 the following organization:
 
 ```

@@ -3119,7 +3119,7 @@ def _register_main_command(command, version=None, recursive_help=True):
         parser.add_argument(
             "--all-help",
             action=_RecursiveHelpAction,
-            help="show help recurisvely and exit",
+            help="show help recursively and exit",
         )
 
     argcomplete.autocomplete(parser)
@@ -3141,7 +3141,7 @@ def _register_command(parent, name, command, recursive_help=True):
         parser.add_argument(
             "--all-help",
             action=_RecursiveHelpAction,
-            help="show help recurisvely and exit",
+            help="show help recursively and exit",
         )
 
     return parser
