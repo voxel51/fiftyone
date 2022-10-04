@@ -16,7 +16,6 @@ export type Props = {};
 
 const Container = styled(Resizable)`
   background-color: ${({ theme }) => theme.background.level2};
-  border-bottom: 1px ${({ theme }) => theme.primary.plainBorder} solid;
   overflow: hidden;
   position: relative;
   width: 100%;
