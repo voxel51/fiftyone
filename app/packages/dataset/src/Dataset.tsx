@@ -11,10 +11,10 @@ import {
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, Fragment } from "react";
 import { State } from "@fiftyone/state";
 import { usePlugins } from "@fiftyone/plugins";
-import styled from "styled-components";
+import styled, { ThemeContext } from "styled-components";
 
 // built-in plugins
 import "@fiftyone/map";
@@ -24,7 +24,7 @@ enum Events {
   STATE_UPDATE = "state_update",
 }
 
-export function Dataset({ datasetName, environment }) {
+export function Dataset({ datasetName, environment, theme }) {
   const [initialState, setInitialState] = useState();
   const [datasetQueryRef, loadDataset] = useDatasetLoader(environment);
 
@@ -55,20 +55,24 @@ export function Dataset({ datasetName, environment }) {
     flex-direction: column;
     min-width: 660px;
   `;
+  const themePalette = theme?.palette;
+  const ThemeWrapper = themePalette ? ThemeContext.Provider : Fragment;
 
   return (
-    <Container>
-      <Suspense fallback={loadingElement}>
-        <DatasetLoader
-          datasetQueryRef={datasetQueryRef}
-          initialState={initialState}
-        >
-          <ViewBar />
-          <CoreDataset />
-        </DatasetLoader>
-      </Suspense>
-      <div id="modal" />
-    </Container>
+    <ThemeWrapper value={themePalette}>
+      <Container>
+        <Suspense fallback={loadingElement}>
+          <DatasetLoader
+            datasetQueryRef={datasetQueryRef}
+            initialState={initialState}
+          >
+            <ViewBar />
+            <CoreDataset />
+          </DatasetLoader>
+        </Suspense>
+        <div id="modal" />
+      </Container>
+    </ThemeWrapper>
   );
 }
 
