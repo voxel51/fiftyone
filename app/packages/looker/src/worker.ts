@@ -495,12 +495,13 @@ const UPDATE_LABEL = {
 interface Init {
   headers: HeadersInit;
   origin: string;
+  pathPrefix?: string;
 }
 
 type InitMethod = Init & ReaderMethod;
 
-const init = ({ origin, headers }: Init) => {
-  setFetchFunction(origin, headers);
+const init = ({ origin, headers, pathPrefix }: Init) => {
+  setFetchFunction(origin, headers, pathPrefix);
 };
 
 type Method =

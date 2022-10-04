@@ -9,6 +9,7 @@ import { ServerError } from "./errors";
 let fetchOrigin: string;
 let fetchFunctionSingleton: FetchFunction;
 let fetchHeaders: HeadersInit;
+let fetchPathPrefix = "";
 
 export interface FetchFunction {
   <A, R>(
@@ -44,12 +45,18 @@ export const getFetchParameters = () => {
   return {
     origin: getFetchOrigin(),
     headers: getFetchHeaders(),
+    pathPrefix: getFetchPathPrefix(),
   };
 };
 
-export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
+export const setFetchFunction = (
+  origin: string,
+  headers: HeadersInit = {},
+  pathPrefix = ""
+) => {
   fetchHeaders = headers;
   fetchOrigin = origin;
+  fetchPathPrefix = pathPrefix;
   const fetchFunction: FetchFunction = async (
     method,
     path,
@@ -57,8 +64,8 @@ export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
     result = "json"
   ) => {
     let url: string;
-    if (window.FIFTYONE_SERVER_PATH_PREFIX) {
-      path = `${window.FIFTYONE_SERVER_PATH_PREFIX}${path}`;
+    if (fetchPathPrefix) {
+      path = `${fetchPathPrefix}${path}`;
     }
 
     try {
@@ -109,7 +116,7 @@ export const getAPI = () => {
 };
 
 if (!isWorker) {
-  setFetchFunction(getAPI());
+  setFetchFunction(getAPI(), {}, getFetchPathPrefix());
 }
 
 class RetriableError extends Error {}
@@ -134,8 +141,8 @@ export const getEventSource = (
   if (polling) {
     pollingEventSource(path, events, signal, body);
   } else {
-    if (window.FIFTYONE_SERVER_PATH_PREFIX) {
-      path = `${window.FIFTYONE_SERVER_PATH_PREFIX}${path}`;
+    if (fetchPathPrefix) {
+      path = `${fetchPathPrefix}${path}`;
     }
 
     fetchEventSource(`${getFetchOrigin()}${path}`, {
