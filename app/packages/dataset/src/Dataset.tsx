@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import { Loading, ThemeProvider } from "@fiftyone/components";
+import { Loading } from "@fiftyone/components";
 import {
   Dataset as CoreDataset,
   useDatasetLoader,
@@ -11,10 +11,10 @@ import {
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, Fragment } from "react";
 import { State } from "@fiftyone/state";
 import { usePlugins } from "@fiftyone/plugins";
-import styled from "styled-components";
+import styled, { ThemeContext } from "styled-components";
 
 // built-in plugins
 import "@fiftyone/map";
@@ -24,7 +24,7 @@ enum Events {
   STATE_UPDATE = "state_update",
 }
 
-export function Dataset({ datasetName, environment }) {
+export function Dataset({ datasetName, environment, theme }) {
   const [initialState, setInitialState] = useState();
   const [datasetQueryRef, loadDataset] = useDatasetLoader(environment);
 
@@ -42,20 +42,22 @@ export function Dataset({ datasetName, environment }) {
   const Container = styled.div`
     width: 100%;
     height: 100%;
-    background: var(--background-dark);
+    background: var(--joy-palette-background-level2);
     margin: 0;
     padding: 0;
     font-family: "Palanquin", sans-serif;
     font-size: 14px;
 
-    color: var(--font);
+    color: var(--joy-palette-text-primary);
     display: flex;
     flex-direction: column;
     min-width: 660px;
   `;
+  const themePalette = theme?.palette;
+  const ThemeWrapper = themePalette ? ThemeContext.Provider : Fragment;
 
   return (
-    <ThemeProvider>
+    <ThemeWrapper value={themePalette}>
       <Container>
         <Suspense fallback={loadingElement}>
           <DatasetLoader
@@ -68,7 +70,7 @@ export function Dataset({ datasetName, environment }) {
         </Suspense>
         <div id="modal" />
       </Container>
-    </ThemeProvider>
+    </ThemeWrapper>
   );
 }
 

@@ -11,7 +11,7 @@ body,
   font-family: "Palanquin", sans-serif;
   font-size: 14px;
 
-  color: var(--font);
+  color: var(--joy-palette-text-primary);
   display: flex;
   flex-direction: column;
   min-width: 660px;

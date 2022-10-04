@@ -21,6 +21,7 @@ const Container = styled.div`
   flex-grow: 1;
   overflow: hidden;
   background: ${({ theme }) => theme.background.level2};
+  border-top: 1px ${({ theme }) => theme.primary.plainBorder} solid;
 `;
 
 const SamplesContainer = React.memo(() => {
