@@ -85,11 +85,12 @@ def create_field(
     kwargs.update(field_kwargs)
 
     if fields is not None:
-        for idx, value in enumerate(fields):
-            if isinstance(value, (Field, MongoStringField)):
-                continue
-
-            fields[idx] = create_field(**value)
+        fields = [
+            create_field(**f)
+            if not isinstance(f, (Field, MongoStringField))
+            else f
+            for f in fields
+        ]
 
     if issubclass(ftype, (ListField, DictField)):
         if subfield is not None:
@@ -299,9 +300,6 @@ class SampleFieldDocument(EmbeddedDocument):
             field = field.field
 
         if not isinstance(field, EmbeddedDocumentField):
-            return None
-
-        if not hasattr(field, "fields"):
             return None
 
         return [

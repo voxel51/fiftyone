@@ -642,7 +642,8 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         if self.__fields is None:
             # Must initialize now because `document_type` could have been a
             # string at class instantiation
-            self.__fields = deepcopy(self.document_type._fields)
+            self.__fields = {f.name: f for f in self.fields}
+            self.__fields.update(**self.document_type._fields)
 
         return self.__fields
 
@@ -698,6 +699,53 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
             if val is not None:
                 v.validate(val)
+
+    def _merge_fields(self, path, field, validate=True, recursive=True):
+        if validate:
+            foo.validate_fields_match(path, field, self)
+        elif not isinstance(field, EmbeddedDocumentField):
+            return None
+
+        new_schema = None
+        existing_fields = self._fields
+
+        for name, _field in field._fields.items():
+            _existing_field = existing_fields.get(name, None)
+            if _existing_field is not None:
+                if validate:
+                    _path = path + "." + name
+                    foo.validate_fields_match(_path, _field, _existing_field)
+
+                if recursive:
+                    if isinstance(_existing_field, ListField):
+                        _existing_field = _existing_field.field
+                        if isinstance(_field, ListField):
+                            _field = _field.field
+                        else:
+                            _existing_field = None
+
+                    if isinstance(_existing_field, EmbeddedDocumentField):
+                        _path = path + "." + name
+                        _new_schema = _existing_field._merge_fields(
+                            _path,
+                            _field,
+                            validate=validate,
+                            recursive=recursive,
+                        )
+
+                        if _new_schema:
+                            if new_schema is None:
+                                new_schema = _new_schema
+                            else:
+                                new_schema.update(_new_schema)
+            else:
+                if new_schema is None:
+                    new_schema = {}
+
+                _path = path + "." + name
+                new_schema[_path] = _field
+
+        return new_schema
 
     def _declare_field(self, field_or_doc):
         if isinstance(field_or_doc, foo.SampleFieldDocument):

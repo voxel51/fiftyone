@@ -173,16 +173,29 @@ class DatasetMixin(object):
         return d
 
     @classmethod
-    def merge_field_schema(cls, schema, expand_schema=True):
+    def merge_field_schema(
+        cls,
+        schema,
+        validate=True,
+        recursive=True,
+        expand_schema=True,
+        dataset_doc=None,
+    ):
         """Merges the field schema into this document.
 
         Args:
             schema: a dictionary mapping field names or
                 ``embedded.field.names``to
                 :class:`fiftyone.core.fields.Field` instances
+            validate (True): whether to validate the field against an existing
+                field at the same path
+            recursive (True): whether to recursively merge embedded document
+                fields
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that fields already exist with
                 consistent types (False)
+            dataset_doc (None): the
+                :class:`fiftyone.core.odm.dataset.DatasetDocument`
 
         Returns:
             True/False whether any new fields were added
@@ -192,26 +205,39 @@ class DatasetMixin(object):
                 existing field of the same name or a new field is found but
                 ``expand_schema == False``
         """
-        dataset_doc = cls._dataset_doc()
+        if dataset_doc is None:
+            dataset_doc = cls._dataset_doc()
 
-        add_paths = []
+        new_schema = None
+
         for path, field in schema.items():
-            if cls._validate_field(path, field, dataset_doc):
-                add_paths.append(path)
+            new_fields = cls._merge_field(
+                path,
+                field,
+                dataset_doc,
+                validate=validate,
+                recursive=recursive,
+            )
+            if new_fields:
+                if new_schema is None:
+                    new_schema = {}
 
-        if not expand_schema and add_paths:
+                new_schema.update(new_fields)
+
+        if new_schema and not expand_schema:
             raise ValueError(
-                "%s fields %s do not exist" % (cls._doc_name(), add_paths)
+                "%s fields %s do not exist"
+                % (cls._doc_name(), list(new_schema.keys()))
             )
 
-        if not add_paths:
+        if not new_schema:
             return False
 
-        for path in add_paths:
-            field = schema[path].copy()
+        for path, field in new_schema.items():
             cls._add_field_schema(path, field, dataset_doc)
 
         dataset_doc.save()
+
         return True
 
     @classmethod
@@ -222,7 +248,10 @@ class DatasetMixin(object):
         embedded_doc_type=None,
         subfield=None,
         fields=None,
+        validate=True,
+        recursive=True,
         expand_schema=True,
+        dataset_doc=None,
         **kwargs,
     ):
         """Adds a new field or embedded field to the document, if necessary.
@@ -243,9 +272,15 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
                 Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            validate (True): whether to validate the field against an existing
+                field at the same path
+            recursive (True): whether to recursively add embedded document
+                fields
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that the field already exists with a
                 consistent type (False)
+            dataset_doc (None): the
+                :class:`fiftyone.core.odm.dataset.DatasetDocument`
 
         Returns:
             True/False whether one or more fields or embedded fields were added
@@ -255,9 +290,8 @@ class DatasetMixin(object):
             ValueError: if a field in the schema is not compliant with an
                 existing field of the same name
         """
-        field_name = path.rsplit(".", 1)[-1]
-        field = create_field(
-            field_name,
+        field = cls._create_field(
+            path,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
@@ -266,20 +300,40 @@ class DatasetMixin(object):
         )
 
         return cls.merge_field_schema(
-            {path: field}, expand_schema=expand_schema
+            {path: field},
+            validate=validate,
+            recursive=recursive,
+            expand_schema=expand_schema,
+            dataset_doc=dataset_doc,
         )
 
     @classmethod
-    def add_implied_field(cls, path, value, expand_schema=True):
+    def add_implied_field(
+        cls,
+        path,
+        value,
+        validate=True,
+        recursive=True,
+        dynamic=True,
+        expand_schema=True,
+        dataset_doc=None,
+    ):
         """Adds the field or embedded field to the document, if necessary,
         inferring the field type from the provided value.
 
         Args:
             path: the field name or ``embedded.field.name``
             value: the field value
+            validate (True): whether to validate the field against an existing
+                field at the same path
+            recursive (True): whether to recursively add embedded document
+                fields
+            dynamic (True): whether to declare dynamic embedded document fields
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that the field already exists with a
                 consistent type (False)
+            dataset_doc (None): the
+                :class:`fiftyone.core.odm.dataset.DatasetDocument`
 
         Returns:
             True/False whether one or more fields or embedded fields were added
@@ -289,12 +343,41 @@ class DatasetMixin(object):
             ValueError: if a field in the schema is not compliant with an
                 existing field of the same name
         """
-        field_name = path.rsplit(".", 1)[-1]
-        field = create_field(field_name, **get_implied_field_kwargs(value))
+        field = cls._create_implied_field(path, value, dynamic=dynamic)
 
         return cls.merge_field_schema(
-            {path: field}, expand_schema=expand_schema
+            {path: field},
+            validate=validate,
+            recursive=recursive,
+            expand_schema=expand_schema,
+            dataset_doc=dataset_doc,
         )
+
+    @classmethod
+    def _create_field(
+        cls,
+        path,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        fields=None,
+        **kwargs,
+    ):
+        field_name = path.rsplit(".", 1)[-1]
+        return create_field(
+            field_name,
+            ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
+            fields=fields,
+            **kwargs,
+        )
+
+    @classmethod
+    def _create_implied_field(cls, path, value, dynamic=True):
+        field_name = path.rsplit(".", 1)[-1]
+        kwargs = get_implied_field_kwargs(value, dynamic=dynamic)
+        return create_field(field_name, **kwargs)
 
     @classmethod
     def _get_default_fields(cls, dataset_doc=None):
@@ -756,7 +839,9 @@ class DatasetMixin(object):
         return tuple(cls._handle_db_field(f) for f in field_names)
 
     @classmethod
-    def _validate_field(cls, path, field, dataset_doc):
+    def _merge_field(
+        cls, path, field, dataset_doc, validate=True, recursive=True
+    ):
         chunks = path.split(".")
         field_name = chunks[-1]
 
@@ -801,19 +886,22 @@ class DatasetMixin(object):
 
         # @todo remove this?
         if field_name == "id":
-            return False
+            return
 
         if field_name in doc._fields:
             existing_field = doc._fields[field_name]
-            validate_fields_match(path, field, existing_field)
 
-            # @todo implement this?
-            """
-            if isinstance(existing_field, fof.EmbeddedDocumentField):
-                return existing_field._merge_fields(field)
-            """
+            if recursive and isinstance(
+                existing_field, fof.EmbeddedDocumentField
+            ):
+                return existing_field._merge_fields(
+                    path, field, validate=validate, recursive=recursive
+                )
 
-            return False
+            if validate:
+                validate_fields_match(path, field, existing_field)
+
+            return
 
         media_type = dataset_doc.media_type
         is_frame_field = cls._is_frames_doc
@@ -839,7 +927,7 @@ class DatasetMixin(object):
                     "have one group field" % field_name
                 )
 
-        return True
+        return {path: field}
 
     @classmethod
     def _add_field_schema(cls, path, field, dataset_doc):
@@ -887,6 +975,8 @@ class DatasetMixin(object):
                         fof.EmbeddedDocumentField,
                     )
                 )
+
+        field = field.copy()
 
         # Allow for the possibility that name != field.name
         field.db_field = _get_db_field(field, name)
@@ -945,7 +1035,7 @@ class DatasetMixin(object):
     @classmethod
     def _clone_field_schema(cls, field_name, new_field_name, dataset_doc):
         # pylint: disable=no-member
-        field = cls._fields[field_name].copy()
+        field = cls._fields[field_name]
         cls._add_field_schema(new_field_name, field, dataset_doc)
 
     @classmethod

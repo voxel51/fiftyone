@@ -1150,19 +1150,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ftype,
                 embedded_doc_type=embedded_doc_type,
                 subfield=subfield,
+                dataset_doc=self._doc,
                 **kwargs,
             )
 
         if expanded:
             self._reload()
 
-    def _add_implied_sample_field(self, field_name, value):
+    def _add_implied_sample_field(self, field_name, value, dynamic=True):
         if isinstance(value, fog.Group):
             expanded = self._add_group_field(field_name, default=value.name)
         else:
             expanded = self._sample_doc_cls.add_implied_field(
                 field_name,
                 value,
+                dynamic=dynamic,
+                dataset_doc=self._doc,
             )
 
         if expanded:
@@ -1208,19 +1211,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            dataset_doc=self._doc,
             **kwargs,
         )
 
         if expanded:
             self._reload()
 
-    def _add_implied_frame_field(self, field_name, value):
+    def _add_implied_frame_field(self, field_name, value, dynamic=True):
         if not self._has_frame_fields():
             raise ValueError(
                 "Only datasets that contain videos may have frame fields"
             )
 
-        expanded = self._frame_doc_cls.add_implied_field(field_name, value)
+        expanded = self._frame_doc_cls.add_implied_field(
+            field_name,
+            value,
+            dynamic=dynamic,
+            dataset_doc=self._doc,
+        )
 
         if expanded:
             self._reload()
@@ -1245,6 +1254,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_name,
             fof.EmbeddedDocumentField,
             embedded_doc_type=fog.Group,
+            dataset_doc=self._doc,
         )
 
         if not expanded:
@@ -5288,7 +5298,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     )
                 else:
                     expanded |= self._sample_doc_cls.add_implied_field(
-                        field_name, value
+                        field_name,
+                        value,
+                        validate=False,
+                        dynamic=True,
+                        dataset_doc=self._doc,
                     )
 
             if sample.media_type == fom.VIDEO:
@@ -5336,7 +5350,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     continue
 
                 expanded |= self._frame_doc_cls.add_implied_field(
-                    field_name, value
+                    field_name,
+                    value,
+                    validate=False,
+                    dynamic=True,
+                    dataset_doc=self._doc,
                 )
 
         return expanded
