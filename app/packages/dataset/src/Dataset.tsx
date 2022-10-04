@@ -44,13 +44,13 @@ export function Dataset({ datasetName, environment }) {
   const Container = styled.div`
     width: 100%;
     height: 100%;
-    background: var(--background-dark);
+    background: var(--joy-palette-background-level2);
     margin: 0;
     padding: 0;
     font-family: "Palanquin", sans-serif;
     font-size: 14px;
 
-    color: var(--font);
+    color: var(--joy-palette-text-primary);
     display: flex;
     flex-direction: column;
     min-width: 660px;
