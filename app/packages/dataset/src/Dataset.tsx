@@ -57,9 +57,10 @@ export function Dataset({ datasetName, environment, theme }) {
   `;
   const themePalette = theme?.palette;
   const ThemeWrapper = themePalette ? ThemeContext.Provider : Fragment;
+  const themeProps = themePalette ? { value: themePalette } : {};
 
   return (
-    <ThemeWrapper value={themePalette}>
+    <ThemeWrapper {...themeProps}>
       <Container>
         <Suspense fallback={loadingElement}>
           <DatasetLoader
