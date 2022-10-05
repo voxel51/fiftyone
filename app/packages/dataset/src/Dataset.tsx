@@ -34,7 +34,7 @@ export function Dataset({ datasetName, environment, theme }) {
 
   useEffect(() => {
     loadDataset(datasetName);
-  }, [environment]);
+  }, [environment, datasetName]);
   const subscription = useRecoilValue(fos.stateSubscription);
   useEventSource(datasetName, subscription, setInitialState);
   const plugins = usePlugins();
