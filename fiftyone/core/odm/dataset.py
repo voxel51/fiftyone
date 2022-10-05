@@ -9,8 +9,6 @@ import inspect
 
 import eta.core.utils as etau
 
-from mongoengine.fields import StringField as MongoStringField
-
 from fiftyone.core.fields import (
     Field,
     ArrayField,
@@ -85,9 +83,7 @@ def create_field(
 
     if fields is not None:
         fields = [
-            create_field(**f)
-            if not isinstance(f, (Field, MongoStringField))
-            else f
+            create_field(**f) if not isinstance(f, Field) else f
             for f in fields
         ]
 
@@ -199,92 +195,6 @@ class SampleFieldDocument(EmbeddedDocument):
             db_field=field.db_field,
             fields=cls._get_field_documents(field),
         )
-
-    def matches_field(self, field):
-        """Determines whether this sample field matches the given field.
-
-        Args:
-            field: a :class:`fiftyone.core.fields.Field` instance
-
-        Returns:
-            True/False
-        """
-        if self.name != field.name:
-            return False
-
-        if self.ftype != etau.get_class_name(field):
-            return False
-
-        if self.subfield and self.subfield != etau.get_class_name(field.field):
-            return False
-
-        if (
-            self.embedded_doc_type
-            and self.embedded_doc_type
-            != etau.get_class_name(field.document_type)
-        ):
-            return False
-
-        if self.db_field != field.db_field:
-            return False
-
-        cur_fields = {f.name: f for f in list(getattr(self, "fields", []))}
-        fields = {f.name: f for f in getattr(field, "fields", [])}
-        if cur_fields and fields:
-            if len(fields) != len(cur_fields):
-                return False
-
-            if any([name not in cur_fields for name in fields]):
-                return False
-
-            return any(
-                [not cur_fields[name].matches(fields[name]) for name in fields]
-            )
-
-        return True
-
-    def merge_doc(self, other):
-        if self.ftype != other.ftype:
-            raise TypeError("Cannot merge")
-
-        if other.ftype == etau.get_class_name(ListField):
-            if (
-                self.subfield
-                and other.subfield
-                and self.subfield != other.subfield
-            ):
-                raise TypeError("Cannot merge")
-
-            self.subfield = other.subfield or self.subfield
-
-        if self.name == other.name and self.db_field is None:
-            self.db_field = other.db_field or self.db_field
-
-        embedded_doc = etau.get_class_name(EmbeddedDocumentField)
-        if other.ftype == embedded_doc or self.subfield == embedded_doc:
-            if (
-                self.embedded_doc_type
-                and other.embedded_doc_type
-                and self.embedded_doc_type != other.embedded_doc_type
-            ):
-                raise TypeError("Cannot merge")
-
-            self.embedded_doc_type = (
-                other.embedded_doc_type or self.embedded_doc_type
-            )
-
-            others = {f.name: f for f in other.fields}
-
-            new = []
-            for i, field in enumerate(self.fields):
-                if field.name in others:
-                    self.fields[i] = field.merge_doc(others[field.name])
-                else:
-                    new.append(field)
-
-            self.fields = self.fields + new
-
-        return self
 
     @staticmethod
     def _get_attr_repr(field, attr_name):
