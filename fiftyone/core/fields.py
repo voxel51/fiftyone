@@ -642,8 +642,8 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         if self.__fields is None:
             # Must initialize now because `document_type` could have been a
             # string at class instantiation
-            self.__fields = {f.name: f for f in self.fields}
-            self.__fields.update(**self.document_type._fields)
+            self.__fields = deepcopy(self.document_type._fields)
+            self.__fields.update({f.name: f for f in self.fields})
 
         return self.__fields
 

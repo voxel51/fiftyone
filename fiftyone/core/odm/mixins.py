@@ -176,9 +176,9 @@ class DatasetMixin(object):
     def merge_field_schema(
         cls,
         schema,
-        validate=True,
-        recursive=True,
         expand_schema=True,
+        recursive=True,
+        validate=True,
         dataset_doc=None,
     ):
         """Merges the field schema into this document.
@@ -187,13 +187,13 @@ class DatasetMixin(object):
             schema: a dictionary mapping field names or
                 ``embedded.field.names``to
                 :class:`fiftyone.core.fields.Field` instances
-            validate (True): whether to validate the field against an existing
-                field at the same path
-            recursive (True): whether to recursively merge embedded document
-                fields
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that fields already exist with
                 consistent types (False)
+            recursive (True): whether to recursively merge embedded document
+                fields
+            validate (True): whether to validate the field against an existing
+                field at the same path
             dataset_doc (None): the
                 :class:`fiftyone.core.odm.dataset.DatasetDocument`
 
@@ -248,9 +248,9 @@ class DatasetMixin(object):
         embedded_doc_type=None,
         subfield=None,
         fields=None,
-        validate=True,
-        recursive=True,
         expand_schema=True,
+        recursive=True,
+        validate=True,
         dataset_doc=None,
         **kwargs,
     ):
@@ -272,13 +272,13 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
                 Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            validate (True): whether to validate the field against an existing
-                field at the same path
-            recursive (True): whether to recursively add embedded document
-                fields
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that the field already exists with a
                 consistent type (False)
+            recursive (True): whether to recursively add embedded document
+                fields
+            validate (True): whether to validate the field against an existing
+                field at the same path
             dataset_doc (None): the
                 :class:`fiftyone.core.odm.dataset.DatasetDocument`
 
@@ -301,9 +301,9 @@ class DatasetMixin(object):
 
         return cls.merge_field_schema(
             {path: field},
-            validate=validate,
-            recursive=recursive,
             expand_schema=expand_schema,
+            recursive=recursive,
+            validate=validate,
             dataset_doc=dataset_doc,
         )
 
@@ -312,10 +312,10 @@ class DatasetMixin(object):
         cls,
         path,
         value,
-        validate=True,
-        recursive=True,
-        dynamic=True,
         expand_schema=True,
+        dynamic=True,
+        recursive=True,
+        validate=True,
         dataset_doc=None,
     ):
         """Adds the field or embedded field to the document, if necessary,
@@ -324,14 +324,14 @@ class DatasetMixin(object):
         Args:
             path: the field name or ``embedded.field.name``
             value: the field value
-            validate (True): whether to validate the field against an existing
-                field at the same path
-            recursive (True): whether to recursively add embedded document
-                fields
-            dynamic (True): whether to declare dynamic embedded document fields
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that the field already exists with a
                 consistent type (False)
+            dynamic (True): whether to declare dynamic embedded document fields
+            recursive (True): whether to recursively add embedded document
+                fields
+            validate (True): whether to validate the field against an existing
+                field at the same path
             dataset_doc (None): the
                 :class:`fiftyone.core.odm.dataset.DatasetDocument`
 
@@ -343,13 +343,13 @@ class DatasetMixin(object):
             ValueError: if a field in the schema is not compliant with an
                 existing field of the same name
         """
-        field = cls._create_implied_field(path, value, dynamic=dynamic)
+        field = cls._create_implied_field(path, value, dynamic)
 
         return cls.merge_field_schema(
             {path: field},
-            validate=validate,
-            recursive=recursive,
             expand_schema=expand_schema,
+            recursive=recursive,
+            validate=validate,
             dataset_doc=dataset_doc,
         )
 
@@ -374,7 +374,7 @@ class DatasetMixin(object):
         )
 
     @classmethod
-    def _create_implied_field(cls, path, value, dynamic=True):
+    def _create_implied_field(cls, path, value, dynamic):
         field_name = path.rsplit(".", 1)[-1]
         kwargs = get_implied_field_kwargs(value, dynamic=dynamic)
         return create_field(field_name, **kwargs)

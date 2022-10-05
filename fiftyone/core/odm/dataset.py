@@ -39,10 +39,9 @@ def create_field(
     subfield=None,
     db_field=None,
     fields=None,
-    **field_kwargs
+    **kwargs,
 ):
-    """Creates the :class:`fiftyone.core.fields.Field` instance defined by the
-    given specification.
+    """Creates the field defined by the given specification.
 
     .. note::
 
@@ -69,10 +68,10 @@ def create_field(
             :class:`fiftyone.core.fields.EmbeddedDocumentField`
             Only applicable when ``ftype`` is
             :class:`fiftyone.core.fields.EmbeddedDocumentField`
-        **field_kwargs: mongoengine field kwargs
+        **kwargs: mongoengine field kwargs
 
     Returns:
-        a :class:`fiftyone.core.fields.Field` instance
+        a :class:`fiftyone.core.fields.Field`
     """
     if db_field is None:
         if issubclass(ftype, ObjectIdField) and not name.startswith("_"):
@@ -81,8 +80,8 @@ def create_field(
             db_field = name
 
     # All user-defined fields are nullable
-    kwargs = dict(null=True, db_field=db_field)
-    kwargs.update(field_kwargs)
+    field_kwargs = dict(null=True, db_field=db_field)
+    field_kwargs.update(kwargs)
 
     if fields is not None:
         fields = [
@@ -96,16 +95,9 @@ def create_field(
         if subfield is not None:
             if inspect.isclass(subfield):
                 if issubclass(subfield, EmbeddedDocumentField):
-                    subfield = create_field(
-                        name,
-                        subfield,
-                        embedded_doc_type=embedded_doc_type,
-                        fields=fields or [],
-                    )
+                    subfield = subfield(document_type=embedded_doc_type)
                 else:
                     subfield = subfield()
-
-                subfield.name = name
 
             if not isinstance(subfield, Field):
                 raise ValueError(
@@ -113,9 +105,14 @@ def create_field(
                     % (type(subfield), Field)
                 )
 
-            kwargs["field"] = subfield
+            if (
+                isinstance(subfield, EmbeddedDocumentField)
+                and fields is not None
+            ):
+                subfield.fields = fields
 
-    if issubclass(ftype, EmbeddedDocumentField):
+            field_kwargs["field"] = subfield
+    elif issubclass(ftype, EmbeddedDocumentField):
         if embedded_doc_type is None or not issubclass(
             embedded_doc_type, BaseEmbeddedDocument
         ):
@@ -124,10 +121,10 @@ def create_field(
                 % (embedded_doc_type, BaseEmbeddedDocument)
             )
 
-        kwargs["document_type"] = embedded_doc_type
-        kwargs["fields"] = fields or []
+        field_kwargs["document_type"] = embedded_doc_type
+        field_kwargs["fields"] = fields or []
 
-    field = ftype(**kwargs)
+    field = ftype(**field_kwargs)
     field.name = name
 
     return field

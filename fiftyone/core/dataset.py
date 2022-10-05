@@ -1157,7 +1157,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def _add_implied_sample_field(self, field_name, value, dynamic=True):
+    def _add_implied_sample_field(self, field_name, value, dynamic=False):
         if isinstance(value, fog.Group):
             expanded = self._add_group_field(field_name, default=value.name)
         else:
@@ -1218,7 +1218,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def _add_implied_frame_field(self, field_name, value, dynamic=True):
+    def _add_implied_frame_field(self, field_name, value, dynamic=False):
         if not self._has_frame_fields():
             raise ValueError(
                 "Only datasets that contain videos may have frame fields"
@@ -1962,7 +1962,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 % (group_id, group_field)
             )
 
-    def add_sample(self, sample, expand_schema=True, validate=True):
+    def add_sample(
+        self,
+        sample,
+        expand_schema=True,
+        dynamic=False,
+        validate=True,
+    ):
         """Adds the given sample to the dataset.
 
         If the sample instance does not belong to a dataset, it is updated
@@ -1974,16 +1980,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if the sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             validate (True): whether to validate that the fields of the sample
                 are compliant with the dataset schema before adding it
 
         Returns:
             the ID of the sample in the dataset
         """
-        return self._add_samples_batch([sample], expand_schema, validate)[0]
+        ids = self._add_samples_batch(
+            [sample], expand_schema, dynamic, validate
+        )
+        return ids[0]
 
     def add_samples(
-        self, samples, expand_schema=True, validate=True, num_samples=None
+        self,
+        samples,
+        expand_schema=True,
+        dynamic=False,
+        validate=True,
+        num_samples=None,
     ):
         """Adds the given samples to the dataset.
 
@@ -1998,6 +2014,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             validate (True): whether to validate that the fields of each sample
                 are compliant with the dataset schema before adding it
             num_samples (None): the number of samples in ``samples``. If not
@@ -2027,7 +2045,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_ids = []
         with batcher:
             for batch in batcher:
-                _ids = self._add_samples_batch(batch, expand_schema, validate)
+                _ids = self._add_samples_batch(
+                    batch, expand_schema, dynamic, validate
+                )
                 sample_ids.extend(_ids)
 
         return sample_ids
@@ -2079,14 +2099,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         return self.skip(num_samples).values("id")
 
-    def _add_samples_batch(self, samples, expand_schema, validate):
+    def _add_samples_batch(self, samples, expand_schema, dynamic, validate):
         samples = [s.copy() if s._in_db else s for s in samples]
 
         if self.media_type is None and samples:
             self.media_type = _get_media_type(samples[0])
 
         if expand_schema:
-            self._expand_schema(samples)
+            self._expand_schema(samples, dynamic)
 
         if validate:
             self._validate_samples(samples)
@@ -2109,7 +2129,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return [str(d["_id"]) for d in dicts]
 
     def _upsert_samples(
-        self, samples, expand_schema=True, validate=True, num_samples=None
+        self,
+        samples,
+        expand_schema=True,
+        dynamic=False,
+        validate=True,
+        num_samples=None,
     ):
         if num_samples is None:
             try:
@@ -2129,14 +2154,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         with batcher:
             for batch in batcher:
-                self._upsert_samples_batch(batch, expand_schema, validate)
+                self._upsert_samples_batch(
+                    batch, expand_schema, dynamic, validate
+                )
 
-    def _upsert_samples_batch(self, samples, expand_schema, validate):
+    def _upsert_samples_batch(self, samples, expand_schema, dynamic, validate):
         if self.media_type is None and samples:
             self.media_type = _get_media_type(samples[0])
 
         if expand_schema:
-            self._expand_schema(samples)
+            self._expand_schema(samples, dynamic)
 
         if validate:
             self._validate_samples(samples)
@@ -2226,6 +2253,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
+        dynamic=False,
         include_info=True,
         overwrite_info=False,
         num_samples=None,
@@ -2300,6 +2328,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             include_info (True): whether to merge dataset-level information
                 such as ``info`` and ``classes``. Only applicable when
                 ``samples`` is a
@@ -2361,7 +2391,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if key_fcn is None:
             tmp = Dataset()
-            tmp.add_samples(samples, num_samples=num_samples)
+            tmp.add_samples(samples, dynamic=dynamic, num_samples=num_samples)
 
             self.merge_samples(
                 tmp,
@@ -2391,6 +2421,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             merge_lists=merge_lists,
             overwrite=overwrite,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             num_samples=num_samples,
         )
 
@@ -3099,6 +3130,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field=None,
         tags=None,
         expand_schema=True,
+        dynamic=False,
         add_info=True,
         **kwargs,
     ):
@@ -3184,6 +3216,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             add_info (True): whether to add dataset info from the importer (if
                 any) to the dataset's ``info``
             **kwargs: optional keyword arguments to pass to the constructor of
@@ -3207,6 +3241,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             add_info=add_info,
         )
 
@@ -3227,6 +3262,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
+        dynamic=False,
         add_info=True,
         **kwargs,
     ):
@@ -3373,6 +3409,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             add_info (True): whether to add dataset info from the importer
                 (if any) to the dataset
             **kwargs: optional keyword arguments to pass to the constructor of
@@ -3401,6 +3439,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             merge_lists=merge_lists,
             overwrite=overwrite,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             add_info=add_info,
         )
 
@@ -3413,6 +3452,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field=None,
         tags=None,
         expand_schema=True,
+        dynamic=False,
         add_info=True,
         cleanup=True,
         **kwargs,
@@ -3494,6 +3534,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             add_info (True): whether to add dataset info from the importer (if
                 any) to the dataset's ``info``
             cleanup (True): whether to delete the archive after extracting it
@@ -3513,6 +3555,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             add_info=add_info,
             **kwargs,
         )
@@ -3534,6 +3577,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
+        dynamic=False,
         add_info=True,
         cleanup=True,
         **kwargs,
@@ -3676,6 +3720,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             add_info (True): whether to add dataset info from the importer
                 (if any) to the dataset
             cleanup (True): whether to delete the archive after extracting it
@@ -3700,6 +3746,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             merge_lists=merge_lists,
             overwrite=overwrite,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             add_info=add_info,
             **kwargs,
         )
@@ -3710,6 +3757,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field=None,
         tags=None,
         expand_schema=True,
+        dynamic=False,
         add_info=True,
     ):
         """Adds the samples from the given
@@ -3740,6 +3788,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             add_info (True): whether to add dataset info from the importer (if
                 any) to the dataset's ``info``
 
@@ -3752,6 +3802,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             add_info=add_info,
         )
 
@@ -3769,6 +3820,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
+        dynamic=False,
         add_info=True,
     ):
         """Merges the samples from the given
@@ -3861,6 +3913,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             add_info (True): whether to add dataset info from the importer
                 (if any) to the dataset
         """
@@ -3878,6 +3932,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             merge_lists=merge_lists,
             overwrite=overwrite,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             add_info=add_info,
         )
 
@@ -3918,6 +3973,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field=None,
         tags=None,
         expand_schema=True,
+        dynamic=False,
     ):
         """Adds the given labeled images to the dataset.
 
@@ -3948,6 +4004,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -3959,6 +4017,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            dynamic=dynamic,
         )
 
     def add_images_dir(self, images_dir, tags=None, recursive=True):
@@ -4056,6 +4115,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field=None,
         tags=None,
         expand_schema=True,
+        dynamic=False,
         dataset_dir=None,
         image_format=None,
     ):
@@ -4087,6 +4147,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if the sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             dataset_dir (None): the directory in which the images will be
                 written. By default, :func:`get_default_dataset_dir` is used
             image_format (None): the image format to use to write the images to
@@ -4110,6 +4172,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            dynamic=dynamic,
         )
 
     def add_videos(self, paths_or_samples, sample_parser=None, tags=None):
@@ -4149,6 +4212,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field=None,
         tags=None,
         expand_schema=True,
+        dynamic=False,
     ):
         """Adds the given labeled videos to the dataset.
 
@@ -4181,6 +4245,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -4192,6 +4258,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            dynamic=dynamic,
         )
 
     def add_videos_dir(self, videos_dir, tags=None, recursive=True):
@@ -4234,7 +4301,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self.add_videos(video_paths, sample_parser, tags=tags)
 
     def ingest_videos(
-        self, paths_or_samples, sample_parser=None, tags=None, dataset_dir=None
+        self,
+        paths_or_samples,
+        sample_parser=None,
+        tags=None,
+        dataset_dir=None,
     ):
         """Ingests the given iterable of videos into the dataset.
 
@@ -4278,6 +4349,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_parser,
         tags=None,
         expand_schema=True,
+        dynamic=False,
         dataset_dir=None,
     ):
         """Ingests the given iterable of labeled video samples into the
@@ -4299,6 +4371,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if the sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             dataset_dir (None): the directory in which the videos will be
                 written. By default, :func:`get_default_dataset_dir` is used
 
@@ -4313,7 +4387,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         return self.add_importer(
-            dataset_ingestor, tags=tags, expand_schema=expand_schema
+            dataset_ingestor,
+            tags=tags,
+            expand_schema=expand_schema,
+            dynamic=dynamic,
         )
 
     @classmethod
@@ -4326,6 +4403,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name=None,
         label_field=None,
         tags=None,
+        dynamic=False,
         **kwargs,
     ):
         """Creates a :class:`Dataset` from the contents of the given directory.
@@ -4408,6 +4486,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type``
@@ -4423,6 +4503,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             labels_path=labels_path,
             label_field=label_field,
             tags=tags,
+            dynamic=dynamic,
             **kwargs,
         )
         return dataset
@@ -4437,6 +4518,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name=None,
         label_field=None,
         tags=None,
+        dynamic=False,
         cleanup=True,
         **kwargs,
     ):
@@ -4516,6 +4598,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             cleanup (True): whether to delete the archive after extracting it
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
@@ -4532,6 +4616,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             labels_path=labels_path,
             label_field=label_field,
             tags=tags,
+            dynamic=dynamic,
             cleanup=cleanup,
             **kwargs,
         )
@@ -4539,7 +4624,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @classmethod
     def from_importer(
-        cls, dataset_importer, name=None, label_field=None, tags=None
+        cls,
+        dataset_importer,
+        name=None,
+        label_field=None,
+        tags=None,
+        dynamic=False,
     ):
         """Creates a :class:`Dataset` by importing the samples in the given
         :class:`fiftyone.utils.data.importers.DatasetImporter`.
@@ -4569,13 +4659,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
 
         Returns:
             a :class:`Dataset`
         """
         dataset = cls(name)
         dataset.add_importer(
-            dataset_importer, label_field=label_field, tags=tags
+            dataset_importer,
+            label_field=label_field,
+            tags=tags,
+            dynamic=dynamic,
         )
         return dataset
 
@@ -4622,6 +4717,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name=None,
         label_field=None,
         tags=None,
+        dynamic=False,
     ):
         """Creates a :class:`Dataset` from the given labeled images.
 
@@ -4651,6 +4747,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 keys of the imported label dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
 
         Returns:
             a :class:`Dataset`
@@ -4661,6 +4759,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser,
             label_field=label_field,
             tags=tags,
+            dynamic=dynamic,
         )
         return dataset
 
@@ -4743,7 +4842,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @classmethod
     def from_labeled_videos(
-        cls, samples, sample_parser, name=None, label_field=None, tags=None
+        cls,
+        samples,
+        sample_parser,
+        name=None,
+        label_field=None,
+        tags=None,
+        dynamic=False,
     ):
         """Creates a :class:`Dataset` from the given labeled videos.
 
@@ -4774,13 +4879,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
 
         Returns:
             a :class:`Dataset`
         """
         dataset = cls(name)
         dataset.add_labeled_videos(
-            samples, sample_parser, label_field=label_field, tags=tags
+            samples,
+            sample_parser,
+            label_field=label_field,
+            tags=tags,
+            dynamic=dynamic,
         )
         return dataset
 
@@ -5278,7 +5389,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 embedded_doc_type=label_cls,
             )
 
-    def _expand_schema(self, samples):
+    def _expand_schema(self, samples, dynamic):
         expanded = False
         for sample in samples:
             for field_name in sample._get_field_names(include_private=True):
@@ -5300,13 +5411,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     expanded |= self._sample_doc_cls.add_implied_field(
                         field_name,
                         value,
+                        dynamic=dynamic,
                         validate=False,
-                        dynamic=True,
                         dataset_doc=self._doc,
                     )
 
             if sample.media_type == fom.VIDEO:
-                expanded |= self._expand_frame_schema(sample.frames)
+                expanded |= self._expand_frame_schema(sample.frames, dynamic)
 
         if expanded:
             self._reload()
@@ -5337,7 +5448,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             self._doc.save()
 
-    def _expand_frame_schema(self, frames):
+    def _expand_frame_schema(self, frames, dynamic):
         expanded = False
         for frame in frames.values():
             for field_name in frame._get_field_names(include_private=True):
@@ -5352,8 +5463,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 expanded |= self._frame_doc_cls.add_implied_field(
                     field_name,
                     value,
+                    dynamic=dynamic,
                     validate=False,
-                    dynamic=True,
                     dataset_doc=self._doc,
                 )
 
@@ -6423,6 +6534,7 @@ def _merge_samples_python(
     merge_lists=True,
     overwrite=True,
     expand_schema=True,
+    dynamic=False,
     num_samples=None,
 ):
     if (
@@ -6465,7 +6577,10 @@ def _merge_samples_python(
 
     logger.info("Merging samples...")
     dataset._upsert_samples(
-        _samples, expand_schema=expand_schema, num_samples=num_samples
+        _samples,
+        expand_schema=expand_schema,
+        dynamic=dynamic,
+        num_samples=num_samples,
     )
 
 
