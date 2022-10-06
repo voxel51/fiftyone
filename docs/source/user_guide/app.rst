@@ -78,6 +78,19 @@ install if you would like to run the App as a desktop application.
 
 .. note::
 
+    When working inside a Docker container, you must manually
+    :ref:`set the App address <restricting-app-address>` to `0.0.0.0` in order
+    to access the App from outside the container:
+
+    .. code-block:: python
+
+        session = fo.launch_app(..., address="0.0.0.0")
+
+    See :ref:`this page <docker>` for more information about working with
+    FiftyOne inside Docker.
+
+.. note::
+
     If you are a Windows user launching the App from a script, you should use
     the pattern below to avoid
     `multiprocessing issues <https://stackoverflow.com/q/20360686>`_, since the

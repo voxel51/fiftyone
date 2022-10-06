@@ -395,8 +395,8 @@ ______
 
 The FiftyOne repository contains a
 `Dockerfile <https://github.com/voxel51/fiftyone/blob/develop/Dockerfile>`_
-that you can use/customize to build and run Docker images containing release
-(or source) builds of FiftyOne.
+that you can use/customize to build and run Docker images containing source
+or release builds of FiftyOne.
 
 Building an image
 ~~~~~~~~~~~~~~~~~

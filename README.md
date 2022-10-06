@@ -216,8 +216,8 @@ bash install.bash
 
 Refer to
 [these instructions](https://voxel51.com/docs/fiftyone/environments/index.html#docker)
-to see how to build and run a Docker image containing a source (or release)
-build of FiftyOne.
+to see how to build and run Docker images containing source or release builds
+of FiftyOne.
 
 ### Generating documentation
 
