@@ -1,6 +1,5 @@
-import { useState, useMemo, useEffect, createRef, useRef } from "react";
-import { atom, useRecoilState } from "recoil";
 import * as fos from "../../";
+import usePanel from "./usePanel";
 
 type HelpItem = {
   shortcut: string;
@@ -13,54 +12,22 @@ type HelpPanelState = {
 };
 
 export default function useHelpPanel() {
-  const containerRef = useRef();
-  const [state, setFullState] = useRecoilState(fos.lookerPanels);
-  const setState = (update) =>
-    setFullState((fullState) => ({
-      ...fullState,
-      help: update(fullState.help),
-    }));
-  const { isOpen, items } = state.help || {};
-  function close() {
-    setState((s) => ({ ...s, isOpen: false }));
-  }
+  const { containerRef, open, close, toggle, state } = usePanel(
+    "help",
+    fos.lookerPanels
+  );
 
-  function handleClick() {
-    close();
-  }
-
-  fos.useOutsideClick(containerRef, () => close());
+  const { isOpen, items } = state || {};
+  const updateItems = (items) => (s) => ({ ...s, items });
 
   return {
     containerRef,
     open(items) {
-      setFullState((s) => ({
-        ...s,
-        json: {
-          ...s.json,
-          isOpen: false,
-        },
-        help: {
-          ...s.help,
-          items,
-          isOpen: true,
-        },
-      }));
+      open(updateItems(items));
     },
     close,
     toggle(items) {
-      setFullState((s) => ({
-        ...s,
-        json: {
-          ...s.json,
-          isOpen: false,
-        },
-        help: {
-          ...s.help,
-          items,
-          isOpen: !s.help.isOpen,
-        },
-      }));
+      toggle(updateItems(items));
     },
     items,
     isOpen,
