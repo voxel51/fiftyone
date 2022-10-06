@@ -98,7 +98,7 @@ COPY dist dist
 RUN pip --no-cache-dir install dist/*.whl && rm -rf dist
 
 # Use this instead if you want the latest FiftyOne release
-RUN pip --no-cache-dir install fiftyone
+# RUN pip --no-cache-dir install fiftyone
 
 #
 # Configure shared storage
