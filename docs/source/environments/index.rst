@@ -478,19 +478,24 @@ normal:
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
-    session = fo.launch_app(dataset, address="0.0.0.0")
-
-.. note::
-
-    When working inside a Docker container, you must manually
-    :ref:`set the App address <restricting-app-address>` to `0.0.0.0` in order
-    to access the App from outside the container.
+    session = fo.launch_app(dataset)
 
 .. note::
 
     Any datasets you create inside the Docker image must refer to media
     files within `SHARED_DIR` or another mounted volume if you intend to work
     with datasets between sessions.
+
+.. note::
+
+    FiftyOne should automatically detect that it is running inside a Docker
+    container. However, if you are unable to load the App in your browser, you
+    may need to manually :ref:`set the App address <restricting-app-address>`
+    to `0.0.0.0`:
+
+    .. code:: python
+
+        session = fo.launch_app(..., address="0.0.0.0")
 
 Connecting to a localhost database
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -78,11 +78,12 @@ install if you would like to run the App as a desktop application.
 
 .. note::
 
-    When working inside a Docker container, you must manually
-    :ref:`set the App address <restricting-app-address>` to `0.0.0.0` in order
-    to access the App from outside the container:
+    When working inside a Docker container, FiftyOne should automatically
+    detect and appropriately configure networking. However, if you are unable
+    to load the App in your browser, you many need to manually
+    :ref:`set the App address <restricting-app-address>` to `0.0.0.0`:
 
-    .. code-block:: python
+    .. code:: python
 
         session = fo.launch_app(..., address="0.0.0.0")
 
