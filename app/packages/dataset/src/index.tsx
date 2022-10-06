@@ -1,10 +1,9 @@
-import { Theme } from "@fiftyone/components";
-import { darkTheme, getEventSource, toCamelCase } from "@fiftyone/utilities";
-import React, { Fragment, useEffect, useRef, useState } from "react";
+import { ThemeProvider } from "@fiftyone/components";
+import React, { useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { RecoilRoot, useRecoilValue } from "recoil";
-import { Dataset, getEnvProps } from "./";
+import { RecoilRoot } from "recoil";
 import { RecoilRelayEnvironmentProvider } from "recoil-relay";
+import { Dataset, getEnvProps } from "./";
 
 // import "./index.css";
 
@@ -30,12 +29,12 @@ const DatasetWrapper = () => {
 function LoadableDataset() {
   const [datasetName, setDatasetName] = React.useState("quickstart");
   return (
-    <Fragment>
+    <ThemeProvider>
       <DatasetSelector current={datasetName} onChange={setDatasetName} />
       <div style={{ height: "100vh", overflow: "hidden" }}>
         <Dataset datasetName={datasetName} />
       </div>
-    </Fragment>
+    </ThemeProvider>
   );
 }
 
