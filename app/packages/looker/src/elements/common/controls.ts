@@ -352,10 +352,11 @@ export class HelpButtonElement<
     element.src = ICONS.help;
     element.title = "Help (?)";
     element.style.gridArea = "2 / 16 / 2 / 16";
+    element.setAttribute("data-for-panel", "help");
     return element;
   }
 
-  renderSelf({ showHelp }) {
+  renderSelf({ options: { showHelp } }) {
     if (this.active !== showHelp) {
       showHelp
         ? this.element.classList.add(lookerControlActive)
@@ -447,7 +448,7 @@ export class JSONButtonElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ event, update, dispatchEvent }) => {
+      mousedown: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
         json.action(update, dispatchEvent);
@@ -461,6 +462,7 @@ export class JSONButtonElement<
     element.src = jsonIcon;
     element.title = `${json.title} (${json.shortcut})`;
     element.style.gridArea = "2 / 13 / 2 / 13";
+    element.setAttribute("data-for-panel", "json");
     return element;
   }
 

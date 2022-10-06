@@ -7,6 +7,7 @@ export { default as useHoveredSample } from "./useHoveredSample";
 export { default as useJSONPanel } from "./useJSONPanel";
 export { default as useLookerStore } from "./useLookerStore";
 export * from "./useLookerStore";
+export { default as usePanel } from "./usePanel";
 export { default as useReset } from "./useReset";
 export { default as useRouter } from "./useRouter";
 export { default as useSelectFlashlightSample } from "./useSelectFlashlightSample";

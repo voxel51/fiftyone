@@ -15,11 +15,19 @@ type EventCallback = (event: CustomEvent) => void;
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
     ({ snapshot, set }) =>
-      async (event: CustomEvent) => {
+      async (update: object, updater?: Function) => {
         const currentOptions = await snapshot.getPromise(
           fos.savedLookerOptions
         );
-        set(fos.savedLookerOptions, { ...currentOptions, ...event.detail });
+        const panels = await snapshot.getPromise(fos.lookerPanels);
+        const updated = {
+          ...currentOptions,
+          ...update,
+          showJSON: panels.json.isOpen,
+          showHelp: panels.help.isOpen,
+        };
+        set(fos.savedLookerOptions, updated);
+        if (updater) updater(updated);
       }
   );
 };
@@ -90,11 +98,16 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   const handleError = useErrorHandler();
   lookerRef && (lookerRef.current = looker);
 
-  useEventHandler(looker, "options", useLookerOptionsUpdate());
+  const updateLookerOptions = useLookerOptionsUpdate();
+  useEventHandler(looker, "options", (e) => updateLookerOptions(e.detail));
   useEventHandler(looker, "fullscreen", useFullscreen());
   useEventHandler(looker, "showOverlays", useShowOverlays());
 
-  useEventHandler(looker, "close", onClose);
+  useEventHandler(looker, "close", () => {
+    jsonPanel.close();
+    helpPanel.close();
+    onClose();
+  });
 
   useEventHandler(
     looker,
@@ -124,20 +137,22 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   const helpPanel = fos.useHelpPanel();
   useEventHandler(
     looker,
-    "options",
-    ({ detail: { showJSON, showHelp, SHORTCUTS } }) => {
-      if (showJSON === true) {
-        jsonPanel.open(sample);
+    "panels",
+    async ({ detail: { showJSON, showHelp, SHORTCUTS } }) => {
+      if (showJSON) {
+        jsonPanel[showJSON](sample);
       }
-      if (showJSON === false) {
-        jsonPanel.close();
+      if (showHelp) {
+        if (showHelp == "close") {
+          helpPanel.close();
+        } else {
+          helpPanel[showHelp](shortcutToHelpItems(SHORTCUTS));
+        }
       }
-      if (showHelp === true) {
-        helpPanel.open(shortcutToHelpItems(SHORTCUTS));
-      }
-      if (showHelp === false) {
-        helpPanel.close();
-      }
+
+      updateLookerOptions({}, (updatedOptions) =>
+        looker.updateOptions(updatedOptions)
+      );
     }
   );
 
