@@ -1466,7 +1466,7 @@ def is_32_bit():
 
 
 def is_docker():
-    """Determines if we're currently running in a Docker image.
+    """Determines if we're currently running in a Docker container.
 
     Returns:
         True/False
