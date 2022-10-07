@@ -91,12 +91,99 @@
   }
 }
 
+/* Arrows */
+
+.arrow-down--light-secondary {
+  width: 0;
+  height: 0;
+  border-left: 1rem solid transparent;
+  border-right: 1rem solid transparent;
+  border-top: 1rem solid var(--bg-light-secondary);
+  top: 100%;
+}
+
+.big-arrow-down--light-secondary {
+  width: 0;
+  height: 0;
+  border-left: 2rem solid transparent;
+  border-right: 2rem solid transparent;
+  border-top: 2rem solid var(--bg-light-secondary);
+  top: 100%;
+}
+
+.arrow-up--light-primary {
+  width: 0;
+  height: 0;
+  border-left: 1rem solid transparent;
+  border-right: 1rem solid transparent;
+  border-bottom: 1rem solid var(--bg-light-primary);
+  top: -1rem;
+}
+
+.arrow-up--light-secondary {
+  width: 0;
+  height: 0;
+  border-left: 1rem solid transparent;
+  border-right: 1rem solid transparent;
+  border-bottom: 1rem solid var(--bg-light-secondary);
+  top: -1rem;
+}
+
+.arrow-middle {
+  z-index: 10; /* needed to sit atop of nearby divs */
+  position: absolute;
+  left: calc(50% - 0.5rem);
+}
+
+.arrow-left20 {
+  z-index: 10; /* needed to sit atop of nearby divs */
+  position: absolute;
+  left: calc(20% - 0.5rem);
+}
+
+.big-arrow-middle {
+  z-index: 10; /* needed to sit atop of nearby divs */
+  position: absolute;
+  left: calc(50% - 1rem);
+}
+
+.adornment--bottom {
+  z-index: 10; /* needed to sit atop of nearby divs */
+  position: absolute;
+  top: 100%;
+}
+
+.adornment--middle {
+  z-index: 10; /* needed to sit atop of nearby divs */
+  position: absolute;
+  left: calc(50% - 1rem);
+}
+
+.adornment__vertical-barbell--bottom {
+  z-index: 10;
+  position: absolute;
+
+  background-image: url("{{path_adornments}}vertical-barbell.svg");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center center;
+  width: 3rem;
+  height: 12rem;
+  left: calc(50% - 1.5rem);
+  top: calc(100% - 5rem);
+}
+
+.has-arrows,
+.has-adornments {
+  position: relative;
+}
+
 /*  NAV  */
 
 .nav__main {
   background-color: var(--bg-dark-primary);
   color: var(--text-primary-on-dark);
-  font-size: var(--fontsize-body-smaller);
+  font-size: var(--fontsize-body);
 
   padding: 1rem var(--padding-x);
 
@@ -134,6 +221,13 @@
   align-items: center;
 }
 
+.nav__divider {
+  color: var(--text-secondary-on-dark);
+  padding-x: 1rem;
+  font-size: 150%; /* XXX TODO CHECK ON BETTER WAY */
+  font-weight: 100;
+}
+
 .nav__spacer {
   min-width: 2rem;
 }
@@ -141,11 +235,43 @@
 .nav__item {
   padding: 0 1rem;
   color: var(--text-primary-on-dark);
+  height: 100%;
+}
+
+@media only screen and (min-width: 850px) {
+  .mobile_only {
+    display: none;
+  }
+}
+
+@media only screen and (min-width: 850px) and (max-width: 1240px) {
+  #try-fiftyone {
+    display: none;
+  }
+}
+
+/* nav is a bit too full at these widths; some things have to go */
+@media only screen and (min-width: 320px) and (max-width: 885px) {
+  .full_nav_only {
+    display: none;
+  }
+}
+
+@media only screen and (min-width: 320px) and (max-width: 850px) {
+  .desktop_only {
+    display: none;
+  }
 }
 
 .nav__item a {
   color: var(--text-primary-on-dark);
   text-decoration: none;
+  width: auto !important;
+}
+
+.nav__item a.button-primary,
+.nav__item a.button-secondary {
+  margin-top: 1rem;
 }
 
 .nav__item a:hover {
@@ -165,84 +291,60 @@
   text-decoration: underline;
 }
 
-/* modal classes */
-
-.modal {
-  display: none; /* Hidden by default */
-  position: fixed; /* Stay in place */
-  z-index: 1000; /* Sit on top */
-  left: 0;
-  top: 0;
-  width: 100%; /* Full width */
-  height: 100%; /* Full height */
-  background-color: var(--bg-dark-primary);
-  background-color: var(--bg-modal);
-  justify-content: center;
-  flex-direction: column;
+.nav__dropdown {
+  position: relative;
+  display: inline-block;
 }
 
-/* Modal Content/Box */
-.modal-content {
-  background-color: var(--bg-light-primary);
-  padding: 3rem;
-  border: 2px solid var(--gray-light1);
-  border-radius: 3px;
-  width: auto; /* Could be more or less, depending on screen size */
-  max-width: 80%;
-  width: 600px;
-  height: auto;
-  margin: auto;
-  max-height: 90%;
-  overflow-y: auto;
-}
-
-/* The Close Button */
-.modal-close {
-  color: var(--text-primary-on-light);
-  float: right;
-  font-size: --fontsize-body;
-  font-weight: bold;
-}
-
-.modal-close:hover,
-.modal-close:focus {
-  text-decoration: none;
+.nav__dropdown__trigger {
   cursor: pointer;
+  line-height: 7.125rem;
 }
 
-.modal p {
-  color: rgb(108, 117, 125);
-  font-size: 18px;
+.nav__dropdown__menu {
+  display: none;
+  position: absolute;
+  z-index: 101;
+
+  min-width: 16rem;
+
+  background-color: var(--bg-light-primary);
+  margin-top: -0.8rem;
+  padding: 1rem 1rem 7.3rem 1rem;
+  border-radius: 3px;
+  box-shadow: 0rem 0rem 1rem 0.005rem var(--bg-dark-primary);
 }
 
-.modal h2 {
-  color: var(--text-primary);
-  font-weight: 700;
-  font-size: 40px;
-  line-height: 52px;
-  margin-block-start: 0;
-  margin-block-end: 0rem;
+.nav__dropdown__menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-@media only screen and (min-width: 850px) {
-  .mobile_only {
-    display: none;
-  }
+.nav__dropdown__menu a {
+  color: var(--text-brand);
 }
 
-@media only screen and (min-width: 850px) and (max-width: 1240px) {
-  #try-fiftyone,
-  #octocat {
-    display: none;
-  }
+.nav__dropdown:hover .nav__dropdown__trigger {
+  color: var(--text-secondary-on-dark);
+}
+
+.nav__dropdown:hover .nav__dropdown__menu {
+  display: block;
+}
+
+.nav__category {
+  color: var(--text-secondary-on-dark);
+}
+
+.nav__category--item {
+  color: var(--text-brand);
+  text-indent: 1rem;
 }
 
 /* mobile responsive nav elements all here */
 @media only screen and (min-width: 320px) and (max-width: 850px) {
   /* navs do not stay at top in mobile mode */
-  .desktop_only {
-    display: none;
-  }
   .stay_at_top {
     position: relative;
   }
@@ -280,13 +382,13 @@
   #nav__main__mobilebutton--on {
     display: block;
     position: absolute;
-    right: 1rem;
+    right: 2rem;
   }
 
   #nav__main__mobilebutton--off {
     display: none;
     position: absolute;
-    right: 1rem;
+    right: 2rem;
   }
 
   #nav__main__mobilebutton--on a,
@@ -310,10 +412,11 @@
 
   #nav__main__items .nav__item {
     z-index: 102;
+    padding-right: 0px;
   }
 
   .nav__spacer {
-    display: none;
+    margin-top: 1rem;
   }
 
   .nav__divider {
@@ -330,7 +433,7 @@
   }
 
   .nav__dropdown__trigger {
-    cursor: inherit;
+    display: none;
   }
 
   .nav__dropdown__menu {
@@ -440,10 +543,12 @@
 
 .footer__address {
   grid-area: address;
+  line-height: 1.6rem;
 }
 
 .footer__contact {
   grid-area: contact;
+  line-height: 2.5rem;
 }
 
 .footer__links {
@@ -523,7 +628,7 @@
   }
 
   .footer__logo img {
-    width: 50%;
+    width: 160px;
   }
 
   .footer__address {

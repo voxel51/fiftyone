@@ -28,7 +28,8 @@ class Pin(HTTPEndpoint):
         stages = data.get("view", None)
         sample_ids = data.get("sample_ids", None)
         add_stages = data.get("add_stages", None)
-        similarity = data.get("similarity", None)
+        extended = data.get("extended", None)
+        group_slice = data.get("slice", None)
 
         view = fosv.get_view(dataset, stages, filters)
         if sample_ids:
@@ -39,15 +40,23 @@ class Pin(HTTPEndpoint):
                 stage = fost.ViewStage._from_dict(d)
                 view = view.add_stage(stage)
 
-        if similarity:
-            view = view.sort_by_similarity(**similarity)
+        if extended:
+            view = fosv.extend_view(view, extended, True)
 
         state = fose.get_state()
         state.selected = []
         state.selected_labels = []
         state.dataset = fo.load_dataset(dataset)
 
-        state.view = view
+        if state.dataset != view:
+            state.view = view
+
+        if group_slice:
+            if state.view is not None:
+                state.view.group_slice = group_slice
+            else:
+                state.dataset.group_slice = group_slice
+
         await fose.dispatch_event(subscription, StateUpdate(state=state))
 
         return {

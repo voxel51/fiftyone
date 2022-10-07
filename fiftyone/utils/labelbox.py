@@ -28,6 +28,7 @@ import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 import fiftyone.utils.annotations as foua
 
 lb = fou.lazy_import(
@@ -42,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 
 class LabelboxBackendConfig(foua.AnnotationBackendConfig):
-    """Base class for configuring :class:`LabelboxBackend` instances.
+    """Class for configuring :class:`LabelboxBackend` instances.
 
     Args:
         name: the name of the backend
@@ -107,6 +108,10 @@ class LabelboxBackend(foua.AnnotationBackend):
     """Class for interacting with the Labelbox annotation backend."""
 
     @property
+    def supported_media_types(self):
+        return [fomm.IMAGE, fomm.VIDEO]
+
+    @property
     def supported_label_types(self):
         return [
             "classification",
@@ -146,6 +151,10 @@ class LabelboxBackend(foua.AnnotationBackend):
     def supports_video_sample_fields(self):
         return False  # @todo resolve FiftyOne bug to allow this to be True
 
+    @property
+    def requires_label_schema(self):
+        return True
+
     def recommend_attr_tool(self, name, value):
         if isinstance(value, bool):
             return {"type": "radio", "values": [True, False]}
@@ -155,7 +164,7 @@ class LabelboxBackend(foua.AnnotationBackend):
     def requires_attr_values(self, attr_type):
         return attr_type != "text"
 
-    def connect_to_api(self):
+    def _connect_to_api(self):
         return LabelboxAnnotationAPI(
             self.config.name,
             self.config.url,
@@ -493,8 +502,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         backend's annotation and server configuration.
 
         Args:
-            samples: a :class:`fiftyone.core.collections.SampleCollection` to
-                upload to CVAT
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
             backend: a :class:`LabelboxBackend` to use to perform the upload
 
         Returns:
@@ -539,7 +547,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         )
 
     def download_annotations(self, results):
-        """Download the annotations from the Labelbox server for the given
+        """Downloads the annotations from the Labelbox server for the given
         results instance and parses them into the appropriate FiftyOne types.
 
         Args:
@@ -1260,14 +1268,6 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
         """
         self._load_config_parameters(url=url, api_key=api_key)
 
-    def connect_to_api(self):
-        """Returns an API instance connected to the Labelbox server.
-
-        Returns:
-            a :class:`LabelboxAnnotationAPI`
-        """
-        return self._backend.connect_to_api()
-
     def launch_editor(self):
         """Launches the Labelbox editor and loads the project for this
         annotation run.
@@ -1457,6 +1457,9 @@ def import_from_labelbox(
         labelbox_id_field ("labelbox_id"): the sample field to lookup/store the
             IDs of the Labelbox DataRows
     """
+    fov.validate_collection(dataset, media_type=(fomm.IMAGE, fomm.VIDEO))
+    is_video = dataset.media_type == fomm.VIDEO
+
     if download_dir:
         filename_maker = fou.UniqueFilenameMaker(output_dir=download_dir)
 
@@ -1469,8 +1472,6 @@ def import_from_labelbox(
         label_key = lambda k: label_prefix + "_" + k
     else:
         label_key = lambda k: k
-
-    is_video = dataset.media_type == fomm.VIDEO
 
     # Load labels
     d_list = etas.read_json(json_path)
@@ -1600,6 +1601,9 @@ def export_to_labelbox(
 
             By default, no frame labels are exported
     """
+    fov.validate_collection(
+        sample_collection, media_type=(fomm.IMAGE, fomm.VIDEO)
+    )
     is_video = sample_collection.media_type == fomm.VIDEO
 
     # Get label fields to export

@@ -9,6 +9,7 @@ import { ServerError } from "./errors";
 let fetchOrigin: string;
 let fetchFunctionSingleton: FetchFunction;
 let fetchHeaders: HeadersInit;
+let fetchPathPrefix = "";
 
 export interface FetchFunction {
   <A, R>(
@@ -28,19 +29,34 @@ export const getFetchHeaders = () => {
 };
 
 export const getFetchOrigin = () => {
+  if (window.FIFTYONE_SERVER_ADDRESS) {
+    return window.FIFTYONE_SERVER_ADDRESS;
+  }
   return fetchOrigin;
 };
+export function getFetchPathPrefix(): string {
+  if (typeof window.FIFTYONE_SERVER_PATH_PREFIX === "string") {
+    return window.FIFTYONE_SERVER_PATH_PREFIX;
+  }
+  return "";
+}
 
 export const getFetchParameters = () => {
   return {
     origin: getFetchOrigin(),
     headers: getFetchHeaders(),
+    pathPrefix: getFetchPathPrefix(),
   };
 };
 
-export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
+export const setFetchFunction = (
+  origin: string,
+  headers: HeadersInit = {},
+  pathPrefix = ""
+) => {
   fetchHeaders = headers;
   fetchOrigin = origin;
+  fetchPathPrefix = pathPrefix;
   const fetchFunction: FetchFunction = async (
     method,
     path,
@@ -48,6 +64,10 @@ export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
     result = "json"
   ) => {
     let url: string;
+    if (fetchPathPrefix) {
+      path = `${fetchPathPrefix}${path}`;
+    }
+
     try {
       new URL(path);
       url = path;
@@ -68,7 +88,7 @@ export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
 
     if (response.status >= 400) {
       const error = await response.json();
-      throw new ServerError(((error as unknown) as { stack: string }).stack);
+      throw new ServerError((error as unknown as { stack: string }).stack);
     }
 
     return await response[result]();
@@ -78,13 +98,16 @@ export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
 };
 
 const isWorker =
+  // @ts-ignore
   typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
 
 export const getAPI = () => {
   if (import.meta.env.VITE_API) {
     return import.meta.env.VITE_API;
   }
-
+  if (window.FIFTYONE_SERVER_ADDRESS) {
+    return window.FIFTYONE_SERVER_ADDRESS;
+  }
   return isElectron()
     ? `http://${process.env.FIFTYONE_SERVER_ADDRESS || "localhost"}:${
         process.env.FIFTYONE_SERVER_PORT || 5151
@@ -93,7 +116,7 @@ export const getAPI = () => {
 };
 
 if (!isWorker) {
-  setFetchFunction(getAPI());
+  setFetchFunction(getAPI(), {}, getFetchPathPrefix());
 }
 
 class RetriableError extends Error {}
@@ -118,6 +141,10 @@ export const getEventSource = (
   if (polling) {
     pollingEventSource(path, events, signal, body);
   } else {
+    if (fetchPathPrefix) {
+      path = `${fetchPathPrefix}${path}`;
+    }
+
     fetchEventSource(`${getFetchOrigin()}${path}`, {
       headers: { "Content-Type": "text/event-stream" },
       method: "POST",
@@ -167,9 +194,7 @@ export const getEventSource = (
               throw new Error(`${response.status} ${response.url}`);
             }
 
-            throw new ServerError(
-              ((err as unknown) as { stack: string }).stack
-            );
+            throw new ServerError((err as unknown as { stack: string }).stack);
           }
 
           return response;
@@ -206,7 +231,6 @@ const pollingEventSource = (
   opened: boolean = false
 ): void => {
   if (signal.aborted) {
-    opened && events.onclose();
     return;
   }
 

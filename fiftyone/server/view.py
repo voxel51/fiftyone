@@ -5,7 +5,6 @@ FiftyOne Server view
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from numpy import full
 import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
@@ -27,33 +26,55 @@ def get_view(
     filters=None,
     count_label_tags=False,
     only_matches=True,
-    similarity=None,
+    extended_stages=None,
+    sample_filter=None,
+    sort=False,
 ):
     """Get the view from request paramters
 
     Args:
         dataset_names: the dataset name
         stages (None): an optional list of serialized
-            :class:`fiftyone.core.stages.ViewStage`s
-        filters (None): an optional `dict` of App defined filters
-        count_label_tags (False): whether to set the hidden `_label_tags` field
-            with counts of tags with respect to all label fields
+            :class:`fiftyone.core.stages.ViewStage` instances
+        filters (None): an optional ``dict`` of App defined filters
+        extended_stages (None): extended view stages
+        count_label_tags (False): whether to set the hidden ``_label_tags``
+            field with counts of tags with respect to all label fields
         only_matches (True): whether to filter unmatches samples when filtering
             labels
-        similarity (None): sort by similarity paramters
+        sample_filter (None): an optional
+            :class:`fiftyone.server.filters.SampleFilter`
+        sort (False): whether to include sort extended stages
+
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView`
     """
-    view = fod.load_dataset(dataset_name)
+    view = fod.load_dataset(dataset_name).view()
+    view.reload()
 
     if stages:
         view = fov.DatasetView._build(view, stages)
 
-    if filters or similarity or count_label_tags:
+    if sample_filter is not None:
+        if sample_filter.group:
+            if sample_filter.group.id:
+                view = fov.make_optimized_select_view(
+                    view, sample_filter.group.id, groups=True
+                )
+            if sample_filter.group.slice:
+                view.group_slice = sample_filter.group.slice
+
+        elif sample_filter.id:
+            view = fov.make_optimized_select_view(view, sample_filter.id)
+
+    if filters or extended_stages or count_label_tags:
         view = get_extended_view(
             view,
             filters,
             count_label_tags=count_label_tags,
             only_matches=only_matches,
-            similarity=similarity,
+            extended_stages=extended_stages,
+            sort=sort,
         )
 
     return view
@@ -64,18 +85,20 @@ def get_extended_view(
     filters=None,
     count_label_tags=False,
     only_matches=True,
-    similarity=None,
+    extended_stages=None,
+    sort=False,
 ):
     """Create an extended view with the provided filters.
 
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
-        filters: an optional `dict` of App defined filters
-        count_label_tags (False): whether to set the hidden `_label_tags` field
-            with counts of tags with respect to all label fields
+        filters: an optional ``dict`` of App defined filters
+        count_label_tags (False): whether to set the hidden ``_label_tags``
+            field with counts of tags with respect to all label fields
         only_matches (True): whether to filter unmatches samples when filtering
             labels
-        similarity (None): sort by similarity paramters
+        extended_stages (None): extended view stages
+        sort (False): wheter to include sort extended stages
     """
     cleanup_fields = set()
     filtered_labels = set()
@@ -104,13 +127,23 @@ def get_extended_view(
         for stage in stages:
             view = view.add_stage(stage)
 
-    if similarity:
-        view = view.sort_by_similarity(**similarity)
+    if extended_stages:
+        view = extend_view(view, extended_stages, sort)
 
     if count_label_tags:
         view = _add_labels_tags_counts(view, filtered_labels, label_tags)
         if cleanup_fields:
             view = view.mongo([{"$unset": field} for field in cleanup_fields])
+
+    return view
+
+
+def extend_view(view, extended_stages, sort):
+    for cls, d in extended_stages.items():
+        kwargs = [[k, v] for k, v in d.items()]
+        stage = fosg.ViewStage._from_dict({"_cls": cls, "kwargs": kwargs})
+        if sort or not isinstance(stage, (fosg.SortBySimilarity, fosg.SortBy)):
+            view = view.add_stage(stage)
 
     return view
 
@@ -175,7 +208,7 @@ def _make_filter_stages(
     view, filters, label_tags=None, hide_result=False, only_matches=True
 ):
     field_schema = view.get_field_schema()
-    if view.media_type == fom.VIDEO:
+    if view.media_type != fom.IMAGE:
         frame_field_schema = view.get_frame_field_schema()
     else:
         frame_field_schema = None
@@ -183,11 +216,13 @@ def _make_filter_stages(
     tag_expr = (F("tags") != None).if_else(
         F("tags").contains(label_tags), None
     )
+    cache = {}
 
     stages = []
     cleanup = set()
     filtered_labels = set()
-    for path, args in filters.items():
+    for path in sorted(filters):
+        args = filters[path]
         if path == "tags" or path.startswith("_"):
             continue
 
@@ -226,7 +261,7 @@ def _make_filter_stages(
             )
             if expr is not None:
                 if hide_result:
-                    new_field = "__%s" % path.split(".")[-1]
+                    new_field = "__%s" % path.split(".")[1 if frames else 0]
                     if frames:
                         new_field = "%s%s" % (
                             view._FRAMES_PREFIX,
@@ -243,15 +278,16 @@ def _make_filter_stages(
                     )
                 else:
                     stage = fosg.FilterLabels(
-                        prefix + parent.name,
+                        cache.get(prefix + parent.name, prefix + parent.name),
                         expr,
-                        _new_field=new_field,
                         only_matches=only_matches,
+                        _new_field=new_field,
                     )
 
                 stages.append(stage)
                 filtered_labels.add(path)
                 if new_field:
+                    cache[prefix + parent.name] = new_field
                     cleanup.add(new_field)
         else:
             expr = _make_expression(view, path, args)
@@ -260,36 +296,31 @@ def _make_filter_stages(
 
     if label_tags is not None and hide_result:
         for path, _ in iter_label_fields(view):
-            if hide_result and path not in filtered_labels:
+            if hide_result:
                 new_field = _get_filtered_path(
                     view, path, filtered_labels, label_tags
                 )
             else:
                 new_field = None
 
-            if path in filtered_labels:
-                prefix = "__"
-            else:
-                prefix = ""
-
             stages.append(
                 fosg.FilterLabels(
-                    path,
+                    cache.get(path, path),
                     tag_expr,
                     only_matches=False,
                     _new_field=new_field,
-                    _prefix=prefix,
                 )
             )
             if new_field:
+                cache[path] = new_field
                 cleanup.add(new_field)
 
         match_exprs = []
         for path, _ in iter_label_fields(view):
-            prefix = "__" if hide_result else ""
             match_exprs.append(
                 fosg._get_label_field_only_matches_expr(
-                    view, path, prefix=prefix
+                    view,
+                    cache.get(path, path),
                 )
             )
 

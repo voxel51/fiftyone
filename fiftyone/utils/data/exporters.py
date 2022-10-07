@@ -52,6 +52,7 @@ def export_samples(
     data_path=None,
     labels_path=None,
     export_media=None,
+    rel_dir=None,
     dataset_exporter=None,
     label_field=None,
     frame_labels_field=None,
@@ -115,8 +116,7 @@ def export_samples(
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         export_dir (None): the directory to which to export the samples in
             format ``dataset_type``
-        dataset_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
-            type to write
+        dataset_type (None): the :class:`fiftyone.types.Dataset` type to write
         data_path (None): an optional parameter that enables explicit control
             over the location of the exported media for certain export formats.
             Can be any of the following:
@@ -172,6 +172,13 @@ def export_samples(
             some dataset formats may not support certain values for this
             parameter (e.g., when exporting in binary formats such as TF
             records, "symlink" is not an option)
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each media. When
+            exporting media, this identifier is joined with ``data_path`` to
+            generate an output path for each exported media. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
         dataset_exporter (None): a :class:`DatasetExporter` to use to write the
             dataset
         label_field (None): the name of the label field to export, or a
@@ -205,6 +212,7 @@ def export_samples(
             data_path=data_path,
             labels_path=labels_path,
             export_media=export_media,
+            rel_dir=rel_dir,
             **kwargs,
         )
     else:
@@ -214,6 +222,7 @@ def export_samples(
                 data_path=data_path,
                 labels_path=labels_path,
                 export_media=export_media,
+                rel_dir=rel_dir,
             )
         )
 
@@ -227,7 +236,10 @@ def export_samples(
         _write_batch_dataset(dataset_exporter, samples)
         return
 
-    if isinstance(dataset_exporter, GenericSampleDatasetExporter):
+    if isinstance(
+        dataset_exporter,
+        (GenericSampleDatasetExporter, GroupDatasetExporter),
+    ):
         sample_parser = None
     elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
         if found_patches:
@@ -385,6 +397,13 @@ def write_dataset(
             num_samples=num_samples,
             sample_collection=sample_collection,
         )
+    elif isinstance(dataset_exporter, GroupDatasetExporter):
+        _write_group_dataset(
+            dataset_exporter,
+            samples,
+            num_samples=num_samples,
+            sample_collection=sample_collection,
+        )
     elif isinstance(
         dataset_exporter,
         (UnlabeledImageDatasetExporter, LabeledImageDatasetExporter),
@@ -419,7 +438,7 @@ def build_dataset_exporter(
     """Builds the :class:`DatasetExporter` instance for the given parameters.
 
     Args:
-        dataset_type: the :class:`fiftyone.types.dataset_types.Dataset` type
+        dataset_type: the :class:`fiftyone.types.Dataset` type
         strip_none (True): whether to exclude None-valued items from ``kwargs``
         warn_unused (True): whether to issue warnings for any non-None unused
             parameters encountered
@@ -647,14 +666,20 @@ def _make_label_coercion_functions(
         if label_field is None:
             continue
 
-        field_type = sample_collection.get_field(
-            f"{'frames.' if frames else ''}{label_field}"
-        )
-
-        if isinstance(field_type, fof.EmbeddedDocumentField):
-            label_type = field_type.document_type
+        if frames:
+            field_path = sample_collection._FRAMES_PREFIX + label_field
         else:
-            label_type = type(field_type)
+            field_path = label_field
+
+        field = sample_collection.get_field(field_path)
+
+        if field is None:
+            continue
+
+        if isinstance(field, fof.EmbeddedDocumentField):
+            label_type = field.document_type
+        else:
+            label_type = type(field)
 
         # Natively supported types
         if any(issubclass(label_type, t) for t in export_types):
@@ -741,6 +766,7 @@ def _classification_to_detections(label):
                 label=label.label,
                 bounding_box=[0, 0, 1, 1],
                 confidence=label.confidence,
+                **dict(label.iter_attributes()),
             )
         ]
     )
@@ -768,8 +794,41 @@ def _write_generic_sample_dataset(
             if sample_collection is not None:
                 dataset_exporter.log_collection(sample_collection)
 
+            if (
+                isinstance(samples, foc.SampleCollection)
+                and samples.media_type == fomm.GROUP
+            ):
+                samples = samples.select_group_slices(_allow_mixed=True)
+
             for sample in pb(samples):
                 dataset_exporter.export_sample(sample)
+
+
+def _write_group_dataset(
+    dataset_exporter,
+    samples,
+    num_samples=None,
+    sample_collection=None,
+):
+    if not isinstance(samples, foc.SampleCollection):
+        raise ValueError(
+            "%s can only export grouped collections; found %s"
+            % (type(dataset_exporter), type(samples))
+        )
+
+    if samples.media_type != fomm.GROUP:
+        raise ValueError(
+            "%s can only export grouped collections; found media type '%s'"
+            % (type(dataset_exporter), samples.media_type)
+        )
+
+    with fou.ProgressBar(total=num_samples) as pb:
+        with dataset_exporter:
+            if sample_collection is not None:
+                dataset_exporter.log_collection(sample_collection)
+
+            for group in pb(samples.iter_groups()):
+                dataset_exporter.export_group(group)
 
 
 def _write_image_dataset(
@@ -962,10 +1021,14 @@ class MediaExporter(object):
                 directory in which to export the media
             -   When ``export_mode`` is "manifest", the path to write a JSON
                 file mapping UUIDs to input filepaths
-            -   When ``export_media`` is False, this parameter can optionally
-                be a root directory to strip from each exported image's path to
-                yield a UUID for each image. If no path is provided, only the
-                filename of each image is used for UUID generation
+            -   When ``export_media`` is False, this parameter has no effect
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each media. When
+            exporting media, this identifier is joined with ``export_path`` to
+            generate an output path for each exported media. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
         supported_modes (None): an optional tuple specifying a subset of the
             ``export_mode`` values that are allowed
         default_ext (None): the file extension to use when generating default
@@ -978,6 +1041,7 @@ class MediaExporter(object):
         self,
         export_mode,
         export_path=None,
+        rel_dir=None,
         supported_modes=None,
         default_ext=None,
         ignore_exts=False,
@@ -994,8 +1058,12 @@ class MediaExporter(object):
         if export_path is not None:
             export_path = fou.normalize_path(export_path)
 
+        if rel_dir is not None:
+            rel_dir = fou.normalize_path(rel_dir)
+
         self.export_mode = export_mode
         self.export_path = export_path
+        self.rel_dir = rel_dir
         self.supported_modes = supported_modes
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
@@ -1007,15 +1075,21 @@ class MediaExporter(object):
     def _write_media(self, media, outpath):
         raise NotImplementedError("subclass must implement _write_media()")
 
-    def _get_uuid(self, media_path):
-        if self.export_mode == False and self.export_path is not None:
-            media_path = fou.normalize_path(media_path)
-            uuid = os.path.relpath(media_path, self.export_path)
+    def _get_uuid(self, path):
+        if self.export_mode in (False, "manifest"):
+            # `path` should be an input path
+            rel_dir = self.rel_dir
         else:
-            uuid = os.path.basename(media_path)
+            # `path` should be an output path
+            rel_dir = self.export_path
+
+        if rel_dir is not None:
+            uuid = fou.safe_relpath(path, rel_dir)
+        else:
+            uuid = os.path.basename(path)
 
         if self.ignore_exts:
-            return os.path.splitext(uuid)[0]
+            uuid = os.path.splitext(uuid)[0]
 
         return uuid
 
@@ -1037,8 +1111,10 @@ class MediaExporter(object):
 
         self._filename_maker = fou.UniqueFilenameMaker(
             output_dir=output_dir,
+            rel_dir=self.rel_dir,
             default_ext=self.default_ext,
             ignore_exts=self.ignore_exts,
+            ignore_existing=True,
         )
         self._manifest_path = manifest_path
         self._manifest = manifest
@@ -1058,17 +1134,20 @@ class MediaExporter(object):
             -   the path to the exported media
             -   the UUID of the exported media
         """
+        if outpath is not None:
+            outpath = fou.normalize_path(outpath)
+
         if etau.is_str(media_or_path):
-            media_path = media_or_path
+            media_path = fou.normalize_path(media_or_path)
 
             if outpath is not None:
                 uuid = self._get_uuid(outpath)
-            elif self.export_mode != False:
+            elif self.export_mode in (False, "manifest"):
+                outpath = media_or_path
+                uuid = self._get_uuid(media_path)
+            else:
                 outpath = self._filename_maker.get_output_path(media_path)
                 uuid = self._get_uuid(outpath)
-            else:
-                outpath = None
-                uuid = self._get_uuid(media_path)
 
             if self.export_mode == True:
                 etau.copy_file(media_path, outpath)
@@ -1077,15 +1156,15 @@ class MediaExporter(object):
             elif self.export_mode == "symlink":
                 etau.symlink_file(media_path, outpath)
             elif self.export_mode == "manifest":
-                outpath = None
                 self._manifest[uuid] = media_path
         else:
             media = media_or_path
 
-            if outpath is None:
+            if outpath is not None:
+                uuid = self._get_uuid(outpath)
+            else:
                 outpath = self._filename_maker.get_output_path()
-
-            uuid = self._get_uuid(outpath)
+                uuid = self._get_uuid(outpath)
 
             if self.export_mode == True:
                 self._write_media(media, outpath)
@@ -1175,8 +1254,7 @@ class DatasetExporter(object):
 
         Subclasses can optionally implement this method if their export format
         can record information such as the
-        :meth:`fiftyone.core.collections.SampleCollection.info` or
-        :meth:`fiftyone.core.collections.SampleCollection.classes` of the
+        :meth:`fiftyone.core.collections.SampleCollection.info` of the
         collection being exported.
 
         By convention, this method must be optional; i.e., if it is not called
@@ -1263,6 +1341,33 @@ class GenericSampleDatasetExporter(DatasetExporter):
             sample: a :class:`fiftyone.core.sample.Sample`
         """
         raise NotImplementedError("subclass must implement export_sample()")
+
+
+class GroupDatasetExporter(DatasetExporter):
+    """Interface for exporting grouped datasets.
+
+    See :ref:`this page <writing-a-custom-dataset-exporter>` for information
+    about implementing/using dataset exporters.
+
+    Args:
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
+    """
+
+    def export_sample(self, *args, **kwargs):
+        raise ValueError(
+            "Use export_group() to perform exports with %s instances"
+            % type(self)
+        )
+
+    def export_group(self, group):
+        """Exports the given group to the dataset.
+
+        Args:
+            group: a dict mapping group slice names to
+                :class:`fiftyone.core.sample.Sample` instances
+        """
+        raise NotImplementedError("subclass must implement export_group()")
 
 
 class UnlabeledImageDatasetExporter(DatasetExporter):
@@ -1475,9 +1580,9 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     .. warning::
 
-        The :class:`fiftyone.types.dataset_types.FiftyOneDataset` format was
-        upgraded in ``fiftyone==0.8`` and this exporter is now deprecated.
-        The new exporter is :class:`FiftyOneDatasetExporter`.
+        The :class:`fiftyone.types.FiftyOneDataset` format was upgraded in
+        ``fiftyone==0.8`` and this exporter is now deprecated. The new exporter
+        is :class:`FiftyOneDatasetExporter`.
 
     Args:
         export_dir: the directory to write the export
@@ -1490,8 +1595,15 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             -   ``"move"``: move media files into the export directory
             -   ``"symlink"``: create symlinks to each media file in the export
                 directory
-        relative_filepaths (True): whether to store relative (True) or absolute
-            (False) filepaths to media files on disk in the output dataset
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each media. When
+            exporting media, this identifier is joined with ``export_dir`` to
+            generate an output path for each exported media. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
+        abs_paths (False): whether to store absolute paths to the media in the
+            exported labels
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
@@ -1500,7 +1612,8 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self,
         export_dir,
         export_media=None,
-        relative_filepaths=True,
+        rel_dir=None,
+        abs_paths=False,
         pretty_print=False,
     ):
         if export_media is None:
@@ -1509,7 +1622,8 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
-        self.relative_filepaths = relative_filepaths
+        self.rel_dir = rel_dir
+        self.abs_paths = abs_paths
         self.pretty_print = pretty_print
 
         self._data_dir = None
@@ -1522,7 +1636,6 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._metadata = None
         self._samples = None
         self._media_exporter = None
-        self._is_video_dataset = False
 
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
@@ -1537,28 +1650,27 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
         self._media_exporter = MediaExporter(
             self.export_media,
-            supported_modes=(True, False, "move", "symlink"),
             export_path=self._data_dir,
+            rel_dir=self.rel_dir,
+            supported_modes=(True, False, "move", "symlink"),
         )
         self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
-        self._is_video_dataset = sample_collection.media_type == fomm.VIDEO
-
         self._metadata["name"] = sample_collection.name
         self._metadata["media_type"] = sample_collection.media_type
 
         schema = sample_collection._serialize_field_schema()
         self._metadata["sample_fields"] = schema
 
-        if self._is_video_dataset:
+        if sample_collection._contains_videos(any_slice=True):
             schema = sample_collection._serialize_frame_field_schema()
             self._metadata["frame_fields"] = schema
 
         info = dict(sample_collection.info)
 
-        # Package classes and mask targets into `info`, since the import API
-        # only supports checking for `info`
+        # Package extras into `info`, since the import API only supports
+        # checking for `info`...
 
         if sample_collection.classes:
             info["classes"] = sample_collection.classes
@@ -1581,6 +1693,11 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             info[
                 "default_skeleton"
             ] = sample_collection._serialize_default_skeleton()
+
+        if sample_collection.app_config.is_custom():
+            info["app_config"] = sample_collection.app_config.to_dict(
+                extended=True
+            )
 
         self._metadata["info"] = info
 
@@ -1612,16 +1729,17 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     def export_sample(self, sample):
         out_filepath, _ = self._media_exporter.export(sample.filepath)
-        if out_filepath is None:
-            out_filepath = sample.filepath
 
-        sd = sample.to_dict()
-        sd["filepath"] = out_filepath
+        sd = sample.to_dict(include_private=True)
 
-        if self.relative_filepaths:
-            sd["filepath"] = os.path.relpath(out_filepath, self.export_dir)
+        if self.abs_paths:
+            sd["filepath"] = out_filepath
+        else:
+            sd["filepath"] = fou.safe_relpath(
+                out_filepath, self.export_dir, default=out_filepath
+            )
 
-        if self._is_video_dataset:
+        if sample.media_type == fomm.VIDEO:
             # Serialize frame labels separately
             uuid = os.path.splitext(os.path.basename(out_filepath))[0]
             outpath = self._export_frame_labels(sample, uuid)
@@ -1664,23 +1782,43 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             -   ``"move"``: move media files into the export directory
             -   ``"symlink"``: create symlinks to each media file in the export
                 directory
-        rel_dir (None): a relative directory to remove from the ``filepath`` of
-            each sample, if possible. The path is converted to an absolute path
-            (if necessary) via :func:`fiftyone.core.utils.normalize_path`.
-            The typical use case for this argument is that your source data
-            lives in a single directory and you wish to serialize relative,
-            rather than absolute, paths to the data within that directory.
-            Only applicable when ``export_media`` is False
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each media. When
+            exporting media, this identifier is joined with ``export_dir`` to
+            generate an output path for each exported media. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
+        export_runs (True): whether to include annotation/brain/evaluation
+            runs in the export. Only applicable when exporting full datasets
+        use_dirs (False): whether to export metadata into directories of per
+            sample/frame files
+        ordered (True): whether to preserve the order of the exported
+            collections
     """
 
-    def __init__(self, export_dir, export_media=None, rel_dir=None):
+    def __init__(
+        self,
+        export_dir,
+        export_media=None,
+        rel_dir=None,
+        export_runs=True,
+        use_dirs=False,
+        ordered=True,
+    ):
         if export_media is None:
             export_media = True
+
+        if rel_dir is not None:
+            rel_dir = fou.normalize_path(rel_dir)
 
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
         self.rel_dir = rel_dir
+        self.export_runs = export_runs
+        self.use_dirs = use_dirs
+        self.ordered = ordered
 
         self._data_dir = None
         self._anno_dir = None
@@ -1697,12 +1835,18 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._brain_dir = os.path.join(self.export_dir, "brain")
         self._eval_dir = os.path.join(self.export_dir, "evaluations")
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
-        self._samples_path = os.path.join(self.export_dir, "samples.json")
-        self._frames_path = os.path.join(self.export_dir, "frames.json")
+
+        if self.use_dirs:
+            self._samples_path = os.path.join(self.export_dir, "samples")
+            self._frames_path = os.path.join(self.export_dir, "frames")
+        else:
+            self._samples_path = os.path.join(self.export_dir, "samples.json")
+            self._frames_path = os.path.join(self.export_dir, "frames.json")
 
         self._media_exporter = MediaExporter(
             self.export_media,
             export_path=self._data_dir,
+            rel_dir=self.rel_dir,
             supported_modes=(True, False, "move", "symlink"),
         )
         self._media_exporter.setup()
@@ -1710,24 +1854,24 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
     def export_samples(self, sample_collection):
         etau.ensure_dir(self.export_dir)
 
-        inpaths = sample_collection.values("filepath")
+        if sample_collection.media_type == fomm.GROUP:
+            _sample_collection = sample_collection.select_group_slices(
+                _allow_mixed=True
+            )
+        else:
+            _sample_collection = sample_collection
+
+        inpaths = _sample_collection.values("filepath")
 
         if self.export_media != False:
-            if self.rel_dir is not None:
-                logger.warning(
-                    "Ignoring `rel_dir` since `export_media` is True"
-                )
-
-            outpaths = [self._media_exporter.export(p)[0] for p in inpaths]
-
-            # Replace filepath prefixes with `data/` for samples export
-            _outpaths = ["data/" + os.path.basename(p) for p in outpaths]
+            _outpaths = []
+            for inpath in inpaths:
+                _, uuid = self._media_exporter.export(inpath)
+                _outpaths.append(os.path.join("data", uuid))
         elif self.rel_dir is not None:
             # Remove `rel_dir` prefix from filepaths
-            rel_dir = fou.normalize_path(self.rel_dir) + os.path.sep
             _outpaths = [
-                p[len(rel_dir) :] if p.startswith(rel_dir) else p
-                for p in inpaths
+                fou.safe_relpath(p, self.rel_dir, default=p) for p in inpaths
             ]
         else:
             # Export raw filepaths
@@ -1735,7 +1879,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         logger.info("Exporting samples...")
 
-        coll, pipeline = fod._get_samples_pipeline(sample_collection)
+        coll, pipeline = fod._get_samples_pipeline(_sample_collection)
         num_samples = foo.count_documents(coll, pipeline)
         _samples = foo.aggregate(coll, pipeline)
 
@@ -1743,29 +1887,57 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             sample["filepath"] = outpath
             return sample
 
-        samples = map(_prep_sample, _samples, _outpaths)
+        if self.use_dirs:
+            if self.ordered:
+                patt = "{idx:06d}-{id}.json"
+            else:
+                patt = "{id}.json"
+        else:
+            patt = None
+
         foo.export_collection(
-            samples, self._samples_path, key="samples", num_docs=num_samples
+            map(_prep_sample, _samples, _outpaths),
+            self._samples_path,
+            key="samples",
+            patt=patt,
+            num_docs=num_samples,
         )
 
-        if sample_collection.media_type == fomm.VIDEO:
+        if sample_collection._contains_videos(any_slice=True):
             logger.info("Exporting frames...")
-            coll, pipeline = fod._get_frames_pipeline(sample_collection)
+
+            if sample_collection.media_type == fomm.GROUP and not isinstance(
+                sample_collection, fod.Dataset
+            ):
+                # Export frames for all video samples
+                _video_collection = sample_collection.select_group_slices(
+                    media_type=fomm.VIDEO
+                )
+            else:
+                _video_collection = sample_collection
+
+            coll, pipeline = fod._get_frames_pipeline(_video_collection)
             num_frames = foo.count_documents(coll, pipeline)
             frames = foo.aggregate(coll, pipeline)
             foo.export_collection(
-                frames, self._frames_path, key="frames", num_docs=num_frames
+                frames,
+                self._frames_path,
+                key="frames",
+                patt=patt,
+                num_docs=num_frames,
             )
 
-        conn = foo.get_db_conn()
         dataset = sample_collection._dataset
-        dataset_dict = conn.datasets.find_one({"name": dataset.name})
+        dataset_dict = dataset._doc.to_dict()
 
         # Exporting runs only makes sense if the entire dataset is being
         # exported, otherwise the view for the run cannot be reconstructed
         # based on the information encoded in the run's document
 
-        export_runs = sample_collection == sample_collection._root_dataset
+        export_runs = (
+            self.export_runs
+            and sample_collection == sample_collection._root_dataset
+        )
 
         if not export_runs:
             dataset_dict["annotation_runs"] = {}
@@ -1829,18 +2001,28 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
             -   ``"move"``: move media files into the export directory
             -   ``"symlink"``: create symlinks to each media file in the export
                 directory
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``export_dir`` to
+            generate an output path for each exported image. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
     """
 
-    def __init__(self, export_dir, export_media=None, image_format=None):
+    def __init__(
+        self, export_dir, export_media=None, rel_dir=None, image_format=None
+    ):
         if export_media is None:
             export_media = True
 
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
+        self.rel_dir = rel_dir
         self.image_format = image_format
 
         self._media_exporter = None
@@ -1853,6 +2035,7 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
         self._media_exporter = ImageExporter(
             self.export_media,
             export_path=self.export_dir,
+            rel_dir=self.rel_dir,
             supported_modes=(True, "move", "symlink"),
             default_ext=self.image_format,
         )
@@ -1884,15 +2067,23 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
             -   ``"move"``: move media files into the export directory
             -   ``"symlink"``: create symlinks to each media file in the export
                 directory
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each video. When
+            exporting media, this identifier is joined with ``export_dir`` to
+            generate an output path for each exported video. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
     """
 
-    def __init__(self, export_dir, export_media=None):
+    def __init__(self, export_dir, export_media=None, rel_dir=None):
         if export_media is None:
             export_media = True
 
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
+        self.rel_dir = rel_dir
 
         self._media_exporter = None
 
@@ -1904,6 +2095,7 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
         self._media_exporter = VideoExporter(
             self.export_media,
             export_path=self.export_dir,
+            rel_dir=self.rel_dir,
             supported_modes=(True, "move", "symlink"),
         )
         self._media_exporter.setup()
@@ -1976,6 +2168,15 @@ class FiftyOneImageClassificationDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` to
+            generate an output path for each exported image. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
+        abs_paths (False): whether to store absolute paths to the images in the
+            exported labels
         include_confidence (False): whether to include classification
             confidences in the export. The supported values are:
 
@@ -1989,9 +2190,7 @@ class FiftyOneImageClassificationDatasetExporter(
             -   ``True``: always include a (possibly empty) attributes dict
             -   ``None``: include attributes only if they exist
             -   a name or iterable of names of specific attributes to include
-        classes (None): the list of possible class labels. If not provided,
-            this list will be extracted when :meth:`log_collection` is called,
-            if possible
+        classes (None): the list of possible class labels
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -2005,6 +2204,8 @@ class FiftyOneImageClassificationDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
+        abs_paths=False,
         include_confidence=False,
         include_attributes=False,
         classes=None,
@@ -2029,6 +2230,8 @@ class FiftyOneImageClassificationDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
+        self.abs_paths = abs_paths
         self.include_confidence = include_confidence
         self.include_attributes = include_attributes
         self.classes = classes
@@ -2054,26 +2257,21 @@ class FiftyOneImageClassificationDatasetExporter(
         self._media_exporter = ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             default_ext=self.image_format,
             ignore_exts=True,
         )
         self._media_exporter.setup()
 
-    def log_collection(self, sample_collection):
-        if self.classes is None:
-            if sample_collection.default_classes:
-                self.classes = sample_collection.default_classes
-                self._parse_classes()
-            elif sample_collection.classes:
-                self.classes = next(iter(sample_collection.classes.values()))
-                self._parse_classes()
-            elif "classes" in sample_collection.info:
-                self.classes = sample_collection.info["classes"]
-                self._parse_classes()
-
     def export_sample(self, image_or_path, label, metadata=None):
-        _, uuid = self._media_exporter.export(image_or_path)
-        self._labels_dict[uuid] = _parse_classifications(
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
+
+        if self.abs_paths:
+            key = out_image_path
+        else:
+            key = uuid
+
+        self._labels_dict[key] = _parse_classifications(
             label,
             labels_map_rev=self._labels_map_rev,
             include_confidence=self.include_confidence,
@@ -2115,14 +2313,26 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
             -   ``"move"``: move all media files into the output directory
             -   ``"symlink"``: create symlinks to the media files in the output
                 directory
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``export_dir`` to
+            generate an output path for each exported image. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
     """
 
-    def __init__(self, export_dir, export_media=None, image_format=None):
+    def __init__(
+        self, export_dir, export_media=None, rel_dir=None, image_format=None
+    ):
         if export_media is None:
             export_media = True
+
+        if rel_dir is not None:
+            rel_dir = fou.normalize_path(rel_dir)
 
         if image_format is None:
             image_format = fo.config.default_image_ext
@@ -2130,6 +2340,7 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
+        self.rel_dir = rel_dir
         self.image_format = image_format
 
         self._class_counts = None
@@ -2169,14 +2380,18 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         self._class_counts[_label] += 1
 
         if etau.is_str(image_or_path):
-            image_path = image_or_path
+            image_path = fou.normalize_path(image_or_path)
         else:
             img = image_or_path
             image_path = self._default_filename_patt % (
                 self._class_counts[_label]
             )
 
-        filename = os.path.basename(image_path)
+        if self.rel_dir is not None:
+            filename = fou.safe_relpath(image_path, self.rel_dir)
+        else:
+            filename = os.path.basename(image_path)
+
         name, ext = os.path.splitext(filename)
 
         key = (_label, filename)
@@ -2214,15 +2429,26 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
             -   ``"move"``: move all media files into the output directory
             -   ``"symlink"``: create symlinks to the media files in the output
                 directory
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each video. When
+            exporting media, this identifier is joined with ``export_dir`` to
+            generate an output path for each exported video. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
     """
 
-    def __init__(self, export_dir, export_media=None):
+    def __init__(self, export_dir, export_media=None, rel_dir=None):
         if export_media is None:
             export_media = True
+
+        if rel_dir is not None:
+            rel_dir = fou.normalize_path(rel_dir)
 
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
+        self.rel_dir = rel_dir
 
         self._class_counts = None
         self._filename_counts = None
@@ -2261,7 +2487,11 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
 
         self._class_counts[_label] += 1
 
-        filename = os.path.basename(video_path)
+        if self.rel_dir is not None:
+            filename = fou.safe_relpath(video_path, self.rel_dir)
+        else:
+            filename = os.path.basename(video_path)
+
         name, ext = os.path.splitext(filename)
 
         key = (_label, filename)
@@ -2339,9 +2569,16 @@ class FiftyOneImageDetectionDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
-        classes (None): the list of possible class labels. If not provided,
-            this list will be extracted when :meth:`log_collection` is called,
-            if possible
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` to
+            generate an output path for each exported image. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
+        abs_paths (False): whether to store absolute paths to the images in the
+            exported labels
+        classes (None): the list of possible class labels
         include_confidence (None): whether to include detection confidences in
             the export. The supported values are:
 
@@ -2368,6 +2605,8 @@ class FiftyOneImageDetectionDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
+        abs_paths=False,
         classes=None,
         include_confidence=None,
         include_attributes=None,
@@ -2392,6 +2631,8 @@ class FiftyOneImageDetectionDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
+        self.abs_paths = abs_paths
         self.classes = classes
         self.include_confidence = include_confidence
         self.include_attributes = include_attributes
@@ -2417,26 +2658,21 @@ class FiftyOneImageDetectionDatasetExporter(
         self._media_exporter = ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             default_ext=self.image_format,
             ignore_exts=True,
         )
         self._media_exporter.setup()
 
-    def log_collection(self, sample_collection):
-        if self.classes is None:
-            if sample_collection.default_classes:
-                self.classes = sample_collection.default_classes
-                self._parse_classes()
-            elif sample_collection.classes:
-                self.classes = next(iter(sample_collection.classes.values()))
-                self._parse_classes()
-            elif "classes" in sample_collection.info:
-                self.classes = sample_collection.info["classes"]
-                self._parse_classes()
-
     def export_sample(self, image_or_path, detections, metadata=None):
-        _, uuid = self._media_exporter.export(image_or_path)
-        self._labels_dict[uuid] = _parse_detections(
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
+
+        if self.abs_paths:
+            key = out_image_path
+        else:
+            key = uuid
+
+        self._labels_dict[key] = _parse_detections(
             detections,
             labels_map_rev=self._labels_map_rev,
             include_confidence=self.include_confidence,
@@ -2518,11 +2754,18 @@ class FiftyOneTemporalDetectionDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each video. When
+            exporting media, this identifier is joined with ``data_path`` to
+            generate an output path for each exported video. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
+        abs_paths (False): whether to store absolute paths to the videos in the
+            exported labels
         use_timestamps (False): whether to export the support of each temporal
             detection in seconds rather than frame numbers
-        classes (None): the list of possible class labels. If not provided,
-            this list will be extracted when :meth:`log_collection` is called,
-            if possible
+        classes (None): the list of possible class labels
         include_confidence (None): whether to include detection confidences in
             the export. The supported values are:
 
@@ -2546,6 +2789,8 @@ class FiftyOneTemporalDetectionDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
+        abs_paths=False,
         use_timestamps=False,
         classes=None,
         include_confidence=None,
@@ -2570,6 +2815,8 @@ class FiftyOneTemporalDetectionDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
+        self.abs_paths = abs_paths
         self.use_timestamps = use_timestamps
         self.classes = classes
         self.include_confidence = include_confidence
@@ -2599,25 +2846,20 @@ class FiftyOneTemporalDetectionDatasetExporter(
         self._media_exporter = VideoExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             ignore_exts=True,
         )
         self._media_exporter.setup()
 
-    def log_collection(self, sample_collection):
-        if self.classes is None:
-            if sample_collection.default_classes:
-                self.classes = sample_collection.default_classes
-                self._parse_classes()
-            elif sample_collection.classes:
-                self.classes = next(iter(sample_collection.classes.values()))
-                self._parse_classes()
-            elif "classes" in sample_collection.info:
-                self.classes = sample_collection.info["classes"]
-                self._parse_classes()
-
     def export_sample(self, video_path, temporal_detections, _, metadata=None):
-        _, uuid = self._media_exporter.export(video_path)
-        self._labels_dict[uuid] = _parse_temporal_detections(
+        out_video_path, uuid = self._media_exporter.export(video_path)
+
+        if self.abs_paths:
+            key = out_video_path
+        else:
+            key = uuid
+
+        self._labels_dict[key] = _parse_temporal_detections(
             temporal_detections,
             labels_map_rev=self._labels_map_rev,
             metadata=metadata,
@@ -2701,6 +2943,14 @@ class ImageSegmentationDirectoryExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` and
+            ``labels_path`` to generate output paths for each exported image
+            and mask. This argument allows for populating nested subdirectories
+            that match the shape of the input paths. The path is converted to
+            an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -2724,6 +2974,7 @@ class ImageSegmentationDirectoryExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
         image_format=None,
         mask_format=".png",
         mask_size=None,
@@ -2748,6 +2999,7 @@ class ImageSegmentationDirectoryExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
         self.image_format = image_format
         self.mask_format = mask_format
         self.mask_size = mask_size
@@ -2768,6 +3020,7 @@ class ImageSegmentationDirectoryExporter(
         self._media_exporter = ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             default_ext=self.image_format,
             ignore_exts=True,
         )
@@ -2844,6 +3097,13 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
             -   ``"move"``: move all media files into the output directory
             -   ``"symlink"``: create symlinks to the media files in the output
                 directory
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``export_dir`` to
+            generate an output path for each exported image. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -2855,6 +3115,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         self,
         export_dir,
         export_media=None,
+        rel_dir=None,
         image_format=None,
         pretty_print=False,
     ):
@@ -2864,6 +3125,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
+        self.rel_dir = rel_dir
         self.image_format = image_format
         self.pretty_print = pretty_print
 
@@ -2898,6 +3160,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         self._media_exporter = ImageExporter(
             self.export_media,
             export_path=self._data_dir,
+            rel_dir=self.rel_dir,
             supported_modes=(True, "move", "symlink"),
             default_ext=self.image_format,
             ignore_exts=True,
@@ -2917,8 +3180,8 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
 
         self._dataset_index.append(
             etad.LabeledDataRecord(
-                "data/" + os.path.basename(out_image_path),
-                "labels/" + os.path.basename(out_labels_path),
+                "data/" + uuid + os.path.splitext(out_image_path)[1],
+                "labels/" + uuid + ".json",
             )
         )
 
@@ -2953,17 +3216,27 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
             -   ``"move"``: move all media files into the output directory
             -   ``"symlink"``: create symlinks to the media files in the output
                 directory
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each video. When
+            exporting media, this identifier is joined with ``export_dir`` to
+            generate an output path for each exported video. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
 
-    def __init__(self, export_dir, export_media=None, pretty_print=False):
+    def __init__(
+        self, export_dir, export_media=None, rel_dir=None, pretty_print=False
+    ):
         if export_media is None:
             export_media = True
 
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
+        self.rel_dir = rel_dir
         self.pretty_print = pretty_print
 
         self._dataset_index = None
@@ -3001,6 +3274,7 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
         self._media_exporter = VideoExporter(
             self.export_media,
             export_path=self._data_dir,
+            rel_dir=self.rel_dir,
             supported_modes=(True, "move", "symlink"),
             ignore_exts=True,
         )
@@ -3019,8 +3293,8 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
 
         self._dataset_index.append(
             etad.LabeledDataRecord(
-                "data/" + os.path.basename(out_video_path),
-                "labels/" + os.path.basename(out_labels_path),
+                "data/" + uuid + os.path.splitext(out_video_path)[1],
+                "labels/" + uuid + ".json",
             )
         )
 

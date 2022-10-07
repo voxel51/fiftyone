@@ -4,6 +4,7 @@
 
 export const createScrollReader = (
   element: HTMLElement,
+  horizontal: boolean,
   render: (zooming: boolean) => void,
   getScrollSpeendThreshold: () => number
 ): void => {
@@ -23,9 +24,13 @@ export const createScrollReader = (
       return false;
     }
     if (!prior) {
-      prior = element.scrollTop;
+      prior = horizontal ? element.scrollLeft : element.scrollTop;
     } else {
-      if (Math.abs(element.scrollTop - prior) > threshold) {
+      if (
+        Math.abs(
+          (horizontal ? element.scrollLeft : element.scrollTop) - prior
+        ) > threshold
+      ) {
         zooming = true;
         if (timer !== undefined) {
           clearTimeout(timer);
@@ -41,7 +46,7 @@ export const createScrollReader = (
           scrolling = false;
         }
       }
-      prior = element.scrollTop;
+      prior = horizontal ? element.scrollLeft : element.scrollTop;
     }
 
     return true;

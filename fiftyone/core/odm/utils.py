@@ -7,17 +7,172 @@ Utilities for documents.
 """
 from collections import defaultdict
 from datetime import date, datetime
+import json
 import numbers
 import six
+import sys
 
+from bson import json_util
+from bson.binary import Binary
 from bson.objectid import ObjectId
+from bson.son import SON
 from mongoengine.fields import StringField
 import numpy as np
+import pytz
 
+import fiftyone as fo
 import fiftyone.core.fields as fof
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
-foed = fou.lazy_import("fiftyone.core.odm.embedded_document")
+food = fou.lazy_import("fiftyone.core.odm.document")
+fooe = fou.lazy_import("fiftyone.core.odm.embedded_document")
+
+
+def serialize_value(value, extended=False):
+    """Serializes the given value.
+
+    Args:
+        value: the value
+        extended (False): whether to serialize extended JSON constructs such as
+            ObjectIDs, Binary, etc. into JSON format
+
+    Returns:
+        the serialized value
+    """
+    if isinstance(value, SON):
+        return value
+
+    if hasattr(value, "to_dict") and callable(value.to_dict):
+        # EmbeddedDocumentField
+        return value.to_dict(extended=extended)
+
+    if isinstance(value, (bool, np.bool_)):
+        # BooleanField
+        return bool(value)
+
+    if isinstance(value, numbers.Integral):
+        # IntField
+        return int(value)
+
+    if isinstance(value, numbers.Number):
+        # FloatField
+        return float(value)
+
+    if isinstance(value, ObjectId) and extended:
+        return {"$oid": str(value)}
+
+    if type(value) is date:
+        # DateField
+        return datetime(value.year, value.month, value.day, tzinfo=pytz.utc)
+
+    if isinstance(value, np.ndarray):
+        # VectorField/ArrayField
+        binary = Binary(fou.serialize_numpy_array(value))
+        if not extended:
+            return binary
+
+        # @todo can we optimize this?
+        return json.loads(json_util.dumps(binary))
+
+    if isinstance(value, (list, tuple)):
+        # ListField
+        return [serialize_value(v, extended=extended) for v in value]
+
+    if isinstance(value, dict):
+        # DictField
+        return {
+            k: serialize_value(v, extended=extended) for k, v in value.items()
+        }
+
+    return value
+
+
+def deserialize_value(value):
+    """Deserializes the given value.
+
+    Args:
+        value: the serialized value
+
+    Returns:
+        the value
+    """
+    if isinstance(value, dict):
+        if "_cls" in value:
+            # Serialized document
+            _cls = _document_registry[value["_cls"]]
+            return _cls.from_dict(value)
+
+        if "$binary" in value:
+            # Serialized array in extended format
+            binary = json_util.loads(json.dumps(value))
+            return fou.deserialize_numpy_array(binary)
+
+        if "$oid" in value:
+            return ObjectId(value["$oid"])
+
+        return value
+
+    if isinstance(value, six.binary_type):
+        # Serialized array in non-extended format
+        return fou.deserialize_numpy_array(value)
+
+    return value
+
+
+def validate_field_name(field_name, media_type=None, is_frame_field=False):
+    """Verifies that the given field name is valid.
+
+    Args:
+        field_name: the field name
+        media_type (None): the media type of the sample, if known
+        is_frame_field (False): whether this is a frame-level field
+
+    Raises:
+        ValueError: if the field name is invalid
+    """
+    if not isinstance(field_name, str):
+        raise ValueError(
+            "Invalid field name '%s'. Field names must be strings; found "
+            "%s" % (field_name, type(field_name))
+        )
+
+    if not field_name:
+        raise ValueError(
+            "Invalid field name '%s'. Field names cannot be empty" % field_name
+        )
+
+    if field_name.startswith("_"):
+        raise ValueError(
+            "Invalid field name: '%s'. Field names cannot start with '_'"
+            % field_name
+        )
+
+    if "$" in field_name:
+        raise ValueError(
+            "Invalid field name: '%s'. Field names cannot contain '$'"
+            % field_name
+        )
+
+    if (
+        media_type == fom.VIDEO
+        and not is_frame_field
+        and field_name == "frames"
+    ):
+        raise ValueError(
+            "Invalid field name '%s'. 'frames' is a reserved keyword for "
+            "video datasets" % field_name
+        )
+
+    if (
+        media_type == fom.GROUP
+        and not is_frame_field
+        and field_name == "groups"
+    ):
+        raise ValueError(
+            "Invalid field name '%s'. 'groups' is a reserved keyword for "
+            "grouped datasets" % field_name
+        )
 
 
 def get_field_kwargs(field):
@@ -68,7 +223,7 @@ def get_implied_field_kwargs(value):
     Returns:
         a field specification dict
     """
-    if isinstance(value, foed.BaseEmbeddedDocument):
+    if isinstance(value, fooe.BaseEmbeddedDocument):
         return {
             "ftype": fof.EmbeddedDocumentField,
             "embedded_doc_type": type(value),
@@ -83,7 +238,7 @@ def get_implied_field_kwargs(value):
             ],
         }
 
-    if isinstance(value, bool):
+    if isinstance(value, (bool, np.bool_)):
         return {"ftype": fof.BooleanField}
 
     if isinstance(value, numbers.Integral):
@@ -94,6 +249,9 @@ def get_implied_field_kwargs(value):
 
     if isinstance(value, six.string_types):
         return {"ftype": fof.StringField}
+
+    if isinstance(value, ObjectId):
+        return {"ftype": fof.ObjectIdField}
 
     if isinstance(value, datetime):
         return {"ftype": fof.DateTimeField}
@@ -146,16 +304,13 @@ def get_implied_field_kwargs(value):
     if isinstance(value, dict):
         return {"ftype": fof.DictField}
 
-    if isinstance(value, ObjectId):
-        return {"ftype": fof.ObjectIdField}
-
     raise TypeError(
         "Cannot infer an appropriate field type for value '%s'" % value
     )
 
 
 def _get_list_value_type(value):
-    if isinstance(value, bool):
+    if isinstance(value, (bool, np.bool_)):
         return fof.BooleanField
 
     if isinstance(value, numbers.Integral):
@@ -170,7 +325,7 @@ def _get_list_value_type(value):
     if isinstance(value, ObjectId):
         return fof.ObjectIdField
 
-    if isinstance(value, foed.BaseEmbeddedDocument):
+    if isinstance(value, fooe.BaseEmbeddedDocument):
         return fof.EmbeddedDocumentField
 
     if isinstance(value, datetime):
@@ -267,3 +422,66 @@ def _merge_field_kwargs(fields_list):
                 kwargs["fields"].append(v)
 
     return kwargs
+
+
+class DocumentRegistry(object):
+    """A registry of
+    :class:`fiftyone.core.odm.document.MongoEngineBaseDocument` classes found
+    when importing data from the database.
+    """
+
+    def __init__(self):
+        self._cache = {}
+
+    def __repr__(self):
+        return repr(self._cache)
+
+    def __getitem__(self, name):
+        # Check cache first
+        cls = self._cache.get(name, None)
+        if cls is not None:
+            return cls
+
+        # Then fiftyone namespace
+        try:
+            cls = self._get_cls(fo, name)
+            self._cache[name] = cls
+            return cls
+        except AttributeError:
+            pass
+
+        # Then full module list
+        for module in sys.modules.values():
+            try:
+                cls = self._get_cls(module, name)
+                self._cache[name] = cls
+                return cls
+            except AttributeError:
+                pass
+
+        raise DocumentRegistryError(
+            "Could not locate document class '%s'.\n\nIf you are working with "
+            "a dataset that uses custom embedded documents, you must add them "
+            "to FiftyOne's module path. See "
+            "https://voxel51.com/docs/fiftyone/user_guide/using_datasets.html#custom-embedded-documents "
+            "for more information" % name
+        )
+
+    def _get_cls(self, module, name):
+        cls = getattr(module, name)
+
+        try:
+            assert issubclass(cls, food.MongoEngineBaseDocument)
+        except:
+            raise AttributeError
+
+        return cls
+
+
+class DocumentRegistryError(Exception):
+    """Error raised when an unknown document class is encountered."""
+
+    pass
+
+
+_document_registry = DocumentRegistry()

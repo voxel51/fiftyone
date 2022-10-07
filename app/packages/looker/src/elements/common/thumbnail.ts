@@ -16,6 +16,8 @@ export class ThumbnailSelectorElement<
   private selected: boolean;
   private checkbox: HTMLInputElement;
   private label: HTMLLabelElement;
+  private title: HTMLDivElement;
+  private titleText: string;
 
   getEvents(): Events<State> {
     return {
@@ -43,6 +45,9 @@ export class ThumbnailSelectorElement<
     element.appendChild(this.label);
     element.title = SELECTION_TEXT;
 
+    this.title = document.createElement("div");
+    element.append(this.title);
+
     return element;
   }
 
@@ -50,10 +55,13 @@ export class ThumbnailSelectorElement<
     return thumbnail;
   }
 
-  renderSelf({
-    hovering,
-    options: { selected, inSelectionMode },
-  }: Readonly<State>) {
+  renderSelf(
+    {
+      hovering,
+      options: { selected, inSelectionMode, thumbnailTitle },
+    }: Readonly<State>,
+    sample
+  ) {
     const shown = hovering || selected || inSelectionMode;
     if (this.shown !== shown) {
       shown
@@ -65,6 +73,11 @@ export class ThumbnailSelectorElement<
     if (this.selected !== selected) {
       this.selected = selected;
       this.checkbox.checked = selected;
+    }
+
+    if (thumbnailTitle && thumbnailTitle(sample) !== this.titleText) {
+      this.titleText = thumbnailTitle(sample);
+      this.title.innerText = this.titleText;
     }
 
     return this.element;

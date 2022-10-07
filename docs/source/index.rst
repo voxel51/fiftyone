@@ -42,8 +42,8 @@ visualize datasets and interpret models faster and more effectively.
 .. raw:: html
 
   <div style="margin-top: 20px; margin-bottom: 20px">
-    <video controls muted poster="https://voxel51.com/images/fiftyone_poster.png" style="width: 100%;">
-      <source src="https://voxel51.com/images/fiftyone_long_sizzle.mp4" type="video/mp4">
+    <video controls muted poster="https://voxel51.com/images/fiftyone-poster-v2.png" style="width: 100%;">
+      <source src="https://voxel51.com/images/fiftyone_long_sizzle_light_bg.mp4" type="video/mp4">
     </video>
   </div>
 
@@ -80,6 +80,16 @@ learn how:
     :image_link: recipes/adding_detections.html
     :image_src: https://voxel51.com/images/integrations/tensorflow-128.png
     :image_title: TensorFlow
+
+.. customimagelink::
+    :image_link: tutorials/detectron2.html
+    :image_src: https://voxel51.com/images/integrations/detectron2-128.png
+    :image_title: Detectron2
+
+.. customimagelink::
+    :image_link: tutorials/qdrant.html
+    :image_src: https://voxel51.com/images/integrations/qdrant-128.png
+    :image_title: Qdrant
 
 .. customimagelink::
     :image_link: integrations/activitynet.html

@@ -25,7 +25,6 @@ import fiftyone.core.context as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
 import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
 import fiftyone.core.video as fov
@@ -196,7 +195,18 @@ def _plot_confusion_matrix_interactive(
     num_rows, num_cols = confusion_matrix.shape
     zlim = [0, confusion_matrix.max()]
 
-    if gt_field and pred_field:
+    if samples is not None and eval_key is not None:
+        if gt_field is None or pred_field is None:
+            eval_info = samples.get_evaluation_info(eval_key)
+            gt_field = eval_info.config.gt_field
+            pred_field = eval_info.config.pred_field
+
+        label_type = samples._get_label_field_type(gt_field)
+        use_patches = issubclass(label_type, (fol.Detections, fol.Polylines))
+    else:
+        use_patches = False
+
+    if gt_field is not None and pred_field is not None:
         label_fields = [gt_field, pred_field]
     else:
         label_fields = None
@@ -211,7 +221,7 @@ def _plot_confusion_matrix_interactive(
     ids = np.flip(ids, axis=0)
     ylabels = np.flip(ylabels)
 
-    if eval_key is not None:
+    if use_patches:
         selection_mode = "patches"
         init_fcn = lambda view: view.to_evaluation_patches(eval_key)
     else:
@@ -826,7 +836,7 @@ def lines(
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
     if etau.is_str(y) or isinstance(y, foe.ViewExpression):
-        if samples is not None and samples.media_type == fom.VIDEO:
+        if samples is not None and samples._contains_videos():
             is_frames = foe.is_frames_expr(y)
         else:
             is_frames = False
@@ -941,33 +951,21 @@ def lines(
 
         return figure
 
-    selection_mode = None
-    init_fcn = None
-
-    if link_field is None:
-        if isinstance(samples, fov.FramesView):
-            link_type = "frames"
-        elif isinstance(samples, fop.PatchesView):
-            link_type = "labels"
-            link_field = samples._label_fields
-        else:
-            link_type = "samples"
-    elif link_field == "frames":
-        if isinstance(samples, fov.FramesView):
-            link_type = "frames"
-        else:
-            link_type = "frames"
-            init_fcn = lambda view: view.to_frames()
-    else:
-        link_type = "labels"
-        selection_mode = "patches"
-        init_fcn = lambda view: view.to_patches(link_field)
+    (
+        link_type,
+        label_fields,
+        selection_mode,
+        init_fcn,
+    ) = InteractiveScatter.recommend_link_type(
+        label_field=link_field,
+        samples=samples,
+    )
 
     return InteractiveScatter(
         figure,
         link_type=link_type,
         init_view=samples,
-        label_fields=link_field,
+        label_fields=label_fields,
         selection_mode=selection_mode,
         init_fcn=init_fcn,
     )
@@ -1195,33 +1193,21 @@ def scatterplot(
 
         return figure
 
-    selection_mode = None
-    init_fcn = None
-
-    if link_field is None:
-        if isinstance(samples, fov.FramesView):
-            link_type = "frames"
-        elif isinstance(samples, fop.PatchesView):
-            link_type = "labels"
-            link_field = samples._label_fields
-        else:
-            link_type = "samples"
-    elif link_field == "frames":
-        if isinstance(samples, fov.FramesView):
-            link_type = "frames"
-        else:
-            link_type = "frames"
-            init_fcn = lambda view: view.to_frames()
-    else:
-        link_type = "labels"
-        selection_mode = "patches"
-        init_fcn = lambda view: view.to_patches(link_field)
+    (
+        link_type,
+        label_fields,
+        selection_mode,
+        init_fcn,
+    ) = InteractiveScatter.recommend_link_type(
+        label_field=link_field,
+        samples=samples,
+    )
 
     return InteractiveScatter(
         figure,
         link_type=link_type,
         init_view=samples,
-        label_fields=link_field,
+        label_fields=label_fields,
         selection_mode=selection_mode,
         init_fcn=init_fcn,
     )
@@ -1894,7 +1880,7 @@ def _check_plotly_jupyter_environment():
     # JupyterLab is different and I don't know how to distinguish Jupyter
     # notebooks from JupyterLab right now...
     #
-    fou.ensure_package("ipywidgets>=7.5")
+    fou.ensure_package("ipywidgets>=7.5,<8")
 
 
 class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
@@ -1998,7 +1984,7 @@ class InteractiveScatter(PlotlyInteractivePlot):
     This wrapper responds to selection and deselection events (if available)
     triggered on the figure's traces via Plotly's lasso and box selector tools.
 
-    Traces whose ``customdata`` attribute contain numpy arrays are assumed to
+    Traces whose ``customdata`` attribute contain lists/arrays are assumed to
     contain the IDs of the points in the trace. Traces with no ``customdata``
     are allowed, but will not have any selection events.
 
@@ -2022,7 +2008,7 @@ class InteractiveScatter(PlotlyInteractivePlot):
 
     def _init_traces(self):
         for idx, trace in enumerate(self._traces):
-            trace_ids = trace.customdata
+            trace_ids = np.asarray(trace.customdata)
             if trace_ids.ndim > 1:
                 trace_ids = trace_ids[:, 0]
 
@@ -2063,7 +2049,7 @@ class InteractiveScatter(PlotlyInteractivePlot):
         self._traces = [
             trace
             for trace in widget.data
-            if isinstance(trace.customdata, np.ndarray)
+            if etau.is_container(trace.customdata)
         ]
         self._init_traces()
         return widget

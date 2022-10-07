@@ -8,7 +8,8 @@ Video frames.
 import itertools
 
 from bson import ObjectId
-from pymongo import ReplaceOne, UpdateOne, DeleteOne
+from pymongo import ReplaceOne, UpdateOne, DeleteOne, DeleteMany
+
 
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame_utils as fofu
@@ -425,14 +426,18 @@ class Frames(object):
 
     def save(self):
         """Saves all frames for the sample to the database."""
+        self._save()
+
+    def _save(self, deferred=False):
         if not self._in_db:
             raise ValueError(
                 "Cannot save frames of a sample that has not been added to "
                 "a dataset"
             )
 
-        self._save_deletions()
-        self._save_replacements()
+        delete_ops = self._save_deletions(deferred=deferred)
+        replace_ops = self._save_replacements(deferred=deferred)
+        return delete_ops + replace_ops
 
     def reload(self, hard=False):
         """Reloads all frames for the sample from the database.
@@ -449,7 +454,7 @@ class Frames(object):
         Frame._sync_docs_for_sample(
             self._frame_collection_name,
             self._sample.id,
-            self._get_frame_numbers(),
+            self._get_frame_numbers,  # pass fcn so it can be lazily called
             hard=hard,
         )
 
@@ -600,12 +605,22 @@ class Frames(object):
 
         return d
 
-    def _to_frames_dict(self):
-        return {str(fn): frame.to_dict() for fn, frame in self.items()}
+    def _to_frames_dict(self, include_private=False):
+        return {
+            str(fn): frame.to_dict(include_private=include_private)
+            for fn, frame in self.items()
+        }
 
-    def _save_deletions(self):
+    def _save_deletions(self, deferred=False):
+        ops = []
+
         if self._delete_all:
-            self._frame_collection.delete_many({"_sample_id": self._sample_id})
+            if deferred:
+                ops.append(DeleteMany({"_sample_id": self._sample_id}))
+            else:
+                self._frame_collection.delete_many(
+                    {"_sample_id": self._sample_id}
+                )
 
             Frame._reset_docs(
                 self._frame_collection_name, sample_ids=[self._sample.id]
@@ -624,7 +639,9 @@ class Frames(object):
                 )
                 for frame_number in self._delete_frames
             ]
-            self._frame_collection.bulk_write(ops, ordered=False)
+
+            if not deferred:
+                self._frame_collection.bulk_write(ops, ordered=False)
 
             Frame._reset_docs_for_sample(
                 self._frame_collection_name,
@@ -634,7 +651,9 @@ class Frames(object):
 
             self._delete_frames.clear()
 
-    def _save_replacements(self, include_singletons=True):
+        return ops
+
+    def _save_replacements(self, include_singletons=True, deferred=False):
         if include_singletons:
             #
             # Since frames are singletons, the user will expect changes to any
@@ -656,11 +675,12 @@ class Frames(object):
             replacements = self._replacements
 
         if not replacements:
-            return
+            return []
 
-        new_dicts = {}
         ops = []
-        for idx, (frame_number, frame) in enumerate(replacements.items()):
+        new_dicts = {}
+
+        for frame_number, frame in replacements.items():
             d = self._make_dict(frame)
             if not frame._in_db:
                 new_dicts[frame_number] = d
@@ -672,7 +692,8 @@ class Frames(object):
             )
             ops.append(op)
 
-        self._frame_collection.bulk_write(ops, ordered=False)
+        if not deferred:
+            self._frame_collection.bulk_write(ops, ordered=False)
 
         if new_dicts:
             ids_map = self._get_ids_map()
@@ -685,6 +706,8 @@ class Frames(object):
                 frame._doc.id = ids_map[frame_number]
 
         self._replacements.clear()
+
+        return ops
 
 
 class FramesView(Frames):
@@ -846,15 +869,18 @@ class FramesView(Frames):
             filtered_fields=self._filtered_fields,
         )
 
-    def _save_replacements(self):
+    def _save_replacements(self, deferred=False):
         if not self._replacements:
-            return
+            return []
 
         if self._contains_all_fields:
-            super()._save_replacements(include_singletons=False)
-            return
+            return super()._save_replacements(
+                include_singletons=False,
+                deferred=deferred,
+            )
 
         ops = []
+
         for frame_number, frame in self._replacements.items():
             doc = self._make_dict(frame)
 
@@ -885,8 +911,23 @@ class FramesView(Frames):
                 )
             )
 
-        self._frame_collection.bulk_write(ops, ordered=False)
+        if not deferred:
+            self._frame_collection.bulk_write(ops, ordered=False)
+
         self._replacements.clear()
+
+        return ops
+
+    def save(self):
+        super().save()
+        self._reload_parents()
+
+    def _reload_parents(self):
+        Frame._sync_docs_for_sample(
+            self._frame_collection_name,
+            self._sample.id,
+            self._get_frame_numbers,  # pass fcn so it can be lazily called
+        )
 
 
 class Frame(Document, metaclass=FrameSingleton):
@@ -915,7 +956,8 @@ class Frame(Document, metaclass=FrameSingleton):
 
     @property
     def _sample_id(self):
-        return ObjectId(self._doc._sample_id)
+        _id = self._doc._sample_id
+        return ObjectId(_id) if _id is not None else None
 
     def save(self):
         """Saves the frame to the database."""
@@ -974,3 +1016,12 @@ class FrameView(DocumentView):
     """
 
     _DOCUMENT_CLS = Frame
+
+    @property
+    def sample_id(self):
+        return self._doc._sample_id
+
+    @property
+    def _sample_id(self):
+        _id = self._doc._sample_id
+        return ObjectId(_id) if _id is not None else None

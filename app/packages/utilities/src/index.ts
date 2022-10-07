@@ -1,5 +1,5 @@
 import _ from "lodash";
-
+import mime from "mime";
 import { isElectron } from "./electron";
 
 export { isElectron } from "./electron";
@@ -7,6 +7,7 @@ export { GraphQLError, NotFoundError, ServerError } from "./errors";
 export * from "./fetch";
 export * from "./theme";
 export * from "./Resource";
+export * from "./color";
 
 interface O {
   [key: string]: O | any;
@@ -14,12 +15,17 @@ interface O {
 
 export const toCamelCase = (obj: O): O =>
   _.transform(obj, (acc, value, key, target) => {
-    const camelKey = _.isArray(target) ? key : _.camelCase(key);
+    const camelKey = _.isArray(target) ? key : safeCamelCase(key);
 
     acc[
       `${typeof key === "string" && key.startsWith("_") ? "_" : ""}${camelKey}`
     ] = _.isObject(value) ? toCamelCase(value) : value;
   });
+
+function safeCamelCase(key) {
+  if (key.match(/[0-9][a-z]/)) return key;
+  return _.camelCase(key);
+}
 
 export const toSnakeCase = (obj: O): O =>
   _.transform(obj, (acc, value, key, target) => {
@@ -442,4 +448,12 @@ type Mutable<T> = {
 
 export const clone = <T extends unknown>(data: T): Mutable<T> => {
   return JSON.parse(JSON.stringify(data));
+};
+
+export const getMimeType = (sample: any) => {
+  return (
+    (sample.metadata && sample.metadata.mime_type) ||
+    mime.getType(sample.filepath) ||
+    "image/jpg"
+  );
 };

@@ -19,7 +19,7 @@ import fiftyone.core.view as fov
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
 from fiftyone.server.query import Dataset
-from fiftyone.server.scalars import JSONArray
+from fiftyone.server.scalars import BSONArray
 
 
 @gql.input
@@ -32,7 +32,7 @@ class SelectedLabel:
 
 @gql.type
 class ViewResponse:
-    view: JSONArray
+    view: BSONArray
     dataset: Dataset
 
 
@@ -85,7 +85,7 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
-        view: JSONArray,
+        view: BSONArray,
         dataset: str,
         info: Info,
     ) -> ViewResponse:
@@ -101,3 +101,17 @@ class Mutation:
     async def store_teams_submission(self) -> bool:
         etas.write_json({"submitted": True}, foc.TEAMS_PATH)
         return True
+
+    @gql.mutation
+    async def set_group_slice(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        view: BSONArray,
+        slice: str,
+        info: Info,
+    ) -> Dataset:
+        state = get_state()
+        state.dataset.group_slice = slice
+        await dispatch_event(subscription, StateUpdate(state=state))
+        return await Dataset.resolver(state.dataset.name, view, info)

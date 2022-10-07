@@ -3,8 +3,6 @@
  */
 import LRU from "lru-cache";
 import { v4 as uuid } from "uuid";
-import highlightJSON from "json-format-highlight";
-import copyToClipboard from "copy-to-clipboard";
 
 import {
   DATE_FIELD,
@@ -26,7 +24,6 @@ import {
   MAX_FRAME_CACHE_SIZE_BYTES,
   CHUNK_SIZE,
   DASH_LENGTH,
-  JSON_COLORS,
   BASE_ALPHA,
 } from "./constants";
 import {
@@ -61,7 +58,7 @@ import {
   BufferRange,
   Dimensions,
   Sample,
-  MaskTargets,
+  Coloring,
 } from "./state";
 import {
   addToBuffers,
@@ -78,27 +75,26 @@ import {
 import { zoomToContent } from "./zoom";
 
 import { getFrameNumber } from "./elements/util";
-import { getColor } from "./color";
+import { getColor } from "@fiftyone/utilities";
 import { Events } from "./elements/base";
 
-export { zoomAspectRatio } from "./zoom";
+export { createColorGenerator, getRGB } from "@fiftyone/utilities";
 export { freeVideos } from "./elements/util";
-export { createColorGenerator, getRGB } from "./color";
+export type {
+  Coloring,
+  FrameConfig,
+  FrameOptions,
+  ImageConfig,
+  ImageOptions,
+  Point,
+  VideoConfig,
+  VideoOptions,
+} from "./state";
+
+export { zoomAspectRatio } from "./zoom";
 
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
-
-export interface Coloring {
-  by: "instance" | "field" | "label";
-  pool: string[];
-  scale: RGB[];
-  seed: number;
-  targets: string[];
-  defaultMaskTargets?: MaskTargets;
-  maskTargets: {
-    [field: string]: MaskTargets;
-  };
-}
 
 const workerCallbacks = {
   requestColor: [
@@ -216,6 +212,7 @@ export abstract class Looker<
   protected dispatchEvent(eventType: string, detail: any): void {
     if (detail instanceof Event) {
       this.eventTarget.dispatchEvent(
+        // @ts-ignore
         new detail.constructor(detail.type, detail)
       );
       return;
@@ -235,13 +232,6 @@ export abstract class Looker<
 
   protected getDispatchEvent(): (eventType: string, detail: any) => void {
     return (eventType: string, detail: any) => {
-      if (eventType === "copy") {
-        this.getSample().then((sample) =>
-          copyToClipboard(JSON.stringify(sample, null, 4))
-        );
-        return;
-      }
-
       if (eventType === "selectthumbnail") {
         this.dispatchEvent(eventType, {
           shiftKey: detail,
@@ -270,6 +260,11 @@ export abstract class Looker<
 
         this.previousState = this.state;
         this.state = mergeUpdates(this.state, updates);
+        if (!this.state.loaded) {
+          this.lookerElement.render(this.state, undefined);
+          return;
+        }
+
         if (
           !this.state.windowBBox ||
           this.state.destroyed ||
@@ -290,25 +285,15 @@ export abstract class Looker<
         this.state.mouseIsOnOverlay =
           Boolean(this.currentOverlays.length) &&
           this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
-        postUpdate && postUpdate(this.state, this.currentOverlays);
+
+        postUpdate && postUpdate(this.state, this.currentOverlays, this.sample);
 
         this.dispatchImpliedEvents(this.previousState, this.state);
 
-        if (this.state.options.showJSON) {
-          const pre = this.lookerElement.element.querySelectorAll("pre")[0];
-          this.getSample().then((sample) => {
-            pre.innerHTML = highlightJSON(sample, JSON_COLORS);
-          });
-        }
-        const ctx = this.ctx;
         this.lookerElement.render(this.state, this.sample);
+        const ctx = this.ctx;
 
-        if (
-          !this.state.loaded ||
-          this.state.destroyed ||
-          this.waiting ||
-          this.state.error
-        ) {
+        if (this.waiting || this.state.error) {
           return;
         }
 
@@ -336,8 +321,8 @@ export abstract class Looker<
           this.getImageSource(),
           0,
           0,
-          this.state.config.dimensions[0],
-          this.state.config.dimensions[1],
+          this.state.dimensions[0],
+          this.state.dimensions[1],
           tlx,
           tly,
           w,
@@ -591,15 +576,19 @@ export abstract class Looker<
   }
 
   protected postProcess(): State {
+    if (!this.state.dimensions) {
+      throw new Error("media not loaded");
+    }
+
     let [tlx, tly, w, h] = this.state.windowBBox;
     this.state.pan = snapBox(
       this.state.scale,
       this.state.pan,
       [w, h],
-      this.state.config.dimensions
+      this.state.dimensions
     );
     this.state.mediaBBox = getFitRect(
-      this.state.config.dimensions,
+      this.state.dimensions,
       this.state.windowBBox
     );
     this.state.transformedWindowBBox = [
@@ -610,7 +599,7 @@ export abstract class Looker<
     ];
 
     this.state.transformedMediaBBox = getFitRect(
-      this.state.config.dimensions,
+      this.state.dimensions,
       this.state.transformedWindowBBox
     );
     this.state.canvasBBox = [
@@ -626,8 +615,8 @@ export abstract class Looker<
         this.state.transformedMediaBBox[3],
     ];
     this.state.pixelCoordinates = [
-      this.state.relativeCoordinates[0] * this.state.config.dimensions[0],
-      this.state.relativeCoordinates[1] * this.state.config.dimensions[1],
+      this.state.relativeCoordinates[0] * this.state.dimensions[0],
+      this.state.relativeCoordinates[1] * this.state.dimensions[1],
     ];
     this.state.fontSize = FONT_SIZE / this.state.scale;
     this.state.pointRadius = POINT_RADIUS / this.state.scale;
@@ -1421,9 +1410,15 @@ const mapFields = (value, schema: Schema, ftype: string) => {
   }
 
   const result = {};
-  for (let fieldName in schema) {
-    const { dbField, ftype } = schema[fieldName];
-    const key = dbField || fieldName;
+  for (let fieldName in value) {
+    const field = schema[fieldName];
+    if (!field) {
+      result[fieldName] = value[fieldName];
+      continue;
+    }
+
+    const { dbField, ftype } = field;
+    const key = fieldName === "id" ? "id" : dbField || fieldName;
 
     if (value[key] === undefined) continue;
 

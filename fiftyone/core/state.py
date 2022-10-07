@@ -5,6 +5,8 @@ Defines the shared state between the FiftyOne App and backend.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from bson import json_util
+import json
 import logging
 
 import eta.core.serial as etas
@@ -12,6 +14,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
@@ -52,8 +55,14 @@ class StateDescription(etas.Serializable):
             if self.dataset is not None:
                 d["dataset"] = self.dataset.name
                 if self.view is not None:
-                    d["view"] = self.view._serialize()
+                    d["view"] = json.loads(
+                        json_util.dumps(self.view._serialize())
+                    )
                     d["view_cls"] = etau.get_class_name(self.view)
+
+                view = self.view if self.view is not None else self.dataset
+                if view.media_type == fom.GROUP:
+                    d["group_slice"] = view.group_slice
 
             d["config"]["timezone"] = fo.config.timezone
 
@@ -91,6 +100,14 @@ class StateDescription(etas.Serializable):
             view = fov.DatasetView._build(dataset, stages)
         else:
             view = None
+
+        group_slice = d.get("group_slice", None)
+        if group_slice:
+            if dataset is not None:
+                dataset.group_slice = group_slice
+
+            if view is not None:
+                view.group_slice = group_slice
 
         config = with_config or fo.app_config.copy()
         for field, value in d.get("config", {}).items():
