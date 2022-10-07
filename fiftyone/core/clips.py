@@ -742,14 +742,14 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
     if other_fields:
         project.update({f: True for f in other_fields})
 
-    pipeline = [
-        {"$project": project},
-        {"$unwind": "$support"},
-        {"$set": {"_rand": {"$rand": {}}}},
-        {"$out": dataset._sample_collection_name},
-    ]
-
-    src_collection._aggregate(post_pipeline=pipeline)
+    src_collection._aggregate(
+        post_pipeline=[
+            {"$project": project},
+            {"$unwind": "$support"},
+            {"$set": {"_rand": {"$rand": {}}}},
+            {"$out": dataset._sample_collection_name},
+        ]
+    )
 
     cleanup_op = {"$unset": {_tmp_field: ""}}
     src_dataset._sample_collection.update_many({}, cleanup_op)
