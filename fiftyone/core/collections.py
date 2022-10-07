@@ -8486,18 +8486,19 @@ class SampleCollection(object):
         label_type, attrs_path = self._get_label_field_path(
             label_field, "attributes"
         )
+        dynamic_path = attrs_path.rsplit(".", 1)[0]
 
         # We're implicitly dealing with nested list fields where possible
         label_type = fol._LABEL_LIST_TO_SINGLE_MAP.get(label_type, label_type)
 
         if not issubclass(label_type, fol._HasAttributesDict):
-            return self.schema(label_field, dynamic_only=True)
+            return self.schema(dynamic_path, dynamic_only=True)
 
         #
-        # We must merge dynamic attributes with those in `attributes` dict
+        # Handle legacy attributes
         #
 
-        dynamic = foa.Schema(label_field, dynamic_only=True)
+        dynamic = foa.Schema(dynamic_path, dynamic_only=True)
         attrs = foa.Schema(attrs_path)
 
         schema, attrs_map = self.aggregate([dynamic, attrs])
@@ -8505,9 +8506,8 @@ class SampleCollection(object):
         names = []
         aggs = []
         for name in attrs_map.keys():
-            if name not in schema:  # precedence goes to dynamic attributes
-                names.append(name)
-                aggs.append(foa.Schema(attrs_path + "." + name))
+            names.append("attributes." + name + ".value")
+            aggs.append(foa.Schema(attrs_path + "." + name))
 
         if not aggs:
             return schema
