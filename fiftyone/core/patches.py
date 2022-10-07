@@ -868,67 +868,66 @@ def _merge_matched_labels(dataset, src_collection, eval_key, field):
     eval_id = eval_key + "_id"
     eval_field = list_field + "." + eval_id
 
-    pipeline = src_collection._pipeline()
-    pipeline.extend(
-        [
-            {"$project": {list_field: True}},
-            {"$unwind": "$" + list_field},
-            {
-                "$match": {
-                    "$expr": {
-                        "$and": [
-                            {"$gt": ["$" + eval_field, None]},
-                            {"$ne": ["$" + eval_field, _NO_MATCH_ID]},
-                        ]
-                    }
+    pipeline = [
+        {"$project": {list_field: True}},
+        {"$unwind": "$" + list_field},
+        {
+            "$match": {
+                "$expr": {
+                    "$and": [
+                        {"$gt": ["$" + eval_field, None]},
+                        {"$ne": ["$" + eval_field, _NO_MATCH_ID]},
+                    ]
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": {"$toObjectId": "$" + eval_field},
+                "_labels": {"$push": "$" + list_field},
+            }
+        },
+        {
+            "$project": {
+                field: {
+                    "_cls": field_type.__name__,
+                    field_type._LABEL_LIST_FIELD: "$_labels",
                 }
             },
-            {
-                "$group": {
-                    "_id": {"$toObjectId": "$" + eval_field},
-                    "_labels": {"$push": "$" + list_field},
-                }
-            },
-            {
-                "$project": {
-                    field: {
-                        "_cls": field_type.__name__,
-                        field_type._LABEL_LIST_FIELD: "$_labels",
-                    }
-                },
-            },
-            {
-                "$merge": {
-                    "into": dataset._sample_collection_name,
-                    "on": "_id",
-                    "whenMatched": "merge",
-                    "whenNotMatched": "discard",
-                }
-            },
-        ]
-    )
-
-    src_collection._dataset._aggregate(pipeline=pipeline)
-
-
-def _write_samples(dataset, src_collection):
-    pipeline = src_collection._pipeline(detach_frames=True, detach_groups=True)
-    pipeline.append({"$out": dataset._sample_collection_name})
-
-    src_collection._dataset._aggregate(pipeline=pipeline)
-
-
-def _add_samples(dataset, src_collection):
-    pipeline = src_collection._pipeline(detach_frames=True, detach_groups=True)
-    pipeline.append(
+        },
         {
             "$merge": {
                 "into": dataset._sample_collection_name,
                 "on": "_id",
-                "whenMatched": "keepExisting",
-                "whenNotMatched": "insert",
+                "whenMatched": "merge",
+                "whenNotMatched": "discard",
             }
-        }
+        },
+    ]
+
+    src_collection._aggregate(post_pipeline=pipeline)
+
+
+def _write_samples(dataset, src_collection):
+    src_collection._aggregate(
+        detach_frames=True,
+        detach_groups=True,
+        post_pipeline=[{"$out": dataset._sample_collection_name}],
     )
 
-    src_collection._dataset._aggregate(pipeline=pipeline)
+
+def _add_samples(dataset, src_collection):
+    src_collection._aggregate(
+        detach_frames=True,
+        detach_groups=True,
+        post_pipeline=[
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "on": "_id",
+                    "whenMatched": "keepExisting",
+                    "whenNotMatched": "insert",
+                }
+            }
+        ],
+    )
