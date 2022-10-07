@@ -272,6 +272,7 @@ class FramesView(fov.DatasetView):
     def _sync_source_sample(self, sample):
         self._sync_source_schema()
 
+        dst_dataset = self._source_collection._root_dataset
         default_fields = set(
             self._get_default_sample_fields(
                 include_private=True, use_db_fields=True
@@ -292,11 +293,10 @@ class FramesView(fov.DatasetView):
             "frame_number": sample.frame_number,
         }
 
-        self._source_collection._dataset._frame_collection.update_one(
-            match, {"$set": updates}
-        )
+        dst_dataset._frame_collection.update_one(match, {"$set": updates})
 
     def _sync_source(self, fields=None, ids=None, update=True, delete=False):
+        dst_dataset = self._source_collection._root_dataset
         default_fields = set(
             self._get_default_sample_fields(
                 include_private=True, use_db_fields=True
@@ -310,8 +310,6 @@ class FramesView(fov.DatasetView):
 
         if update:
             self._sync_source_schema(fields=fields)
-
-            dst_coll = self._source_collection._dataset._frame_collection_name
 
             pipeline = []
 
@@ -339,7 +337,7 @@ class FramesView(fov.DatasetView):
             pipeline.append(
                 {
                     "$merge": {
-                        "into": dst_coll,
+                        "into": dst_dataset._frame_collection_name,
                         "on": ["_sample_id", "frame_number"],
                         "whenMatched": "merge",
                         "whenNotMatched": "discard",
@@ -351,7 +349,7 @@ class FramesView(fov.DatasetView):
 
         if delete:
             frame_ids = self._frames_dataset.exclude(self).values("id")
-            self._source_collection._dataset._clear_frames(frame_ids=frame_ids)
+            dst_dataset._clear_frames(frame_ids=frame_ids)
 
     def _sync_source_schema(self, fields=None, delete=False):
         if delete:
@@ -360,6 +358,7 @@ class FramesView(fov.DatasetView):
             schema = self._frames_dataset.get_field_schema()
 
         src_schema = self._source_collection.get_frame_field_schema()
+        dst_dataset = self._source_collection._root_dataset
 
         add_fields = []
         del_fields = []
@@ -394,13 +393,11 @@ class FramesView(fov.DatasetView):
 
         for field_name in add_fields:
             field_kwargs = foo.get_field_kwargs(schema[field_name])
-            self._source_collection._dataset.add_frame_field(
-                field_name, **field_kwargs
-            )
+            dst_dataset.add_frame_field(field_name, **field_kwargs)
 
         if delete:
             for field_name in del_fields:
-                self._source_collection._dataset.delete_frame_field(field_name)
+                dst_dataset.delete_frame_field(field_name)
 
     def _sync_source_keep_fields(self):
         schema = self.get_field_schema()
