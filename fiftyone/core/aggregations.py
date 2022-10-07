@@ -1528,7 +1528,6 @@ class Schema(Aggregation):
     Examples::
 
         import fiftyone as fo
-        import fiftyone.core.aggregations as foa
 
         dataset = fo.Dataset()
 
@@ -1576,7 +1575,7 @@ class Schema(Aggregation):
         # `Detections` field
         #
 
-        aggregation = foa.Schema("ground_truth", dynamic_only=True)
+        aggregation = fo.Schema("ground_truth.detections", dynamic_only=True)
         print(dataset.aggregate(aggregation))
         # {'foo': StringField, 'hello': [BooleanField, StringField]}
 
@@ -1599,12 +1598,10 @@ class Schema(Aggregation):
         expr=None,
         dynamic_only=False,
         _include_private=False,
-        _raw=False,
     ):
         super().__init__(field_or_expr, expr=expr)
         self.dynamic_only = dynamic_only
         self._include_private = _include_private
-        self._raw = _raw
         self._doc_type = None
 
     def default_result(self):
@@ -1638,6 +1635,9 @@ class Schema(Aggregation):
             if _type == "objectId" and name.startswith("_"):
                 name = name[1:]  # "_id" -> "id"
 
+            if not self._include_private and name.startswith("_"):
+                continue
+
             if self.dynamic_only and name in doc_fields:
                 continue
 
@@ -1646,9 +1646,6 @@ class Schema(Aggregation):
             else:
                 field_cls = _MONGO_TO_FIFTYONE_TYPES.get(_type, None)
                 field = field_cls() if field_cls is not None else None
-
-            if not self._include_private and name.startswith("_"):
-                continue
 
             raw_schema[name].add(field)
 
@@ -1668,17 +1665,6 @@ class Schema(Aggregation):
         doc_type = None
 
         if self._expr is None:
-            if not self._raw:
-                # Coerce label list fields, if necessary
-                try:
-                    label_type = sample_collection._get_label_field_type(
-                        field_name
-                    )
-                    if issubclass(label_type, fol._LABEL_LIST_FIELDS):
-                        field_name += "." + label_type._LABEL_LIST_FIELD
-                except:
-                    pass
-
             field_type = _get_field_type(sample_collection, field_name)
             if isinstance(field_type, fof.ListField):
                 field_type = field_type.field

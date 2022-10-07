@@ -6392,7 +6392,6 @@ class SampleCollection(object):
         expr=None,
         dynamic_only=False,
         _include_private=False,
-        _raw=False,
     ):
         """Extracts the names and types of the attributes of a specified
         embedded document field across all samples in the collection.
@@ -6451,7 +6450,7 @@ class SampleCollection(object):
             # `Detections` field
             #
 
-            print(dataset.schema("ground_truth", dynamic_only=True))
+            print(dataset.schema("ground_truth.detections", dynamic_only=True))
             # {'foo': StringField, 'hello': [BooleanField, StringField]}
 
         Args:
@@ -6476,7 +6475,6 @@ class SampleCollection(object):
             expr=expr,
             dynamic_only=dynamic_only,
             _include_private=_include_private,
-            _raw=_raw,
         )
         return self._make_and_aggregate(make, field_or_expr)
 
