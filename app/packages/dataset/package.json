@@ -8,9 +8,10 @@
   "bugs": {
     "url": "https://github.com/voxel51/fiftyone/"
   },
-  "main": "./dist/dataset.js",
+  "main": "./src/index.tsx",
   "scripts": {
-    "build": "NODE_OPTIONS='--max-old-space-size=9728' vite build"
+    "build": "NODE_OPTIONS='--max-old-space-size=9728' vite build",
+    "dev": "vite dev"
   },
   "prettier": "@fiftyone/prettier-config",
   "private": true,

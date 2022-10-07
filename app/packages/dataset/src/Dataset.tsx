@@ -24,6 +24,8 @@ enum Events {
   STATE_UPDATE = "state_update",
 }
 
+const ViewBarWrapper = ({ children }) => <div>{children}</div>;
+
 export function Dataset({ datasetName, environment, theme }) {
   theme = theme || darkTheme;
 
@@ -32,7 +34,7 @@ export function Dataset({ datasetName, environment, theme }) {
 
   useEffect(() => {
     loadDataset(datasetName);
-  }, [environment]);
+  }, [datasetName]);
   const subscription = useRecoilValue(fos.stateSubscription);
   useEventSource(datasetName, subscription, setInitialState);
   const plugins = usePlugins();
@@ -64,7 +66,9 @@ export function Dataset({ datasetName, environment, theme }) {
             datasetQueryRef={datasetQueryRef}
             initialState={initialState}
           >
-            <ViewBar />
+            <ViewBarWrapper>
+              <ViewBar />
+            </ViewBarWrapper>
             <CoreDataset />
           </DatasetLoader>
         </Suspense>
