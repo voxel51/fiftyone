@@ -665,25 +665,25 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
     if other_fields:
         project.update({f: True for f in other_fields})
 
-    pipeline = [
-        {"$project": project},
-        {"$unwind": "$" + _tmp_field},
-        {
-            "$set": {
-                "support": {"$slice": ["$" + _tmp_field, 2, 2]},
-                field: {
-                    "_cls": "Label",
-                    "label": {"$arrayElemAt": ["$" + _tmp_field, 0]},
-                    "index": {"$arrayElemAt": ["$" + _tmp_field, 1]},
+    src_collection._aggregate(
+        post_pipeline=[
+            {"$project": project},
+            {"$unwind": "$" + _tmp_field},
+            {
+                "$set": {
+                    "support": {"$slice": ["$" + _tmp_field, 2, 2]},
+                    field: {
+                        "_cls": "Label",
+                        "label": {"$arrayElemAt": ["$" + _tmp_field, 0]},
+                        "index": {"$arrayElemAt": ["$" + _tmp_field, 1]},
+                    },
+                    "_rand": {"$rand": {}},
                 },
-                "_rand": {"$rand": {}},
             },
-        },
-        {"$unset": _tmp_field},
-        {"$out": dataset._sample_collection_name},
-    ]
-
-    src_collection._aggregate(post_pipeline=pipeline)
+            {"$unset": _tmp_field},
+            {"$out": dataset._sample_collection_name},
+        ]
+    )
 
     cleanup_op = {"$unset": {_tmp_field: ""}}
     src_dataset._sample_collection.update_many({}, cleanup_op)
