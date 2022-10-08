@@ -1670,7 +1670,7 @@ class Schema(Aggregation):
                 field_type = field_type.field
 
             if isinstance(field_type, fof.EmbeddedDocumentField):
-                doc_type = field_type.document_type
+                doc_type = field_type
 
         self._doc_type = doc_type
 
