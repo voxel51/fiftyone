@@ -54,7 +54,7 @@ To enable tab completion in `tcsh`, add these lines to your `~/.tcshrc`:
 
     eval `register-python-argcomplete --shell tcsh fiftyone`
 
-.._cli-fiftyone-main:
+.. _cli-fiftyone-main:
 
 FiftyOne CLI
 ------------
