@@ -8,7 +8,6 @@ FiftyOne utilities unit tests.
 import time
 import unittest
 
-from mongoengine.errors import ValidationError
 import numpy as np
 
 import fiftyone as fo
@@ -26,7 +25,7 @@ class LabelsTests(unittest.TestCase):
         labels = fo.Classification(label="cow", confidence=0.98)
         self.assertIsInstance(labels, fo.Classification)
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(Exception):
             fo.Classification(label=100)
 
     @drop_datasets

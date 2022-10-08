@@ -18,6 +18,7 @@ import pytz
 import eta.core.utils as etau
 
 import fiftyone.core.frame_utils as fofu
+import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 
 
@@ -627,16 +628,24 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
     def __init__(self, document_type, **kwargs):
         super().__init__(document_type, **kwargs)
-        self._parent = None
-
         self.fields = kwargs.get("fields", [])
-        self._validation_schema = None
+        self.__fields = None
 
     def __str__(self):
         return "%s(%s)" % (
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
+
+    @property
+    def _fields(self):
+        if self.__fields is None:
+            # Must initialize now because `document_type` could have been a
+            # string at class instantiation
+            self.__fields = deepcopy(self.document_type._fields)
+            self.__fields.update({f.name: f for f in self.fields})
+
+        return self.__fields
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -659,7 +668,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         """
         fields = {}
 
-        for name, field in self.document_type._fields.items():
+        for name, field in self._fields.items():
             if not include_private and name.startswith("_"):
                 continue
 
@@ -675,6 +684,84 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             fields[name] = field
 
         return fields
+
+    def validate(self, value, **kwargs):
+        if not isinstance(value, self.document_type):
+            self.error(
+                "Expected %s; found %s" % (self.document_type, type(value))
+            )
+
+        for k, v in self._fields.items():
+            try:
+                val = value[k]
+            except KeyError:
+                val = None
+
+            if val is not None:
+                v.validate(val)
+
+    def _merge_fields(self, path, field, validate=True, recursive=True):
+        if validate:
+            foo.validate_fields_match(path, field, self)
+        elif not isinstance(field, EmbeddedDocumentField):
+            return None
+
+        new_schema = None
+        existing_fields = self._fields
+
+        for name, _field in field._fields.items():
+            _existing_field = existing_fields.get(name, None)
+            if _existing_field is not None:
+                if validate:
+                    _path = path + "." + name
+                    foo.validate_fields_match(_path, _field, _existing_field)
+
+                if recursive:
+                    if isinstance(_existing_field, ListField):
+                        _existing_field = _existing_field.field
+                        if isinstance(_field, ListField):
+                            _field = _field.field
+                        else:
+                            _existing_field = None
+
+                    if isinstance(_existing_field, EmbeddedDocumentField):
+                        _path = path + "." + name
+                        _new_schema = _existing_field._merge_fields(
+                            _path,
+                            _field,
+                            validate=validate,
+                            recursive=recursive,
+                        )
+
+                        if _new_schema:
+                            if new_schema is None:
+                                new_schema = _new_schema
+                            else:
+                                new_schema.update(_new_schema)
+            else:
+                if new_schema is None:
+                    new_schema = {}
+
+                _path = path + "." + name
+                new_schema[_path] = _field
+
+        return new_schema
+
+    def _declare_field(self, field_or_doc):
+        if isinstance(field_or_doc, foo.SampleFieldDocument):
+            field = field_or_doc.to_field()
+        else:
+            field = field_or_doc
+
+        self.fields = [f for f in self.fields if f.name != field.name]
+        self.fields.append(field)
+
+        prev = self._fields.pop(field.name, None)
+        self._fields[field.name] = field
+
+        if prev is not None:
+            field.required = prev.required
+            field.null = prev.null
 
 
 class EmbeddedDocumentListField(
