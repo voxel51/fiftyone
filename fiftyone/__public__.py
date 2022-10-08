@@ -23,6 +23,7 @@ from .core.aggregations import (
     HistogramValues,
     Mean,
     Quantiles,
+    Schema,
     Std,
     Sum,
     Values,
