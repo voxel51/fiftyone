@@ -198,6 +198,7 @@ const SampleModal = () => {
             {isGroup ? <Group /> : <Sample />}
             {jsonPanel.isOpen && (
               <JSONPanel
+                containerRef={jsonPanel.containerRef}
                 jsonHTML={jsonPanel.jsonHTML}
                 onClose={() => jsonPanel.close()}
                 onCopy={() => jsonPanel.copy()}
@@ -205,6 +206,7 @@ const SampleModal = () => {
             )}
             {helpPanel.isOpen && (
               <HelpPanel
+                containerRef={helpPanel.containerRef}
                 onClose={() => helpPanel.close()}
                 items={helpPanel.items}
               />

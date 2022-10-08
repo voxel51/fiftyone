@@ -36,7 +36,7 @@ import {
   useEventHandler,
   useOutsideClick,
   useUnprocessedStateUpdate,
-} from "../../utils/hooks";
+} from "@fiftyone/state";
 import Similar from "./Similar";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";

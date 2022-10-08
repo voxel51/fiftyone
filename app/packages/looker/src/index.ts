@@ -544,7 +544,6 @@ export abstract class Looker<
       disableControls: false,
       hovering: false,
       hoveringControls: false,
-      showHelp: false,
       showOptions: false,
       loaded: false,
       scale: 1,
