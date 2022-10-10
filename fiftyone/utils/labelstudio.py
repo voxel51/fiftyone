@@ -257,10 +257,12 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                         },
                     )
                     for smp in samples.select_fields(label_field)
+                    if smp[label_field]
                 }
                 id_map[label_field] = {
                     smp.id: _get_label_ids(smp[label_field])
                     for smp in samples.select_fields(label_field)
+                    if smp[label_field]
                 }
 
         return tasks, predictions, id_map
