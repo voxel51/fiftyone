@@ -96,12 +96,12 @@ def matches_type_constraints(field, ftype=None, embedded_doc_type=None):
     Returns:
         True/False
     """
-    if ftype and not isinstance(field, ftype):
+    if ftype is not None and not isinstance(field, ftype):
         return False
 
-    if embedded_doc_type and (
+    if embedded_doc_type is not None and (
         not isinstance(field, EmbeddedDocumentField)
-        or embedded_doc_type != field.document_type
+        or not issubclass(field.document_type, embedded_doc_type)
     ):
         return False
 
