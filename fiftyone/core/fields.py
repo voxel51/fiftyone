@@ -33,12 +33,11 @@ def parse_field_str(field_str):
     Returns:
         a tuple of
 
-        -   ftype: the :class:`fiftyone.core.fields.Field` class
+        -   ftype: the :class:`Field` class
         -   embedded_doc_type: the
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
                 field, or ``None``
-        -   subfield: the :class:`fiftyone.core.fields.Field` class of the
-                subfield, or ``None``
+        -   subfield: the :class:`Field` class of the subfield, or ``None``
     """
     chunks = field_str.strip().split("(", 1)
     ftype = etau.get_class(chunks[0])
@@ -54,6 +53,124 @@ def parse_field_str(field_str):
             raise ValueError("Failed to parse field string '%s'" % field_str)
 
     return ftype, embedded_doc_type, subfield
+
+
+def validate_type_constraints(ftype=None, embedded_doc_type=None):
+    """Validates the given type constraints.
+
+    Args:
+        ftype (None): an optional field type to enforce. Must be a subclass of
+            :class:`Field`
+        embedded_doc_type (None): an optional embedded document type to
+            enforce. Must be a subclass of
+            :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+
+    Raises:
+        ValueError: if the constraints are not valid
+    """
+    if ftype is not None and not issubclass(ftype, Field):
+        raise ValueError(
+            "Field type %s must be subclass of %s" % (ftype, Field)
+        )
+
+    if embedded_doc_type is not None and (
+        ftype is None or not issubclass(ftype, EmbeddedDocumentField)
+    ):
+        raise ValueError(
+            "embedded_doc_type should only be specified if ftype is a"
+            " subclass of %s" % EmbeddedDocumentField
+        )
+
+
+def matches_type_constraints(field, ftype=None, embedded_doc_type=None):
+    """Determines whether the field matches the given type constraints.
+
+    Args:
+        field: a :class:`Field`
+        ftype (None): an optional field type to enforce. Must be a subclass of
+            :class:`Field`
+        embedded_doc_type (None): an optional embedded document type to
+            enforce. Must be a subclass of
+            :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+
+    Returns:
+        True/False
+    """
+    if ftype and not isinstance(field, ftype):
+        return False
+
+    if embedded_doc_type and (
+        not isinstance(field, EmbeddedDocumentField)
+        or embedded_doc_type != field.document_type
+    ):
+        return False
+
+    return True
+
+
+def flatten_schema(
+    schema,
+    ftype=None,
+    embedded_doc_type=None,
+    include_private=False,
+):
+    """Returns a flattened copy of the given schema where all embedded document
+    fields are included as top-level keys of the
+
+    Args:
+        schema: a dict mapping keys to :class:`Field` instances
+        ftype (None): an optional field type to which to restrict the returned
+            schema. Must be a subclass of :class:`Field`
+        embedded_doc_type (None): an optional embedded document type to which
+            to restrict the returned schema. Must be a subclass of
+            :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+        include_private (False): whether to include fields that start with
+            ``_`` in the returned schema
+
+    Returns:
+        a dictionary mapping flattened paths to :class:`Field` instances
+    """
+    validate_type_constraints(ftype=ftype, embedded_doc_type=embedded_doc_type)
+
+    _schema = {}
+    for name, field in schema.items():
+        _flatten(
+            _schema, "", name, field, ftype, embedded_doc_type, include_private
+        )
+
+    return _schema
+
+
+def _flatten(
+    schema, prefix, name, field, ftype, embedded_doc_type, include_private
+):
+    if not include_private and name.startswith("_"):
+        return
+
+    if prefix:
+        prefix = prefix + "." + name
+    else:
+        prefix = name
+
+    if matches_type_constraints(
+        field, ftype=ftype, embedded_doc_type=embedded_doc_type
+    ):
+        schema[prefix] = field
+
+    if isinstance(field, (ListField, DictField)):
+        field = field.field
+
+    if isinstance(field, EmbeddedDocumentField):
+        for name, _field in field._fields.items():
+            _flatten(
+                schema,
+                prefix,
+                name,
+                _field,
+                ftype,
+                embedded_doc_type,
+                include_private,
+            )
 
 
 class Field(mongoengine.fields.BaseField):
@@ -656,7 +773,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                :class:`fiftyone.core.fields.Field`
+                :class:`Field`
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
@@ -664,26 +781,23 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                 ``_`` in the returned schema
 
         Returns:
-             an ``OrderedDict`` mapping field names to field types
+             a dict mapping field names to field types
         """
-        fields = {}
+        validate_type_constraints(
+            ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
 
+        schema = {}
         for name, field in self._fields.items():
             if not include_private and name.startswith("_"):
                 continue
 
-            if ftype and not isinstance(field, ftype):
-                continue
-
-            if embedded_doc_type and (
-                not isinstance(field, EmbeddedDocumentField)
-                or embedded_doc_type != field.document_type
+            if matches_type_constraints(
+                field, ftype=ftype, embedded_doc_type=embedded_doc_type
             ):
-                continue
+                schema[name] = field
 
-            fields[name] = field
-
-        return fields
+        return schema
 
     def validate(self, value, **kwargs):
         if not isinstance(value, self.document_type):

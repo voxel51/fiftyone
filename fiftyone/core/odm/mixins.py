@@ -139,38 +139,22 @@ class DatasetMixin(object):
         Returns:
              a dictionary mapping field names to field types
         """
-        if ftype is None:
-            ftype = fof.Field
+        fof.validate_type_constraints(
+            ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
 
-        if not issubclass(ftype, fof.Field):
-            raise ValueError(
-                "Field type %s must be subclass of %s" % (ftype, fof.Field)
-            )
-
-        if embedded_doc_type is not None and not issubclass(
-            ftype, fof.EmbeddedDocumentField
-        ):
-            raise ValueError(
-                "embedded_doc_type should only be specified if ftype is a"
-                " subclass of %s" % fof.EmbeddedDocumentField
-            )
-
-        d = OrderedDict()
+        schema = OrderedDict()
         field_names = cls._get_fields_ordered(include_private=include_private)
         for field_name in field_names:
             # pylint: disable=no-member
             field = cls._fields[field_name]
-            if not isinstance(field, ftype):
-                continue
 
-            if embedded_doc_type is not None and not issubclass(
-                field.document_type, embedded_doc_type
+            if fof.matches_type_constraints(
+                field, ftype=ftype, embedded_doc_type=embedded_doc_type
             ):
-                continue
+                schema[field_name] = field
 
-            d[field_name] = field
-
-        return d
+        return schema
 
     @classmethod
     def merge_field_schema(

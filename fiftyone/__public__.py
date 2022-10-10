@@ -48,6 +48,7 @@ from .core.expressions import (
     VALUE,
 )
 from .core.fields import (
+    flatten_schema,
     ArrayField,
     BooleanField,
     ClassesField,

@@ -1057,7 +1057,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return fov.DatasetView(self)
 
     def get_field_schema(
-        self, ftype=None, embedded_doc_type=None, include_private=False
+        self,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        flat=False,
     ):
         """Returns a schema dictionary describing the fields of the samples in
         the dataset.
@@ -1071,18 +1075,34 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
 
         Returns:
-             an ``OrderedDict`` mapping field names to field types
+             a dictionary mapping field names to field types
         """
-        return self._sample_doc_cls.get_field_schema(
+        schema = self._sample_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
 
+        if flat:
+            schema = fof.flatten_schema(
+                schema,
+                ftype=ftype,
+                embedded_doc_type=embedded_doc_type,
+                include_private=include_private,
+            )
+
+        return schema
+
     def get_frame_field_schema(
-        self, ftype=None, embedded_doc_type=None, include_private=False
+        self,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        flat=False,
     ):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the dataset.
@@ -1098,19 +1118,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
 
         Returns:
-            a dictionary mapping field names to field types, or ``None`` if
-            the dataset does not contain videos
+            a dictionary mapping field names to field types, or ``None`` if the
+            dataset does not contain videos
         """
         if not self._has_frame_fields():
             return None
 
-        return self._frame_doc_cls.get_field_schema(
+        schema = self._frame_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
+
+        if flat:
+            schema = fof.flatten_schema(
+                schema,
+                ftype=ftype,
+                embedded_doc_type=embedded_doc_type,
+                include_private=include_private,
+            )
+
+        return schema
 
     def add_sample_field(
         self,
@@ -1171,7 +1203,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def add_dynamic_sample_fields(self, fields=None):
+    def add_dynamic_sample_fields(self, fields=None, add_mixed=False):
         """Adds all dynamic sample fields to the dataset's schema.
 
         Dynamic fields are embedded document fields with at least one non-None
@@ -1180,9 +1212,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             fields (None): an optional field or iterable of fields for which to
                 add dynamic fields. By default, all fields are considered
+            add_mixed (False): whether to declare fields that contain values
+                of mixed types as generic :class:`fiftyone.core.fields.Field`
+                instances (True) or to skip such fields (False)
         """
-        schema = self.get_dynamic_field_schema(fields=fields)
-        schema = {p: f for p, f in schema.items() if isinstance(f, fof.Field)}
+        dynamic_schema = self.get_dynamic_field_schema(fields=fields)
+
+        schema = {}
+        for path, field in dynamic_schema.items():
+            if etau.is_container(field):
+                if add_mixed:
+                    schema[path] = fof.Field()
+                else:
+                    logger.warning(
+                        "Skipping dynamic field '%s' with mixed types %s",
+                        path,
+                        field,
+                    )
+            elif field is not None:
+                schema[path] = field
 
         expanded = self._sample_doc_cls.merge_field_schema(
             schema, dataset_doc=self._doc
@@ -1254,7 +1302,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def add_dynamic_frame_fields(self, fields=None):
+    def add_dynamic_frame_fields(self, fields=None, add_mixed=False):
         """Adds all dynamic frame fields to the dataset's schema.
 
         Dynamic fields are embedded document fields with at least one non-None
@@ -1263,9 +1311,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             fields (None): an optional field or iterable of fields for which to
                 add dynamic fields. By default, all fields are considered
+            add_mixed (False): whether to declare fields that contain values
+                of mixed types as generic :class:`fiftyone.core.fields.Field`
+                instances (True) or to skip such fields (False)
         """
-        schema = self.get_dynamic_frame_field_schema(fields=fields)
-        schema = {p: f for p, f in schema.items() if isinstance(f, fof.Field)}
+        if not self._has_frame_fields():
+            raise ValueError(
+                "Only datasets that contain videos may have frame fields"
+            )
+
+        dynamic_schema = self.get_dynamic_frame_field_schema(fields=fields)
+
+        schema = {}
+        for path, field in dynamic_schema.items():
+            if etau.is_container(field):
+                if add_mixed:
+                    schema[path] = fof.Field()
+                else:
+                    logger.warning(
+                        "Skipping dynamic frame field '%s' with mixed types %s",
+                        path,
+                        field,
+                    )
+            elif field is not None:
+                schema[path] = field
 
         expanded = self._frame_doc_cls.merge_field_schema(
             schema, dataset_doc=self._doc

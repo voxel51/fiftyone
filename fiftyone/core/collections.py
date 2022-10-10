@@ -945,7 +945,11 @@ class SampleCollection(object):
         return resolved_path, field
 
     def get_field_schema(
-        self, ftype=None, embedded_doc_type=None, include_private=False
+        self,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        flat=False,
     ):
         """Returns a schema dictionary describing the fields of the samples in
         the collection.
@@ -959,6 +963,8 @@ class SampleCollection(object):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
 
         Returns:
              a dictionary mapping field names to field types
@@ -966,7 +972,11 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement get_field_schema()")
 
     def get_frame_field_schema(
-        self, ftype=None, embedded_doc_type=None, include_private=False
+        self,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        flat=False,
     ):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the collection.
@@ -982,6 +992,8 @@ class SampleCollection(object):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
 
         Returns:
             a dictionary mapping field names to field types, or ``None`` if
@@ -1003,7 +1015,8 @@ class SampleCollection(object):
                 return dynamic fields. By default, all fields are considered
 
         Returns:
-            a dictionary mapping field paths to field types
+            a dictionary mapping field paths to field types or lists of field
+            types
         """
         schema = self.get_field_schema()
         return self._get_dynamic_field_schema(schema, "", fields=fields)
@@ -1020,7 +1033,8 @@ class SampleCollection(object):
                 return dynamic fields. By default, all fields are considered
 
         Returns:
-            a dictionary mapping field paths to field types
+            a dictionary mapping field paths to field types or lists of field
+            types
         """
         if not self._has_frame_fields():
             return None
@@ -1042,13 +1056,14 @@ class SampleCollection(object):
         paths = []
         for name, field in schema.items():
             if isinstance(field, fof.EmbeddedDocumentField):
-                if issubclass(field.document_type, fol._LABEL_LIST_FIELDS):
-                    path = name + "." + field.document_type._LABEL_LIST_FIELD
-                else:
-                    path = name
-
+                path = name
                 aggs.append(foa.Schema(prefix + path, dynamic_only=True))
                 paths.append(path)
+
+                if issubclass(field.document_type, fol._LABEL_LIST_FIELDS):
+                    path = name + "." + field.document_type._LABEL_LIST_FIELD
+                    aggs.append(foa.Schema(prefix + path, dynamic_only=True))
+                    paths.append(path)
 
         fields = {}
 

@@ -8,6 +8,7 @@ Aggregations.
 from collections import defaultdict, OrderedDict
 from copy import deepcopy
 from datetime import date, datetime
+import inspect
 import reprlib
 import uuid
 
@@ -1644,18 +1645,13 @@ class Schema(Aggregation):
             if name in doc_fields:
                 field = doc_fields[name]
             else:
-                field_cls = _MONGO_TO_FIFTYONE_TYPES.get(_type, None)
-                field = field_cls() if field_cls is not None else None
+                field = _MONGO_TO_FIFTYONE_TYPES.get(_type, None)
 
             raw_schema[name].add(field)
 
         schema = {}
-        for name, types in raw_schema.items():
-            if len(types) > 1:
-                types = [t for t in types if t != None]
-            else:
-                types = list(types)
-
+        for name, raw_types in raw_schema.items():
+            types = _resolve_types(raw_types)
             schema[name] = types[0] if len(types) == 1 else types
 
         return schema
@@ -1700,6 +1696,26 @@ class Schema(Aggregation):
         )
 
         return pipeline
+
+
+def _resolve_types(raw_types):
+    types = []
+    for t in raw_types:
+        if t is not None:
+            if inspect.isclass(t):
+                t = t()
+
+            types.append(t)
+
+    if not types:
+        types.append(None)
+    elif len(types) > 1:
+        if any(isinstance(t, fof.FloatField) for t in types) and all(
+            isinstance(t, (fof.IntField, fof.FloatField)) for t in types
+        ):
+            types = [fof.FloatField()]
+
+    return types
 
 
 class Std(Aggregation):

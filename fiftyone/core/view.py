@@ -19,6 +19,7 @@ import eta.core.utils as etau
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
+import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -614,7 +615,11 @@ class DatasetView(foc.SampleCollection):
             )
 
     def get_field_schema(
-        self, ftype=None, embedded_doc_type=None, include_private=False
+        self,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        flat=False,
     ):
         """Returns a schema dictionary describing the fields of the samples in
         the view.
@@ -628,20 +633,36 @@ class DatasetView(foc.SampleCollection):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
 
         Returns:
-             an ``OrderedDict`` mapping field names to field types
+             a dictionary mapping field names to field types
         """
-        field_schema = self._dataset.get_field_schema(
+        schema = self._dataset.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
 
-        return self._get_filtered_schema(field_schema)
+        schema = self._get_filtered_schema(schema)
+
+        if flat:
+            schema = fof.flatten_schema(
+                schema,
+                ftype=ftype,
+                embedded_doc_type=embedded_doc_type,
+                include_private=include_private,
+            )
+
+        return schema
 
     def get_frame_field_schema(
-        self, ftype=None, embedded_doc_type=None, include_private=False
+        self,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        flat=False,
     ):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the view.
@@ -657,6 +678,8 @@ class DatasetView(foc.SampleCollection):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
 
         Returns:
             a dictionary mapping field names to field types, or ``None`` if
@@ -665,13 +688,23 @@ class DatasetView(foc.SampleCollection):
         if not self._has_frame_fields():
             return None
 
-        field_schema = self._dataset.get_frame_field_schema(
+        schema = self._dataset.get_frame_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
 
-        return self._get_filtered_schema(field_schema, frames=True)
+        schema = self._get_filtered_schema(schema, frames=True)
+
+        if flat:
+            schema = fof.flatten_schema(
+                schema,
+                ftype=ftype,
+                embedded_doc_type=embedded_doc_type,
+                include_private=include_private,
+            )
+
+        return schema
 
     def clone_sample_field(self, field_name, new_field_name):
         """Clones the given sample field of the view into a new field of the
