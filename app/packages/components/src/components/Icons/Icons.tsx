@@ -1,5 +1,5 @@
-import { SvgIcon } from "@material-ui/core";
-import { GitHub, MenuBook } from "@material-ui/icons";
+import { SvgIcon } from "@mui/material";
+import { GitHub, MenuBook } from "@mui/icons-material";
 import React from "react";
 
 import ExternalLink from "../ExternalLink";

@@ -3,7 +3,7 @@ import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring, config } from "@react-spring/web";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
-import { Add, KeyboardReturn as Arrow, Close, Help } from "@material-ui/icons";
+import { Add, KeyboardReturn as Arrow, Close, Help } from "@mui/icons-material";
 
 import { BestMatchDiv } from "./BestMatch";
 import ErrorMessage from "./ErrorMessage";

@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import { DragIndicator } from "@material-ui/icons";
+import { DragIndicator } from "@mui/icons-material";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useState } from "react";
 

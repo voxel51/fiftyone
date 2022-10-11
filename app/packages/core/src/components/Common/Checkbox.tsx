@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Checkbox as MaterialCheckbox } from "@material-ui/core";
+import { Checkbox as MaterialCheckbox } from "@mui/material";
 import { animated } from "@react-spring/web";
 import styled from "styled-components";
 

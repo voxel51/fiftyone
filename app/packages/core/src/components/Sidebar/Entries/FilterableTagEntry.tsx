@@ -1,6 +1,6 @@
 import React from "react";
-import { Checkbox } from "@material-ui/core";
-import { LocalOffer, Visibility } from "@material-ui/icons";
+import { Checkbox } from "@mui/material";
+import { LocalOffer, Visibility } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 

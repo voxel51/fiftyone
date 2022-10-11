@@ -1,10 +1,10 @@
 import React, { Suspense, useLayoutEffect, useMemo } from "react";
-import { Checkbox } from "@material-ui/core";
+import { Checkbox } from "@mui/material";
 import {
   KeyboardArrowDown,
   KeyboardArrowUp,
   VisibilityOff,
-} from "@material-ui/icons";
+} from "@mui/icons-material";
 import { useSpring } from "@react-spring/web";
 import {
   atomFamily,

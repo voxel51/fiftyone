@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import { LocalOffer } from "@material-ui/icons";
+import { LocalOffer } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 import React from "react";
 import { useRecoilValue } from "recoil";

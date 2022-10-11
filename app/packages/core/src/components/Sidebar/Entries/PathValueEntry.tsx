@@ -7,7 +7,7 @@ import {
   FRAME_SUPPORT_FIELD,
   LIST_FIELD,
 } from "@fiftyone/utilities";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@material-ui/icons";
+import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 
 import React, { Suspense, useMemo, useState } from "react";

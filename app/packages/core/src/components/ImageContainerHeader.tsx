@@ -1,5 +1,5 @@
 import React, { Suspense } from "react";
-import { Apps } from "@material-ui/icons";
+import { Apps } from "@mui/icons-material";
 import styled from "styled-components";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 

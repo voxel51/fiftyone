@@ -7,9 +7,9 @@ import DatasetComponent from "../../components/Dataset";
 import * as fos from "@fiftyone/state";
 import { refresher, Route, RouterContext } from "@fiftyone/state";
 import { getDatasetName } from "@fiftyone/state";
-import { usePreLoadedDataset, DatasetQuery } from "../../loaders";
+import { usePreLoadedDataset } from "../../dataset";
 
-export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
+export const Dataset: Route = ({ prepared }) => {
   const router = useContext(RouterContext);
   const [dataset, ready] = usePreLoadedDataset(prepared, router?.state);
   const name = useRecoilValue(fos.datasetName);

@@ -7,7 +7,7 @@ import {
   LocalOffer,
   Remove,
   Visibility,
-} from "@material-ui/icons";
+} from "@mui/icons-material";
 import React, { useContext, useLayoutEffect, useRef, useState } from "react";
 import {
   selectorFamily,

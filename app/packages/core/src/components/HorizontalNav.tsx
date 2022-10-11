@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { capitalize } from "@material-ui/core";
-import { Assessment, Fullscreen, FullscreenExit } from "@material-ui/icons";
+import { capitalize } from "@mui/material";
+import { Assessment, Fullscreen, FullscreenExit } from "@mui/icons-material";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 

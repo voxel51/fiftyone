@@ -1,6 +1,6 @@
 import React from "react";
 import styled from "styled-components";
-import { CircularProgress } from "@material-ui/core";
+import { CircularProgress } from "@mui/material";
 import { useTheme } from "@fiftyone/components";
 
 const IconDiv = styled.div`

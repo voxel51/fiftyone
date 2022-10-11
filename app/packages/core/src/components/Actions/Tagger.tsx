@@ -5,7 +5,7 @@ import React, {
   useState,
 } from "react";
 import numeral from "numeral";
-import { CircularProgress } from "@material-ui/core";
+import { CircularProgress } from "@mui/material";
 import {
   RecoilState,
   RecoilValue,

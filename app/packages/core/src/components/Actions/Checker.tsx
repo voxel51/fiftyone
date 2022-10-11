@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import { animated } from "@react-spring/web";
-import { Checkbox } from "@material-ui/core";
+import { Checkbox } from "@mui/material";
 import numeral from "numeral";
 import styled from "styled-components";
 

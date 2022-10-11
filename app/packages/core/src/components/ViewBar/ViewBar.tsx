@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { useMachine } from "@xstate/react";
 import { useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
-import { Close, Help } from "@material-ui/icons";
+import { Close, Help } from "@mui/icons-material";
 
 import { useOutsideClick } from "@fiftyone/state";
 import { ExternalLink } from "../../utils/generic";

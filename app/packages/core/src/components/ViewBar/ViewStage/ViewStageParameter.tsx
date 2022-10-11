@@ -3,7 +3,7 @@ import { animated, useSpring } from "@react-spring/web";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
-import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
+import { ArrowDropDown, ArrowDropUp } from "@mui/icons-material";
 
 import { BestMatchDiv } from "./BestMatch";
 import { PARSER } from "./viewStageParameterMachine";

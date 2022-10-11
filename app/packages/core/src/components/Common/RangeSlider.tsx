@@ -6,7 +6,7 @@ import {
   useRecoilState,
   useRecoilValue,
 } from "recoil";
-import { Slider as SliderUnstyled } from "@material-ui/core";
+import { Slider as SliderUnstyled } from "@mui/material";
 
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 
