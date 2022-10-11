@@ -1,7 +1,10 @@
 import React from "react";
 import * as fos from "@fiftyone/state";
 import { extendTheme as extendJoyTheme } from "@mui/joy/styles";
-import { Experimental_CssVarsProvider as CssVarsProvider } from "@mui/material/styles";
+import {
+  createTheme,
+  Experimental_CssVarsProvider as CssVarsProvider,
+} from "@mui/material/styles";
 import { useRecoilValue } from "recoil";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
@@ -9,7 +12,6 @@ const white100 = "hsl(0, 0%, 100%)";
 const grey11 = "hsl(210, 11%, 11%)";
 const grey15 = "hsl(210, 11%, 15%)";
 const grey19 = "hsl(214, 7%, 19%)";
-const grey19a70 = "hsla(214, 7%, 19%, 0.7)";
 const grey24 = "hsl(210, 5%, 24%)";
 const grey37 = "hsl(200, 2%, 37%)";
 const grey60 = "hsl(230, 3%, 60%)";
@@ -89,7 +91,7 @@ const theme = extendJoyTheme({
         },
       },
     },
-    dark: {
+    dark: createTheme({
       palette: {
         background: {
           body: "hsl(200, 0%, 15%)",
@@ -102,12 +104,16 @@ const theme = extendJoyTheme({
         danger: {
           plainColor: red,
         },
+        grey: {
+          400: "#fff",
+        },
         neutral: {
           softBg: "hsl(200, 0%, 20%, 0.3)",
           softBorder: "hsl(200, 0%, 25%)",
           plainColor: blue53,
         },
         primary: {
+          main: "hsl(25, 100%, 51%)",
           plainColor: "hsl(25, 100%, 51%)",
           plainBorder: "hsl(200, 0%, 5%)",
           softBg: "hsl(200, 0%, 15%, 0.7)",
@@ -120,7 +126,7 @@ const theme = extendJoyTheme({
           tertiary: "hsl(200, 0%, 50%)",
         },
       },
-    },
+    }),
   },
   fontFamily: {
     body: "Palanquin, sans-serif",

@@ -24,7 +24,7 @@ const SliderContainer = styled.div`
 
 const SliderStyled = styled(SliderUnstyled)`
   && {
-    color: ${({ theme }) => theme.primary.plainColor};
+    color: ${({ theme }) => theme.palette.primary.plainColor};
     margin: 0 1.5rem 0 1.3rem;
     height: 8px;
   }
@@ -39,7 +39,7 @@ const SliderStyled = styled(SliderUnstyled)`
   .track {
     height: 8px;
     border-radius: 8px;
-    background: ${({ theme }) => theme.primary.plainColor};
+    background: ${({ theme }) => theme.palette.primary.plainColor};
   }
 
   .thumb {
@@ -48,7 +48,7 @@ const SliderStyled = styled(SliderUnstyled)`
     top: 50%;
     margin-top: -8.4px;
     border-radius: 8px;
-    background: ${({ theme }) => theme.primary.plainColor};
+    background: ${({ theme }) => theme.palette.primary.plainColor};
     box-shadow: none;
     color: transparent;
   }
@@ -74,9 +74,9 @@ const SliderStyled = styled(SliderUnstyled)`
 
   .valueLabel > span > span {
     text-align: center;
-    color: ${({ theme }) => theme.text.primary};
-    background: ${({ theme }) => theme.background.level2};
-    border: 1px solid ${({ theme }) => theme.primary.plainBorder};
+    color: ${({ theme }) => theme.palette.text.primary};
+    background: ${({ theme }) => theme.palette.background.level2};
+    border: 1px solid ${({ theme }) => theme.palette.primary.plainBorder};
   }
 ` as typeof SliderUnstyled;
 
@@ -192,9 +192,10 @@ const BaseSlider = <T extends Range | number>({
           min={bounds[0]}
           step={step}
           theme={{
+            palette: {
             ...theme,
             color,
-            primary: { ...theme.primary, plainColor: color },
+            primary: { ...theme.primary, plainColor: color } }
           }}
         />
         {showBounds && formatter(bounds[1])}
