@@ -5509,9 +5509,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if field_name == "_id":
                     continue
 
-                if not dynamic and field_name in schema:
-                    continue
-
                 value = sample[field_name]
 
                 if value is None:
@@ -5520,6 +5517,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if isinstance(value, fog.Group):
                     self._expand_group_schema(sample, field_name, value)
 
+                if not dynamic and field_name in schema:
+                    continue
+
+                if isinstance(value, fog.Group):
                     expanded |= self._add_group_field(
                         field_name, default=value.name
                     )
