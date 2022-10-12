@@ -45,9 +45,9 @@ const IconsContainer = styled.div`
   z-index: 1;
   height: 100%;
   border-radius: 3px;
-  top 0;
-  height: 52px;
-  right: 0;
+  top 2px;
+  height: 48px;
+  right: 1px;
   background-image: linear-gradient(
     to right,
     rgba(0, 0, 0, 0),

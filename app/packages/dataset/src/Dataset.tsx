@@ -24,8 +24,6 @@ enum Events {
   STATE_UPDATE = "state_update",
 }
 
-const ViewBarWrapper = ({ children }) => <div>{children}</div>;
-
 export function Dataset({ datasetName, environment, theme }) {
   const [initialState, setInitialState] = useState();
   const [datasetQueryRef, loadDataset] = useDatasetLoader(environment);
@@ -55,6 +53,11 @@ export function Dataset({ datasetName, environment, theme }) {
     flex-direction: column;
     min-width: 660px;
   `;
+  const ViewBarWrapper = styled.div`
+    padding: 16px;
+    background: var(--joy-palette-background-header);
+  `;
+
   const themePalette = theme?.palette;
   const ThemeWrapper = themePalette ? ThemeContext.Provider : Fragment;
   const themeProps = themePalette ? { value: themePalette } : {};

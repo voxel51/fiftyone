@@ -98,6 +98,8 @@ const theme = extendJoyTheme({
           level1: "hsl(200, 0%, 20%)",
           level2: "hsl(200, 0%, 10%)",
           level3: "hsl(200, 0%, 5%)",
+          header: "hsl(200, 0%, 15%)",
+          sidebar: "hsl(200, 0%, 10%)",
           tooltip: "hsl(200, 0%, 5%)",
         },
         divider: "hsl(200, 0%, 20%)",
