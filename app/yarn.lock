@@ -2606,6 +2606,7 @@ __metadata:
     "@types/react-input-autosize": ^2.2.1
     classnames: ^2.3.1
     framer-motion: ^6.2.7
+    hsl-to-hex: ^1.0.0
     path-to-regexp: ^6.2.0
     prettier: ^2.7.1
     react-input-autosize: ^3.0.0
@@ -7802,6 +7803,22 @@ __metadata:
   dependencies:
     lru-cache: ^6.0.0
   checksum: c3f87b3c2f7eb8c2748c8f49c0c2517c9a95f35d26f4bf54b2a8cba05d2e668f3753548b6ea366b18ec8dadb4e12066e19fa382a01496b0ffa0497eb23cbe461
+  languageName: node
+  linkType: hard
+
+"hsl-to-hex@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "hsl-to-hex@npm:1.0.0"
+  dependencies:
+    hsl-to-rgb-for-reals: ^1.1.0
+  checksum: e748cea0d9cdf444727bd3fc3f62515d0c5806ad4b52850730d365e54f6f0ae1e41e2076ab17de8523ab5ebdd30c62323f26b2cdd383529755ad27d1a33965b8
+  languageName: node
+  linkType: hard
+
+"hsl-to-rgb-for-reals@npm:^1.1.0":
+  version: 1.1.1
+  resolution: "hsl-to-rgb-for-reals@npm:1.1.1"
+  checksum: b31452617e6c399509c5b8016999d659f9e347e71290da287bf0f536da031609d51b240535dc8eb3dbd7770a7b367d9896ab6a13794db7d16e4cf86e363e156f
   languageName: node
   linkType: hard
 
