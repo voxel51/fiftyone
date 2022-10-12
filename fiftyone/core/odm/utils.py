@@ -360,6 +360,8 @@ def _merge_embedded_doc_fields(fields_dict, fields_list):
                 efield = fields_dict[name]
                 etype = efield["ftype"]
                 if etype != ftype:
+                    # @todo could provide an `add_mixed=True` option to declare
+                    # mixed fields like this as a generic `Field`
                     fields_dict[name] = None
                 elif ftype == fof.EmbeddedDocumentField:
                     _merge_embedded_doc_fields(

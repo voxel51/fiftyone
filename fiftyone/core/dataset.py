@@ -5500,9 +5500,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _expand_schema(self, samples, dynamic):
         expanded = False
+
+        if not dynamic:
+            schema = self.get_field_schema(include_private=True)
+
         for sample in samples:
             for field_name in sample._get_field_names(include_private=True):
                 if field_name == "_id":
+                    continue
+
+                if not dynamic and field_name in schema:
                     continue
 
                 value = sample[field_name]
@@ -5524,6 +5531,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         validate=False,
                         dataset_doc=self._doc,
                     )
+
+                if not dynamic:
+                    schema = self.get_field_schema(include_private=True)
 
             if sample.media_type == fom.VIDEO:
                 expanded |= self._expand_frame_schema(sample.frames, dynamic)
@@ -5558,10 +5568,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._doc.save()
 
     def _expand_frame_schema(self, frames, dynamic):
+        if not dynamic:
+            schema = self.get_frame_field_schema(include_private=True)
+
         expanded = False
         for frame in frames.values():
             for field_name in frame._get_field_names(include_private=True):
                 if field_name == "_id":
+                    continue
+
+                if not dynamic and field_name in schema:
                     continue
 
                 value = frame[field_name]
@@ -5576,6 +5592,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     validate=False,
                     dataset_doc=self._doc,
                 )
+
+                if not dynamic:
+                    schema = self.get_frame_field_schema(include_private=True)
 
         return expanded
 
