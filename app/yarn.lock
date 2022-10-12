@@ -2780,6 +2780,7 @@ __metadata:
     "@fiftyone/plugins": "*"
     "@fiftyone/state": "*"
     "@mapbox/mapbox-gl-draw": ^1.3.0
+    "@mui/icons-material": ^5.10.2
     "@turf/boolean-contains": ^6.5.0
     "@types/mapbox-gl": ^2.7.4
     "@types/mapbox__mapbox-gl-draw": ^1.2.5

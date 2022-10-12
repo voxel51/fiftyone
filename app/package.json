@@ -3,11 +3,11 @@
     "version": "0.0.0",
     "productName": "FiftyOne",
     "license": "Apache-2.0",
-    "prettier": { 
+    "prettier": {
         "trailingComma": "es5",
         "tabWidth": 2,
         "semi": true,
-        "singleQuote": false  
+        "singleQuote": false
     },
     "private": true,
     "main": "index.js",
