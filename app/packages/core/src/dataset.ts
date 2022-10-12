@@ -6,7 +6,7 @@ import { graphql, loadQuery, usePreloadedQuery, useQueryLoader } from "react-rel
 import { useRecoilValue } from "recoil";
 
 const datasetQuery = graphql`
-  query DatasetQuery($name: String!, $view: BSONArray = null) {
+  query datasetQuery($name: String!, $view: BSONArray = null) {
     dataset(name: $name, view: $view) {
       id
       name
