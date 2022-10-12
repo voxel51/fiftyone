@@ -820,7 +820,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         elif not isinstance(field, EmbeddedDocumentField):
             return None
 
-        new_schema = None
+        new_schema = {}
         existing_fields = self._fields
 
         for name, _field in field._fields.items():
@@ -848,14 +848,8 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                         )
 
                         if _new_schema:
-                            if new_schema is None:
-                                new_schema = _new_schema
-                            else:
-                                new_schema.update(_new_schema)
+                            new_schema.update(_new_schema)
             else:
-                if new_schema is None:
-                    new_schema = {}
-
                 _path = path + "." + name
                 new_schema[_path] = _field
 

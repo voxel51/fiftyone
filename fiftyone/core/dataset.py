@@ -1150,6 +1150,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ftype,
         embedded_doc_type=None,
         subfield=None,
+        fields=None,
         **kwargs,
     ):
         """Adds a new sample field or embedded field to the dataset, if
@@ -1167,6 +1168,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
+            fields (None): a list of :class:`fiftyone.core.fields.Field`
+                instances defining embedded document attributes. Only
+                applicable when ``ftype`` is
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
 
         Raises:
             ValueError: if a field of the same name already exists and it is
@@ -1182,6 +1187,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ftype,
                 embedded_doc_type=embedded_doc_type,
                 subfield=subfield,
+                fields=fields,
                 dataset_doc=self._doc,
                 **kwargs,
             )
@@ -1245,6 +1251,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ftype,
         embedded_doc_type=None,
         subfield=None,
+        fields=None,
         **kwargs,
     ):
         """Adds a new frame-level field or embedded field to the dataset, if
@@ -1264,6 +1271,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
+            fields (None): a list of :class:`fiftyone.core.fields.Field`
+                instances defining embedded document attributes. Only
+                applicable when ``ftype`` is
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
 
         Raises:
             ValueError: if a field of the same name already exists and it is
@@ -1279,6 +1290,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            fields=fields,
             dataset_doc=self._doc,
             **kwargs,
         )

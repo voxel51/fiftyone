@@ -99,23 +99,46 @@ class DatasetMixin(object):
 
         return super().get_field(field_name)
 
-    def set_field(self, field_name, value, create=False):
+    def set_field(
+        self,
+        field_name,
+        value,
+        create=True,
+        validate=True,
+        dynamic=False,
+    ):
         validate_field_name(field_name)
 
         if not self.has_field(field_name):
             if create:
-                self.add_implied_field(field_name, value)
+                self.add_implied_field(
+                    field_name,
+                    value,
+                    expand_schema=True,
+                    validate=validate,
+                    dynamic=dynamic,
+                )
             else:
                 raise ValueError(
                     "%s has no field '%s'" % (self._doc_name(), field_name)
                 )
         elif value is not None:
-            self._fields[field_name].validate(value)
+            if validate:
+                self._fields[field_name].validate(value)
+
+            if dynamic:
+                self.add_implied_field(
+                    field_name,
+                    value,
+                    expand_schema=create,
+                    validate=validate,
+                    dynamic=dynamic,
+                )
 
         super().__setattr__(field_name, value)
 
     def clear_field(self, field_name):
-        self.set_field(field_name, None)
+        self.set_field(field_name, None, create=False)
 
     @classmethod
     def get_field_schema(
@@ -192,7 +215,7 @@ class DatasetMixin(object):
         if dataset_doc is None:
             dataset_doc = cls._dataset_doc()
 
-        new_schema = None
+        new_schema = {}
 
         for path, field in schema.items():
             new_fields = cls._merge_field(
@@ -203,9 +226,6 @@ class DatasetMixin(object):
                 recursive=recursive,
             )
             if new_fields:
-                if new_schema is None:
-                    new_schema = {}
-
                 new_schema.update(new_fields)
 
         if new_schema and not expand_schema:
@@ -252,9 +272,9 @@ class DatasetMixin(object):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
-            fields (None): the field definitions of the
-                :class:`fiftyone.core.fields.EmbeddedDocumentField`
-                Only applicable when ``ftype`` is
+            fields (None): a list of :class:`fiftyone.core.fields.Field`
+                instances defining embedded document attributes. Only
+                applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that the field already exists with a
@@ -297,7 +317,7 @@ class DatasetMixin(object):
         path,
         value,
         expand_schema=True,
-        dynamic=True,
+        dynamic=False,
         recursive=True,
         validate=True,
         dataset_doc=None,
@@ -311,7 +331,8 @@ class DatasetMixin(object):
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that the field already exists with a
                 consistent type (False)
-            dynamic (True): whether to declare dynamic embedded document fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
             recursive (True): whether to recursively add embedded document
                 fields
             validate (True): whether to validate the field against an existing
@@ -868,7 +889,6 @@ class DatasetMixin(object):
         if isinstance(field, fof.ObjectIdField) and field_name.startswith("_"):
             field_name = field_name[1:]
 
-        # @todo remove this?
         if field_name == "id":
             return
 
@@ -1281,7 +1301,14 @@ class NoDatasetMixin(object):
                 "%s has no field '%s'" % (self._doc_name(), field_name)
             )
 
-    def set_field(self, field_name, value, create=False):
+    def set_field(
+        self,
+        field_name,
+        value,
+        create=True,
+        validate=True,
+        dynamic=False,
+    ):
         if not create and not self.has_field(field_name):
             raise ValueError(
                 "%s has no field '%s'" % (self._doc_name(), field_name)
@@ -1293,7 +1320,7 @@ class NoDatasetMixin(object):
     def clear_field(self, field_name):
         if field_name in self.default_fields:
             default_value = self._get_default(self.default_fields[field_name])
-            self.set_field(field_name, default_value)
+            self.set_field(field_name, default_value, create=False)
             return
 
         if not self.has_field(field_name):

@@ -257,7 +257,14 @@ class Frames(object):
         for frame in self._iter_frames():
             yield frame
 
-    def add_frame(self, frame_number, frame, expand_schema=True):
+    def add_frame(
+        self,
+        frame_number,
+        frame,
+        expand_schema=True,
+        validate=True,
+        dynamic=False,
+    ):
         """Adds the frame to this instance.
 
         If an existing frame with the same frame number exists, it is
@@ -273,6 +280,9 @@ class Frames(object):
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
                 if the frame's schema is not a subset of the dataset schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
         """
         fofu.validate_frame_number(frame_number)
 
@@ -291,7 +301,13 @@ class Frames(object):
             doc = self._dataset._frame_dict_to_doc(d)
 
             for field, value in _frame.iter_fields():
-                doc.set_field(field, value, create=expand_schema)
+                doc.set_field(
+                    field,
+                    value,
+                    create=expand_schema,
+                    validate=validate,
+                    dynamic=dynamic,
+                )
 
             doc.set_field("frame_number", frame_number)
             frame._set_backing_doc(doc, dataset=self._dataset)
@@ -303,7 +319,14 @@ class Frames(object):
 
         self._set_replacement(frame)
 
-    def update(self, frames, overwrite=True, expand_schema=True):
+    def update(
+        self,
+        frames,
+        overwrite=True,
+        expand_schema=True,
+        validate=True,
+        dynamic=False,
+    ):
         """Adds the frame labels to this instance.
 
         Args:
@@ -320,6 +343,9 @@ class Frames(object):
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
                 if the frame's schema is not a subset of the dataset schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
         """
         for frame_number, frame in frames.items():
             if overwrite or frame_number not in self:
@@ -327,7 +353,11 @@ class Frames(object):
                     frame = Frame(frame_number=frame_number, **frame)
 
                 self.add_frame(
-                    frame_number, frame, expand_schema=expand_schema
+                    frame_number,
+                    frame,
+                    expand_schema=expand_schema,
+                    validate=validate,
+                    dynamic=dynamic,
                 )
 
     def merge(
@@ -338,6 +368,8 @@ class Frames(object):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
+        validate=True,
+        dynamic=False,
     ):
         """Merges the given frames into this instance.
 
@@ -392,6 +424,9 @@ class Frames(object):
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
                 if the frame's schema is not a subset of the dataset schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
         """
         for frame_number, frame in frames.items():
             if isinstance(frame, dict):
@@ -405,13 +440,19 @@ class Frames(object):
                     merge_lists=merge_lists,
                     overwrite=overwrite,
                     expand_schema=expand_schema,
+                    validate=validate,
+                    dynamic=dynamic,
                 )
             else:
                 if fields is not None or omit_fields is not None:
                     frame = frame.copy(fields=fields, omit_fields=omit_fields)
 
                 self.add_frame(
-                    frame_number, frame, expand_schema=expand_schema
+                    frame_number,
+                    frame,
+                    expand_schema=expand_schema,
+                    validate=validate,
+                    dynamic=dynamic,
                 )
 
     def clear(self):
@@ -754,7 +795,14 @@ class FramesView(Frames):
     def field_names(self):
         return list(self._view.get_frame_field_schema().keys())
 
-    def add_frame(self, frame_number, frame, expand_schema=True):
+    def add_frame(
+        self,
+        frame_number,
+        frame,
+        expand_schema=True,
+        validate=True,
+        dynamic=False,
+    ):
         """Adds the frame to this instance.
 
         If an existing frame with the same frame number exists, it is
@@ -770,6 +818,9 @@ class FramesView(Frames):
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
                 if the frame's schema is not a subset of the dataset schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
         """
         fofu.validate_frame_number(frame_number)
 
@@ -782,7 +833,13 @@ class FramesView(Frames):
         frame_view = self._make_frame({"_sample_id": self._sample_id})
 
         for field, value in frame.iter_fields():
-            frame_view.set_field(field, value, create=expand_schema)
+            frame_view.set_field(
+                field,
+                value,
+                create=expand_schema,
+                validate=validate,
+                dynamic=dynamic,
+            )
 
         frame_view.set_field("frame_number", frame_number)
         self._set_replacement(frame_view)

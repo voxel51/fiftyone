@@ -35,8 +35,8 @@ def create_field(
     ftype,
     embedded_doc_type=None,
     subfield=None,
-    db_field=None,
     fields=None,
+    db_field=None,
     **kwargs,
 ):
     """Creates the field defined by the given specification.
@@ -60,13 +60,11 @@ def create_field(
             contained field. Only applicable when ``ftype`` is
             :class:`fiftyone.core.fields.ListField` or
             :class:`fiftyone.core.fields.DictField`
+        fields (None): a list of :class:`fiftyone.core.fields.Field` instances
+            defining embedded document attributes. Only applicable when
+            ``ftype`` is :class:`fiftyone.core.fields.EmbeddedDocumentField`
         db_field (None): the database field to store this field in. By default,
             ``name`` is used
-        fields (None): the subfields of the
-            :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            Only applicable when ``ftype`` is
-            :class:`fiftyone.core.fields.EmbeddedDocumentField`
-        **kwargs: mongoengine field kwargs
 
     Returns:
         a :class:`fiftyone.core.fields.Field`
@@ -134,12 +132,12 @@ class SampleFieldDocument(EmbeddedDocument):
 
     name = StringField()
     ftype = StringField()
-    subfield = StringField(null=True)
     embedded_doc_type = StringField(null=True)
-    db_field = StringField(null=True)
+    subfield = StringField(null=True)
     fields = ListField(
         EmbeddedDocumentField(document_type="SampleFieldDocument")
     )
+    db_field = StringField(null=True)
 
     def to_field(self):
         """Creates the :class:`fiftyone.core.fields.Field` specified by this
@@ -167,8 +165,8 @@ class SampleFieldDocument(EmbeddedDocument):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
-            db_field=self.db_field,
             fields=fields,
+            db_field=self.db_field,
         )
 
     @classmethod
@@ -190,10 +188,10 @@ class SampleFieldDocument(EmbeddedDocument):
         return cls(
             name=field.name,
             ftype=etau.get_class_name(field),
-            subfield=cls._get_attr_repr(field, "field"),
             embedded_doc_type=embedded_doc_type,
-            db_field=field.db_field,
+            subfield=cls._get_attr_repr(field, "field"),
             fields=cls._get_field_documents(field),
+            db_field=field.db_field,
         )
 
     @staticmethod

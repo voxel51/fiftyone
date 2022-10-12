@@ -209,13 +209,13 @@ def get_field_kwargs(field):
     return kwargs
 
 
-def get_implied_field_kwargs(value, dynamic=True):
+def get_implied_field_kwargs(value, dynamic=False):
     """Infers the field keyword arguments dictionary for a field that can hold
     the given value.
 
     Args:
         value: a value
-        dynamic (True): whether to declare dynamic embedded document fields
+        dynamic (False): whether to declare dynamic embedded document fields
 
     Returns:
         a field specification dict
@@ -224,7 +224,7 @@ def get_implied_field_kwargs(value, dynamic=True):
         return {
             "ftype": fof.EmbeddedDocumentField,
             "embedded_doc_type": type(value),
-            "fields": _parse_embedded_doc_fields(value, dynamic=dynamic),
+            "fields": _parse_embedded_doc_fields(value, dynamic),
         }
 
     if isinstance(value, (bool, np.bool_)):
@@ -264,7 +264,7 @@ def get_implied_field_kwargs(value, dynamic=True):
             if value_type == fof.EmbeddedDocumentField:
                 kwargs["embedded_doc_type"] = value_type.document_type
                 kwargs["fields"] = _parse_embedded_doc_list_fields(
-                    value, dynamic=dynamic
+                    value, dynamic
                 )
 
         return kwargs
@@ -283,7 +283,7 @@ def get_implied_field_kwargs(value, dynamic=True):
     )
 
 
-def _get_field_kwargs(value, field, dynamic=True):
+def _get_field_kwargs(value, field, dynamic):
     kwargs = {
         "ftype": type(field),
         "db_field": field.db_field,
@@ -296,16 +296,16 @@ def _get_field_kwargs(value, field, dynamic=True):
             if isinstance(field, fof.EmbeddedDocumentField):
                 kwargs["embedded_doc_type"] = field.document_type
                 kwargs["fields"] = _parse_embedded_doc_list_fields(
-                    value, dynamic=dynamic
+                    value, dynamic
                 )
     elif isinstance(field, fof.EmbeddedDocumentField):
         kwargs["embedded_doc_type"] = field.document_type
-        kwargs["fields"] = _parse_embedded_doc_fields(value, dynamic=dynamic)
+        kwargs["fields"] = _parse_embedded_doc_fields(value, dynamic)
 
     return kwargs
 
 
-def _parse_embedded_doc_fields(doc, dynamic=True):
+def _parse_embedded_doc_fields(doc, dynamic):
     fields = []
 
     is_label = isinstance(doc, fol.Label)
@@ -316,7 +316,7 @@ def _parse_embedded_doc_fields(doc, dynamic=True):
 
         value = getattr(doc, name, None)
         if value is not None and not name.startswith("_"):
-            kwargs = _get_field_kwargs(value, field=field, dynamic=dynamic)
+            kwargs = _get_field_kwargs(value, field, dynamic)
             kwargs["name"] = name
             fields.append(kwargs)
 
@@ -336,12 +336,12 @@ def _parse_embedded_doc_fields(doc, dynamic=True):
     return fields
 
 
-def _parse_embedded_doc_list_fields(values, dynamic=True):
+def _parse_embedded_doc_list_fields(values, dynamic):
     if not values:
         return []
 
     fields_dict = {}
-    fields = [_parse_embedded_doc_fields(v, dynamic=dynamic) for v in values]
+    fields = [_parse_embedded_doc_fields(v, dynamic) for v in values]
     _merge_embedded_doc_fields(fields_dict, fields)
     return _finalize_embedded_doc_fields(fields_dict)
 
