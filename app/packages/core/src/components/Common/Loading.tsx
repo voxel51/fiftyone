@@ -5,9 +5,10 @@ import { useTheme } from "@fiftyone/components";
 
 const IconDiv = styled.div`
   display: block;
-  padding: 2px;
+  position: relative;
   height: 16px;
   width: 16px;
+  margin-right: 4px;
 
   & > svg {
     color: ${({ theme }) => theme.text.primary};
@@ -15,7 +16,7 @@ const IconDiv = styled.div`
 `;
 
 const Loading = React.memo(
-  ({ loading = true, size = 32 }: { loading?: boolean; size?: number }) => {
+  ({ loading = true }: { loading?: boolean; }) => {
     const theme = useTheme();
 
     return (
@@ -26,6 +27,7 @@ const Loading = React.memo(
               color: theme.text.primary,
               height: "100%",
               width: "100%",
+              position: "absolute"
             }}
           />
         )}

@@ -45,8 +45,6 @@ const SliderStyled = styled(SliderUnstyled)`
   .thumb {
     height: 16px;
     width: 16px;
-    top: 50%;
-    margin-top: -8.4px;
     border-radius: 8px;
     background: ${({ theme }) => theme.palette.primary.plainColor};
     box-shadow: none;
@@ -59,24 +57,25 @@ const SliderStyled = styled(SliderUnstyled)`
     box-shadow: none;
   }
 
+  .valueLabel::before {
+    display: none;
+  }
   .valueLabel {
     width: auto;
-    margin-top: 0.5rem;
     font-weight: bold;
     font-family: "Palanquin", sans-serif;
     font-size: 14px;
-    padding: 0.2rem;
-    border-radius: 6rem;
+    margin-top: -100%;
+    padding: 0 0.25rem;
     color: transparent;
     transform: none !important;
-    margin-top: -4px;
+    color: ${({ theme }) => theme.palette.text.primary};
+    background: ${({ theme }) => theme.palette.background.level2};
+    border: 1px solid ${({ theme }) => theme.palette.primary.plainBorder};
   }
 
   .valueLabel > span > span {
     text-align: center;
-    color: ${({ theme }) => theme.palette.text.primary};
-    background: ${({ theme }) => theme.palette.background.level2};
-    border: 1px solid ${({ theme }) => theme.palette.primary.plainBorder};
   }
 ` as typeof SliderUnstyled;
 
