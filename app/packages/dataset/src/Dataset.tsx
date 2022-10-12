@@ -24,8 +24,6 @@ enum Events {
   STATE_UPDATE = "state_update",
 }
 
-const ViewBarWrapper = ({ children }) => <div>{children}</div>;
-
 export function Dataset({ datasetName, environment, theme }) {
   const [initialState, setInitialState] = useState();
   const [datasetQueryRef, loadDataset] = useDatasetLoader(environment);
@@ -40,6 +38,10 @@ export function Dataset({ datasetName, environment, theme }) {
 
   if (plugins.isLoading || !initialState) return loadingElement;
   if (plugins.error) return <div>Plugin error...</div>;
+
+  const ViewBarWrapper = styled.div`
+    margin: 0 16px;
+  `;
 
   const Container = styled.div`
     width: 100%;

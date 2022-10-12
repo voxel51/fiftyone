@@ -46,7 +46,6 @@ const SliderStyled = styled(SliderUnstyled)`
     height: 16px;
     width: 16px;
     top: 50%;
-    margin-top: -8.4px;
     border-radius: 8px;
     background: ${({ theme }) => theme.palette.primary.plainColor};
     box-shadow: none;
@@ -193,9 +192,10 @@ const BaseSlider = <T extends Range | number>({
           step={step}
           theme={{
             palette: {
-            ...theme,
-            color,
-            primary: { ...theme.primary, plainColor: color } }
+              ...theme,
+              color,
+              primary: { ...theme.primary, plainColor: color },
+            },
           }}
         />
         {showBounds && formatter(bounds[1])}

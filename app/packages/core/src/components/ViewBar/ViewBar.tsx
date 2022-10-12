@@ -16,7 +16,7 @@ import { useTheme } from "@fiftyone/components";
 
 const ViewBarDiv = styled.div`
   position: relative;
-  background-color: ${({ theme }) => theme.background.level2};
+  background-color: ${({ theme }) => theme.background.input};
   border-radius: 3px;
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   box-sizing: border-box;
@@ -45,9 +45,9 @@ const IconsContainer = styled.div`
   z-index: 1;
   height: 100%;
   border-radius: 3px;
-  top 0;
-  height: 52px;
-  right: 0;
+  top 2px;
+  height: 48px;
+  right: 1px;
   background-image: linear-gradient(
     to right,
     rgba(0, 0, 0, 0),
