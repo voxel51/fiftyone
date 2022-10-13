@@ -5668,7 +5668,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     "'%s'" % (sample.media_type, self.media_type)
                 )
 
-            non_existent_fields = set()
+            non_existent_fields = None
             found_group = False
 
             for field_name, value in sample.iter_fields():
@@ -5708,13 +5708,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 field = schema.get(field_name, None)
                 if field is None:
                     if value is not None:
-                        non_existent_fields.add(field_name)
+                        if non_existent_fields is None:
+                            non_existent_fields = {field_name}
+                        else:
+                            non_existent_fields.add(field_name)
                 else:
                     if value is not None or not field.null:
                         try:
                             field.validate(value)
-                        except moe.ValidationError as e:
-                            raise moe.ValidationError(
+                        except Exception as e:
+                            raise ValueError(
                                 "Invalid value for field '%s'. Reason: %s"
                                 % (field_name, str(e))
                             )

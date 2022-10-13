@@ -694,7 +694,9 @@ class Frames(object):
 
         return ops
 
-    def _save_replacements(self, include_singletons=True, deferred=False):
+    def _save_replacements(
+        self, include_singletons=True, validate=True, deferred=False
+    ):
         if include_singletons:
             #
             # Since frames are singletons, the user will expect changes to any
@@ -718,9 +720,11 @@ class Frames(object):
         if not replacements:
             return []
 
+        if validate:
+            self._validate_frames(replacements)
+
         ops = []
         new_dicts = {}
-
         for frame_number, frame in replacements.items():
             d = self._make_dict(frame)
             if not frame._in_db:
@@ -749,6 +753,37 @@ class Frames(object):
         self._replacements.clear()
 
         return ops
+
+    def _validate_frames(self, frames):
+        schema = self._dataset.get_frame_field_schema(include_private=True)
+
+        for frame_number, frame in frames.items():
+            non_existent_fields = None
+
+            for field_name, value in frame.iter_fields():
+                field = schema.get(field_name, None)
+                if field is None:
+                    if value is not None:
+                        if non_existent_fields is None:
+                            non_existent_fields = {field_name}
+                        else:
+                            non_existent_fields.add(field_name)
+                else:
+                    if value is not None or not field.null:
+                        try:
+                            field.validate(value)
+                        except Exception as e:
+                            raise ValueError(
+                                "Invalid value for field '%s' of frame %d. "
+                                "Reason: %s"
+                                % (field_name, frame_number, str(e))
+                            )
+
+            if non_existent_fields:
+                raise ValueError(
+                    "Frame fields %s do not exist on dataset '%s'"
+                    % (non_existent_fields, self._dataset.name)
+                )
 
 
 class FramesView(Frames):
@@ -926,18 +961,21 @@ class FramesView(Frames):
             filtered_fields=self._filtered_fields,
         )
 
-    def _save_replacements(self, deferred=False):
+    def _save_replacements(self, validate=True, deferred=False):
         if not self._replacements:
             return []
 
         if self._contains_all_fields:
             return super()._save_replacements(
                 include_singletons=False,
+                validate=validate,
                 deferred=deferred,
             )
 
-        ops = []
+        if validate:
+            self._validate_frames(self._replacements)
 
+        ops = []
         for frame_number, frame in self._replacements.items():
             doc = self._make_dict(frame)
 
