@@ -400,14 +400,18 @@ class DatasetMixin(object):
         return default_fields
 
     @classmethod
-    def _rename_fields(cls, field_names, new_field_names):
+    def _rename_fields(cls, field_names, new_field_names, dataset_doc=None):
         """Renames the fields of the documents in this collection.
 
         Args:
             field_names: an iterable of field names
             new_field_names: an iterable of new field names
+            dataset_doc (None): the
+                :class:`fiftyone.core.odm.dataset.DatasetDocument`
         """
-        dataset_doc = cls._dataset_doc()
+        if dataset_doc is None:
+            dataset_doc = cls._dataset_doc()
+
         media_type = dataset_doc.media_type
         is_frame_field = cls._is_frames_doc
 
@@ -455,7 +459,7 @@ class DatasetMixin(object):
 
     @classmethod
     def _rename_embedded_fields(
-        cls, field_names, new_field_names, sample_collection
+        cls, field_names, new_field_names, sample_collection, dataset_doc=None
     ):
         """Renames the embedded field of the documents in this collection.
 
@@ -465,19 +469,27 @@ class DatasetMixin(object):
             sample_collection: the
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
+            dataset_doc (None): the
+                :class:`fiftyone.core.odm.dataset.DatasetDocument`
         """
         cls._rename_fields_collection(
             field_names, new_field_names, sample_collection
         )
 
         if isinstance(sample_collection, fod.Dataset):
-            dataset_doc = cls._dataset_doc()
+            if dataset_doc is None:
+                dataset_doc = cls._dataset_doc()
+
             dataset_doc.app_config._rename_paths(field_names, new_field_names)
             dataset_doc.save()
 
     @classmethod
     def _clone_fields(
-        cls, field_names, new_field_names, sample_collection=None
+        cls,
+        field_names,
+        new_field_names,
+        sample_collection=None,
+        dataset_doc=None,
     ):
         """Clones the field(s) of the documents in this collection.
 
@@ -487,8 +499,12 @@ class DatasetMixin(object):
             sample_collection (None): the
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
+            dataset_doc (None): the
+                :class:`fiftyone.core.odm.dataset.DatasetDocument`
         """
-        dataset_doc = cls._dataset_doc()
+        if dataset_doc is None:
+            dataset_doc = cls._dataset_doc()
+
         media_type = dataset_doc.media_type
         is_frame_field = cls._is_frames_doc
 
@@ -586,18 +602,22 @@ class DatasetMixin(object):
         cls._clear_fields_collection(field_names, sample_collection)
 
     @classmethod
-    def _delete_fields(cls, field_names, error_level=0):
+    def _delete_fields(cls, field_names, dataset_doc=None, error_level=0):
         """Deletes the field(s) from the documents in this collection.
 
         Args:
             field_names: an iterable of field names
+            dataset_doc (None): the
+                :class:`fiftyone.core.odm.dataset.DatasetDocument`
             error_level (0): the error level to use. Valid values are:
 
             -   0: raise error if a field cannot be deleted
             -   1: log warning if a field cannot be deleted
             -   2: ignore fields that cannot be deleted
         """
-        dataset_doc = cls._dataset_doc()
+        if dataset_doc is None:
+            dataset_doc = cls._dataset_doc()
+
         default_fields = cls._get_default_fields(dataset_doc=dataset_doc)
 
         del_fields = []
@@ -634,15 +654,19 @@ class DatasetMixin(object):
         dataset_doc.save()
 
     @classmethod
-    def _delete_embedded_fields(cls, field_names):
+    def _delete_embedded_fields(cls, field_names, dataset_doc=None):
         """Deletes the embedded field(s) from the documents in this collection.
 
         Args:
             field_names: an iterable of "embedded.field.names"
+            dataset_doc (None): the
+                :class:`fiftyone.core.odm.dataset.DatasetDocument`
         """
+        if dataset_doc is None:
+            dataset_doc = cls._dataset_doc()
+
         cls._delete_fields_simple(field_names)
 
-        dataset_doc = cls._dataset_doc()
         dataset_doc.app_config._delete_paths(field_names)
         dataset_doc.save()
 

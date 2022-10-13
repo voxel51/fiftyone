@@ -1559,7 +1559,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ) = _parse_field_mapping(field_mapping)
 
         if fields:
-            self._sample_doc_cls._clone_fields(fields, new_fields, view)
+            self._sample_doc_cls._clone_fields(
+                fields,
+                new_fields,
+                sample_collection=view,
+                dataset_doc=self._doc,
+            )
 
         if embedded_fields:
             sample_collection = self if view is None else view
@@ -1584,7 +1589,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ) = _parse_field_mapping(field_mapping)
 
         if fields:
-            self._frame_doc_cls._clone_fields(fields, new_fields, view)
+            self._frame_doc_cls._clone_fields(
+                fields,
+                new_fields,
+                sample_collection=view,
+                dataset_doc=self._doc,
+            )
 
         if embedded_fields:
             sample_collection = self if view is None else view
@@ -1661,7 +1671,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields, embedded_fields = _parse_fields(field_names)
 
         if fields:
-            self._sample_doc_cls._clear_fields(fields, view)
+            self._sample_doc_cls._clear_fields(fields, sample_collection=view)
 
         if embedded_fields:
             sample_collection = self if view is None else view
@@ -1681,7 +1691,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields, embedded_fields = _parse_fields(field_names)
 
         if fields:
-            self._frame_doc_cls._clear_fields(fields, view)
+            self._frame_doc_cls._clear_fields(fields, sample_collection=view)
 
         if embedded_fields:
             self._frame_doc_cls._clear_embedded_fields(
@@ -1763,12 +1773,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if fields:
             self._sample_doc_cls._delete_fields(
-                fields, error_level=error_level
+                fields,
+                error_level=error_level,
+                dataset_doc=self._doc,
             )
             fos.Sample._purge_fields(self._sample_collection_name, fields)
 
         if embedded_fields:
-            self._sample_doc_cls._delete_embedded_fields(embedded_fields)
+            self._sample_doc_cls._delete_embedded_fields(
+                embedded_fields,
+                dataset_doc=self._doc,
+            )
             fos.Sample._reload_docs(self._sample_collection_name)
 
         self._reload()
@@ -1782,11 +1797,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields, embedded_fields = _parse_fields(field_names)
 
         if fields:
-            self._frame_doc_cls._delete_fields(fields, error_level=error_level)
+            self._frame_doc_cls._delete_fields(
+                fields,
+                error_level=error_level,
+                dataset_doc=self._doc,
+            )
             fofr.Frame._purge_fields(self._frame_collection_name, fields)
 
         if embedded_fields:
-            self._frame_doc_cls._delete_embedded_fields(embedded_fields)
+            self._frame_doc_cls._delete_embedded_fields(
+                embedded_fields,
+                dataset_doc=self._doc,
+            )
             fofr.Frame._reload_docs(self._frame_collection_name)
 
         self._reload()
