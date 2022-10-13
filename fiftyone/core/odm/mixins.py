@@ -1011,7 +1011,9 @@ class DatasetMixin(object):
         field.name = name
 
         doc._declare_field(field)
-        field_docs.append(SampleFieldDocument.from_field(field))
+
+        field_doc = SampleFieldDocument.from_field(field)
+        _add_field_doc(field_docs, field_doc)
 
     @classmethod
     def _declare_field(cls, field_or_doc):
@@ -1405,3 +1407,12 @@ def _get_db_field(field, new_field_name):
         return "_" + new_field_name
 
     return new_field_name
+
+
+def _add_field_doc(field_docs, field_doc):
+    for i in range(len(field_docs)):
+        if field_docs[i].name == field_doc.name:
+            field_docs[i] = field_doc
+            return
+
+    field_docs.append(field_doc)
