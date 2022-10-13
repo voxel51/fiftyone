@@ -257,12 +257,10 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                         },
                     )
                     for smp in samples.select_fields(label_field)
-                    if smp[label_field]
                 }
                 id_map[label_field] = {
                     smp.id: _get_label_ids(smp[label_field])
                     for smp in samples.select_fields(label_field)
-                    if smp[label_field]
                 }
 
         return tasks, predictions, id_map
@@ -638,7 +636,11 @@ def export_label_to_label_studio(label, full_result=None):
         a dictionary or a list in Label Studio format
     """
     # TODO model version and model score
-    if _check_type(label, fol.Classification, fol.Classifications):
+    if label is None:
+        result_value = {}
+        ls_type = ""
+        ids = [0]
+    elif _check_type(label, fol.Classification, fol.Classifications):
         result_value, ls_type, ids = _to_classification(label)
     elif _check_type(label, fol.Detection, fol.Detections):
         result_value, ls_type, ids = _to_detection(label)
@@ -904,6 +906,8 @@ def _denormalize_values(values):
 
 
 def _get_label_ids(label):
+    if label is None:
+        return []
     if isinstance(
         label, (fol.Classification, fol.Segmentation, fol.Regression)
     ):
