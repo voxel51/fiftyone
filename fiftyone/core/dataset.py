@@ -2450,7 +2450,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
             dynamic (False): whether to declare dynamic attributes of embedded
-                document fields that are encountered
+                document fields that are encountered. Only applicable when
+                ``samples`` is not a
+                :class:`fiftyone.core.collections.SampleCollection`
             include_info (True): whether to merge dataset-level information
                 such as ``info`` and ``classes``. Only applicable when
                 ``samples`` is a
