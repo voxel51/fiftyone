@@ -1,4 +1,3 @@
-import { ThemeProvider } from "@fiftyone/components";
 import React, { useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot } from "recoil";
@@ -29,12 +28,12 @@ const DatasetWrapper = () => {
 function LoadableDataset() {
   const [datasetName, setDatasetName] = React.useState("quickstart");
   return (
-    <ThemeProvider>
+    <>
       <DatasetSelector current={datasetName} onChange={setDatasetName} />
       <div style={{ height: "100vh", overflow: "hidden" }}>
         <Dataset datasetName={datasetName} />
       </div>
-    </ThemeProvider>
+    </>
   );
 }
 

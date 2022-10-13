@@ -15,6 +15,7 @@ import { useEffect, useState, Suspense, Fragment } from "react";
 import { State } from "@fiftyone/state";
 import { usePlugins } from "@fiftyone/plugins";
 import styled, { ThemeContext } from "styled-components";
+import { ThemeProvider } from "@fiftyone/components";
 
 // built-in plugins
 import "@fiftyone/map";
@@ -58,12 +59,10 @@ export function Dataset({ datasetName, environment, theme }) {
     background: var(--joy-palette-background-header);
   `;
 
-  const themePalette = theme?.palette;
-  const ThemeWrapper = themePalette ? ThemeContext.Provider : Fragment;
-  const themeProps = themePalette ? { value: themePalette } : {};
+  const themeProviderProps = theme ? { customTheme: theme } : {};
 
   return (
-    <ThemeWrapper {...themeProps}>
+    <ThemeProvider {...themeProviderProps}>
       <Container>
         <Suspense fallback={loadingElement}>
           <DatasetLoader
@@ -78,7 +77,7 @@ export function Dataset({ datasetName, environment, theme }) {
         </Suspense>
         <div id="modal" />
       </Container>
-    </ThemeWrapper>
+    </ThemeProvider>
   );
 }
 

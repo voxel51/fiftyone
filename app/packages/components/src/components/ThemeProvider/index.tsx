@@ -1,6 +1,6 @@
 import React from "react";
 import * as fos from "@fiftyone/state";
-import { extendTheme as extendJoyTheme } from "@mui/joy/styles";
+import { extendTheme as extendJoyTheme, Theme } from "@mui/joy/styles";
 import {
   createTheme,
   Experimental_CssVarsProvider as CssVarsProvider,
@@ -8,7 +8,7 @@ import {
 import { useRecoilValue } from "recoil";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
-const theme = extendJoyTheme({
+let theme = extendJoyTheme({
   colorSchemes: {
     light: createTheme({
       palette: {
@@ -96,8 +96,11 @@ export const useTheme = () => {
   return theme.colorSchemes[useRecoilValue(fos.theme)].palette;
 };
 
-const ThemeProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
-  const current = useRecoilValue(fos.theme);
+const ThemeProvider: React.FC<
+  React.PropsWithChildren<{ customTheme?: Theme }>
+> = ({ children, customTheme }) => {
+  if (customTheme) theme = customTheme;
+  let current = useRecoilValue(fos.theme);
 
   return (
     <LegacyTheme.Provider value={theme.colorSchemes[current].palette}>
