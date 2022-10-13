@@ -2816,17 +2816,17 @@ attributes on a dataset:
 
 You can then use
 :meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>` to
-declare a new dynamic embedded document attribute:
+declare a specific dynamic embedded document attribute:
 
 .. code-block:: python
     :linenos:
 
     dataset.add_sample_field("ground_truth.detections.iscrowd", fo.FloatField)
 
-Or you can use the the
+or you can use the
 :meth:`add_dynamic_sample_fields() <fiftyone.core.dataset.Dataset.add_dynamic_sample_fields>`
-method to conveniently declare all dynamic embedded document attribute(s) that
-contain values of a single type:
+method to declare all dynamic embedded document attribute(s) that contain
+values of a single type:
 
 .. code-block:: python
     :linenos:
@@ -2842,8 +2842,8 @@ contain values of a single type:
 
 You can provide the optional `flat=True` option to
 :meth:`get_field_schema() <fiftyone.core.dataset.Dataset.get_field_schema>` to
-conveniently retrieve a flattened version of a dataset's schema that includes
-all embedded document attributes as top-level keys:
+retrieve a flattened version of a dataset's schema that includes all embedded
+document attributes as top-level keys:
 
 .. code-block:: python
     :linenos:
@@ -2872,8 +2872,8 @@ all embedded document attributes as top-level keys:
         ...
     }
 
-As previously mentioned, by default, dynamic attributes are not declared on a
-dataset's schema when samples are added to it:
+By default, dynamic attributes are not declared on a dataset's schema when
+samples are added to it:
 
 .. code-block:: python
     :linenos:
@@ -2913,7 +2913,7 @@ However, many methods such as
 :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
 provide an optional `dynamic=True` option that you can provide to automatically
 declare any dynamic embedded document attributes encountered while importing
-the data:
+data:
 
 .. code-block:: python
     :linenos:
@@ -2928,12 +2928,12 @@ the data:
 Note that, when declaring dynamic attributes on non-empty datasets, you must
 ensure that the attribute's type is consistent with any existing values in that
 field, e.g., by first running
-:meth:`get_dynamic_field_schema() <fiftyone.core.dataset.Dataset.get_dynamic_field_schema>`.
-Methods like
+:meth:`get_dynamic_field_schema() <fiftyone.core.dataset.Dataset.get_dynamic_field_schema>`
+to check the existing type(s). Methods like
 :meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`
 and
 :meth:`add_samples(..., dynamic=True) <fiftyone.core.dataset.Dataset.add_samples>`
-do not validate newly declared field's types against existing field values.
+do not validate newly declared field's types against existing field values:
 
 .. code-block:: python
     :linenos:
