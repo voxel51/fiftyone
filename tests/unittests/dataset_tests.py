@@ -3050,8 +3050,9 @@ class DynamicFieldTests(unittest.TestCase):
             sample.save()
 
         with self.assertRaises(Exception):
-            sample.frames[1]["ground_truth"].detections[0].mood = False
-            sample.save()
+            frame = sample.frames[1]
+            frame["ground_truth"].detections[0].mood = False
+            frame.save()
 
     @drop_datasets
     def test_dynamic_fields_clone_and_merge(self):
