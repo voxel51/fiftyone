@@ -53,6 +53,9 @@ export function Dataset({ datasetName, environment, theme }) {
     display: flex;
     flex-direction: column;
     min-width: 660px;
+    & * {
+      font-family: var(--joy-fontFamily-body);
+    }
   `;
   const ViewBarWrapper = styled.div`
     padding: 16px;
