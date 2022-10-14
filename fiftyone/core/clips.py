@@ -18,6 +18,7 @@ from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
@@ -444,15 +445,14 @@ def make_clips_dataset(
     )
     dataset.media_type = fom.VIDEO
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
-    dataset.create_index("sample_id")
     dataset.add_sample_field("support", fof.FrameSupportField)
+    dataset.create_index("sample_id")
 
     if clips_type == "detections":
-        dataset.add_sample_field(
-            field_or_expr,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Classification,
-        )
+        field = _get_label_field(sample_collection, field_or_expr)
+        kwargs = foo.get_field_kwargs(field)
+        kwargs["embedded_doc_type"] = fol.Classification
+        dataset.add_sample_field(field_or_expr, **kwargs)
 
     if clips_type == "trajectories":
         field_or_expr, _ = sample_collection._handle_frame_field(field_or_expr)
@@ -523,6 +523,16 @@ def _is_frame_support_field(sample_collection, field_path):
         isinstance(field, fof.ListField)
         and isinstance(field.field, fof.FrameSupportField)
     )
+
+
+def _get_label_field(sample_collection, field_path):
+    _, path = sample_collection._get_label_field_path(field_path)
+    field = sample_collection.get_field(path)
+
+    if isinstance(field, fof.ListField):
+        field = field.field
+
+    return field
 
 
 def _make_pretty_summary(dataset):
