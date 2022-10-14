@@ -327,21 +327,6 @@ You must also add `?authSource=admin` to your database URI:
 
     mongodb://[username:password@]host[:port]/?authSource=admin
 
-.. note::
-
-    **Apple Silicon users**: MongoDB does not yet provide a native build for
-    Apple Silicon, so you currently must use `dataset_uri` with a MongoDB
-    distribution that you have installed yourself.
-
-    Users have reported success
-    `installing MongoDB v4.4 on Apple Silicon <https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x>`_
-    as follows:
-
-    .. code-block:: shell
-
-        brew tap mongodb/brew
-        brew install mongodb-community@4.4
-
 Using a different MongoDB version
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
