@@ -8507,7 +8507,6 @@ class SampleCollection(object):
         return schema[root]
 
     def _get_label_field_type(self, field_name):
-
         field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 

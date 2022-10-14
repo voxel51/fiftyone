@@ -1450,12 +1450,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _rename_sample_fields(self, field_mapping, view=None):
         sample_collection = self if view is None else view
 
-        fields, new_fields = zip(*field_mapping.items())
+        paths, new_paths = zip(*field_mapping.items())
         self._sample_doc_cls._rename_fields(
-            fields, new_fields, sample_collection
+            paths, new_paths, sample_collection
         )
 
-        # fos.Sample._rename_fields(self._sample_collection_name, fields, new_fields)
+        fields, _, _, _ = _parse_field_mapping(field_mapping)
+
+        if fields:
+            fos.Sample._purge_fields(self._sample_collection_name, fields)
 
         fos.Sample._reload_docs(self._sample_collection_name)
         self._reload()
@@ -1467,12 +1470,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "%s has no frame fields" % type(sample_collection)
             )
 
-        fields, new_fields = zip(*field_mapping.items())
-        self._frame_doc_cls._rename_fields(
-            fields, new_fields, sample_collection
-        )
+        paths, new_paths = zip(*field_mapping.items())
+        self._frame_doc_cls._rename_fields(paths, new_paths, sample_collection)
 
-        # fofr.Frame._rename_fields(self._frame_collection_name, fields, new_fields)
+        fields, _, _, _ = _parse_field_mapping(field_mapping)
+
+        if fields:
+            fofr.Frame._purge_fields(self._frame_collection_name, fields)
 
         fofr.Frame._reload_docs(self._frame_collection_name)
         self._reload()
@@ -1532,10 +1536,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _clone_sample_fields(self, field_mapping, view=None):
         sample_collection = self if view is None else view
 
-        fields, new_fields = zip(*field_mapping.items())
+        paths, new_paths = zip(*field_mapping.items())
         self._sample_doc_cls._clone_fields(
-            fields,
-            new_fields,
+            paths,
+            new_paths,
             sample_collection,
             dataset_doc=self._doc,
         )
@@ -1550,10 +1554,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "%s has no frame fields" % type(sample_collection)
             )
 
-        fields, new_fields = zip(*field_mapping.items())
+        paths, new_paths = zip(*field_mapping.items())
         self._frame_doc_cls._clone_fields(
-            fields,
-            new_fields,
+            paths,
+            new_paths,
             sample_collection,
             dataset_doc=self._doc,
         )
@@ -1780,9 +1784,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_doc=self._doc,
         )
 
-        # fos.Sample._purge_fields(self._sample_collection_name, fields)
+        fields, embedded_fields = _parse_fields(field_names)
 
-        fos.Sample._reload_docs(self._sample_collection_name)
+        if fields:
+            fos.Sample._purge_fields(self._sample_collection_name, fields)
+
+        if embedded_fields:
+            fos.Sample._reload_docs(self._sample_collection_name)
+
         self._reload()
 
     def _remove_dynamic_sample_fields(self, field_names, error_level):
@@ -1812,9 +1821,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_doc=self._doc,
         )
 
-        # fofr.Frame._purge_fields(self._frame_collection_name, fields)
+        fields, embedded_fields = _parse_fields(field_names)
 
-        fofr.Frame._reload_docs(self._frame_collection_name)
+        if fields:
+            fofr.Frame._purge_fields(self._frame_collection_name, fields)
+
+        if embedded_fields:
+            fofr.Frame._reload_docs(self._frame_collection_name)
+
         self._reload()
 
     def _remove_dynamic_frame_fields(self, field_names, error_level):
