@@ -602,11 +602,11 @@ class DatasetMixin(object):
         cls._clear_fields_collection(field_names, sample_collection)
 
     @classmethod
-    def _delete_fields(cls, field_names, dataset_doc=None, error_level=0):
+    def _delete_fields(cls, paths, dataset_doc=None, error_level=0):
         """Deletes the field(s) from the documents in this collection.
 
         Args:
-            field_names: an iterable of field names
+            paths: an iterable of field names or ``embedded.field.names``
             dataset_doc (None): the
                 :class:`fiftyone.core.odm.dataset.DatasetDocument`
             error_level (0): the error level to use. Valid values are:
@@ -618,254 +618,294 @@ class DatasetMixin(object):
         if dataset_doc is None:
             dataset_doc = cls._dataset_doc()
 
-        default_fields = cls._get_default_fields(dataset_doc=dataset_doc)
+        del_paths = []
+        del_schema_paths = []
 
-        del_fields = []
-        for field_name in field_names:
-            # pylint: disable=no-member
-            if field_name in default_fields:
+        for path in paths:
+            field, is_default = cls._get_field(
+                path,
+                allow_missing=True,
+                check_default=True,
+                dataset_doc=dataset_doc,
+            )
+
+            if field is None:
+                if "." in path:
+                    # Allow for dynamic embedded fields
+                    del_paths.append(path)
+                else:
+                    fou.handle_error(
+                        AttributeError(
+                            "%s field '%s' does not exist"
+                            % (cls._doc_name(), path)
+                        ),
+                        error_level,
+                    )
+
+                continue
+
+            if is_default:
                 fou.handle_error(
                     ValueError(
                         "Cannot delete default %s field '%s'"
-                        % (cls._doc_name().lower(), field_name)
+                        % (cls._doc_name().lower(), path)
                     ),
                     error_level,
                 )
-            elif field_name not in cls._fields:
-                fou.handle_error(
-                    AttributeError(
-                        "%s field '%s' does not exist"
-                        % (cls._doc_name(), field_name)
-                    ),
-                    error_level,
-                )
-            else:
-                del_fields.append(field_name)
+                continue
 
-        if not del_fields:
-            return
+            del_paths.append(path)
+            del_schema_paths.append(path)
 
-        cls._delete_fields_simple(del_fields)
+        if del_paths:
+            cls._delete_fields_simple(del_paths)
 
-        for field_name in del_fields:
-            cls._delete_field_schema(field_name, dataset_doc)
+        for del_path in del_schema_paths:
+            cls._delete_field_schema(del_path, dataset_doc)
 
-        dataset_doc.app_config._delete_paths(field_names)
-        dataset_doc.save()
+        if del_paths:
+            dataset_doc.app_config._delete_paths(del_paths)
+            dataset_doc.save()
 
     @classmethod
-    def _delete_embedded_fields(cls, field_names, dataset_doc=None):
-        """Deletes the embedded field(s) from the documents in this collection.
+    def _remove_dynamic_fields(cls, paths, dataset_doc=None, error_level=0):
+        """Removes the dynamic embedded field(s) from the collection's schema.
+
+        The actual data is **not** deleted from the collection.
 
         Args:
-            field_names: an iterable of "embedded.field.names"
+            paths: an iterable of ``embedded.field.names``
             dataset_doc (None): the
                 :class:`fiftyone.core.odm.dataset.DatasetDocument`
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a field cannot be removed
+            -   1: log warning if a field cannot be removed
+            -   2: ignore fields that cannot be removed
         """
         if dataset_doc is None:
             dataset_doc = cls._dataset_doc()
 
-        cls._delete_fields_simple(field_names)
+        del_paths = []
 
-        dataset_doc.app_config._delete_paths(field_names)
-        dataset_doc.save()
+        for path in paths:
+            field, is_default = cls._get_field(
+                path,
+                allow_missing=True,
+                check_default=True,
+                dataset_doc=dataset_doc,
+            )
+
+            if field is None:
+                fou.handle_error(
+                    AttributeError(
+                        "%s field '%s' does not exist"
+                        % (cls._doc_name(), path)
+                    ),
+                    error_level,
+                )
+                continue
+
+            if is_default:
+                fou.handle_error(
+                    ValueError(
+                        "Cannot remove default %s field '%s'"
+                        % (cls._doc_name().lower(), path)
+                    ),
+                    error_level,
+                )
+                continue
+
+            del_paths.append(path)
+
+        for del_path in del_paths:
+            cls._delete_field_schema(del_path, dataset_doc)
+
+        if del_paths:
+            dataset_doc.app_config._delete_paths(del_paths)
+            dataset_doc.save()
 
     @classmethod
-    def _rename_fields_simple(cls, field_names, new_field_names):
-        if not field_names:
+    def _rename_fields_simple(cls, paths, new_paths):
+        if not paths:
             return
 
-        _field_names, _new_field_names = cls._handle_db_fields(
-            field_names, new_field_names
-        )
+        _paths, _new_paths = cls._handle_db_fields(paths, new_paths)
 
-        rename_expr = {k: v for k, v in zip(_field_names, _new_field_names)}
+        rename_expr = {k: v for k, v in zip(_paths, _new_paths)}
 
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
         collection.update_many({}, {"$rename": rename_expr})
 
     @classmethod
-    def _rename_fields_collection(
-        cls, field_names, new_field_names, sample_collection
-    ):
+    def _rename_fields_collection(cls, paths, new_paths, sample_collection):
         from fiftyone import ViewField as F
 
-        if not field_names:
+        if not paths:
             return
 
-        _field_names, _new_field_names = cls._handle_db_fields(
-            field_names, new_field_names
-        )
+        _paths, _new_paths = cls._handle_db_fields(paths, new_paths)
 
         if cls._is_frames_doc:
             prefix = sample_collection._FRAMES_PREFIX
-            field_names = [prefix + f for f in field_names]
-            new_field_names = [prefix + f for f in new_field_names]
-            _field_names = [prefix + f for f in _field_names]
-            _new_field_names = [prefix + f for f in _new_field_names]
+            paths = [prefix + p for p in paths]
+            new_paths = [prefix + p for p in new_paths]
+            _paths = [prefix + p for p in _paths]
+            _new_paths = [prefix + p for p in _new_paths]
 
         view = sample_collection.view()
-        for field_name, new_field_name in zip(_field_names, _new_field_names):
-            new_base = new_field_name.rsplit(".", 1)[0]
-            if "." in field_name:
-                base, leaf = field_name.rsplit(".", 1)
+        for path, new_path in zip(_paths, _new_paths):
+            new_base = new_path.rsplit(".", 1)[0]
+            if "." in path:
+                base, leaf = path.rsplit(".", 1)
             else:
-                base, leaf = field_name, ""
+                base, leaf = path, ""
 
             if new_base == base:
                 expr = F(leaf)
             else:
-                expr = F("$" + field_name)
+                expr = F("$" + path)
 
-            view = view.set_field(new_field_name, expr, _allow_missing=True)
+            view = view.set_field(new_path, expr, _allow_missing=True)
 
-        view = view.mongo([{"$unset": _field_names}])
+        view = view.mongo([{"$unset": _paths}])
 
         #
         # Ideally only the embedded field would be saved, but the `$merge`
         # operator will always overwrite top-level fields of each document, so
         # we limit the damage by projecting onto the modified fields
         #
-        field_roots = sample_collection._get_root_fields(
-            field_names + new_field_names
-        )
+        field_roots = sample_collection._get_root_fields(paths + new_paths)
         view.save(field_roots)
 
     @classmethod
-    def _clone_fields_simple(cls, field_names, new_field_names):
-        if not field_names:
+    def _clone_fields_simple(cls, paths, new_paths):
+        if not paths:
             return
 
-        _field_names, _new_field_names = cls._handle_db_fields(
-            field_names, new_field_names
-        )
+        _paths, _new_paths = cls._handle_db_fields(paths, new_paths)
 
-        set_expr = {v: "$" + k for k, v in zip(_field_names, _new_field_names)}
+        set_expr = {v: "$" + k for k, v in zip(_paths, _new_paths)}
 
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
         collection.update_many({}, [{"$set": set_expr}])
 
     @classmethod
-    def _clone_fields_collection(
-        cls, field_names, new_field_names, sample_collection
-    ):
+    def _clone_fields_collection(cls, paths, new_paths, sample_collection):
         from fiftyone import ViewField as F
 
-        if not field_names:
+        if not paths:
             return
 
-        _field_names, _new_field_names = cls._handle_db_fields(
-            field_names, new_field_names
-        )
+        _paths, _new_paths = cls._handle_db_fields(paths, new_paths)
 
         if cls._is_frames_doc:
             prefix = sample_collection._FRAMES_PREFIX
-            field_names = [prefix + f for f in field_names]
-            new_field_names = [prefix + f for f in new_field_names]
-            _field_names = [prefix + f for f in _field_names]
-            _new_field_names = [prefix + f for f in _new_field_names]
+            paths = [prefix + p for p in paths]
+            new_paths = [prefix + p for p in new_paths]
+            _paths = [prefix + p for p in _paths]
+            _new_paths = [prefix + p for p in _new_paths]
 
         view = sample_collection.view()
-        for field_name, new_field_name in zip(_field_names, _new_field_names):
-            new_base = new_field_name.rsplit(".", 1)[0]
-            if "." in field_name:
-                base, leaf = field_name.rsplit(".", 1)
+        for path, new_path in zip(_paths, _new_paths):
+            new_base = new_path.rsplit(".", 1)[0]
+            if "." in path:
+                base, leaf = path.rsplit(".", 1)
             else:
-                base, leaf = field_name, ""
+                base, leaf = path, ""
 
             if new_base == base:
                 expr = F(leaf)
             else:
-                expr = F("$" + field_name)
+                expr = F("$" + path)
 
-            view = view.set_field(new_field_name, expr, _allow_missing=True)
+            view = view.set_field(new_path, expr, _allow_missing=True)
 
         #
         # Ideally only the embedded field would be merged in, but the `$merge`
         # operator will always overwrite top-level fields of each document, so
         # we limit the damage by projecting onto the modified fields
         #
-        field_roots = sample_collection._get_root_fields(new_field_names)
+        field_roots = sample_collection._get_root_fields(new_paths)
         view.save(field_roots)
 
     @classmethod
-    def _clear_fields_simple(cls, field_names):
-        if not field_names:
+    def _clear_fields_simple(cls, paths):
+        if not paths:
             return
 
-        _field_names = cls._handle_db_fields(field_names)
+        _paths = cls._handle_db_fields(paths)
 
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
-        collection.update_many({}, {"$set": {k: None for k in _field_names}})
+        collection.update_many({}, {"$set": {p: None for p in _paths}})
 
     @classmethod
-    def _clear_fields_collection(cls, field_names, sample_collection):
-        if not field_names:
+    def _clear_fields_collection(cls, paths, sample_collection):
+        if not paths:
             return
 
-        _field_names = cls._handle_db_fields(field_names)
+        _paths = cls._handle_db_fields(paths)
 
         if cls._is_frames_doc:
             prefix = sample_collection._FRAMES_PREFIX
-            field_names = [prefix + f for f in field_names]
-            _field_names = [prefix + f for f in _field_names]
+            paths = [prefix + p for p in paths]
+            _paths = [prefix + p for p in _paths]
 
         view = sample_collection.view()
-        for field_name in _field_names:
-            view = view.set_field(field_name, None, _allow_missing=True)
+        for _path in _paths:
+            view = view.set_field(_path, None, _allow_missing=True)
 
         #
         # Ideally only the embedded field would be merged in, but the `$merge`
         # operator will always overwrite top-level fields of each document, so
         # we limit the damage by projecting onto the modified fields
         #
-        field_roots = sample_collection._get_root_fields(field_names)
+        field_roots = sample_collection._get_root_fields(paths)
         view.save(field_roots)
 
     @classmethod
-    def _delete_fields_simple(cls, field_names):
-        if not field_names:
+    def _delete_fields_simple(cls, paths):
+        if not paths:
             return
 
-        _field_names = cls._handle_db_fields(field_names)
+        _paths = cls._handle_db_fields(paths)
 
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
-        collection.update_many({}, [{"$unset": _field_names}])
+        collection.update_many({}, [{"$unset": _paths}])
 
     @classmethod
-    def _handle_db_field(cls, field_name, new_field_name=None):
-        # pylint: disable=no-member
-        field = cls._fields.get(field_name, None)
+    def _handle_db_field(cls, path, new_path=None):
+        field = cls._get_field(path, allow_missing=True)
 
         if field is None or field.db_field is None:
-            if new_field_name is not None:
-                return field_name, new_field_name
+            if new_path is not None:
+                return path, new_path
 
-            return field_name
+            return path
 
-        _field_name = field.db_field
+        _path = _get_db_field(field, path)
 
-        if new_field_name is not None:
-            _new_field_name = _get_db_field(field, new_field_name)
-            return _field_name, _new_field_name
+        if new_path is not None:
+            _new_path = _get_db_field(field, new_path)
+            return _path, _new_path
 
-        return _field_name
+        return _path
 
     @classmethod
-    def _handle_db_fields(cls, field_names, new_field_names=None):
-        if new_field_names is not None:
+    def _handle_db_fields(cls, paths, new_paths=None):
+        if new_paths is not None:
             return zip(
                 *[
-                    cls._handle_db_field(f, new_field_name=n)
-                    for f, n in zip(field_names, new_field_names)
+                    cls._handle_db_field(p, np)
+                    for p, np in zip(paths, new_paths)
                 ]
             )
 
-        return tuple(cls._handle_db_field(f) for f in field_names)
+        return tuple(cls._handle_db_field(p) for p in paths)
 
     @classmethod
     def _merge_field(
@@ -889,7 +929,7 @@ class DatasetMixin(object):
                 raise ValueError(
                     "Cannot infer an appropriate type for non-existent %s "
                     "field '%s' while defining embedded field '%s'"
-                    % (cls._doc_name(), root, path)
+                    % (cls._doc_name().lower(), root, path)
                 )
 
             doc = schema[chunk]
@@ -902,7 +942,7 @@ class DatasetMixin(object):
                     "Cannot define schema for embedded %s field '%s' because "
                     "field '%s' is a %s, not an %s"
                     % (
-                        cls._doc_name(),
+                        cls._doc_name().lower(),
                         path,
                         root,
                         type(doc),
@@ -959,14 +999,95 @@ class DatasetMixin(object):
 
     @classmethod
     def _add_field_schema(cls, path, field, dataset_doc):
-        chunks = path.split(".")
-        name = chunks[-1]
+        field_name, doc, field_docs = cls._parse_path(path, dataset_doc)
 
+        field = field.copy()
+        field.db_field = _get_db_field(field, field_name)
+        field.name = field_name
+
+        doc._declare_field(field)
+        _add_field_doc(field_docs, field)
+
+    @classmethod
+    def _rename_field_schema(cls, path, new_path, dataset_doc):
+        same_root, new_field_name = _parse_paths(path, new_path)
+        field_name, doc, field_docs = cls._parse_path(path, dataset_doc)
+
+        field = doc._fields[field_name]
+        new_db_field = _get_db_field(field, new_field_name)
+
+        field.name = new_field_name
+        field.db_field = new_db_field
+
+        if same_root:
+            doc._update_field(field_name, field)
+            _update_field_doc(field_docs, field_name, field)
+        else:
+            doc._undeclare_field(field_name)
+            _delete_field_doc(field_docs, field_name)
+
+            _, new_doc, new_field_docs = cls._parse_path(new_path, dataset_doc)
+            new_doc._declare_field(field)
+            _add_field_doc(new_field_docs, field)
+
+    @classmethod
+    def _clone_field_schema(cls, path, new_path, dataset_doc):
+        field_name, doc, _ = cls._parse_path(path, dataset_doc)
+
+        field = doc._fields[field_name]
+
+        cls._add_field_schema(new_path, field, dataset_doc)
+
+    @classmethod
+    def _delete_field_schema(cls, path, dataset_doc):
+        field_name, doc, field_docs = cls._parse_path(path, dataset_doc)
+
+        doc._undeclare_field(field_name)
+        _delete_field_doc(field_docs, field_name)
+
+    @classmethod
+    def _get_field(
+        cls, path, allow_missing=False, check_default=False, dataset_doc=None
+    ):
+        chunks = path.split(".")
+        field_name = chunks[-1]
+        doc = cls
+
+        try:
+            for chunk in chunks[:-1]:
+                doc = doc._fields[chunk]
+                if isinstance(doc, fof.ListField):
+                    doc = doc.field
+
+            field = doc._fields[field_name]
+        except Exception:
+            field, doc = None, None
+            if not allow_missing:
+                raise
+
+        if not check_default:
+            return field
+
+        if doc is None:
+            return field, None
+
+        if doc is cls:
+            default_fields = cls._get_default_fields(dataset_doc=dataset_doc)
+        else:
+            default_fields = doc._get_default_fields()
+
+        is_default = field_name in default_fields
+        return field, is_default
+
+    @classmethod
+    def _parse_path(cls, path, dataset_doc, allow_missing=False):
+        chunks = path.split(".")
+
+        field_name = chunks[-1]
+        doc = cls
         field_docs = dataset_doc[cls._fields_attr()]
 
-        # Handle embedded fields
         root = None
-        doc = cls
         for chunk in chunks[:-1]:
             if root is None:
                 root = chunk
@@ -981,9 +1102,12 @@ class DatasetMixin(object):
                     break
 
             if not found:
+                if allow_missing:
+                    return None, None, None
+
                 raise ValueError(
-                    "Cannot add embedded %s field '%s' because field '%s' has "
-                    "not been defined" % (cls._doc_name(), path, root)
+                    "Invalid %s field '%s'; field '%s' does not exist"
+                    % (cls._doc_name().lower(), path, root)
                 )
 
             doc = doc._fields[chunk]
@@ -992,11 +1116,13 @@ class DatasetMixin(object):
                 doc = doc.field
 
             if not isinstance(doc, fof.EmbeddedDocumentField):
+                if allow_missing:
+                    return None, None, None
+
                 raise ValueError(
-                    "Cannot define schema for embedded %s field '%s' because "
-                    "field '%s' is a %s, not an %s"
+                    "Invalid %s field '%s'; field '%s' is a %s, not an %s"
                     % (
-                        cls._doc_name(),
+                        cls._doc_name().lower(),
                         path,
                         root,
                         type(doc),
@@ -1004,16 +1130,7 @@ class DatasetMixin(object):
                     )
                 )
 
-        field = field.copy()
-
-        # Allow for the possibility that name != field.name
-        field.db_field = _get_db_field(field, name)
-        field.name = name
-
-        doc._declare_field(field)
-
-        field_doc = SampleFieldDocument.from_field(field)
-        _add_field_doc(field_docs, field_doc)
+        return field_name, doc, field_docs
 
     @classmethod
     def _declare_field(cls, field_or_doc):
@@ -1022,69 +1139,42 @@ class DatasetMixin(object):
         else:
             field = field_or_doc
 
-        prev = cls._fields.pop(field.name, None)
-        cls._fields[field.name] = field
+        field_name = field.name
+
+        # pylint: disable=no-member
+        prev = cls._fields.pop(field_name, None)
+        cls._fields[field_name] = field
 
         if prev is None:
-            cls._fields_ordered += (field.name,)
+            cls._fields_ordered += (field_name,)
         else:
             field.required = prev.required
             field.null = prev.null
 
-        setattr(cls, field.name, field)
+        setattr(cls, field_name, field)
 
     @classmethod
-    def _rename_field_schema(cls, field_name, new_field_name, dataset_doc):
-        # pylint: disable=no-member
-        field = cls._fields.pop(field_name)
-        new_db_field = _get_db_field(field, new_field_name)
+    def _update_field(cls, field_name, field):
+        new_field_name = field.name
 
-        field.name = new_field_name
-        field.db_field = new_db_field
-
+        cls._fields.pop(field_name, None)
         cls._fields[new_field_name] = field
         cls._fields_ordered = tuple(
             (fn if fn != field_name else new_field_name)
             for fn in cls._fields_ordered
         )
+
         delattr(cls, field_name)
-
-        try:
-            if issubclass(cls, Document):
-                setattr(cls, new_field_name, field)
-        except TypeError:
-            pass
-
-        fields = getattr(dataset_doc, cls._fields_attr())
-
-        for f in fields:
-            if f.name == field_name:
-                f.name = new_field_name
-                f.db_field = new_db_field
+        setattr(cls, new_field_name, field)
 
     @classmethod
-    def _clone_field_schema(cls, field_name, new_field_name, dataset_doc):
-        # pylint: disable=no-member
-        field = cls._fields[field_name]
-        cls._add_field_schema(new_field_name, field, dataset_doc)
-
-    @classmethod
-    def _delete_field_schema(cls, field_name, dataset_doc):
+    def _undeclare_field(cls, field_name):
         # pylint: disable=no-member
         del cls._fields[field_name]
         cls._fields_ordered = tuple(
             fn for fn in cls._fields_ordered if fn != field_name
         )
         delattr(cls, field_name)
-
-        fields = getattr(dataset_doc, cls._fields_attr())
-
-        # This is intentionally implemented without creating a new list, since
-        # clips datasets directly use their source dataset's frame fields
-        for idx, f in enumerate(fields):
-            if f.name == field_name:
-                del fields[idx]
-                break
 
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
         """Updates an existing document.
@@ -1397,22 +1487,60 @@ class NoDatasetMixin(object):
         pass
 
 
-def _get_db_field(field, new_field_name):
+def _get_db_field(field, path):
     if field.db_field is None:
         return None
 
     # This is hacky, but we must account for the fact that ObjectIdField often
     # uses db_field = "_<field_name>"
     if field.db_field == "_" + field.name:
-        return "_" + new_field_name
+        chunks = path.rsplit(".", 1)
+        chunks[-1] = "_" + chunks[-1]
+        return ".".join(chunks)
 
-    return new_field_name
+    return path
 
 
-def _add_field_doc(field_docs, field_doc):
-    for i in range(len(field_docs)):
-        if field_docs[i].name == field_doc.name:
-            field_docs[i] = field_doc
+def _parse_paths(path, new_path):
+    root, _ = _split_path(path)
+    new_root, new_field_name = _split_path(new_path)
+    same_root = root == new_root
+    return same_root, new_field_name
+
+
+def _split_path(path):
+    chunks = path.rsplit(".", 1)
+    if len(chunks) == 1:
+        return None, path
+
+    return chunks[0], chunks[1]
+
+
+def _add_field_doc(field_docs, field_or_doc):
+    # This is intentionally implemented to modify ``field_docs`` in place
+    if isinstance(field_or_doc, fof.Field):
+        new_field_doc = SampleFieldDocument.from_field(field_or_doc)
+    else:
+        new_field_doc = field_or_doc
+
+    for i, field_doc in enumerate(field_docs):
+        if field_doc.name == new_field_doc.name:
+            field_docs[i] = new_field_doc
             return
 
-    field_docs.append(field_doc)
+    field_docs.append(new_field_doc)
+
+
+def _update_field_doc(field_docs, field_name, field):
+    for field_doc in field_docs:
+        if field_doc.name == field_name:
+            field_doc.name = field.name
+            field_doc.db_field = field.db_field
+
+
+def _delete_field_doc(field_docs, field_name):
+    # This is intentionally implemented to modify ``field_docs`` in place
+    for i, field_doc in enumerate(field_docs):
+        if field_doc.name == field_name:
+            del field_docs[i]
+            break

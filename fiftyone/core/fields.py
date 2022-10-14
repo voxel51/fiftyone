@@ -764,6 +764,9 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
         return self.__fields
 
+    def _get_default_fields(self):
+        return set(self.document_type._fields)
+
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
@@ -870,6 +873,17 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         if prev is not None:
             field.required = prev.required
             field.null = prev.null
+
+    def _update_field(self, field_name, field):
+        self.fields = [
+            f if f.name != field_name else field for f in self.fields
+        ]
+        self._fields.pop(field_name, None)
+        self._fields[field.name] = field
+
+    def _undeclare_field(self, field_name):
+        self.fields = [f for f in self.fields if f.name != field_name]
+        self._fields.pop(field_name, None)
 
 
 class EmbeddedDocumentListField(

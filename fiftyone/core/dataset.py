@@ -1668,6 +1668,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._clear_frame_fields(field_names)
 
     def _clear_sample_fields(self, field_names, view=None):
+        field_names = _to_list(field_names)
+
         fields, embedded_fields = _parse_fields(field_names)
 
         if fields:
@@ -1687,6 +1689,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError(
                 "%s has no frame fields" % type(sample_collection)
             )
+
+        field_names = _to_list(field_names)
 
         fields, embedded_fields = _parse_fields(field_names)
 
@@ -1732,6 +1736,37 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_sample_fields(field_names, error_level)
 
+    def remove_dynamic_sample_field(self, field_name, error_level=0):
+        """Removes the dynamic embedded sample field from the dataset's schema.
+
+        The underlying data is **not** deleted from the samples.
+
+        Args:
+            field_name: the ``embedded.field.name``
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a top-level field cannot be removed
+            -   1: log warning if a top-level field cannot be removed
+            -   2: ignore top-level fields that cannot be removed
+        """
+        self._remove_dynamic_sample_fields(field_name, error_level)
+
+    def remove_dynamic_sample_fields(self, field_names, error_level=0):
+        """Removes the dynamic embedded sample fields from the dataset's
+        schema.
+
+        The underlying data is **not** deleted from the samples.
+
+        Args:
+            field_names: the ``embedded.field.name`` or iterable of field names
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a top-level field cannot be removed
+            -   1: log warning if a top-level field cannot be removed
+            -   2: ignore top-level fields that cannot be removed
+        """
+        self._remove_dynamic_sample_fields(field_names, error_level)
+
     def delete_frame_field(self, field_name, error_level=0):
         """Deletes the frame-level field from all samples in the dataset.
 
@@ -1768,48 +1803,107 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_frame_fields(field_names, error_level)
 
+    def remove_dynamic_frame_field(self, field_name, error_level=0):
+        """Removes the dynamic embedded frame field from the dataset's schema.
+
+        The underlying data is **not** deleted from the frames.
+
+        Args:
+            field_name: the ``embedded.field.name``
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a top-level field cannot be removed
+            -   1: log warning if a top-level field cannot be removed
+            -   2: ignore top-level fields that cannot be removed
+        """
+        self._remove_dynamic_frame_fields(field_name, error_level)
+
+    def remove_dynamic_frame_fields(self, field_names, error_level=0):
+        """Removes the dynamic embedded frame fields from the dataset's schema.
+
+        The underlying data is **not** deleted from the frames.
+
+        Args:
+            field_names: the ``embedded.field.name`` or iterable of field names
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a top-level field cannot be removed
+            -   1: log warning if a top-level field cannot be removed
+            -   2: ignore top-level fields that cannot be removed
+        """
+        self._remove_dynamic_frame_fields(field_names, error_level)
+
     def _delete_sample_fields(self, field_names, error_level):
+        field_names = _to_list(field_names)
+        self._sample_doc_cls._delete_fields(
+            field_names,
+            error_level=error_level,
+            dataset_doc=self._doc,
+        )
+
         fields, embedded_fields = _parse_fields(field_names)
 
         if fields:
-            self._sample_doc_cls._delete_fields(
-                fields,
-                error_level=error_level,
-                dataset_doc=self._doc,
-            )
             fos.Sample._purge_fields(self._sample_collection_name, fields)
 
         if embedded_fields:
-            self._sample_doc_cls._delete_embedded_fields(
-                embedded_fields,
-                dataset_doc=self._doc,
-            )
             fos.Sample._reload_docs(self._sample_collection_name)
+
+        self._reload()
+
+    def _remove_dynamic_sample_fields(self, field_names, error_level):
+        field_names = _to_list(field_names)
+        self._sample_doc_cls._remove_dynamic_fields(
+            field_names,
+            error_level=error_level,
+            dataset_doc=self._doc,
+        )
 
         self._reload()
 
     def _delete_frame_fields(self, field_names, error_level):
         if not self._has_frame_fields():
-            raise ValueError(
-                "Only datasets that contain videos have frame fields"
+            fou.handle_error(
+                ValueError(
+                    "Only datasets that contain videos have frame fields"
+                ),
+                error_level,
             )
+            return
+
+        field_names = _to_list(field_names)
+        self._frame_doc_cls._delete_fields(
+            field_names,
+            error_level=error_level,
+            dataset_doc=self._doc,
+        )
 
         fields, embedded_fields = _parse_fields(field_names)
 
         if fields:
-            self._frame_doc_cls._delete_fields(
-                fields,
-                error_level=error_level,
-                dataset_doc=self._doc,
-            )
             fofr.Frame._purge_fields(self._frame_collection_name, fields)
 
         if embedded_fields:
-            self._frame_doc_cls._delete_embedded_fields(
-                embedded_fields,
-                dataset_doc=self._doc,
-            )
             fofr.Frame._reload_docs(self._frame_collection_name)
+
+        self._reload()
+
+    def _remove_dynamic_frame_fields(self, field_names, error_level):
+        if not self._has_frame_fields():
+            fou.handle_error(
+                ValueError(
+                    "Only datasets that contain videos have frame fields"
+                ),
+                error_level,
+            )
+            return
+
+        field_names = _to_list(field_names)
+        self._frame_doc_cls._remove_dynamic_fields(
+            field_names,
+            error_level=error_level,
+            dataset_doc=self._doc,
+        )
 
         self._reload()
 
@@ -7520,10 +7614,15 @@ def _get_group_id(sample_or_group):
     raise ValueError("Sample '%s' has no group" % sample.id)
 
 
-def _parse_fields(field_names):
-    if etau.is_str(field_names):
-        field_names = [field_names]
+def _to_list(arg):
+    if etau.is_container(arg):
+        return list(arg)
 
+    return [arg]
+
+
+def _parse_fields(field_names):
+    field_names = _to_list(field_names)
     fields = [f for f in field_names if "." not in f]
     embedded_fields = [f for f in field_names if "." in f]
     return fields, embedded_fields

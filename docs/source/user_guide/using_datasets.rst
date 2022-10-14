@@ -2961,13 +2961,15 @@ do not validate newly declared field's types against existing field values:
     sample1.reload()  # ValidationError: bad-value could not be converted to int
 
 If you declare a dynamic attribute with a type that is not compatible with
-existing values in that field, you will need to delete that field in order for
-the dataset to be usable again:
+existing values in that field, you will need to remove that field from the
+dataset's schema using
+:meth:`remove_dynamic_sample_field() <fiftyone.core.dataset.Dataset.remove_dynamic_sample_field>`
+in order for the dataset to be usable again:
 
 .. code-block:: python
     :linenos:
 
-    dataset.delete_sample_field("ground_truth.age")
+    dataset.remove_dynamic_sample_field("ground_truth.age")
 
 .. _custom-embedded-documents:
 
