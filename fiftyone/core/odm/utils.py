@@ -136,12 +136,14 @@ def validate_field_name(field_name, media_type=None, is_frame_field=False):
             "%s" % (field_name, type(field_name))
         )
 
-    if not field_name:
+    chunks = field_name.split(".")
+
+    if not all(c for c in chunks):
         raise ValueError(
             "Invalid field name '%s'. Field names cannot be empty" % field_name
         )
 
-    if field_name.startswith("_"):
+    if any(c.startswith("_") for c in chunks):
         raise ValueError(
             "Invalid field name: '%s'. Field names cannot start with '_'"
             % field_name

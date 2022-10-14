@@ -385,27 +385,26 @@ class DatasetMixin(object):
         return create_field(field_name, **kwargs)
 
     @classmethod
-    def _get_default_fields(cls, dataset_doc=None):
-        default_fields = set(
-            get_default_fields(cls.__bases__[0], include_private=True)
-        )
-
-        if (
-            dataset_doc is not None
-            and dataset_doc.media_type == fom.GROUP
-            and not cls._is_frames_doc
-        ):
-            default_fields.add(dataset_doc.group_field)
-
-        return default_fields
+    def _get_default_fields(cls):
+        return set(get_default_fields(cls.__bases__[0], include_private=True))
 
     @classmethod
-    def _rename_fields(cls, field_names, new_field_names, dataset_doc=None):
+    def _rename_fields(
+        cls,
+        paths,
+        new_paths,
+        sample_collection,
+        dataset_doc=None,
+    ):
         """Renames the fields of the documents in this collection.
 
         Args:
-            field_names: an iterable of field names
-            new_field_names: an iterable of new field names
+            paths: an iterable of field names or ``embedded.field.names``
+            new_paths: an iterable of new field names or
+                ``embedded.field.names``
+            sample_collection: the
+                :class:`fiftyone.core.samples.SampleCollection` being operated
+                upon
             dataset_doc (None): the
                 :class:`fiftyone.core.odm.dataset.DatasetDocument`
         """
@@ -414,89 +413,94 @@ class DatasetMixin(object):
 
         media_type = dataset_doc.media_type
         is_frame_field = cls._is_frames_doc
+        is_dataset = isinstance(sample_collection, fod.Dataset)
+        new_group_field = None
 
-        default_fields = cls._get_default_fields()
+        simple_paths = []
+        coll_paths = []
+        schema_paths = []
 
-        for field_name, new_field_name in zip(field_names, new_field_names):
-            # pylint: disable=no-member
-            existing_field = cls._fields.get(field_name, None)
+        for path, new_path in zip(paths, new_paths):
+            is_root_field = "." not in path
+            field, is_default = cls._get_field(
+                path, allow_missing=True, check_default=True
+            )
+            existing_field = cls._get_field(new_path, allow_missing=True)
 
-            if field_name in default_fields:
+            if field is None and is_root_field:
+                raise AttributeError(
+                    "%s field '%s' does not exist" % (cls._doc_name(), path)
+                )
+
+            if is_default:
                 raise ValueError(
                     "Cannot rename default %s field '%s'"
-                    % (cls._doc_name().lower(), field_name)
+                    % (cls._doc_name().lower(), path)
                 )
 
-            if existing_field is None:
-                raise AttributeError(
-                    "%s field '%s' does not exist"
-                    % (cls._doc_name(), field_name)
-                )
-
-            # pylint: disable=no-member
-            if new_field_name in cls._fields:
+            if existing_field is not None:
                 raise ValueError(
                     "%s field '%s' already exists"
-                    % (cls._doc_name(), new_field_name)
+                    % (cls._doc_name(), new_path)
                 )
 
             validate_field_name(
-                new_field_name,
+                new_path,
                 media_type=media_type,
                 is_frame_field=is_frame_field,
             )
 
-            if fog.is_group_field(existing_field):
-                dataset_doc.group_field = new_field_name
+            if fog.is_group_field(field):
+                if "." in new_path:
+                    raise ValueError(
+                        "Invalid group field '%s'; group fields must be "
+                        "top-level fields" % new_path
+                    )
 
-        cls._rename_fields_simple(field_names, new_field_names)
+                new_group_field = new_path
 
-        for field_name, new_field_name in zip(field_names, new_field_names):
-            cls._rename_field_schema(field_name, new_field_name, dataset_doc)
+            if is_dataset and is_root_field:
+                simple_paths.append((path, new_path))
+            else:
+                coll_paths.append((path, new_path))
 
-        dataset_doc.app_config._rename_paths(field_names, new_field_names)
+            if field is not None:
+                schema_paths.append((path, new_path))
+
+        if simple_paths:
+            _paths, _new_paths = zip(*simple_paths)
+            cls._rename_fields_simple(_paths, _new_paths)
+
+        if coll_paths:
+            _paths, _new_paths = zip(*coll_paths)
+            cls._rename_fields_collection(
+                _paths, _new_paths, sample_collection
+            )
+
+        for path, new_path in schema_paths:
+            cls._rename_field_schema(path, new_path, dataset_doc)
+
+        if new_group_field:
+            dataset_doc.group_field = new_group_field
+
+        dataset_doc.app_config._rename_paths(paths, new_paths)
         dataset_doc.save()
-
-    @classmethod
-    def _rename_embedded_fields(
-        cls, field_names, new_field_names, sample_collection, dataset_doc=None
-    ):
-        """Renames the embedded field of the documents in this collection.
-
-        Args:
-            field_names: an iterable of "embedded.field.names"
-            new_field_names: an iterable of "new.embedded.field.names"
-            sample_collection: the
-                :class:`fiftyone.core.samples.SampleCollection` being operated
-                upon
-            dataset_doc (None): the
-                :class:`fiftyone.core.odm.dataset.DatasetDocument`
-        """
-        cls._rename_fields_collection(
-            field_names, new_field_names, sample_collection
-        )
-
-        if isinstance(sample_collection, fod.Dataset):
-            if dataset_doc is None:
-                dataset_doc = cls._dataset_doc()
-
-            dataset_doc.app_config._rename_paths(field_names, new_field_names)
-            dataset_doc.save()
 
     @classmethod
     def _clone_fields(
         cls,
-        field_names,
-        new_field_names,
-        sample_collection=None,
+        paths,
+        new_paths,
+        sample_collection,
         dataset_doc=None,
     ):
         """Clones the field(s) of the documents in this collection.
 
         Args:
-            field_names: an iterable of field names
-            new_field_names: an iterable of new field names
-            sample_collection (None): the
+            paths: an iterable of field names or ``embedded.field.names``
+            new_paths: an iterable of new field names or
+                ``embedded.field.names``
+            sample_collection: the
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
             dataset_doc (None): the
@@ -507,99 +511,95 @@ class DatasetMixin(object):
 
         media_type = dataset_doc.media_type
         is_frame_field = cls._is_frames_doc
+        is_dataset = isinstance(sample_collection, fod.Dataset)
 
-        for field_name, new_field_name in zip(field_names, new_field_names):
-            # pylint: disable=no-member
-            existing_field = cls._fields.get(field_name, None)
+        simple_paths = []
+        coll_paths = []
+        schema_paths = []
 
-            if existing_field is None:
+        for path, new_path in zip(paths, new_paths):
+            is_root_field = "." not in path
+            field = cls._get_field(path, allow_missing=True)
+            existing_field = cls._get_field(new_path, allow_missing=True)
+
+            if field is not None:
+                if fog.is_group_field(field):
+                    raise ValueError(
+                        "Cannot clone group field '%s'. Datasets may only "
+                        "have one group field" % path
+                    )
+            elif is_root_field:
                 raise AttributeError(
-                    "%s field '%s' does not exist"
-                    % (cls._doc_name(), field_name)
+                    "%s field '%s' does not exist" % (cls._doc_name(), path)
                 )
 
-            # pylint: disable=no-member
-            if new_field_name in cls._fields:
+            if existing_field is not None:
                 raise ValueError(
                     "%s field '%s' already exists"
-                    % (cls._doc_name(), new_field_name)
-                )
-
-            if fog.is_group_field(existing_field):
-                raise ValueError(
-                    "Cannot clone group field '%s'. Datasets may only have "
-                    "one group field" % field_name
+                    % (cls._doc_name(), new_path)
                 )
 
             validate_field_name(
-                new_field_name,
+                new_path,
                 media_type=media_type,
                 is_frame_field=is_frame_field,
             )
 
-        if sample_collection is None:
-            cls._clone_fields_simple(field_names, new_field_names)
-        else:
-            cls._clone_fields_collection(
-                field_names, new_field_names, sample_collection
-            )
+            if is_dataset and is_root_field:
+                simple_paths.append((path, new_path))
+            else:
+                coll_paths.append((path, new_path))
 
-        for field_name, new_field_name in zip(field_names, new_field_names):
-            cls._clone_field_schema(field_name, new_field_name, dataset_doc)
+            if field is not None:
+                schema_paths.append((path, new_path))
+
+        if simple_paths:
+            _paths, _new_paths = zip(*simple_paths)
+            cls._clone_fields_simple(_paths, _new_paths)
+
+        if coll_paths:
+            _paths, _new_paths = zip(*coll_paths)
+            cls._clone_fields_collection(_paths, _new_paths, sample_collection)
+
+        for path, new_path in schema_paths:
+            cls._clone_field_schema(path, new_path, dataset_doc)
 
         dataset_doc.save()
 
     @classmethod
-    def _clone_embedded_fields(
-        cls, field_names, new_field_names, sample_collection
-    ):
-        """Clones the embedded field(s) of the documents in this collection.
-
-        Args:
-            field_names: an iterable of "embedded.field.names"
-            new_field_names: an iterable of "new.embedded.field.names"
-            sample_collection: the
-                :class:`fiftyone.core.samples.SampleCollection` being operated
-                upon
-        """
-        cls._clone_fields_collection(
-            field_names, new_field_names, sample_collection
-        )
-
-    @classmethod
-    def _clear_fields(cls, field_names, sample_collection=None):
+    def _clear_fields(cls, paths, sample_collection):
         """Clears the field(s) of the documents in this collection.
 
         Args:
-            field_names: an iterable of field names
-            sample_collection (None): the
-                :class:`fiftyone.core.samples.SampleCollection` being operated
-                upon
-        """
-        for field_name in field_names:
-            # pylint: disable=no-member
-            if field_name not in cls._fields:
-                raise AttributeError(
-                    "%s field '%s' does not exist"
-                    % (cls._doc_name(), field_name)
-                )
-
-        if sample_collection is None:
-            cls._clear_fields_simple(field_names)
-        else:
-            cls._clear_fields_collection(field_names, sample_collection)
-
-    @classmethod
-    def _clear_embedded_fields(cls, field_names, sample_collection):
-        """Clears the embedded field(s) on the documents in this collection.
-
-        Args:
-            field_names: an iterable of "embedded.field.names"
+            paths: an iterable of field names or ``embedded.field.names``
             sample_collection: the
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
-        cls._clear_fields_collection(field_names, sample_collection)
+        is_dataset = isinstance(sample_collection, fod.Dataset)
+
+        simple_paths = []
+        coll_paths = []
+
+        for path in paths:
+            is_root_field = "." not in path
+            field = cls._get_field(path, allow_missing=True)
+
+            if field is None and is_root_field:
+                raise AttributeError(
+                    "%s field '%s' does not exist" % (cls._doc_name(), path)
+                )
+
+            if is_dataset and is_root_field:
+                simple_paths.append(path)
+            else:
+                coll_paths.append(path)
+
+        if simple_paths:
+            cls._clear_fields_simple(simple_paths)
+
+        if coll_paths:
+            cls._clear_fields_collection(coll_paths, sample_collection)
 
     @classmethod
     def _delete_fields(cls, paths, dataset_doc=None, error_level=0):
@@ -618,15 +618,15 @@ class DatasetMixin(object):
         if dataset_doc is None:
             dataset_doc = cls._dataset_doc()
 
+        media_type = dataset_doc.media_type
+        is_frame_field = cls._is_frames_doc
+
         del_paths = []
         del_schema_paths = []
 
         for path in paths:
             field, is_default = cls._get_field(
-                path,
-                allow_missing=True,
-                check_default=True,
-                dataset_doc=dataset_doc,
+                path, allow_missing=True, check_default=True
             )
 
             if field is None:
@@ -649,6 +649,20 @@ class DatasetMixin(object):
                     ValueError(
                         "Cannot delete default %s field '%s'"
                         % (cls._doc_name().lower(), path)
+                    ),
+                    error_level,
+                )
+                continue
+
+            if (
+                media_type == fom.GROUP
+                and not is_frame_field
+                and path == dataset_doc.group_field
+            ):
+                fou.handle_error(
+                    ValueError(
+                        "Cannot delete group field '%s' of a grouped dataset"
+                        % path
                     ),
                     error_level,
                 )
@@ -690,10 +704,7 @@ class DatasetMixin(object):
 
         for path in paths:
             field, is_default = cls._get_field(
-                path,
-                allow_missing=True,
-                check_default=True,
-                dataset_doc=dataset_doc,
+                path, allow_missing=True, check_default=True
             )
 
             if field is None:
@@ -701,6 +712,16 @@ class DatasetMixin(object):
                     AttributeError(
                         "%s field '%s' does not exist"
                         % (cls._doc_name(), path)
+                    ),
+                    error_level,
+                )
+                continue
+
+            if "." not in path:
+                fou.handle_error(
+                    ValueError(
+                        "Cannot remove top-level %s field '%s' from schema"
+                        % (cls._doc_name().lower(), path)
                     ),
                     error_level,
                 )
@@ -1033,7 +1054,6 @@ class DatasetMixin(object):
     @classmethod
     def _clone_field_schema(cls, path, new_path, dataset_doc):
         field_name, doc, _ = cls._parse_path(path, dataset_doc)
-
         field = doc._fields[field_name]
 
         cls._add_field_schema(new_path, field, dataset_doc)
@@ -1046,9 +1066,7 @@ class DatasetMixin(object):
         _delete_field_doc(field_docs, field_name)
 
     @classmethod
-    def _get_field(
-        cls, path, allow_missing=False, check_default=False, dataset_doc=None
-    ):
+    def _get_field(cls, path, allow_missing=False, check_default=False):
         chunks = path.split(".")
         field_name = chunks[-1]
         doc = cls
@@ -1071,12 +1089,8 @@ class DatasetMixin(object):
         if doc is None:
             return field, None
 
-        if doc is cls:
-            default_fields = cls._get_default_fields(dataset_doc=dataset_doc)
-        else:
-            default_fields = doc._get_default_fields()
+        is_default = field_name in doc._get_default_fields()
 
-        is_default = field_name in default_fields
         return field, is_default
 
     @classmethod
