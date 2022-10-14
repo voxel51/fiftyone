@@ -638,8 +638,8 @@ def export_label_to_label_studio(label, full_result=None):
     # TODO model version and model score
     if label is None:
         result_value = {}
-        ls_type = ""
-        ids = [0]
+        ls_type = None
+        ids = []
     elif _check_type(label, fol.Classification, fol.Classifications):
         result_value, ls_type, ids = _to_classification(label)
     elif _check_type(label, fol.Detection, fol.Detections):
