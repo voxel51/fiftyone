@@ -345,19 +345,9 @@ You must also add `?authSource=admin` to your database URI:
 Using a different MongoDB version
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FiftyOne is designed for and distributed with **MongoDB v4.4**.
+FiftyOne is designed for **MongoDB v4.4 or later**.
 
-Users have reported success connecting to MongoDB v5 databases, but if you wish
-to do this, you should
-`set the feature compatibility version <https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion>`_
-to 4.4 to ensure proper function:
-
-.. code-block:: shell
-
-    mongo --shell
-    > db.adminCommand({setFeatureCompatibilityVersion: "4.4"})
-
-If you wish to connect FiftyOne to a MongoDB database whose version is not
+If you wish to connect FiftyOne to a MongoDB database whose version is no
 explicitly supported, you will also need to set the `database_validation`
 property of your FiftyOne config to `False` to suppress a runtime error that
 will otherwise occur.
