@@ -255,12 +255,11 @@ class DetectionEvaluation(foe.EvaluationMethod):
         self.pred_field = None
 
     def register_samples(self, samples, eval_key):
-        """Registers the sample collection on which evaluation will be
-        performed.
+        """Registers the collection on which evaluation will be performed.
 
-        This method will be called before the first call to
-        :meth:`evaluate`. Subclasses can extend this method to perform
-        any setup required for an evaluation run.
+        This method will be called before the first call to :meth:`evaluate`.
+        Subclasses can extend this method to perform any setup required for an
+        evaluation run.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -285,13 +284,19 @@ class DetectionEvaluation(foe.EvaluationMethod):
         id_key = "%s_id" % eval_key
         iou_key = "%s_iou" % eval_key
 
-        _, gt_eval = samples._get_label_field_path(_gt_field, eval_key)
-        _, gt_id = samples._get_label_field_path(_gt_field, id_key)
-        _, gt_iou = samples._get_label_field_path(_gt_field, iou_key)
+        _, gt_prefix = samples._get_label_field_path(_gt_field)
+        gt_prefix, _ = samples._handle_frame_field(gt_prefix)
 
-        _, pred_eval = samples._get_label_field_path(_pred_field, eval_key)
-        _, pred_id = samples._get_label_field_path(_pred_field, id_key)
-        _, pred_iou = samples._get_label_field_path(_pred_field, iou_key)
+        gt_eval = gt_prefix + "." + eval_key
+        gt_id = gt_prefix + "." + id_key
+        gt_iou = gt_prefix + "." + iou_key
+
+        _, pred_prefix = samples._get_label_field_path(_pred_field)
+        pred_prefix, _ = samples._handle_frame_field(pred_prefix)
+
+        pred_eval = pred_prefix + "." + eval_key
+        pred_id = pred_prefix + "." + id_key
+        pred_iou = pred_prefix + "." + iou_key
 
         dataset.add_sample_field(tp_field, fof.IntField)
         dataset.add_sample_field(fp_field, fof.IntField)

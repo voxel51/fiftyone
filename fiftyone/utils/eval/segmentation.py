@@ -93,6 +93,7 @@ def evaluate_segmentations(
     eval_method.ensure_requirements()
 
     eval_method.register_run(samples, eval_key)
+    eval_method.register_samples(samples, eval_key)
 
     results = eval_method.evaluate_samples(
         samples, eval_key=eval_key, mask_targets=mask_targets
@@ -125,6 +126,36 @@ class SegmentationEvaluation(foe.EvaluationMethod):
         config: a :class:`SegmentationEvaluationConfig`
     """
 
+    def register_samples(self, samples, eval_key):
+        """Registers the collection on which evaluation will be performed.
+
+        This method will be called before calling :meth:`evaluate_samples`.
+        Subclasses can extend this method to perform any setup required for an
+        evaluation run.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            eval_key: the evaluation key for this evaluation
+        """
+        if eval_key is None:
+            return
+
+        dataset = samples._dataset
+        processing_frames = samples._is_frame_field(self.config.gt_field)
+
+        acc_field = "%s_accuracy" % eval_key
+        pre_field = "%s_precision" % eval_key
+        rec_field = "%s_recall" % eval_key
+
+        dataset.add_sample_field(acc_field, fof.FloatField)
+        dataset.add_sample_field(pre_field, fof.FloatField)
+        dataset.add_sample_field(rec_field, fof.FloatField)
+
+        if processing_frames:
+            dataset.add_frame_field(acc_field, fof.FloatField)
+            dataset.add_frame_field(pre_field, fof.FloatField)
+            dataset.add_frame_field(rec_field, fof.FloatField)
+
     def evaluate_samples(self, samples, eval_key=None, mask_targets=None):
         """Evaluates the predicted segmentation masks in the given samples with
         respect to the specified ground truth masks.
@@ -143,13 +174,15 @@ class SegmentationEvaluation(foe.EvaluationMethod):
         pass
 
     def get_fields(self, samples, eval_key):
+        processing_frames = samples._is_frame_field(self.config.gt_field)
+
         fields = [
             "%s_accuracy" % eval_key,
             "%s_precision" % eval_key,
             "%s_recall" % eval_key,
         ]
 
-        if samples._is_frame_field(self.config.gt_field):
+        if processing_frames:
             prefix = samples._FRAMES_PREFIX + eval_key
             fields.extend(
                 [
@@ -162,15 +195,19 @@ class SegmentationEvaluation(foe.EvaluationMethod):
         return fields
 
     def cleanup(self, samples, eval_key):
+        dataset = samples._dataset
+        processing_frames = samples._is_frame_field(self.config.gt_field)
+
         fields = [
             "%s_accuracy" % eval_key,
             "%s_precision" % eval_key,
             "%s_recall" % eval_key,
         ]
 
-        samples._dataset.delete_sample_fields(fields, error_level=1)
-        if samples._is_frame_field(self.config.gt_field):
-            samples._dataset.delete_frame_fields(fields, error_level=1)
+        dataset.delete_sample_fields(fields, error_level=1)
+
+        if processing_frames:
+            dataset.delete_frame_fields(fields, error_level=1)
 
     def _validate_run(self, samples, eval_key, existing_info):
         self._validate_fields_match(eval_key, "pred_field", existing_info)
@@ -240,17 +277,6 @@ class SimpleEvaluation(SegmentationEvaluation):
             acc_field = "%s_accuracy" % eval_key
             pre_field = "%s_precision" % eval_key
             rec_field = "%s_recall" % eval_key
-
-            # note: fields are manually declared so they'll exist even when
-            # `samples` is empty
-            dataset = samples._dataset
-            dataset.add_sample_field(acc_field, fof.FloatField)
-            dataset.add_sample_field(pre_field, fof.FloatField)
-            dataset.add_sample_field(rec_field, fof.FloatField)
-            if processing_frames:
-                dataset.add_frame_field(acc_field, fof.FloatField)
-                dataset.add_frame_field(pre_field, fof.FloatField)
-                dataset.add_frame_field(rec_field, fof.FloatField)
 
         logger.info("Evaluating segmentations...")
         for sample in _samples.iter_samples(progress=True):
