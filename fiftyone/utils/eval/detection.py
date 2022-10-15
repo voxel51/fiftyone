@@ -154,12 +154,7 @@ def evaluate_detections(
     eval_method.ensure_requirements()
 
     eval_method.register_run(samples, eval_key)
-    eval_method.register_samples(samples)
-
-    if config.requires_additional_fields:
-        _samples = samples
-    else:
-        _samples = samples.select_fields([gt_field, pred_field])
+    eval_method.register_samples(samples, eval_key)
 
     processing_frames = samples._is_frame_field(pred_field)
 
@@ -168,16 +163,10 @@ def evaluate_detections(
         fp_field = "%s_fp" % eval_key
         fn_field = "%s_fn" % eval_key
 
-        # note: fields are manually declared so they'll exist even when
-        # `samples` is empty
-        dataset = samples._dataset
-        dataset.add_sample_field(tp_field, fof.IntField)
-        dataset.add_sample_field(fp_field, fof.IntField)
-        dataset.add_sample_field(fn_field, fof.IntField)
-        if processing_frames:
-            dataset.add_frame_field(tp_field, fof.IntField)
-            dataset.add_frame_field(fp_field, fof.IntField)
-            dataset.add_frame_field(fn_field, fof.IntField)
+    if config.requires_additional_fields:
+        _samples = samples
+    else:
+        _samples = samples.select_fields([gt_field, pred_field])
 
     matches = []
     logger.info("Evaluating detections...")
@@ -265,7 +254,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
         self.gt_field = None
         self.pred_field = None
 
-    def register_samples(self, samples):
+    def register_samples(self, samples, eval_key):
         """Registers the sample collection on which evaluation will be
         performed.
 
@@ -275,11 +264,57 @@ class DetectionEvaluation(foe.EvaluationMethod):
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
+            eval_key: the evaluation key for this evaluation
         """
-        self.gt_field, _ = samples._handle_frame_field(self.config.gt_field)
-        self.pred_field, _ = samples._handle_frame_field(
-            self.config.pred_field
-        )
+        _gt_field = self.config.gt_field
+        _pred_field = self.config.pred_field
+
+        self.gt_field, _ = samples._handle_frame_field(_gt_field)
+        self.pred_field, _ = samples._handle_frame_field(_pred_field)
+
+        if eval_key is None:
+            return
+
+        processing_frames = samples._is_frame_field(_pred_field)
+        dataset = samples._dataset
+
+        tp_field = "%s_tp" % eval_key
+        fp_field = "%s_fp" % eval_key
+        fn_field = "%s_fn" % eval_key
+
+        id_key = "%s_id" % eval_key
+        iou_key = "%s_iou" % eval_key
+
+        _, gt_eval = samples._get_label_field_path(_gt_field, eval_key)
+        _, gt_id = samples._get_label_field_path(_gt_field, id_key)
+        _, gt_iou = samples._get_label_field_path(_gt_field, iou_key)
+
+        _, pred_eval = samples._get_label_field_path(_pred_field, eval_key)
+        _, pred_id = samples._get_label_field_path(_pred_field, id_key)
+        _, pred_iou = samples._get_label_field_path(_pred_field, iou_key)
+
+        dataset.add_sample_field(tp_field, fof.IntField)
+        dataset.add_sample_field(fp_field, fof.IntField)
+        dataset.add_sample_field(fn_field, fof.IntField)
+
+        if processing_frames:
+            dataset.add_frame_field(tp_field, fof.IntField)
+            dataset.add_frame_field(fp_field, fof.IntField)
+            dataset.add_frame_field(fn_field, fof.IntField)
+
+            dataset.add_frame_field(gt_eval, fof.StringField)
+            dataset.add_frame_field(gt_id, fof.StringField)
+            dataset.add_frame_field(gt_iou, fof.FloatField)
+            dataset.add_frame_field(pred_eval, fof.StringField)
+            dataset.add_frame_field(pred_id, fof.StringField)
+            dataset.add_frame_field(pred_iou, fof.FloatField)
+        else:
+            dataset.add_sample_field(gt_eval, fof.StringField)
+            dataset.add_sample_field(gt_id, fof.StringField)
+            dataset.add_sample_field(gt_iou, fof.FloatField)
+            dataset.add_sample_field(pred_eval, fof.StringField)
+            dataset.add_sample_field(pred_id, fof.StringField)
+            dataset.add_sample_field(pred_iou, fof.FloatField)
 
     def evaluate(self, doc, eval_key=None):
         """Evaluates the ground truth and predictions in the given document.
