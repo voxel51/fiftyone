@@ -242,4 +242,15 @@ export const lookerPanels = atom({
 export const theme = atom<"dark" | "light">({
   key: "theme",
   default: "dark",
+  effects: [
+    ({ setSelf, onSet }) => {
+      const muiModeKey = "mui-mode";
+      const muiMode = localStorage.getItem(muiModeKey) as "light" | "dark";
+      if (muiMode != null) setSelf(muiMode);
+      onSet((newValue, oldValue, isReset) => {
+        if (isReset) localStorage.removeItem(muiModeKey);
+        else localStorage.setItem(muiModeKey, newValue);
+      });
+    },
+  ],
 });

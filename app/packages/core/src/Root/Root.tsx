@@ -41,6 +41,8 @@ import * as fos from "@fiftyone/state";
 import { getDatasetName, Route, RouterContext } from "@fiftyone/state";
 
 import DatasetSelector from "../components/DatasetSelector";
+import { useColorScheme, IconButton } from "@mui/material";
+import { DarkMode, LightMode } from "@mui/icons-material";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int, $cursor: String) {
@@ -155,6 +157,8 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   const refresh = fos.useRefresh();
   const context = useContext(RouterContext);
   const dataset = getDatasetName(context);
+  const { mode, setMode } = useColorScheme();
+  const [theme, setTheme] = useRecoilState(fos.theme);
 
   return (
     <>
@@ -166,6 +170,19 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
         {dataset && <ViewBar />}
         {!dataset && <div style={{ flex: 1 }}></div>}
         <div className={iconContainer}>
+          <IconButton
+            disableRipple
+            onClick={() => {
+              const nextMode = mode === "dark" ? "light" : "dark";
+              setMode(nextMode);
+              setTheme(nextMode);
+            }}
+            sx={{
+              color: (theme) => theme.palette.text.primary,
+            }}
+          >
+            {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
+          </IconButton>
           {!teamsSubmission && (
             <Button
               onClick={() => {
