@@ -3,7 +3,10 @@ import { toCamelCase } from "@fiftyone/utilities";
 import { useEffect, useState } from "react";
 import { usePreloadedQuery, useQueryLoader } from "react-relay";
 
-import { DatasetQuery } from "./__generated__/DatasetQuery.graphql";
+import {
+  DatasetQuery,
+  DatasetQuery$data,
+} from "./__generated__/DatasetQuery.graphql";
 
 const DatasetQueryNode = graphql`
   query DatasetQuery($name: String!, $view: BSONArray = null) {
@@ -122,7 +125,7 @@ export function usePrepareDataset(
 export function usePreLoadedDataset(
   queryRef,
   { colorscale, config, state } = {}
-) {
+): [DatasetQuery$data["dataset"], boolean] {
   const [ready, setReady] = useState(false);
   const { dataset } = usePreloadedQuery<DatasetQuery>(
     DatasetQueryNode,
