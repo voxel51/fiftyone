@@ -78,11 +78,11 @@ if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
     fi
     if [ ${INSTALL_MONGODB} = true ]; then
         MONGODB_VERSION=5.0.4
-            if [ "${OS}" == "Darwin" ]; then
-                if ["${ARCH}" == "arm64"]; then
-                    MONGODB_VERSION=6.0.2
-                fi
-                MONGODB_BUILD=mongodb-macos-x86_64-${MONGODB_VERSION}
+        if [ "${OS}" == "Darwin" ]; then
+            if [ "${ARCH}" == "arm64" ]; then
+                MONGODB_VERSION=6.0.2
+            fi
+            MONGODB_BUILD=mongodb-macos-x86_64-${MONGODB_VERSION}
 
             curl https://fastdl.mongodb.org/osx/${MONGODB_BUILD}.tgz --output mongodb.tgz
             tar -zxvf mongodb.tgz
