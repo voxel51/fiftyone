@@ -2969,6 +2969,7 @@ in order for the dataset to be usable again:
 .. code-block:: python
     :linenos:
 
+    # Removes dynamic field from dataset's schema without deleting the values
     dataset.remove_dynamic_sample_field("ground_truth.age")
 
 .. _custom-embedded-documents:
