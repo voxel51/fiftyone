@@ -28,28 +28,42 @@ const DatasetWrapper = () => {
 };
 
 function LoadableDataset() {
-  const [datasetName, setDatasetName] = React.useState("quickstart");
+  const [settings, setSettings] = React.useState({
+    dataset: "quickstart",
+    readOnly: false,
+  });
   return (
     <Fragment>
-      <DatasetSelector current={datasetName} onChange={setDatasetName} />
+      <DatasetSettings current={settings} onChange={setSettings} />
       <div style={{ height: "100vh", overflow: "hidden" }}>
-        <Dataset datasetName={datasetName} />
+        <Dataset datasetName={settings.dataset} readOnly={settings.readOnly} />
       </div>
     </Fragment>
   );
 }
 
-function DatasetSelector({ current, onChange }) {
-  const ref = useRef();
+function DatasetSettings({ current, onChange }) {
+  const datasetInputRef = useRef();
+  const readOnlyInputRef = useRef();
   function load(e) {
     e.preventDefault();
-    if (ref.current && ref.current.value) {
-      onChange(ref.current.value);
-    }
+    const dataset = datasetInputRef.current
+      ? datasetInputRef.current.value
+      : null;
+    const readOnly = readOnlyInputRef.current
+      ? readOnlyInputRef.current.checked
+      : false;
+    onChange((s) => ({ ...s, dataset, readOnly }));
   }
   return (
     <form onSubmit={load}>
-      <input ref={ref} type="text" defaultValue={current} />
+      <input
+        ref={readOnlyInputRef}
+        type="checkbox"
+        defaultChecked={current.readOnly}
+      />{" "}
+      Read Only
+      <input ref={datasetInputRef} type="text" defaultValue={current.dataset} />
       <button type="submit">load</button>
     </form>
   );
