@@ -361,12 +361,13 @@ const ActionsRowDiv = styled.div`
 
 export const GridActionsRow = () => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
+  const hideTagging = useRecoilValue(fos.readOnly);
 
   return (
     <ActionsRowDiv>
       <ToggleSidebar modal={false} />
       <Options modal={false} />
-      <Tag modal={false} />
+      {hideTagging ? null : <Tag modal={false} />}
       <Patches />
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
