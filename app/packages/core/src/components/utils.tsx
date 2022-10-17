@@ -121,6 +121,7 @@ export const PillButton = React.memo(
       const theme = useTheme();
       const props = useSpring({
         backgroundColor: !highlight ? theme.divider : theme.primary.plainColor,
+        color: !highlight ? theme.text.secondary : theme.text.buttonHighlight,
       });
 
       const children = (

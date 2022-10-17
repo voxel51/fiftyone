@@ -14,12 +14,13 @@ let theme = extendJoyTheme({
       palette: {
         background: {
           body: "hsl(200, 0%, 85%)",
-          level1: "hsl(200, 0%, 80%)",
-          level2: "hsl(200, 0%, 90%)",
+          level1: "hsl(200, 0%, 90%)",
+          level2: "hsl(200, 0%, 98%)",
           level3: "hsl(200, 0%, 95%)",
-          header: "hsl(200, 0%, 85%)",
-          sidebar: "hsl(200, 0%, 90%)",
-          tooltip: "hsl(200, 0%, 95%)",
+          header: "hsl(200, 0%, 100%)",
+          sidebar: "hsl(200, 0%, 98%)",
+          tooltip: "hsl(200, 0%, 100%)",
+          input: "hsl(200, 0%, 98%)",
         },
         divider: "hsl(200, 0%, 80%)",
         danger: {
@@ -29,14 +30,14 @@ let theme = extendJoyTheme({
           400: "#fff",
         },
         neutral: {
-          softBg: "hsl(200, 0%, 80%, 0.3)",
+          softBg: "hsl(200, 0%, 95%)",
           softBorder: "hsl(200, 0%, 75%)",
           plainColor: "hsl(213, 100%, 47%)",
         },
         primary: {
           main: "hsl(25, 100%, 51%)",
           plainColor: "hsl(25, 100%, 51%)",
-          plainBorder: "hsl(200, 0%, 95%)",
+          plainBorder: "hsl(200, 0%, 90%)",
           softBg: "hsl(200, 0%, 85%, 0.7)",
           softBorder: "hsl(200, 0%, 80%)",
         },
@@ -45,6 +46,7 @@ let theme = extendJoyTheme({
           primary: "hsl(200, 0%, 0%)",
           secondary: "hsl(200, 0%, 30%)",
           tertiary: "hsl(200, 0%, 50%)",
+          buttonHighlight: "hsl(200, 0%, 100%)",
         },
       },
     }),
@@ -100,7 +102,7 @@ const ThemeProvider: React.FC<
   React.PropsWithChildren<{ customTheme?: Theme }>
 > = ({ children, customTheme }) => {
   if (customTheme) theme = customTheme;
-  let current = useRecoilValue(fos.theme);
+  const current = useRecoilValue(fos.theme);
 
   return (
     <LegacyTheme.Provider value={theme.colorSchemes[current].palette}>

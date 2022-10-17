@@ -12,6 +12,7 @@
 
 .button:hover {
   background: var(--joy-palette-primary-plainColor);
+  color: var(--joy-palette-text-buttonHighlight);
 }
 
 .button:disabled {
