@@ -18,7 +18,7 @@ endpoint to use.
 
 CVAT provides three levels of abstraction for annotation workflows: projects,
 tasks, and jobs. A job contains one or more images and can be assigned to a
-specfic annotator or reviewer. A task defines the label schema to use for
+specific annotator or reviewer. A task defines the label schema to use for
 annotation and contains one or more jobs. A project can optionally be created
 to group multiple tasks together under a shared label schema.
 
