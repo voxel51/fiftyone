@@ -51,7 +51,7 @@ const Draggable: React.FC<
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          boxShadow: `0 2px 20px ${theme.background.level2}`,
+          boxShadow: `0 2px 20px ${theme.custom.shadow}`,
           overflow: "hidden",
           ...style,
         }}

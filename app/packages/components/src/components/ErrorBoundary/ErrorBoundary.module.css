@@ -39,7 +39,7 @@
 }
 
 .stack {
-  border: 1px solid #191c1f;
+  border: 1px solid var(--joy-palette-divider);
   border-top: 2px solid var(--joy-palette-primary-plainColor);
   background: var(--joy-palette-background-level3);
   border-radius: 2px;

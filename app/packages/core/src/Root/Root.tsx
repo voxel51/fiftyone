@@ -170,19 +170,6 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
         {dataset && <ViewBar />}
         {!dataset && <div style={{ flex: 1 }}></div>}
         <div className={iconContainer}>
-          <IconButton
-            disableRipple
-            onClick={() => {
-              const nextMode = mode === "dark" ? "light" : "dark";
-              setMode(nextMode);
-              setTheme(nextMode);
-            }}
-            sx={{
-              color: (theme) => theme.palette.text.primary,
-            }}
-          >
-            {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
-          </IconButton>
           {!teamsSubmission && (
             <Button
               onClick={() => {
@@ -192,6 +179,21 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
               Have a Team?
             </Button>
           )}
+          <IconButton
+            title={mode === "dark" ? "Light mode" : "Dark mode"}
+            disableRipple
+            onClick={() => {
+              const nextMode = mode === "dark" ? "light" : "dark";
+              setMode(nextMode);
+              setTheme(nextMode);
+            }}
+            sx={{
+              color: (theme) => theme.palette.text.primary,
+              pr: 0,
+            }}
+          >
+            {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
+          </IconButton>
           <SlackLink />
           <GitHubLink />
           <DocsLink />

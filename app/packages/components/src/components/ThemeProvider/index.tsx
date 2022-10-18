@@ -14,13 +14,15 @@ let theme = extendJoyTheme({
       palette: {
         background: {
           body: "hsl(200, 0%, 85%)",
-          level1: "hsl(200, 0%, 90%)",
+          level1: "hsl(200, 0%, 95%)",
           level2: "hsl(200, 0%, 98%)",
           level3: "hsl(200, 0%, 95%)",
           header: "hsl(200, 0%, 100%)",
           sidebar: "hsl(200, 0%, 98%)",
           tooltip: "hsl(200, 0%, 100%)",
           input: "hsl(200, 0%, 98%)",
+          button: "hsl(200, 0%, 90%)",
+          viewBarButtons: "hsl(200, 0%, 100%)",
         },
         divider: "hsl(200, 0%, 80%)",
         danger: {
@@ -28,9 +30,10 @@ let theme = extendJoyTheme({
         },
         grey: {
           400: "#fff",
+          5: "hsl(200, 0%, 5%)",
         },
         neutral: {
-          softBg: "hsl(200, 0%, 95%)",
+          softBg: "hsl(200, 0%, 95%, 0.3)",
           softBorder: "hsl(200, 0%, 75%)",
           plainColor: "hsl(213, 100%, 47%)",
         },
@@ -48,6 +51,9 @@ let theme = extendJoyTheme({
           tertiary: "hsl(200, 0%, 50%)",
           buttonHighlight: "hsl(200, 0%, 100%)",
         },
+        custom: {
+          shadow: "hsl(200, 0%, 90%)",
+        },
       },
     }),
     dark: createTheme({
@@ -60,6 +66,8 @@ let theme = extendJoyTheme({
           header: "hsl(200, 0%, 15%)",
           sidebar: "hsl(200, 0%, 10%)",
           tooltip: "hsl(200, 0%, 5%)",
+          button: "hsl(200, 0%, 20%)",
+          viewBarButtons: "hsl(200, 0%, 15%)",
         },
         divider: "hsl(200, 0%, 20%)",
         danger: {
@@ -67,6 +75,7 @@ let theme = extendJoyTheme({
         },
         grey: {
           400: "#fff",
+          5: "hsl(200, 0%, 5%)",
         },
         neutral: {
           softBg: "hsl(200, 0%, 20%, 0.3)",
@@ -77,7 +86,7 @@ let theme = extendJoyTheme({
           main: "hsl(25, 100%, 51%)",
           plainColor: "hsl(25, 100%, 51%)",
           plainBorder: "hsl(200, 0%, 5%)",
-          softBg: "hsl(200, 0%, 15%, 0.7)",
+          softBg: "hsl(200, 0%, 25%)",
           softBorder: "hsl(200, 0%, 20%)",
         },
         focusVisible: "hsl(212, 97%, 43%, 0.3)",
@@ -85,6 +94,10 @@ let theme = extendJoyTheme({
           primary: "hsl(200, 0%, 100%)",
           secondary: "hsl(200, 0%, 70%)",
           tertiary: "hsl(200, 0%, 50%)",
+          buttonHighlight: "hsl(200, 0%, 100%)",
+        },
+        custom: {
+          shadow: "hsl(200, 0%, 10%)",
         },
       },
     }),

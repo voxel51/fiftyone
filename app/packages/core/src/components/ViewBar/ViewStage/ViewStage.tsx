@@ -238,18 +238,19 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
   const props = useSpring({
     backgroundColor: isCompleted
       ? theme.background.level1
-      : theme.background.body,
+      : theme.background.viewBarButtons,
     borderRightWidth: state.matches("delible.yes") && parameters.length ? 0 : 1,
     borderColor:
       active && state.matches("focusedViewBar.yes")
         ? theme.primary.plainColor
-        : theme.text.tertiary,
+        : theme.divider,
     borderTopRightRadius: !parameters.length ? 3 : 0,
     borderBottomRightRadius: !parameters.length ? 3 : 0,
     opacity: 1,
     from: {
       opacity: 0,
     },
+    alignItems: "center",
   });
 
   const containerProps = useSpring({
