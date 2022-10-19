@@ -6,6 +6,7 @@ FiftyOne Server routes
 |
 """
 from .aggregate import Aggregate
+from .embeddings import Embeddings
 from .event import Event
 from .events import Events
 from .fiftyone import FiftyOne
@@ -23,6 +24,13 @@ from .values import Values
 
 routes = [
     ("/aggregate", Aggregate),
+<<<<<<< HEAD
+=======
+    ("/aggregations", Aggregations),
+    ("/coloscales", Colorscales),
+    ("/distributions", Distributions),
+    ("/embeddings", Embeddings),
+>>>>>>> 2de562059 (initial embeddings support)
     ("/event", Event),
     ("/events", Events),
     ("/fiftyone", FiftyOne),
