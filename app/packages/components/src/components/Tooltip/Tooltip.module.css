@@ -6,4 +6,5 @@
   border-radius: 3px;
   z-index: 1000;
   font-family: var(--joy-fontFamily-body);
+  font-size: 14px;
 }
