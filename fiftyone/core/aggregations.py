@@ -6,7 +6,7 @@ Aggregations.
 |
 """
 from collections import OrderedDict
-from copy import deepcopy
+from copy import copy, deepcopy
 from datetime import date, datetime
 import reprlib
 import uuid
@@ -949,6 +949,71 @@ class Distinct(Aggregation):
         ]
 
         return pipeline
+
+
+class FieldInfo(Aggregation):
+    def __init__(self, field_name: str, aggregations, _compiled=False):
+        super().__init__(field_name)
+        self._is_dict = isinstance(aggregations, dict)
+        self._compiled = _compiled
+        if not self._is_dict:
+            aggregations = {idx: agg for idx, agg in enumerate(aggregations)}
+
+        self._aggregations = aggregations
+        for agg in aggregations.values():
+            agg._field_name = ".".join([self._field_name, agg._field_name])
+
+    def default_result(self):
+        data = {
+            key: agg.default_result()
+            for key, agg in self._aggregations.items()
+        }
+
+        if self._is_dict:
+            return data
+
+        results = [None] * len(self._aggregations)
+        for idx, d in data.items():
+            results[idx] = d
+
+        return results
+
+    def parse_result(self, d):
+        data = {}
+        for key, agg in self._aggregations.items():
+            data[key] = agg.parse_result(d[self._get_key(agg)][0])
+
+        if self._is_dict:
+            return data
+
+        results = [None] * len(self._aggregations)
+        for idx, d in data.items():
+            results[idx] = d
+
+        return results
+
+    def to_mongo(self, sample_collection):
+        path, pipeline, _, _, _ = _parse_field_and_expr(
+            sample_collection, self._field_name
+        )
+        self._path = path
+
+        facets = {}
+        pipeline += [{"$facet": facets}]
+        for agg in self._aggregations.values():
+            facets[self._get_key(agg)] = [
+                stage
+                for stage in agg.to_mongo(sample_collection)
+                if "$unwind" not in stage
+            ]
+
+        return pipeline
+
+    @staticmethod
+    def _get_key(agg):
+        return str(
+            f"_{agg.field_name.replace('.', '_')}_{agg.__class__.__name__}"
+        )
 
 
 class HistogramValues(Aggregation):

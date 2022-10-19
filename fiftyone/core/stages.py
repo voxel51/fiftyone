@@ -1848,12 +1848,14 @@ class FilterLabels(ViewStage):
         trajectories=False,
         _new_field=None,
         _validate=True,
+        _unwound=True,
     ):
         self._field = field
         self._filter = filter
         self._only_matches = only_matches
         self._trajectories = trajectories
         self._new_field = _new_field or field
+        self._unwound = _unwound
         self._labels_field = None
         self._is_frame_field = None
         self._is_labels_list_field = None
@@ -1917,7 +1919,7 @@ class FilterLabels(ViewStage):
         else:
             label_filter = self._filter
 
-        if is_frame_field:
+        if is_frame_field and not self._unwound:
             if self._is_labels_list_field:
                 _make_filter_pipeline = _get_filter_frames_list_field_pipeline
             else:
