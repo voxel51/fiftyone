@@ -293,9 +293,6 @@ def aggregate(collection, pipelines):
     if not is_list:
         pipelines = [pipelines]
 
-    for p in pipelines:
-        print(p)
-
     num_pipelines = len(pipelines)
     if isinstance(collection, mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:

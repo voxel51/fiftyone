@@ -7867,14 +7867,18 @@ class SampleCollection(object):
 
         compiled = defaultdict(dict)
         for idx, aggregation in aggs_map.items():
+            if aggregation.field_name is None:
+                compiled[idx] = aggregation
             keys = aggregation.field_name.split(".")
             path = ""
             subfield_name = keys[-1]
-            for num in range(len(keys) - 1, 0, -1):
+            for num in range(len(keys), 0, -1):
                 path = ".".join(keys[:num])
                 subfield_name = ".".join(keys[num:])
                 field = self.get_field(path)
-                if isinstance(field, fof.ListField):
+                if isinstance(field, fof.ListField) and isinstance(
+                    field.field, fof.EmbeddedDocumentField
+                ):
                     break
 
             aggregation = copy(aggregation)
@@ -7882,7 +7886,10 @@ class SampleCollection(object):
             compiled[path][idx] = aggregation
 
         for field_name, aggregations in compiled.items():
-            compiled[field_name] = foa.FieldInfo(
+            if isinstance(aggregations, foa.Aggregation):
+                continue
+
+            compiled[field_name] = foa.FacetAggregations(
                 field_name, aggregations, _compiled=True
             )
 

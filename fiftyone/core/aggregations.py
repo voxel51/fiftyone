@@ -6,7 +6,7 @@ Aggregations.
 |
 """
 from collections import OrderedDict
-from copy import copy, deepcopy
+from copy import deepcopy
 from datetime import date, datetime
 import reprlib
 import uuid
@@ -951,7 +951,65 @@ class Distinct(Aggregation):
         return pipeline
 
 
-class FieldInfo(Aggregation):
+class FacetAggregations(Aggregation):
+    """Computes the sub-aggregations provided as a set a faceted aggregations,
+    optimally shaping the data, e.g. unwinding list fields, based on the parent
+    field name provided. Sub-aggregation field names are relative to the parent
+    field name.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    tags=["sunny"],
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat", confidence=0.4),
+                            fo.Detection(label="dog", confidence=0.5),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    tags=["sunny", "cloudy"],
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat", confidence=0.6),
+                            fo.Detection(label="rabbit", confidence=0.7),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    predictions=None,
+                ),
+            ]
+        )
+
+        #
+        # Compute prediction label value counts and confidence bounds
+        #
+
+        values, bounds = dataset.aggregate(
+            fo.FacetedAggregation(
+                "predictions.detections",
+                [fo.CountValues("label"), fo.Bounds("confidence")]
+            )
+        )
+        print(values)  # label value counts
+        print(bounds)  # confidence bounds
+
+    Args:
+        field_name: a field name or ``embedded.field.name``
+        aggregations: sub-aggregations provided as either a ``dict`` or ``list``
+    """
+
     def __init__(self, field_name: str, aggregations, _compiled=False):
         super().__init__(field_name)
         self._is_dict = isinstance(aggregations, dict)
@@ -961,9 +1019,20 @@ class FieldInfo(Aggregation):
 
         self._aggregations = aggregations
         for agg in aggregations.values():
-            agg._field_name = ".".join([self._field_name, agg._field_name])
+            agg._field_name = (
+                ".".join([self._field_name, agg._field_name])
+                if agg._field_name
+                else self._field_name
+            )
 
     def default_result(self):
+        """Returns the default result for this aggregation.
+
+        Returns:
+            The default result of each sub-aggregation in the same
+            container type as the sub-aggregations were provided, i.e.
+            ``dict`` or ``list``
+        """
         data = {
             key: agg.default_result()
             for key, agg in self._aggregations.items()
@@ -979,6 +1048,16 @@ class FieldInfo(Aggregation):
         return results
 
     def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            The parsed result of each sub-aggregation in the same
+            container type as the sub-aggregations were provided, i.e.
+            ``dict`` or ``list``
+        """
         data = {}
         for key, agg in self._aggregations.items():
             data[key] = agg.parse_result(d[self._get_key(agg)][0])
