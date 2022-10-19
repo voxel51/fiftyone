@@ -45,7 +45,7 @@ const PlotButton = styled.div`
   display: inline-block;
   margin-right: 5px;
   padding: 0 1em;
-  color: ${({ theme }) => theme.text.primary};
+  color: ${({ theme }) => theme.text.secondary};
   background-color: ${({ theme }) => theme.background.button};
   text-decoration: none;
   border-radius: 2px;
@@ -107,6 +107,7 @@ const HorizontalNav = ({}: Props) => {
 
   const buttonLabels = [...DISTRIBUTION_PLOTS, ...pluginPlotLabels];
   const hasPlot = buttonLabels.includes(activePlot);
+  const compactLayout = useRecoilValue(fos.compactLayout);
 
   useEffect(() => {
     if (!hasPlot) {
@@ -117,8 +118,8 @@ const HorizontalNav = ({}: Props) => {
 
   return (
     <>
-      <Nav>
-        <PlotsButtons>
+      <Nav style={compactLayout ? { padding: "0.5rem 1rem 0" } : {}}>
+        <PlotsButtons style={compactLayout ? { paddingBottom: "0.5rem" } : {}}>
           {buttonLabels.map((e) => (
             <PlotButton
               key={e}
@@ -148,18 +149,20 @@ const HorizontalNav = ({}: Props) => {
               }}
             />
           )}
-          <PillButton
-            onClick={() => {
-              setExpanded(!expanded);
-              expanded && setMaximized(false);
-            }}
-            text={expanded ? "Hide" : "Show"}
-            open={expanded}
-            icon={<Assessment />}
-            highlight={!expanded}
-            arrow={true}
-            style={{ height: "2rem" }}
-          />
+          {!compactLayout && (
+            <PillButton
+              onClick={() => {
+                setExpanded(!expanded);
+                expanded && setMaximized(false);
+              }}
+              text={expanded ? "Hide" : "Show"}
+              open={expanded}
+              icon={<Assessment />}
+              highlight={!expanded}
+              arrow={true}
+              style={{ height: "2rem" }}
+            />
+          )}
         </NavButtons>
       </Nav>
       {expanded && (

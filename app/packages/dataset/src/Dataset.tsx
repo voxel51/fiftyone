@@ -8,7 +8,7 @@ import {
   usePreLoadedDataset,
   ViewBar,
 } from "@fiftyone/core";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import { useEffect, useState, Suspense, Fragment } from "react";
@@ -25,13 +25,23 @@ enum Events {
   STATE_UPDATE = "state_update",
 }
 
-export function Dataset({ datasetName, environment, theme }) {
+export function Dataset({
+  datasetName,
+  environment,
+  theme,
+  themeMode,
+  compactLayout,
+}) {
   const [initialState, setInitialState] = useState();
   const [datasetQueryRef, loadDataset] = useDatasetLoader(environment);
+  const setThemeMode = useSetRecoilState(fos.theme);
+  const setCompactLayout = useSetRecoilState(fos.compactLayout);
 
   useEffect(() => {
     loadDataset(datasetName);
-  }, [datasetName]);
+    if (themeMode) setThemeMode(themeMode);
+    if (compactLayout) setCompactLayout(themeMode);
+  }, [datasetName, themeMode, compactLayout]);
   const subscription = useRecoilValue(fos.stateSubscription);
   useEventSource(datasetName, subscription, setInitialState);
   const plugins = usePlugins();

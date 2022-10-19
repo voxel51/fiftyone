@@ -254,3 +254,8 @@ export const theme = atom<"dark" | "light">({
     },
   ],
 });
+
+export const compactLayout = atom({
+  key: "compactLayout",
+  default: false,
+});
