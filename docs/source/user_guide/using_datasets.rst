@@ -929,6 +929,11 @@ printing it:
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
 
+.. note::
+
+    Did you know? You can :ref:`store metadata <storing-field-metadata>` such
+    as descriptions on your dataset's fields!
+
 .. _adding-sample-fields:
 
 Adding fields to a sample
