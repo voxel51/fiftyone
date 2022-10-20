@@ -7796,7 +7796,9 @@ class SampleCollection(object):
 
         if facet_aggs:
             # Build facet-able pipelines
-            facet_pipelines = self._build_faceted_pipelines(facet_aggs)
+            compiled_facet_aggs, facet_pipelines = self._build_facets(
+                facet_aggs
+            )
             for idx, pipeline in facet_pipelines.items():
                 idx_map[idx] = len(pipelines)
                 pipelines.append(pipeline)
@@ -7807,9 +7809,18 @@ class SampleCollection(object):
             _results = await foo.aggregate(collection, pipelines)
 
             # Parse facet-able results
-            for idx, aggregation in facet_aggs.items():
+            for idx, aggregation in compiled_facet_aggs.items():
                 result = list(_results[idx_map[idx]])
-                results[idx] = self._parse_faceted_result(aggregation, result)
+                data = self._parse_faceted_result(aggregation, result)
+                if (
+                    isinstance(aggregation, foa.FacetAggregations)
+                    and aggregation._compiled
+                ):
+                    for idx, d in data.items():
+                        results[idx] = d
+
+                else:
+                    results[idx] = data
 
         return results[0] if scalar_result else results
 

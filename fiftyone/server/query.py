@@ -26,7 +26,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
-from fiftyone.server.aggregation import aggregation_resolver
+from fiftyone.server.aggregate import aggregate_resolver
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.metadata import MediaType
@@ -271,7 +271,7 @@ class AppConfig:
 
 @gql.type
 class Query:
-    aggregation = gql.field(resolver=aggregation_resolver)
+    aggregate = gql.field(resolver=aggregate_resolver)
 
     @gql.field
     def colorscale(self) -> t.Optional[t.List[t.List[int]]]:

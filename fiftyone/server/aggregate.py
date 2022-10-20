@@ -15,7 +15,7 @@ import strawberry as gql
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
-from fiftyone.core.utils import datetime_to_timestamp
+from fiftyone.core.utils import datetime_to_timestamp, deserialize_numpy_array
 import fiftyone.core.view as fov
 
 from fiftyone.server.constants import LIST_LIMIT
@@ -34,14 +34,14 @@ class SelectedLabel:
 
 
 @gql.input
-class AggregationForm:
+class AggregateForm:
     dataset: str
     extended_stages: BSONArray
     filters: t.Optional[BSON]
     group_id: t.Optional[gql.ID]
     hidden_labels: t.List[SelectedLabel]
     mixed: bool
-    path: str
+    paths: t.List[str]
     sample_ids: t.List[gql.ID]
     slice: t.Optional[str]
     view: BSONArray
@@ -49,6 +49,7 @@ class AggregationForm:
 
 @gql.interface
 class Aggregation:
+    path: str
     count: int
     exists: int
 
@@ -95,8 +96,8 @@ class StringAggregation(Aggregation):
     values: t.List[StringAggregationValue]
 
 
-AggregationResult = gql.union(
-    "AggregationResult",
+AggregateResult = gql.union(
+    "AggregateResult",
     (
         BooleanAggregation,
         DataAggregation,
@@ -108,9 +109,9 @@ AggregationResult = gql.union(
 )
 
 
-async def aggregation_resolver(
-    form: AggregationForm,
-) -> AggregationResult:
+async def aggregate_resolver(
+    form: AggregateForm,
+) -> t.List[AggregateResult]:
     view = fosv.get_view(
         form.dataset,
         stages=form.view,
@@ -130,9 +131,22 @@ async def aggregation_resolver(
     if form.mixed:
         view = view.select_group_slices(_allow_mixed=True)
 
-    resolve = [_resolve_path_aggregation(form.path, view)]
+    aggregations, deserializers = zip(
+        *[_resolve_path_aggregation(path, view) for path in form.paths]
+    )
+    counts = [len(a) for a in aggregations]
+    flattened = []
+    for aggs in aggregations:
+        flattened += aggs
 
-    if form.mixed and not form.path:
+    result = await view._async_aggregate(aggregations)
+    results = []
+    offset = 0
+    for length, deserialize in zip(counts, deserializers):
+        results.append(deserialize(result[offset:length]))
+        offset += length
+
+    if form.mixed and not form.path and False:
         slice_view = fosv.get_view(
             form.dataset,
             stages=form.view,
@@ -144,14 +158,6 @@ async def aggregation_resolver(
         )
 
         resolve.append(slice_view._async_aggregate(foa.Count()))
-
-    result = await asyncio.gather(*resolve)
-
-    if form.mixed and not form.path:
-        result, slice = result
-        result.slice = slice
-    else:
-        result = result[0]
 
     return result
 
@@ -170,8 +176,8 @@ RESULT_MAPPING = {
 
 
 async def _resolve_path_aggregation(
-    path: t.Union[None, str], view: foc.SampleCollection
-) -> AggregationResult:
+    path: str, view: foc.SampleCollection
+) -> AggregateResult:
     aggregations: t.List[foa.Aggregation] = [foa.Count(path if path else None)]
     field = view.get_field(path)
     while isinstance(field, fof.ListField):
@@ -200,48 +206,51 @@ async def _resolve_path_aggregation(
     if isinstance(field, fof.ListField):
         aggregations.append(_CountExists(path))
 
-    results = await view._async_aggregate(aggregations)
+    data = {"path": path}
 
-    data = {}
-    for aggregation, result in zip(aggregations, results):
-        if isinstance(aggregation, foa.Bounds):
-            if isinstance(field, fof.FloatField):
-                mn, mx = result["bounds"]
-                data["inf"] = result["inf"]
-                data["min"] = mn
-                data["max"] = mx
-                data["nan"] = result["nan"]
-                data["ninf"] = result["-inf"]
-            else:
-                mn, mx = result
-                data["min"] = (
-                    datetime_to_timestamp(mn)
-                    if meets_type(mn, (datetime, date))
-                    else mn
-                )
-                data["max"] = (
-                    datetime_to_timestamp(mx)
-                    if meets_type(mx, (datetime, date))
-                    else mx
-                )
-        elif isinstance(aggregation, foa.Count):
-            data["count"] = result
-        elif isinstance(aggregation, foa.CountValues):
-            if isinstance(field, fof.BooleanField):
-                data["true"] = result.get(True, 0)
-                data["false"] = result.get(False, 0)
-            else:
-                count, result = result
-                data["values"] = [
-                    {"value": value, "count": count} for value, count in result
-                ]
-        elif isinstance(aggregation, _CountExists):
-            data["exists"] = result
+    def from_results(results):
+        for aggregation, result in zip(aggregations, results):
+            if isinstance(aggregation, foa.Bounds):
+                if isinstance(field, fof.FloatField):
+                    mn, mx = result["bounds"]
+                    data["inf"] = result["inf"]
+                    data["min"] = mn
+                    data["max"] = mx
+                    data["nan"] = result["nan"]
+                    data["ninf"] = result["-inf"]
+                else:
+                    mn, mx = result
+                    data["min"] = (
+                        datetime_to_timestamp(mn)
+                        if meets_type(mn, (datetime, date))
+                        else mn
+                    )
+                    data["max"] = (
+                        datetime_to_timestamp(mx)
+                        if meets_type(mx, (datetime, date))
+                        else mx
+                    )
+            elif isinstance(aggregation, foa.Count):
+                data["count"] = result
+            elif isinstance(aggregation, foa.CountValues):
+                if isinstance(field, fof.BooleanField):
+                    data["true"] = result.get(True, 0)
+                    data["false"] = result.get(False, 0)
+                else:
+                    _, result = result
+                    data["values"] = [
+                        {"value": value, "count": count}
+                        for value, count in result
+                    ]
+            elif isinstance(aggregation, _CountExists):
+                data["exists"] = result
 
-    if "exists" not in data:
-        data["exists"] = data["count"]
+            if "exists" not in data:
+                data["exists"] = data["count"]
 
-    return from_dict(cls, data, config=Config(check_types=False))
+            return from_dict(cls, data, config=Config(check_types=False))
+
+    return aggregations, from_results
 
 
 class _CountExists(foa.Count):
