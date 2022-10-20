@@ -2784,13 +2784,12 @@ attributes to them as follows:
     label["dict"] = {"key": ["list", "of", "values"]}
 
 By default, dynamic attributes are not included in a
-:ref:`dataset's schema <field-schema>`, which means that these attributes may
+:ref:`dataset's schema <field-schemas>`, which means that these attributes may
 contain arbitrary heterogenous values across the dataset's samples.
 
-However, FiftyOne provides a variety of methods that you can use to formally
-declare custom dynamic attributes, which allows you to enforce type
-constraints, filter by these custom attributes
-:ref:`in the App <app-filtering>`, and more.
+However, FiftyOne provides methods that you can use to formally declare custom
+dynamic attributes, which allows you to enforce type constraints, filter by
+these custom attributes :ref:`in the App <app-filtering>`, and more.
 
 You can use
 :meth:`get_dynamic_field_schema() <fiftyone.core.dataset.Dataset.get_dynamic_field_schema>`
@@ -2905,7 +2904,7 @@ samples are added to it:
 
     assert "ground_truth.detections.mood" not in schema
 
-However, many methods such as
+However, methods such as
 :meth:`add_sample() <fiftyone.core.dataset.Dataset.add_sample>`,
 :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`,
 :meth:`add_dir() <fiftyone.core.dataset.Dataset.add_dir>`,
@@ -2942,12 +2941,20 @@ do not validate newly declared field's types against existing field values:
 
     sample1 = fo.Sample(
         filepath="/path/to/image1.jpg",
-        ground_truth=fo.Classification(label="cat", age="bad-value"),
+        ground_truth=fo.Classification(
+            label="cat",
+            mood="surly",
+            age="bad-value",
+        ),
     )
 
     sample2 = fo.Sample(
         filepath="/path/to/image2.jpg",
-        ground_truth=fo.Classification(label="dog", age=5),
+        ground_truth=fo.Classification(
+            label="dog",
+            mood="happy",
+            age=5,
+        ),
     )
 
     dataset = fo.Dataset()
@@ -2971,6 +2978,36 @@ in order for the dataset to be usable again:
 
     # Removes dynamic field from dataset's schema without deleting the values
     dataset.remove_dynamic_sample_field("ground_truth.age")
+
+You can use
+:meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`
+and
+:meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
+to create :ref:`views <using-views>` that select/exclude specific dynamic
+attributes from your dataset and its schema:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.add_sample_field("ground_truth.age", fo.Field)
+    sample = dataset.first()
+
+    assert "ground_truth.age" in dataset.get_field_schema(flat=True)
+    assert sample.ground_truth.has_field("age")
+
+    # Omits the `age` attribute from the `ground_truth` field
+    view = dataset.exclude_fields("ground_truth.age")
+    sample = view.first()
+
+    assert "ground_truth.age" not in view.get_field_schema(flat=True)
+    assert not sample.ground_truth.has_field("age")
+
+    # Only include `mood` (and default) attributes of the `ground_truth` field
+    view = dataset.select_fields("ground_truth.mood")
+    sample = view.first()
+
+    assert "ground_truth.age" not in view.get_field_schema(flat=True)
+    assert not sample.ground_truth.has_field("age")
 
 .. _custom-embedded-documents:
 
