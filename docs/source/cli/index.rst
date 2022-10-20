@@ -54,7 +54,7 @@ To enable tab completion in `tcsh`, add these lines to your `~/.tcshrc`:
 
     eval `register-python-argcomplete --shell tcsh fiftyone`
 
-.._cli-fiftyone-main:
+.. _cli-fiftyone-main:
 
 FiftyOne CLI
 ------------
@@ -847,8 +847,8 @@ Transforms the images in a dataset per the specified parameters.
 .. code-block:: text
 
     fiftyone utils transform-images [-h] [--size SIZE] [--min-size MIN_SIZE]
-                                    [--max-size MAX_SIZE] [-e EXT] [-f]
-                                    [--media-field MEDIA_FIELD]
+                                    [--max-size MAX_SIZE] [-i INTERPOLATION]
+                                    [-e EXT] [-f] [--media-field MEDIA_FIELD]
                                     [--output-field OUTPUT_FIELD]
                                     [-o OUTPUT_DIR] [-r REL_DIR]
                                     [-d] [-n NUM_WORKERS] [-s]
@@ -869,6 +869,8 @@ Transforms the images in a dataset per the specified parameters.
                             can be -1 if no constraint should be applied
       --max-size MAX_SIZE   a maximum `width,height` for each image. A dimension
                             can be -1 if no constraint should be applied
+      -i INTERPOLATION, --interpolation INTERPOLATION
+                            an optional `interpolation` argument for `cv2.resize()`
       -e EXT, --ext EXT     an image format to convert to (e.g., '.png' or '.jpg')
       -f, --force-reencode  whether to re-encode images whose parameters already
                             meet the specified values

@@ -1,5 +1,5 @@
 import { useRecoilTransaction_UNSTABLE } from "recoil";
-import { useEventHandler } from "../../utils/hooks";
+import { useEventHandler } from "@fiftyone/state";
 
 import * as fos from "@fiftyone/state";
 

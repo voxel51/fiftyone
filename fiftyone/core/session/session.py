@@ -307,7 +307,10 @@ class Session(object):
             port = fo.config.default_app_port
 
         if address is None:
-            address = fo.config.default_app_address
+            if fou.is_docker():
+                address = "0.0.0.0"
+            else:
+                address = fo.config.default_app_address
 
         if config is None:
             config = fo.app_config.copy()

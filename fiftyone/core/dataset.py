@@ -3025,10 +3025,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         sample_collection.compute_metadata()
-
-        pipeline = sample_collection._pipeline()
-        pipeline.extend(
-            [
+        sample_collection._aggregate(
+            post_pipeline=[
                 {
                     "$project": {
                         "_id": False,
@@ -3052,8 +3050,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 },
             ]
         )
-
-        self._aggregate(pipeline=pipeline, manual_group_select=True)
 
     def delete(self):
         """Deletes the dataset.
@@ -4969,6 +4965,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         groups_only=False,
         detach_groups=False,
         manual_group_select=False,
+        post_pipeline=None,
     ):
         if media_type is None:
             media_type = self.media_type
@@ -5032,6 +5029,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _pipeline.append({"$project": {"groups": False}})
         elif groups_only:
             _pipeline.extend(self._groups_only_pipeline())
+
+        if post_pipeline is not None:
+            _pipeline.extend(post_pipeline)
 
         return _pipeline
 
@@ -5200,6 +5200,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         groups_only=False,
         detach_groups=False,
         manual_group_select=False,
+        post_pipeline=None,
     ):
         _pipeline = self._pipeline(
             pipeline=pipeline,
@@ -5213,6 +5214,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             groups_only=groups_only,
             detach_groups=detach_groups,
             manual_group_select=manual_group_select,
+            post_pipeline=post_pipeline,
         )
 
         return foo.aggregate(self._sample_collection, _pipeline)
@@ -6335,20 +6337,20 @@ def _add_collection_with_new_ids(
     else:
         src_samples = sample_collection
 
-    src_dataset = sample_collection._dataset
-
     if not contains_videos:
-        pipeline = src_samples._pipeline(detach_groups=True) + [
-            {"$unset": "_id"},
-            {
-                "$merge": {
-                    "into": dataset._sample_collection_name,
-                    "whenMatched": "keepExisting",
-                    "whenNotMatched": "insert",
-                }
-            },
-        ]
-        src_dataset._aggregate(pipeline=pipeline, manual_group_select=True)
+        src_samples._aggregate(
+            detach_groups=True,
+            post_pipeline=[
+                {"$unset": "_id"},
+                {
+                    "$merge": {
+                        "into": dataset._sample_collection_name,
+                        "whenMatched": "keepExisting",
+                        "whenNotMatched": "insert",
+                    }
+                },
+            ],
+        )
 
         return
 
@@ -6366,32 +6368,35 @@ def _add_collection_with_new_ids(
 
     old_ids = src_samples.values("_id")
 
-    sample_pipeline = src_samples._pipeline(
-        detach_frames=True, detach_groups=True
-    ) + [
-        {"$unset": "_id"},
-        {
-            "$merge": {
-                "into": dataset._sample_collection_name,
-                "whenMatched": "keepExisting",
-                "whenNotMatched": "insert",
-            }
-        },
-    ]
-    src_dataset._aggregate(pipeline=sample_pipeline, manual_group_select=True)
+    src_samples._aggregate(
+        detach_frames=True,
+        detach_groups=True,
+        post_pipeline=[
+            {"$unset": "_id"},
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "whenMatched": "keepExisting",
+                    "whenNotMatched": "insert",
+                }
+            },
+        ],
+    )
 
-    frame_pipeline = src_videos._pipeline(frames_only=True) + [
-        {"$set": {"_tmp": "$_sample_id", "_sample_id": {"$rand": {}}}},
-        {"$unset": "_id"},
-        {
-            "$merge": {
-                "into": dataset._frame_collection_name,
-                "whenMatched": "keepExisting",
-                "whenNotMatched": "insert",
-            }
-        },
-    ]
-    src_dataset._aggregate(pipeline=frame_pipeline, manual_group_select=True)
+    src_videos._aggregate(
+        frames_only=True,
+        post_pipeline=[
+            {"$set": {"_tmp": "$_sample_id", "_sample_id": {"$rand": {}}}},
+            {"$unset": "_id"},
+            {
+                "$merge": {
+                    "into": dataset._frame_collection_name,
+                    "whenMatched": "keepExisting",
+                    "whenNotMatched": "insert",
+                }
+            },
+        ],
+    )
 
     new_ids = dataset[-len(old_ids) :].values("_id")
 
@@ -6597,9 +6602,7 @@ def _merge_samples_pipeline(
     )
     default_fields.discard("id")
 
-    sample_pipeline = src_samples._pipeline(
-        detach_frames=True, detach_groups=True
-    )
+    sample_pipeline = []
 
     if fields is not None:
         project = {key_field: True}
@@ -6720,7 +6723,7 @@ def _merge_samples_pipeline(
 
         db_fields_map = src_collection._get_db_fields_map(frames=True)
 
-        frame_pipeline = _src_videos._pipeline(frames_only=True)
+        frame_pipeline = []
 
         if frame_fields is not None:
             project = {}
@@ -6809,14 +6812,16 @@ def _merge_samples_pipeline(
             )
 
         # Merge samples
-        src_dataset._aggregate(
-            pipeline=sample_pipeline, manual_group_select=True
+        src_samples._aggregate(
+            detach_frames=True,
+            detach_groups=True,
+            post_pipeline=sample_pipeline,
         )
 
         if contains_videos:
             # Merge frames
-            src_dataset._aggregate(
-                pipeline=frame_pipeline, manual_group_select=True
+            _src_videos._aggregate(
+                frames_only=True, post_pipeline=frame_pipeline
             )
 
             # Finalize IDs

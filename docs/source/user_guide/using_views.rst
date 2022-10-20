@@ -2032,7 +2032,7 @@ predictions for each sample in the dataset:
     from fiftyone import ViewField as F
 
     # Extracts the 5 highest confidence predictions for each sample
-    top5_preds = F("detections").sort_by("confidence", reverse=True)[:5]
+    top5_preds = F("detections").sort("confidence", reverse=True)[:5]
 
     top5_view = (
         dataset
