@@ -2348,22 +2348,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         #
 
         if key_fcn is None:
-            tmp = Dataset()
-            tmp.add_samples(samples, num_samples=num_samples)
+            try:
+                tmp = Dataset()
+                tmp.add_samples(samples, num_samples=num_samples)
 
-            self.merge_samples(
-                tmp,
-                key_field=key_field,
-                skip_existing=skip_existing,
-                insert_new=insert_new,
-                fields=fields,
-                omit_fields=omit_fields,
-                merge_lists=merge_lists,
-                overwrite=overwrite,
-                expand_schema=expand_schema,
-                include_info=False,
-            )
-            tmp.delete()
+                self.merge_samples(
+                    tmp,
+                    key_field=key_field,
+                    skip_existing=skip_existing,
+                    insert_new=insert_new,
+                    fields=fields,
+                    omit_fields=omit_fields,
+                    merge_lists=merge_lists,
+                    overwrite=overwrite,
+                    expand_schema=expand_schema,
+                    include_info=False,
+                )
+            finally:
+                tmp.delete()
 
             return
 
