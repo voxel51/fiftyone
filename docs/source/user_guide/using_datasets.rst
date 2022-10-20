@@ -289,8 +289,8 @@ You can store metadata such as descriptions on the :ref:`fields <using-fields>`
 of your dataset.
 
 One approach is to manually declare the field with
-:ref:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>` with
-the appropriate metadata provided:
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`
+with the appropriate metadata provided:
 
 .. code-block:: python
     :linenos:
@@ -306,7 +306,7 @@ the appropriate metadata provided:
     print(field.description)  # An integer field
 
 You can also use
-:ref:`set_field_metadata() <fiftyone.core.dataset.Dataset.set_field_metadata>`
+:meth:`set_field_metadata() <fiftyone.core.dataset.Dataset.set_field_metadata>`
 to update a field's metadata at any time:
 
 .. code-block:: python
