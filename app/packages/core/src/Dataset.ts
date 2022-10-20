@@ -1,9 +1,12 @@
 import * as fos from "@fiftyone/state";
-import { dataset } from "@fiftyone/state";
-import { Resource, toCamelCase } from "@fiftyone/utilities";
+import { toCamelCase } from "@fiftyone/utilities";
 import { useEffect, useState } from "react";
-import { loadQuery, usePreloadedQuery, useQueryLoader } from "react-relay";
-import { useRecoilValue } from "recoil";
+import { usePreloadedQuery, useQueryLoader } from "react-relay";
+
+import {
+  DatasetQuery,
+  DatasetQuery$data,
+} from "./__generated__/DatasetQuery.graphql";
 
 const DatasetQueryNode = graphql`
   query DatasetQuery($name: String!, $view: BSONArray = null) {
@@ -122,13 +125,16 @@ export function usePrepareDataset(
 export function usePreLoadedDataset(
   queryRef,
   { colorscale, config, state } = {}
-) {
+): [DatasetQuery$data["dataset"], boolean] {
   const [ready, setReady] = useState(false);
-  const { dataset } = usePreloadedQuery(DatasetQueryNode, queryRef);
+  const { dataset } = usePreloadedQuery<DatasetQuery>(
+    DatasetQueryNode,
+    queryRef
+  );
   usePrepareDataset(dataset, { colorscale, config, state }, setReady);
   return [dataset, ready];
 }
-export function useDatasetLoader(environment) {
+export function useDatasetLoader() {
   const [queryRef, loadQuery] = useQueryLoader(DatasetQueryNode);
   return [
     queryRef,

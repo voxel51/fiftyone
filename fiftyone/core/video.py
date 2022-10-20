@@ -571,7 +571,7 @@ def make_frames_dataset(
     _make_pretty_summary(dataset)
 
     # Initialize frames dataset
-    ids_to_sample, frames_to_sample = _init_frames(
+    sample_view, frames_to_sample = _init_frames(
         dataset,
         sample_collection,
         sample_frames,
@@ -586,14 +586,10 @@ def make_frames_dataset(
     )
 
     # Sample frames, if necessary
-    if ids_to_sample:
+    if sample_view is not None:
         logger.info("Sampling video frames...")
-        to_sample_view = sample_collection._root_dataset.select(
-            ids_to_sample, ordered=True
-        )
-
         fouv.sample_videos(
-            to_sample_view,
+            sample_view,
             output_dir=output_dir,
             rel_dir=rel_dir,
             frames_patt=frames_patt,
@@ -608,7 +604,7 @@ def make_frames_dataset(
         )
 
     # Merge frame data
-    pipeline = sample_collection._pipeline(frames_only=True)
+    pipeline = []
 
     if sample_frames == "dynamic":
         pipeline.append({"$unset": "filepath"})
@@ -624,7 +620,7 @@ def make_frames_dataset(
         }
     )
 
-    sample_collection._dataset._aggregate(pipeline=pipeline)
+    sample_collection._aggregate(frames_only=True, post_pipeline=pipeline)
 
     # Delete samples for frames without filepaths
     if sample_frames == True:
@@ -836,6 +832,8 @@ def _init_frames(
     # We first populate `sample_map` and then convert to `ids_to_sample` and
     # `frames_to_sample` here to avoid resampling frames when working with clip
     # views with multiple overlapping clips into the same video
+    #
+
     ids_to_sample = []
     frames_to_sample = []
     for video_path, sample_frame_numbers in sample_map.items():
@@ -845,7 +843,17 @@ def _init_frames(
 
         frames_to_sample.append(sample_frame_numbers)
 
-    return ids_to_sample, frames_to_sample
+    if ids_to_sample:
+        if src_dataset.media_type == fom.GROUP:
+            sample_view = src_dataset.select_group_slices(media_type=fom.VIDEO)
+        else:
+            sample_view = src_dataset
+
+        sample_view = sample_view.select(ids_to_sample, ordered=True)
+    else:
+        sample_view = None
+
+    return sample_view, frames_to_sample
 
 
 def _insert_docs(docs, src_docs, src_inds, dataset, src_dataset):

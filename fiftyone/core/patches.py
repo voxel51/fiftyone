@@ -819,9 +819,8 @@ def _merge_matched_labels(dataset, src_collection, eval_key, field):
     eval_id = eval_key + "_id"
     eval_field = list_field + "." + eval_id
 
-    pipeline = src_collection._pipeline()
-    pipeline.extend(
-        [
+    src_collection._aggregate(
+        post_pipeline=[
             {"$project": {list_field: True}},
             {"$unwind": "$" + list_field},
             {
@@ -859,27 +858,27 @@ def _merge_matched_labels(dataset, src_collection, eval_key, field):
         ]
     )
 
-    src_collection._dataset._aggregate(pipeline=pipeline)
-
 
 def _write_samples(dataset, src_collection):
-    pipeline = src_collection._pipeline(detach_frames=True, detach_groups=True)
-    pipeline.append({"$out": dataset._sample_collection_name})
-
-    src_collection._dataset._aggregate(pipeline=pipeline)
+    src_collection._aggregate(
+        detach_frames=True,
+        detach_groups=True,
+        post_pipeline=[{"$out": dataset._sample_collection_name}],
+    )
 
 
 def _add_samples(dataset, src_collection):
-    pipeline = src_collection._pipeline(detach_frames=True, detach_groups=True)
-    pipeline.append(
-        {
-            "$merge": {
-                "into": dataset._sample_collection_name,
-                "on": "_id",
-                "whenMatched": "keepExisting",
-                "whenNotMatched": "insert",
+    src_collection._aggregate(
+        detach_frames=True,
+        detach_groups=True,
+        post_pipeline=[
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "on": "_id",
+                    "whenMatched": "keepExisting",
+                    "whenNotMatched": "insert",
+                }
             }
-        }
+        ],
     )
-
-    src_collection._dataset._aggregate(pipeline=pipeline)
