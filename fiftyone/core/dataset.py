@@ -656,6 +656,54 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.info = info
         self._doc.save(safe=True)
 
+    def set_field_metadata(self, path, **kwargs):
+        """Stores metadata on the field at the given path.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.add_dynamic_sample_fields()
+
+            dataset.set_field_metadata(
+                "ground_truth",
+                description="Ground truth annotations",
+            )
+
+            dataset.set_field_metadata(
+                "ground_truth.detections.area",
+                description="The area of the box, in pixels^2",
+            )
+
+            field = dataset.get_field("ground_truth")
+            print(field.description)
+
+            field = dataset.get_field("ground_truth.detections.area")
+            print(field.description)
+
+        Args:
+            path: a field name or ``embedded.field.name``
+            **kwargs: valid field metadata. The currently supported keys are
+                ``{"description"}``
+        """
+        path, is_frame_field = self._handle_frame_field(path)
+        if is_frame_field:
+            field_doc = self._frame_doc_cls._get_field_doc(path, self._doc)
+        else:
+            field_doc = self._sample_doc_cls._get_field_doc(path, self._doc)
+
+        invalid_keys = {n for n in kwargs if not field_doc.has_field(n)}
+        if invalid_keys:
+            raise ValueError("Invalid field metadata %s" % invalid_keys)
+
+        for name, value in kwargs.items():
+            setattr(field_doc, name, value)
+
+        self._doc.save(safe=True)
+        self._reload(hard=True)
+
     @property
     def app_config(self):
         """A :class:`fiftyone.core.odm.dataset.DatasetAppConfig` that

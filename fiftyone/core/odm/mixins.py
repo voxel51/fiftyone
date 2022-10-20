@@ -1122,6 +1122,32 @@ class DatasetMixin(object):
         return field, is_default
 
     @classmethod
+    def _get_field_doc(cls, path, dataset_doc, allow_missing=False):
+        chunks = path.split(".")
+        field_docs = dataset_doc[cls._fields_attr()]
+
+        field_doc = None
+        for chunk in chunks:
+            found = False
+            for _field_doc in field_docs:
+                if _field_doc.name == chunk:
+                    field_doc = _field_doc
+                    field_docs = _field_doc.fields
+                    found = True
+                    break
+
+            if not found:
+                if not allow_missing:
+                    raise ValueError(
+                        "%s field '%s' does not exist"
+                        % (cls._doc_name(), path)
+                    )
+
+                return None
+
+        return field_doc
+
+    @classmethod
     def _parse_path(cls, path, dataset_doc, allow_missing=False):
         chunks = path.split(".")
 
