@@ -263,8 +263,9 @@ def merge_samples(
     #
 
     if isinstance(dataset_importer, BatchDatasetImporter):
+        tmp = fod.Dataset()
+
         try:
-            tmp = fod.Dataset()
             with dataset_importer:
                 dataset_importer.import_samples(tmp, tags=tags)
 

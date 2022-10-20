@@ -2348,8 +2348,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         #
 
         if key_fcn is None:
+            tmp = Dataset()
+
             try:
-                tmp = Dataset()
                 tmp.add_samples(samples, num_samples=num_samples)
 
                 self.merge_samples(
