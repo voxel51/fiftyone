@@ -578,12 +578,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if name in list_datasets():
             raise ValueError("A dataset with name '%s' already exists" % name)
 
-        try:
-            self._doc.name = name
-            self._doc.save()
-        except:
-            self._doc.name = _name
-            raise
+        self._doc.name = name
+        self._doc.save(safe=True)
 
         # Update singleton
         self._instances.pop(_name, None)
@@ -608,13 +604,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @persistent.setter
     def persistent(self, value):
-        _value = self._doc.persistent
-        try:
-            self._doc.persistent = value
-            self._doc.save()
-        except:
-            self._doc.persistent = _value
-            raise
+        self._doc.persistent = value
+        self._doc.save(safe=True)
 
     @property
     def tags(self):
@@ -638,13 +629,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @tags.setter
     def tags(self, value):
-        _value = self._doc.tags
-        try:
-            self._doc.tags = value
-            self._doc.save()
-        except:
-            self._doc.tags = _value
-            raise
+        self._doc.tags = value
+        self._doc.save(safe=True)
 
     @property
     def info(self):
@@ -668,7 +654,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @info.setter
     def info(self, info):
         self._doc.info = info
-        self._doc.save()
+        self._doc.save(safe=True)
 
     @property
     def app_config(self):
@@ -707,6 +693,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @app_config.setter
     def app_config(self, config):
         self._doc.app_config = config
+        self._doc.save(safe=True)
 
     @property
     def classes(self):
@@ -734,7 +721,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @classes.setter
     def classes(self, classes):
         self._doc.classes = classes
-        self.save()
+        self._doc.save(safe=True)
 
     @property
     def default_classes(self):
@@ -760,7 +747,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_classes.setter
     def default_classes(self, classes):
         self._doc.default_classes = classes
-        self.save()
+        self._doc.save(safe=True)
 
     @property
     def mask_targets(self):
@@ -794,7 +781,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @mask_targets.setter
     def mask_targets(self, targets):
         self._doc.mask_targets = targets
-        self.save()
+        self._doc.save(safe=True)
 
     @property
     def default_mask_targets(self):
@@ -826,7 +813,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_mask_targets.setter
     def default_mask_targets(self, targets):
         self._doc.default_mask_targets = targets
-        self.save()
+        self._doc.save(safe=True)
 
     @property
     def skeletons(self):
@@ -862,7 +849,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @skeletons.setter
     def skeletons(self, skeletons):
         self._doc.skeletons = skeletons
-        self.save()
+        self._doc.save(safe=True)
 
     @property
     def default_skeleton(self):
@@ -895,7 +882,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_skeleton.setter
     def default_skeleton(self, skeleton):
         self._doc.default_skeleton = skeleton
-        self.save()
+        self._doc.save(safe=True)
 
     @property
     def deleted(self):
