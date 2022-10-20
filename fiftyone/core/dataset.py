@@ -1153,6 +1153,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         embedded_doc_type=None,
         subfield=None,
         fields=None,
+        description=None,
         **kwargs,
     ):
         """Adds a new sample field or embedded field to the dataset, if
@@ -1174,6 +1175,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instances defining embedded document attributes. Only
                 applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            description (None): an optional description
 
         Raises:
             ValueError: if a field of the same name already exists and it is
@@ -1182,7 +1184,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if embedded_doc_type is not None and issubclass(
             embedded_doc_type, fog.Group
         ):
-            expanded = self._add_group_field(field_name)
+            expanded = self._add_group_field(
+                field_name, description=description
+            )
         else:
             expanded = self._sample_doc_cls.add_field(
                 field_name,
@@ -1190,6 +1194,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 embedded_doc_type=embedded_doc_type,
                 subfield=subfield,
                 fields=fields,
+                description=description,
                 dataset_doc=self._doc,
                 **kwargs,
             )
@@ -1254,6 +1259,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         embedded_doc_type=None,
         subfield=None,
         fields=None,
+        description=None,
         **kwargs,
     ):
         """Adds a new frame-level field or embedded field to the dataset, if
@@ -1277,6 +1283,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instances defining embedded document attributes. Only
                 applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            description (None): an optional description
 
         Raises:
             ValueError: if a field of the same name already exists and it is
@@ -1293,6 +1300,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
             fields=fields,
+            description=description,
             dataset_doc=self._doc,
             **kwargs,
         )
@@ -1357,26 +1365,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def add_group_field(self, field_name, default=None):
+    def add_group_field(self, field_name, default=None, description=None):
         """Adds a group field to the dataset, if necessary.
 
         Args:
             field_name: the field name
             default (None): a default group slice for the field
+            description (None): an optional description
 
         Raises:
             ValueError: if a group field with another name already exists
         """
-        expanded = self._add_group_field(field_name, default=default)
+        expanded = self._add_group_field(
+            field_name, default=default, description=description
+        )
 
         if expanded:
             self._reload()
 
-    def _add_group_field(self, field_name, default=None):
+    def _add_group_field(self, field_name, default=None, description=None):
         expanded = self._sample_doc_cls.add_field(
             field_name,
             fof.EmbeddedDocumentField,
             embedded_doc_type=fog.Group,
+            description=description,
             dataset_doc=self._doc,
         )
 

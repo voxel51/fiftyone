@@ -279,6 +279,7 @@ class DatasetMixin(object):
         embedded_doc_type=None,
         subfield=None,
         fields=None,
+        description=None,
         expand_schema=True,
         recursive=True,
         validate=True,
@@ -303,6 +304,7 @@ class DatasetMixin(object):
                 instances defining embedded document attributes. Only
                 applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            description (None): an optional description
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that the field already exists with a
                 consistent type (False)
@@ -327,6 +329,7 @@ class DatasetMixin(object):
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
             fields=fields,
+            description=description,
             **kwargs,
         )
 
@@ -393,6 +396,7 @@ class DatasetMixin(object):
         embedded_doc_type=None,
         subfield=None,
         fields=None,
+        description=None,
         **kwargs,
     ):
         field_name = path.rsplit(".", 1)[-1]
@@ -402,6 +406,7 @@ class DatasetMixin(object):
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
             fields=fields,
+            description=description,
             **kwargs,
         )
 
