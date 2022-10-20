@@ -8,6 +8,7 @@
   border: 1px solid var(--joy-palette-divider);
   background: var(--joy-palette-background-viewBarButtons);
   box-shadow: 0 2px 40px var(--joy-palette-custom-shadow);
+  color: var(--joy-palette-text-secondary);
 }
 
 .button:hover {

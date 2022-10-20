@@ -170,13 +170,14 @@ const ViewBar = React.memo(() => {
           onClick={() => send("CLEAR")}
           style={{
             cursor: "pointer",
+            color: theme.text.secondary,
           }}
         />
         <ExternalLink
           href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar"
           style={{ display: "flex" }}
         >
-          <Help style={{ color: theme.text.primary }} />
+          <Help style={{ color: theme.text.secondary }} />
         </ExternalLink>
       </IconsContainer>
     </div>

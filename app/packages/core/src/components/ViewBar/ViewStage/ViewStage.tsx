@@ -14,7 +14,7 @@ import { getMatch } from "./utils";
 import { useTheme } from "@fiftyone/components";
 
 const ViewStageContainer = animated(styled.div`
-  margin: 0.5rem 0.25rem;
+  margin: 0.5rem;
   display: flex;
   position: relative;
 `);
@@ -48,7 +48,7 @@ const ViewStageInput = styled(AuosizeInput)`
   }
 
   & ::placeholder {
-    color: ${({ theme }) => theme.text.primary};
+    color: ${({ theme }) => theme.text.secondary};
     font-weight: bold;
   }
 `;

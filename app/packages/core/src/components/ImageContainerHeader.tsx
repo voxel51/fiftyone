@@ -45,6 +45,7 @@ const RightDiv = styled.div`
 
 const RightContainer = styled.div`
   display: flex;
+  color: ${({ theme }) => theme.text.secondary};
 `;
 
 const SliderContainer = styled.div`

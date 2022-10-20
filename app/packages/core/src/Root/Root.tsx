@@ -188,7 +188,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
               setTheme(nextMode);
             }}
             sx={{
-              color: (theme) => theme.palette.text.primary,
+              color: (theme) => theme.palette.text.secondary,
               pr: 0,
             }}
           >
