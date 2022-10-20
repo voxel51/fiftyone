@@ -1661,9 +1661,9 @@ class Schema(Aggregation):
         doc_type = None
 
         if self._expr is None:
-            field_type = _get_field_type(sample_collection, field_name)
-            if isinstance(field_type, fof.ListField):
-                field_type = field_type.field
+            field_type = _get_field_type(
+                sample_collection, field_name, unwind=True
+            )
 
             if isinstance(field_type, fof.EmbeddedDocumentField):
                 doc_type = field_type
@@ -2525,7 +2525,7 @@ def _remove_prefix(expr, prefix):
             _remove_prefix(e, prefix)
 
 
-def _get_field_type(sample_collection, field_name, unwind=True):
+def _get_field_type(sample_collection, field_name, unwind=False):
     # Remove array references
     field_name = "".join(field_name.split("[]"))
 

@@ -143,11 +143,16 @@ class FramesView(fov.DatasetView):
         return fom.IMAGE
 
     def _get_default_sample_fields(
-        self, include_private=False, use_db_fields=False
+        self, path=None, include_private=False, use_db_fields=False
     ):
         fields = super()._get_default_sample_fields(
-            include_private=include_private, use_db_fields=use_db_fields
+            path=path,
+            include_private=include_private,
+            use_db_fields=use_db_fields,
         )
+
+        if path is not None:
+            return fields
 
         if use_db_fields:
             return fields + ("_sample_id", "frame_number")

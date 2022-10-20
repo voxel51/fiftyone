@@ -157,11 +157,16 @@ class ClipsView(fov.DatasetView):
         return fom.VIDEO
 
     def _get_default_sample_fields(
-        self, include_private=False, use_db_fields=False
+        self, path=None, include_private=False, use_db_fields=False
     ):
         fields = super()._get_default_sample_fields(
-            include_private=include_private, use_db_fields=use_db_fields
+            path=path,
+            include_private=include_private,
+            use_db_fields=use_db_fields,
         )
+
+        if path is not None:
+            return fields
 
         if use_db_fields:
             return fields + ("_sample_id", "support")
@@ -527,12 +532,7 @@ def _is_frame_support_field(sample_collection, field_path):
 
 def _get_label_field(sample_collection, field_path):
     _, path = sample_collection._get_label_field_path(field_path)
-    field = sample_collection.get_field(path)
-
-    if isinstance(field, fof.ListField):
-        field = field.field
-
-    return field
+    return sample_collection.get_field(path, leaf=True)
 
 
 def _make_pretty_summary(dataset):

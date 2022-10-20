@@ -5,7 +5,7 @@ Dataset views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import OrderedDict
+from collections import defaultdict, OrderedDict
 import contextlib
 from copy import copy, deepcopy
 import itertools
@@ -450,7 +450,9 @@ class DatasetView(foc.SampleCollection):
 
     def _make_sample_fcn(self):
         sample_cls = self._sample_cls
-        selected_fields, excluded_fields = self._get_selected_excluded_fields()
+        selected_fields, excluded_fields = self._get_selected_excluded_fields(
+            roots_only=True
+        )
         filtered_fields = self._get_filtered_fields()
 
         def make_sample(d):
@@ -1375,50 +1377,57 @@ class DatasetView(foc.SampleCollection):
         selected_fields, excluded_fields = self._get_selected_excluded_fields(
             frames=frames
         )
-        if selected_fields is not None:
-            schema = OrderedDict(
-                {fn: f for fn, f in schema.items() if fn in selected_fields}
-            )
 
-        if excluded_fields is not None:
-            schema = OrderedDict(
-                {
-                    fn: f
-                    for fn, f in schema.items()
-                    if fn not in excluded_fields
-                }
-            )
+        if selected_fields is not None or excluded_fields is not None:
+            _filter_schema(schema, selected_fields, excluded_fields)
 
         return schema
 
-    def _get_selected_excluded_fields(self, frames=False):
+    def _get_selected_excluded_fields(self, frames=False, roots_only=False):
         selected_fields = None
-        excluded_fields = set()
+        excluded_fields = None
 
         for stage in self._stages:
-            _selected_fields = stage.get_selected_fields(self, frames=frames)
-            if _selected_fields:
+            sf = stage.get_selected_fields(self, frames=frames)
+            if sf:
+                if roots_only:
+                    sf = {f.split(".", 1)[0] for f in sf}
+
                 if selected_fields is None:
-                    selected_fields = set(_selected_fields)
+                    selected_fields = set(sf)
                 else:
-                    selected_fields.intersection_update(_selected_fields)
+                    selected_fields.intersection_update(sf)
 
-            _excluded_fields = stage.get_excluded_fields(self, frames=frames)
-            if _excluded_fields:
-                excluded_fields.update(_excluded_fields)
+            ef = stage.get_excluded_fields(self, frames=frames)
+            if ef:
+                if roots_only:
+                    ef = {f for f in ef if "." not in f}
 
-        if selected_fields is not None:
+                if excluded_fields is None:
+                    excluded_fields = set(ef)
+                else:
+                    excluded_fields.update(ef)
+
+        if (
+            roots_only
+            and selected_fields is not None
+            and excluded_fields is not None
+        ):
             selected_fields.difference_update(excluded_fields)
             excluded_fields = None
 
         return selected_fields, excluded_fields
 
     def _get_filtered_fields(self, frames=False):
-        filtered_fields = set()
+        filtered_fields = None
+
         for stage in self._stages:
-            _filtered_fields = stage.get_filtered_fields(self, frames=frames)
-            if _filtered_fields:
-                filtered_fields.update(_filtered_fields)
+            ff = stage.get_filtered_fields(self, frames=frames)
+            if ff:
+                if filtered_fields is None:
+                    filtered_fields = set(ff)
+                else:
+                    filtered_fields.update(ff)
 
         return filtered_fields
 
@@ -1534,3 +1543,78 @@ def make_optimized_select_view(
             optimized_view._stages.append(stage)
 
     return optimized_view
+
+
+def _filter_schema(schema, selected_fields, excluded_fields):
+    selected_fields, roots1 = _parse_schema_fields(selected_fields)
+    excluded_fields, roots2 = _parse_schema_fields(excluded_fields)
+    filtered_roots = roots1 | roots2
+
+    # Explicitly include roots of any embedded fields that have been selected
+    if roots1:
+        selected_fields[""].update(roots1)
+
+    # Copy any top-level fields whose embedded fields will be filtered
+    if filtered_roots:
+        for name in tuple(schema.keys()):
+            if name in filtered_roots:
+                schema[name] = schema[name].copy()
+
+    sf = selected_fields.get("", None)
+    ef = excluded_fields.get("", None)
+
+    if sf is not None:
+        for name in tuple(schema.keys()):
+            if name not in sf:
+                del schema[name]
+
+    if ef is not None:
+        for name in tuple(schema.keys()):
+            if name in ef:
+                del schema[name]
+
+    if filtered_roots:
+        for name, field in schema.items():
+            _filter_embedded_field_schema(
+                field, name, selected_fields, excluded_fields
+            )
+
+
+def _parse_schema_fields(paths):
+    d = defaultdict(set)
+    r = set()
+
+    if paths is not None:
+        for path in paths:
+            if "." in path:
+                root = path.split(".", 1)[0]
+                r.add(root)
+
+                base, leaf = path.rsplit(".", 1)
+                d[base].add(leaf)
+            else:
+                d[""].add(path)
+
+    return d, r
+
+
+def _filter_embedded_field_schema(
+    field, path, selected_fields, excluded_fields
+):
+    while isinstance(field, fof.ListField):
+        field = field.field
+
+    if not isinstance(field, fof.EmbeddedDocumentField):
+        return
+
+    sf = selected_fields.get(path, None)
+    ef = excluded_fields.get(path, None)
+
+    if sf is not None or ef is not None:
+        field._use_view(selected_fields=sf, excluded_fields=ef)
+
+    for name, _field in field._fields.items():
+        _path = path + "." + name
+        _filter_embedded_field_schema(
+            _field, _path, selected_fields, excluded_fields
+        )

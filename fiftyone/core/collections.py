@@ -859,9 +859,24 @@ class SampleCollection(object):
         return SaveContext(self, batch_size=batch_size)
 
     def _get_default_sample_fields(
-        self, include_private=False, use_db_fields=False
+        self,
+        path=None,
+        include_private=False,
+        use_db_fields=False,
     ):
-        field_names = fosa.get_default_sample_fields(
+        if path is not None:
+            field = self.get_field(
+                path, ftype=fof.EmbeddedDocumentField, leaf=True
+            )
+
+            field_names = field._get_default_fields(
+                include_private=include_private,
+                use_db_fields=use_db_fields,
+            )
+
+            return tuple(path + "." + f for f in field_names)
+
+        field_names = self._dataset._sample_doc_cls._get_default_fields(
             include_private=include_private, use_db_fields=use_db_fields
         )
 
@@ -871,28 +886,73 @@ class SampleCollection(object):
         return field_names
 
     def _get_default_frame_fields(
-        self, include_private=False, use_db_fields=False
+        self,
+        path=None,
+        include_private=False,
+        use_db_fields=False,
     ):
-        return fofr.get_default_frame_fields(
-            include_private=include_private, use_db_fields=use_db_fields
+        if path is not None:
+            field = self.get_field(
+                self._FRAMES_PREFIX + path,
+                ftype=fof.EmbeddedDocumentField,
+                leaf=True,
+            )
+
+            field_names = field._get_default_fields(
+                include_private=include_private,
+                use_db_fields=use_db_fields,
+            )
+
+            return tuple(path + "." + f for f in field_names)
+
+        return self._dataset._frame_doc_cls._get_default_fields(
+            include_private=include_private,
+            use_db_fields=use_db_fields,
         )
 
-    def get_field(self, path, include_private=False):
+    def get_field(
+        self,
+        path,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        leaf=False,
+    ):
         """Returns the field instance of the provided path, or ``None`` if one
         does not exist.
 
         Args:
             path: a field path
+            ftype (None): an optional field type to enforce. Must be a subclass
+                of :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type to
+                enforce. Must be a subclass of
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            leaf (False): whether to return the subfield of list fields
 
         Returns:
             a :class:`fiftyone.core.fields.Field` instance or ``None``
+
+        Raises:
+            ValueError: if the field does not match provided type constraints
         """
-        _, field = self._parse_field(path, include_private=include_private)
+        fof.validate_type_constraints(
+            ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
+
+        _, field = self._parse_field(
+            path, include_private=include_private, leaf=leaf
+        )
+
+        fof.validate_field(
+            field, path=path, ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
+
         return field
 
-    def _parse_field(self, path, include_private=False):
+    def _parse_field(self, path, include_private=False, leaf=False):
         keys = path.split(".")
 
         if not keys:
@@ -915,7 +975,7 @@ class SampleCollection(object):
             keys = keys[1:]
             resolved_keys.append("frames")
         else:
-            schema = self.get_field_schema()
+            schema = self.get_field_schema(include_private=include_private)
 
         field = None
 
@@ -930,15 +990,18 @@ class SampleCollection(object):
                 return None, None
 
             resolved_keys.append(field.db_field or field.name)
+            last_key = idx == len(keys) - 1
 
-            if idx == len(keys) - 1:
+            if last_key and not leaf:
                 continue
 
             if isinstance(field, fof.ListField):
                 field = field.field
 
-            if isinstance(field, fof.EmbeddedDocumentField):
-                schema = field.get_field_schema()
+            if isinstance(field, fof.EmbeddedDocumentField) and not last_key:
+                schema = field.get_field_schema(
+                    include_private=include_private
+                )
 
         resolved_path = ".".join(resolved_keys)
 
@@ -3039,17 +3102,23 @@ class SampleCollection(object):
                     fo.Sample(
                         filepath="/path/to/image1.png",
                         ground_truth=fo.Classification(label="cat"),
-                        predictions=fo.Classification(label="cat", confidence=0.9),
+                        predictions=fo.Classification(
+                            label="cat",
+                            confidence=0.9,
+                            mood="surly",
+                        ),
                     ),
                     fo.Sample(
                         filepath="/path/to/image2.png",
                         ground_truth=fo.Classification(label="dog"),
-                        predictions=fo.Classification(label="dog", confidence=0.8),
+                        predictions=fo.Classification(
+                            label="dog",
+                            confidence=0.8,
+                            mood="happy",
+                        ),
                     ),
                     fo.Sample(
                         filepath="/path/to/image3.png",
-                        ground_truth=None,
-                        predictions=None,
                     ),
                 ]
             )
@@ -3060,8 +3129,16 @@ class SampleCollection(object):
 
             view = dataset.exclude_fields("predictions")
 
+            #
+            # Exclude the `mood` attribute from all classifications in the
+            # `predictions` field
+            #
+
+            view = dataset.exclude_fields("predictions.mood")
+
         Args:
-            field_names: a field name or iterable of field names to exclude
+            field_names: a field name or iterable of field names to exclude.
+                May contain ``embedded.field.name`` as well
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4831,17 +4908,30 @@ class SampleCollection(object):
                 [
                     fo.Sample(
                         filepath="/path/to/image1.png",
-                        numeric_field=1.0,
-                        numeric_list_field=[-1, 0, 1],
+                        uniqueness=1.0,
+                        ground_truth=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="cat",
+                                    bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                    mood="surly",
+                                    age=51,
+                                ),
+                                fo.Detection(
+                                    label="dog",
+                                    bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                    mood="happy",
+                                    age=52,
+                                ),
+                            ]
+                        )
                     ),
                     fo.Sample(
                         filepath="/path/to/image2.png",
-                        numeric_field=-1.0,
-                        numeric_list_field=[-2, -1, 0, 1],
+                        uniqueness=0.0,
                     ),
                     fo.Sample(
                         filepath="/path/to/image3.png",
-                        numeric_field=None,
                     ),
                 ]
             )
@@ -4853,15 +4943,22 @@ class SampleCollection(object):
             view = dataset.select_fields()
 
             #
-            # Include only the `numeric_field` field (and the default fields)
-            # on each sample
+            # Include only the `uniqueness` field (and the default fields) on
+            # each sample
             #
 
-            view = dataset.select_fields("numeric_field")
+            view = dataset.select_fields("uniqueness")
+
+            #
+            # Include only the `mood` attribute (and the default attributes) of
+            # each `Detection` in the `ground_truth` field
+            #
+
+            view = dataset.select_fields("ground_truth.detections.mood")
 
         Args:
             field_names (None): a field name or iterable of field names to
-                select
+                select. My contain ``embedded.field.name`` as well
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`

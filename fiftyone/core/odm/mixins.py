@@ -87,6 +87,33 @@ class DatasetMixin(object):
             use_db_fields=use_db_fields,
         )
 
+    @classmethod
+    def _get_default_fields(cls, include_private=False, use_db_fields=False):
+        # pylint: disable=no-member
+        return cls.__bases__[0]._get_fields_ordered(
+            include_private=include_private,
+            use_db_fields=use_db_fields,
+        )
+
+    @classmethod
+    def _get_fields_ordered(cls, include_private=False, use_db_fields=False):
+        field_names = cls._fields_ordered
+
+        if not include_private:
+            field_names = tuple(
+                f for f in field_names if not f.startswith("_")
+            )
+
+        if use_db_fields:
+            field_names = cls._to_db_fields(field_names)
+
+        return field_names
+
+    @classmethod
+    def _to_db_fields(cls, field_names):
+        # pylint: disable=no-member
+        return tuple(cls._fields[f].db_field or f for f in field_names)
+
     def has_field(self, field_name):
         # pylint: disable=no-member
         return field_name in self._fields
@@ -383,10 +410,6 @@ class DatasetMixin(object):
         field_name = path.rsplit(".", 1)[-1]
         kwargs = get_implied_field_kwargs(value, dynamic=dynamic)
         return create_field(field_name, **kwargs)
-
-    @classmethod
-    def _get_default_fields(cls):
-        return set(get_default_fields(cls.__bases__[0], include_private=True))
 
     @classmethod
     def _rename_fields(
@@ -1310,24 +1333,6 @@ class DatasetMixin(object):
         el_filter = ".".join([filtered_field, "$[element]"] + el_fields)
 
         return el._id, el_filter
-
-    @classmethod
-    def _get_fields_ordered(cls, include_private=False, use_db_fields=False):
-        field_names = cls._fields_ordered
-
-        if not include_private:
-            field_names = tuple(
-                f for f in field_names if not f.startswith("_")
-            )
-
-        if use_db_fields:
-            field_names = cls._to_db_fields(field_names)
-
-        return field_names
-
-    @classmethod
-    def _to_db_fields(cls, field_names):
-        return tuple(cls._fields[f].db_field or f for f in field_names)
 
 
 class NoDatasetMixin(object):
