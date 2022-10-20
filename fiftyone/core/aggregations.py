@@ -120,13 +120,14 @@ class Aggregation(object):
         """
         return False
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         """Returns the MongoDB aggregation pipeline for this aggregation.
 
         Args:
             sample_collection: the
                 :class:`fiftyone.core.collections.SampleCollection` to which
                 the aggregation is being applied
+            context (None): the path context from which to resolve
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -380,12 +381,13 @@ class Bounds(Aggregation):
 
         return bounds
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe and not self._count_nonfinites,
+            context=context,
         )
 
         self._field_type = field_type
@@ -545,7 +547,7 @@ class Count(Aggregation):
         """
         return d["count"]
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         if self._field_name is None and self._expr is None:
             return [{"$count": "count"}]
 
@@ -555,6 +557,7 @@ class Count(Aggregation):
             expr=self._expr,
             safe=self._safe,
             unwind=self._unwind,
+            context=context,
         )
 
         if not sample_collection._contains_videos() or path != "frames":
@@ -726,12 +729,13 @@ class CountValues(Aggregation):
 
         return {p(i["k"]): i["count"] for i in d["result"]}
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            context=context,
         )
 
         self._field_type = field_type
@@ -925,12 +929,13 @@ class Distinct(Aggregation):
 
         return values
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            context=context,
         )
 
         self._field_type = field_type
@@ -1060,7 +1065,10 @@ class FacetAggregations(Aggregation):
         """
         data = {}
         for key, agg in self._aggregations.items():
-            data[key] = agg.parse_result(d[self._get_key(agg)][0])
+            try:
+                data[key] = agg.parse_result(d[self._get_key(agg)][0])
+            except:
+                data[key] = agg.default_result()
 
         if self._is_dict:
             return data
@@ -1071,20 +1079,20 @@ class FacetAggregations(Aggregation):
 
         return results
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, _, _ = _parse_field_and_expr(
-            sample_collection, self._field_name
+            sample_collection, self._field_name, context=context
         )
         self._path = path
 
         facets = {}
         pipeline += [{"$facet": facets}]
         for agg in self._aggregations.values():
-            facets[self._get_key(agg)] = [
-                stage
-                for stage in agg.to_mongo(sample_collection)
-                if "$unwind" not in stage
-            ]
+            facets[self._get_key(agg)] = []
+            for stage in agg.to_mongo(
+                sample_collection, context=self.field_name
+            ):
+                facets[self._get_key(agg)].append(stage)
 
         return pipeline
 
@@ -1245,9 +1253,12 @@ class HistogramValues(Aggregation):
 
         return self._parse_result_edges(d)
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            context=context,
         )
 
         self._field_type = field_type
@@ -1477,12 +1488,13 @@ class Mean(Aggregation):
         """
         return d["mean"]
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            context=context,
         )
 
         if id_to_str:
@@ -1613,12 +1625,13 @@ class Quantiles(Aggregation):
 
         return d["quantiles"]
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            context=context,
         )
 
         if id_to_str:
@@ -1762,12 +1775,13 @@ class Std(Aggregation):
         """
         return d["std"]
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            context=context,
         )
 
         if id_to_str:
@@ -1874,12 +1888,13 @@ class Sum(Aggregation):
         """
         return d["sum"]
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            context=context,
         )
 
         if id_to_str:
@@ -2080,7 +2095,7 @@ class Values(Aggregation):
 
         return values
 
-    def to_mongo(self, sample_collection, big_field="values"):
+    def to_mongo(self, sample_collection, big_field="values", context=None):
         (
             path,
             pipeline,
@@ -2093,6 +2108,7 @@ class Values(Aggregation):
             expr=self._expr,
             unwind=self._unwind,
             allow_missing=self._allow_missing,
+            context=context,
         )
 
         self._big_field = big_field
@@ -2188,6 +2204,7 @@ def _parse_field_and_expr(
     safe=False,
     unwind=True,
     allow_missing=False,
+    context=None,
 ):
     # unwind can be {True, False, -1}
     auto_unwind = unwind != False
@@ -2256,6 +2273,17 @@ def _parse_field_and_expr(
     if id_to_str or type(field_type) in fof._PRIMITIVE_FIELDS:
         field_type = None
 
+    if context:
+        if is_frame_field:
+            context = ".".join(context.split(".")[1:])
+
+        unwind_list_fields = list(
+            filter(lambda f: not context.startswith(f), unwind_list_fields)
+        )
+        other_list_fields = list(
+            filter(lambda f: not context.startswith(f), other_list_fields)
+        )
+
     if keep_top_level:
         if is_frame_field:
             if not root:
@@ -2272,15 +2300,17 @@ def _parse_field_and_expr(
         pipeline.append({"$project": {path: True}})
     elif auto_unwind:
         if is_frame_field:
-            pipeline.append({"$unwind": "$frames"})
-            if not root:
+            if context is None:
+                pipeline.append({"$unwind": "$frames"})
+
+            if not root and not context:
                 pipeline.extend(
                     [
                         {"$project": {"frames." + path: True}},
                         {"$replaceRoot": {"newRoot": "$frames"}},
                     ]
                 )
-        else:
+        elif not context:
             pipeline.append({"$project": {path: True}})
     elif unwind_list_fields:
         pipeline.append({"$project": {path: True}})

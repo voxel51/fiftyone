@@ -7762,10 +7762,16 @@ class SampleCollection(object):
         # Parse facet-able results
         for idx, aggregation in compiled_facet_aggs.items():
             result = list(_results[idx_map[idx]])
-            for idx, d in self._parse_faceted_result(
-                aggregation, result
-            ).items():
-                results[idx] = d
+            data = self._parse_faceted_result(aggregation, result)
+            if (
+                isinstance(aggregation, foa.FacetAggregations)
+                and aggregation._compiled
+            ):
+                for idx, d in data.items():
+                    results[idx] = d
+
+            else:
+                results[idx] = data
 
         return results[0] if scalar_result else results
 
@@ -7869,6 +7875,8 @@ class SampleCollection(object):
         for idx, aggregation in aggs_map.items():
             if aggregation.field_name is None:
                 compiled[idx] = aggregation
+                continue
+
             keys = aggregation.field_name.split(".")
             path = ""
             subfield_name = keys[-1]
