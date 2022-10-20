@@ -148,6 +148,66 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(classes, dataset2.info["classes"])
 
     @drop_datasets
+    def test_dataset_field_metadata(self):
+        dataset_name = self.test_dataset_info.__name__
+
+        dataset = fo.Dataset(dataset_name)
+
+        dataset.add_sample_field("field1", fo.StringField)
+        field = dataset.get_field("field1")
+        self.assertIsNone(field.description)
+
+        dataset.add_sample_field("field2", fo.StringField, description="test")
+        field = dataset.get_field("field2")
+        self.assertEqual(field.description, "test")
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", bounding_box=[0, 0, 1, 1]),
+                ]
+            ),
+        )
+        dataset.add_sample(sample)
+        field = dataset.get_field("ground_truth.detections.label")
+        self.assertIsNone(field.description)
+
+        dataset.set_field_metadata(
+            "ground_truth.detections.label", description="test"
+        )
+        field = dataset.get_field("ground_truth.detections.label")
+        self.assertEqual(field.description, "test")
+
+        # Non-existent field
+        with self.assertRaises(Exception):
+            dataset.set_field_metadata("foo", description="bar")
+
+        # Non-existent attribute
+        with self.assertRaises(Exception):
+            dataset.set_field_metadata(
+                "ground_truth.detections.foo", description="bar"
+            )
+
+        # Non-existent metadata key
+        with self.assertRaises(Exception):
+            dataset.set_field_metadata("ground_truth", foo="bar")
+
+        # Bad metadata value
+        with self.assertRaises(Exception):
+            dataset.set_field_metadata("ground_truth", description=False)
+
+        dataset.set_field_metadata(
+            "ground_truth.detections.label", description=None
+        )
+        field = dataset.get_field("ground_truth.detections.label")
+        self.assertIsNone(field.description)
+
+        dataset.set_field_metadata("field2", description=None)
+        field = dataset.get_field("field2")
+        self.assertIsNone(field.description)
+
+    @drop_datasets
     def test_dataset_app_config(self):
         dataset_name = self.test_dataset_app_config.__name__
 
