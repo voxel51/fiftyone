@@ -967,7 +967,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
     def __init__(self, document_type, description=None, **kwargs):
         super().__init__(document_type, **kwargs)
-        self.description = None
+        self.description = description
         self.fields = kwargs.get("fields", [])
 
         self._selected_fields = None

@@ -191,6 +191,7 @@ def get_field_kwargs(field):
         "ftype": type(field),
         "fields": fields,
         "db_field": field.db_field,
+        "description": field.description,
     }
 
     if isinstance(field, (fof.ListField, fof.DictField)):
@@ -287,6 +288,7 @@ def _get_field_kwargs(value, field, dynamic):
     kwargs = {
         "ftype": type(field),
         "db_field": field.db_field,
+        "description": field.description,
     }
 
     if isinstance(field, (fof.ListField, fof.DictField)):
