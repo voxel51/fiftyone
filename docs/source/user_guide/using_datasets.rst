@@ -280,6 +280,65 @@ Datasets can also store more specific types of ancillary information such as
     the dataset's :meth:`info <fiftyone.core.dataset.Dataset.info>` property
     in-place to save the changes to the database.
 
+.. _storing-field-metadata:
+
+Storing field metadata
+----------------------
+
+You can store metadata such as descriptions on the :ref:`fields <using-fields>`
+of your dataset.
+
+One approach is to manually declare the field with
+:ref:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>` with
+the appropriate metadata provided:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+    dataset.add_sample_field(
+        "int_field", fo.IntField, description="An integer field"
+    )
+
+    field = dataset.get_field("int_field")
+    print(field.description)  # An integer field
+
+You can also use
+:ref:`set_field_metadata() <fiftyone.core.dataset.Dataset.set_field_metadata>`
+to update a field's metadata at any time:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.add_dynamic_sample_fields()
+
+    dataset.set_field_metadata(
+        "ground_truth",
+        description="Ground truth annotations",
+    )
+
+    dataset.set_field_metadata(
+        "ground_truth.detections.area",
+        description="Area of the box, in pixels^2",
+    )
+
+    field = dataset.get_field("ground_truth")
+    print(field.description)  # Ground truth annotations
+
+    field = dataset.get_field("ground_truth.detections.area")
+    print(field.description)  # Area of the box, in pixels^2
+
+.. note::
+
+    Did you know? You can view/edit field metadata directly
+    :ref:`in the App <fiftyone-app>`!
+
 .. _custom-app-config:
 
 Custom App config

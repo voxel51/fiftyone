@@ -674,7 +674,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             dataset.set_field_metadata(
                 "ground_truth.detections.area",
-                description="The area of the box, in pixels^2",
+                description="Area of the box, in pixels^2",
             )
 
             field = dataset.get_field("ground_truth")
