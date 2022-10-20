@@ -122,10 +122,6 @@ class _PatchesView(fov.DatasetView):
         return self._source_collection._root_dataset
 
     @property
-    def _is_frames(self):
-        return self._source_collection._is_frames
-
-    @property
     def _stages(self):
         return self.__stages
 
@@ -149,50 +145,12 @@ class _PatchesView(fov.DatasetView):
         raise NotImplementedError("subclass must implement _label_fields")
 
     @property
-    def _element_str(self):
-        return "patch"
-
-    @property
-    def _elements_str(self):
-        return "patches"
-
-    @property
     def name(self):
         return self.dataset_name + "-patches"
 
     @property
     def media_type(self):
         return fom.IMAGE
-
-    def _get_default_sample_fields(
-        self, path=None, include_private=False, use_db_fields=False
-    ):
-        fields = super()._get_default_sample_fields(
-            path=path,
-            include_private=include_private,
-            use_db_fields=use_db_fields,
-        )
-
-        if path is not None:
-            return fields
-
-        extras = ["_sample_id" if use_db_fields else "sample_id"]
-
-        if self._is_frames:
-            extras.append("_frame_id" if use_db_fields else "frame_id")
-            extras.append("frame_number")
-
-        return fields + tuple(extras)
-
-    def _get_default_indexes(self, frames=False):
-        if frames:
-            return super()._get_default_indexes(frames=frames)
-
-        names = ["id", "filepath", "sample_id"]
-        if self._is_frames:
-            names.extend(["frame_id", "_sample_id_1_frame_number_1"])
-
-        return names
 
     def set_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
@@ -510,7 +468,7 @@ def make_patches_dataset(
         sample_collection, field, keep_label_lists
     )
 
-    dataset = fod.Dataset(name=name, _patches=True)
+    dataset = fod.Dataset(name=name, _patches=True, _frames=is_frame_patches)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
@@ -642,7 +600,7 @@ def make_evaluation_patches_dataset(
     _pred_field = sample_collection.get_field(pred_field)
 
     # Setup dataset with correct schema
-    dataset = fod.Dataset(name=name, _patches=True)
+    dataset = fod.Dataset(name=name, _patches=True, _frames=is_frame_patches)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")

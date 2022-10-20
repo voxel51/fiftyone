@@ -751,11 +751,9 @@ class ExcludeFields(ViewStage):
         if self._allow_missing:
             return
 
-        dataset = sample_collection._dataset
-
         # Validate that all root fields exist
         # Using dataset here allows a field to be excluded multiple times
-        dataset.validate_fields_exist(self.field_names)
+        sample_collection._dataset.validate_fields_exist(self.field_names)
 
         if sample_collection._contains_videos():
             paths, frame_paths = fou.split_frame_fields(self.field_names)
@@ -766,7 +764,7 @@ class ExcludeFields(ViewStage):
         if paths:
             defaults = set()
             for root, _paths in _parse_paths(paths).items():
-                default_fields = dataset._get_default_sample_fields(
+                default_fields = sample_collection._get_default_sample_fields(
                     path=root, include_private=True
                 )
                 defaults.update(_paths & set(default_fields))
@@ -777,7 +775,7 @@ class ExcludeFields(ViewStage):
         if frame_paths:
             defaults = set()
             for root, _paths in _parse_paths(frame_paths).items():
-                default_fields = dataset._get_default_frame_fields(
+                default_fields = sample_collection._get_default_frame_fields(
                     path=root, include_private=True
                 )
                 defaults.update(_paths & set(default_fields))
@@ -5116,11 +5114,9 @@ class SelectFields(ViewStage):
                 roots.add(path.rsplit(".", 1)[0])
 
         for path in roots:
-            # Using `_dataset` avoids a recursion error in `get_field_schema()`
             selected_paths.update(
-                sample_collection._dataset._get_default_sample_fields(
-                    path=path,
-                    include_private=True,
+                sample_collection._get_default_sample_fields(
+                    path=path, include_private=True
                 )
             )
 
@@ -5148,11 +5144,9 @@ class SelectFields(ViewStage):
                 roots.add(path.rsplit(".", 1)[0])
 
         for path in roots:
-            # Using `_dataset` avoids a recursion error in `get_field_schema()`
             selected_paths.update(
-                sample_collection._dataset._get_default_frame_fields(
-                    path=path,
-                    include_private=True,
+                sample_collection._get_default_frame_fields(
+                    path=path, include_private=True
                 )
             )
 

@@ -346,7 +346,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _is_frames(self):
-        return self._sample_collection_name.startswith("frames.")
+        return self._sample_collection_name.startswith(
+            ("frames.", "patches.frames")
+        )
 
     @property
     def _is_clips(self):
@@ -5947,7 +5949,9 @@ def _create_indexes(sample_collection_name, frame_collection_name):
 def _make_sample_collection_name(
     dataset_id, patches=False, frames=False, clips=False
 ):
-    if patches:
+    if patches and frames:
+        prefix = "patches.frames"
+    elif patches:
         prefix = "patches"
     elif frames:
         prefix = "frames"

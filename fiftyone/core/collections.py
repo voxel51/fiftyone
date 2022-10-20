@@ -246,12 +246,24 @@ class SampleCollection(object):
         if self.media_type == fom.GROUP:
             return "group"
 
+        if self._is_patches:
+            return "patch"
+
+        if self._is_clips:
+            return "clip"
+
         return "sample"
 
     @property
     def _elements_str(self):
         if self.media_type == fom.GROUP:
             return "groups"
+
+        if self._is_patches:
+            return "patches"
+
+        if self._is_clips:
+            return "clips"
 
         return "samples"
 
@@ -880,8 +892,27 @@ class SampleCollection(object):
             include_private=include_private, use_db_fields=use_db_fields
         )
 
+        if self._is_patches:
+            extras = ["_sample_id" if use_db_fields else "sample_id"]
+
+            if self._is_frames:
+                extras.append("_frame_id" if use_db_fields else "frame_id")
+                extras.append("frame_number")
+
+            field_names += tuple(extras)
+        elif self._is_frames:
+            if use_db_fields:
+                field_names += ("_sample_id", "frame_number")
+            else:
+                field_names += ("sample_id", "frame_number")
+        elif self._is_clips:
+            if use_db_fields:
+                field_names += ("_sample_id", "support")
+            else:
+                field_names += ("sample_id", "support")
+
         if self.media_type == fom.GROUP:
-            return field_names + (self.group_field,)
+            field_names += (self.group_field,)
 
         return field_names
 
@@ -1805,7 +1836,8 @@ class SampleCollection(object):
             path = field_name + "." + list_field
 
             # pylint: disable=no-member
-            if path in self._get_filtered_fields():
+            filtered_fields = self._get_filtered_fields()
+            if filtered_fields is not None and path in filtered_fields:
                 msg = (
                     "Detected a label list field '%s' with filtered elements; "
                     "only the list elements will be updated"
@@ -7746,6 +7778,24 @@ class SampleCollection(object):
                 return ["id", "_sample_id_1_frame_number_1"]
 
             return []
+
+        if self._is_patches:
+            names = ["id", "filepath", "sample_id"]
+            if self._is_frames:
+                names.extend(["frame_id", "_sample_id_1_frame_number_1"])
+
+            return names
+
+        if self._is_frames:
+            return [
+                "id",
+                "filepath",
+                "sample_id",
+                "_sample_id_1_frame_number_1",
+            ]
+
+        if self._is_clips:
+            return ["id", "filepath", "sample_id"]
 
         return ["id", "filepath"]
 

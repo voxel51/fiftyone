@@ -1113,11 +1113,13 @@ class DatasetView(foc.SampleCollection):
         return d
 
     def _needs_frames(self):
-        if not self._dataset._has_frame_fields():
+        dataset = self._dataset
+
+        if not dataset._has_frame_fields():
             return False
 
         for stage in self._stages:
-            if stage._needs_frames(self):
+            if stage._needs_frames(dataset):
                 return True
 
         return False
@@ -1387,8 +1389,9 @@ class DatasetView(foc.SampleCollection):
         selected_fields = None
         excluded_fields = None
 
+        dataset = self._dataset
         for stage in self._stages:
-            sf = stage.get_selected_fields(self, frames=frames)
+            sf = stage.get_selected_fields(dataset, frames=frames)
             if sf:
                 if roots_only:
                     sf = {f.split(".", 1)[0] for f in sf}
@@ -1398,7 +1401,7 @@ class DatasetView(foc.SampleCollection):
                 else:
                     selected_fields.intersection_update(sf)
 
-            ef = stage.get_excluded_fields(self, frames=frames)
+            ef = stage.get_excluded_fields(dataset, frames=frames)
             if ef:
                 if roots_only:
                     ef = {f for f in ef if "." not in f}
@@ -1421,8 +1424,9 @@ class DatasetView(foc.SampleCollection):
     def _get_filtered_fields(self, frames=False):
         filtered_fields = None
 
+        dataset = self._dataset
         for stage in self._stages:
-            ff = stage.get_filtered_fields(self, frames=frames)
+            ff = stage.get_filtered_fields(dataset, frames=frames)
             if ff:
                 if filtered_fields is None:
                     filtered_fields = set(ff)

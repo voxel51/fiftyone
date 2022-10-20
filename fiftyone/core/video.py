@@ -142,29 +142,6 @@ class FramesView(fov.DatasetView):
     def media_type(self):
         return fom.IMAGE
 
-    def _get_default_sample_fields(
-        self, path=None, include_private=False, use_db_fields=False
-    ):
-        fields = super()._get_default_sample_fields(
-            path=path,
-            include_private=include_private,
-            use_db_fields=use_db_fields,
-        )
-
-        if path is not None:
-            return fields
-
-        if use_db_fields:
-            return fields + ("_sample_id", "frame_number")
-
-        return fields + ("sample_id", "frame_number")
-
-    def _get_default_indexes(self, frames=False):
-        if frames:
-            return super()._get_default_indexes(frames=frames)
-
-        return ["id", "filepath", "sample_id", "_sample_id_1_frame_number_1"]
-
     def set_values(self, field_name, *args, **kwargs):
         # The `set_values()` operation could change the contents of this view,
         # so we first record the sample IDs that need to be synced

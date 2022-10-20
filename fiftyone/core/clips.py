@@ -141,43 +141,12 @@ class ClipsView(fov.DatasetView):
         )
 
     @property
-    def _element_str(self):
-        return "clip"
-
-    @property
-    def _elements_str(self):
-        return "clips"
-
-    @property
     def name(self):
         return self.dataset_name + "-clips"
 
     @property
     def media_type(self):
         return fom.VIDEO
-
-    def _get_default_sample_fields(
-        self, path=None, include_private=False, use_db_fields=False
-    ):
-        fields = super()._get_default_sample_fields(
-            path=path,
-            include_private=include_private,
-            use_db_fields=use_db_fields,
-        )
-
-        if path is not None:
-            return fields
-
-        if use_db_fields:
-            return fields + ("_sample_id", "support")
-
-        return fields + ("sample_id", "support")
-
-    def _get_default_indexes(self, frames=False):
-        if frames:
-            return super()._get_default_indexes(frames=frames)
-
-        return ["id", "filepath", "sample_id"]
 
     def set_values(self, field_name, *args, **kwargs):
         # The `set_values()` operation could change the contents of this view,

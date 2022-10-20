@@ -982,19 +982,20 @@ class FramesView(Frames):
             doc = self._make_dict(frame)
 
             # Update elements of filtered array fields separately
-            for field in self._filtered_fields:
-                root, leaf = field.split(".", 1)
-                for element in doc.pop(root, {}).get(leaf, []):
-                    ops.append(
-                        UpdateOne(
-                            {
-                                "frame_number": frame_number,
-                                "_sample_id": self._sample_id,
-                                field + "._id": element["_id"],
-                            },
-                            {"$set": {field + ".$": element}},
+            if self._filtered_fields is not None:
+                for field in self._filtered_fields:
+                    root, leaf = field.split(".", 1)
+                    for element in doc.pop(root, {}).get(leaf, []):
+                        ops.append(
+                            UpdateOne(
+                                {
+                                    "frame_number": frame_number,
+                                    "_sample_id": self._sample_id,
+                                    field + "._id": element["_id"],
+                                },
+                                {"$set": {field + ".$": element}},
+                            )
                         )
-                    )
 
             # Update non-filtered fields
             ops.append(
