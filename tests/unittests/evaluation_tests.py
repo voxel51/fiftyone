@@ -1458,16 +1458,34 @@ class DetectionsTests(unittest.TestCase):
 
         view = dataset.load_evaluation_view("eval", select_fields=True)
 
-        schema = view.get_field_schema()
+        schema = view.get_field_schema(flat=True)
+
+        self.assertIn("ground_truth", schema)
+        self.assertIn("ground_truth.detections.eval", schema)
+        self.assertIn("ground_truth.detections.eval_id", schema)
+        self.assertIn("ground_truth.detections.eval_iou", schema)
+
+        self.assertIn("predictions", schema)
+        self.assertIn("predictions.detections.eval", schema)
+        self.assertIn("predictions.detections.eval_id", schema)
+        self.assertIn("predictions.detections.eval_iou", schema)
+
         self.assertNotIn("predictions2", schema)
+        self.assertNotIn("ground_truth.detections.eval2", schema)
+        self.assertNotIn("ground_truth.detections.eval2_id", schema)
+        self.assertNotIn("ground_truth.detections.eval2_iou", schema)
+
         self.assertNotIn("eval2_tp", schema)
         self.assertNotIn("eval2_fp", schema)
         self.assertNotIn("eval2_fn", schema)
+
+        self.assertEqual(view.distinct("ground_truth.detections.eval2"), [])
 
         sample = view.last()
         detection = sample["ground_truth"].detections[0]
 
         self.assertIsNotNone(detection["eval"])
+
         with self.assertRaises(KeyError):
             detection["eval2"]
 

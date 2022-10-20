@@ -3512,6 +3512,94 @@ class DynamicFieldTests(unittest.TestCase):
         self.assertIn("predictions.detections.field", schema)
         self.assertNotIn("predictions.detections.field_copy", schema)
 
+    @drop_datasets
+    def test_select_exclude_dynamic_fields(self):
+        sample = fo.Sample(
+            filepath="video.mp4",
+            field=1,
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
+        )
+        frame = fo.Frame(
+            field=1,
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
+        )
+        sample.frames[1] = frame
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample, dynamic=True)
+
+        # Sample fields
+
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("field", schema)
+        self.assertIn("predictions.detections.field", schema)
+
+        view = dataset.select_fields("predictions.detections.label")
+        schema = view.get_field_schema(flat=True)
+        sample = view.first()
+
+        self.assertNotIn("field", schema)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertFalse(sample.has_field("field"))
+        self.assertFalse(sample.predictions.detections[0].has_field("field"))
+
+        view = dataset.exclude_fields("predictions.detections.field")
+        schema = view.get_field_schema(flat=True)
+        sample = view.first()
+
+        self.assertIn("field", schema)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertTrue(sample.has_field("field"))
+        self.assertFalse(sample.predictions.detections[0].has_field("field"))
+
+        view = dataset.select_fields("predictions").exclude_fields(
+            "predictions.detections.field"
+        )
+        schema = view.get_field_schema(flat=True)
+        sample = view.first()
+
+        self.assertNotIn("field", schema)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertFalse(sample.has_field("field"))
+        self.assertFalse(sample.predictions.detections[0].has_field("field"))
+
+        # Frame fields
+
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertIn("field", schema)
+        self.assertIn("predictions.detections.field", schema)
+
+        view = dataset.select_fields("frames.predictions.detections.label")
+        schema = view.get_frame_field_schema(flat=True)
+        frame = view.first().frames.first()
+
+        self.assertNotIn("field", schema)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertFalse(frame.has_field("field"))
+        self.assertFalse(frame.predictions.detections[0].has_field("field"))
+
+        view = dataset.exclude_fields("frames.predictions.detections.field")
+        schema = view.get_frame_field_schema(flat=True)
+        frame = view.first().frames.first()
+
+        self.assertIn("field", schema)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertTrue(frame.has_field("field"))
+        self.assertFalse(frame.predictions.detections[0].has_field("field"))
+
+        view = dataset.select_fields("frames.predictions").exclude_fields(
+            "frames.predictions.detections.field"
+        )
+        schema = view.get_frame_field_schema(flat=True)
+        frame = view.first().frames.first()
+
+        self.assertNotIn("field", schema)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertFalse(frame.has_field("field"))
+        self.assertFalse(frame.predictions.detections[0].has_field("field"))
+
 
 class CustomEmbeddedDocumentTests(unittest.TestCase):
     @drop_datasets
