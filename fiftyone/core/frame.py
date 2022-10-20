@@ -809,7 +809,9 @@ class FramesView(Frames):
 
         view = sample_view._view
 
-        sf, ef = view._get_selected_excluded_fields(frames=True)
+        sf, ef = view._get_selected_excluded_fields(
+            frames=True, roots_only=True
+        )
         ff = view._get_filtered_fields(frames=True)
 
         needs_frames = view._needs_frames()
