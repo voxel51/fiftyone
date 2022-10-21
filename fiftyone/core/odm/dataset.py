@@ -91,7 +91,7 @@ def create_field(
         if subfield is not None:
             if inspect.isclass(subfield):
                 if issubclass(subfield, EmbeddedDocumentField):
-                    subfield = subfield(document_type=embedded_doc_type)
+                    subfield = subfield(embedded_doc_type)
                 else:
                     subfield = subfield()
 
@@ -136,9 +136,7 @@ class SampleFieldDocument(EmbeddedDocument):
     ftype = StringField()
     embedded_doc_type = StringField(null=True)
     subfield = StringField(null=True)
-    fields = ListField(
-        EmbeddedDocumentField(document_type="SampleFieldDocument")
-    )
+    fields = ListField(EmbeddedDocumentField("SampleFieldDocument"))
     db_field = StringField(null=True)
     description = StringField(null=True)
 
@@ -308,7 +306,7 @@ class DatasetAppConfig(EmbeddedDocument):
     grid_media_field = StringField(default="filepath")
     modal_media_field = StringField(default="filepath")
     sidebar_groups = ListField(
-        EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
+        EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
     plugins = DictField()
 
@@ -402,21 +400,15 @@ class DatasetDocument(Document):
     default_group_slice = StringField()
     tags = ListField(StringField())
     info = DictField()
-    app_config = EmbeddedDocumentField(document_type=DatasetAppConfig)
+    app_config = EmbeddedDocumentField(DatasetAppConfig)
     classes = DictField(ClassesField())
     default_classes = ClassesField()
     mask_targets = DictField(TargetsField())
     default_mask_targets = TargetsField()
-    skeletons = DictField(
-        EmbeddedDocumentField(document_type=KeypointSkeleton)
-    )
-    default_skeleton = EmbeddedDocumentField(document_type=KeypointSkeleton)
-    sample_fields = EmbeddedDocumentListField(
-        document_type=SampleFieldDocument
-    )
-    frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
-    annotation_runs = DictField(
-        EmbeddedDocumentField(document_type=RunDocument)
-    )
-    brain_methods = DictField(EmbeddedDocumentField(document_type=RunDocument))
-    evaluations = DictField(EmbeddedDocumentField(document_type=RunDocument))
+    skeletons = DictField(EmbeddedDocumentField(KeypointSkeleton))
+    default_skeleton = EmbeddedDocumentField(KeypointSkeleton)
+    sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
+    frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
+    annotation_runs = DictField(EmbeddedDocumentField(RunDocument))
+    brain_methods = DictField(EmbeddedDocumentField(RunDocument))
+    evaluations = DictField(EmbeddedDocumentField(RunDocument))

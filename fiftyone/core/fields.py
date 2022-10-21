@@ -225,7 +225,7 @@ def _flatten(
 
 
 class Field(mongoengine.fields.BaseField):
-    """Base class for :class:`fiftyone.core.sample.Sample` fields.
+    """A generic field.
 
     Args:
         description (None): an optional description
@@ -233,10 +233,14 @@ class Field(mongoengine.fields.BaseField):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def __str__(self):
         return etau.get_class_name(self)
+
+    @property
+    def description(self):
+        return self._description
 
     def copy(self):
         return deepcopy(self)
@@ -251,7 +255,7 @@ class IntField(mongoengine.fields.IntField, Field):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def to_mongo(self, value):
         if value is None:
@@ -269,7 +273,7 @@ class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def to_mongo(self, value):
         if value is None:
@@ -293,7 +297,7 @@ class UUIDField(mongoengine.fields.UUIDField, Field):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
 
 class BooleanField(mongoengine.fields.BooleanField, Field):
@@ -305,7 +309,7 @@ class BooleanField(mongoengine.fields.BooleanField, Field):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def validate(self, value):
         if not isinstance(value, (bool, np.bool_)):
@@ -321,7 +325,7 @@ class DateField(mongoengine.fields.DateField, Field):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def to_mongo(self, value):
         if value is None:
@@ -352,7 +356,7 @@ class DateTimeField(mongoengine.fields.DateTimeField, Field):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def validate(self, value):
         if not isinstance(value, datetime):
@@ -368,7 +372,7 @@ class FloatField(mongoengine.fields.FloatField, Field):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def to_mongo(self, value):
         if value is None:
@@ -400,7 +404,7 @@ class StringField(mongoengine.fields.StringField, Field):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
 
 class ListField(mongoengine.fields.ListField, Field):
@@ -424,7 +428,7 @@ class ListField(mongoengine.fields.ListField, Field):
                 )
 
         super().__init__(field=field, **kwargs)
-        self.description = description
+        self._description = description
 
     def __str__(self):
         if self.field is not None:
@@ -452,7 +456,7 @@ class HeatmapRangeField(ListField):
             kwargs["field"] = FloatField()
 
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -486,7 +490,7 @@ class DictField(mongoengine.fields.DictField, Field):
                 )
 
         super().__init__(field=field, **kwargs)
-        self.description = description
+        self._description = description
 
     def __str__(self):
         if self.field is not None:
@@ -556,7 +560,7 @@ class KeypointsField(ListField):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(field=None, **kwargs)
-        self.description = description
+        self._description = description
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -581,7 +585,7 @@ class PolylinePointsField(ListField):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(field=None, **kwargs)
-        self.description = description
+        self._description = description
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -618,7 +622,7 @@ class _GeoField(Field):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def to_mongo(self, value):
         if isinstance(value, dict):
@@ -646,7 +650,7 @@ class GeoPointField(_GeoField, mongoengine.fields.PointField):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def validate(self, value):
         if isinstance(value, dict):
@@ -670,7 +674,7 @@ class GeoLineStringField(_GeoField, mongoengine.fields.LineStringField):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def validate(self, value):
         if isinstance(value, dict):
@@ -701,7 +705,7 @@ class GeoPolygonField(_GeoField, mongoengine.fields.PolygonField):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def validate(self, value):
         if isinstance(value, dict):
@@ -725,7 +729,7 @@ class GeoMultiPointField(_GeoField, mongoengine.fields.MultiPointField):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def validate(self, value):
         if isinstance(value, dict):
@@ -755,7 +759,7 @@ class GeoMultiLineStringField(
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def validate(self, value):
         if isinstance(value, dict):
@@ -791,7 +795,7 @@ class GeoMultiPolygonField(_GeoField, mongoengine.fields.MultiPolygonField):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def validate(self, value):
         if isinstance(value, dict):
@@ -814,7 +818,7 @@ class VectorField(mongoengine.fields.BinaryField, Field):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def to_mongo(self, value):
         if value is None:
@@ -853,7 +857,7 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def to_mongo(self, value):
         if value is None:
@@ -882,7 +886,7 @@ class FrameNumberField(IntField):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def validate(self, value):
         try:
@@ -903,7 +907,7 @@ class FrameSupportField(ListField):
             kwargs["field"] = IntField()
 
         super().__init__(**kwargs)
-        self.description = description
+        self._description = description
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -931,7 +935,7 @@ class ClassesField(ListField):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(field=StringField(), **kwargs)
-        self.description = description
+        self._description = description
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -949,7 +953,7 @@ class TargetsField(IntDictField):
 
     def __init__(self, description=None, **kwargs):
         super().__init__(field=StringField(), **kwargs)
-        self.description = description
+        self._description = description
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -967,9 +971,9 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
     def __init__(self, document_type, description=None, **kwargs):
         super().__init__(document_type, **kwargs)
-        self.description = description
         self.fields = kwargs.get("fields", [])
 
+        self._description = description
         self._selected_fields = None
         self._excluded_fields = None
         self.__fields = None
@@ -1166,9 +1170,9 @@ class EmbeddedDocumentListField(
         description (None): an optional description
     """
 
-    def __init__(self, description=None, **kwargs):
-        super().__init__(**kwargs)
-        self.description = description
+    def __init__(self, document_type, description=None, **kwargs):
+        super().__init__(document_type, **kwargs)
+        self._description = description
 
     def __str__(self):
         # pylint: disable=no-member
