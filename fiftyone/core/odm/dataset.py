@@ -11,23 +11,27 @@ import eta.core.utils as etau
 
 from fiftyone.core.fields import (
     Field,
-    ArrayField,
     BooleanField,
     ClassesField,
     DateTimeField,
     DictField,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
+    FloatField,
     IntField,
     ListField,
     ObjectIdField,
     StringField,
     TargetsField,
 )
+import fiftyone.core.utils as fou
 
 from .document import Document
 from .embedded_document import EmbeddedDocument, BaseEmbeddedDocument
 from .runs import RunDocument
+
+fol = fou.lazy_import("fiftyone.core.labels")
+fom = fou.lazy_import("fiftyone.core.metadata")
 
 
 def create_field(
@@ -218,8 +222,9 @@ class SidebarGroupDocument(EmbeddedDocument):
 
     Args:
         name: the name of the sidebar group
-        paths: the list of ``field`` or ``embedded.field.name`` paths in the
-            group
+        paths ([]): the list of ``field`` or ``embedded.field.name`` paths in
+            the group
+        expanded (None): whether this group should be expanded by default
     """
 
     # strict=False lets this class ignore unknown fields from other versions
@@ -227,6 +232,7 @@ class SidebarGroupDocument(EmbeddedDocument):
 
     name = StringField(required=True)
     paths = ListField(StringField(), default=[])
+    expanded = BooleanField()
 
 
 class KeypointSkeleton(EmbeddedDocument):
@@ -307,6 +313,23 @@ class DatasetAppConfig(EmbeddedDocument):
     )
     plugins = DictField()
 
+    @staticmethod
+    def default(sample_collection):
+        """Generates a default App config for the given collection.
+
+        Args:
+            sample_collection: a
+                :class:`fiftyone.core.collections.SampleCollection`
+
+        Returns:
+            a :class:`DatasetAppConfig`
+        """
+        sidebar_groups = _make_default_sidebar_groups(sample_collection)
+
+        app_config = sample_collection.app_config.copy()
+        app_config.sidebar_groups = sidebar_groups
+        return app_config
+
     def is_custom(self):
         """Determines whether this app config differs from the default one.
 
@@ -352,6 +375,128 @@ class DatasetAppConfig(EmbeddedDocument):
     def _rename_paths(self, paths, new_paths):
         for path, new_path in zip(paths, new_paths):
             self._rename_path(path, new_path)
+
+
+def _make_default_sidebar_groups(sample_collection):
+    # Possible sidebar groups
+    metadata = []
+    labels = []
+    frame_labels = []
+    custom = []
+    primitives = []
+    other = []
+    unsupported = []
+
+    # Parse sample fields
+    schema = sample_collection.get_field_schema()
+    _parse_schema(
+        schema,
+        metadata,
+        labels,
+        frame_labels,
+        custom,
+        primitives,
+        other,
+        unsupported,
+    )
+
+    # Parse frame fields
+    if sample_collection._contains_videos():
+        schema = sample_collection.get_frame_field_schema()
+        _parse_schema(
+            schema,
+            metadata,
+            labels,
+            frame_labels,
+            custom,
+            primitives,
+            other,
+            unsupported,
+            frames=True,
+        )
+
+    sidebar_groups = [
+        SidebarGroupDocument(name="tags", expanded=True),
+        SidebarGroupDocument(name="label tags", expanded=True),
+        SidebarGroupDocument(name="metadata", paths=metadata, expanded=False),
+        SidebarGroupDocument(name="labels", paths=labels, expanded=True),
+    ]
+
+    if frame_labels:
+        sidebar_groups.append(
+            SidebarGroupDocument(
+                name="frame labels", paths=frame_labels, expanded=True
+            )
+        )
+
+    for name, paths in custom:
+        sidebar_groups.append(
+            SidebarGroupDocument(name=name, paths=paths, expanded=False)
+        )
+
+    sidebar_groups.append(
+        SidebarGroupDocument(
+            name="primitives", paths=primitives, expanded=False
+        )
+    )
+
+    if other:
+        sidebar_groups.append(
+            SidebarGroupDocument(name="other", paths=other, expanded=False)
+        )
+
+    if unsupported:
+        sidebar_groups.append(
+            SidebarGroupDocument(
+                name="unsupported", paths=unsupported, expanded=False
+            )
+        )
+
+    return sidebar_groups
+
+
+def _parse_schema(
+    schema,
+    metadata,
+    labels,
+    frame_labels,
+    custom,
+    primitives,
+    other,
+    unsupported,
+    frames=False,
+):
+    for name, field in schema.items():
+        if frames:
+            name = "frames." + name
+        else:
+            if name == "tags":
+                continue
+
+        if isinstance(field, EmbeddedDocumentField):
+            if issubclass(field.document_type, fol.Label):
+                if frames:
+                    frame_labels.append(name)
+                else:
+                    labels.append(name)
+            else:
+                paths = [
+                    name + "." + n for n in field.get_field_schema().keys()
+                ]
+                if issubclass(field.document_type, fom.Metadata):
+                    metadata.extend(paths)
+                else:
+                    custom.append((name, paths))
+        elif isinstance(
+            field,
+            (ObjectIdField, IntField, FloatField, StringField, BooleanField),
+        ):
+            if frames:
+                other.append(name)
+            else:
+                primitives.append(name)
+        else:
+            unsupported.append(name)
 
 
 def _delete_path(paths, path):
