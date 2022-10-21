@@ -1523,7 +1523,7 @@ class Schema(Aggregation):
     document field across all samples in a collection.
 
     Schema aggregations are useful for detecting the presence and types of
-    dynamic attributes of :class:`fiftyone.core.labels.Label` fields in across
+    dynamic attributes of :class:`fiftyone.core.labels.Label` fields across
     a collection.
 
     Examples::

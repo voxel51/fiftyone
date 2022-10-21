@@ -6610,7 +6610,7 @@ class SampleCollection(object):
         embedded document field across all samples in the collection.
 
         Schema aggregations are useful for detecting the presence and types of
-        dynamic attributes of :class:`fiftyone.core.labels.Label` fields in
+        dynamic attributes of :class:`fiftyone.core.labels.Label` fields
         across a collection.
 
         Examples::
