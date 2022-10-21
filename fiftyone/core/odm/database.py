@@ -7,7 +7,6 @@ Database utilities.
 """
 import atexit
 from datetime import datetime
-import itertools
 import logging
 from multiprocessing.pool import ThreadPool
 import os
@@ -457,7 +456,7 @@ def drop_orphan_views(dry_run=False):
 
     view_ids_in_use = set()
     for dataset_dict in conn.datasets.find({}):
-        view_ids = _get_view_ids(conn, dataset_dict)
+        view_ids = _get_view_ids(dataset_dict)
         view_ids_in_use.update(view_ids)
 
     all_view_ids = set(conn.views.distinct("_id"))
@@ -492,7 +491,7 @@ def drop_orphan_runs(dry_run=False):
     run_ids_in_use = set()
     result_ids_in_use = set()
     for dataset_dict in conn.datasets.find({}):
-        run_ids = _get_run_ids(conn, dataset_dict)
+        run_ids = _get_run_ids(dataset_dict)
         run_ids_in_use.update(run_ids)
 
         result_ids = _get_result_ids(conn, dataset_dict)
@@ -804,14 +803,14 @@ def delete_dataset(name, dry_run=False):
         if not dry_run:
             conn.drop_collection(frame_collection_name)
 
-    view_ids = _get_view_ids(conn, dataset_dict)
+    view_ids = _get_view_ids(dataset_dict)
 
     if view_ids:
         _logger.info("Deleting %d saved view(s)", len(view_ids))
         if not dry_run:
             _delete_views(conn, view_ids)
 
-    run_ids = _get_run_ids(conn, dataset_dict)
+    run_ids = _get_run_ids(dataset_dict)
     result_ids = _get_result_ids(conn, dataset_dict)
 
     if run_ids:
@@ -1078,11 +1077,20 @@ def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
         conn.datasets.replace_one({"name": dataset_name}, dataset_dict)
 
 
-def _get_view_ids(conn, dataset_dict):
-    return list(dataset_dict.get("views", {}).values())
+def _get_view_ids(dataset_dict):
+    view_ids = []
+
+    for view_doc_or_id in dataset_dict.get("views", []):
+        # View docs used to be stored directly in `dataset_dict`.
+        # Such data could be encountered here because datasets are lazily
+        # migrated
+        if isinstance(view_doc_or_id, ObjectId):
+            view_ids.append(view_doc_or_id)
+
+    return view_ids
 
 
-def _get_run_ids(conn, dataset_dict):
+def _get_run_ids(dataset_dict):
     run_ids = []
 
     for runs_field in _RUNS_FIELDS:
