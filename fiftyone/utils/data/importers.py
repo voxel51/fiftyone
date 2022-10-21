@@ -11,7 +11,7 @@ import logging
 import os
 import random
 
-from bson import json_util, ObjectId
+from bson import json_util
 import cv2
 
 import eta.core.datasets as etad
