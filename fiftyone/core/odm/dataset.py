@@ -23,7 +23,6 @@ from fiftyone.core.fields import (
     IntField,
     ListField,
     ObjectIdField,
-    ReferenceField,
     StringField,
     TargetsField,
 )
@@ -515,7 +514,7 @@ class DatasetDocument(Document):
         document_type=SampleFieldDocument
     )
     frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
-    annotation_runs = DictField(ReferenceField(RunDocument))
-    brain_methods = DictField(ReferenceField(RunDocument))
-    evaluations = DictField(ReferenceField(RunDocument))
-    views = ListField(ReferenceField(ViewDocument))
+    annotation_runs = DictField(EmbeddedDocumentField(RunDocument))
+    brain_methods = DictField(EmbeddedDocumentField(RunDocument))
+    evaluations = DictField(EmbeddedDocumentField(RunDocument))
+    views = ListField(EmbeddedDocumentField(ViewDocument))
