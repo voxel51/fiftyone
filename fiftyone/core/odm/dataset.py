@@ -305,6 +305,9 @@ class DatasetAppConfig(EmbeddedDocument):
                 options
     """
 
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"strict": False}
+
     media_fields = ListField(StringField(), default=["filepath"])
     grid_media_field = StringField(default="filepath")
     modal_media_field = StringField(default="filepath")
