@@ -13,14 +13,14 @@ from fiftyone.core.fields import (
     StringField,
 )
 
-from .document import Document
+from .embedded_document import EmbeddedDocument
 
 
-class ViewDocument(Document):
+class ViewDocument(EmbeddedDocument):
     """Backing document for dataset views."""
 
     # strict=False lets this class ignore unknown fields from other versions
-    meta = {"collection": "views", "strict": False}
+    meta = {"strict": False}
 
     _EDITABLE_FIELDS = ("name", "color", "description")
 
