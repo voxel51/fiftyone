@@ -139,14 +139,14 @@ async def aggregate_resolver(
     for aggs in aggregations:
         flattened += aggs
 
-    result = await view._async_aggregate(aggregations)
+    result = await view._async_aggregate(flattened)
     results = []
     offset = 0
     for length, deserialize in zip(counts, deserializers):
-        results.append(deserialize(result[offset:length]))
+        results.append(deserialize(result[offset : length + offset]))
         offset += length
 
-    if form.mixed and not form.path and False:
+    if form.mixed and "" in form.paths:
         slice_view = fosv.get_view(
             form.dataset,
             stages=form.view,
@@ -157,9 +157,12 @@ async def aggregate_resolver(
             ),
         )
 
-        resolve.append(slice_view._async_aggregate(foa.Count()))
+        for result in results:
+            if isinstance(result, RootAggregation):
+                result.slice = await slice_view._async_aggregate(foa.Count())
+                break
 
-    return result
+    return results
 
 
 RESULT_MAPPING = {
@@ -175,7 +178,7 @@ RESULT_MAPPING = {
 }
 
 
-async def _resolve_path_aggregation(
+def _resolve_path_aggregation(
     path: str, view: foc.SampleCollection
 ) -> AggregateResult:
     aggregations: t.List[foa.Aggregation] = [foa.Count(path if path else None)]
@@ -248,7 +251,7 @@ async def _resolve_path_aggregation(
             if "exists" not in data:
                 data["exists"] = data["count"]
 
-            return from_dict(cls, data, config=Config(check_types=False))
+        return from_dict(cls, data, config=Config(check_types=False))
 
     return aggregations, from_results
 

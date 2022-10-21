@@ -108,16 +108,16 @@ export const aggregationsTick = atom<number>({
 });
 
 export const aggregationQuery = graphQLSelectorFamily<
-  VariablesOf<foq.aggregationQuery>,
-  { extended: boolean; modal: boolean; path: string },
-  ResponseFrom<foq.aggregationQuery>
+  VariablesOf<foq.aggregateQuery>,
+  { extended: boolean; modal: boolean; paths: string[] },
+  ResponseFrom<foq.aggregateQuery>
 >({
   key: "aggregationQuery",
   environment: RelayEnvironmentKey,
   mapResponse: (response) => response,
   query: foq.aggregation,
   variables:
-    ({ extended, modal, path }) =>
+    ({ extended, modal, paths }) =>
     ({ get }) => {
       const mixed = get(groupStatistics(modal)) === "group";
 
@@ -130,7 +130,7 @@ export const aggregationQuery = graphQLSelectorFamily<
             : null,
           groupId: modal && mixed ? get(groupId) : null,
           hiddenLabels: get(selectors.hiddenLabelsArray),
-          path,
+          paths,
           mixed,
           sampleIds: modal && !mixed ? [get(sidebarSampleId)] : [],
           slice: get(currentSlice(modal)),
@@ -140,17 +140,35 @@ export const aggregationQuery = graphQLSelectorFamily<
     },
 });
 
-export const aggregation = selectorFamily({
-  key: "aggregation",
+export const aggregations = selectorFamily({
+  key: "aggregations",
   get:
-    (params: { extended: boolean; modal: boolean; path: string }) =>
+    (params: { extended: boolean; modal: boolean; paths: string[] }) =>
     ({ get }) => {
       let extended = params.extended;
       if (extended && !get(filterAtoms.hasFilters(params.modal))) {
         extended = false;
       }
 
-      return get(aggregationQuery({ ...params, extended }));
+      return get(aggregationQuery({ ...params, extended })).aggregate;
+    },
+});
+
+export const aggregation = selectorFamily({
+  key: "aggregation",
+  get:
+    ({
+      path,
+      ...params
+    }: {
+      extended: boolean;
+      modal: boolean;
+      path: string;
+    }) =>
+    ({ get }) => {
+      return get(
+        aggregations({ ...params, paths: get(schemaAtoms.filterFields(path)) })
+      ).filter((data) => data.path === path)[0];
     },
 });
 
@@ -164,10 +182,7 @@ export const noneCount = selectorFamily<
     ({ get }) => {
       const data = get(aggregation(params));
       const parent = params.path.split(".").slice(0, -1).join(".");
-      return (
-        (get(count({ ...params, path: parent })) as number) -
-        data.aggregation.count
-      );
+      return (get(count({ ...params, path: parent })) as number) - data.count;
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -188,9 +203,7 @@ export const labelTagCounts = selectorFamily<
       const result = {};
 
       for (let i = 0; i < data.length; i++) {
-        const {
-          aggregation: { values },
-        } = data[i];
+        const { values } = data[i];
         for (let j = 0; j < values.length; j++) {
           const { value, count } = values[j];
           if (!result[value]) {
@@ -217,7 +230,7 @@ export const sampleTagCounts = selectorFamily<
     (params) =>
     ({ get }) =>
       Object.fromEntries(
-        get(aggregation({ ...params, path: "tags" })).aggregation.values.map(
+        get(aggregation({ ...params, path: "tags" })).values.map(
           ({ value, count }) => [value, count]
         )
       ),
@@ -252,9 +265,7 @@ export const stringCountResults = selectorFamily<
         };
       }
 
-      let {
-        aggregation: { values, count },
-      } = get(aggregation(params));
+      let { values, count } = get(aggregation(params));
 
       const results: [string | null, number][] = values.map(
         ({ count, value }) => [value, count]
@@ -286,10 +297,10 @@ export const booleanCountResults = selectorFamily<
     ({ get }) => {
       const data = get(aggregation(params));
       return {
-        count: data.aggregation.false + data.aggregation.true,
+        count: data.false + data.true,
         results: [
-          [false, data.aggregation.false],
-          [true, data.aggregation.true],
+          [false, data.false],
+          [true, data.true],
           [null, get(noneCount(params))],
         ],
       };
@@ -310,7 +321,7 @@ export const labelCount = selectorFamily<
         schemaAtoms.activeLabelPaths({ modal: params.modal })
       )) {
         const data = get(aggregation({ ...params, path }));
-        sum += data.aggregation.count;
+        sum += data.count;
       }
 
       return sum;
@@ -328,7 +339,7 @@ export const values = selectorFamily<
     (params) =>
     ({ get }) => {
       return get(aggregation(params))
-        .aggregation.values.map(({ value }) => value)
+        .values.map(({ value }) => value)
         .sort();
     },
 
@@ -384,7 +395,7 @@ export const count = selectorFamily<
         return get(counts(params))[value] || 0;
       }
 
-      return get(aggregation(params)).aggregation.count as number;
+      return get(aggregation(params)).count as number;
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -418,7 +429,7 @@ export const counts = selectorFamily<
         }
       }
 
-      const data = get(aggregation(params)).aggregation;
+      const data = get(aggregation(params));
 
       if (data.values) {
         return Object.fromEntries(
@@ -526,9 +537,7 @@ export const bounds = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const {
-        aggregation: { min, max },
-      } = get(aggregation(params));
+      const { min, max } = get(aggregation(params));
 
       return [min, max];
     },
@@ -554,13 +563,9 @@ export const nonfiniteCounts = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const {
-        aggregation: { inf, nan, ninf, exists },
-      } = get(aggregation(params));
+      const { inf, nan, ninf, exists } = get(aggregation(params));
 
-      const {
-        aggregation: { count: parentCount },
-      } = get(
+      const { count: parentCount } = get(
         aggregation({
           ...params,
           path: params.path.split(".").slice(0, -1).join("."),

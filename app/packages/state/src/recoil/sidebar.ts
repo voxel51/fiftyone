@@ -317,7 +317,6 @@ export const sidebarGroups = selectorFamily<
     ({ modal, loadingTags, filtered = true }) =>
     ({ get }) => {
       const f = get(textFilter(modal));
-
       let groups = get(sidebarGroupsDefinition(modal))
         .map(({ paths, ...rest }) => ({
           ...rest,
@@ -433,10 +432,11 @@ export const sidebarGroups = selectorFamily<
 export const persistSidebarGroups = (
   variables: VariablesOf<setSidebarGroupsMutation>
 ) => {
-  commitMutation<setSidebarGroupsMutation>(getCurrentEnvironment(), {
-    mutation: setSidebarGroups,
-    variables,
-  });
+  false &&
+    commitMutation<setSidebarGroupsMutation>(getCurrentEnvironment(), {
+      mutation: setSidebarGroups,
+      variables,
+    });
 };
 
 export const sidebarEntries = selectorFamily<

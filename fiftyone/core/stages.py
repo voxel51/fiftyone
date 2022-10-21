@@ -1848,14 +1848,12 @@ class FilterLabels(ViewStage):
         trajectories=False,
         _new_field=None,
         _validate=True,
-        _unwound=True,
     ):
         self._field = field
         self._filter = filter
         self._only_matches = only_matches
         self._trajectories = trajectories
         self._new_field = _new_field or field
-        self._unwound = _unwound
         self._labels_field = None
         self._is_frame_field = None
         self._is_labels_list_field = None
@@ -1919,7 +1917,7 @@ class FilterLabels(ViewStage):
         else:
             label_filter = self._filter
 
-        if is_frame_field and not self._unwound:
+        if is_frame_field:
             if self._is_labels_list_field:
                 _make_filter_pipeline = _get_filter_frames_list_field_pipeline
             else:
@@ -6942,53 +6940,6 @@ class ToFrames(ViewStage):
                 "placeholder": "config (default=None)",
             },
             {"name": "_state", "type": "NoneType|json", "default": "None"},
-        ]
-
-
-class UnwindFrames(ViewStage):
-    def __init__(self, start=None, end=None):
-        self._start = start
-        self._end = end
-
-    @property
-    def start(self):
-        return self._start
-
-    @property
-    def end(self):
-        return self._end
-
-    def to_mongo(self, _):
-        if self._size <= 0:
-            return [{"$match": {"_id": None}}]
-
-        # @todo can we avoid creating a new field here?
-        return [
-            {"$unwind": "$frames"},
-            {"$sort": {"_rand_take": 1}},
-            {"$limit": self._size},
-            {"$unset": "_rand_take"},
-        ]
-
-    def _kwargs(self):
-        return [
-            ["start", self._start],
-            ["end", self._end],
-        ]
-
-    @classmethod
-    def _params(self):
-        return [
-            {
-                "name": "start",
-                "type": "int",
-                "default": "None",
-            },
-            {
-                "name": "end",
-                "type": "int",
-                "default": "None",
-            },
         ]
 
 

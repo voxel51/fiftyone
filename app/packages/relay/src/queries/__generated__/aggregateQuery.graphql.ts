@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bb6c8a0478ea06eb511045f4aaa5cb4e>>
+ * @generated SignedSource<<433e5ae81632b251c24f8240c6ff8ad1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,14 +9,14 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Query } from "relay-runtime";
-export type AggregationForm = {
+export type AggregateForm = {
   dataset: string;
   extendedStages: Array;
   filters?: object | null;
   groupId?: string | null;
   hiddenLabels: ReadonlyArray<SelectedLabel>;
   mixed: boolean;
-  path: string;
+  paths: ReadonlyArray<string>;
   sampleIds: ReadonlyArray<string>;
   slice?: string | null;
   view: Array;
@@ -27,11 +27,11 @@ export type SelectedLabel = {
   labelId: string;
   sampleId: string;
 };
-export type aggregationQuery$variables = {
-  form: AggregationForm;
+export type aggregateQuery$variables = {
+  form: AggregateForm;
 };
-export type aggregationQuery$data = {
-  readonly aggregation: {
+export type aggregateQuery$data = {
+  readonly aggregate: ReadonlyArray<{
     readonly count?: number;
     readonly exists?: number;
     readonly false?: number;
@@ -40,17 +40,18 @@ export type aggregationQuery$data = {
     readonly min?: number | null;
     readonly nan?: number;
     readonly ninf?: number;
+    readonly path?: string;
     readonly slice?: number | null;
     readonly true?: number;
     readonly values?: ReadonlyArray<{
       readonly count: number;
       readonly value: string;
     }>;
-  };
+  }>;
 };
-export type aggregationQuery = {
-  response: aggregationQuery$data;
-  variables: aggregationQuery$variables;
+export type aggregateQuery = {
+  response: aggregateQuery$data;
+  variables: aggregateQuery$variables;
 };
 
 const node: ConcreteRequest = (function () {
@@ -78,6 +79,13 @@ const node: ConcreteRequest = (function () {
     v3 = {
       kind: "InlineFragment",
       selections: [
+        {
+          alias: null,
+          args: null,
+          kind: "ScalarField",
+          name: "path",
+          storageKey: null,
+        },
         v2 /*: any*/,
         {
           alias: null,
@@ -206,15 +214,15 @@ const node: ConcreteRequest = (function () {
       argumentDefinitions: v0 /*: any*/,
       kind: "Fragment",
       metadata: null,
-      name: "aggregationQuery",
+      name: "aggregateQuery",
       selections: [
         {
           alias: null,
           args: v1 /*: any*/,
           concreteType: null,
           kind: "LinkedField",
-          name: "aggregation",
-          plural: false,
+          name: "aggregate",
+          plural: true,
           selections: [
             v3 /*: any*/,
             v4 /*: any*/,
@@ -233,15 +241,15 @@ const node: ConcreteRequest = (function () {
     operation: {
       argumentDefinitions: v0 /*: any*/,
       kind: "Operation",
-      name: "aggregationQuery",
+      name: "aggregateQuery",
       selections: [
         {
           alias: null,
           args: v1 /*: any*/,
           concreteType: null,
           kind: "LinkedField",
-          name: "aggregation",
-          plural: false,
+          name: "aggregate",
+          plural: true,
           selections: [
             {
               alias: null,
@@ -262,16 +270,16 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "de492502271466b860b64e1c35f72603",
+      cacheID: "a79059caf87fd23450f31d8d87bdd34c",
       id: null,
       metadata: {},
-      name: "aggregationQuery",
+      name: "aggregateQuery",
       operationKind: "query",
-      text: "query aggregationQuery(\n  $form: AggregationForm!\n) {\n  aggregation(form: $form) {\n    __typename\n    ... on Aggregation {\n      __isAggregation: __typename\n      count\n      exists\n    }\n    ... on BooleanAggregation {\n      false\n      true\n    }\n    ... on IntAggregation {\n      max\n      min\n    }\n    ... on FloatAggregation {\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      slice\n    }\n    ... on StringAggregation {\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n",
+      text: "query aggregateQuery(\n  $form: AggregateForm!\n) {\n  aggregate(form: $form) {\n    __typename\n    ... on Aggregation {\n      __isAggregation: __typename\n      path\n      count\n      exists\n    }\n    ... on BooleanAggregation {\n      false\n      true\n    }\n    ... on IntAggregation {\n      max\n      min\n    }\n    ... on FloatAggregation {\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      slice\n    }\n    ... on StringAggregation {\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "707aa29a36ce3f22cdfa2906ddeb826a";
+(node as any).hash = "1ca60242dbfbe8746802978fdd020598";
 
 export default node;

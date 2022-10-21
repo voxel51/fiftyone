@@ -326,16 +326,6 @@ def _make_filter_stages(
 
         stages.append(fosg.Match(F.any(match_exprs)))
 
-    stages.append(
-        fosg.Mongo(
-            [
-                {"$group": {"_id": "$_id", "sample": {"$first": "$$ROOT"}}},
-                {"$replaceRoot": {"newRoot": "$sample"}},
-                {"$unset": "frames"},
-            ]
-        )
-    )
-
     return stages, cleanup, filtered_labels
 
 

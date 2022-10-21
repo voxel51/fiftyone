@@ -1,28 +1,29 @@
-interface Aggregation {
-  count: Int!
-  exists: Int!
-}
-
-input AggregationForm {
+input AggregateForm {
   dataset: String!
   extendedStages: BSONArray!
   filters: BSON
   groupId: ID
   hiddenLabels: [SelectedLabel!]!
   mixed: Boolean!
-  path: String!
+  paths: [String!]!
   sampleIds: [ID!]!
   slice: String
   view: BSONArray!
 }
 
-union AggregationResult =
+union AggregateResult =
     BooleanAggregation
   | DataAggregation
   | IntAggregation
   | FloatAggregation
   | RootAggregation
   | StringAggregation
+
+interface Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+}
 
 type AppConfig {
   colorBy: ColorBy!
@@ -47,6 +48,7 @@ scalar BSON
 scalar BSONArray
 
 type BooleanAggregation implements Aggregation {
+  path: String!
   count: Int!
   exists: Int!
   false: Int!
@@ -75,6 +77,7 @@ enum ColorBy {
 }
 
 type DataAggregation implements Aggregation {
+  path: String!
   count: Int!
   exists: Int!
 }
@@ -156,6 +159,7 @@ type EvaluationRunConfig implements RunConfig {
 }
 
 type FloatAggregation implements Aggregation {
+  path: String!
   count: Int!
   exists: Int!
   inf: Int!
@@ -183,6 +187,7 @@ type ImageSample implements Sample {
 }
 
 type IntAggregation implements Aggregation {
+  path: String!
   count: Int!
   exists: Int!
   max: Float
@@ -263,7 +268,7 @@ type Query {
     first: Int = 200
     after: String = null
   ): DatasetStrConnection!
-  aggregation(form: AggregationForm!): AggregationResult!
+  aggregate(form: AggregateForm!): [AggregateResult!]!
   colorscale: [[Int!]!]
   config: AppConfig!
   context: String!
@@ -284,6 +289,7 @@ type Query {
 }
 
 type RootAggregation implements Aggregation {
+  path: String!
   count: Int!
   exists: Int!
   slice: Int
@@ -366,6 +372,7 @@ enum SidebarMode {
 }
 
 type StringAggregation implements Aggregation {
+  path: String!
   count: Int!
   exists: Int!
   values: [StringAggregationValue!]!

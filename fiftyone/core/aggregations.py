@@ -354,6 +354,14 @@ class Bounds(Aggregation):
         Returns:
             ``(None, None)``
         """
+        if self._count_nonfinites:
+            return {
+                "bounds": (None, None),
+                "inf": 0,
+                "-inf": 0,
+                "nan": 0,
+            }
+
         return None, None
 
     def parse_result(self, d):
@@ -719,10 +727,10 @@ class CountValues(Aggregation):
                 return (0, [])
 
             return (
-                count[0]["count"],
+                count,
                 [
                     [p(i["k"]), i["count"]]
-                    for i in d["result"][0]["result"]
+                    for i in d["result"]
                     if i["k"] is not None
                 ],
             )
@@ -793,19 +801,16 @@ class CountValues(Aggregation):
         sort[self._sort_by] = order
         sort["count" if self._sort_by != "count" else "_id"] = order
 
-        result = [
+        return pipeline + [
             {"$sort": sort},
             {"$limit": limit},
             {
                 "$group": {
                     "_id": None,
                     "result": {"$push": {"k": "$_id", "count": "$count"}},
+                    "count": {"$count": {}},
                 }
             },
-        ]
-
-        return pipeline + [
-            {"$facet": {"count": [{"$count": "count"}], "result": result}}
         ]
 
 
