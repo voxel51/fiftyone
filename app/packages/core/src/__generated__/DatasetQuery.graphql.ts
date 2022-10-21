@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7fb1aefb1636fc487cb37c3b74d1a1b4>>
+ * @generated SignedSource<<239a064fb308ee913691c65e85ea6273>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,7 @@ export type MediaType =
   | "point_cloud"
   | "video"
   | "%future added value";
+export type SidebarMode = "best" | "fast" | "slow" | "%future added value";
 export type datasetQuery$variables = {
   name: string;
   view?: Array | null;
@@ -29,6 +30,7 @@ export type datasetQuery$data = {
         readonly name: string;
         readonly paths: ReadonlyArray<string> | null;
       }> | null;
+      readonly sidebarMode: SidebarMode | null;
     } | null;
     readonly brainMethods: ReadonlyArray<{
       readonly config: {
@@ -337,6 +339,13 @@ const node: ConcreteRequest = (function () {
                 ],
                 storageKey: null,
               },
+              {
+                alias: null,
+                args: null,
+                kind: "ScalarField",
+                name: "sidebarMode",
+                storageKey: null,
+              },
             ],
             storageKey: null,
           },
@@ -545,16 +554,16 @@ const node: ConcreteRequest = (function () {
       selections: v12 /*: any*/,
     },
     params: {
-      cacheID: "1a4a4a1e7b308d0e6a0d0d68e5fb385b",
+      cacheID: "ab3b5de24b51879dfa9422dc0529dfa8",
       id: null,
       metadata: {},
       name: "datasetQuery",
       operationKind: "query",
-      text: "query datasetQuery(\n  $name: String!\n  $view: BSONArray = null\n) {\n  dataset(name: $name, view: $view) {\n    id\n    name\n    mediaType\n    defaultGroupSlice\n    groupField\n    groupMediaTypes {\n      name\n      mediaType\n    }\n    appConfig {\n      gridMediaField\n      mediaFields\n      plugins\n      sidebarGroups {\n        name\n        paths\n      }\n    }\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    lastLoadedAt\n    createdAt\n    skeletons {\n      name\n      labels\n      edges\n    }\n    defaultSkeleton {\n      labels\n      edges\n    }\n    version\n    viewCls\n  }\n}\n",
+      text: "query datasetQuery(\n  $name: String!\n  $view: BSONArray = null\n) {\n  dataset(name: $name, view: $view) {\n    id\n    name\n    mediaType\n    defaultGroupSlice\n    groupField\n    groupMediaTypes {\n      name\n      mediaType\n    }\n    appConfig {\n      gridMediaField\n      mediaFields\n      plugins\n      sidebarGroups {\n        name\n        paths\n      }\n      sidebarMode\n    }\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    lastLoadedAt\n    createdAt\n    skeletons {\n      name\n      labels\n      edges\n    }\n    defaultSkeleton {\n      labels\n      edges\n    }\n    version\n    viewCls\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "e2d818b94cf978f1334045c100aa9883";
+(node as any).hash = "4609a8a6a0e32bc743ccfec55a268ea1";
 
 export default node;
