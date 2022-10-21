@@ -57,3 +57,6 @@ export const DocsLink = () => {
     </ExternalLink>
   );
 };
+
+export { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
+export { IconButton } from "@mui/material";

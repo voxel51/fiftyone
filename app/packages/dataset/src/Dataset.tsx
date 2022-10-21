@@ -1,25 +1,30 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import { Loading } from "@fiftyone/components";
+import {
+  IconButton,
+  KeyboardArrowDown,
+  KeyboardArrowUp,
+  Loading,
+  ThemeProvider,
+} from "@fiftyone/components";
 import {
   Dataset as CoreDataset,
   useDatasetLoader,
   usePreLoadedDataset,
   ViewBar,
 } from "@fiftyone/core";
-import { useRecoilValue, useSetRecoilState } from "recoil";
-import * as fos from "@fiftyone/state";
-import { getEventSource, toCamelCase } from "@fiftyone/utilities";
-import { useEffect, useState, Suspense, Fragment } from "react";
-import { State } from "@fiftyone/state";
 import { usePlugins } from "@fiftyone/plugins";
-import styled, { ThemeContext } from "styled-components";
-import { ThemeProvider } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { State } from "@fiftyone/state";
+import { getEventSource, toCamelCase } from "@fiftyone/utilities";
+import { Suspense, useEffect, useState } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import styled from "styled-components";
 
 // built-in plugins
-import "@fiftyone/map";
 import "@fiftyone/looker-3d";
+import "@fiftyone/map";
 
 enum Events {
   STATE_UPDATE = "state_update",
@@ -31,6 +36,8 @@ export function Dataset({
   theme,
   themeMode,
   compactLayout,
+  toggleHeaders,
+  hideHeaders,
 }) {
   const [initialState, setInitialState] = useState();
   const [datasetQueryRef, loadDataset] = useDatasetLoader(environment);
@@ -70,6 +77,7 @@ export function Dataset({
   const ViewBarWrapper = styled.div`
     padding: 16px;
     background: var(--joy-palette-background-header);
+    display: flex;
   `;
 
   const themeProviderProps = theme ? { customTheme: theme } : {};
@@ -84,6 +92,12 @@ export function Dataset({
           >
             <ViewBarWrapper>
               <ViewBar />
+              {toggleHeaders && (
+                <HeadersToggle
+                  toggleHeaders={toggleHeaders}
+                  hideHeaders={hideHeaders}
+                />
+              )}
             </ViewBarWrapper>
             <CoreDataset />
           </DatasetLoader>
@@ -91,6 +105,22 @@ export function Dataset({
         <div id="modal" />
       </Container>
     </ThemeProvider>
+  );
+}
+
+function HeadersToggle({ toggleHeaders, hideHeaders }) {
+  return (
+    <IconButton
+      title={`${hideHeaders ? "Show" : "Hide"} headers`}
+      onClick={() => {
+        toggleHeaders();
+      }}
+      disableRipple
+      sx={{ color: (theme) => theme.palette.text.secondary }}
+    >
+      {hideHeaders && <KeyboardArrowDown />}
+      {!hideHeaders && <KeyboardArrowUp />}
+    </IconButton>
   );
 }
 
