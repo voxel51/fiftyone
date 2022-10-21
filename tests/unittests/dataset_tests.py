@@ -2176,6 +2176,20 @@ class DatasetExtrasTests(unittest.TestCase):
         also_view2 = dataset2.load_view("test")
         self.assertIsNotNone(also_view2)
 
+        #
+        # Verify that saved views are deleted when a dataset is deleted
+        #
+
+        view_id = dataset2._doc.views[0].id
+
+        db = foo.get_db_conn()
+
+        self.assertEqual(len(list(db.views.find({"_id": view_id}))), 1)
+
+        dataset2.delete()
+
+        self.assertEqual(len(list(db.views.find({"_id": view_id}))), 0)
+
     def test_saved_views_for_app(self):
         dataset = self.dataset
 
@@ -2284,10 +2298,12 @@ class DatasetExtrasTests(unittest.TestCase):
 
         db = foo.get_db_conn()
 
+        self.assertEqual(len(list(db.runs.find({"_id": run_id}))), 1)
         self.assertEqual(len(list(db.fs.files.find({"_id": result_id}))), 1)
 
         dataset2.delete()
 
+        self.assertEqual(len(list(db.runs.find({"_id": run_id}))), 0)
         self.assertEqual(len(list(db.fs.files.find({"_id": result_id}))), 0)
 
 

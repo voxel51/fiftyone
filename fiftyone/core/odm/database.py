@@ -7,12 +7,13 @@ Database utilities.
 """
 import atexit
 from datetime import datetime
+import itertools
 import logging
 from multiprocessing.pool import ThreadPool
 import os
 
 import asyncio
-from bson import json_util
+from bson import json_util, ObjectId
 from bson.codec_options import CodecOptions
 from mongoengine import connect
 import mongoengine.errors as moe
@@ -441,11 +442,11 @@ def drop_orphan_collections(dry_run=False):
                 conn.drop_collection(coll_name)
 
 
-def drop_orphan_run_results(dry_run=False):
-    """Drops all orphan run results from the database.
+def drop_orphan_views(dry_run=False):
+    """Drops all orphan views from the database.
 
-    Orphan run results are results that are not associated with any known
-    dataset.
+    Orphan views are saved view documents that are not associated with any
+    known dataset or other collections used by FiftyOne.
 
     Args:
         dry_run (False): whether to log the actions that would be taken but not
@@ -454,13 +455,63 @@ def drop_orphan_run_results(dry_run=False):
     conn = get_db_conn()
     _logger = _get_logger(dry_run=dry_run)
 
+    view_ids_in_use = set()
+    for dataset_dict in conn.datasets.find({}):
+        view_ids = _get_view_ids(conn, dataset_dict)
+        view_ids_in_use.update(view_ids)
+
+    all_view_ids = set(conn.views.distinct("_id"))
+
+    orphan_view_ids = list(all_view_ids - view_ids_in_use)
+
+    if not orphan_view_ids:
+        return
+
+    _logger.info(
+        "Deleting %d orphan view(s): %s",
+        len(orphan_view_ids),
+        orphan_view_ids,
+    )
+    if not dry_run:
+        _delete_views(conn, orphan_view_ids)
+
+
+def drop_orphan_runs(dry_run=False):
+    """Drops all orphan runs from the database.
+
+    Orphan runs are runs that are not associated with any known dataset or
+    other collections used by FiftyOne.
+
+    Args:
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    run_ids_in_use = set()
     result_ids_in_use = set()
     for dataset_dict in conn.datasets.find({}):
-        result_ids = _get_result_ids(dataset_dict)
+        run_ids = _get_run_ids(conn, dataset_dict)
+        run_ids_in_use.update(run_ids)
+
+        result_ids = _get_result_ids(conn, dataset_dict)
         result_ids_in_use.update(result_ids)
 
+    all_run_ids = set(conn.runs.distinct("_id"))
     all_result_ids = set(conn.fs.files.distinct("_id"))
+
+    orphan_run_ids = list(all_run_ids - run_ids_in_use)
     orphan_result_ids = list(all_result_ids - result_ids_in_use)
+
+    if orphan_run_ids:
+        _logger.info(
+            "Deleting %d orphan run(s): %s",
+            len(orphan_run_ids),
+            orphan_run_ids,
+        )
+        if not dry_run:
+            _delete_run_docs(conn, orphan_run_ids)
 
     if orphan_result_ids:
         _logger.info(
@@ -753,7 +804,20 @@ def delete_dataset(name, dry_run=False):
         if not dry_run:
             conn.drop_collection(frame_collection_name)
 
-    result_ids = _get_result_ids(dataset_dict)
+    view_ids = _get_view_ids(conn, dataset_dict)
+
+    if view_ids:
+        _logger.info("Deleting %d saved view(s)", len(view_ids))
+        if not dry_run:
+            _delete_views(conn, view_ids)
+
+    run_ids = _get_run_ids(conn, dataset_dict)
+    result_ids = _get_result_ids(conn, dataset_dict)
+
+    if run_ids:
+        _logger.info("Deleting %d run doc(s)", len(run_ids))
+        if not dry_run:
+            _delete_run_docs(conn, run_ids)
 
     if result_ids:
         _logger.info("Deleting %d run result(s)", len(result_ids))
@@ -959,8 +1023,9 @@ def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
         dataset_name,
     )
 
-    run_doc = runs.pop(run_key)
+    run_id = runs.pop(run_key)
 
+    run_doc = conn.runs.find_one({"_id": run_id})
     result_id = run_doc.get("results", None)
     if result_id is not None:
         _logger.info("Deleting %s result '%s'", run_str, result_id)
@@ -968,6 +1033,9 @@ def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
             _delete_run_results(conn, [result_id])
 
     if not dry_run:
+        _logger.info("Deleting %s doc '%s'", run_str, run_id)
+        conn.runs.delete_one({"_id": run_id})
+
         conn.datasets.replace_one({"name": dataset_name}, dataset_dict)
 
 
@@ -980,7 +1048,7 @@ def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
         _logger.warning("Dataset '%s' not found", dataset_name)
         return
 
-    run_keys = tuple(dataset_dict.get(runs_field, {}).keys())
+    run_keys, run_ids = zip(dataset_dict.get(runs_field, {}).items())
 
     if not run_keys:
         _logger.info("Dataset '%s' has no %s runs", dataset_name, run_str)
@@ -993,7 +1061,12 @@ def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
         dataset_name,
     )
 
-    result_ids = _get_result_ids(dataset_dict)
+    result_ids = _get_result_ids(conn, dataset_dict)
+
+    if run_ids:
+        _logger.info("Deleting %d %s doc(s)", len(run_ids), run_str)
+        if not dry_run:
+            _delete_run_docs(conn, run_ids)
 
     if result_ids:
         _logger.info("Deleting %d %s result(s)", len(result_ids), run_str)
@@ -1005,16 +1078,55 @@ def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
         conn.datasets.replace_one({"name": dataset_name}, dataset_dict)
 
 
-def _get_result_ids(dataset_dict):
+def _get_view_ids(conn, dataset_dict):
+    return list(dataset_dict.get("views", {}).values())
+
+
+def _get_run_ids(conn, dataset_dict):
+    run_ids = []
+
+    for runs_field in _RUNS_FIELDS:
+        for run_doc_or_id in dataset_dict.get(runs_field, {}).values():
+            # Run docs used to be stored directly in `dataset_dict`.
+            # Such data could be encountered here because datasets are lazily
+            # migrated
+            if isinstance(run_doc_or_id, ObjectId):
+                run_ids.append(run_doc_or_id)
+
+    return run_ids
+
+
+def _get_result_ids(conn, dataset_dict):
+    run_ids = []
     result_ids = []
 
     for runs_field in _RUNS_FIELDS:
-        for run_doc in dataset_dict.get(runs_field, {}).values():
+        for run_doc_or_id in dataset_dict.get(runs_field, {}).values():
+            if isinstance(run_doc_or_id, ObjectId):
+                run_ids.append(run_doc_or_id)
+            elif isinstance(run_doc_or_id, dict):
+                # Run docs used to be stored directly in `dataset_dict`.
+                # Such data could be encountered here because datasets are
+                # lazily migrated
+                result_id = run_doc_or_id.get("results", None)
+                if result_id is not None:
+                    result_ids.append(result_id)
+
+    if run_ids:
+        for run_doc in conn.runs.find({"_id": {"$in": run_ids}}):
             result_id = run_doc.get("results", None)
             if result_id is not None:
                 result_ids.append(result_id)
 
     return result_ids
+
+
+def _delete_views(conn, view_ids):
+    conn.views.delete_many({"_id": {"$in": view_ids}})
+
+
+def _delete_run_docs(conn, run_ids):
+    conn.runs.delete_many({"_id": {"$in": run_ids}})
 
 
 def _delete_run_results(conn, result_ids):
