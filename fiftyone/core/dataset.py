@@ -2345,21 +2345,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if key_fcn is None:
             tmp = Dataset()
-            tmp.add_samples(samples, num_samples=num_samples)
 
-            self.merge_samples(
-                tmp,
-                key_field=key_field,
-                skip_existing=skip_existing,
-                insert_new=insert_new,
-                fields=fields,
-                omit_fields=omit_fields,
-                merge_lists=merge_lists,
-                overwrite=overwrite,
-                expand_schema=expand_schema,
-                include_info=False,
-            )
-            tmp.delete()
+            try:
+                tmp.add_samples(samples, num_samples=num_samples)
+
+                self.merge_samples(
+                    tmp,
+                    key_field=key_field,
+                    skip_existing=skip_existing,
+                    insert_new=insert_new,
+                    fields=fields,
+                    omit_fields=omit_fields,
+                    merge_lists=merge_lists,
+                    overwrite=overwrite,
+                    expand_schema=expand_schema,
+                    include_info=False,
+                )
+            finally:
+                tmp.delete()
 
             return
 
@@ -3253,10 +3256,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         sample_collection.compute_metadata()
-
-        pipeline = sample_collection._pipeline()
-        pipeline.extend(
-            [
+        sample_collection._aggregate(
+            post_pipeline=[
                 {
                     "$project": {
                         "_id": False,
@@ -3280,8 +3281,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 },
             ]
         )
-
-        self._aggregate(pipeline=pipeline, manual_group_select=True)
 
     def delete(self):
         """Deletes the dataset.
@@ -5197,6 +5196,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         groups_only=False,
         detach_groups=False,
         manual_group_select=False,
+        post_pipeline=None,
     ):
         if media_type is None:
             media_type = self.media_type
@@ -5260,6 +5260,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _pipeline.append({"$project": {"groups": False}})
         elif groups_only:
             _pipeline.extend(self._groups_only_pipeline())
+
+        if post_pipeline is not None:
+            _pipeline.extend(post_pipeline)
 
         return _pipeline
 
@@ -5428,6 +5431,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         groups_only=False,
         detach_groups=False,
         manual_group_select=False,
+        post_pipeline=None,
     ):
         _pipeline = self._pipeline(
             pipeline=pipeline,
@@ -5441,6 +5445,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             groups_only=groups_only,
             detach_groups=detach_groups,
             manual_group_select=manual_group_select,
+            post_pipeline=post_pipeline,
         )
 
         return foo.aggregate(self._sample_collection, _pipeline)
@@ -6524,6 +6529,13 @@ def _cleanup_index(dataset, db_field, new_index, dropped_index):
         coll.create_index(db_field)
 
 
+def _cleanup_frame_index(dataset, index):
+    coll = dataset._frame_collection
+
+    if index:
+        coll.drop_index(index)
+
+
 def _get_single_index_map(coll):
     # db_field -> (name, unique)
     return {
@@ -6553,20 +6565,20 @@ def _add_collection_with_new_ids(
     else:
         src_samples = sample_collection
 
-    src_dataset = sample_collection._dataset
-
     if not contains_videos:
-        pipeline = src_samples._pipeline(detach_groups=True) + [
-            {"$unset": "_id"},
-            {
-                "$merge": {
-                    "into": dataset._sample_collection_name,
-                    "whenMatched": "keepExisting",
-                    "whenNotMatched": "insert",
-                }
-            },
-        ]
-        src_dataset._aggregate(pipeline=pipeline, manual_group_select=True)
+        src_samples._aggregate(
+            detach_groups=True,
+            post_pipeline=[
+                {"$unset": "_id"},
+                {
+                    "$merge": {
+                        "into": dataset._sample_collection_name,
+                        "whenMatched": "keepExisting",
+                        "whenNotMatched": "insert",
+                    }
+                },
+            ],
+        )
 
         return
 
@@ -6584,32 +6596,35 @@ def _add_collection_with_new_ids(
 
     old_ids = src_samples.values("_id")
 
-    sample_pipeline = src_samples._pipeline(
-        detach_frames=True, detach_groups=True
-    ) + [
-        {"$unset": "_id"},
-        {
-            "$merge": {
-                "into": dataset._sample_collection_name,
-                "whenMatched": "keepExisting",
-                "whenNotMatched": "insert",
-            }
-        },
-    ]
-    src_dataset._aggregate(pipeline=sample_pipeline, manual_group_select=True)
+    src_samples._aggregate(
+        detach_frames=True,
+        detach_groups=True,
+        post_pipeline=[
+            {"$unset": "_id"},
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "whenMatched": "keepExisting",
+                    "whenNotMatched": "insert",
+                }
+            },
+        ],
+    )
 
-    frame_pipeline = src_videos._pipeline(frames_only=True) + [
-        {"$set": {"_tmp": "$_sample_id", "_sample_id": {"$rand": {}}}},
-        {"$unset": "_id"},
-        {
-            "$merge": {
-                "into": dataset._frame_collection_name,
-                "whenMatched": "keepExisting",
-                "whenNotMatched": "insert",
-            }
-        },
-    ]
-    src_dataset._aggregate(pipeline=frame_pipeline, manual_group_select=True)
+    src_videos._aggregate(
+        frames_only=True,
+        post_pipeline=[
+            {"$set": {"_tmp": "$_sample_id", "_sample_id": {"$rand": {}}}},
+            {"$unset": "_id"},
+            {
+                "$merge": {
+                    "into": dataset._frame_collection_name,
+                    "whenMatched": "keepExisting",
+                    "whenNotMatched": "insert",
+                }
+            },
+        ],
+    )
 
     new_ids = dataset[-len(old_ids) :].values("_id")
 
@@ -6751,10 +6766,6 @@ def _merge_samples_pipeline(
     merge_lists=True,
     overwrite=True,
 ):
-    #
-    # Prepare for merge
-    #
-
     in_key_field = key_field
     db_fields_map = src_collection._get_db_fields_map()
     key_field = db_fields_map.get(key_field, key_field)
@@ -6780,13 +6791,6 @@ def _merge_samples_pipeline(
             dst_videos = dst_dataset
 
     src_dataset = src_collection._dataset
-
-    new_src_index, dropped_src_index = _ensure_index(
-        src_dataset, key_field, unique=True
-    )
-    new_dst_index, dropped_dst_index = _ensure_index(
-        dst_dataset, key_field, unique=True
-    )
 
     if contains_videos:
         frame_fields = None
@@ -6818,43 +6822,7 @@ def _merge_samples_pipeline(
             omit_frame_fields = None
 
     #
-    # The implementation of merging video frames is currently a bit complex.
-    # It may be possible to simplify this...
-    #
-    # The trouble is that the `_sample_id` of the frame documents need to match
-    # the `_id` of the sample documents after merging. There may be a more
-    # clever way to make this happen via `$lookup` than what is implemented
-    # here, but here's the current workflow:
-    #
-    # - Store the `key_field` value on each frame document in both the source
-    #   and destination collections corresopnding to its parent sample in a
-    #   temporary `frame_key_field` field
-    # - Merge the sample documents without frames attached
-    # - Merge the frame documents on `[frame_key_field, frame_number]` with
-    #   their old `_sample_id`s unset
-    # - Generate a `key_field` -> `_id` mapping for the post-merge sample docs,
-    #   then make a pass over the frame documents and set
-    #   their `_sample_id` to the corresponding value from this mapping
-    # - The merge is complete, so delete `frame_key_field` from both frame
-    #   collections
-    #
-
-    if contains_videos:
-        frame_key_field = "_merge_key"
-        _index_frames(dst_videos, key_field, frame_key_field)
-        _index_frames(src_videos, key_field, frame_key_field)
-
-        # Must create unique indexes in order to use `$merge`
-        frame_index_spec = [(frame_key_field, 1), ("frame_number", 1)]
-        dst_frame_index = dst_dataset._frame_collection.create_index(
-            frame_index_spec, unique=True
-        )
-        src_frame_index = src_dataset._frame_collection.create_index(
-            frame_index_spec, unique=True
-        )
-
-    #
-    # Merge samples
+    # Prepare samples merge pipeline
     #
 
     default_fields = set(
@@ -6862,9 +6830,7 @@ def _merge_samples_pipeline(
     )
     default_fields.discard("id")
 
-    sample_pipeline = src_samples._pipeline(
-        detach_frames=True, detach_groups=True
-    )
+    sample_pipeline = []
 
     if fields is not None:
         project = {key_field: True}
@@ -6950,18 +6916,33 @@ def _merge_samples_pipeline(
         }
     )
 
-    # Merge samples
-    src_dataset._aggregate(pipeline=sample_pipeline, manual_group_select=True)
-
-    # Cleanup indexes
-    _cleanup_index(src_dataset, key_field, new_src_index, dropped_src_index)
-    _cleanup_index(dst_dataset, key_field, new_dst_index, dropped_dst_index)
-
     #
-    # Merge frames
+    # Prepare frames merge pipeline
+    #
+    # The implementation of merging video frames is currently a bit complex.
+    # It may be possible to simplify this...
+    #
+    # The trouble is that the `_sample_id` of the frame documents need to match
+    # the `_id` of the sample documents after merging. There may be a more
+    # clever way to make this happen via `$lookup` than what is implemented
+    # here, but here's the current workflow:
+    #
+    # - Store the `key_field` value on each frame document in both the source
+    #   and destination collections corresopnding to its parent sample in a
+    #   temporary `frame_key_field` field
+    # - Merge the sample documents without frames attached
+    # - Merge the frame documents on `[frame_key_field, frame_number]` with
+    #   their old `_sample_id`s unset
+    # - Generate a `key_field` -> `_id` mapping for the post-merge sample docs,
+    #   then make a pass over the frame documents and set
+    #   their `_sample_id` to the corresponding value from this mapping
+    # - The merge is complete, so delete `frame_key_field` from both frame
+    #   collections
     #
 
     if contains_videos:
+        frame_key_field = "_merge_key"
+
         # @todo this there a cleaner way to avoid this? we have to be sure that
         # `frame_key_field` is not excluded by a user's view here...
         _src_videos = _always_select_field(
@@ -6970,7 +6951,7 @@ def _merge_samples_pipeline(
 
         db_fields_map = src_collection._get_db_fields_map(frames=True)
 
-        frame_pipeline = _src_videos._pipeline(frames_only=True)
+        frame_pipeline = []
 
         if frame_fields is not None:
             project = {}
@@ -7021,22 +7002,76 @@ def _merge_samples_pipeline(
             }
         )
 
-        # Merge frames
-        src_dataset._aggregate(
-            pipeline=frame_pipeline, manual_group_select=True
+    #
+    # Perform the merge(s)
+    #
+    # We wrap this in a try-finally because we need to ensure that temporary
+    # data and collection indexes are deleted if something goes wrong during
+    # the actual merges
+    #
+
+    new_src_index = None
+    dropped_src_index = None
+    new_dst_index = None
+    dropped_dst_index = None
+    dst_frame_index = None
+    src_frame_index = None
+
+    try:
+        # Create unique index on merge key, if necessary
+        new_src_index, dropped_src_index = _ensure_index(
+            src_dataset, key_field, unique=True
+        )
+        new_dst_index, dropped_dst_index = _ensure_index(
+            dst_dataset, key_field, unique=True
         )
 
-        # Drop indexes
-        dst_dataset._frame_collection.drop_index(dst_frame_index)
-        src_dataset._frame_collection.drop_index(src_frame_index)
+        if contains_videos:
+            _index_frames(dst_videos, key_field, frame_key_field)
+            _index_frames(src_videos, key_field, frame_key_field)
 
-        # Finalize IDs
-        _finalize_frames(dst_videos, key_field, frame_key_field)
+            # Create unique index on frame merge key
+            frame_index_spec = [(frame_key_field, 1), ("frame_number", 1)]
+            dst_frame_index = dst_dataset._frame_collection.create_index(
+                frame_index_spec, unique=True
+            )
+            src_frame_index = src_dataset._frame_collection.create_index(
+                frame_index_spec, unique=True
+            )
 
-        # Cleanup merge key
-        cleanup_op = {"$unset": {frame_key_field: ""}}
-        src_dataset._frame_collection.update_many({}, cleanup_op)
-        dst_dataset._frame_collection.update_many({}, cleanup_op)
+        # Merge samples
+        src_samples._aggregate(
+            detach_frames=True,
+            detach_groups=True,
+            post_pipeline=sample_pipeline,
+        )
+
+        if contains_videos:
+            # Merge frames
+            _src_videos._aggregate(
+                frames_only=True, post_pipeline=frame_pipeline
+            )
+
+            # Finalize IDs
+            _finalize_frames(dst_videos, key_field, frame_key_field)
+    finally:
+        # Cleanup indexes
+        _cleanup_index(
+            src_dataset, key_field, new_src_index, dropped_src_index
+        )
+        _cleanup_index(
+            dst_dataset, key_field, new_dst_index, dropped_dst_index
+        )
+
+        if contains_videos:
+            # Cleanup indexes
+            _cleanup_frame_index(dst_dataset, dst_frame_index)
+            _cleanup_frame_index(src_dataset, src_frame_index)
+
+            # Cleanup merge key
+            cleanup_op = {"$unset": {frame_key_field: ""}}
+            src_dataset._frame_collection.update_many({}, cleanup_op)
+            dst_dataset._frame_collection.update_many({}, cleanup_op)
 
     # Reload docs
     fos.Sample._reload_docs(dst_dataset._sample_collection_name)

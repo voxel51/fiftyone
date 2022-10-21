@@ -2296,6 +2296,16 @@ class ViewStageTests(unittest.TestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result.values("filepath"), unordered_values)
 
+        ids = self.dataset.values("id")
+
+        values = [ids[1], ids[0]]
+        unordered_values = [ids[0], ids[1]]
+
+        result = self.dataset.select_by("id", values)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("id"), unordered_values)
+
     def test_select_by_ordered(self):
         filepaths = self.dataset.values("filepath")
 
@@ -2305,6 +2315,15 @@ class ViewStageTests(unittest.TestCase):
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result.values("filepath"), values)
+
+        ids = self.dataset.values("id")
+
+        values = [ids[1], ids[0]]
+
+        result = self.dataset.select_by("id", values, ordered=True)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("id"), values)
 
     def test_select_fields(self):
         self.dataset.add_sample_field("select_fields_field", fo.IntField)

@@ -682,6 +682,7 @@ function ViewJSON({ sample, jsonPanel }) {
             e.preventDefault();
             return false;
           }}
+          data-for-panel="json"
         />
       </ActionItem>
     </Fragment>
@@ -723,6 +724,7 @@ function ViewHelp({ helpPanel }) {
             e.preventDefault();
             return false;
           }}
+          data-for-panel="help"
         />
       </ActionItem>
     </Fragment>

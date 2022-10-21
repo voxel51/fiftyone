@@ -264,25 +264,27 @@ def merge_samples(
 
     if isinstance(dataset_importer, BatchDatasetImporter):
         tmp = fod.Dataset()
-        with dataset_importer:
-            dataset_importer.import_samples(tmp, tags=tags)
 
-        dataset.merge_samples(
-            tmp,
-            key_field=key_field,
-            key_fcn=key_fcn,
-            skip_existing=skip_existing,
-            insert_new=insert_new,
-            fields=fields,
-            omit_fields=omit_fields,
-            merge_lists=merge_lists,
-            overwrite=overwrite,
-            expand_schema=expand_schema,
-            include_info=add_info,
-            overwrite_info=True,
-        )
+        try:
+            with dataset_importer:
+                dataset_importer.import_samples(tmp, tags=tags)
 
-        tmp.delete()
+            dataset.merge_samples(
+                tmp,
+                key_field=key_field,
+                key_fcn=key_fcn,
+                skip_existing=skip_existing,
+                insert_new=insert_new,
+                fields=fields,
+                omit_fields=omit_fields,
+                merge_lists=merge_lists,
+                overwrite=overwrite,
+                expand_schema=expand_schema,
+                include_info=add_info,
+                overwrite_info=True,
+            )
+        finally:
+            tmp.delete()
 
         return
 
@@ -1617,11 +1619,15 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             # into a temporary dataset, perform the migration, and then merge
             # into the destination dataset
             tmp_dataset = fod.Dataset()
-            sample_ids = self._import_samples(
-                tmp_dataset, dataset_dict, tags=tags
-            )
-            dataset.add_collection(tmp_dataset)
-            tmp_dataset.delete()
+
+            try:
+                sample_ids = self._import_samples(
+                    tmp_dataset, dataset_dict, tags=tags
+                )
+                dataset.add_collection(tmp_dataset)
+            finally:
+                tmp_dataset.delete()
+
             return sample_ids
 
         return self._import_samples(dataset, dataset_dict, tags=tags)
