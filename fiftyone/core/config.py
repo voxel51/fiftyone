@@ -436,10 +436,10 @@ class AppConfig(EnvConfig):
             except Exception as e:
                 logger.warning("Failed to set mapbox token: %s", e)
 
-        if self.sidebar_mode not in {"best", "fast", "slow"}:
+        if self.sidebar_mode not in {"all", "best", "fast"}:
             logger.warning(
-                "Invalid `sidebar_mode` option '%s'. Must be one of 'best', "
-                "'fast' or 'slow'. Defaulting to 'field'",
+                "Invalid `sidebar_mode` option '%s'. Must be one of 'all', "
+                "'best', or 'fast'. Defaulting to 'field'",
                 self.sidebar_mode,
             )
             self.sidebar_mode = "best"

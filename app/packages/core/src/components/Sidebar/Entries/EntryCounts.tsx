@@ -22,7 +22,7 @@ const showEntryCounts = selectorFamily<
       if (
         params.modal ||
         params.path === "" ||
-        mode === "slow" ||
+        mode === "all" ||
         get(pathIsExpanded(params))
       ) {
         return true;

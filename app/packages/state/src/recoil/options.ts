@@ -7,12 +7,12 @@ export const selectedMediaField = atomFamily<string, boolean>({
   default: "filepath",
 });
 
-export const sidebarModeDefault = selector<"best" | "fast" | "slow">({
+export const sidebarModeDefault = selector<"all" | "best" | "fast">({
   key: "sidebarModeDefault",
   get: ({ get }) => {
     const appDefault = get(
       appConfigDefault({ modal: false, key: "sidebarMode" })
-    ) as "best" | "fast" | "slow";
+    ) as "all" | "best" | "fast";
 
     const datasetDefault = get(dataset)?.appConfig?.sidebarMode;
 
@@ -20,7 +20,7 @@ export const sidebarModeDefault = selector<"best" | "fast" | "slow">({
   },
 });
 
-export const sidebarMode = atomFamily<"best" | "fast" | "slow", boolean>({
+export const sidebarMode = atomFamily<"all" | "best" | "fast", boolean>({
   key: "sidebarMode",
   default: sidebarModeDefault,
 });
