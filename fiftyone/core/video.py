@@ -152,7 +152,8 @@ class FramesView(fov.DatasetView):
         )
 
         # If sample_frames != dynamic, `filepath` can be synced
-        if self._frames_stage.config.get("sample_frames", None) != "dynamic":
+        config = self._frames_stage.config or {}
+        if config.get("sample_frames", None) != "dynamic":
             sample_only_fields.discard("filepath")
 
         return sample_only_fields
