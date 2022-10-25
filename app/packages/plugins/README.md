@@ -5,13 +5,7 @@ behavior!
 
 This document describes how to develop, publish, and install custom plugins.
 
-## Installing plugins
-
-In order to install plugins you must have one of the following tools available
-in the environment you are running FiftyOne:
-
-- `npm`
-- `yarn`
+## Configuring your plugin directory
 
 First, create a directory where you want to store your plugins.
 
@@ -31,7 +25,44 @@ You can also permanently configure this directory by adding it to your
 }
 ```
 
-NOTE: your plugins directory must be readable by the FiftyOne server.
+If you are running an instance of your fiftyone app server, you will need to restart it to
+pick up this new setting.
+
+> NOTE: your plugins directory must be readable by the FiftyOne server.
+
+## Installing plugins manually
+
+Fiftyone will try and find your plugin's `package.json` file within the plugin directory
+described above. Below is an example of a typical plugin directory.
+
+```txt
+/my-fiftyone-plugins
+  /my-plugin-1
+    /package.json
+    /dist
+      /my-plugin.min.js
+  /my-plugin-2
+    /package.json
+    /dist
+      /my-plugin2.min.js
+```
+
+In order to manually install a plugin, you must copy the plugin's directory into your plugin directory so that it matches the structure above.
+
+If your fiftyone app server is already running, you should restart the server and refresh any connected browser clients to see the plugins show up.
+
+> NOTE: if you do not see your plugin - make sure the package.json file is present and
+> has the appropriate `fiftyone.script` setting described below.
+
+## Installing plugins with a package manager or git
+
+In order to install plugins with a package manager,
+you must have one of the following tools available
+in the environment you are running FiftyOne:
+
+- `npm`
+- `yarn`
+- `git` - if installing from a git repo
 
 Once you have a plugins directory setup, you must create a shell package to
 version your plugins:
@@ -69,23 +100,11 @@ yarn add ssh://github.com/user/my-plugin#my-branch
 
 ## Configuring plugins
 
-In your `FIFTYONE_PLUGINS_DIR`, create a file named `settings.json`. Each top
-level property in this file corresponds to the name (package.json "name") of
-one of your installed plugins.
+You can store system-wide plugin configurations under the plugins key of your App config or dataset. This allows for configuring plugins at the application wide level or per dataset.
 
-Each plugin should describe what settings it supports. All plugins share the
-"enabled" setting. If set to `false` the plugin will not be loaded.
+See the [configuring plugins](https://voxel51.com/docs/fiftyone/user_guide/config.html#configuring-plugins) user guide for info on changing a plugin's configuration.
 
-Below is an example `settings.json` file:
-
-```json
-{
-  "3d": {
-    "enabled": true,
-    "defaultCameraPosition": { "x": 0, "y": 0, "z": 20 }
-  }
-}
-```
+> NOTE: you can see an example of dataset level plugin configuration in the [map plugin](https://voxel51.com/docs/fiftyone/user_guide/app.html#map-tab) user guide.
 
 ## Developing plugins
 
@@ -96,6 +115,9 @@ In order to develop and test your plugin you will need the following:
 - A plugin skeleton (start with one of the plugins in voxel51/fiftyone-plugins)
 - npm link / symlink to the `@fiftyone/plugins` package
 - npm link / symlink to the `@fiftyone/aggregations` package (optional)
+
+> Note you cannot use relative paths to load these modules. They must be loaded using the `from '@fiftyone/$PKG_NAME'` syntax.
+> This allows the build to externalize them, so they are loaded at runtime by the parent application.
 
 For local testing, follow these basic steps:
 
@@ -118,7 +140,7 @@ Then follow the steps below, in separate terminal sessions as needed.
 FIFTYONE_PLUGINS_DIR=/path/to/your/plugins
 
 # start the FiftyOne App in dev mode
-cd $FIFTYONE/app/packaages/app
+cd $FIFTYONE/app/packages/app
 yarn dev
 
 # start the FiftyOne python server (in a separate session)
@@ -126,7 +148,7 @@ cd $FIFTYONE
 python fiftyone/server/main.py
 
 # ensure your plugin has a symlink to the @fiftyone/plugins package
-cd $FIFTYONE/app/packaages/plugins
+cd $FIFTYONE/app/packages/plugins
 npm link
 cd $MY_PLUGIN
 npm link @fiftyone/plugins
@@ -322,22 +344,38 @@ or tokens. Below is an example for how to provide and read these credentials.
 The same mechanism can be used to expose configuration to plugin users, such as
 color choices, and default values.
 
-You can store your credentials in your plugin settings located at
-`${FIFTYONE_PLUGINS_DIR}/settings.json`:
+You can store a setting in either the App config or an individual dataset. Here's an example of both.
 
-```json
+```js
+// app_config.json
 {
-  "my-map-box-plugin": {
-    "mapboxAPIKey": "..."
+  "plugins": {
+    "my-plugin": {
+      "mysetting": "foo"
+    }
   }
 }
+```
+
+Now lets take that setting and change it for the `quickstart` dataset.
+
+```py
+import fiftyone as fo
+dataset = fo.load_dataset("quickstart")
+
+# Modify the dataset's App config
+dataset.app_config.plugins["my-plugin"] = {
+  "mysetting": "bar"
+}
+
+dataset.save()
 ```
 
 Then in your plugin implementation, you can read settings with the
 `useSettings` hook:
 
 ```js
-const { mapboxAPIKey } = fop.useSettings("my-map-box-plugin");
+const { mysetting } = fop.useSettings("my-plugin");
 ```
 
 ## Querying FiftyOne

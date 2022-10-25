@@ -93,6 +93,7 @@ interface BaseOptions {
   showControls: boolean;
   showIndex: boolean;
   showJSON: boolean;
+  showHelp: boolean;
   showLabel: boolean;
   showOverlays: boolean;
   showTooltip: boolean;
@@ -201,7 +202,6 @@ export interface BaseState {
   dashLength: number;
   relativeCoordinates: Coordinates;
   mouseIsOnOverlay: boolean;
-  showHelp: boolean;
   overlaysPrepared: boolean;
   disableOverlays: boolean;
   zoomToContent: boolean;

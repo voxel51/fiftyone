@@ -4,7 +4,7 @@ body {
 }
 
 a.reference.external:after {
-  font-family: "FontAwesome";
+  font: var(--fa-font-solid);
   content: " \f08e";
 }
 
@@ -41,7 +41,7 @@ article.pytorch-article .wy-table-responsive table thead th {
 }
 
 .pytorch-page-level-bar {
-  z-index: 500;
+  z-index: 200;
 }
 
 .pytorch-left-menu {
@@ -331,19 +331,6 @@ article.pytorch-article .reference.download.internal {
   width: 100%;
 }
 
-@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
-  .nav__main__logo {
-    margin: 0;
-    padding-left: 30px;
-  }
-}
-
-@media only screen and (min-width: 1101px) {
-  #nav__main__items {
-    margin-right: 19%;
-  }
-}
-
 @media only screen and (min-width: 1600px) {
   #nav__main__items {
     max-width: 800px;
@@ -354,18 +341,55 @@ article.pytorch-article .reference.download.internal {
   color: inherit;
 }
 
-@media screen and (max-width: 1099px) {
-  .nav__main {
-    height: unset;
-  }
-}
-
 .nav__item {
   padding: 0 10px;
 }
 
 .nav__main .fa-header-icon {
   font-size: 25px;
+}
+
+.nav__dropdown__menu {
+  z-index: 201;
+  min-width: 9.5rem;
+  height: fit-content;
+  margin-top: -1.5rem;
+  padding: 0.7rem;
+  text-align: left;
+  line-height: 1.9rem;
+}
+
+.nav__dropdown__menu a {
+  color: var(--color-primary);
+}
+
+@media only screen and (min-width: 320px) and (max-width: 850px) {
+  .nav__main {
+    height: 52.5px;
+  }
+
+  .nav__main__logo {
+    margin: 0;
+    padding-left: 30px;
+  }
+
+  #nav__main__items {
+    font-size: 14px;
+    line-height: 2rem;
+  }
+
+  #nav__main__items .nav__item {
+    padding: 0 0 0 10px;
+    margin-top: auto;
+  }
+
+  .nav__dropdown__menu {
+    text-align: right;
+  }
+
+  .nav__dropdown__menu a {
+    color: var(--text-primary-on-dark);
+  }
 }
 
 .footer-wrapper {
@@ -389,7 +413,7 @@ article.pytorch-article .reference.download.internal {
   line-height: 30px;
 }
 
-@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+@media only screen and (min-width: 320px) and (max-width: 850px) {
   .footer {
     font-size: 12px;
     padding-top: 30px;
@@ -567,7 +591,7 @@ a.with-right-arrow,
   width: 32px !important;
 }
 
-@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+@media only screen and (min-width: 320px) and (max-width: 850px) {
   .social-links #social-links-table {
     width: 100% !important;
   }

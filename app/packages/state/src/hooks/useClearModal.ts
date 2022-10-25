@@ -1,16 +1,10 @@
 import { useRecoilTransaction_UNSTABLE } from "recoil";
 
 import * as fos from "../recoil";
-import useJSONPanel from "./useJSONPanel";
-import useHelpPanel from "./useHelpPanel";
 export default () => {
-  const jsonPanel = useJSONPanel();
-  const helpPanel = useHelpPanel();
   return useRecoilTransaction_UNSTABLE(
     ({ set, get }) =>
       () => {
-        if (get(jsonPanel.stateAtom).json.isOpen) return;
-        if (get(helpPanel.stateAtom).help.isOpen) return;
         const fullscreen = get(fos.fullscreen);
         if (fullscreen) {
           return;

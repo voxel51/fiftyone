@@ -186,16 +186,18 @@ def beam_merge(
     if kwargs.get("key_fcn", None) is None:
         tmp_dataset = fod.Dataset()
 
-        beam_import(
-            tmp_dataset,
-            samples,
-            parse_fcn=parse_fcn,
-            options=options,
-            verbose=verbose,
-        )
+        try:
+            beam_import(
+                tmp_dataset,
+                samples,
+                parse_fcn=parse_fcn,
+                options=options,
+                verbose=verbose,
+            )
 
-        dataset.merge_samples(tmp_dataset, **kwargs)
-        tmp_dataset.delete()
+            dataset.merge_samples(tmp_dataset, **kwargs)
+        finally:
+            tmp_dataset.delete()
 
         return
 
