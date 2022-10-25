@@ -87,7 +87,7 @@ export namespace State {
     mediaFields?: string[];
     plugins?: PluginConfig;
     sidebarGroups?: SidebarGroup[];
-    sidebarMode?: "best" | "fast" | "slow";
+    sidebarMode?: "all" | "best" | "fast";
   }
   export interface Dataset {
     id: string;
