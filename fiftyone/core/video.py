@@ -142,6 +142,21 @@ class FramesView(fov.DatasetView):
     def media_type(self):
         return fom.IMAGE
 
+    def _get_sample_only_fields(
+        self, include_private=False, use_db_fields=False
+    ):
+        sample_only_fields = set(
+            self._get_default_sample_fields(
+                include_private=include_private, use_db_fields=use_db_fields
+            )
+        )
+
+        # If sample_frames != dynamic, `filepath` can be synced
+        if self._frames_stage.config.get("sample_frames", None) != "dynamic":
+            sample_only_fields.discard("filepath")
+
+        return sample_only_fields
+
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
     ):
