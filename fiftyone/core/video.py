@@ -288,16 +288,14 @@ class FramesView(fov.DatasetView):
         self._sync_source_schema()
 
         dst_dataset = self._source_collection._root_dataset
-        default_fields = set(
-            self._get_default_sample_fields(
-                include_private=True, use_db_fields=True
-            )
+        sample_only_fields = self._get_sample_only_fields(
+            include_private=True, use_db_fields=True
         )
 
         updates = {
             k: v
             for k, v in sample.to_mongo_dict().items()
-            if k not in default_fields
+            if k not in sample_only_fields
         }
 
         if not updates:
@@ -312,14 +310,12 @@ class FramesView(fov.DatasetView):
 
     def _sync_source(self, fields=None, ids=None, update=True, delete=False):
         dst_dataset = self._source_collection._root_dataset
-        default_fields = set(
-            self._get_default_sample_fields(
-                include_private=True, use_db_fields=True
-            )
+        sample_only_fields = self._get_sample_only_fields(
+            include_private=True, use_db_fields=True
         )
 
         if fields is not None:
-            fields = [f for f in fields if f not in default_fields]
+            fields = [f for f in fields if f not in sample_only_fields]
             if not fields:
                 return
 
@@ -338,10 +334,10 @@ class FramesView(fov.DatasetView):
                 )
 
             if fields is None:
-                default_fields.discard("_sample_id")
-                default_fields.discard("frame_number")
+                sample_only_fields.discard("_sample_id")
+                sample_only_fields.discard("frame_number")
 
-                pipeline.append({"$unset": list(default_fields)})
+                pipeline.append({"$unset": list(sample_only_fields)})
             else:
                 project = {f: True for f in fields}
                 project["_id"] = True
