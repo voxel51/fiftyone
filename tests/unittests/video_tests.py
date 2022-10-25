@@ -2033,6 +2033,33 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(len(frames), 2)
 
     @drop_datasets
+    def test_to_frames_filepaths(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(filepath="image.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        frames = dataset.to_frames()
+
+        sample = frames.first()
+        sample.filepath = "foo.jpg"
+        sample.save()
+
+        self.assertEqual(frames.first().filepath, "foo.jpg")
+        self.assertEqual(dataset.first().frames.first().filepath, "foo.jpg")
+
+        frames.set_values("filepath", ["bar.jpg"])
+
+        self.assertEqual(frames.first().filepath, "bar.jpg")
+        self.assertEqual(dataset.first().frames.first().filepath, "bar.jpg")
+
+        frames.set_field("filepath", F("filepath").upper()).save()
+
+        self.assertEqual(frames.first().filepath, "BAR.JPG")
+        self.assertEqual(dataset.first().frames.first().filepath, "BAR.JPG")
+
+    @drop_datasets
     def test_to_clip_frames(self):
         dataset = fo.Dataset()
 
