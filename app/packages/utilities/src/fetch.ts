@@ -64,219 +64,217 @@ export const setFetchFunction = (
     result = "json"
   ) => {
     let url: string;
+
     if (fetchPathPrefix) {
       path = `${fetchPathPrefix}${path}`;
-
-      try {
-        new URL(path);
-        url = path;
-      } catch {
-        url = `${origin}${path}`;
-      }
-
-      const response = await fetch(url, {
-        method: method,
-        cache: "no-cache",
-        headers: {
-          "Content-Type": "application/json",
-          ...headers,
-        },
-        mode: "cors",
-        body: body ? JSON.stringify(body) : null,
-      });
-
-      if (response.status >= 400) {
-        const error = await response.json();
-        throw new ServerError((error as unknown as { stack: string }).stack);
-      }
-
-      return await response[result]();
     }
 
-    fetchFunctionSingleton = fetchFunction;
+    try {
+      new URL(path);
+      url = path;
+    } catch {
+      url = `${origin}${path}`;
+    }
+
+    const response = await fetch(url, {
+      method: method,
+      cache: "no-cache",
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      mode: "cors",
+      body: body ? JSON.stringify(body) : null,
+    });
+
+    if (response.status >= 400) {
+      const error = await response.json();
+      throw new ServerError((error as unknown as { stack: string }).stack);
+    }
+
+    return await response[result]();
   };
 
-  const isWorker =
-    // @ts-ignore
-    typeof WorkerGlobalScope !== "undefined" &&
-    self instanceof WorkerGlobalScope;
+  fetchFunctionSingleton = fetchFunction;
+};
 
-  export const getAPI = () => {
-    if (import.meta.env.VITE_API) {
-      return import.meta.env.VITE_API;
-    }
-    if (window.FIFTYONE_SERVER_ADDRESS) {
-      return window.FIFTYONE_SERVER_ADDRESS;
-    }
-    return isElectron()
-      ? `http://${process.env.FIFTYONE_SERVER_ADDRESS || "localhost"}:${
-          process.env.FIFTYONE_SERVER_PORT || 5151
-        }`
-      : window.location.origin;
-  };
+const isWorker =
+  // @ts-ignore
+  typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
 
-  if (!isWorker) {
-    setFetchFunction(getAPI(), {}, getFetchPathPrefix());
+export const getAPI = () => {
+  if (import.meta.env.VITE_API) {
+    return import.meta.env.VITE_API;
   }
-
-  class RetriableError extends Error {}
-  class FatalError extends Error {}
-
-  const polling =
-    !isWorker &&
-    typeof new URLSearchParams(window.location.search).get("polling") ===
-      "string";
-
-  export const getEventSource = (
-    path: string,
-    events: {
-      onmessage?: (event: EventSourceMessage) => void;
-      onopen?: () => void;
-      onclose?: () => void;
-      onerror?: (error: Error) => void;
-    },
-    signal: AbortSignal,
-    body = {}
-  ): void => {
-    if (polling) {
-      pollingEventSource(path, events, signal, body);
-    } else {
-      if (fetchPathPrefix) {
-        path = `${fetchPathPrefix}${path}`;
-      }
-
-      fetchEventSource(`${getFetchOrigin()}${path}`, {
-        headers: { "Content-Type": "text/event-stream" },
-        method: "POST",
-        signal,
-        body: JSON.stringify(body),
-        async onopen(response) {
-          if (response.ok) {
-            events.onopen && events.onopen();
-            return;
-          }
-
-          if (response.status !== 429) {
-            throw new FatalError();
-          }
-
-          throw new RetriableError();
-        },
-        onmessage(msg) {
-          if (msg.event === "FatalError") {
-            throw new FatalError(msg.data);
-          }
-          events.onmessage && events.onmessage(msg);
-        },
-        onclose() {
-          events.onclose && events.onclose();
-          throw new RetriableError();
-        },
-        onerror(err) {
-          if (
-            err instanceof TypeError &&
-            ["Failed to fetch", "network error"].includes(err.message)
-          ) {
-            events.onclose && events.onclose();
-            return;
-          }
-
-          events.onerror && events.onerror(err);
-        },
-        fetch: async (input, init) => {
-          try {
-            const response = await fetch(input, init);
-            if (response.status >= 400) {
-              let err;
-              try {
-                err = await response.json();
-              } catch {
-                throw new Error(`${response.status} ${response.url}`);
-              }
-
-              throw new ServerError(
-                (err as unknown as { stack: string }).stack
-              );
-            }
-
-            return response;
-          } catch (err) {
-            throw err;
-          }
-        },
-        openWhenHidden: true,
-      });
-    }
-  };
-
-  export const sendEvent = async (data: {}) => {
-    return await getFetchFunction()("POST", "/event", data);
-  };
-
-  interface PollingEventResponse {
-    event: string;
-    data: {
-      [key: string]: any;
-    };
+  if (window.FIFTYONE_SERVER_ADDRESS) {
+    return window.FIFTYONE_SERVER_ADDRESS;
   }
+  return isElectron()
+    ? `http://${process.env.FIFTYONE_SERVER_ADDRESS || "localhost"}:${
+        process.env.FIFTYONE_SERVER_PORT || 5151
+      }`
+    : window.location.origin;
+};
 
-  const pollingEventSource = (
-    path: string,
-    events: {
-      onmessage?: (event: EventSourceMessage) => void;
-      onopen?: () => void;
-      onclose?: () => void;
-      onerror?: (error: Error) => void;
-    },
-    signal: AbortSignal,
-    body = {},
-    opened: boolean = false
-  ): void => {
-    if (signal.aborted) {
-      return;
+if (!isWorker) {
+  setFetchFunction(getAPI(), {}, getFetchPathPrefix());
+}
+
+class RetriableError extends Error {}
+class FatalError extends Error {}
+
+const polling =
+  !isWorker &&
+  typeof new URLSearchParams(window.location.search).get("polling") ===
+    "string";
+
+export const getEventSource = (
+  path: string,
+  events: {
+    onmessage?: (event: EventSourceMessage) => void;
+    onopen?: () => void;
+    onclose?: () => void;
+    onerror?: (error: Error) => void;
+  },
+  signal: AbortSignal,
+  body = {}
+): void => {
+  if (polling) {
+    pollingEventSource(path, events, signal, body);
+  } else {
+    if (fetchPathPrefix) {
+      path = `${fetchPathPrefix}${path}`;
     }
 
-    getFetchFunction()("POST", path, { polling: true, ...body })
-      .then(({ events: data }: { events: PollingEventResponse[] }) => {
-        if (signal.aborted) {
+    fetchEventSource(`${getFetchOrigin()}${path}`, {
+      headers: { "Content-Type": "text/event-stream" },
+      method: "POST",
+      signal,
+      body: JSON.stringify(body),
+      async onopen(response) {
+        if (response.ok) {
+          events.onopen && events.onopen();
           return;
         }
 
-        if (!opened) {
-          events.onopen && events.onopen();
-          opened = true;
+        if (response.status !== 429) {
+          throw new FatalError();
         }
 
-        data.forEach((e) => {
-          events.onmessage &&
-            events.onmessage({
-              id: null,
-              event: e.event,
-              data: JSON.stringify(e.data),
-            });
-        });
-
-        setTimeout(
-          () => pollingEventSource(path, events, signal, body, opened),
-          2000
-        );
-      })
-      .catch((error) => {
+        throw new RetriableError();
+      },
+      onmessage(msg) {
+        if (msg.event === "FatalError") {
+          throw new FatalError(msg.data);
+        }
+        events.onmessage && events.onmessage(msg);
+      },
+      onclose() {
+        events.onclose && events.onclose();
+        throw new RetriableError();
+      },
+      onerror(err) {
         if (
-          error instanceof TypeError &&
-          ["Failed to fetch", "network error"].includes(error.message)
+          err instanceof TypeError &&
+          ["Failed to fetch", "network error"].includes(err.message)
         ) {
           events.onclose && events.onclose();
-          opened = false;
-        } else {
-          // todo: use onerror when appropriate? (colab network responses are unreliable)
-          events.onclose && events.onclose();
+          return;
         }
 
-        setTimeout(
-          () => pollingEventSource(path, events, signal, body, opened),
-          2000
-        );
-      });
+        events.onerror && events.onerror(err);
+      },
+      fetch: async (input, init) => {
+        try {
+          const response = await fetch(input, init);
+          if (response.status >= 400) {
+            let err;
+            try {
+              err = await response.json();
+            } catch {
+              throw new Error(`${response.status} ${response.url}`);
+            }
+
+            throw new ServerError((err as unknown as { stack: string }).stack);
+          }
+
+          return response;
+        } catch (err) {
+          throw err;
+        }
+      },
+      openWhenHidden: true,
+    });
+  }
+};
+
+export const sendEvent = async (data: {}) => {
+  return await getFetchFunction()("POST", "/event", data);
+};
+
+interface PollingEventResponse {
+  event: string;
+  data: {
+    [key: string]: any;
   };
+}
+
+const pollingEventSource = (
+  path: string,
+  events: {
+    onmessage?: (event: EventSourceMessage) => void;
+    onopen?: () => void;
+    onclose?: () => void;
+    onerror?: (error: Error) => void;
+  },
+  signal: AbortSignal,
+  body = {},
+  opened: boolean = false
+): void => {
+  if (signal.aborted) {
+    return;
+  }
+
+  getFetchFunction()("POST", path, { polling: true, ...body })
+    .then(({ events: data }: { events: PollingEventResponse[] }) => {
+      if (signal.aborted) {
+        return;
+      }
+
+      if (!opened) {
+        events.onopen && events.onopen();
+        opened = true;
+      }
+
+      data.forEach((e) => {
+        events.onmessage &&
+          events.onmessage({
+            id: null,
+            event: e.event,
+            data: JSON.stringify(e.data),
+          });
+      });
+
+      setTimeout(
+        () => pollingEventSource(path, events, signal, body, opened),
+        2000
+      );
+    })
+    .catch((error) => {
+      if (
+        error instanceof TypeError &&
+        ["Failed to fetch", "network error"].includes(error.message)
+      ) {
+        events.onclose && events.onclose();
+        opened = false;
+      } else {
+        // todo: use onerror when appropriate? (colab network responses are unreliable)
+        events.onclose && events.onclose();
+      }
+
+      setTimeout(
+        () => pollingEventSource(path, events, signal, body, opened),
+        2000
+      );
+    });
 };
