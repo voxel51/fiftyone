@@ -69,7 +69,7 @@ def evaluate_detections(
     object- and sample-level recording the results of the evaluation:
 
     -   True positive (TP), false positive (FP), and false negative (FN) counts
-        for the each sample are saved in top-level fields of each sample::
+        for each sample are saved in top-level fields of each sample::
 
             TP: sample.<eval_key>_tp
             FP: sample.<eval_key>_fp
