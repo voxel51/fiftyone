@@ -259,3 +259,8 @@ export const compactLayout = atom({
   key: "compactLayout",
   default: false,
 });
+
+export const readOnly = atom({
+  key: "readOnly",
+  default: false,
+});

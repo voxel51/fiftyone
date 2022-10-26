@@ -89,6 +89,7 @@ def transform_images(
     size=None,
     min_size=None,
     max_size=None,
+    interpolation=None,
     ext=None,
     force_reencode=False,
     media_field="filepath",
@@ -123,6 +124,8 @@ def transform_images(
             image. A dimension can be -1 if no constraint should be applied.
             The images are resized (aspect-preserving) if necessary to meet
             this constraint
+        interpolation (None): an optional ``interpolation`` argument for
+            ``cv2.resize()``
         ext (None): an optional image format to re-encode the source images
             into (e.g., ".png" or ".jpg")
         force_reencode (False): whether to re-encode images whose parameters
@@ -155,6 +158,7 @@ def transform_images(
         size=size,
         min_size=min_size,
         max_size=max_size,
+        interpolation=interpolation,
         ext=ext,
         force_reencode=force_reencode,
         media_field=media_field,
@@ -178,7 +182,12 @@ def reencode_image(input_path, output_path):
 
 
 def transform_image(
-    input_path, output_path, size=None, min_size=None, max_size=None
+    input_path,
+    output_path,
+    size=None,
+    min_size=None,
+    max_size=None,
+    interpolation=None,
 ):
     """Transforms the image according to the provided parameters.
 
@@ -193,6 +202,8 @@ def transform_image(
         max_size (None): an optional maximum ``(width, height)`` for the image.
             A dimension can be -1 if no constraint should be applied. The image
             is resized (aspect-preserving) if necessary to meet this constraint
+        interpolation (None): an optional ``interpolation`` argument for
+            ``cv2.resize()``
     """
     _transform_image(
         input_path,
@@ -200,6 +211,7 @@ def transform_image(
         size=size,
         min_size=min_size,
         max_size=max_size,
+        interpolation=interpolation,
     )
 
 
@@ -208,6 +220,7 @@ def _transform_images(
     size=None,
     min_size=None,
     max_size=None,
+    interpolation=None,
     ext=None,
     force_reencode=False,
     media_field="filepath",
@@ -229,6 +242,7 @@ def _transform_images(
             size=size,
             min_size=min_size,
             max_size=max_size,
+            interpolation=interpolation,
             ext=ext,
             force_reencode=force_reencode,
             media_field=media_field,
@@ -245,6 +259,7 @@ def _transform_images(
             size=size,
             min_size=min_size,
             max_size=max_size,
+            interpolation=interpolation,
             ext=ext,
             force_reencode=force_reencode,
             media_field=media_field,
@@ -261,6 +276,7 @@ def _transform_images_single(
     size=None,
     min_size=None,
     max_size=None,
+    interpolation=None,
     ext=None,
     force_reencode=False,
     media_field="filepath",
@@ -294,6 +310,7 @@ def _transform_images_single(
                 size=size,
                 min_size=min_size,
                 max_size=max_size,
+                interpolation=interpolation,
                 force_reencode=force_reencode,
                 delete_original=delete_originals,
                 skip_failures=skip_failures,
@@ -310,6 +327,7 @@ def _transform_images_multi(
     size=None,
     min_size=None,
     max_size=None,
+    interpolation=None,
     ext=None,
     force_reencode=False,
     media_field="filepath",
@@ -341,6 +359,7 @@ def _transform_images_multi(
                 size,
                 min_size,
                 max_size,
+                interpolation,
                 force_reencode,
                 delete_originals,
                 skip_failures,
@@ -375,6 +394,7 @@ def _transform_image(
     size=None,
     min_size=None,
     max_size=None,
+    interpolation=None,
     force_reencode=False,
     delete_original=False,
     skip_failures=False,
@@ -398,7 +418,12 @@ def _transform_image(
             size = _parse_parameters(img, size, min_size, max_size)
 
         if size is not None:
-            img = etai.resize(img, width=size[0], height=size[1])
+            if interpolation is not None:
+                kwargs = dict(interpolation=interpolation)
+            else:
+                kwargs = {}
+
+            img = etai.resize(img, width=size[0], height=size[1], **kwargs)
             etai.write(img, outpath)
             did_transform = True
         elif force_reencode or (in_ext != out_ext):

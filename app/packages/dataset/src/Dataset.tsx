@@ -14,6 +14,12 @@ import {
   usePreLoadedDataset,
   ViewBar,
 } from "@fiftyone/core";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import * as fos from "@fiftyone/state";
+import { getEventSource, toCamelCase } from "@fiftyone/utilities";
+import { useEffect, useState, Suspense, Fragment } from "react";
+import { State } from "@fiftyone/state";
+
 import { usePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { State } from "@fiftyone/state";
@@ -45,10 +51,12 @@ export function Dataset({
   const setCompactLayout = useSetRecoilState(fos.compactLayout);
 
   useEffect(() => {
+    setReadOnly(readOnly);
     loadDataset(datasetName);
     if (themeMode) setThemeMode(themeMode);
     if (compactLayout) setCompactLayout(themeMode);
   }, [datasetName, themeMode, compactLayout]);
+
   const subscription = useRecoilValue(fos.stateSubscription);
   useEventSource(datasetName, subscription, setInitialState);
   const plugins = usePlugins();

@@ -6,7 +6,6 @@
   "main": "./dist/main.js",
   "license": "Apache-2.0",
   "private": true,
-  "prettier": "@fiftyone/prettier-config",
   "scripts": {
     "build": "yarn build-source && yarn build-desktop",
     "build-desktop": "yarn build-source && yarn pull-source && tsc -p tsconfig.json",
