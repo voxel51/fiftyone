@@ -557,8 +557,7 @@ def _write_support_clips(
     if other_fields:
         project.update({f: True for f in other_fields})
 
-    pipeline = src_collection._pipeline()
-    pipeline.append({"$project": project})
+    pipeline = [{"$project": project}]
 
     if is_list:
         pipeline.extend(
@@ -567,7 +566,7 @@ def _write_support_clips(
 
     pipeline.append({"$out": dataset._sample_collection_name})
 
-    src_dataset._aggregate(pipeline=pipeline)
+    src_collection._aggregate(post_pipeline=pipeline)
 
 
 def _write_temporal_detection_clips(
@@ -599,9 +598,7 @@ def _write_temporal_detection_clips(
     if other_fields:
         project.update({f: True for f in other_fields})
 
-    pipeline = src_collection._pipeline()
-
-    pipeline.append({"$project": project})
+    pipeline = [{"$project": project}]
 
     if label_type is fol.TemporalDetections:
         list_path = field + "." + label_type._LABEL_LIST_FIELD
@@ -625,7 +622,7 @@ def _write_temporal_detection_clips(
         ]
     )
 
-    src_dataset._aggregate(pipeline=pipeline)
+    src_collection._aggregate(post_pipeline=pipeline)
 
 
 def _write_trajectories(dataset, src_collection, field, other_fields=None):
@@ -650,50 +647,47 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
         _allow_missing=True,
     )
 
-    src_collection = fod._always_select_field(src_collection, _tmp_field)
+    try:
+        src_collection = fod._always_select_field(src_collection, _tmp_field)
 
-    id_field = "_id" if not src_dataset._is_clips else "_sample_id"
+        id_field = "_id" if not src_dataset._is_clips else "_sample_id"
 
-    project = {
-        "_id": False,
-        "_sample_id": "$" + id_field,
-        _tmp_field: True,
-        "_media_type": True,
-        "filepath": True,
-        "metadata": True,
-        "tags": True,
-        field: True,
-    }
+        project = {
+            "_id": False,
+            "_sample_id": "$" + id_field,
+            _tmp_field: True,
+            "_media_type": True,
+            "filepath": True,
+            "metadata": True,
+            "tags": True,
+            field: True,
+        }
 
-    if other_fields:
-        project.update({f: True for f in other_fields})
+        if other_fields:
+            project.update({f: True for f in other_fields})
 
-    pipeline = src_collection._pipeline()
-
-    pipeline.extend(
-        [
-            {"$project": project},
-            {"$unwind": "$" + _tmp_field},
-            {
-                "$set": {
-                    "support": {"$slice": ["$" + _tmp_field, 2, 2]},
-                    field: {
-                        "_cls": "Label",
-                        "label": {"$arrayElemAt": ["$" + _tmp_field, 0]},
-                        "index": {"$arrayElemAt": ["$" + _tmp_field, 1]},
+        src_collection._aggregate(
+            post_pipeline=[
+                {"$project": project},
+                {"$unwind": "$" + _tmp_field},
+                {
+                    "$set": {
+                        "support": {"$slice": ["$" + _tmp_field, 2, 2]},
+                        field: {
+                            "_cls": "Label",
+                            "label": {"$arrayElemAt": ["$" + _tmp_field, 0]},
+                            "index": {"$arrayElemAt": ["$" + _tmp_field, 1]},
+                        },
+                        "_rand": {"$rand": {}},
                     },
-                    "_rand": {"$rand": {}},
                 },
-            },
-            {"$unset": _tmp_field},
-            {"$out": dataset._sample_collection_name},
-        ]
-    )
-
-    src_dataset._aggregate(pipeline=pipeline)
-
-    cleanup_op = {"$unset": {_tmp_field: ""}}
-    src_dataset._sample_collection.update_many({}, cleanup_op)
+                {"$unset": _tmp_field},
+                {"$out": dataset._sample_collection_name},
+            ]
+        )
+    finally:
+        cleanup_op = {"$unset": {_tmp_field: ""}}
+        src_dataset._sample_collection.update_many({}, cleanup_op)
 
 
 def _write_expr_clips(
@@ -732,38 +726,35 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
         _allow_missing=True,
     )
 
-    src_collection = fod._always_select_field(src_collection, _tmp_field)
+    try:
+        src_collection = fod._always_select_field(src_collection, _tmp_field)
 
-    id_field = "_id" if not src_dataset._is_clips else "_sample_id"
+        id_field = "_id" if not src_dataset._is_clips else "_sample_id"
 
-    project = {
-        "_id": False,
-        "_sample_id": "$" + id_field,
-        "_media_type": True,
-        "filepath": True,
-        "support": "$" + _tmp_field,
-        "metadata": True,
-        "tags": True,
-    }
+        project = {
+            "_id": False,
+            "_sample_id": "$" + id_field,
+            "_media_type": True,
+            "filepath": True,
+            "support": "$" + _tmp_field,
+            "metadata": True,
+            "tags": True,
+        }
 
-    if other_fields:
-        project.update({f: True for f in other_fields})
+        if other_fields:
+            project.update({f: True for f in other_fields})
 
-    pipeline = src_collection._pipeline()
-
-    pipeline.extend(
-        [
-            {"$project": project},
-            {"$unwind": "$support"},
-            {"$set": {"_rand": {"$rand": {}}}},
-            {"$out": dataset._sample_collection_name},
-        ]
-    )
-
-    src_dataset._aggregate(pipeline=pipeline)
-
-    cleanup_op = {"$unset": {_tmp_field: ""}}
-    src_dataset._sample_collection.update_many({}, cleanup_op)
+        src_collection._aggregate(
+            post_pipeline=[
+                {"$project": project},
+                {"$unwind": "$support"},
+                {"$set": {"_rand": {"$rand": {}}}},
+                {"$out": dataset._sample_collection_name},
+            ]
+        )
+    finally:
+        cleanup_op = {"$unset": {_tmp_field: ""}}
+        src_dataset._sample_collection.update_many({}, cleanup_op)
 
 
 def _get_trajectories(sample_collection, frame_field):

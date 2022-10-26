@@ -10,7 +10,7 @@ import { rowAspectRatioThreshold } from "./recoil";
 import useResize from "./useResize";
 import usePage from "./usePage";
 import useExpandSample from "./useExpandSample";
-import { useEventHandler } from "../../utils/hooks";
+import { useEventHandler } from "@fiftyone/state";
 
 import * as fos from "@fiftyone/state";
 import { stringifyObj } from "@fiftyone/state";

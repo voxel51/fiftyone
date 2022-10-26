@@ -27,9 +27,10 @@ function Close({ onClick }) {
   );
 }
 
-export default function HelpPanel({ onClose, items }) {
+export default function HelpPanel({ containerRef, onClose, items }) {
   return (
     <div
+      ref={containerRef}
       className={`${lookerPanelContainer}`}
       onClick={(e) => e.stopPropagation()}
     >

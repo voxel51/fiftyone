@@ -5,7 +5,7 @@ import { useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
 import { Close, Help } from "@material-ui/icons";
 
-import { useOutsideClick } from "../../utils/hooks";
+import { useOutsideClick } from "@fiftyone/state";
 import { ExternalLink } from "../../utils/generic";
 
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";

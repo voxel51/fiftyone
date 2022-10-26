@@ -1,15 +1,8 @@
-import {
-  atom,
-  atomFamily,
-  useRecoilCallback,
-  useRecoilRefresher_UNSTABLE,
-  useRecoilTransaction_UNSTABLE,
-} from "recoil";
+import { atom, atomFamily, useRecoilCallback } from "recoil";
 
 import { Sample, RGB } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
-import { aggregationQuery } from "./aggregations";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -42,7 +35,7 @@ export const refresher = atom<number>({
 
 export const useRefresh = () => {
   return useRecoilCallback(
-    ({ refresh, set }) =>
+    ({ set }) =>
       () => {
         set(refresher, (cur) => cur + 1);
       },
@@ -244,4 +237,9 @@ export const lookerPanels = atom({
 export const theme = atom<"dark" | "light">({
   key: "theme",
   default: "dark",
+});
+
+export const readOnly = atom({
+  key: "readOnly",
+  default: false,
 });

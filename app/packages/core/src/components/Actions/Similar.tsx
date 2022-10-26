@@ -9,7 +9,7 @@ import {
 } from "recoil";
 
 import { SORT_BY_SIMILARITY } from "../../utils/links";
-import { useUnprocessedStateUpdate } from "../../utils/hooks";
+import { useUnprocessedStateUpdate } from "@fiftyone/state";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";

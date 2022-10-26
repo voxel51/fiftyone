@@ -116,6 +116,9 @@ In order to develop and test your plugin you will need the following:
 - npm link / symlink to the `@fiftyone/plugins` package
 - npm link / symlink to the `@fiftyone/aggregations` package (optional)
 
+> Note you cannot use relative paths to load these modules. They must be loaded using the `from '@fiftyone/$PKG_NAME'` syntax.
+> This allows the build to externalize them, so they are loaded at runtime by the parent application.
+
 For local testing, follow these basic steps:
 
 First ensure your plugin's `package.json` includes the path to the plugin

@@ -2,7 +2,6 @@
 
 Looker is a client-side JavaScript media viewer that can render label overlays
 
-
 # Features
 
 - Media support: Image, Video
@@ -40,37 +39,36 @@ Looker is a client-side JavaScript media viewer that can render label overlays
 
 # State
 
-| Atom | Used In
-|:--|:--|
-sampleId | looker
-dimensions | looker
-hasNext | looker
-hasPrevious | looker
-selectedLabelIds | looker
-showoverlays | looker
-modal | looker, options, SampleModal
-isPatchesView | looker, flashlight
-cropToContent | looker, flashlight
-activeFields | looker, flashlight, groupEntries, schema
-pathFilter | looker, flashlight
-fullscreen | looker, menu, samplemodal
-timeZone | global
-coloring | global
-alpha | flashlight, looker, options
-showSkeletons | global
-defaultSkeleton | global
-skeletons | global
-pointFilter | looker, flashlight
-selectedLabels | global
-thumbnail | flashlight, looker
-frameRate | flashlight, looker
-frameNumber | flashlight, looker
-fieldSchema | global
+| Atom             | Used In                                  |
+| :--------------- | :--------------------------------------- |
+| sampleId         | looker                                   |
+| dimensions       | looker                                   |
+| hasNext          | looker                                   |
+| hasPrevious      | looker                                   |
+| selectedLabelIds | looker                                   |
+| showoverlays     | looker                                   |
+| modal            | looker, options, SampleModal             |
+| isPatchesView    | looker, flashlight                       |
+| cropToContent    | looker, flashlight                       |
+| activeFields     | looker, flashlight, groupEntries, schema |
+| pathFilter       | looker, flashlight                       |
+| fullscreen       | looker, menu, samplemodal                |
+| timeZone         | global                                   |
+| coloring         | global                                   |
+| alpha            | flashlight, looker, options              |
+| showSkeletons    | global                                   |
+| defaultSkeleton  | global                                   |
+| skeletons        | global                                   |
+| pointFilter      | looker, flashlight                       |
+| selectedLabels   | global                                   |
+| thumbnail        | flashlight, looker                       |
+| frameRate        | flashlight, looker                       |
+| frameNumber      | flashlight, looker                       |
+| fieldSchema      | global                                   |
 
 # Internal State
 
 ```ts
-
 export interface BaseState {
   disabled: boolean;
   cursorCoordinates: Coordinates;
@@ -99,7 +97,6 @@ export interface BaseState {
   dashLength: number;
   relativeCoordinates: Coordinates;
   mouseIsOnOverlay: boolean;
-  showHelp: boolean;
   overlaysPrepared: boolean;
   disableOverlays: boolean;
   zoomToContent: boolean;
@@ -141,7 +138,3 @@ export interface VideoState extends BaseState {
   lockedToSupport: boolean;
 }
 ```
-
-# Questions
-
-- Why are there so many ways to update state?

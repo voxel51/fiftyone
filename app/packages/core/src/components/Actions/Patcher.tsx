@@ -11,7 +11,7 @@ import {
   toSnakeCase,
 } from "@fiftyone/utilities";
 
-import { useUnprocessedStateUpdate } from "../../utils/hooks";
+import { useUnprocessedStateUpdate } from "@fiftyone/state";
 import {
   OBJECT_PATCHES,
   EVALUATION_PATCHES,

@@ -8,10 +8,10 @@ import { RouterContext } from "../routing";
 import { getDatasetName, transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
 import useStateUpdate from "./useStateUpdate";
+import * as fos from "../";
 
 const useSetView = () => {
   const send = useSendEvent(true);
-  const context = useContext(RouterContext);
   const updateState = useStateUpdate();
   const subscription = useRecoilValue(stateSubscription);
   const [commit] = useMutation<setViewMutation>(setView);
@@ -25,6 +25,7 @@ const useSetView = () => {
           | State.Stage[]
           | ((current: State.Stage[]) => State.Stage[])
       ) => {
+        const dataset = get(fos.dataset);
         send((session) => {
           const value =
             viewOrUpdater instanceof Function
@@ -35,7 +36,7 @@ const useSetView = () => {
               subscription,
               session,
               view: value,
-              dataset: getDatasetName(context),
+              dataset: dataset.name,
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {

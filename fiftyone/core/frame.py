@@ -829,7 +829,7 @@ class FramesView(Frames):
         ]
 
         try:
-            d = next(self._dataset._aggregate(pipeline))
+            d = next(foo.aggregate(self._sample_collection, pipeline))
             return set(d["frame_numbers"])
         except StopIteration:
             return set()
@@ -838,18 +838,19 @@ class FramesView(Frames):
         if not self._needs_frames:
             return super()._get_frame_db(frame_number)
 
-        pipeline = self._view._pipeline(frames_only=True)
-        pipeline.append(
-            {
-                "$match": {
-                    "_sample_id": self._sample_id,
-                    "frame_number": frame_number,
-                }
-            }
-        )
-
         try:
-            return next(self._dataset._aggregate(pipeline))
+            result = self._view._aggregate(
+                frames_only=True,
+                post_pipeline=[
+                    {
+                        "$match": {
+                            "_sample_id": self._sample_id,
+                            "frame_number": frame_number,
+                        }
+                    }
+                ],
+            )
+            return next(result)
         except StopIteration:
             return None
 

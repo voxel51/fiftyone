@@ -7946,6 +7946,7 @@ class SampleCollection(object):
         groups_only=False,
         detach_groups=False,
         manual_group_select=False,
+        post_pipeline=None,
     ):
         """Returns the MongoDB aggregation pipeline for the collection.
 
@@ -7977,6 +7978,9 @@ class SampleCollection(object):
             manual_group_select (False): whether the pipeline has manually
                 handled the initial group selection. Only applicable to grouped
                 collections
+            post_pipeline (None): a MongoDB aggregation pipeline (list of
+                dicts) to append to the very end of the pipeline, after all
+                other arguments are applied
 
         Returns:
             the aggregation pipeline
@@ -7996,6 +8000,7 @@ class SampleCollection(object):
         groups_only=False,
         detach_groups=False,
         manual_group_select=False,
+        post_pipeline=None,
     ):
         """Runs the MongoDB aggregation pipeline on the collection and returns
         the result.
@@ -8028,6 +8033,9 @@ class SampleCollection(object):
             manual_group_select (False): whether the pipeline has manually
                 handled the initial group selection. Only applicable to grouped
                 collections
+            post_pipeline (None): a MongoDB aggregation pipeline (list of
+                dicts) to append to the very end of the pipeline, after all
+                other arguments are applied
 
         Returns:
             the aggregation result dict

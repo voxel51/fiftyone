@@ -567,9 +567,9 @@ class ExcludeBy(ViewStage):
         return self._values
 
     def to_mongo(self, sample_collection):
-        path, field, _ = sample_collection._handle_id_fields(self._field)
+        path, is_id_field, _ = sample_collection._handle_id_fields(self._field)
 
-        if isinstance(field, fof.ObjectIdField):
+        if is_id_field:
             values = [
                 value if isinstance(value, ObjectId) else ObjectId(value)
                 for value in self._values
@@ -4915,9 +4915,9 @@ class SelectBy(ViewStage):
         return self._ordered
 
     def to_mongo(self, sample_collection):
-        path, field, _ = sample_collection._handle_id_fields(self._field)
+        path, is_id_field, _ = sample_collection._handle_id_fields(self._field)
 
-        if isinstance(field, fof.ObjectIdField):
+        if is_id_field:
             values = [
                 value if isinstance(value, ObjectId) else ObjectId(value)
                 for value in self._values

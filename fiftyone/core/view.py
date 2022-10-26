@@ -1100,6 +1100,7 @@ class DatasetView(foc.SampleCollection):
         groups_only=False,
         detach_groups=False,
         manual_group_select=False,
+        post_pipeline=None,
     ):
         _pipelines = []
         _view = self._base_view
@@ -1233,6 +1234,7 @@ class DatasetView(foc.SampleCollection):
             groups_only=groups_only,
             detach_groups=detach_groups,
             manual_group_select=manual_group_select,
+            post_pipeline=post_pipeline,
         )
 
     def _aggregate(
@@ -1248,6 +1250,7 @@ class DatasetView(foc.SampleCollection):
         groups_only=False,
         detach_groups=False,
         manual_group_select=False,
+        post_pipeline=None,
     ):
         _pipeline = self._pipeline(
             pipeline=pipeline,
@@ -1261,7 +1264,9 @@ class DatasetView(foc.SampleCollection):
             groups_only=groups_only,
             detach_groups=detach_groups,
             manual_group_select=manual_group_select,
+            post_pipeline=post_pipeline,
         )
+
         return foo.aggregate(self._dataset._sample_collection, _pipeline)
 
     def _serialize(self, include_uuids=True):

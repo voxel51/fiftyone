@@ -1,5 +1,5 @@
 import { ThemeProvider } from "@fiftyone/components";
-import { Loading, Setup, useScreenshot, makeRoutes } from "@fiftyone/core";
+import { Loading, Setup, makeRoutes } from "@fiftyone/core";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -12,9 +12,9 @@ import {
   refresher,
   State,
   stateSubscription,
-  useRefresh,
   useReset,
   useClearModal,
+  useScreenshot,
 } from "@fiftyone/state";
 import { usePlugins } from "@fiftyone/plugins";
 import { useRouter } from "@fiftyone/state";

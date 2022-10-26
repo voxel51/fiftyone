@@ -7,11 +7,7 @@ import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 
 import { BestMatchDiv } from "./BestMatch";
 import { PARSER } from "./viewStageParameterMachine";
-import {
-  useEventHandler,
-  useObserve,
-  useOutsideClick,
-} from "../../../utils/hooks";
+import { useEventHandler, useObserve, useOutsideClick } from "@fiftyone/state";
 import ErrorMessage from "./ErrorMessage";
 import SearchResults from "./SearchResults";
 import { useTheme } from "@fiftyone/components";

@@ -5,7 +5,7 @@ import numeral from "numeral";
 import styled from "styled-components";
 
 import { useHighlightHover } from "./utils";
-import { useKeydownHandler } from "../../utils/hooks";
+import { useKeydownHandler } from "@fiftyone/state";
 import { ItemAction } from "./ItemAction";
 import { useTheme } from "@fiftyone/components";
 

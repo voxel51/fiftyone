@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from "react";
 import { animated, config, useSpring } from "@react-spring/web";
 import styled from "styled-components";
 
-import { useFollow } from "../../../utils/hooks";
+import { useFollow } from "@fiftyone/state";
 
 const SearchResultDiv = animated(styled.div`
   cursor: pointer;

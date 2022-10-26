@@ -2740,6 +2740,13 @@ class TransformImagesCommand(Command):
             ),
         )
         parser.add_argument(
+            "-i",
+            "--interpolation",
+            default=None,
+            type=int,
+            help="an optional `interpolation` argument for `cv2.resize()`",
+        )
+        parser.add_argument(
             "-e",
             "--ext",
             metavar="EXT",
@@ -2821,6 +2828,7 @@ class TransformImagesCommand(Command):
             size=args.size,
             min_size=args.min_size,
             max_size=args.max_size,
+            interpolation=args.interpolation,
             ext=args.ext,
             force_reencode=args.force_reencode,
             media_field=args.media_field,
