@@ -132,9 +132,9 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 
 @gql.enum
 class SidebarMode(Enum):
+    all = "all"
     best = "best"
     fast = "fast"
-    slow = "slow"
 
 
 @gql.type

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<720e112e1fb1d8cd1dc50d0100865d1a>>
+ * @generated SignedSource<<0c247a792db558278d7fe712e415b580>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,7 @@
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type MediaType = "group" | "image" | "point_cloud" | "video" | "%future added value";
-export type SidebarMode = "best" | "fast" | "slow" | "%future added value";
+export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 export type setViewMutation$variables = {
   dataset: string;
   session?: string | null;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ed991f523e7636163763ab6ef49fd79a>>
+ * @generated SignedSource<<d7bc7d4f18795c5e6ac966bda9583389>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,7 @@
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
 export type ColorBy = "field" | "instance" | "label" | "%future added value";
-export type SidebarMode = "best" | "fast" | "slow" | "%future added value";
+export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type RootConfig_query$data = {
   readonly colorscale: ReadonlyArray<ReadonlyArray<number>> | null;

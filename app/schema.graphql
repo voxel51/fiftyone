@@ -366,9 +366,9 @@ input SidebarGroupInput {
 }
 
 enum SidebarMode {
+  all
   best
   fast
-  slow
 }
 
 type StringAggregation implements Aggregation {

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1f3457b4db72548bc8c19304eaa61acb>>
+ * @generated SignedSource<<d3513d9870a5bb5418101ab96b69a854>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,7 @@
 
 import { ConcreteRequest, Query } from 'relay-runtime';
 export type MediaType = "group" | "image" | "point_cloud" | "video" | "%future added value";
-export type SidebarMode = "best" | "fast" | "slow" | "%future added value";
+export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 export type DatasetQuery$variables = {
   name: string;
   view?: Array | null;
