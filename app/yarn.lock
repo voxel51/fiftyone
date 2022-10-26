@@ -2520,7 +2520,6 @@ __metadata:
   resolution: "@fiftyone/aggregations@workspace:packages/aggregations"
   dependencies:
     "@babel/preset-typescript": ^7.17.12
-    "@fiftyone/prettier-config": "*"
     "@types/react": ^18.0.12
     fs-extra: ^10.1.0
     jest: ^28.1.1
@@ -2540,7 +2539,6 @@ __metadata:
     "@fiftyone/flashlight": "*"
     "@fiftyone/looker": "*"
     "@fiftyone/map": "*"
-    "@fiftyone/prettier-config": "*"
     "@fiftyone/state": "*"
     "@fiftyone/utilities": "*"
     "@react-spring/web": ^9.4.3
@@ -2599,7 +2597,6 @@ __metadata:
   dependencies:
     "@emotion/react": ^11.10.4
     "@emotion/styled": ^11.10.4
-    "@fiftyone/prettier-config": "*"
     "@fiftyone/state": "*"
     "@mui/joy": ^5.0.0-alpha.46
     "@mui/material": ^5.9.0
@@ -2607,7 +2604,6 @@ __metadata:
     classnames: ^2.3.1
     framer-motion: ^6.2.7
     path-to-regexp: ^6.2.0
-    prettier: ^2.7.1
     react-input-autosize: ^3.0.0
     react-laag: ^2.0.3
     react-use: ^17.3.2
@@ -2633,7 +2629,6 @@ __metadata:
     "@fiftyone/flashlight": "*"
     "@fiftyone/looker": "*"
     "@fiftyone/map": "*"
-    "@fiftyone/prettier-config": "*"
     "@fiftyone/state": "*"
     "@fiftyone/utilities": "*"
     "@mui/icons-material": ^5.10.2
@@ -2693,7 +2688,6 @@ __metadata:
   resolution: "@fiftyone/dataset@workspace:packages/dataset"
   dependencies:
     "@fiftyone/core": "*"
-    "@fiftyone/prettier-config": "*"
     prettier: ^2.7.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^3.4.0
@@ -2716,7 +2710,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/flashlight@workspace:packages/flashlight"
   dependencies:
-    "@fiftyone/prettier-config": "*"
     prettier: ^2.7.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^3.4.0
@@ -2753,7 +2746,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/looker@workspace:packages/looker"
   dependencies:
-    "@fiftyone/prettier-config": "*"
     "@types/color-string": ^1.5.0
     "@types/lru-cache": ^5.1.0
     "@types/uuid": ^8.3.0
@@ -2805,7 +2797,6 @@ __metadata:
   resolution: "@fiftyone/plugins@workspace:packages/plugins"
   dependencies:
     "@babel/preset-typescript": ^7.17.12
-    "@fiftyone/prettier-config": "*"
     "@fiftyone/utilities": "workspace:^"
     "@types/react": ^18.0.12
     jest: ^28.1.1
@@ -2815,17 +2806,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/prettier-config@*, @fiftyone/prettier-config@workspace:packages/prettier-config":
-  version: 0.0.0-use.local
-  resolution: "@fiftyone/prettier-config@workspace:packages/prettier-config"
-  languageName: unknown
-  linkType: soft
-
 "@fiftyone/relay@*, @fiftyone/relay@workspace:packages/relay":
   version: 0.0.0-use.local
   resolution: "@fiftyone/relay@workspace:packages/relay"
   dependencies:
-    "@fiftyone/prettier-config": "*"
     prettier: ^2.7.1
     react-relay: ^14.0.0
     relay-compiler: ^14.0.0
@@ -2840,7 +2824,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/state@workspace:packages/state"
   dependencies:
-    "@fiftyone/prettier-config": "*"
     "@fiftyone/relay": "*"
     "@fiftyone/utilities": "*"
     "@microsoft/fetch-event-source": ^2.0.1
@@ -2861,7 +2844,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/utilities@workspace:packages/utilities"
   dependencies:
-    "@fiftyone/prettier-config": "*"
     "@microsoft/fetch-event-source": ^2.0.1
     lodash: ^4.17.21
     mime: ^2.5.2

@@ -8,7 +8,7 @@ import {
   usePreLoadedDataset,
   ViewBar,
 } from "@fiftyone/core";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import { useEffect, useState, Suspense, Fragment } from "react";
@@ -26,13 +26,15 @@ enum Events {
 
 const ViewBarWrapper = ({ children }) => <div>{children}</div>;
 
-export function Dataset({ datasetName, environment, theme }) {
+export function Dataset({ datasetName, environment, theme, readOnly }) {
   const [initialState, setInitialState] = useState();
   const [datasetQueryRef, loadDataset] = useDatasetLoader(environment);
+  const setReadOnly = useSetRecoilState(fos.readOnly);
 
   useEffect(() => {
+    setReadOnly(readOnly);
     loadDataset(datasetName);
-  }, [datasetName]);
+  }, [datasetName, readOnly]);
   const subscription = useRecoilValue(fos.stateSubscription);
   useEventSource(datasetName, subscription, setInitialState);
   const plugins = usePlugins();

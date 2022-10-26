@@ -14,7 +14,6 @@
     "test": "jest",
     "gen:aggs": "node scripts/generateAggregationClasses.js"
   },
-  "prettier": "@fiftyone/prettier-config",
   "private": true,
   "files": [
     "dist",
@@ -22,7 +21,6 @@
   ],
   "devDependencies": {
     "@babel/preset-typescript": "^7.17.12",
-    "@fiftyone/prettier-config": "*",
     "@types/react": "^18.0.12",
     "fs-extra": "^10.1.0",
     "jest": "^28.1.1",

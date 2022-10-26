@@ -243,3 +243,8 @@ export const theme = atom<"dark" | "light">({
   key: "theme",
   default: "dark",
 });
+
+export const readOnly = atom({
+  key: "readOnly",
+  default: false,
+});
