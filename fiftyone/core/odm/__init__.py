@@ -54,10 +54,7 @@ from .frame import (
     DatasetFrameDocument,
     NoDatasetFrameDocument,
 )
-from .mixins import (
-    get_default_fields,
-    validate_fields_match,
-)
+from .mixins import get_default_fields
 from .sample import (
     DatasetSampleDocument,
     NoDatasetSampleDocument,
@@ -68,6 +65,7 @@ from .utils import (
     validate_field_name,
     get_field_kwargs,
     get_implied_field_kwargs,
+    validate_fields_match,
 )
 
 # This enables Sphinx refs to directly use paths imported here

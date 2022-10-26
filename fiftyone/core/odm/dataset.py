@@ -9,8 +9,6 @@ import inspect
 
 import eta.core.utils as etau
 
-from mongoengine.fields import StringField as MongoStringField
-
 from fiftyone.core.fields import (
     Field,
     ArrayField,
@@ -37,13 +35,11 @@ def create_field(
     ftype,
     embedded_doc_type=None,
     subfield=None,
-    db_field=None,
     fields=None,
-    parent=None,
-    **field_kwargs
+    db_field=None,
+    **kwargs,
 ):
-    """Creates the :class:`fiftyone.core.fields.Field` instance defined by the
-    given specification.
+    """Creates the field defined by the given specification.
 
     .. note::
 
@@ -64,17 +60,14 @@ def create_field(
             contained field. Only applicable when ``ftype`` is
             :class:`fiftyone.core.fields.ListField` or
             :class:`fiftyone.core.fields.DictField`
+        fields (None): a list of :class:`fiftyone.core.fields.Field` instances
+            defining embedded document attributes. Only applicable when
+            ``ftype`` is :class:`fiftyone.core.fields.EmbeddedDocumentField`
         db_field (None): the database field to store this field in. By default,
             ``name`` is used
-        fields (None): the subfields of the
-            :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            Only applicable when ``ftype`` is
-            :class:`fiftyone.core.fields.EmbeddedDocumentField`
-        parent (None): a parent
-        **field_kwargs: mongoengine field kwargs
 
     Returns:
-        a :class:`fiftyone.core.fields.Field` instance
+        a :class:`fiftyone.core.fields.Field`
     """
     if db_field is None:
         if issubclass(ftype, ObjectIdField) and not name.startswith("_"):
@@ -83,31 +76,22 @@ def create_field(
             db_field = name
 
     # All user-defined fields are nullable
-    kwargs = dict(null=True, db_field=db_field)
-    kwargs.update(field_kwargs)
+    field_kwargs = dict(null=True, db_field=db_field)
+    field_kwargs.update(kwargs)
 
     if fields is not None:
-        for idx, value in enumerate(fields):
-            if isinstance(value, (Field, MongoStringField)):
-                continue
-
-            fields[idx] = create_field(**value)
+        fields = [
+            create_field(**f) if not isinstance(f, Field) else f
+            for f in fields
+        ]
 
     if issubclass(ftype, (ListField, DictField)):
         if subfield is not None:
             if inspect.isclass(subfield):
                 if issubclass(subfield, EmbeddedDocumentField):
-                    subfield = create_field(
-                        name,
-                        subfield,
-                        embedded_doc_type=embedded_doc_type,
-                        fields=fields or [],
-                        parent=parent,
-                    )
+                    subfield = subfield(document_type=embedded_doc_type)
                 else:
                     subfield = subfield()
-
-                subfield.name = name
 
             if not isinstance(subfield, Field):
                 raise ValueError(
@@ -115,9 +99,14 @@ def create_field(
                     % (type(subfield), Field)
                 )
 
-            kwargs["field"] = subfield
+            if (
+                isinstance(subfield, EmbeddedDocumentField)
+                and fields is not None
+            ):
+                subfield.fields = fields
 
-    if issubclass(ftype, EmbeddedDocumentField):
+            field_kwargs["field"] = subfield
+    elif issubclass(ftype, EmbeddedDocumentField):
         if embedded_doc_type is None or not issubclass(
             embedded_doc_type, BaseEmbeddedDocument
         ):
@@ -126,11 +115,10 @@ def create_field(
                 % (embedded_doc_type, BaseEmbeddedDocument)
             )
 
-        kwargs.update(
-            {"document_type": embedded_doc_type, "fields": fields or []}
-        )
+        field_kwargs["document_type"] = embedded_doc_type
+        field_kwargs["fields"] = fields or []
 
-    field = ftype(**kwargs)
+    field = ftype(**field_kwargs)
     field.name = name
 
     return field
@@ -144,12 +132,12 @@ class SampleFieldDocument(EmbeddedDocument):
 
     name = StringField()
     ftype = StringField()
-    subfield = StringField(null=True)
     embedded_doc_type = StringField(null=True)
-    db_field = StringField(null=True)
+    subfield = StringField(null=True)
     fields = ListField(
         EmbeddedDocumentField(document_type="SampleFieldDocument")
     )
+    db_field = StringField(null=True)
 
     def to_field(self):
         """Creates the :class:`fiftyone.core.fields.Field` specified by this
@@ -177,8 +165,8 @@ class SampleFieldDocument(EmbeddedDocument):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
-            db_field=self.db_field,
             fields=fields,
+            db_field=self.db_field,
         )
 
     @classmethod
@@ -200,97 +188,11 @@ class SampleFieldDocument(EmbeddedDocument):
         return cls(
             name=field.name,
             ftype=etau.get_class_name(field),
-            subfield=cls._get_attr_repr(field, "field"),
             embedded_doc_type=embedded_doc_type,
-            db_field=field.db_field,
+            subfield=cls._get_attr_repr(field, "field"),
             fields=cls._get_field_documents(field),
+            db_field=field.db_field,
         )
-
-    def matches_field(self, field):
-        """Determines whether this sample field matches the given field.
-
-        Args:
-            field: a :class:`fiftyone.core.fields.Field` instance
-
-        Returns:
-            True/False
-        """
-        if self.name != field.name:
-            return False
-
-        if self.ftype != etau.get_class_name(field):
-            return False
-
-        if self.subfield and self.subfield != etau.get_class_name(field.field):
-            return False
-
-        if (
-            self.embedded_doc_type
-            and self.embedded_doc_type
-            != etau.get_class_name(field.document_type)
-        ):
-            return False
-
-        if self.db_field != field.db_field:
-            return False
-
-        cur_fields = {f.name: f for f in list(getattr(self, "fields", []))}
-        fields = {f.name: f for f in getattr(field, "fields", [])}
-        if cur_fields and fields:
-            if len(fields) != len(cur_fields):
-                return False
-
-            if any([name not in cur_fields for name in fields]):
-                return False
-
-            return any(
-                [not cur_fields[name].matches(fields[name]) for name in fields]
-            )
-
-        return True
-
-    def merge_doc(self, other):
-        if self.ftype != other.ftype:
-            raise TypeError("Cannot merge")
-
-        if other.ftype == etau.get_class_name(ListField):
-            if (
-                self.subfield
-                and other.subfield
-                and self.subfield != other.subfield
-            ):
-                raise TypeError("Cannot merge")
-
-            self.subfield = other.subfield or self.subfield
-
-        if self.name == other.name and self.db_field is None:
-            self.db_field = other.db_field or self.db_field
-
-        embedded_doc = etau.get_class_name(EmbeddedDocumentField)
-        if other.ftype == embedded_doc or self.subfield == embedded_doc:
-            if (
-                self.embedded_doc_type
-                and other.embedded_doc_type
-                and self.embedded_doc_type != other.embedded_doc_type
-            ):
-                raise TypeError("Cannot merge")
-
-            self.embedded_doc_type = (
-                other.embedded_doc_type or self.embedded_doc_type
-            )
-
-            others = {f.name: f for f in other.fields}
-
-            new = []
-            for i, field in enumerate(self.fields):
-                if field.name in others:
-                    self.fields[i] = field.merge_doc(others[field.name])
-                else:
-                    new.append(field)
-
-            self.fields = self.fields + new
-
-        return self
 
     @staticmethod
     def _get_attr_repr(field, attr_name):
@@ -303,9 +205,6 @@ class SampleFieldDocument(EmbeddedDocument):
             field = field.field
 
         if not isinstance(field, EmbeddedDocumentField):
-            return None
-
-        if not hasattr(field, "fields"):
             return None
 
         return [
@@ -402,6 +301,9 @@ class DatasetAppConfig(EmbeddedDocument):
                 :ref:`3D visualizer docs <3d-visualizer-config>` for supported
                 options
     """
+
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"strict": False}
 
     media_fields = ListField(StringField(), default=["filepath"])
     grid_media_field = StringField(default="filepath")

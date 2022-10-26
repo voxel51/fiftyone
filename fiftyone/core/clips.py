@@ -18,6 +18,7 @@ from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
@@ -140,38 +141,12 @@ class ClipsView(fov.DatasetView):
         )
 
     @property
-    def _element_str(self):
-        return "clip"
-
-    @property
-    def _elements_str(self):
-        return "clips"
-
-    @property
     def name(self):
         return self.dataset_name + "-clips"
 
     @property
     def media_type(self):
         return fom.VIDEO
-
-    def _get_default_sample_fields(
-        self, include_private=False, use_db_fields=False
-    ):
-        fields = super()._get_default_sample_fields(
-            include_private=include_private, use_db_fields=use_db_fields
-        )
-
-        if use_db_fields:
-            return fields + ("_sample_id", "support")
-
-        return fields + ("sample_id", "support")
-
-    def _get_default_indexes(self, frames=False):
-        if frames:
-            return super()._get_default_indexes(frames=frames)
-
-        return ["id", "filepath", "sample_id"]
 
     def set_values(self, field_name, *args, **kwargs):
         # The `set_values()` operation could change the contents of this view,
@@ -444,15 +419,14 @@ def make_clips_dataset(
     )
     dataset.media_type = fom.VIDEO
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
-    dataset.create_index("sample_id")
     dataset.add_sample_field("support", fof.FrameSupportField)
+    dataset.create_index("sample_id")
 
     if clips_type == "detections":
-        dataset.add_sample_field(
-            field_or_expr,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Classification,
-        )
+        field = _get_label_field(sample_collection, field_or_expr)
+        kwargs = foo.get_field_kwargs(field)
+        kwargs["embedded_doc_type"] = fol.Classification
+        dataset.add_sample_field(field_or_expr, **kwargs)
 
     if clips_type == "trajectories":
         field_or_expr, _ = sample_collection._handle_frame_field(field_or_expr)
@@ -523,6 +497,11 @@ def _is_frame_support_field(sample_collection, field_path):
         isinstance(field, fof.ListField)
         and isinstance(field.field, fof.FrameSupportField)
     )
+
+
+def _get_label_field(sample_collection, field_path):
+    _, path = sample_collection._get_label_field_path(field_path)
+    return sample_collection.get_field(path, leaf=True)
 
 
 def _make_pretty_summary(dataset):

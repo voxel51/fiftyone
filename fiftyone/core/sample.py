@@ -87,13 +87,32 @@ class _SampleMixin(object):
 
         return super().get_field(field_name)
 
-    def set_field(self, field_name, value, create=True):
+    def set_field(
+        self,
+        field_name,
+        value,
+        create=True,
+        validate=True,
+        dynamic=False,
+    ):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
             self.frames.clear()
-            self.frames.update(value)
+            self.frames.update(
+                value,
+                expand_schema=create,
+                validate=validate,
+                dynamic=dynamic,
+            )
+
             return
 
-        super().set_field(field_name, value, create=create)
+        super().set_field(
+            field_name,
+            value,
+            create=create,
+            validate=validate,
+            dynamic=dynamic,
+        )
 
     def clear_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
@@ -120,6 +139,8 @@ class _SampleMixin(object):
         label_field=None,
         confidence_thresh=None,
         expand_schema=True,
+        validate=True,
+        dynamic=False,
     ):
         """Adds the given labels to the sample.
 
@@ -180,6 +201,8 @@ class _SampleMixin(object):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if any fields are not in the dataset schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic attributes
         """
         if isinstance(label_field, dict):
             label_key = lambda k: label_field.get(k, k)
@@ -208,6 +231,8 @@ class _SampleMixin(object):
                         for frame_number, frame_dict in labels.items()
                     },
                     expand_schema=expand_schema,
+                    validate=validate,
+                    dynamic=dynamic,
                 )
             elif label_field is None:
                 raise ValueError(
@@ -222,6 +247,8 @@ class _SampleMixin(object):
                         for frame_number, label in labels.items()
                     },
                     expand_schema=expand_schema,
+                    validate=validate,
+                    dynamic=dynamic,
                 )
 
         elif isinstance(labels, dict):
@@ -229,6 +256,8 @@ class _SampleMixin(object):
             self.update_fields(
                 {label_key(k): v for k, v in labels.items()},
                 expand_schema=expand_schema,
+                validate=validate,
+                dynamic=dynamic,
             )
         elif labels is not None:
             if label_field is None:
@@ -238,7 +267,13 @@ class _SampleMixin(object):
                 )
 
             # Single sample-level field
-            self.set_field(label_field, labels, create=expand_schema)
+            self.set_field(
+                label_field,
+                labels,
+                create=expand_schema,
+                validate=validate,
+                dynamic=dynamic,
+            )
 
         if self._in_db:
             self.save()
@@ -251,6 +286,8 @@ class _SampleMixin(object):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
+        validate=True,
+        dynamic=False,
     ):
         """Merges the fields of the given sample into this sample.
 
@@ -298,6 +335,9 @@ class _SampleMixin(object):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if any fields are not in the dataset schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
         """
         if sample.media_type != self.media_type:
             raise ValueError(
@@ -322,6 +362,8 @@ class _SampleMixin(object):
             merge_lists=merge_lists,
             overwrite=overwrite,
             expand_schema=expand_schema,
+            validate=validate,
+            dynamic=dynamic,
         )
 
         if self.media_type == fomm.VIDEO:
@@ -332,6 +374,8 @@ class _SampleMixin(object):
                 merge_lists=merge_lists,
                 overwrite=overwrite,
                 expand_schema=expand_schema,
+                validate=validate,
+                dynamic=dynamic,
             )
 
     def copy(self, fields=None, omit_fields=None):

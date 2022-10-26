@@ -1060,6 +1060,36 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset2.distinct("predictions.detections.mood"),
         )
 
+        schema = dataset2.get_field_schema(flat=True)
+
+        # Dynamic attributes aren't declared on import by default
+        self.assertNotIn("predictions.detections.age", schema)
+        self.assertNotIn("predictions.detections.cute", schema)
+        self.assertNotIn("predictions.detections.mood", schema)
+
+        # Declare dynamic attributes on re-import
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            label_types="detections",
+            label_field="predictions",
+            dynamic=True,
+        )
+
+        schema = dataset2.get_field_schema(flat=True)
+
+        self.assertIn("predictions.detections.age", schema)
+        self.assertIn("predictions.detections.cute", schema)
+        self.assertIn("predictions.detections.mood", schema)
+
         # Omit extra attributes
 
         export_dir = self._new_dir()
@@ -2440,6 +2470,33 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset.count("predictions.detections"),
             dataset2.count("predictions.detections"),
         )
+
+        # Include dynamic attributes
+
+        export_dir = self._new_dir()
+
+        dataset1 = dataset.clone()
+        dataset1.add_dynamic_sample_fields()
+
+        schema = dataset1.get_field_schema(flat=True)
+        self.assertIn("predictions.detections.age", schema)
+        self.assertIn("predictions.detections.cute", schema)
+        self.assertIn("predictions.detections.mood", schema)
+
+        dataset1.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        schema = dataset2.get_field_schema(flat=True)
+        self.assertIn("predictions.detections.age", schema)
+        self.assertIn("predictions.detections.cute", schema)
+        self.assertIn("predictions.detections.mood", schema)
 
         # Test import/export of run results
 

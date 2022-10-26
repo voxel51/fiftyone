@@ -297,6 +297,12 @@ only those samples and/or labels that match the filter.
 
 .. note::
 
+    Did you know? When you
+    :ref:`declare custom attributes <dynamic-attributes>` on your dataset's
+    schema, they will automatically become filterable in the App!
+
+.. note::
+
     Did you know? When you have applied filter(s) in the App, a bookmark icon
     appears in the top-left corner of the sample grid. Click this button to
     convert your filters to an equivalent set of stage(s) in the

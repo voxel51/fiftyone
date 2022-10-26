@@ -18,6 +18,7 @@ import pytz
 import eta.core.utils as etau
 
 import fiftyone.core.frame_utils as fofu
+import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 
 
@@ -32,12 +33,11 @@ def parse_field_str(field_str):
     Returns:
         a tuple of
 
-        -   ftype: the :class:`fiftyone.core.fields.Field` class
+        -   ftype: the :class:`Field` class
         -   embedded_doc_type: the
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
                 field, or ``None``
-        -   subfield: the :class:`fiftyone.core.fields.Field` class of the
-                subfield, or ``None``
+        -   subfield: the :class:`Field` class of the subfield, or ``None``
     """
     chunks = field_str.strip().split("(", 1)
     ftype = etau.get_class(chunks[0])
@@ -53,6 +53,175 @@ def parse_field_str(field_str):
             raise ValueError("Failed to parse field string '%s'" % field_str)
 
     return ftype, embedded_doc_type, subfield
+
+
+def validate_type_constraints(ftype=None, embedded_doc_type=None):
+    """Validates the given type constraints.
+
+    Args:
+        ftype (None): an optional field type to enforce. Must be a subclass of
+            :class:`Field`
+        embedded_doc_type (None): an optional embedded document type to
+            enforce. Must be a subclass of
+            :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+
+    Raises:
+        ValueError: if the constraints are not valid
+    """
+    if ftype is not None and not issubclass(ftype, Field):
+        raise ValueError(
+            "Field type %s must be subclass of %s" % (ftype, Field)
+        )
+
+    if embedded_doc_type is not None and (
+        ftype is not None and not issubclass(ftype, EmbeddedDocumentField)
+    ):
+        raise ValueError(
+            "embedded_doc_type can only be specified if ftype is a subclass "
+            "of %s" % EmbeddedDocumentField
+        )
+
+
+def matches_type_constraints(field, ftype=None, embedded_doc_type=None):
+    """Determines whether the field matches the given type constraints.
+
+    Args:
+        field: a :class:`Field`
+        ftype (None): an optional field type to enforce. Must be a subclass of
+            :class:`Field`
+        embedded_doc_type (None): an optional embedded document type to
+            enforce. Must be a subclass of
+            :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+
+    Returns:
+        True/False
+    """
+    if ftype is not None and not isinstance(field, ftype):
+        return False
+
+    if embedded_doc_type is not None and (
+        not isinstance(field, EmbeddedDocumentField)
+        or not issubclass(field.document_type, embedded_doc_type)
+    ):
+        return False
+
+    return True
+
+
+def validate_field(field, path=None, ftype=None, embedded_doc_type=None):
+    """Validates that the field matches the given type constraints.
+
+    Args:
+        field: a :class:`Field`
+        path (None): the field or ``embedded.field.name``. Only used to
+            generate more informative error messages
+        ftype (None): an optional field type to enforce. Must be a subclass of
+            :class:`Field`
+        embedded_doc_type (None): an optional embedded document type to
+            enforce. Must be a subclass of
+            :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+
+    Raises:
+        ValueError: if the constraints are not valid
+    """
+    if ftype is None and embedded_doc_type is None:
+        return
+
+    if field is None:
+        raise ValueError("%s does not exist" % _make_prefix(path))
+
+    if ftype is not None and not isinstance(field, ftype):
+        raise ValueError(
+            "%s has type %s, not %s" % (_make_prefix(path), type(field), ftype)
+        )
+
+    if embedded_doc_type is not None and not isinstance(
+        field, EmbeddedDocumentField
+    ):
+        raise ValueError(
+            "%s has type %s, not %s"
+            % (_make_prefix(path), type(field), EmbeddedDocumentField)
+        )
+
+    if embedded_doc_type is not None and not issubclass(
+        field.document_type, embedded_doc_type
+    ):
+        raise ValueError(
+            "%s has type %s, not %s"
+            % (_make_prefix(path), field.document_type, embedded_doc_type)
+        )
+
+
+def _make_prefix(path):
+    if path is None:
+        return "Field"
+
+    return "Field '%s'" % path
+
+
+def flatten_schema(
+    schema,
+    ftype=None,
+    embedded_doc_type=None,
+    include_private=False,
+):
+    """Returns a flattened copy of the given schema where all embedded document
+    fields are included as top-level keys of the
+
+    Args:
+        schema: a dict mapping keys to :class:`Field` instances
+        ftype (None): an optional field type to which to restrict the returned
+            schema. Must be a subclass of :class:`Field`
+        embedded_doc_type (None): an optional embedded document type to which
+            to restrict the returned schema. Must be a subclass of
+            :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+        include_private (False): whether to include fields that start with
+            ``_`` in the returned schema
+
+    Returns:
+        a dictionary mapping flattened paths to :class:`Field` instances
+    """
+    validate_type_constraints(ftype=ftype, embedded_doc_type=embedded_doc_type)
+
+    _schema = {}
+    for name, field in schema.items():
+        _flatten(
+            _schema, "", name, field, ftype, embedded_doc_type, include_private
+        )
+
+    return _schema
+
+
+def _flatten(
+    schema, prefix, name, field, ftype, embedded_doc_type, include_private
+):
+    if not include_private and name.startswith("_"):
+        return
+
+    if prefix:
+        prefix = prefix + "." + name
+    else:
+        prefix = name
+
+    if matches_type_constraints(
+        field, ftype=ftype, embedded_doc_type=embedded_doc_type
+    ):
+        schema[prefix] = field
+
+    if isinstance(field, (ListField, DictField)):
+        field = field.field
+
+    if isinstance(field, EmbeddedDocumentField):
+        for name, _field in field.get_field_schema().items():
+            _flatten(
+                schema,
+                prefix,
+                name,
+                _field,
+                ftype,
+                embedded_doc_type,
+                include_private,
+            )
 
 
 class Field(mongoengine.fields.BaseField):
@@ -627,16 +796,73 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
     def __init__(self, document_type, **kwargs):
         super().__init__(document_type, **kwargs)
-        self._parent = None
-
         self.fields = kwargs.get("fields", [])
-        self._validation_schema = None
+        self._selected_fields = None
+        self._excluded_fields = None
+        self.__fields = None
 
     def __str__(self):
         return "%s(%s)" % (
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
+
+    @property
+    def _fields(self):
+        if self.__fields is None:
+            # Must initialize now because `document_type` could have been a
+            # string at class instantiation
+            self.__fields = deepcopy(self.document_type._fields)
+            self.__fields.update({f.name: f for f in self.fields})
+
+        return self.__fields
+
+    def _use_view(self, selected_fields=None, excluded_fields=None):
+        if selected_fields is not None and excluded_fields is not None:
+            selected_fields = selected_fields.difference(excluded_fields)
+            excluded_fields = None
+
+        self._selected_fields = selected_fields
+        self._excluded_fields = excluded_fields
+
+    def _get_field_names(self, include_private=False, use_db_fields=False):
+        field_names = tuple(self._fields.keys())
+
+        if not include_private:
+            field_names = tuple(
+                fn for fn in field_names if not fn.startswith("_")
+            )
+
+        if self._selected_fields is not None:
+            field_names = tuple(
+                fn for fn in field_names if fn in self._selected_fields
+            )
+
+        if self._excluded_fields is not None:
+            field_names = tuple(
+                fn for fn in field_names if fn not in self._excluded_fields
+            )
+
+        if use_db_fields:
+            return self._to_db_fields(field_names)
+
+        return field_names
+
+    def _get_default_fields(self, include_private=False, use_db_fields=False):
+        field_names = tuple(self.document_type._fields.keys())
+
+        if not include_private:
+            field_names = tuple(
+                f for f in field_names if not f.startswith("_")
+            )
+
+        if use_db_fields:
+            field_names = self._to_db_fields(field_names)
+
+        return field_names
+
+    def _to_db_fields(self, field_names):
+        return tuple(self._fields[f].db_field or f for f in field_names)
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -647,7 +873,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                :class:`fiftyone.core.fields.Field`
+                :class:`Field`
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
@@ -655,26 +881,104 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                 ``_`` in the returned schema
 
         Returns:
-             an ``OrderedDict`` mapping field names to field types
+             a dict mapping field names to field types
         """
-        fields = {}
+        validate_type_constraints(
+            ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
 
-        for name, field in self.document_type._fields.items():
-            if not include_private and name.startswith("_"):
-                continue
-
-            if ftype and not isinstance(field, ftype):
-                continue
-
-            if embedded_doc_type and (
-                not isinstance(field, EmbeddedDocumentField)
-                or embedded_doc_type != field.document_type
+        schema = {}
+        for name in self._get_field_names(include_private=include_private):
+            field = self._fields[name]
+            if matches_type_constraints(
+                field, ftype=ftype, embedded_doc_type=embedded_doc_type
             ):
-                continue
+                schema[name] = field
 
-            fields[name] = field
+        return schema
 
-        return fields
+    def validate(self, value, **kwargs):
+        if not isinstance(value, self.document_type):
+            self.error(
+                "Expected %s; found %s" % (self.document_type, type(value))
+            )
+
+        for k, v in self._fields.items():
+            try:
+                val = value[k]
+            except KeyError:
+                val = None
+
+            if val is not None:
+                v.validate(val)
+
+    def _merge_fields(self, path, field, validate=True, recursive=True):
+        if validate:
+            foo.validate_fields_match(path, field, self)
+        elif not isinstance(field, EmbeddedDocumentField):
+            return None
+
+        new_schema = {}
+        existing_fields = self._fields
+
+        for name, _field in field._fields.items():
+            _existing_field = existing_fields.get(name, None)
+            if _existing_field is not None:
+                if validate:
+                    _path = path + "." + name
+                    foo.validate_fields_match(_path, _field, _existing_field)
+
+                if recursive:
+                    if isinstance(_existing_field, ListField):
+                        _existing_field = _existing_field.field
+                        if isinstance(_field, ListField):
+                            _field = _field.field
+                        else:
+                            _existing_field = None
+
+                    if isinstance(_existing_field, EmbeddedDocumentField):
+                        _path = path + "." + name
+                        _new_schema = _existing_field._merge_fields(
+                            _path,
+                            _field,
+                            validate=validate,
+                            recursive=recursive,
+                        )
+
+                        if _new_schema:
+                            new_schema.update(_new_schema)
+            else:
+                _path = path + "." + name
+                new_schema[_path] = _field
+
+        return new_schema
+
+    def _declare_field(self, field_or_doc):
+        if isinstance(field_or_doc, foo.SampleFieldDocument):
+            field = field_or_doc.to_field()
+        else:
+            field = field_or_doc
+
+        self.fields = [f for f in self.fields if f.name != field.name]
+        self.fields.append(field)
+
+        prev = self._fields.pop(field.name, None)
+        self._fields[field.name] = field
+
+        if prev is not None:
+            field.required = prev.required
+            field.null = prev.null
+
+    def _update_field(self, field_name, field):
+        self.fields = [
+            f if f.name != field_name else field for f in self.fields
+        ]
+        self._fields.pop(field_name, None)
+        self._fields[field.name] = field
+
+    def _undeclare_field(self, field_name):
+        self.fields = [f for f in self.fields if f.name != field_name]
+        self._fields.pop(field_name, None)
 
 
 class EmbeddedDocumentListField(

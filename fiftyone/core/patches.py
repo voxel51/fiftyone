@@ -16,15 +16,12 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
 
 
-_SINGLE_TYPES_MAP = {
-    fol.Detections: fol.Detection,
-    fol.Polylines: fol.Polyline,
-}
 _PATCHES_TYPES = (fol.Detections, fol.Polylines)
 _NO_MATCH_ID = ""
 
@@ -125,10 +122,6 @@ class _PatchesView(fov.DatasetView):
         return self._source_collection._root_dataset
 
     @property
-    def _is_frames(self):
-        return self._source_collection._is_frames
-
-    @property
     def _stages(self):
         return self.__stages
 
@@ -152,45 +145,12 @@ class _PatchesView(fov.DatasetView):
         raise NotImplementedError("subclass must implement _label_fields")
 
     @property
-    def _element_str(self):
-        return "patch"
-
-    @property
-    def _elements_str(self):
-        return "patches"
-
-    @property
     def name(self):
         return self.dataset_name + "-patches"
 
     @property
     def media_type(self):
         return fom.IMAGE
-
-    def _get_default_sample_fields(
-        self, include_private=False, use_db_fields=False
-    ):
-        fields = super()._get_default_sample_fields(
-            include_private=include_private, use_db_fields=use_db_fields
-        )
-
-        extras = ["_sample_id" if use_db_fields else "sample_id"]
-
-        if self._is_frames:
-            extras.append("_frame_id" if use_db_fields else "frame_id")
-            extras.append("frame_number")
-
-        return fields + tuple(extras)
-
-    def _get_default_indexes(self, frames=False):
-        if frames:
-            return super()._get_default_indexes(frames=frames)
-
-        names = ["id", "filepath", "sample_id"]
-        if self._is_frames:
-            names.extend(["frame_id", "_sample_id_1_frame_number_1"])
-
-        return names
 
     def set_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
@@ -504,13 +464,11 @@ def make_patches_dataset(
         other_fields = [other_fields]
 
     is_frame_patches = sample_collection._is_frames
+    patches_field = _get_patches_field(
+        sample_collection, field, keep_label_lists
+    )
 
-    if keep_label_lists:
-        field_type = sample_collection._get_label_field_type(field)
-    else:
-        field_type = _get_single_label_field_type(sample_collection, field)
-
-    dataset = fod.Dataset(name=name, _patches=True)
+    dataset = fod.Dataset(name=name, _patches=True, _frames=is_frame_patches)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
@@ -521,9 +479,7 @@ def make_patches_dataset(
         dataset.create_index("frame_id")
         dataset.create_index([("sample_id", 1), ("frame_number", 1)])
 
-    dataset.add_sample_field(
-        field, fof.EmbeddedDocumentField, embedded_doc_type=field_type
-    )
+    dataset.add_sample_field(field, **foo.get_field_kwargs(patches_field))
 
     if other_fields:
         src_schema = sample_collection.get_field_schema()
@@ -550,13 +506,12 @@ def make_patches_dataset(
     return dataset
 
 
-def _get_single_label_field_type(sample_collection, field):
-    label_type = sample_collection._get_label_field_type(field)
+def _get_patches_field(sample_collection, field_name, keep_label_lists):
+    if keep_label_lists:
+        return sample_collection.get_field(field_name)
 
-    if label_type not in _SINGLE_TYPES_MAP:
-        raise ValueError("Unsupported label field type %s" % label_type)
-
-    return _SINGLE_TYPES_MAP[label_type]
+    _, path = sample_collection._get_label_field_path(field_name)
+    return sample_collection.get_field(path, leaf=True)
 
 
 def make_evaluation_patches_dataset(
@@ -641,11 +596,11 @@ def make_evaluation_patches_dataset(
     if etau.is_str(other_fields):
         other_fields = [other_fields]
 
-    pred_type = sample_collection._get_label_field_type(pred_field)
-    gt_type = sample_collection._get_label_field_type(gt_field)
+    _gt_field = sample_collection.get_field(gt_field)
+    _pred_field = sample_collection.get_field(pred_field)
 
     # Setup dataset with correct schema
-    dataset = fod.Dataset(name=name, _patches=True)
+    dataset = fod.Dataset(name=name, _patches=True, _frames=is_frame_patches)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
@@ -656,12 +611,8 @@ def make_evaluation_patches_dataset(
         dataset.create_index("frame_id")
         dataset.create_index([("sample_id", 1), ("frame_number", 1)])
 
-    dataset.add_sample_field(
-        gt_field, fof.EmbeddedDocumentField, embedded_doc_type=gt_type
-    )
-    dataset.add_sample_field(
-        pred_field, fof.EmbeddedDocumentField, embedded_doc_type=pred_type
-    )
+    dataset.add_sample_field(gt_field, **foo.get_field_kwargs(_gt_field))
+    dataset.add_sample_field(pred_field, **foo.get_field_kwargs(_pred_field))
 
     if crowd_attr is not None:
         dataset.add_sample_field("crowd", fof.BooleanField)

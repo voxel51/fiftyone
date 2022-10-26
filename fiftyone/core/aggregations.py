@@ -5,9 +5,10 @@ Aggregations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import OrderedDict
+from collections import defaultdict, OrderedDict
 from copy import deepcopy
 from datetime import date, datetime
+import inspect
 import reprlib
 import uuid
 
@@ -20,6 +21,7 @@ from fiftyone.core.expressions import VALUE
 from fiftyone.core.expressions import ViewExpression as E
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
@@ -1678,6 +1680,206 @@ class Quantiles(Aggregation):
         return quantiles, is_scalar
 
 
+class Schema(Aggregation):
+    """Extracts the names and types of the attributes of a specified embedded
+    document field across all samples in a collection.
+
+    Schema aggregations are useful for detecting the presence and types of
+    dynamic attributes of :class:`fiftyone.core.labels.Label` fields across
+    a collection.
+
+    Examples::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="image1.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        foo="bar",
+                        hello=True,
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        hello=None,
+                    )
+                ]
+            )
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="rabbit",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        foo=None,
+                    ),
+                    fo.Detection(
+                        label="squirrel",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        hello="there",
+                    ),
+                ]
+            )
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        #
+        # Get schema of all dynamic attributes on the detections in a
+        # `Detections` field
+        #
+
+        aggregation = fo.Schema("ground_truth.detections", dynamic_only=True)
+        print(dataset.aggregate(aggregation))
+        # {'foo': StringField, 'hello': [BooleanField, StringField]}
+
+    Args:
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
+        dynamic_only (False): whether to only include dynamically added
+            attributes
+    """
+
+    def __init__(
+        self,
+        field_or_expr,
+        expr=None,
+        dynamic_only=False,
+        _include_private=False,
+    ):
+        super().__init__(field_or_expr, expr=expr)
+        self.dynamic_only = dynamic_only
+        self._include_private = _include_private
+        self._doc_type = None
+
+    def default_result(self):
+        """Returns the default result for this aggregation.
+
+        Returns:
+            ``{}``
+        """
+        return {}
+
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances. If a field's values takes multiple non-None types, the
+            list of observed types will be returned
+        """
+        if self._doc_type is not None:
+            doc_fields = self._doc_type._fields
+        else:
+            doc_fields = {}
+
+        raw_schema = defaultdict(set)
+        for name_and_type in d["schema"]:
+            name, _type = name_and_type.split(".", 1)
+
+            if _type == "objectId" and name.startswith("_"):
+                name = name[1:]  # "_id" -> "id"
+
+            if not self._include_private and name.startswith("_"):
+                continue
+
+            if self.dynamic_only and name in doc_fields:
+                continue
+
+            if name in doc_fields:
+                field = doc_fields[name]
+            else:
+                field = _MONGO_TO_FIFTYONE_TYPES.get(_type, None)
+
+            raw_schema[name].add(field)
+
+        schema = {}
+        for name, raw_types in raw_schema.items():
+            types = _resolve_types(raw_types)
+            schema[name] = types[0] if len(types) == 1 else types
+
+        return schema
+
+    def to_mongo(self, sample_collection):
+        field_name = self._field_name
+        doc_type = None
+
+        if self._expr is None:
+            field_type = _get_field_type(
+                sample_collection, field_name, unwind=True
+            )
+
+            if isinstance(field_type, fof.EmbeddedDocumentField):
+                doc_type = field_type
+
+        self._doc_type = doc_type
+
+        path, pipeline, _, _, _ = _parse_field_and_expr(
+            sample_collection, field_name, expr=self._expr
+        )
+
+        pipeline.extend(
+            [
+                {"$project": {"fields": {"$objectToArray": "$" + path}}},
+                {"$unwind": "$fields"},
+                {
+                    "$group": {
+                        "_id": None,
+                        "schema": {
+                            "$addToSet": {
+                                "$concat": [
+                                    "$fields.k",
+                                    ".",
+                                    {"$type": "$fields.v"},
+                                ]
+                            }
+                        },
+                    }
+                },
+            ]
+        )
+
+        return pipeline
+
+
+def _resolve_types(raw_types):
+    types = []
+    for t in raw_types:
+        if t is not None:
+            if inspect.isclass(t):
+                t = t()
+
+            types.append(t)
+
+    if not types:
+        types.append(None)
+    elif len(types) > 1:
+        if any(isinstance(t, fof.FloatField) for t in types) and all(
+            isinstance(t, (fof.IntField, fof.FloatField)) for t in types
+        ):
+            types = [fof.FloatField()]
+
+    return types
+
+
 class Std(Aggregation):
     """Computes the standard deviation of the field values of a collection.
 
@@ -2147,6 +2349,19 @@ _repr.maxtuple = 3
 _repr.maxset = 3
 _repr.maxstring = 30
 _repr.maxother = 30
+
+
+_MONGO_TO_FIFTYONE_TYPES = {
+    "string": fof.StringField,
+    "bool": fof.BooleanField,
+    "int": fof.IntField,
+    "long": fof.IntField,
+    "double": fof.FloatField,
+    "decimal": fof.FloatField,
+    "array": fof.ListField,
+    "object": fof.DictField,
+    "objectId": fof.ObjectIdField,
+}
 
 
 def _transform_values(values, fcn, level=1):

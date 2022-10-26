@@ -168,21 +168,43 @@ class _Document(object):
 
         return value
 
-    def set_field(self, field_name, value, create=True):
+    def set_field(
+        self,
+        field_name,
+        value,
+        create=True,
+        validate=True,
+        dynamic=False,
+    ):
         """Sets the value of a field of the document.
 
         Args:
             field_name: the field name
             value: the field value
             create (True): whether to create the field if it does not exist
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
 
         Raises:
             ValueError: if ``field_name`` is not an allowed field name
             AttirubteError: if the field does not exist and ``create == False``
         """
-        self._doc.set_field(field_name, value, create=create)
+        self._doc.set_field(
+            field_name,
+            value,
+            create=create,
+            validate=validate,
+            dynamic=dynamic,
+        )
 
-    def update_fields(self, fields_dict, expand_schema=True):
+    def update_fields(
+        self,
+        fields_dict,
+        expand_schema=True,
+        validate=True,
+        dynamic=False,
+    ):
         """Sets the dictionary of fields on the document.
 
         Args:
@@ -190,13 +212,22 @@ class _Document(object):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the document schema. If False, an error is
                 raised if any fields are not in the document schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
 
         Raises:
             AttributeError: if ``expand_schema == False`` and a field does not
                 exist
         """
         for field_name, value in fields_dict.items():
-            self.set_field(field_name, value, create=expand_schema)
+            self.set_field(
+                field_name,
+                value,
+                create=expand_schema,
+                validate=validate,
+                dynamic=dynamic,
+            )
 
     def clear_field(self, field_name):
         """Clears the value of a field of the document.
@@ -233,6 +264,8 @@ class _Document(object):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
+        validate=True,
+        dynamic=False,
     ):
         """Merges the fields of the document into this document.
 
@@ -280,6 +313,9 @@ class _Document(object):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the document schema. If False, an error is
                 raised if any fields are not in the document schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
 
         Raises:
             AttributeError: if ``expand_schema == False`` and a field does not
@@ -319,7 +355,13 @@ class _Document(object):
             ):
                 continue
 
-            self.set_field(dst_field, value, create=expand_schema)
+            self.set_field(
+                dst_field,
+                value,
+                create=expand_schema,
+                validate=validate,
+                dynamic=dynamic,
+            )
 
     def copy(self, fields=None, omit_fields=None):
         """Returns a deep copy of the document that has not been added to the
@@ -701,14 +743,33 @@ class DocumentView(_Document):
 
         return value
 
-    def set_field(self, field_name, value, create=True):
+    def set_field(
+        self,
+        field_name,
+        value,
+        create=True,
+        validate=True,
+        dynamic=False,
+    ):
         if not create:
             # Ensures field exists
             _ = self.get_field(field_name)
 
-            super().set_field(field_name, value, create=False)
+            super().set_field(
+                field_name,
+                value,
+                create=create,
+                validate=validate,
+                dynamic=dynamic,
+            )
         else:
-            super().set_field(field_name, value, create=True)
+            super().set_field(
+                field_name,
+                value,
+                create=create,
+                validate=validate,
+                dynamic=dynamic,
+            )
 
             if self._excluded_fields is not None:
                 self._excluded_fields.discard(field_name)

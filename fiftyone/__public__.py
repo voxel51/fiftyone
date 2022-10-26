@@ -23,6 +23,7 @@ from .core.aggregations import (
     HistogramValues,
     Mean,
     Quantiles,
+    Schema,
     Std,
     Sum,
     Values,
@@ -47,6 +48,7 @@ from .core.expressions import (
     VALUE,
 )
 from .core.fields import (
+    flatten_schema,
     ArrayField,
     BooleanField,
     ClassesField,

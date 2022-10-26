@@ -105,13 +105,13 @@ class SerializableDocument(object):
         """
         raise NotImplementedError("Subclass must implement get_field()")
 
-    def set_field(self, field_name, value, create=False):
+    def set_field(self, field_name, value, create=True):
         """Sets the value of a field of the document.
 
         Args:
             field_name: the field name
             value: the field value
-            create (False): whether to create the field if it does not exist
+            create (True): whether to create the field if it does not exist
 
         Raises:
             ValueError: if ``field_name`` is not an allowed field name or does
@@ -219,7 +219,7 @@ class SerializableDocument(object):
             ):
                 continue
 
-            self.set_field(field, value, create=True)
+            self.set_field(field, value)
 
     def to_dict(self, extended=False):
         """Serializes this document to a BSON/JSON dictionary.
@@ -305,7 +305,14 @@ class MongoEngineBaseDocument(SerializableDocument):
     def get_field(self, field_name):
         return getattr(self, field_name)
 
-    def set_field(self, field_name, value, create=False):
+    def set_field(
+        self,
+        field_name,
+        value,
+        create=True,
+        validate=True,
+        dynamic=False,
+    ):
         if not create and not self.has_field(field_name):
             raise AttributeError(
                 "%s has no field '%s'" % (self.__class__.__name__, field_name)

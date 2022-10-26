@@ -247,12 +247,24 @@ class SampleCollection(object):
         if self.media_type == fom.GROUP:
             return "group"
 
+        if self._is_patches:
+            return "patch"
+
+        if self._is_clips:
+            return "clip"
+
         return "sample"
 
     @property
     def _elements_str(self):
         if self.media_type == fom.GROUP:
             return "groups"
+
+        if self._is_patches:
+            return "patches"
+
+        if self._is_clips:
+            return "clips"
 
         return "samples"
 
@@ -860,40 +872,119 @@ class SampleCollection(object):
         return SaveContext(self, batch_size=batch_size)
 
     def _get_default_sample_fields(
-        self, include_private=False, use_db_fields=False
+        self,
+        path=None,
+        include_private=False,
+        use_db_fields=False,
     ):
-        field_names = fosa.get_default_sample_fields(
+        if path is not None:
+            field = self.get_field(
+                path, ftype=fof.EmbeddedDocumentField, leaf=True
+            )
+
+            field_names = field._get_default_fields(
+                include_private=include_private,
+                use_db_fields=use_db_fields,
+            )
+
+            return tuple(path + "." + f for f in field_names)
+
+        field_names = self._dataset._sample_doc_cls._get_default_fields(
             include_private=include_private, use_db_fields=use_db_fields
         )
 
+        if self._is_patches:
+            extras = ["_sample_id" if use_db_fields else "sample_id"]
+
+            if self._is_frames:
+                extras.append("_frame_id" if use_db_fields else "frame_id")
+                extras.append("frame_number")
+
+            field_names += tuple(extras)
+        elif self._is_frames:
+            if use_db_fields:
+                field_names += ("_sample_id", "frame_number")
+            else:
+                field_names += ("sample_id", "frame_number")
+        elif self._is_clips:
+            if use_db_fields:
+                field_names += ("_sample_id", "support")
+            else:
+                field_names += ("sample_id", "support")
+
         if self.media_type == fom.GROUP:
-            return field_names + (self.group_field,)
+            field_names += (self.group_field,)
 
         return field_names
 
     def _get_default_frame_fields(
-        self, include_private=False, use_db_fields=False
+        self,
+        path=None,
+        include_private=False,
+        use_db_fields=False,
     ):
-        return fofr.get_default_frame_fields(
-            include_private=include_private, use_db_fields=use_db_fields
+        if path is not None:
+            field = self.get_field(
+                self._FRAMES_PREFIX + path,
+                ftype=fof.EmbeddedDocumentField,
+                leaf=True,
+            )
+
+            field_names = field._get_default_fields(
+                include_private=include_private,
+                use_db_fields=use_db_fields,
+            )
+
+            return tuple(path + "." + f for f in field_names)
+
+        return self._dataset._frame_doc_cls._get_default_fields(
+            include_private=include_private,
+            use_db_fields=use_db_fields,
         )
 
-    def get_field(self, path, include_private=False):
+    def get_field(
+        self,
+        path,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        leaf=False,
+    ):
         """Returns the field instance of the provided path, or ``None`` if one
         does not exist.
 
         Args:
             path: a field path
+            ftype (None): an optional field type to enforce. Must be a subclass
+                of :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type to
+                enforce. Must be a subclass of
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            leaf (False): whether to return the subfield of list fields
 
         Returns:
             a :class:`fiftyone.core.fields.Field` instance or ``None``
+
+        Raises:
+            ValueError: if the field does not match provided type constraints
         """
-        _, field = self._parse_field(path, include_private=include_private)
+        fof.validate_type_constraints(
+            ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
+
+        _, field = self._parse_field(
+            path, include_private=include_private, leaf=leaf
+        )
+
+        fof.validate_field(
+            field, path=path, ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
+
         return field
 
-    def _parse_field(self, path, include_private=False):
+    def _parse_field(self, path, include_private=False, leaf=False):
         keys = path.split(".")
 
         if not keys:
@@ -916,7 +1007,7 @@ class SampleCollection(object):
             keys = keys[1:]
             resolved_keys.append("frames")
         else:
-            schema = self.get_field_schema()
+            schema = self.get_field_schema(include_private=include_private)
 
         field = None
 
@@ -931,22 +1022,29 @@ class SampleCollection(object):
                 return None, None
 
             resolved_keys.append(field.db_field or field.name)
+            last_key = idx == len(keys) - 1
 
-            if idx == len(keys) - 1:
+            if last_key and not leaf:
                 continue
 
             if isinstance(field, fof.ListField):
                 field = field.field
 
-            if isinstance(field, fof.EmbeddedDocumentField):
-                schema = field.get_field_schema()
+            if isinstance(field, fof.EmbeddedDocumentField) and not last_key:
+                schema = field.get_field_schema(
+                    include_private=include_private
+                )
 
         resolved_path = ".".join(resolved_keys)
 
         return resolved_path, field
 
     def get_field_schema(
-        self, ftype=None, embedded_doc_type=None, include_private=False
+        self,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        flat=False,
     ):
         """Returns a schema dictionary describing the fields of the samples in
         the collection.
@@ -960,6 +1058,8 @@ class SampleCollection(object):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
 
         Returns:
              a dictionary mapping field names to field types
@@ -967,7 +1067,11 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement get_field_schema()")
 
     def get_frame_field_schema(
-        self, ftype=None, embedded_doc_type=None, include_private=False
+        self,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        flat=False,
     ):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the collection.
@@ -983,6 +1087,8 @@ class SampleCollection(object):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
 
         Returns:
             a dictionary mapping field names to field types, or ``None`` if
@@ -991,6 +1097,78 @@ class SampleCollection(object):
         raise NotImplementedError(
             "Subclass must implement get_frame_field_schema()"
         )
+
+    def get_dynamic_field_schema(self, fields=None):
+        """Returns a schema dictionary describing the dynamic fields of the
+        samples in the collection.
+
+        Dynamic fields are embedded document fields with at least one non-None
+        value that have not been declared on the dataset's schema.
+
+        Args:
+            fields (None): an optional field or iterable of fields for which to
+                return dynamic fields. By default, all fields are considered
+
+        Returns:
+            a dictionary mapping field paths to field types or lists of field
+            types
+        """
+        schema = self.get_field_schema()
+        return self._get_dynamic_field_schema(schema, "", fields=fields)
+
+    def get_dynamic_frame_field_schema(self, fields=None):
+        """Returns a schema dictionary describing the dynamic fields of the
+        frames of the samples in the collection.
+
+        Dynamic fields are embedded document fields with at least one non-None
+        value that have not been declared on the dataset's schema.
+
+        Args:
+            fields (None): an optional field or iterable of fields for which to
+                return dynamic fields. By default, all fields are considered
+
+        Returns:
+            a dictionary mapping field paths to field types or lists of field
+            types
+        """
+        if not self._has_frame_fields():
+            return None
+
+        schema = self.get_frame_field_schema()
+        prefix = self._FRAMES_PREFIX
+        return self._get_dynamic_field_schema(schema, prefix, fields=fields)
+
+    def _get_dynamic_field_schema(self, schema, prefix, fields=None):
+        if fields is not None:
+            if etau.is_str(fields):
+                fields = {fields}
+            else:
+                fields = set(fields)
+
+            schema = {k: v for k, v in schema.items() if k in fields}
+
+        aggs = []
+        paths = []
+        for name, field in schema.items():
+            if isinstance(field, fof.EmbeddedDocumentField):
+                path = name
+                aggs.append(foa.Schema(prefix + path, dynamic_only=True))
+                paths.append(path)
+
+                if issubclass(field.document_type, fol._LABEL_LIST_FIELDS):
+                    path = name + "." + field.document_type._LABEL_LIST_FIELD
+                    aggs.append(foa.Schema(prefix + path, dynamic_only=True))
+                    paths.append(path)
+
+        fields = {}
+
+        if aggs:
+            results = self.aggregate(aggs)
+            for path, schema in zip(paths, results):
+                for name, field in schema.items():
+                    fields[path + "." + name] = field
+
+        return fields
 
     def make_unique_field_name(self, root=""):
         """Makes a unique field name with the given root name for the
@@ -1659,7 +1837,8 @@ class SampleCollection(object):
             path = field_name + "." + list_field
 
             # pylint: disable=no-member
-            if path in self._get_filtered_fields():
+            filtered_fields = self._get_filtered_fields()
+            if filtered_fields is not None and path in filtered_fields:
                 msg = (
                     "Detected a label list field '%s' with filtered elements; "
                     "only the list elements will be updated"
@@ -2956,17 +3135,23 @@ class SampleCollection(object):
                     fo.Sample(
                         filepath="/path/to/image1.png",
                         ground_truth=fo.Classification(label="cat"),
-                        predictions=fo.Classification(label="cat", confidence=0.9),
+                        predictions=fo.Classification(
+                            label="cat",
+                            confidence=0.9,
+                            mood="surly",
+                        ),
                     ),
                     fo.Sample(
                         filepath="/path/to/image2.png",
                         ground_truth=fo.Classification(label="dog"),
-                        predictions=fo.Classification(label="dog", confidence=0.8),
+                        predictions=fo.Classification(
+                            label="dog",
+                            confidence=0.8,
+                            mood="happy",
+                        ),
                     ),
                     fo.Sample(
                         filepath="/path/to/image3.png",
-                        ground_truth=None,
-                        predictions=None,
                     ),
                 ]
             )
@@ -2977,8 +3162,16 @@ class SampleCollection(object):
 
             view = dataset.exclude_fields("predictions")
 
+            #
+            # Exclude the `mood` attribute from all classifications in the
+            # `predictions` field
+            #
+
+            view = dataset.exclude_fields("predictions.mood")
+
         Args:
-            field_names: a field name or iterable of field names to exclude
+            field_names: a field name or iterable of field names to exclude.
+                May contain ``embedded.field.name`` as well
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4748,17 +4941,30 @@ class SampleCollection(object):
                 [
                     fo.Sample(
                         filepath="/path/to/image1.png",
-                        numeric_field=1.0,
-                        numeric_list_field=[-1, 0, 1],
+                        uniqueness=1.0,
+                        ground_truth=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="cat",
+                                    bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                    mood="surly",
+                                    age=51,
+                                ),
+                                fo.Detection(
+                                    label="dog",
+                                    bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                    mood="happy",
+                                    age=52,
+                                ),
+                            ]
+                        )
                     ),
                     fo.Sample(
                         filepath="/path/to/image2.png",
-                        numeric_field=-1.0,
-                        numeric_list_field=[-2, -1, 0, 1],
+                        uniqueness=0.0,
                     ),
                     fo.Sample(
                         filepath="/path/to/image3.png",
-                        numeric_field=None,
                     ),
                 ]
             )
@@ -4770,15 +4976,22 @@ class SampleCollection(object):
             view = dataset.select_fields()
 
             #
-            # Include only the `numeric_field` field (and the default fields)
-            # on each sample
+            # Include only the `uniqueness` field (and the default fields) on
+            # each sample
             #
 
-            view = dataset.select_fields("numeric_field")
+            view = dataset.select_fields("uniqueness")
+
+            #
+            # Include only the `mood` attribute (and the default attributes) of
+            # each `Detection` in the `ground_truth` field
+            #
+
+            view = dataset.select_fields("ground_truth.detections.mood")
 
         Args:
             field_names (None): a field name or iterable of field names to
-                select
+                select. My contain ``embedded.field.name`` as well
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -6387,6 +6600,99 @@ class SampleCollection(object):
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
+    def schema(
+        self,
+        field_or_expr,
+        expr=None,
+        dynamic_only=False,
+        _include_private=False,
+    ):
+        """Extracts the names and types of the attributes of a specified
+        embedded document field across all samples in the collection.
+
+        Schema aggregations are useful for detecting the presence and types of
+        dynamic attributes of :class:`fiftyone.core.labels.Label` fields
+        across a collection.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            sample1 = fo.Sample(
+                filepath="image1.png",
+                ground_truth=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="cat",
+                            bounding_box=[0.1, 0.1, 0.4, 0.4],
+                            foo="bar",
+                            hello=True,
+                        ),
+                        fo.Detection(
+                            label="dog",
+                            bounding_box=[0.5, 0.5, 0.4, 0.4],
+                            hello=None,
+                        )
+                    ]
+                )
+            )
+
+            sample2 = fo.Sample(
+                filepath="image2.png",
+                ground_truth=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="rabbit",
+                            bounding_box=[0.1, 0.1, 0.4, 0.4],
+                            foo=None,
+                        ),
+                        fo.Detection(
+                            label="squirrel",
+                            bounding_box=[0.5, 0.5, 0.4, 0.4],
+                            hello="there",
+                        ),
+                    ]
+                )
+            )
+
+            dataset.add_samples([sample1, sample2])
+
+            #
+            # Get schema of all dynamic attributes on the detections in a
+            # `Detections` field
+            #
+
+            print(dataset.schema("ground_truth.detections", dynamic_only=True))
+            # {'foo': StringField, 'hello': [BooleanField, StringField]}
+
+        Args:
+            field_or_expr: a field name, ``embedded.field.name``,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
+            expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
+            dynamic_only (False): whether to only include dynamically added
+                attributes
+
+        Returns:
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances. If a field's values takes multiple non-None types, the
+            list of observed types will be returned
+        """
+        make = lambda field_or_expr: foa.Schema(
+            field_or_expr,
+            expr=expr,
+            dynamic_only=dynamic_only,
+            _include_private=_include_private,
+        )
+        return self._make_and_aggregate(make, field_or_expr)
+
+    @aggregation
     def std(self, field_or_expr, expr=None, safe=False, sample=False):
         """Computes the standard deviation of the field values of the
         collection.
@@ -7474,6 +7780,24 @@ class SampleCollection(object):
 
             return []
 
+        if self._is_patches:
+            names = ["id", "filepath", "sample_id"]
+            if self._is_frames:
+                names.extend(["frame_id", "_sample_id_1_frame_number_1"])
+
+            return names
+
+        if self._is_frames:
+            return [
+                "id",
+                "filepath",
+                "sample_id",
+                "_sample_id_1_frame_number_1",
+            ]
+
+        if self._is_clips:
+            return ["id", "filepath", "sample_id"]
+
         return ["id", "filepath"]
 
     def reload(self):
@@ -8390,7 +8714,6 @@ class SampleCollection(object):
         return schema[root]
 
     def _get_label_field_type(self, field_name):
-
         field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
@@ -8448,6 +8771,41 @@ class SampleCollection(object):
             )
 
         return next(iter(geo_schema.keys()))
+
+    def _get_label_attributes_schema(self, label_field):
+        label_type, attrs_path = self._get_label_field_path(
+            label_field, "attributes"
+        )
+        dynamic_path = attrs_path.rsplit(".", 1)[0]
+
+        # We're implicitly dealing with nested list fields where possible
+        label_type = fol._LABEL_LIST_TO_SINGLE_MAP.get(label_type, label_type)
+
+        if not issubclass(label_type, fol._HasAttributesDict):
+            return self.schema(dynamic_path, dynamic_only=True)
+
+        #
+        # Handle legacy attributes
+        #
+
+        dynamic = foa.Schema(dynamic_path, dynamic_only=True)
+        attrs = foa.Schema(attrs_path)
+
+        schema, attrs_map = self.aggregate([dynamic, attrs])
+
+        names = []
+        aggs = []
+        for name in attrs_map.keys():
+            names.append("attributes." + name + ".value")
+            aggs.append(foa.Schema(attrs_path + "." + name))
+
+        if not aggs:
+            return schema
+
+        for name, attr_schema in zip(names, self.aggregate(aggs)):
+            schema[name] = attr_schema.get("value", None)
+
+        return schema
 
     def _unwind_values(self, field_name, values, keep_top_level=False):
         if values is None:
