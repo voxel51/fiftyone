@@ -1,6 +1,6 @@
 import { useTo } from "@fiftyone/state";
 import { GraphQLError, NotFoundError, ServerError } from "@fiftyone/utilities";
-import { Clear, FileCopy } from "@material-ui/icons";
+import { Clear, FileCopy } from "@mui/icons-material";
 import classnames from "classnames";
 import React, { PropsWithChildren, useLayoutEffect } from "react";
 import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";

@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import { DragIndicator } from "@material-ui/icons";
+import { DragIndicator } from "@mui/icons-material";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useState } from "react";
 
@@ -51,14 +51,14 @@ const Draggable: React.FC<
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          boxShadow: `0 2px 20px ${theme.backgroundDark}`,
+          boxShadow: `0 2px 20px ${theme.custom.shadow}`,
           overflow: "hidden",
           ...style,
         }}
         title={trigger ? "Drag to reorder" : null}
       >
         {active && (dragging || hovering) && (
-          <DragIndicator style={{ color: theme.backgroundLight }} />
+          <DragIndicator style={{ color: theme.background.level1 }} />
         )}
       </animated.div>
       <div style={{ width: "100%" }}>{children}</div>

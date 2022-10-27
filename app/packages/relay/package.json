@@ -1,32 +1,32 @@
 {
-    "name": "@fiftyone/relay",
-    "author": "Voxel51, Inc.",
-    "version": "0.0.0",
-    "description": "FiftyOne App Relay GraphQL queries, mutations, and subscriptions",
-    "homepage": "https://github.com/voxel51/fiftyone/app/packages/state",
-    "license": "Apache-2.0",
-    "bugs": {
-        "url": "https://github.com/voxel51/fiftyone/"
-    },
-    "main": "./src/index.ts",
-    "scripts": {
-        "compile": "relay-compiler",
-        "dev": "vite"
-    },
-    "private": true,
-    "files": [
-        "dist",
-        "README.md"
-    ],
-    "devDependencies": {
-        "prettier": "^2.7.1",
-        "relay-compiler": "^14.0.0",
-        "relay-compiler-language-typescript": "^15.0.1",
-        "relay-config": "^12.0.1",
-        "typescript": "^4.7.4",
-        "vite": "^3.0.0"
-    },
-    "dependencies": {
-        "react-relay": "^14.0.0"
-    }
+  "name": "@fiftyone/relay",
+  "author": "Voxel51, Inc.",
+  "version": "0.0.0",
+  "description": "FiftyOne App Relay GraphQL queries, mutations, and subscriptions",
+  "homepage": "https://github.com/voxel51/fiftyone/app/packages/state",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/voxel51/fiftyone/"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "compile": "relay-compiler",
+    "dev": "vite"
+  },
+  "private": true,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "devDependencies": {
+    "prettier": "^2.7.1",
+    "relay-compiler": "^14.0.0",
+    "relay-compiler-language-typescript": "^15.0.1",
+    "relay-config": "^12.0.1",
+    "typescript": "^4.7.4",
+    "vite": "^3.0.0"
+  },
+  "dependencies": {
+    "react-relay": "^14.0.0"
+  }
 }

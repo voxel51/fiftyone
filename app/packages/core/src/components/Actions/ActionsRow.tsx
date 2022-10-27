@@ -4,7 +4,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { CircularProgress } from "@material-ui/core";
+import { CircularProgress } from "@mui/material";
 import {
   Bookmark,
   Check,
@@ -15,7 +15,7 @@ import {
   Settings,
   VisibilityOff,
   Wallpaper,
-} from "@material-ui/icons";
+} from "@mui/icons-material";
 import useMeasure from "react-use-measure";
 import {
   selectorFamily,
@@ -45,7 +45,7 @@ const Loading = () => {
   const theme = useTheme();
   return (
     <CircularProgress
-      style={{ padding: 2, height: 22, width: 22, color: theme.font }}
+      style={{ padding: 2, height: 22, width: 22, color: theme.text.primary }}
     />
   );
 };

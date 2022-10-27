@@ -24,7 +24,7 @@
   height: 100%;
   font-family: "Palanquin", sans-serif;
   font-weight: bold;
-  background: transparent;
+  background: var(--joy-palette-background-mediaSpace);
   outline: none;
   border: none;
 }
@@ -48,6 +48,6 @@
 }
 
 .lookerHighlight {
-  border: 2px solid var(--brand);
+  border: 2px solid var(--joy-palette-primary-plainColor);
   border-radius: 3px;
 }

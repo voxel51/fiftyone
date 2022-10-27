@@ -15,13 +15,13 @@
   justify-items: center;
   align-items: center;
 
-  color: #eee;
+  color: var(--joy-palette-text-secondary);
 
   width: 100%;
 
-  background-color: hsl(210, 11%, 11%);
-  border: 1px solid #191c1f;
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  background-color: var(--joy-palette-background-level3);
+  border: 1px solid var(--joy-palette-primary-plainBorder);
+  box-shadow: 0 8px 15px 0 var(--joy-palette-neutral-softBg);
 }
 
 .lookerError > .lookerControls {
@@ -51,9 +51,9 @@
 }
 
 .lookerControls button {
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--joy-palette-neutral-softBg);
   border: 0;
-  color: #eee;
+  color: var(--joy-palette-text-secondary);
   -webkit-border-radius: 3px;
   -moz-border-radius: 3px;
   -o-border-radius: 3px;
@@ -95,15 +95,15 @@
   height: 4px;
   cursor: pointer;
   animate: 0.2s;
-  background: rgb(238, 238, 238);
+  background: var(--joy-palette-background-level1);
   outline: 0;
   border: none;
   background: linear-gradient(
     to right,
-    rgb(225, 100, 40) 0%,
-    rgb(225, 100, 40) var(--progress, 0%),
-    rgb(238, 238, 238) var(--progress, 0%),
-    rgb(238, 238, 238) 100%
+    var(--joy-palette-primary-plainColor) 0%,
+    var(--joy-palette-primary-plainColor) var(--progress, 0%),
+    var(--joy-palette-background-level1) var(--progress, 0%),
+    var(--joy-palette-background-level1) 100%
   );
   overflow: hidden;
 }
@@ -134,9 +134,9 @@
   top: 50%;
   margin-top: -1.75rem;
   cursor: pointer;
-  background-color: hsl(210, 11%, 11%);
-  border: 1px solid #191c1f;
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  background-color: var(--joy-palette-background-button);
+  border: 1px solid var(--joy-palette-primary-plainBorder);
+  box-shadow: 0 8px 15px 0 var(--joy-palette-neutral-softBg);
   border-radius: 3px;
   z-index: 100;
 }

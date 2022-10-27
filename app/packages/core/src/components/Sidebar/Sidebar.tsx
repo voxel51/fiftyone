@@ -375,9 +375,9 @@ const SidebarColumn = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
 
-  scrollbar-color: ${({ theme }) => theme.fontDarkest}
-    ${({ theme }) => theme.background};
-  background: ${({ theme }) => theme.background};
+  scrollbar-color: ${({ theme }) => theme.text.tertiary}
+    ${({ theme }) => theme.background.body};
+  background: ${({ theme }) => theme.background.sidebar};
   ${scrollbarStyles}
 `;
 
@@ -698,10 +698,10 @@ const InteractiveSidebar = ({
       }}
       style={{
         borderLeft: modal
-          ? `1px solid ${theme.backgroundDarkBorder}`
+          ? `1px solid ${theme.primary.plainBorder}`
           : undefined,
         borderRight: !modal
-          ? `1px solid ${theme.backgroundDarkBorder}`
+          ? `1px solid ${theme.primary.plainBorder}`
           : undefined,
       }}
     >

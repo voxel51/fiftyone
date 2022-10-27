@@ -1,5 +1,5 @@
-import { SvgIcon } from "@material-ui/core";
-import { GitHub, MenuBook } from "@material-ui/icons";
+import { SvgIcon } from "@mui/material";
+import { GitHub, MenuBook } from "@mui/icons-material";
 import React from "react";
 
 import ExternalLink from "../ExternalLink";
@@ -16,7 +16,11 @@ export const SlackLink = () => (
     }
     title={"Slack"}
   >
-    <SvgIcon>
+    <SvgIcon
+      sx={{
+        fill: (theme) => theme.palette.text.secondary,
+      }}
+    >
       <path d="M6 15a2 2 0 0 1-2 2a2 2 0 0 1-2-2a2 2 0 0 1 2-2h2v2m1 0a2 2 0 0 1 2-2a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2a2 2 0 0 1-2-2v-5m2-8a2 2 0 0 1-2-2a2 2 0 0 1 2-2a2 2 0 0 1 2 2v2H9m0 1a2 2 0 0 1 2 2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2a2 2 0 0 1 2-2h5m8 2a2 2 0 0 1 2-2a2 2 0 0 1 2 2a2 2 0 0 1-2 2h-2v-2m-1 0a2 2 0 0 1-2 2a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2a2 2 0 0 1 2 2v5m-2 8a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2v-2h2m0-1a2 2 0 0 1-2-2a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2a2 2 0 0 1-2 2h-5z" />
     </SvgIcon>
   </ExternalLink>
@@ -29,7 +33,11 @@ export const GitHubLink = () => {
       title="GitHub"
       href="https://github.com/voxel51/fiftyone"
     >
-      <GitHub />
+      <GitHub
+        sx={{
+          fill: (theme) => theme.palette.text.secondary,
+        }}
+      />
     </ExternalLink>
   );
 };
@@ -41,7 +49,14 @@ export const DocsLink = () => {
       title="Documentation"
       href="https://voxel51.com/docs/fiftyone/user_guide/app.html"
     >
-      <MenuBook />
+      <MenuBook
+        sx={{
+          fill: (theme) => theme.palette.text.secondary,
+        }}
+      />
     </ExternalLink>
   );
 };
+
+export { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
+export { IconButton } from "@mui/material";
