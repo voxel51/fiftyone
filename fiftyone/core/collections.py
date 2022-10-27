@@ -1151,7 +1151,7 @@ class SampleCollection(object):
                     % (field_name, ftype, field)
                 )
 
-    def tag_samples(self, tags, _mode=1):
+    def tag_samples(self, tags):
         """Adds the tag(s) to all samples in this collection, if necessary.
 
         Args:
@@ -1162,12 +1162,6 @@ class SampleCollection(object):
         else:
             tags = list(tags)
 
-        if _mode == 1:
-            self._tag_samples1(tags)
-        elif _mode == 2:
-            self._tag_samples2(tags)
-
-    def _tag_samples1(self, tags):
         def _add_tags(_tags):
             if not _tags:
                 return tags
@@ -1183,15 +1177,7 @@ class SampleCollection(object):
 
         view._edit_sample_tags(_add_tags)
 
-    def _tag_samples2(self, tags):
-        # We only need to process samples that are missing a tag of interest
-        view = self.match_tags(tags, bool=False, all=True)
-
-        add_tags = F("tags").extend(E(tags).difference(F("tags")))
-        tag_expr = (F("tags") != None).if_else(add_tags, tags)
-        view.set_field("tags", tag_expr).save("tags")
-
-    def untag_samples(self, tags, _mode=1):
+    def untag_samples(self, tags):
         """Removes the tag(s) from all samples in this collection, if
         necessary.
 
@@ -1203,12 +1189,6 @@ class SampleCollection(object):
         else:
             tags = set(tags)
 
-        if _mode == 1:
-            self._untag_samples1(tags)
-        elif _mode == 2:
-            self._untag_samples2(tags)
-
-    def _untag_samples1(self, tags):
         def _remove_tags(_tags):
             if not _tags:
                 return _tags
@@ -1219,15 +1199,6 @@ class SampleCollection(object):
         view = self.match_tags(tags)
 
         view._edit_sample_tags(_remove_tags)
-
-    def _untag_samples2(self, tags):
-        tags = list(tags)
-
-        # We only need to process samples that have a tag of interest
-        view = self.match_tags(tags)
-
-        del_tags = F("tags").filter(~E(tags).contains([F()]))
-        view.set_field("tags", del_tags).save("tags")
 
     def _edit_sample_tags(self, edit_fcn):
         tags = self.values("tags")
