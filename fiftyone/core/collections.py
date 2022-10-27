@@ -28,7 +28,7 @@ import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.core.expressions as foe
-from fiftyone.core.expressions import ViewField as F
+from fiftyone.core.expressions import ViewExpression as E, ViewField as F
 import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
@@ -1151,7 +1151,7 @@ class SampleCollection(object):
                     % (field_name, ftype, field)
                 )
 
-    def tag_samples(self, tags):
+    def tag_samples(self, tags, _mode=1):
         """Adds the tag(s) to all samples in this collection, if necessary.
 
         Args:
@@ -1162,6 +1162,14 @@ class SampleCollection(object):
         else:
             tags = list(tags)
 
+        if _mode == 1:
+            self._tag_samples1(tags)
+        elif _mode == 2:
+            self._tag_samples2(tags)
+        elif _mode == 3:
+            self._tag_samples3(tags)
+
+    def _tag_samples1(self, tags):
         def _add_tags(_tags):
             if not _tags:
                 return tags
@@ -1172,9 +1180,24 @@ class SampleCollection(object):
 
             return _tags
 
-        self._edit_sample_tags(_add_tags)
+        # We only need to process samples that are missing a tag of interest
+        view = self.match_tags(tags, bool=False, all=True)
+        view._edit_sample_tags(_add_tags)
 
-    def untag_samples(self, tags):
+    def _tag_samples2(self, tags):
+        add_tags = F("tags").extend(E(tags).difference(F("tags")))
+        tag_expr = (F("tags") != None).if_else(add_tags, tags)
+        self.set_field("tags", tag_expr).save("tags")
+
+    def _tag_samples3(self, tags):
+        for tag in tags:
+            add_tag = F("tags").append(tag)
+            tag_expr = (F("tags") != None).if_else(add_tag, [tag])
+            self.match_tags(tag, bool=False).set_field("tags", tag_expr).save(
+                "tags"
+            )
+
+    def untag_samples(self, tags, _mode=1):
         """Removes the tag(s) from all samples in this collection, if
         necessary.
 
@@ -1182,17 +1205,29 @@ class SampleCollection(object):
             tags: a tag or iterable of tags
         """
         if etau.is_str(tags):
-            tags = [tags]
+            tags = {tags}
         else:
-            tags = list(tags)
+            tags = set(tags)
 
+        if _mode == 1:
+            self._untag_samples1(tags)
+        elif _mode == 2:
+            self._untag_samples2(tags)
+
+    def _untag_samples1(self, tags):
         def _remove_tags(_tags):
             if not _tags:
                 return _tags
 
             return [t for t in _tags if t not in tags]
 
-        self._edit_sample_tags(_remove_tags)
+        # We only need to process samples that have a tag of interest
+        view = self.match_tags(tags)
+        view._edit_sample_tags(_remove_tags)
+
+    def _untag_samples2(self, tags):
+        del_tags = F("tags").filter(~E(tags).contains(F()))
+        self.match_tags(tags).set_field("tags", del_tags).save("tags")
 
     def _edit_sample_tags(self, edit_fcn):
         tags = self.values("tags")
@@ -1222,6 +1257,11 @@ class SampleCollection(object):
         else:
             tags = list(tags)
 
+        if label_fields is None:
+            label_fields = self._get_label_fields()
+        elif etau.is_str(label_fields):
+            label_fields = [label_fields]
+
         def _add_tags(_tags):
             if not _tags:
                 return tags
@@ -1232,7 +1272,13 @@ class SampleCollection(object):
 
             return _tags
 
-        self._edit_label_tags(_add_tags, label_fields=label_fields)
+        missing_tags = E(tags).difference(F("tags")).length() > 0
+        match_expr = (F("tags") != None).if_else(missing_tags, True)
+
+        for label_field in label_fields:
+            # We only need to process labels that are missing a tag of interest
+            view = self.filter_labels(label_field, match_expr)
+            view._edit_label_tags(_add_tags, label_field)
 
     def untag_labels(self, tags, label_fields=None):
         """Removes the tag from all labels in the specified label field(s) of
@@ -1245,9 +1291,14 @@ class SampleCollection(object):
                 label fields are used
         """
         if etau.is_str(tags):
-            tags = [tags]
+            tags = {tags}
         else:
-            tags = list(tags)
+            tags = set(tags)
+
+        if label_fields is None:
+            label_fields = self._get_label_fields()
+        elif etau.is_str(label_fields):
+            label_fields = [label_fields]
 
         def _remove_tags(_tags):
             if not _tags:
@@ -1255,29 +1306,21 @@ class SampleCollection(object):
 
             return [t for t in _tags if t not in tags]
 
-        self._edit_label_tags(_remove_tags, label_fields=label_fields)
-
-    def _edit_label_tags(self, edit_fcn, label_fields=None):
-        if label_fields is None:
-            label_fields = self._get_label_fields()
-        elif etau.is_str(label_fields):
-            label_fields = [label_fields]
-
         for label_field in label_fields:
-            label_type, tags_path = self._get_label_field_path(
-                label_field, "tags"
-            )
+            # We only need to process labels that have a tag of interest
+            view = self.select_labels(tags=tags, fields=label_field)
+            view._edit_label_tags(_remove_tags, label_field)
 
-            level = 1
-            level += issubclass(label_type, fol._LABEL_LIST_FIELDS)
-            level += self._is_frame_field(tags_path)
+    def _edit_label_tags(self, edit_fcn, label_field):
+        label_type, tags_path = self._get_label_field_path(label_field, "tags")
 
-            # Omit samples/frames with no labels
-            view = self.exists(label_field)
+        level = 1
+        level += issubclass(label_type, fol._LABEL_LIST_FIELDS)
+        level += self._is_frame_field(tags_path)
 
-            tags = view.values(tags_path)
-            tags = _transform_values(tags, edit_fcn, level=level)
-            view.set_values(tags_path, tags)
+        tags = self.values(tags_path)
+        tags = _transform_values(tags, edit_fcn, level=level)
+        self.set_values(tags_path, tags)
 
     def _get_selected_labels(self, ids=None, tags=None, fields=None):
         if ids is not None or tags is not None:
