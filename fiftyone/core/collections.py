@@ -4485,12 +4485,9 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def match_tags(self, tags, bool=None):
+    def match_tags(self, tags, bool=None, all=False):
         """Returns a view containing the samples in the collection that have
-        (or do not have) any of the given tag(s).
-
-        To match samples that must contain multiple tags, chain multiple
-        :meth:`match_tags` calls together.
+        or don't have any/all of the given tag(s).
 
         Examples::
 
@@ -4499,20 +4496,10 @@ class SampleCollection(object):
             dataset = fo.Dataset()
             dataset.add_samples(
                 [
-                    fo.Sample(
-                        filepath="/path/to/image1.png",
-                        tags=["train"],
-                        ground_truth=fo.Classification(label="cat"),
-                    ),
-                    fo.Sample(
-                        filepath="/path/to/image2.png",
-                        tags=["test"],
-                        ground_truth=fo.Classification(label="cat"),
-                    ),
-                    fo.Sample(
-                        filepath="/path/to/image3.png",
-                        ground_truth=None,
-                    ),
+                    fo.Sample(filepath="image1.png", tags=["train"]),
+                    fo.Sample(filepath="image2.png", tags=["test"]),
+                    fo.Sample(filepath="image3.png", tags=["train", "test"]),
+                    fo.Sample(filepath="image4.png"),
                 ]
             )
 
@@ -4523,26 +4510,46 @@ class SampleCollection(object):
             view = dataset.match_tags("test")
 
             #
-            # Only include samples that have either the "test" or "train" tag
+            # Only include samples that do not have the "test" tag
+            #
+
+            view = dataset.match_tags("test", bool=False)
+
+            #
+            # Only include samples that have the "test" or "train" tags
             #
 
             view = dataset.match_tags(["test", "train"])
 
             #
-            # Only include samples that do not have the "train" tag
+            # Only include samples that have the "test" and "train" tags
             #
 
-            view = dataset.match_tags("train", bool=False)
+            view = dataset.match_tags(["test", "train"], all=True)
+
+            #
+            # Only include samples that do not have the "test" or "train" tags
+            #
+
+            view = dataset.match_tags(["test", "train"], bool=False)
+
+            #
+            # Only include samples that do not have the "test" and "train" tags
+            #
+
+            view = dataset.match_tags(["test", "train"], bool=False, all=True)
 
         Args:
             tags: the tag or iterable of tags to match
             bool (None): whether to match samples that have (None or True) or
                 do not have (False) the given tags
+            all (False): whether to match samples that have (or don't have) all
+                (True) or any (False) of the given tags
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.MatchTags(tags, bool=bool))
+        return self._add_view_stage(fos.MatchTags(tags, bool=bool, all=all))
 
     @view_stage
     def mongo(self, pipeline):
