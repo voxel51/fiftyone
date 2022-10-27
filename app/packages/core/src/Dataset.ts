@@ -95,6 +95,7 @@ const DatasetQueryNode = graphql`
           paths
         }
       }
+      info
     }
   }
 `;

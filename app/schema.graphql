@@ -60,6 +60,7 @@ type Dataset {
   defaultSkeleton: KeypointSkeleton
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
+  info: JSON
 }
 
 type DatasetAppConfig {
