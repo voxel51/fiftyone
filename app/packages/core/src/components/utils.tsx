@@ -53,7 +53,7 @@ export const ContentDiv = styled.div`
   border-radius: 3px;
   background-color: ${({ theme }) => theme.background.level3};
   color: ${({ theme }) => theme.text.secondary};
-  border: 1px solid var(--joy-palette-primary-plainColor);
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border-radius: 2px;
   padding: 0.5rem;
@@ -305,7 +305,7 @@ export const Button = ({
   const [hover, setHover] = useState(false);
   color = color ?? theme.primary.plainColor;
   const props = useSpring({
-    backgroundColor: hover ? color : theme.background,
+    backgroundColor: hover ? color : theme.background.body,
     color: hover ? theme.text.primary : theme.text.secondary,
     config: {
       duration: 150,

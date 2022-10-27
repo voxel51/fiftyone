@@ -25,7 +25,7 @@ const SamplesHeader = styled.div`
     to top,
     rgba(0, 0, 0, 0),
     30%,
-    ${({ theme }) => theme.background.level2}
+    ${({ theme }) => theme.background.mediaSpace}
   );
   margin-left: -1rem;
 `;

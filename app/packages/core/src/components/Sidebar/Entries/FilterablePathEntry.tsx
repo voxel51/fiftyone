@@ -288,11 +288,6 @@ const FilterableEntry = React.memo(
         setExpanded(false);
       }
     }, [expandable.state, expandable.contents, expanded]);
-    const { backgroundColor } = useSpring({
-      backgroundColor: fieldIsFiltered
-        ? Color(color).alpha(0.25).string()
-        : theme.background.level1,
-    });
 
     if (!field) {
       return null;
@@ -300,7 +295,11 @@ const FilterableEntry = React.memo(
 
     return (
       <RegularEntry
-        backgroundColor={backgroundColor}
+        backgroundColor={
+          fieldIsFiltered
+            ? Color(color).alpha(0.25).string()
+            : theme.background.level1
+        }
         color={color}
         entryKey={entryKey}
         heading={

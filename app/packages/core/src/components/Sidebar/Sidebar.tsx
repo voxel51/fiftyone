@@ -715,7 +715,6 @@ const InteractiveSidebar = ({
           scroll.current = target.scrollTop;
           down.current && animate(last.current);
         }}
-        style={modal ? { background: theme.background.modalSidebar } : {}}
       >
         <Container style={containerController.springs}>
           {order.current.map((key) => {
