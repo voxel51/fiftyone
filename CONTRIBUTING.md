@@ -36,11 +36,8 @@ typically be labeled during triage with `needs design`.
 
 After you have agreed upon an implementation strategy for your feature or patch
 with a FiftyOne maintainer, the next step is to introduce your changes (see
-<<<<<<< HEAD [developer guide](#developer-guide)) as a pull request against the
-FiftyOne repository. ======= [developer guide](#developer-guide)) as a pull
-request against the FiftyOne repository.
-
-> > > > > > > develop
+[developer guide](#developer-guide)) as a pull request against the FiftyOne
+repository.
 
 Steps to make a pull request:
 
