@@ -9,7 +9,6 @@ export const InputDiv = styled.div`
 
   display: flex;
   justify-content: space-between;
-  background: ${({ theme }) => theme.neutral.softBg};
 
   & > input {
     color: ${({ theme }) => theme.text.secondary};

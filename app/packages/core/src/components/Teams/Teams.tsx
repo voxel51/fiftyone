@@ -153,6 +153,9 @@ const Teams = () => {
             formState.lastname?.length
           ) || teams.submitted
         }
+        style={{
+          color: "unset",
+        }}
       >
         {submitText}
       </Button>

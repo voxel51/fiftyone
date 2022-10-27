@@ -7,14 +7,15 @@ import DatasetComponent from "../../components/Dataset";
 import * as fos from "@fiftyone/state";
 import { Route, RouterContext } from "@fiftyone/state";
 import { getDatasetName } from "@fiftyone/state";
-import { usePreLoadedDataset } from "../../dataset";
+import { usePreLoadedDataset } from "../../Dataset";
+import { DatasetQuery } from "../../__generated__/DatasetQuery.graphql";
 
-export const Dataset: Route = ({ prepared }) => {
+export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const router = useContext(RouterContext);
   const [dataset, ready] = usePreLoadedDataset(prepared, router?.state);
   const name = useRecoilValue(fos.datasetName);
   if (!ready) return null;
-  if (!dataset) {
+  if (dataset === null) {
     throw new NotFoundError(`/datasets/${getDatasetName(router)}`);
   }
   if (!name || name !== dataset.name) {

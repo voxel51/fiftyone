@@ -1,38 +1,62 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import { Loading } from "@fiftyone/components";
+import {
+  IconButton,
+  KeyboardArrowDown,
+  KeyboardArrowUp,
+  Loading,
+  ThemeProvider,
+} from "@fiftyone/components";
 import {
   Dataset as CoreDataset,
   useDatasetLoader,
   usePreLoadedDataset,
   ViewBar,
 } from "@fiftyone/core";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import { useEffect, useState, Suspense, Fragment } from "react";
 import { State } from "@fiftyone/state";
+
 import { usePlugins } from "@fiftyone/plugins";
-import styled, { ThemeContext } from "styled-components";
+import * as fos from "@fiftyone/state";
+import { State } from "@fiftyone/state";
+import { getEventSource, toCamelCase } from "@fiftyone/utilities";
+import { Suspense, useEffect, useState } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import styled from "styled-components";
 
 // built-in plugins
-import "@fiftyone/map";
 import "@fiftyone/looker-3d";
+import "@fiftyone/map";
 
 enum Events {
   STATE_UPDATE = "state_update",
 }
 
-const ViewBarWrapper = ({ children }) => <div>{children}</div>;
-
-export function Dataset({ datasetName, environment, theme }) {
+export function Dataset({
+  datasetName,
+  environment,
+  theme,
+  themeMode,
+  compactLayout,
+  toggleHeaders,
+  hideHeaders,
+}) {
   const [initialState, setInitialState] = useState();
   const [datasetQueryRef, loadDataset] = useDatasetLoader(environment);
+  const setThemeMode = useSetRecoilState(fos.theme);
+  const setCompactLayout = useSetRecoilState(fos.compactLayout);
 
   useEffect(() => {
+    setReadOnly(readOnly);
     loadDataset(datasetName);
-  }, [datasetName]);
+    if (themeMode) setThemeMode(themeMode);
+    if (compactLayout) setCompactLayout(themeMode);
+  }, [datasetName, themeMode, compactLayout]);
+
   const subscription = useRecoilValue(fos.stateSubscription);
   useEventSource(datasetName, subscription, setInitialState);
   const plugins = usePlugins();
@@ -54,13 +78,20 @@ export function Dataset({ datasetName, environment, theme }) {
     display: flex;
     flex-direction: column;
     min-width: 660px;
+    & * {
+      font-family: var(--joy-fontFamily-body);
+    }
   `;
-  const themePalette = theme?.palette;
-  const ThemeWrapper = themePalette ? ThemeContext.Provider : Fragment;
-  const themeProps = themePalette ? { value: themePalette } : {};
+  const ViewBarWrapper = styled.div`
+    padding: 16px;
+    background: var(--joy-palette-background-header);
+    display: flex;
+  `;
+
+  const themeProviderProps = theme ? { customTheme: theme } : {};
 
   return (
-    <ThemeWrapper {...themeProps}>
+    <ThemeProvider {...themeProviderProps}>
       <Container>
         <Suspense fallback={loadingElement}>
           <DatasetLoader
@@ -69,13 +100,35 @@ export function Dataset({ datasetName, environment, theme }) {
           >
             <ViewBarWrapper>
               <ViewBar />
+              {toggleHeaders && (
+                <HeadersToggle
+                  toggleHeaders={toggleHeaders}
+                  hideHeaders={hideHeaders}
+                />
+              )}
             </ViewBarWrapper>
             <CoreDataset />
           </DatasetLoader>
         </Suspense>
         <div id="modal" />
       </Container>
-    </ThemeWrapper>
+    </ThemeProvider>
+  );
+}
+
+function HeadersToggle({ toggleHeaders, hideHeaders }) {
+  return (
+    <IconButton
+      title={`${hideHeaders ? "Show" : "Hide"} headers`}
+      onClick={() => {
+        toggleHeaders();
+      }}
+      disableRipple
+      sx={{ color: (theme) => theme.palette.text.secondary }}
+    >
+      {hideHeaders && <KeyboardArrowDown />}
+      {!hideHeaders && <KeyboardArrowUp />}
+    </IconButton>
   );
 }
 

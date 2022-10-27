@@ -50,6 +50,7 @@ import { NameAndCountContainer, PillButton } from "../../utils";
 import { useTheme } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
+import Color from "color";
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",
@@ -287,9 +288,6 @@ const FilterableEntry = React.memo(
         setExpanded(false);
       }
     }, [expandable.state, expandable.contents, expanded]);
-    const { backgroundColor } = useSpring({
-      backgroundColor: fieldIsFiltered ? "#6C757D" : theme.background.level1,
-    });
 
     if (!field) {
       return null;
@@ -297,7 +295,11 @@ const FilterableEntry = React.memo(
 
     return (
       <RegularEntry
-        backgroundColor={backgroundColor}
+        backgroundColor={
+          fieldIsFiltered
+            ? Color(color).alpha(0.25).string()
+            : theme.background.level1
+        }
         color={color}
         entryKey={entryKey}
         heading={

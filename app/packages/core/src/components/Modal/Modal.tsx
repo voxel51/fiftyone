@@ -31,6 +31,7 @@ const Container = styled.div`
   display: flex;
   justify-content: center;
   overflow: hidden;
+  box-shadow: 0 20px 25px -20px #000;
 `;
 
 const ContentColumn = styled.div`

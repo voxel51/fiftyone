@@ -377,7 +377,7 @@ const SidebarColumn = styled.div`
 
   scrollbar-color: ${({ theme }) => theme.text.tertiary}
     ${({ theme }) => theme.background.body};
-  background: ${({ theme }) => theme.background.body};
+  background: ${({ theme }) => theme.background.sidebar};
   ${scrollbarStyles}
 `;
 
