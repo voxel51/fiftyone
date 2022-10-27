@@ -401,7 +401,10 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
   const H = 24 * M;
 
   const options: Intl.DateTimeFormatOptions = {
-    timeZone,
+    timeZone:
+      timeZone === "local"
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : timeZone,
     year: "numeric",
     day: twoDigit,
     month: twoDigit,

@@ -593,7 +593,6 @@ class Session(object):
 
         self._plots = plots
 
-    @update_state()
     def refresh(self) -> None:
         """Refreshes the current App window."""
         self._client.send_event(StateUpdate(state=self._state, refresh=True))
