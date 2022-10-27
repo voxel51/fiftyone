@@ -7,4 +7,5 @@
   z-index: 1000;
   font-family: var(--joy-fontFamily-body);
   font-size: 14px;
+  color: var(--joy-palette-text-secondary);
 }
