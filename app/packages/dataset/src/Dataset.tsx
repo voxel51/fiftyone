@@ -17,7 +17,7 @@ import {
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
-import { useEffect, useState, Suspense, Fragment } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { State } from "@fiftyone/state";
 
 import { usePlugins } from "@fiftyone/plugins";
@@ -36,6 +36,29 @@ enum Events {
   STATE_UPDATE = "state_update",
 }
 
+const Container = styled.div`
+  width: 100%;
+  height: 100%;
+  background: var(--joy-palette-background-level2);
+  margin: 0;
+  padding: 0;
+  font-family: "Palanquin", sans-serif;
+  font-size: 14px;
+
+  color: var(--joy-palette-text-primary);
+  display: flex;
+  flex-direction: column;
+  min-width: 660px;
+  & * {
+    font-family: var(--joy-fontFamily-body);
+  }
+`;
+const ViewBarWrapper = styled.div`
+  padding: 16px;
+  background: var(--joy-palette-background-header);
+  display: flex;
+`;
+
 export function Dataset({
   datasetName,
   environment,
@@ -44,18 +67,20 @@ export function Dataset({
   compactLayout,
   toggleHeaders,
   hideHeaders,
+  readOnly,
 }) {
   const [initialState, setInitialState] = useState();
   const [datasetQueryRef, loadDataset] = useDatasetLoader(environment);
   const setThemeMode = useSetRecoilState(fos.theme);
   const setCompactLayout = useSetRecoilState(fos.compactLayout);
+  const setReadOnly = useSetRecoilState(fos.readOnly);
 
   useEffect(() => {
     setReadOnly(readOnly);
     loadDataset(datasetName);
     if (themeMode) setThemeMode(themeMode);
     if (compactLayout) setCompactLayout(themeMode);
-  }, [datasetName, themeMode, compactLayout]);
+  }, [datasetName, themeMode, compactLayout, readOnly]);
 
   const subscription = useRecoilValue(fos.stateSubscription);
   useEventSource(datasetName, subscription, setInitialState);
@@ -64,29 +89,6 @@ export function Dataset({
 
   if (plugins.isLoading || !initialState) return loadingElement;
   if (plugins.error) return <div>Plugin error...</div>;
-
-  const Container = styled.div`
-    width: 100%;
-    height: 100%;
-    background: var(--joy-palette-background-level2);
-    margin: 0;
-    padding: 0;
-    font-family: "Palanquin", sans-serif;
-    font-size: 14px;
-
-    color: var(--joy-palette-text-primary);
-    display: flex;
-    flex-direction: column;
-    min-width: 660px;
-    & * {
-      font-family: var(--joy-fontFamily-body);
-    }
-  `;
-  const ViewBarWrapper = styled.div`
-    padding: 16px;
-    background: var(--joy-palette-background-header);
-    display: flex;
-  `;
 
   const themeProviderProps = theme ? { customTheme: theme } : {};
 
