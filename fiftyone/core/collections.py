@@ -1166,8 +1166,6 @@ class SampleCollection(object):
             self._tag_samples1(tags)
         elif _mode == 2:
             self._tag_samples2(tags)
-        elif _mode == 3:
-            self._tag_samples3(tags)
 
     def _tag_samples1(self, tags):
         def _add_tags(_tags):
@@ -1182,20 +1180,16 @@ class SampleCollection(object):
 
         # We only need to process samples that are missing a tag of interest
         view = self.match_tags(tags, bool=False, all=True)
+
         view._edit_sample_tags(_add_tags)
 
     def _tag_samples2(self, tags):
+        # We only need to process samples that are missing a tag of interest
+        view = self.match_tags(tags, bool=False, all=True)
+
         add_tags = F("tags").extend(E(tags).difference(F("tags")))
         tag_expr = (F("tags") != None).if_else(add_tags, tags)
-        self.set_field("tags", tag_expr).save("tags")
-
-    def _tag_samples3(self, tags):
-        for tag in tags:
-            add_tag = F("tags").append(tag)
-            tag_expr = (F("tags") != None).if_else(add_tag, [tag])
-            self.match_tags(tag, bool=False).set_field("tags", tag_expr).save(
-                "tags"
-            )
+        view.set_field("tags", tag_expr).save("tags")
 
     def untag_samples(self, tags, _mode=1):
         """Removes the tag(s) from all samples in this collection, if
@@ -1223,11 +1217,17 @@ class SampleCollection(object):
 
         # We only need to process samples that have a tag of interest
         view = self.match_tags(tags)
+
         view._edit_sample_tags(_remove_tags)
 
     def _untag_samples2(self, tags):
-        del_tags = F("tags").filter(~E(tags).contains(F()))
-        self.match_tags(tags).set_field("tags", del_tags).save("tags")
+        tags = list(tags)
+
+        # We only need to process samples that have a tag of interest
+        view = self.match_tags(tags)
+
+        del_tags = F("tags").filter(~E(tags).contains([F()]))
+        view.set_field("tags", del_tags).save("tags")
 
     def _edit_sample_tags(self, edit_fcn):
         tags = self.values("tags")
@@ -1278,6 +1278,7 @@ class SampleCollection(object):
         for label_field in label_fields:
             # We only need to process labels that are missing a tag of interest
             view = self.filter_labels(label_field, match_expr)
+
             view._edit_label_tags(_add_tags, label_field)
 
     def untag_labels(self, tags, label_fields=None):
@@ -1309,6 +1310,7 @@ class SampleCollection(object):
         for label_field in label_fields:
             # We only need to process labels that have a tag of interest
             view = self.select_labels(tags=tags, fields=label_field)
+
             view._edit_label_tags(_remove_tags, label_field)
 
     def _edit_label_tags(self, edit_fcn, label_field):
