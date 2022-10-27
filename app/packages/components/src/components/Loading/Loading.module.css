@@ -6,7 +6,7 @@
   width: 100%;
   height: 100%;
   padding: 0 2rem;
-  color: var(--font-dark);
+  color: var(--joy-palette-text-secondary);
   background: transparent;
   word-break: break-all;
 }

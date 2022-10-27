@@ -7,7 +7,6 @@ import * as atoms from "./atoms";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { State } from "./types";
-import { darkTheme } from "@fiftyone/utilities";
 
 export const coloring = selectorFamily<Coloring, boolean>({
   key: "coloring",
@@ -43,7 +42,7 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
     ({ get }) => {
       get(selectors.appConfigOption({ key: "colorBy", modal }));
       let pool = get(atoms.colorPool);
-      pool = pool.length ? pool : [darkTheme.brand];
+      pool = pool.length ? pool : ["#000000"];
       const seed = get(atoms.colorSeed(modal));
 
       return createColorGenerator(pool, seed);

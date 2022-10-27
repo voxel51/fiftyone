@@ -3,7 +3,7 @@ import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring, config } from "@react-spring/web";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
-import { Add, KeyboardReturn as Arrow, Close, Help } from "@material-ui/icons";
+import { Add, KeyboardReturn as Arrow, Close, Help } from "@mui/icons-material";
 
 import { BestMatchDiv } from "./BestMatch";
 import ErrorMessage from "./ErrorMessage";
@@ -11,16 +11,17 @@ import { ExternalLink } from "../../../utils/generic";
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
 import { getMatch } from "./utils";
+import { useTheme } from "@fiftyone/components";
 
 const ViewStageContainer = animated(styled.div`
-  margin: 0.5rem 0.25rem;
+  margin: 0.5rem;
   display: flex;
   position: relative;
 `);
 
 const ViewStageDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 1px solid ${({ theme }) => theme.brand};
+  border: 1px solid ${({ theme }) => theme.primary.plainColor};
   border-top-left-radius: 3px;
   border-bottom-left-radius: 3px;
   border-right-width: 0;
@@ -33,7 +34,7 @@ const ViewStageInput = styled(AuosizeInput)`
     background-color: transparent;
     border: none;
     padding: 0.5rem;
-    color: ${({ theme }) => theme.font};
+    color: ${({ theme }) => theme.text.primary};
     height: 1rem;
     border: none;
     font-weight: bold;
@@ -47,15 +48,15 @@ const ViewStageInput = styled(AuosizeInput)`
   }
 
   & ::placeholder {
-    color: ${({ theme }) => theme.font};
+    color: ${({ theme }) => theme.text.secondary};
     font-weight: bold;
   }
 `;
 
 const ViewStageButtonContainer = animated(styled.div`
   box-sizing: border-box;
-  border: 1px dashed ${({ theme }) => theme.fontDarkest};
-  color: ${({ theme }) => theme.fontDarkest};
+  border: 1px dashed ${({ theme }) => theme.text.secondary};
+  color: ${({ theme }) => theme.text.tertiary};
   border-radius: 3px;
   position: relative;
   margin: 0.5rem;
@@ -77,22 +78,13 @@ const ViewStageButton = styled.div`
   overflow: hidden;
 `;
 
-const AddIcon = animated(styled(Add)`
-  display: block;
-  font-size: 14px;
-`);
-
-const ArrowIcon = animated(styled(Arrow)`
-  position: absolute;
-`);
-
 export const AddViewStage = React.memo(({ send, index, active }) => {
-  const theme = useContext(ThemeContext);
+  const theme = useTheme();
   const [hovering, setHovering] = useState(false);
   const [props, set] = useSpring(() => ({
     background: theme.background,
-    color: active ? theme.font : theme.fontDarkest,
-    borderColor: active ? theme.brand : theme.fontDarkest,
+    color: active ? theme.text.primary : theme.text.tertiary,
+    borderColor: active ? theme.primary.plainColor : theme.text.tertiary,
     top: active ? -3 : 0,
     opacity: 1,
     from: {
@@ -104,8 +96,8 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   useEffect(() => {
     set({
       top: active ? -3 : 0,
-      color: active ? theme.font : theme.fontDarkest,
-      borderColor: active ? theme.brand : theme.fontDarkest,
+      color: active ? theme.text.primary : theme.text.tertiary,
+      borderColor: active ? theme.primary.plainColor : theme.text.tertiary,
     });
     active ? setEnterProps() : setLeaveProps();
   }, [active]);
@@ -119,13 +111,13 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   }));
 
   const setEnterProps = () => {
-    set({ background: theme.background });
+    set({ background: theme.background.body });
     setAdd({ marginTop: 0 });
     setArrow({ marginTop: -31 });
   };
 
   const setLeaveProps = () => {
-    set({ background: theme.backgroundDark });
+    set({ background: theme.background.level2 });
     setAdd({ marginTop: 31 });
     setArrow({ marginTop: 0 });
   };
@@ -170,7 +162,7 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
 
 const ViewStageDeleteDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 1px solid ${({ theme }) => theme.brand};
+  border: 1px solid ${({ theme }) => theme.primary.plainColor};
   position: relative;
   border-top-right-radius: 3px;
   border-bottom-right-radius: 3px;
@@ -178,10 +170,10 @@ const ViewStageDeleteDiv = animated(styled.div`
 `);
 
 const ViewStageDeleteButton = animated(styled.button`
-  background-color: ${({ theme }) => theme.backgroundLight};
+  background-color: ${({ theme }) => theme.background.level1};
   border: none;
   padding: 0.5rem;
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.text.primary};
   height: 1rem;
   display: block;
   height: 100%;
@@ -211,7 +203,7 @@ const ViewStageDelete = React.memo(({ send, spring }) => {
 });
 
 const ViewStage = React.memo(({ barRef, stageRef }) => {
-  const theme = useContext(ThemeContext);
+  const theme = useTheme();
   const [state, send] = useService(stageRef);
   const inputRef = useRef();
   const [containerRef, setContainerRef] = useState({});
@@ -235,8 +227,8 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
   const deleteProps = useSpring({
     borderColor:
       active && state.matches("focusedViewBar.yes")
-        ? theme.brand
-        : theme.fontDarkest,
+        ? theme.primary.plainColor
+        : theme.text.tertiary,
     opacity: 1,
     from: {
       opacity: 0,
@@ -244,18 +236,21 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
   });
 
   const props = useSpring({
-    backgroundColor: isCompleted ? theme.backgroundLight : theme.background,
+    backgroundColor: isCompleted
+      ? theme.background.level1
+      : theme.background.viewBarButtons,
     borderRightWidth: state.matches("delible.yes") && parameters.length ? 0 : 1,
     borderColor:
       active && state.matches("focusedViewBar.yes")
-        ? theme.brand
-        : theme.fontDarkest,
+        ? theme.primary.plainColor
+        : theme.divider,
     borderTopRightRadius: !parameters.length ? 3 : 0,
     borderBottomRightRadius: !parameters.length ? 3 : 0,
     opacity: 1,
     from: {
       opacity: 0,
     },
+    alignItems: "center",
   });
 
   const containerProps = useSpring({

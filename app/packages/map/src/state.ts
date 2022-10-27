@@ -1,4 +1,4 @@
-import { dataset, extendedSelection } from "@fiftyone/state";
+import { dataset, extendedSelection, theme } from "@fiftyone/state";
 import { atom, selector } from "recoil";
 
 export interface Settings {
@@ -76,7 +76,14 @@ export const MAP_STYLES = {
 };
 export const STYLES = Object.keys(MAP_STYLES);
 
+const defaultMapStyle = selector<string>({
+  key: "defaultMapStyle",
+  get: ({ get }) => {
+    return get(theme) === "dark" ? "Dark" : "Light";
+  },
+});
+
 export const mapStyle = atom<string>({
   key: "@fiftyone/map/state.mapStyle",
-  default: "Dark",
+  default: defaultMapStyle,
 });

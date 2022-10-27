@@ -542,7 +542,7 @@ const ActionBarContainer = styled.div`
   opacity: 0.9;
   height: 37px;
   background-color: hsl(210, 11%, 11%);
-  border: 1px solid #191c1f;
+  border: 1px solid var(--joy-palette-divider);
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   padding: 0 1rem;
 `;

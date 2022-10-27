@@ -7,7 +7,7 @@ import {
   LocalOffer,
   Remove,
   Visibility,
-} from "@material-ui/icons";
+} from "@mui/icons-material";
 import React, { useContext, useLayoutEffect, useRef, useState } from "react";
 import {
   selectorFamily,
@@ -301,7 +301,7 @@ const Pills = ({ entries }: { entries: PillEntry[] }) => {
             height: "1.5rem",
             fontSize: "0.8rem",
             lineHeight: "1rem",
-            color: theme.font,
+            color: theme.text.primary,
             padding: "0.25rem 0.5rem",
             margin: "0 0.25rem",
           }}
@@ -316,7 +316,7 @@ const PlusMinusButton = ({ expanded }: { expanded: boolean }) =>
   expanded ? <Remove /> : <Add />;
 
 const GroupHeader = styled.div`
-  border-bottom: 2px solid ${({ theme }) => theme.border};
+  border-bottom: 2px solid ${({ theme }) => theme.primary.softBorder};
   border-top-radius: 3px;
   margin-left: 2px;
   padding: 3px 3px 3px 8px;
@@ -326,8 +326,8 @@ const GroupHeader = styled.div`
   vertical-align: middle;
   align-items: center;
   font-weight: bold;
-  color: ${({ theme }) => theme.fontDark};
-  background: ${({ theme }) => theme.backgroundTransparent};
+  color: ${({ theme }) => theme.text.secondary};
+  background: ${({ theme }) => theme.neutral.softBg};
   user-select: text;
 
   svg {
@@ -344,7 +344,7 @@ const GroupInput = styled.input`
   outline: none;
   text-transform: uppercase;
   font-weight: bold;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.text.secondary};
 `;
 
 type GroupEntryProps = {
@@ -383,11 +383,15 @@ const GroupEntry = React.memo(
     return (
       <div
         style={{
-          boxShadow: `0 2px 20px ${theme.backgroundDark}`,
+          boxShadow: `0 2px 20px ${theme.custom.shadow}`,
         }}
       >
         <div style={{ position: "relative", cursor: "pointer" }}>
-          <Draggable color={theme.border} entryKey={entryKey} trigger={trigger}>
+          <Draggable
+            color={theme.primary.softBorder}
+            entryKey={entryKey}
+            trigger={trigger}
+          >
             <GroupHeader
               title={title}
               onMouseEnter={() => !hovering && setHovering(true)}
@@ -398,7 +402,9 @@ const GroupEntry = React.memo(
               onMouseMove={() => (canCommit.current = false)}
               style={{
                 cursor: "unset",
-                borderBottomColor: editing ? theme.brand : theme.border,
+                borderBottomColor: editing
+                  ? theme.primary.plainColor
+                  : theme.primary.softBorder,
               }}
               onMouseUp={(event) => {
                 canCommit.current && onClick && onClick(event);

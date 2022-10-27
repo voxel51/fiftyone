@@ -2,20 +2,19 @@ import { Tooltip, useTheme } from "@fiftyone/components";
 import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring, useSprings } from "@react-spring/web";
-import { KeyboardArrowUp, KeyboardArrowDown } from "@material-ui/icons";
+import { KeyboardArrowUp, KeyboardArrowDown } from "@mui/icons-material";
 
 export const Box = styled.div`
   padding: 1em;
   box-sizing: border-box;
-  border: 2px solid ${({ theme }) => theme.border};
-  background-color: ${({ theme }) => theme.background};
+  background-color: ${({ theme }) => theme.background.body};
 `;
 
 export const VerticalSpacer = styled.div`
   height: ${({ height }) =>
     typeof height == "number" ? height + "px" : height};
   background-color: ${({ opaque, theme }) =>
-    opaque ? theme.background : undefined};
+    opaque ? theme.background.body : undefined};
 `;
 
 export const scrollbarStyles = ({ theme }) => `
@@ -23,15 +22,15 @@ export const scrollbarStyles = ({ theme }) => `
   width: 16px;
 }
 
-scrollbar-color: ${({ theme }) => theme.fontDarkest} ${({ theme }) =>
-  theme.background};
+scrollbar-color: ${({ theme }) => theme.text.tertiary} ${({ theme }) =>
+  theme.background.body};
 
   scrollbar-gutter: stable;
 
   scrollbar-width: auto;
 
 ::-webkit-scrollbar-track {
-  border: solid 4px transparent ${theme.fontDarkest};
+  border: solid 4px transparent ${theme.text.tertiary};
 }
 
 @-moz-document url-prefix() {
@@ -45,16 +44,16 @@ scrollbar-color: ${({ theme }) => theme.fontDarkest} ${({ theme }) =>
   transition: box-shadow linear 0.5s;
 }
 &:hover::-webkit-scrollbar-thumb {
-  box-shadow: inset 0 0 10px 10px ${theme.fontDarkest};
+  box-shadow: inset 0 0 10px 10px ${theme.text.tertiary};
 }
 `;
 
 export const ContentDiv = styled.div`
   box-sizing: border-box;
   border-radius: 3px;
-  background-color: ${({ theme }) => theme.backgroundDarker};
-  color: ${({ theme }) => theme.fontDark};
-  border: 1px solid #191c1f;
+  background-color: ${({ theme }) => theme.background.level3};
+  color: ${({ theme }) => theme.text.secondary};
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border-radius: 2px;
   padding: 0.5rem;
@@ -66,7 +65,7 @@ export const ContentDiv = styled.div`
 `;
 
 export const ContentHeader = styled.div`
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.text.primary};
   display: flex;
   padding-bottom: 0.5rem;
 `;
@@ -75,7 +74,7 @@ const PillButtonDiv = animated(styled.div`
   line-height: 1.5rem;
   padding: 0.25rem 0.75rem;
   cursor: pointer;
-  background-color: ${({ theme }) => theme.button};
+  background-color: ${({ theme }) => theme.divider};
   border-radius: 1rem;
   border: none;
   font-weight: bold;
@@ -121,36 +120,43 @@ export const PillButton = React.memo(
     ) => {
       const theme = useTheme();
       const props = useSpring({
-        backgroundColor: !highlight ? theme.button : theme.brand,
+        backgroundColor: !highlight
+          ? theme.background.button
+          : theme.primary.plainColor,
+        color: !highlight ? theme.text.secondary : theme.text.buttonHighlight,
       });
-      return (
-        <Tooltip text={title}>
-          <PillButtonDiv
-            onClick={(e) => {
-              onClick(e);
-            }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-            }}
-            ref={ref}
-            style={{ ...props, ...style }}
-            title={title}
-          >
-            {text && <span>{text}</span>}
-            {icon}
-            {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
-          </PillButtonDiv>
-        </Tooltip>
+
+      const children = (
+        <PillButtonDiv
+          onClick={(e) => {
+            onClick(e);
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+          }}
+          ref={ref}
+          style={{ ...props, ...style }}
+          title={title}
+        >
+          {text && <span>{text}</span>}
+          {icon}
+          {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
+        </PillButtonDiv>
+      );
+      return title ? (
+        <Tooltip text={title}>{children}</Tooltip>
+      ) : (
+        <>{children}</>
       );
     }
   )
 );
 
 export const PopoutDiv = animated(styled.div`
-  background-color: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  background-color: ${({ theme }) => theme.background.level2};
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   border-radius: 2px;
-  box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
+  box-shadow: 0 2px 20px ${({ theme }) => theme.custom.shadow};
   box-sizing: border-box;
   margin-top: 0.6rem;
   position: absolute;
@@ -164,7 +170,7 @@ export const PopoutDiv = animated(styled.div`
 export const PopoutSectionTitle = styled.div`
   margin: 0 -0.5rem;
   padding: 0 0.5rem;
-  border-bottom: 1px solid ${({ theme }) => theme.backgroundLight};
+  border-bottom: 1px solid ${({ theme }) => theme.background.level1};
   font-size: 1rem;
   line-height: 2;
   font-weight: bold;
@@ -212,23 +218,23 @@ export const TabOption = ({ active, options, color }: TabOptionProps) => {
     options.map((o, i) => ({
       backgroundColor:
         o.text === active
-          ? color || theme.brand
+          ? color || theme.primary.plainColor
           : hovering[i]
-          ? theme.background
-          : theme.backgroundLight,
-      color: hovering ? theme.font : theme.fontDark,
+          ? theme.background.body
+          : theme.background.level2,
+      color: hovering ? theme.text.primary : theme.text.secondary,
     }))
   );
 
   const [style, set] = useSpring(() => ({
-    background: theme.backgroundLight,
+    background: theme.background.level1,
   }));
 
   return (
     <TabOptionDiv
       style={style}
-      onMouseEnter={() => set({ background: theme.background })}
-      onMouseLeave={() => set({ background: theme.backgroundLight })}
+      onMouseEnter={() => set({ background: theme.background.body })}
+      onMouseLeave={() => set({ background: theme.background.level1 })}
     >
       {options.map(({ text, title, onClick }, i) => (
         <Tab
@@ -297,10 +303,10 @@ export const Button = ({
 }) => {
   const theme = useTheme();
   const [hover, setHover] = useState(false);
-  color = color ?? theme.brand;
+  color = color ?? theme.primary.plainColor;
   const props = useSpring({
-    backgroundColor: hover ? color : theme.background,
-    color: hover ? theme.font : theme.fontDark,
+    backgroundColor: hover ? color : theme.background.body,
+    color: hover ? theme.text.primary : theme.text.secondary,
     config: {
       duration: 150,
     },

@@ -1,5 +1,5 @@
 import React from "react";
-import { Launch } from "@material-ui/icons";
+import { Launch } from "@mui/icons-material";
 
 import { useHighlightHover } from "./utils";
 import { ItemAction } from "./ItemAction";
