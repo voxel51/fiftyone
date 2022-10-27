@@ -1484,12 +1484,14 @@ def make_optimized_select_view(
     # that could affect our ability to select the samples of interest first,
     # we'll need to account for that here...
     #
+
+    optimized_view = view._base_view
+
     if groups:
-        optimized_view = view._dataset.select_groups(
+        optimized_view = optimized_view.select_groups(
             sample_ids, ordered=ordered
         )
     else:
-        optimized_view = view._dataset
         if view.media_type == fom.GROUP and not select_groups:
             optimized_view = optimized_view.select_group_slices(
                 _allow_mixed=True
