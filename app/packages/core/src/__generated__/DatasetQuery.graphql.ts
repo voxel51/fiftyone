@@ -1,9 +1,5 @@
 /**
-<<<<<<< HEAD
- * @generated SignedSource<<c4b17cb450e9f84cc8e6797f8a2aeedb>>
-=======
  * @generated SignedSource<<0b2970abf6649f5c311edb3e2ad6445c>>
->>>>>>> develop
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -532,8 +528,6 @@ v12 = [
         "kind": "ScalarField",
         "name": "viewCls",
         "storageKey": null
-<<<<<<< HEAD
-=======
       },
       {
         "alias": null,
@@ -541,7 +535,6 @@ v12 = [
         "kind": "ScalarField",
         "name": "info",
         "storageKey": null
->>>>>>> develop
       }
     ],
     "storageKey": null
@@ -565,28 +558,16 @@ return {
     "selections": (v12/*: any*/)
   },
   "params": {
-<<<<<<< HEAD
-    "cacheID": "e5b28d650f56482fe3a4e90ce3dde09b",
-=======
     "cacheID": "8d3f81596498c437a322670d5b776032",
->>>>>>> develop
     "id": null,
     "metadata": {},
     "name": "DatasetQuery",
     "operationKind": "query",
-<<<<<<< HEAD
-    "text": "query DatasetQuery(\n  $name: String!\n  $view: BSONArray = null\n) {\n  dataset(name: $name, view: $view) {\n    id\n    name\n    mediaType\n    defaultGroupSlice\n    groupField\n    groupMediaTypes {\n      name\n      mediaType\n    }\n    appConfig {\n      gridMediaField\n      mediaFields\n      plugins\n      sidebarGroups {\n        name\n        paths\n      }\n    }\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    lastLoadedAt\n    createdAt\n    skeletons {\n      name\n      labels\n      edges\n    }\n    defaultSkeleton {\n      labels\n      edges\n    }\n    version\n    viewCls\n  }\n}\n"
-=======
     "text": "query DatasetQuery(\n  $name: String!\n  $view: BSONArray = null\n) {\n  dataset(name: $name, view: $view) {\n    id\n    name\n    mediaType\n    defaultGroupSlice\n    groupField\n    groupMediaTypes {\n      name\n      mediaType\n    }\n    appConfig {\n      gridMediaField\n      mediaFields\n      plugins\n      sidebarGroups {\n        name\n        paths\n      }\n    }\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    lastLoadedAt\n    createdAt\n    skeletons {\n      name\n      labels\n      edges\n    }\n    defaultSkeleton {\n      labels\n      edges\n    }\n    version\n    viewCls\n    info\n  }\n}\n"
->>>>>>> develop
   }
 };
 })();
 
-<<<<<<< HEAD
-(node as any).hash = "393e9a77be7b019383e437812359086e";
-=======
 (node as any).hash = "61947167292f19ada5da19e777a06877";
->>>>>>> develop
 
 export default node;
