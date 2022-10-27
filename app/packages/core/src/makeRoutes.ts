@@ -35,9 +35,9 @@ const makeRoutes = (environment: Environment): RouteDefinition<any>[] => {
               import("./Root/Datasets").then((result) => result.default),
           },
           query: {
-            name: "./__generated__/datasetQuery.graphql",
+            name: "./__generated__/DatasetQuery.graphql",
             loader: () =>
-              import("./__generated__/datasetQuery.graphql").then(
+              import("./__generated__/DatasetQuery.graphql").then(
                 (query) => query.default
               ),
           },
