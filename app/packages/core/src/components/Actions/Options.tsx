@@ -1,5 +1,5 @@
 import React from "react";
-import { Autorenew, Check } from "@material-ui/icons";
+import { Autorenew, Check } from "@mui/icons-material";
 import { constSelector, useRecoilState, useRecoilValue } from "recoil";
 
 import Checkbox from "../Common/Checkbox";
@@ -112,7 +112,7 @@ const Opacity = ({ modal }) => {
       <Slider
         valueAtom={fos.alpha(modal)}
         boundsAtom={constSelector([0, 1])}
-        color={theme.brand}
+        color={theme.primary.plainColor}
         showBounds={false}
         persistValue={false}
         showValue={false}

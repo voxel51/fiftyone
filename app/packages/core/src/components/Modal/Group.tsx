@@ -237,7 +237,7 @@ const DualView: React.FC = () => {
           }}
           style={{
             position: "relative",
-            borderRight: `1px solid ${theme.backgroundDarkBorder}`,
+            borderRight: `1px solid ${theme.primary.plainBorder}`,
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",

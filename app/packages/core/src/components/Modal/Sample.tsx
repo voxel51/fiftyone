@@ -4,7 +4,6 @@ import { SampleBar } from "./Bars";
 import { modal, useClearModal, useHoveredSample } from "@fiftyone/state";
 import Looker from "./Looker";
 import { VideoLooker } from "@fiftyone/looker";
-import * as fos from "@fiftyone/state";
 
 const Sample: React.FC = () => {
   const data = useRecoilValue(modal);

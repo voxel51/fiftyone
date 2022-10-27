@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import { LocalOffer } from "@material-ui/icons";
+import { LocalOffer } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 import React from "react";
 import { useRecoilValue } from "recoil";
@@ -14,7 +14,7 @@ import { groupStatistics } from "@fiftyone/state";
 const TagValueEntry = ({ path, tag }: { path: string; tag: string }) => {
   const theme = useTheme();
   const { backgroundColor } = useSpring({
-    backgroundColor: theme.backgroundLight,
+    backgroundColor: theme.background.level1,
   });
   const color = useRecoilValue(fos.pathColor({ path, modal: true }));
   const group = useRecoilValue(groupStatistics(true)) === "group";

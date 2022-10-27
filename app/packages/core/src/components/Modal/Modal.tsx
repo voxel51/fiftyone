@@ -9,7 +9,6 @@ import { useRecoilValue } from "recoil";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
-import { lookerPanelOverlayContainer } from "./Group.module.css";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 
 const ModalWrapper = styled.div`
@@ -22,16 +21,17 @@ const ModalWrapper = styled.div`
   align-items: center;
   display: flex;
   justify-content: center;
-  background-color: ${({ theme }) => theme.overlay};
+  background-color: ${({ theme }) => theme.neutral.softBg};
 `;
 
 const Container = styled.div`
-  background-color: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  background-color: ${({ theme }) => theme.background.level2};
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   position: relative;
   display: flex;
   justify-content: center;
   overflow: hidden;
+  box-shadow: 0 20px 25px -20px #000;
 `;
 
 const ContentColumn = styled.div`

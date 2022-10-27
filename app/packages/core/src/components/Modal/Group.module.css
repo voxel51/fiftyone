@@ -29,11 +29,11 @@
   overflow: hidden;
   width: 100%;
   height: 100%;
-  border-bottom: 3px solid var(--background-dark-border);
+  border-bottom: 3px solid var(--joy-palette-primary-plainBorder);
 }
 
 .groupSampleActive {
-  border-bottom: 3px solid var(--brand);
+  border-bottom: 3px solid var(--joy-palette-primary-plainColor);
 }
 
 .lookerPanelOverlayContainer {
@@ -41,6 +41,5 @@
   height: 100%;
   width: 100%;
   position: relative;
-  border: solid 1px red;
   z-index: 10001;
 }

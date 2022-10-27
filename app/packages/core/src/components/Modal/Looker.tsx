@@ -191,7 +191,7 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
       style={{
         width: "100%",
         height: "100%",
-        background: theme.backgroundDark,
+        background: theme.background.level2,
         position: "relative",
       }}
     >

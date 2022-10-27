@@ -23,10 +23,10 @@ import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 
 const CategoricalFilterContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid #191c1f;
+  background: ${({ theme }) => theme.background.level2};
+  border: 1px solid var(--joy-palette-divider);
   border-radius: 2px;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
   position: relative;
@@ -381,7 +381,7 @@ const CategoricalFilter = <T extends V = V>({
             component={ResultComponent}
             onSelect={onSelect}
             inputStyle={{
-              color: theme.fontDark,
+              color: theme.text.secondary,
               fontSize: "1rem",
               width: "100%",
             }}

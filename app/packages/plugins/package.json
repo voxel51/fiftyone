@@ -1,30 +1,30 @@
 {
-    "name": "@fiftyone/plugins",
-    "author": "Voxel51, Inc.",
-    "version": "0.0.0",
-    "description": "Develop fiftyone plugins",
-    "homepage": "https://github.com/voxel51/fiftyone/app/packages/plugins",
-    "license": "Apache-2.0",
-    "bugs": {
-        "url": "https://github.com/voxel51/fiftyone/"
-    },
-    "main": "./src/index.ts",
-    "scripts": {
-        "dev": "vite",
-        "test": "jest"
-    },
-    "private": true,
-    "files": [
-        "dist",
-        "README.md"
-    ],
-    "devDependencies": {
-        "@babel/preset-typescript": "^7.17.12",
-        "@fiftyone/utilities": "workspace:^",
-        "@types/react": "^18.0.12",
-        "jest": "^28.1.1",
-        "prettier": "2.2.1",
-        "typescript": "4.2.4",
-        "vite": "2.4.2"
-    }
+  "name": "@fiftyone/plugins",
+  "author": "Voxel51, Inc.",
+  "version": "0.0.0",
+  "description": "Develop fiftyone plugins",
+  "homepage": "https://github.com/voxel51/fiftyone/app/packages/plugins",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/voxel51/fiftyone/"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "vite",
+    "test": "jest"
+  },
+  "private": true,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "devDependencies": {
+    "@babel/preset-typescript": "^7.17.12",
+    "@fiftyone/utilities": "workspace:^",
+    "@types/react": "^18.0.12",
+    "jest": "^28.1.1",
+    "prettier": "2.2.1",
+    "typescript": "4.2.4",
+    "vite": "2.4.2"
+  }
 }
