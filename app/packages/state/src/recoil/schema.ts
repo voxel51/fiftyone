@@ -96,28 +96,48 @@ const fieldFilter = (
       let names = new Set([...(supplied as []), ...RESERVED_FIELDS]);
       if (space === State.SPACE.FRAME)
         names = new Set(
-          Array.from(names).map((n) => n.slice("frames.".length))
+          [...names]
+            .filter((n) => n.split(".")[0] === "frames")
+            .map((n) => n.split(".").slice(1).join("."))
         );
 
-      Object.keys(fields).forEach(
-        (f) =>
-          !names.has(f) &&
+      Object.keys(fields).forEach((f) => {
+        let context = fields;
+        let field: Field;
+        for (const i of f.split(".")) {
+          if (!context[i]) {
+            return;
+          }
+          field = context[i];
+          context = field.fields;
+        }
+        !names.has(f) &&
           (fields[f].embeddedDocType !== "fiftyone.core.groups.Group" ||
             !isGroup) &&
-          delete fields[f]
-      );
+          delete fields[f];
+      });
     } else if (_cls === "fiftyone.core.stages.ExcludeFields") {
       const supplied = kwargs[0][1] || [];
       let names = Array.from(supplied as string[]);
 
       if (space === State.SPACE.FRAME)
-        names = names.map((n) => n.slice("frames.".length));
+        names = names
+          .filter((n) => n.split(".")[0] === "frames")
+          .map((n) => n.split(".").slice(1).join("."));
 
-      names.forEach(
-        (f) =>
-          fields[f].embeddedDocType !== "fiftyone.core.groups.Group" &&
-          delete fields[f]
-      );
+      names.forEach((f) => {
+        let context = fields;
+        let field: Field;
+        for (const i of f.split(".")) {
+          if (!context[i]) {
+            return;
+          }
+          field = context[i];
+          context = field.fields;
+        }
+        field.embeddedDocType !== "fiftyone.core.groups.Group" &&
+          delete fields[f];
+      });
     }
   });
 };
