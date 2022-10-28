@@ -113,6 +113,16 @@ class EvaluationRun(Run):
 
 
 @gql.type
+class SavedView:
+    dataset_id: str
+    name: str
+    url_name: str
+    description: t.Optional[str]
+    color: t.Optional[str]
+    view_stages: t.List[str]
+
+
+@gql.type
 class SidebarGroup:
     name: str
     paths: t.Optional[t.List[str]]
@@ -156,6 +166,7 @@ class Dataset:
     frame_fields: t.List[SampleField]
     brain_methods: t.List[BrainRun]
     evaluations: t.List[EvaluationRun]
+    views: t.List[SavedView]
     version: t.Optional[str]
     view_cls: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
@@ -176,6 +187,10 @@ class Dataset:
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
+        doc["views"] = doc.get("views", [])
+        doc["view_names"] = [
+            viewDoc["name"] for viewDoc in doc.get("views", [])
+        ]
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -189,7 +204,11 @@ class Dataset:
 
     @classmethod
     async def resolver(
-        cls, name: str, view: t.Optional[BSONArray], info: Info
+        cls,
+        name: str,
+        view: t.Optional[BSONArray],
+        view_name: t.Optional[str],
+        info: Info,
     ) -> t.Optional["Dataset"]:
         assert info is not None
         dataset = await dataset_dataloader(name, info)
@@ -198,7 +217,11 @@ class Dataset:
 
         ds = fo.load_dataset(name)
         ds.reload()
-        view = fov.DatasetView._build(ds, view or [])
+        if view_name:
+            view = ds.load_view(view_name)
+        else:
+            view = fov.DatasetView._build(ds, view or [])
+        # view = fov.DatasetView._build(ds, view or [])
         if view._dataset != ds:
             d = view._dataset._serialize()
             dataset.id = view._dataset._doc.id

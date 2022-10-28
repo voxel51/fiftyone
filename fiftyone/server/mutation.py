@@ -94,7 +94,9 @@ class Mutation:
         state.selected_labels = []
         state.view = fov.DatasetView._build(state.dataset, view)
         await dispatch_event(subscription, StateUpdate(state=state))
-        dataset = await Dataset.resolver(state.dataset.name, view, info)
+        dataset = await Dataset.resolver(
+            state.dataset.name, view, view.name, info
+        )
         return ViewResponse(view=state.view._serialize(), dataset=dataset)
 
     @gql.mutation
@@ -114,4 +116,6 @@ class Mutation:
         state = get_state()
         state.dataset.group_slice = slice
         await dispatch_event(subscription, StateUpdate(state=state))
-        return await Dataset.resolver(state.dataset.name, view, info)
+        return await Dataset.resolver(
+            state.dataset.name, view, view.name, info
+        )

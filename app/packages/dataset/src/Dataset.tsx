@@ -26,7 +26,13 @@ enum Events {
 
 const ViewBarWrapper = ({ children }) => <div>{children}</div>;
 
-export function Dataset({ datasetName, environment, theme, readOnly }) {
+export function Dataset({
+  datasetName,
+  viewName,
+  environment,
+  theme,
+  readOnly,
+}) {
   theme = theme || darkTheme;
 
   const [initialState, setInitialState] = useState();

@@ -106,7 +106,13 @@ const App: React.FC = ({}) => {
                 dataset = state.dataset;
               }
 
-              const path = state.dataset
+              const path = state.view
+                ? `/datasets/${encodeURIComponent(
+                    state.dataset
+                  )}?view=${encodeURIComponent(state.viewName)}${
+                    window.location.search
+                  }`
+                : state.dataset
                 ? `/datasets/${encodeURIComponent(state.dataset)}${
                     window.location.search
                   }`
