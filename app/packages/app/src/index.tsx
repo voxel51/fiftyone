@@ -90,6 +90,7 @@ const App: React.FC = ({}) => {
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
               const { colorscale, config, ...data } = payload.state;
+              payload.refresh && refresh();
 
               const state = {
                 ...toCamelCase(data),

@@ -1,4 +1,4 @@
-import { useTo } from "@fiftyone/state";
+import { useClearModal, useTo } from "@fiftyone/state";
 import { GraphQLError, NotFoundError, ServerError } from "@fiftyone/utilities";
 import { Clear, FileCopy } from "@mui/icons-material";
 import classnames from "classnames";
@@ -18,8 +18,9 @@ interface Props extends FallbackProps {
 
 const Errors: React.FC<Props> = ({ error, resetErrorBoundary }) => {
   const { to } = useTo({ state: {} });
+  const clearModal = useClearModal();
   useLayoutEffect(() => {
-    document.getElementById("modal")?.classList.remove("modalon");
+    clearModal();
   }, []);
 
   const [_, copy] = useCopyToClipboard();
