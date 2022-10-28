@@ -169,6 +169,7 @@ class Dataset:
     views: t.List[SavedView]
     version: t.Optional[str]
     view_cls: t.Optional[str]
+    view_name: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
@@ -188,9 +189,9 @@ class Dataset:
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
         doc["views"] = doc.get("views", [])
-        doc["view_names"] = [
-            viewDoc["name"] for viewDoc in doc.get("views", [])
-        ]
+        # doc["view_names"] = [
+        #     viewDoc["name"] for viewDoc in doc.get("views", [])
+        # ]
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -218,6 +219,7 @@ class Dataset:
         ds = fo.load_dataset(name)
         ds.reload()
         if view_name:
+            dataset.view_name = view_name
             view = ds.load_view(view_name)
         else:
             view = fov.DatasetView._build(ds, view or [])
