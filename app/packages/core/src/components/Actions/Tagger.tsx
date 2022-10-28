@@ -362,7 +362,7 @@ const useTagCallback = (
         const { samples } = await getFetchFunction()("POST", "/tag", {
           ...tagParameters({
             activeFields: await snapshot.getPromise(
-              fos.labelPaths({ expanded: false })
+              fos.activeLabelFields({ modal })
             ),
             dataset: await snapshot.getPromise(fos.datasetName),
             filters: await snapshot.getPromise(
