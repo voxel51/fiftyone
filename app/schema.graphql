@@ -55,8 +55,10 @@ type Dataset {
   frameFields: [SampleField!]!
   brainMethods: [BrainRun!]!
   evaluations: [EvaluationRun!]!
+  views: [SavedView!]!
   version: String
   viewCls: String
+  viewName: String
   defaultSkeleton: KeypointSkeleton
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
@@ -204,7 +206,7 @@ type Query {
   context: String!
   dev: Boolean!
   doNotTrack: Boolean!
-  dataset(name: String!, view: BSONArray): Dataset
+  dataset(name: String!, view: BSONArray, viewName: String): Dataset
   samples(
     dataset: String!
     view: BSONArray!
@@ -216,6 +218,7 @@ type Query {
   teamsSubmission: Boolean!
   uid: String!
   version: String!
+  viewName(viewName: String!): String!
 }
 
 interface Run {
@@ -267,6 +270,15 @@ type SampleItemStrPageInfo {
   hasPreviousPage: Boolean!
   startCursor: String
   endCursor: String
+}
+
+type SavedView {
+  datasetId: String!
+  name: String!
+  urlName: String!
+  description: String
+  color: String
+  viewStages: [String!]!
 }
 
 input SelectedLabel {

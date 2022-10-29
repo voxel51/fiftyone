@@ -9,8 +9,12 @@ import {
 } from "./__generated__/DatasetQuery.graphql";
 
 const DatasetQueryNode = graphql`
-  query DatasetQuery($name: String!, $view: BSONArray = null) {
-    dataset(name: $name, view: $view) {
+  query DatasetQuery(
+    $name: String!
+    $view: BSONArray = null
+    $viewName: String = null
+  ) {
+    dataset(name: $name, view: $view, viewName: $viewName) {
       id
       name
       mediaType
@@ -73,6 +77,14 @@ const DatasetQueryNode = graphql`
           patchesField
         }
       }
+      views {
+        datasetId
+        name
+        urlName
+        description
+        color
+        viewStages
+      }
       lastLoadedAt
       createdAt
       skeletons {
@@ -86,6 +98,7 @@ const DatasetQueryNode = graphql`
       }
       version
       viewCls
+      viewName
       appConfig {
         mediaFields
         gridMediaField
