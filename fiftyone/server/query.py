@@ -362,6 +362,10 @@ class Query:
     def version(self) -> str:
         return foc.VERSION
 
+    @gql.field
+    def view_name(self, view_name: str) -> str:
+        return view_name
+
 
 def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
     doc = dataset._doc.to_dict()
@@ -386,6 +390,7 @@ def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
             ]
 
             data.view_cls = etau.get_class_name(view)
+            data.view_name = view.name
 
         if view.media_type != data.media_type:
             data.id = ObjectId()
