@@ -173,18 +173,51 @@ class ClipsView(fov.DatasetView):
 
         return ["id", "filepath", "sample_id"]
 
+    def tag_labels(self, tags, label_fields=None):
+        for field in self._parse_label_fields(label_fields=label_fields):
+            view = self._get_source_labels_view(field)
+            view.tag_labels(tags, label_fields=[field])
+
+        super().tag_labels(tags, label_fields=label_fields)
+
+    def untag_labels(self, tags, label_fields=None):
+        for field in self._parse_label_fields(label_fields=label_fields):
+            view = self._get_source_labels_view(field)
+            view.untag_labels(tags, label_fields=[field])
+
+        super().untag_labels(tags, label_fields=label_fields)
+
+    def _parse_label_fields(self, label_fields=None):
+        if label_fields is None:
+            if self._classification_field is not None:
+                label_fields = [self._classification_field]
+            else:
+                label_fields = []
+        elif etau.is_str(label_fields):
+            label_fields = [label_fields]
+
+        return list(set(label_fields) & {self._classification_field})
+
+    def _get_source_labels_view(self, field):
+        _, id_path = self._get_label_field_path(field, "id")
+        ids = self.values(id_path, unwind=True)
+        return self._source_collection.select_labels(ids=ids, fields=[field])
+
     def set_values(self, field_name, *args, **kwargs):
+        field = field_name.split(".", 1)[0]
+        must_sync = field == self._classification_field
+
         # The `set_values()` operation could change the contents of this view,
         # so we first record the sample IDs that need to be synced
-        if self._stages:
+        if must_sync and self._stages:
             ids = self.values("id")
         else:
             ids = None
 
         super().set_values(field_name, *args, **kwargs)
 
-        field = field_name.split(".", 1)[0]
-        self._sync_source(fields=[field], ids=ids)
+        if must_sync:
+            self._sync_source(fields=[field], ids=ids)
 
     def save(self, fields=None):
         """Saves the clips in this view to the underlying dataset.
