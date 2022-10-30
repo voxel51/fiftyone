@@ -192,6 +192,33 @@ class _PatchesView(fov.DatasetView):
 
         return names
 
+    def tag_labels(self, tags, label_fields=None):
+        for field in self._parse_label_fields(label_fields=label_fields):
+            view = self._get_source_labels_view(field)
+            view.tag_labels(tags, label_fields=[field])
+
+        super().tag_labels(tags, label_fields=label_fields)
+
+    def untag_labels(self, tags, label_fields=None):
+        for field in self._parse_label_fields(label_fields=label_fields):
+            view = self._get_source_labels_view(field)
+            view.untag_labels(tags, label_fields=[field])
+
+        super().untag_labels(tags, label_fields=label_fields)
+
+    def _parse_label_fields(self, label_fields=None):
+        if label_fields is None:
+            label_fields = self._label_fields
+        elif etau.is_str(label_fields):
+            label_fields = [label_fields]
+
+        return list(set(label_fields) & set(self._label_fields))
+
+    def _get_source_labels_view(self, field):
+        _, id_path = self._get_label_field_path(field, "id")
+        ids = self.values(id_path, unwind=True)
+        return self._source_collection.select_labels(ids=ids, fields=[field])
+
     def set_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
         must_sync = field in self._label_fields
