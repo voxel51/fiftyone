@@ -223,6 +223,7 @@ class Dataset:
             view = ds.load_view(view_name)
         else:
             view = fov.DatasetView._build(ds, view or [])
+            dataset.view_name = view.name
         # view = fov.DatasetView._build(ds, view or [])
         if view._dataset != ds:
             d = view._dataset._serialize()

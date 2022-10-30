@@ -28,7 +28,7 @@ const ViewBarWrapper = ({ children }) => <div>{children}</div>;
 
 export function Dataset({
   datasetName,
-  viewName,
+  // viewName,
   environment,
   theme,
   readOnly,
