@@ -1,10 +1,10 @@
 import React, { Suspense, useLayoutEffect, useMemo } from "react";
-import { Checkbox } from "@material-ui/core";
+import { Checkbox } from "@mui/material";
 import {
   KeyboardArrowDown,
   KeyboardArrowUp,
   VisibilityOff,
-} from "@material-ui/icons";
+} from "@mui/icons-material";
 import { useSpring } from "@react-spring/web";
 import {
   atomFamily,
@@ -50,6 +50,7 @@ import { NameAndCountContainer, PillButton } from "../../utils";
 import { useTheme } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
+import Color from "color";
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",
@@ -259,7 +260,7 @@ const FilterableEntry = React.memo(
     const skeleton = useRecoilValue(fos.getSkeleton);
     const expandedPath = useRecoilValue(fos.expandPath(path));
     const color = disabled
-      ? theme.backgroundDark
+      ? theme.background.level2
       : useRecoilValue(fos.pathColor({ path, modal }));
     const fields = useRecoilValue(
       fos.fields({
@@ -287,9 +288,6 @@ const FilterableEntry = React.memo(
         setExpanded(false);
       }
     }, [expandable.state, expandable.contents, expanded]);
-    const { backgroundColor } = useSpring({
-      backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
-    });
 
     if (!field) {
       return null;
@@ -297,7 +295,11 @@ const FilterableEntry = React.memo(
 
     return (
       <RegularEntry
-        backgroundColor={backgroundColor}
+        backgroundColor={
+          fieldIsFiltered
+            ? Color(color).alpha(0.25).string()
+            : theme.background.level1
+        }
         color={color}
         entryKey={entryKey}
         heading={
@@ -308,7 +310,7 @@ const FilterableEntry = React.memo(
                 checked={active}
                 title={`Show ${path}`}
                 style={{
-                  color: active ? color : theme.fontDark,
+                  color: active ? color : theme.text.secondary,
                   marginLeft: 2,
                   padding: 0,
                 }}

@@ -2248,11 +2248,51 @@ class ViewStageTests(unittest.TestCase):
         )
 
     def test_match_tags(self):
-        self.sample1.tags.append("test")
-        self.sample1.save()
-        result = list(self.dataset.match_tags(["test"]))
-        self.assertIs(len(result), 1)
-        self.assertEqual(result[0].id, self.sample1.id)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.png", tags=["train"], i=1),
+                fo.Sample(filepath="image2.png", tags=["test"], i=2),
+                fo.Sample(filepath="image3.png", tags=["train", "test"], i=3),
+                fo.Sample(filepath="image4.png", i=4),
+            ]
+        )
+
+        view = dataset.match_tags("test")
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 2)
+        self.assertListEqual(indexes, [2, 3])
+
+        view = dataset.match_tags("test", bool=False)
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 2)
+        self.assertListEqual(indexes, [1, 4])
+
+        view = dataset.match_tags(["test", "train"])
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 3)
+        self.assertListEqual(indexes, [1, 2, 3])
+
+        view = dataset.match_tags(["test", "train"], all=True)
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 1)
+        self.assertListEqual(indexes, [3])
+
+        view = dataset.match_tags(["test", "train"], bool=False)
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 1)
+        self.assertListEqual(indexes, [4])
+
+        view = dataset.match_tags(["test", "train"], bool=False, all=True)
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 3)
+        self.assertListEqual(indexes, [1, 2, 4])
 
     def test_re_match(self):
         result = list(self.dataset.match(F("filepath").re_match(r"two\.png$")))

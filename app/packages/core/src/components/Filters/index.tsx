@@ -13,10 +13,6 @@ import {
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
 
-import { filter as boolean } from "./booleanState";
-import { filter as string } from "./stringState";
-import { filter as numeric } from "./numericState";
-
 export { default as BooleanFieldFilter } from "./BooleanFieldFilter";
 export { default as NumericFieldFilter } from "./NumericFieldFilter";
 export { default as StringFieldFilter } from "./StringFieldFilter";

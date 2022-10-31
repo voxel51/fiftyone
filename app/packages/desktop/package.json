@@ -1,100 +1,100 @@
 {
-    "name": "FiftyOne",
-    "description": "Explore, Analyze, Curate",
-    "author": "Voxel51, Inc.",
-    "version": "0.0.0",
-    "main": "./dist/main.js",
-    "license": "Apache-2.0",
-    "private": true,
-    "scripts": {
-        "build": "yarn build-source && yarn build-desktop",
-        "build-desktop": "yarn build-source && yarn pull-source && tsc -p tsconfig.json",
-        "build-source": "yarn workspace @fiftyone/app build-desktop",
-        "pull-source": "yarn workspace @fiftyone/app copy-to-desktop",
-        "start-desktop": "yarn build-desktop && cross-env DEBUG_APP=true electron ./dist/main.js",
-        "package-linux-aarch64": "yarn build && electron-builder build --linux --arm64",
-        "package-linux-x86_64": "yarn build && electron-builder build --linux --x64",
-        "package-mac-arm64": "yarn build && electron-builder build --mac --arm64",
-        "package-mac-x86_64": "yarn build && electron-builder build --mac --x64",
-        "package-win-amd64": "yarn build && electron-builder build --win --x64"
-    },
-    "build": {
-        "productName": "FiftyOne",
-        "appId": "com.voxel51.FiftyOne",
-        "files": [
-            "dist/",
-            "package.json",
-            "resources/**/*"
-        ],
-        "dmg": {
-            "contents": [
-                {
-                    "x": 130,
-                    "y": 220
-                },
-                {
-                    "x": 410,
-                    "y": 220,
-                    "type": "link",
-                    "path": "/Applications"
-                }
-            ]
+  "name": "FiftyOne",
+  "description": "Explore, Analyze, Curate",
+  "author": "Voxel51, Inc.",
+  "version": "0.0.0",
+  "main": "./dist/main.js",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "build": "yarn build-source && yarn build-desktop",
+    "build-desktop": "yarn build-source && yarn pull-source && tsc -p tsconfig.json",
+    "build-source": "yarn workspace @fiftyone/app build-desktop",
+    "pull-source": "yarn workspace @fiftyone/app copy-to-desktop",
+    "start-desktop": "yarn build-desktop && cross-env DEBUG_APP=true electron ./dist/main.js",
+    "package-linux-aarch64": "yarn build && electron-builder build --linux --arm64",
+    "package-linux-x86_64": "yarn build && electron-builder build --linux --x64",
+    "package-mac-arm64": "yarn build && electron-builder build --mac --arm64",
+    "package-mac-x86_64": "yarn build && electron-builder build --mac --x64",
+    "package-win-amd64": "yarn build && electron-builder build --win --x64"
+  },
+  "build": {
+    "productName": "FiftyOne",
+    "appId": "com.voxel51.FiftyOne",
+    "files": [
+      "dist/",
+      "package.json",
+      "resources/**/*"
+    ],
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
         },
-        "mac": {
-            "target": [
-                "dir"
-            ]
-        },
-        "win": {
-            "target": [
-                "portable"
-            ]
-        },
-        "linux": {
-            "target": [
-                "AppImage"
-            ],
-            "category": "Tool"
-        },
-        "directories": {
-            "buildResources": "resources",
-            "output": "release"
-        },
-        "publish": {
-            "provider": "github",
-            "owner": "voxel51",
-            "repo": "fiftyone",
-            "private": true
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
         }
+      ]
     },
-    "devDependencies": {
-        "@babel/core": "^7.9.0",
-        "@babel/plugin-proposal-class-properties": "^7.8.3",
-        "@babel/plugin-proposal-decorators": "^7.8.3",
-        "@babel/plugin-proposal-do-expressions": "^7.8.3",
-        "@babel/plugin-proposal-export-default-from": "^7.8.3",
-        "@babel/plugin-proposal-export-namespace-from": "^7.8.3",
-        "@babel/plugin-proposal-function-bind": "^7.8.3",
-        "@babel/plugin-proposal-function-sent": "^7.8.3",
-        "@babel/plugin-proposal-json-strings": "^7.8.3",
-        "@babel/plugin-proposal-logical-assignment-operators": "^7.8.3",
-        "@babel/plugin-proposal-nullish-coalescing-operator": "^7.8.3",
-        "@babel/plugin-proposal-numeric-separator": "^7.8.3",
-        "@babel/plugin-proposal-optional-chaining": "^7.9.0",
-        "@babel/plugin-proposal-pipeline-operator": "^7.8.3",
-        "@babel/plugin-proposal-throw-expressions": "^7.8.3",
-        "@babel/plugin-syntax-dynamic-import": "^7.8.3",
-        "@babel/plugin-syntax-import-meta": "^7.8.3",
-        "@babel/plugin-transform-react-constant-elements": "^7.9.0",
-        "@babel/plugin-transform-react-inline-elements": "^7.9.0",
-        "@babel/preset-env": "^7.9.0",
-        "@babel/preset-react": "^7.9.4",
-        "@babel/preset-typescript": "^7.9.0",
-        "@babel/register": "^7.9.0",
-        "cross-env": "^7.0.3",
-        "electron": "18.2.3",
-        "electron-builder": "^23.0.3",
-        "electron-devtools-installer": "^3.2.0",
-        "typescript": "^4.7.4"
+    "mac": {
+      "target": [
+        "dir"
+      ]
+    },
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Tool"
+    },
+    "directories": {
+      "buildResources": "resources",
+      "output": "release"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "voxel51",
+      "repo": "fiftyone",
+      "private": true
     }
+  },
+  "devDependencies": {
+    "@babel/core": "^7.9.0",
+    "@babel/plugin-proposal-class-properties": "^7.8.3",
+    "@babel/plugin-proposal-decorators": "^7.8.3",
+    "@babel/plugin-proposal-do-expressions": "^7.8.3",
+    "@babel/plugin-proposal-export-default-from": "^7.8.3",
+    "@babel/plugin-proposal-export-namespace-from": "^7.8.3",
+    "@babel/plugin-proposal-function-bind": "^7.8.3",
+    "@babel/plugin-proposal-function-sent": "^7.8.3",
+    "@babel/plugin-proposal-json-strings": "^7.8.3",
+    "@babel/plugin-proposal-logical-assignment-operators": "^7.8.3",
+    "@babel/plugin-proposal-nullish-coalescing-operator": "^7.8.3",
+    "@babel/plugin-proposal-numeric-separator": "^7.8.3",
+    "@babel/plugin-proposal-optional-chaining": "^7.9.0",
+    "@babel/plugin-proposal-pipeline-operator": "^7.8.3",
+    "@babel/plugin-proposal-throw-expressions": "^7.8.3",
+    "@babel/plugin-syntax-dynamic-import": "^7.8.3",
+    "@babel/plugin-syntax-import-meta": "^7.8.3",
+    "@babel/plugin-transform-react-constant-elements": "^7.9.0",
+    "@babel/plugin-transform-react-inline-elements": "^7.9.0",
+    "@babel/preset-env": "^7.9.0",
+    "@babel/preset-react": "^7.9.4",
+    "@babel/preset-typescript": "^7.9.0",
+    "@babel/register": "^7.9.0",
+    "cross-env": "^7.0.3",
+    "electron": "18.2.3",
+    "electron-builder": "^23.0.3",
+    "electron-devtools-installer": "^3.2.0",
+    "typescript": "^4.7.4"
+  }
 }

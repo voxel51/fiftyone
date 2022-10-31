@@ -161,6 +161,7 @@ class Dataset:
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
+    info: t.Optional[JSON]
 
     @staticmethod
     def modifier(doc: dict) -> dict:

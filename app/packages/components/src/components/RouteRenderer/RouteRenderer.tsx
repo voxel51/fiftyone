@@ -1,3 +1,4 @@
+import { Route, RouteData, RoutingContext } from "@fiftyone/state";
 import { Resource } from "@fiftyone/utilities";
 import React, {
   PropsWithChildren,
@@ -9,8 +10,6 @@ import React, {
 import { PreloadedQuery } from "react-relay";
 import { OperationType } from "relay-runtime";
 
-import { Route } from "..";
-import { RoutingContext, RouteData } from "../../routing";
 
 const RouteHandler = <T extends OperationType | undefined = OperationType>(
   props: PropsWithChildren<{
