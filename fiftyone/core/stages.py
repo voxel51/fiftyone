@@ -1261,6 +1261,22 @@ class Exists(ViewStage):
             self._field
         )
 
+        # Option 1: treat frames like any other array field
+        if is_frame_field and not field_name:
+            field_name = self._field
+            is_frame_field = False
+
+        # Option 2: special behavior for "frames"
+        """
+        if is_frame_field not field_name:
+            if self._bool:
+                expr = F("frames").length() > 0
+            else:
+                expr = F("frames").length() == 0
+
+            return [{"$match": {"$expr": expr.to_mongo()}}]
+        """
+
         if not is_frame_field:
             expr = F(field_name).exists(self._bool)
             return [{"$match": {"$expr": expr.to_mongo()}}]
