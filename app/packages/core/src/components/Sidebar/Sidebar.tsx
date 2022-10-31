@@ -384,7 +384,7 @@ const SidebarColumn = styled.div`
 const Container = animated(styled.div`
   position: relative;
   min-height: 100%;
-  margin: 0 0.25rem 0 1.25rem;
+  margin: 0 0.25rem 0 1rem;
 
   & > div {
     position: absolute;
