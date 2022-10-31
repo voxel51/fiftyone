@@ -45,6 +45,7 @@ const useSetView = () => {
                 state: {
                   view: value,
                   viewCls: dataset.viewCls,
+                  viewName: dataset.viewName,
                   selected: [],
                   selectedLabels: [],
                 },

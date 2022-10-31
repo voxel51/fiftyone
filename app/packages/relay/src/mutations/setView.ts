@@ -76,6 +76,7 @@ export default graphql`
         createdAt
         version
         viewCls
+        viewName
         skeletons {
           name
           labels

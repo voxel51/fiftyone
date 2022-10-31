@@ -113,3 +113,20 @@ export const getDatasetName = (context: RoutingContext<any>): string => {
 
   return null;
 };
+
+export const getViewName = (context: RoutingContext<any>): string => {
+  const result = matchPath(
+    context.pathname,
+    {
+      path: "?view=:name",
+      exact: true,
+    },
+    {}
+  );
+
+  if (result) {
+    return result.variables.name;
+  }
+
+  return null;
+};

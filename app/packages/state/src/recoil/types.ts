@@ -157,5 +157,6 @@ export namespace State {
     selectedLabels: SelectedLabel[];
     view: Stage[];
     viewCls: string | null;
+    viewName: string | null;
   }
 }
