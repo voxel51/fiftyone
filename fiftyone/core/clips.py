@@ -648,7 +648,10 @@ def _write_temporal_detection_clips(
     if other_fields:
         project.update({f: True for f in other_fields})
 
-    pipeline = [{"$project": project}]
+    pipeline = [
+        {"$project": project},
+        {"$match": {"$expr": {"$gt": ["$" + field, None]}}},
+    ]
 
     if label_type is fol.TemporalDetections:
         list_path = field + "." + label_type._LABEL_LIST_FIELD
