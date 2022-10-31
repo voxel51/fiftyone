@@ -16,6 +16,22 @@ import os
 import shutil
 
 
+VERSION = "0.14.2"
+
+
+def get_version():
+    if "RELEASE_VERSION" in os.environ:
+        version = os.environ["RELEASE_VERSION"]
+        if not version.startswith(VERSION):
+            raise ValueError(
+                "Release version does not match version: %s and %s"
+                % (version, VERSION)
+            )
+        return version
+
+    return VERSION
+
+
 def make_tar(dir_path, tar_path):
     outpath, format = _get_tar_format(tar_path)
 
@@ -147,7 +163,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone-desktop",
-    version="0.14.2",
+    version=get_version(),
     description="FiftyOne Teams Desktop",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",

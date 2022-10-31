@@ -1,14 +1,9 @@
 # Dockerfile for building an image with a FiftyOne Team App release atop a
 # Debian-based Linux distribution.
 #
-# THIS IS ONLY FOR DEV BUILDS - see https://github.com/voxel51/fiftyone-teams-app-deploy
-#  for versions of this Dockerfile designed for general use
-#
 # REQUIRED BUILD ARGs::
 #
-#   GAR_TOKEN: Your Google Artifact Registry OAuth2 token
-#   FIFTYONE_VERSION: The version of `fiftyone` to install
-#   TEAMS_APP_VERSION: The version of `fiftyone-teams-app` to install
+#   TOKEN: Your Teams client install token
 #
 # OPTIONAL BUILD ARGs::
 #
@@ -28,10 +23,8 @@
 #
 #   # Build
 #   docker build \
-#       --build-arg GAR_TOKEN=${TOKEN} \
-#       --build-arg FIFTYONE_VERSION=${FIFTYONE_VERSION} \
-#       --build-arg TEAMS_APP_VERSION=${TEAMS_APP_VERSION} \
-#       -t voxel51/fiftyone-teams-app:${TEAMS_APP_VERSION} .
+#       --build-arg TOKEN=${TOKEN} \
+#       -t voxel51/fiftyone-teams-app .
 #
 #   # Run
 #   SHARED_DIR=/data # if necessary
@@ -92,6 +85,22 @@ RUN apt -y update \
     && curl https://bootstrap.pypa.io/get-pip.py | python \
     && rm -rf /var/lib/apt/lists/*
 
+#
+# Install Python dependencies
+#
+# Other packages you might want:
+#   torch torchvision: Torch model training/zoo datasets
+#   tensorflow tensorflow-datasets: TF model training/zoo datasets
+#   pycocotools: COCO-style evaluation
+#   notebook>=5.3 ipywidgets>=7.5: Jupyter notebooks
+#   flash>=0.4: Lightning Flash integration
+#   apache_beam: Apache Beam integration
+#   labelbox: Labelbox integration
+#   shapely: Polyline evaluation
+#   rasterio: GeoTIFF images
+#   pydicom: DICOM images
+#
+
 RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython
 
 #
@@ -99,20 +108,16 @@ RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython
 #
 
 # Your install token
-ARG GAR_TOKEN
+ARG TOKEN
 
-# The Teams App version to install
-ARG TEAMS_APP_VERSION
+# The Teams App version to install, or "latest"
+ARG TEAMS_APP_VERSION=0.1.7
 
-# The FiftyOne version to install
-ARG FIFTYONE_VERSION
-
-# The GAR Repo to use
-ARG GAR_REPO=us-central1-python.pkg.dev/computer-vision-team/dev-python/simple
-
-RUN pip --no-cache-dir install \
-    --extra-index-url https://oauth2accesstoken:${GAR_TOKEN}@${GAR_REPO} \
-    fiftyone-teams-app==${TEAMS_APP_VERSION} fiftyone==${FIFTYONE_VERSION}
+RUN if [ "${TEAMS_APP_VERSION}" = "latest" ]; then \
+        pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai fiftyone-teams-app; \
+    else \
+        pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai fiftyone-teams-app==${TEAMS_APP_VERSION}; \
+    fi
 
 #
 # Configure shared storage
@@ -127,4 +132,4 @@ ENV FIFTYONE_MEDIA_CACHE_SIZE_BYTES=-1 \
 # Serve the app
 #
 
-CMD hypercorn fiftyone.teams.app:app --bind "${FIFTYONE_DEFAULT_APP_ADDRESS:-0.0.0.0}":"${FIFTYONE_DEFAULT_APP_PORT:-5151}"
+CMD hypercorn fiftyone.teams.app:app --bind 0.0.0.0:"${FIFTYONE_DEFAULT_APP_PORT:-5151}"
