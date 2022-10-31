@@ -1,0 +1,169 @@
+name: Bump Package Versions
+
+on:
+  workflow_call:
+    inputs:
+      bump-type:
+        required: true
+        type: string
+      commit-prefix:
+        required: true
+        type: string
+      fiftyone-changed:
+        required: true
+        type: string
+      teams-app-changed:
+        required: true
+        type: string
+      teams-desktop-changed:
+        required: true
+        type: string
+      old-fiftyone-version:
+        required: true
+        type: string
+      old-teams-app-version:
+        required: true
+        type: string
+      old-teams-desktop-version:
+        required: true
+        type: string
+
+    secrets:
+      GAR_PYTHON_REPO:
+        required: true
+      GOOGLE_SERVICE_ACCOUNT:
+        required: true
+      GOOGLE_WORKLOAD_IDENTITY_PROVIDER:
+        required: true
+
+    outputs:
+      fiftyone-version:
+        description: "bumped fiftyone teams version"
+        value: ${{ jobs.bump-package-versions.outputs.fiftyone-version }}
+      teams-app-version:
+        description: "bumped teams app version"
+        value: ${{ jobs.bump-package-versions.outputs.teams-app-version }}
+      teams-desktop-version:
+        description: "bumped teams desktop version"
+        value: ${{ jobs.bump-package-versions.outputs.teams-desktop-version }}
+
+jobs:
+  bump-package-versions:
+    runs-on: ubuntu-20.04
+    outputs:
+      fiftyone-version: ${{ steps.fiftyone-version.outputs.version }}
+      teams-app-version: ${{ steps.teams-app-version.outputs.version }}
+      teams-desktop-version: ${{ steps.teams-desktop-version.outputs.version }}
+    steps:
+      - name: Clone fiftyone-teams
+        uses: actions/checkout@v3
+
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v0
+        with:
+          token_format: 'access_token'
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install python dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+
+      - name: Install voxel51 newversion
+        run: |
+          pip install --extra-index-url https://oauth2accesstoken:${{ steps.auth.outputs.access_token }}@${{ secrets.GAR_PYTHON_REPO }}/simple newversion==1.8.3.dev0+voxel51
+
+      - name: Bump fiftyone Dev Version
+        if: (inputs.fiftyone-changed == 'true') && (inputs.bump-type == 'dev')
+        env:
+          FIFTYONE_VERSION: ${{ inputs.old-fiftyone-version }}
+        run: |
+          LOCAL_VERSION=$(newversion package)
+          if echo "${FIFTYONE_VERSION}" | newversion gte "${LOCAL_VERSION}"; then
+            echo "${FIFTYONE_VERSION}" | newversion bump dev | newversion set_package
+          else
+            echo "${LOCAL_VERSION}" | newversion bump dev | newversion set_package
+          fi
+
+      - name: Bump teams-app Dev Version
+        if: (inputs.teams-app-changed == 'true') && (inputs.bump-type == 'dev')
+        working-directory: package/teams
+        env:
+          TEAMS_APP_VERSION: ${{ inputs.old-teams-app-version }}
+        run: |
+          LOCAL_VERSION=$(newversion package)
+          if echo "${TEAMS_APP_VERSION}" | newversion gte "${LOCAL_VERSION}"; then
+            echo "${TEAMS_APP_VERSION}" | newversion bump dev | newversion set_package
+          else
+            echo "${LOCAL_VERSION}" | newversion bump dev | newversion set_package
+          fi
+
+      - name: Bump teams-desktop Dev Version
+        if: (inputs.teams-desktop-changed == 'true') && (inputs.bump-type == 'dev')
+        working-directory: package/desktop
+        env:
+          DESKTOP_VERSION: ${{ inputs.old-teams-desktop-version }}
+        run: |
+          LOCAL_VERSION=$(newversion package)
+          if echo "${DESKTOP_VERSION}" | newversion gte "${LOCAL_VERSION}"; then
+            echo "${DESKTOP_VERSION}" | newversion bump dev | newversion set_package
+          else
+            echo "${LOCAL_VERSION}" | newversion bump dev | newversion set_package
+          fi
+
+      - name: Get fiftyone teams bumped version
+        id: fiftyone-version
+        run: echo "::set-output name=version::$(newversion package)"
+
+      - name: get teams app bumped version
+        id: teams-app-version
+        working-directory: package/teams
+        run: echo "::set-output name=version::$(newversion package)"
+
+      - name: get teams desktop bumped version
+        id: teams-desktop-version
+        working-directory: package/desktop
+        run: echo "::set-output name=version::$(newversion package)"
+
+      - name: Commit Version Changes
+        if: (inputs.fiftyone-changed == 'true') ||
+            (inputs.teams-app-changed == 'true') ||
+            (inputs.teams-desktop-changed == 'true')
+        env:
+          NEW_FIFTYONE_VERSION: ${{ steps.fiftyone-version.outputs.version }}
+          NEW_TEAMS_APP_VERSION: ${{ steps.teams-app-version.outputs.version }}
+          NEW_TEAMS_DESKTOP_VERSION: ${{ steps.teams-desktop-version.outputs.version }}
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add setup.py package/teams/setup.py package/desktop/setup.py
+          git commit -m "${{ inputs.commit-prefix }} to teams ${NEW_FIFTYONE_VERSION} teams-app ${NEW_TEAMS_APP_VERSION} teams-desktop ${NEW_TEAMS_DESKTOP_VERSION}"
+
+      - name: Add fiftyone tag, if appropriate
+        if: (inputs.fiftyone-changed == 'true')
+        env:
+          NEW_FIFTYONE_VERSION: ${{ steps.fiftyone-version.outputs.version }}
+        run: git tag -a -m "${{ inputs.bump-type }} release tag for fiftyone teams ${NEW_FIFTYONE_VERSION}" -f teams-v${NEW_FIFTYONE_VERSION}
+
+      - name: Add teams-app tag, if appropriate
+        if: (inputs.teams-app-changed == 'true')
+        env:
+          NEW_TEAMS_APP_VERSION: ${{ steps.teams-app-version.outputs.version }}
+        run: git tag -a -m "${{ inputs.bump-type }} release tag for teams app ${NEW_TEAMS_APP_VERSION}" -f teams-app-v${NEW_TEAMS_APP_VERSION}
+
+      - name: Add teams-desktop tag, if appropriate
+        if: (inputs.teams-desktop-changed == 'true')
+        env:
+          NEW_TEAMS_DESKTOP_VERSION: ${{ steps.teams-desktop-version.outputs.version }}
+        run: git tag -a -m "${{ inputs.bump-type }} release tag for teams desktop ${NEW_TEAMS_DESKTOP_VERSION}" -f teams-desktop-v${NEW_TEAMS_DESKTOP_VERSION}
+
+      - name: Git push changes and tags
+        run: |
+          git push
+          git push --tags --force

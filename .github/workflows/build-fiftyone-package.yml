@@ -1,0 +1,80 @@
+name: Build and Publish FiftyOne Teams Package
+
+on:
+  workflow_call:
+    inputs:
+      publish:
+        required: true
+        type: string
+      ref:
+        required: true
+        type: string
+    secrets:
+      FIFTYONE_TEAMS_PYPI_PASSWORD:
+        required: true
+      GAR_PYTHON_REPO:
+        required: true
+      GOOGLE_SERVICE_ACCOUNT:
+        required: true
+      GOOGLE_WORKLOAD_IDENTITY_PROVIDER:
+        required: true
+
+jobs:
+  build-and-publish-fiftyone:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Clone fiftyone-teams
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+
+      - id: auth
+        name: Authenticate to Google Cloud
+        if: inputs.publish == 'internal'
+        uses: google-github-actions/auth@v0
+        with:
+          token_format: 'access_token'
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install python dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel twine
+
+      - name: Fetch app dependency cache
+        uses: actions/cache@v2
+        with:
+          path: app/node_modules
+          key: npm-${{ hashFiles('app/package.json') }}
+          restore-keys: |
+            npm-${{ hashFiles('app/package.json') }}
+            npm-
+
+      - name: Build app
+        run: make app
+
+      - name: Build fiftyone python
+        run: make python -o app
+
+      - name: Upload fiftyone to Google Artifact Registry
+        if: inputs.publish == 'internal'
+        env:
+          TWINE_NON_INTERACTIVE: 1
+          TWINE_PASSWORD: ${{ steps.auth.outputs.access_token }}
+          TWINE_REPOSITORY_URL: https://${{ secrets.GAR_PYTHON_REPO }}
+          TWINE_USERNAME: oauth2accesstoken
+        run: twine upload dist/*
+
+      - name: Upload fiftyone to pypi.fiftyone.ai
+        if: inputs.publish == 'external'
+        env:
+          TWINE_NON_INTERACTIVE: 1
+          TWINE_PASSWORD: ${{ secrets.FIFTYONE_TEAMS_PYPI_PASSWORD }}
+          TWINE_REPOSITORY_URL: https://pypi.fiftyone.ai
+          TWINE_USERNAME: teams-ci
+        run: twine upload dist/*

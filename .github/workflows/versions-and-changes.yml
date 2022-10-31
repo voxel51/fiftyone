@@ -1,0 +1,76 @@
+name: Get Versions From Commit Log and Package Changes
+
+on:
+  workflow_call:
+    inputs:
+      commit-string-search:
+        required: true
+        type: string
+    outputs:
+      fiftyone-changed:
+        description: "'true' if the fiftyone teams package changed"
+        value: ${{ jobs.get-versions-and-changes.outputs.fiftyone-changed }}
+      fiftyone-version:
+        description: "fiftyone-teams version from git log"
+        value: ${{ jobs.get-versions-and-changes.outputs.fiftyone-version }}
+      teams-app-changed:
+        description: "'true' if the teams app package changed"
+        value: ${{ jobs.get-versions-and-changes.outputs.teams-app-changed }}
+      teams-app-version:
+        description: "teams-app version from git log"
+        value: ${{ jobs.get-versions-and-changes.outputs.teams-app-version }}
+      teams-desktop-changed:
+        description: "'true' if the teams desktop package changed"
+        value: ${{ jobs.get-versions-and-changes.outputs.teams-desktop-changed }}
+      teams-desktop-version:
+        description: "teams-desktop version from git log"
+        value: ${{ jobs.get-versions-and-changes.outputs.teams-desktop-version }}
+
+jobs:
+  get-versions-and-changes:
+    runs-on: ubuntu-20.04
+    outputs:
+      fiftyone-changed: ${{ steps.changes.outputs.fiftyone }}
+      fiftyone-version: ${{ steps.get-versions.outputs.group2 }}
+      teams-app-changed: ${{ steps.changes.outputs.teams-app }}
+      teams-app-version: ${{ steps.get-versions.outputs.group3 }}
+      teams-desktop-changed: ${{ steps.changes.outputs.teams-desktop }}
+      teams-desktop-version: ${{ steps.get-versions.outputs.group4 }}
+    steps:
+      - name: Clone fiftyone-teams
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 50
+
+      - name: Fetch Automated Commit Message
+        id: get-commit-message
+        run: |
+          git log --pretty=reference -1 --grep='${{ inputs.commit-string-search }}'
+          echo "::set-output name=commit-message::$(git log --pretty=reference -1 --grep='${{ inputs.commit-string-search }}')"
+
+      - name: Get Versions From Commit Message
+        id: get-versions
+        uses: actions-ecosystem/action-regex-match@v2
+        with:
+          text: ${{ steps.get-commit-message.outputs.commit-message }}
+          regex: '^(.*) \(${{ inputs.commit-string-search }} to teams (.*) teams-app (.*) teams-desktop (.*),.*\)$'
+
+      - name: Get Changed Packages
+        id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          base: ${{ steps.get-commit-message.outputs.group1  }}
+          filters: |
+            shared: &shared
+              - 'app/**'
+              - 'deployment/docker/**'
+            fiftyone:
+              - 'setup.py'
+              - 'fiftyone/**'
+              - *shared
+            teams-app:
+              - 'package/teams/**'
+              - *shared
+            teams-desktop:
+              - 'package/desktop/**'
+              - *shared
