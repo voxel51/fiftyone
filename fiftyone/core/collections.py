@@ -17,8 +17,6 @@ import timeit
 import warnings
 
 from bson import ObjectId
-from deprecated import deprecated
-from fiftyone.core.odm.embedded_document import DynamicEmbeddedDocument
 from pymongo import InsertOne, UpdateOne, UpdateMany
 
 import eta.core.serial as etas
@@ -28,7 +26,7 @@ import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.core.expressions as foe
-from fiftyone.core.expressions import ViewExpression as E, ViewField as F
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
@@ -1185,11 +1183,9 @@ class SampleCollection(object):
         view._edit_sample_tags(update)
 
     def _edit_sample_tags(self, update):
-        ops = []
-        for ids in fou.iter_batches(self.values("_id"), 100000):
-            ops.append(UpdateMany({"_id": {"$in": ids}}, update))
-
-        self._dataset._bulk_write(ops)
+        self._dataset._sample_collection.update_many(
+            {"_id": {"$in": self.values("_id")}}, update
+        )
 
     def count_sample_tags(self):
         """Counts the occurrences of sample tags in this collection.
@@ -1209,12 +1205,6 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
-        if etau.is_str(tags):
-            update_fcn = lambda path: {"$addToSet": {path: tags}}
-        else:
-            tags = list(tags)
-            update_fcn = lambda path: {"$addToSet": {path: {"$each": tags}}}
-
         if label_fields is None:
             label_fields = self._get_label_fields()
         elif etau.is_str(label_fields):
@@ -1227,7 +1217,18 @@ class SampleCollection(object):
             # We only need to process labels that are missing a tag of interest
             view = self.filter_labels(label_field, match_expr)
 
-            view._edit_label_tags(update_fcn, label_field)
+            view._tag_labels(tags, label_field)
+
+    def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
+        if etau.is_str(tags):
+            update_fcn = lambda path: {"$addToSet": {path: tags}}
+        else:
+            tags = list(tags)
+            update_fcn = lambda path: {"$addToSet": {path: {"$each": tags}}}
+
+        return self._edit_label_tags(
+            update_fcn, label_field, ids=ids, label_ids=label_ids
+        )
 
     def untag_labels(self, tags, label_fields=None):
         """Removes the tag from all labels in the specified label field(s) of
@@ -1239,12 +1240,6 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
-        if etau.is_str(tags):
-            update_fcn = lambda path: {"$pull": {path: tags}}
-        else:
-            tags = list(tags)
-            update_fcn = lambda path: {"$pullAll": {path: tags}}
-
         if label_fields is None:
             label_fields = self._get_label_fields()
         elif etau.is_str(label_fields):
@@ -1253,10 +1248,22 @@ class SampleCollection(object):
         for label_field in label_fields:
             # We only need to process labels that have a tag of interest
             view = self.select_labels(tags=tags, fields=label_field)
+            view._untag_labels(tags, label_field)
 
-            view._edit_label_tags(update_fcn, label_field)
+    def _untag_labels(self, tags, label_field, ids=None, label_ids=None):
+        if etau.is_str(tags):
+            update_fcn = lambda path: {"$pull": {path: tags}}
+        else:
+            tags = list(tags)
+            update_fcn = lambda path: {"$pullAll": {path: tags}}
 
-    def _edit_label_tags(self, update_fcn, label_field):
+        return self._edit_label_tags(
+            update_fcn, label_field, ids=ids, label_ids=label_ids
+        )
+
+    def _edit_label_tags(
+        self, update_fcn, label_field, ids=None, label_ids=None
+    ):
         label_type, root = self._get_label_field_path(label_field)
         _root, is_frame_field = self._handle_frame_field(root)
         is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
@@ -1268,21 +1275,22 @@ class SampleCollection(object):
             tags_path = _root + ".$[label].tags"
             update = update_fcn(tags_path)
 
-            if is_frame_field:
-                ids, elem_ids = self.values(["frames._id", id_path])
-                ids = itertools.chain.from_iterable(ids)
-                elem_ids = itertools.chain.from_iterable(elem_ids)
-            else:
-                ids, elem_ids = self.values(["_id", id_path])
+            if ids is None or label_ids is None:
+                if is_frame_field:
+                    ids, label_ids = self.values(["frames._id", id_path])
+                    ids = itertools.chain.from_iterable(ids)
+                    label_ids = itertools.chain.from_iterable(label_ids)
+                else:
+                    ids, label_ids = self.values(["_id", id_path])
 
-            for _id, _elem_ids in zip(ids, elem_ids):
-                if not _elem_ids:
+            for _id, _label_ids in zip(ids, label_ids):
+                if not _label_ids:
                     continue
 
                 op = UpdateOne(
                     {"_id": _id},
                     update,
-                    array_filters=[{"label._id": {"$in": _elem_ids}}],
+                    array_filters=[{"label._id": {"$in": _label_ids}}],
                 )
                 ops.append(op)
         else:
@@ -1291,15 +1299,19 @@ class SampleCollection(object):
             tags_path = _root + ".tags"
             update = update_fcn(tags_path)
 
-            if is_frame_field:
-                ids = self.values(id_path, unwind=True)
-            else:
-                ids = self.values(id_path)
+            if label_ids is None:
+                if is_frame_field:
+                    label_ids = self.values(id_path, unwind=True)
+                else:
+                    label_ids = self.values(id_path)
 
-            op = UpdateMany({_id_path: {"$in": ids}}, update)
+            op = UpdateMany({_id_path: {"$in": label_ids}}, update)
             ops.append(op)
 
-        self._dataset._bulk_write(ops, frames=is_frame_field)
+        if ops:
+            self._dataset._bulk_write(ops, frames=is_frame_field)
+
+        return ids, label_ids
 
     def _get_selected_labels(self, ids=None, tags=None, fields=None):
         if ids is not None or tags is not None:
