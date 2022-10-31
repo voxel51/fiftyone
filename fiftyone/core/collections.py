@@ -1162,7 +1162,6 @@ class SampleCollection(object):
 
         # We only need to process samples that are missing a tag of interest
         view = self.match_tags(tags, bool=False, all=True)
-
         view._edit_sample_tags(update)
 
     def untag_samples(self, tags):
@@ -1179,7 +1178,6 @@ class SampleCollection(object):
 
         # We only need to process samples that have a tag of interest
         view = self.match_tags(tags)
-
         view._edit_sample_tags(update)
 
     def _edit_sample_tags(self, update):
@@ -1218,7 +1216,6 @@ class SampleCollection(object):
         for label_field in label_fields:
             # We only need to process labels that are missing a tag of interest
             view = self.filter_labels(label_field, match_expr)
-
             view._tag_labels(tags, label_field)
 
     def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
