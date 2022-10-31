@@ -1183,9 +1183,11 @@ class SampleCollection(object):
         view._edit_sample_tags(update)
 
     def _edit_sample_tags(self, update):
-        self._dataset._sample_collection.update_many(
-            {"_id": {"$in": self.values("_id")}}, update
-        )
+        ops = []
+        for ids in fou.iter_batches(self.values("_id"), 100000):
+            ops.append(UpdateMany({"_id": {"$in": ids}}, update))
+
+        self._dataset._bulk_write(ops)
 
     def count_sample_tags(self):
         """Counts the occurrences of sample tags in this collection.
@@ -1305,8 +1307,8 @@ class SampleCollection(object):
                 else:
                     label_ids = self.values(id_path)
 
-            op = UpdateMany({_id_path: {"$in": label_ids}}, update)
-            ops.append(op)
+            for _label_ids in fou.iter_batches(label_ids, 100000):
+                ops.append(UpdateMany({_id_path: {"$in": _label_ids}}, update))
 
         if ops:
             self._dataset._bulk_write(ops, frames=is_frame_field)
