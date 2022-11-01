@@ -743,7 +743,7 @@ class DatasetMixin(object):
 
         rename_expr = {k: v for k, v in zip(_paths, _new_paths)}
 
-        coll = get_db_conn()[cls.collection_name]
+        coll = get_db_conn()[cls.__name__]
         coll.update_many({}, {"$rename": rename_expr})
 
     @classmethod
@@ -796,7 +796,7 @@ class DatasetMixin(object):
 
         set_expr = {v: "$" + k for k, v in zip(_paths, _new_paths)}
 
-        coll = get_db_conn()[cls.collection_name]
+        coll = get_db_conn()[cls.__name__]
         coll.update_many({}, [{"$set": set_expr}])
 
     @classmethod
@@ -845,7 +845,7 @@ class DatasetMixin(object):
 
         _paths = cls._handle_db_fields(paths)
 
-        coll = get_db_conn()[cls.collection_name]
+        coll = get_db_conn()[cls.__name__]
         coll.update_many({}, {"$set": {p: None for p in _paths}})
 
     @classmethod
@@ -879,7 +879,7 @@ class DatasetMixin(object):
 
         _paths = cls._handle_db_fields(paths)
 
-        coll = get_db_conn()[cls.collection_name]
+        coll = get_db_conn()[cls.__name__]
         coll.update_many({}, [{"$unset": _paths}])
 
     @classmethod
