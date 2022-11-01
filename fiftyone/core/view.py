@@ -337,7 +337,6 @@ class DatasetView(foc.SampleCollection):
             a string summary
         """
         elements = [
-            ("View name:", self.name),
             ("Dataset:", self.dataset_name),
             ("Media type:", self.media_type),
             ("Num %s:" % self._elements_str, self.count()),
@@ -345,6 +344,9 @@ class DatasetView(foc.SampleCollection):
 
         if self.media_type == fom.GROUP:
             elements.insert(2, ("Group slice:", self.group_slice))
+
+        if self.is_saved:
+            elements.insert(1, ("View name: ", self.name))
 
         elements = fou.justify_headings(elements)
         lines = ["%s %s" % tuple(e) for e in elements]
