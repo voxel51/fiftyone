@@ -285,8 +285,8 @@ Datasets can also store more specific types of ancillary information such as
 Storing field metadata
 ----------------------
 
-You can store metadata such as descriptions on the :ref:`fields <using-fields>`
-of your dataset.
+You can store metadata such as descriptions and other info on the
+:ref:`fields <using-fields>` of your dataset.
 
 One approach is to manually declare the field with
 :meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`
@@ -306,8 +306,8 @@ with the appropriate metadata provided:
     print(field.description)  # An integer field
 
 You can also use
-:meth:`set_field_metadata() <fiftyone.core.dataset.Dataset.set_field_metadata>`
-to update a field's metadata at any time:
+:meth:`get_field() <fiftyone.core.collections.SampleCollection.get_field>` to
+retrieve a field and update it's metadata at any time:
 
 .. code-block:: python
     :linenos:
@@ -318,15 +318,15 @@ to update a field's metadata at any time:
     dataset = foz.load_zoo_dataset("quickstart")
     dataset.add_dynamic_sample_fields()
 
-    dataset.set_field_metadata(
-        "ground_truth",
-        description="Ground truth annotations",
-    )
+    field = dataset.get_field("ground_truth")
+    field.description = "Ground truth annotations"
+    field.save()  # must save after edits
 
-    dataset.set_field_metadata(
-        "ground_truth.detections.area",
-        description="Area of the box, in pixels^2",
-    )
+    field = dataset.get_field("ground_truth.detections.area")
+    field.description = "Area of the box, in pixels^2"
+    field.save()  # must save after edits
+
+    dataset.reload()
 
     field = dataset.get_field("ground_truth")
     print(field.description)  # Ground truth annotations
@@ -336,7 +336,15 @@ to update a field's metadata at any time:
 
 .. note::
 
-    Did you know? You can view/edit field metadata directly
+    You must call
+    :meth:`field.save() <fiftyone.core.fields.Field.save>` after updating
+    the fields's :attr:`description <fiftyone.core.fields.Field.description>`
+    and :meth:`info <fiftyone.core.fields.Field.info>` attributes in-place to
+    save the changes to the database.
+
+.. note::
+
+    Did you know? You can view field metadata directly
     :ref:`in the App <fiftyone-app>`!
 
 .. _custom-app-config:
