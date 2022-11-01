@@ -164,6 +164,8 @@ const withVisualizerPlugin = <
       onSelectLabel,
       useState: useRecoilValue,
       state: fos,
+      mediaFieldValue: urls[mediaField],
+      mediaField,
       src: getSampleSrc(urls[mediaField]),
     };
 
