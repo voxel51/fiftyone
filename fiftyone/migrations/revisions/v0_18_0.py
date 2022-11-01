@@ -12,10 +12,10 @@ def up(db, dataset_name):
     dataset_dict = db.datasets.find_one(match_d)
 
     for field in dataset_dict.get("sample_fields", []):
-        _add_description(field)
+        _add_metadata(field)
 
     for field in dataset_dict.get("frame_fields", []):
-        _add_description(field)
+        _add_metadata(field)
 
     db.datasets.replace_one(match_d, dataset_dict)
 
@@ -25,24 +25,28 @@ def down(db, dataset_name):
     dataset_dict = db.datasets.find_one(match_d)
 
     for field in dataset_dict.get("sample_fields", []):
-        _remove_description(field)
+        _remove_metadata(field)
 
     for field in dataset_dict.get("frame_fields", []):
-        _remove_description(field)
+        _remove_metadata(field)
 
     db.datasets.replace_one(match_d, dataset_dict)
 
 
-def _add_description(field):
+def _add_metadata(field):
     if "description" not in field:
         field["description"] = None
 
+    if "info" not in field:
+        field["info"] = None
+
     for field in field.get("fields", []):
-        _add_description(field)
+        _add_metadata(field)
 
 
-def _remove_description(field):
+def _remove_metadata(field):
     field.pop("description", None)
+    field.pop("info", None)
 
     for field in field.get("fields", []):
-        _remove_description(field)
+        _remove_metadata(field)

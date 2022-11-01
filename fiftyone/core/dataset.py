@@ -239,11 +239,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if _create:
             doc, sample_doc_cls, frame_doc_cls = _create_dataset(
-                name, persistent=persistent, **kwargs
+                self, name, persistent=persistent, **kwargs
             )
         else:
             doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-                name, virtual=_virtual
+                self, name, virtual=_virtual
             )
 
         self._doc = doc
@@ -655,54 +655,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def info(self, info):
         self._doc.info = info
         self._doc.save(safe=True)
-
-    def set_field_metadata(self, path, **kwargs):
-        """Stores metadata on the field at the given path.
-
-        Examples::
-
-            import fiftyone as fo
-            import fiftyone.zoo as foz
-
-            dataset = foz.load_zoo_dataset("quickstart")
-            dataset.add_dynamic_sample_fields()
-
-            dataset.set_field_metadata(
-                "ground_truth",
-                description="Ground truth annotations",
-            )
-
-            dataset.set_field_metadata(
-                "ground_truth.detections.area",
-                description="Area of the box, in pixels^2",
-            )
-
-            field = dataset.get_field("ground_truth")
-            print(field.description)
-
-            field = dataset.get_field("ground_truth.detections.area")
-            print(field.description)
-
-        Args:
-            path: a field name or ``embedded.field.name``
-            **kwargs: valid field metadata. The currently supported keys are
-                ``{"description"}``
-        """
-        path, is_frame_field = self._handle_frame_field(path)
-        if is_frame_field:
-            field_doc = self._frame_doc_cls._get_field_doc(path, self._doc)
-        else:
-            field_doc = self._sample_doc_cls._get_field_doc(path, self._doc)
-
-        invalid_keys = {n for n in kwargs if not field_doc.has_field(n)}
-        if invalid_keys:
-            raise ValueError("Invalid field metadata %s" % invalid_keys)
-
-        for name, value in kwargs.items():
-            setattr(field_doc, name, value)
-
-        self._doc.save(safe=True)
-        self._reload(hard=True)
 
     @property
     def app_config(self):
@@ -1224,13 +1176,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
         else:
             expanded = self._sample_doc_cls.add_field(
+                self,
                 field_name,
                 ftype,
                 embedded_doc_type=embedded_doc_type,
                 subfield=subfield,
                 fields=fields,
                 description=description,
-                dataset_doc=self._doc,
                 **kwargs,
             )
 
@@ -1242,10 +1194,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expanded = self._add_group_field(field_name, default=value.name)
         else:
             expanded = self._sample_doc_cls.add_implied_field(
-                field_name,
-                value,
-                dynamic=dynamic,
-                dataset_doc=self._doc,
+                self, field_name, value, dynamic=dynamic
             )
 
         if expanded:
@@ -1280,9 +1229,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             elif field is not None:
                 schema[path] = field
 
-        expanded = self._sample_doc_cls.merge_field_schema(
-            schema, dataset_doc=self._doc
-        )
+        expanded = self._sample_doc_cls.merge_field_schema(self, schema)
 
         if expanded:
             self._reload()
@@ -1330,13 +1277,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         expanded = self._frame_doc_cls.add_field(
+            self,
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
             fields=fields,
             description=description,
-            dataset_doc=self._doc,
             **kwargs,
         )
 
@@ -1350,10 +1297,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         expanded = self._frame_doc_cls.add_implied_field(
-            field_name,
-            value,
-            dynamic=dynamic,
-            dataset_doc=self._doc,
+            self, field_name, value, dynamic=dynamic
         )
 
         if expanded:
@@ -1393,9 +1337,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             elif field is not None:
                 schema[path] = field
 
-        expanded = self._frame_doc_cls.merge_field_schema(
-            schema, dataset_doc=self._doc
-        )
+        expanded = self._frame_doc_cls.merge_field_schema(self, schema)
 
         if expanded:
             self._reload()
@@ -1420,11 +1362,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _add_group_field(self, field_name, default=None, description=None):
         expanded = self._sample_doc_cls.add_field(
+            self,
             field_name,
             fof.EmbeddedDocumentField,
             embedded_doc_type=fog.Group,
             description=description,
-            dataset_doc=self._doc,
         )
 
         if not expanded:
@@ -1501,7 +1443,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         paths, new_paths = zip(*field_mapping.items())
         self._sample_doc_cls._rename_fields(
-            paths, new_paths, sample_collection
+            sample_collection, paths, new_paths
         )
 
         fields, _, _, _ = _parse_field_mapping(field_mapping)
@@ -1520,7 +1462,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         paths, new_paths = zip(*field_mapping.items())
-        self._frame_doc_cls._rename_fields(paths, new_paths, sample_collection)
+        self._frame_doc_cls._rename_fields(sample_collection, paths, new_paths)
 
         fields, _, _, _ = _parse_field_mapping(field_mapping)
 
@@ -1586,12 +1528,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_collection = self if view is None else view
 
         paths, new_paths = zip(*field_mapping.items())
-        self._sample_doc_cls._clone_fields(
-            paths,
-            new_paths,
-            sample_collection,
-            dataset_doc=self._doc,
-        )
+        self._sample_doc_cls._clone_fields(sample_collection, paths, new_paths)
 
         fos.Sample._reload_docs(self._sample_collection_name)
         self._reload()
@@ -1604,12 +1541,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         paths, new_paths = zip(*field_mapping.items())
-        self._frame_doc_cls._clone_fields(
-            paths,
-            new_paths,
-            sample_collection,
-            dataset_doc=self._doc,
-        )
+        self._frame_doc_cls._clone_fields(sample_collection, paths, new_paths)
 
         fofr.Frame._reload_docs(self._frame_collection_name)
         self._reload()
@@ -1680,7 +1612,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_collection = self if view is None else view
 
         field_names = _to_list(field_names)
-        self._sample_doc_cls._clear_fields(field_names, sample_collection)
+        self._sample_doc_cls._clear_fields(sample_collection, field_names)
 
         fos.Sample._reload_docs(self._sample_collection_name)
 
@@ -1692,7 +1624,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         field_names = _to_list(field_names)
-        self._frame_doc_cls._clear_fields(field_names, sample_collection)
+        self._frame_doc_cls._clear_fields(sample_collection, field_names)
 
         fofr.Frame._reload_docs(self._frame_collection_name)
 
@@ -1828,9 +1760,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _delete_sample_fields(self, field_names, error_level):
         field_names = _to_list(field_names)
         self._sample_doc_cls._delete_fields(
-            field_names,
-            error_level=error_level,
-            dataset_doc=self._doc,
+            self, field_names, error_level=error_level
         )
 
         fields, embedded_fields = _parse_fields(field_names)
@@ -1846,9 +1776,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _remove_dynamic_sample_fields(self, field_names, error_level):
         field_names = _to_list(field_names)
         self._sample_doc_cls._remove_dynamic_fields(
-            field_names,
-            error_level=error_level,
-            dataset_doc=self._doc,
+            self, field_names, error_level=error_level
         )
 
         self._reload()
@@ -1865,9 +1793,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         field_names = _to_list(field_names)
         self._frame_doc_cls._delete_fields(
-            field_names,
-            error_level=error_level,
-            dataset_doc=self._doc,
+            self, field_names, error_level=error_level
         )
 
         fields, embedded_fields = _parse_fields(field_names)
@@ -1892,9 +1818,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         field_names = _to_list(field_names)
         self._frame_doc_cls._remove_dynamic_fields(
-            field_names,
-            error_level=error_level,
-            dataset_doc=self._doc,
+            self, field_names, error_level=error_level
         )
 
         self._reload()
@@ -3063,6 +2987,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _save_view(view, fields=fields)
 
         self._doc.save()
+
+    def _save_field(self, field):
+        path, is_frame_field = self._handle_frame_field(field.path)
+        if is_frame_field:
+            field_doc = self._frame_doc_cls._get_field_doc(self, path)
+        else:
+            field_doc = self._sample_doc_cls._get_field_doc(self, path)
+
+        field_doc.description = field.description
+        field_doc.info = field.info
+
+        self._doc.save(safe=True)
 
     def clone(self, name=None, persistent=False):
         """Creates a copy of the dataset.
@@ -5655,11 +5591,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     )
                 else:
                     expanded |= self._sample_doc_cls.add_implied_field(
+                        self,
                         field_name,
                         value,
                         dynamic=dynamic,
                         validate=False,
-                        dataset_doc=self._doc,
                     )
 
                 if not dynamic:
@@ -5716,11 +5652,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     continue
 
                 expanded |= self._frame_doc_cls.add_implied_field(
+                    self,
                     field_name,
                     value,
                     dynamic=dynamic,
                     validate=False,
-                    dataset_doc=self._doc,
                 )
 
                 if not dynamic:
@@ -5841,7 +5777,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-            self.name, virtual=True
+            self, self.name, virtual=True
         )
 
         self._doc = doc
@@ -5919,6 +5855,7 @@ def _list_dataset_info():
 
 
 def _create_dataset(
+    obj,
     name,
     persistent=False,
     _patches=False,
@@ -5940,7 +5877,7 @@ def _create_dataset(
     sample_collection_name = _make_sample_collection_name(
         _id, patches=_patches, frames=_frames, clips=_clips
     )
-    sample_doc_cls = _create_sample_document_cls(sample_collection_name)
+    sample_doc_cls = _create_sample_document_cls(obj, sample_collection_name)
 
     # pylint: disable=no-member
     sample_fields = [
@@ -5959,7 +5896,7 @@ def _create_dataset(
         frame_collection_name = _make_frame_collection_name(
             sample_collection_name
         )
-        frame_doc_cls = _create_frame_document_cls(frame_collection_name)
+        frame_doc_cls = _create_frame_document_cls(obj, frame_collection_name)
         frame_fields = []
 
     now = datetime.utcnow()
@@ -6021,28 +5958,39 @@ def _make_frame_collection_name(sample_collection_name):
     return "frames." + sample_collection_name
 
 
-def _create_sample_document_cls(sample_collection_name, field_docs=None):
+def _create_sample_document_cls(
+    dataset, sample_collection_name, field_docs=None
+):
     cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
-    _declare_fields(cls, field_docs=field_docs)
+    cls._dataset = dataset
+
+    _declare_fields(dataset, cls, field_docs=field_docs)
     return cls
 
 
-def _create_frame_document_cls(frame_collection_name, field_docs=None):
+def _create_frame_document_cls(
+    dataset, frame_collection_name, field_docs=None
+):
     cls = type(frame_collection_name, (foo.DatasetFrameDocument,), {})
-    _declare_fields(cls, field_docs=field_docs)
+    cls._dataset = dataset
+
+    _declare_fields(dataset, cls, field_docs=field_docs)
     return cls
 
 
-def _declare_fields(doc_cls, field_docs=None):
-    for field_name, field in doc_cls._fields.items():
+def _declare_fields(dataset, doc_cls, field_docs=None):
+    for field_name in tuple(doc_cls._fields.keys()):
+        field = doc_cls._fields[field_name]
+
         if isinstance(field, fof.EmbeddedDocumentField):
             field = foo.create_field(field_name, **foo.get_field_kwargs(field))
-            doc_cls._fields[field_name] = field
-            setattr(doc_cls, field_name, field)
+            doc_cls._declare_field(dataset, field_name, field)
+        else:
+            field._set_dataset(dataset, field_name)
 
     if field_docs is not None:
         for field_doc in field_docs:
-            doc_cls._declare_field(field_doc)
+            doc_cls._declare_field(dataset, field_doc.name, field_doc)
 
 
 def _get_dataset_doc(collection_name, frames=False):
@@ -6087,12 +6035,12 @@ def _load_clips_source_dataset(frame_collection_name):
     return load_dataset(doc["name"])
 
 
-def _load_dataset(name, virtual=False):
+def _load_dataset(obj, name, virtual=False):
     if not virtual:
         fomi.migrate_dataset_if_necessary(name)
 
     try:
-        return _do_load_dataset(name, virtual=virtual)
+        return _do_load_dataset(obj, name, virtual=virtual)
     except Exception as e:
         try:
             version = fomi.get_dataset_revision(name)
@@ -6109,7 +6057,7 @@ def _load_dataset(name, virtual=False):
         raise e
 
 
-def _do_load_dataset(name, virtual=False):
+def _do_load_dataset(obj, name, virtual=False):
     try:
         # pylint: disable=no-member
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
@@ -6120,7 +6068,7 @@ def _do_load_dataset(name, virtual=False):
     frame_collection_name = dataset_doc.frame_collection_name
 
     sample_doc_cls = _create_sample_document_cls(
-        sample_collection_name, field_docs=dataset_doc.sample_fields
+        obj, sample_collection_name, field_docs=dataset_doc.sample_fields
     )
 
     if sample_collection_name.startswith("clips."):
@@ -6133,7 +6081,7 @@ def _do_load_dataset(name, virtual=False):
         frame_doc_cls = _src_dataset._frame_doc_cls
     else:
         frame_doc_cls = _create_frame_document_cls(
-            frame_collection_name, field_docs=dataset_doc.frame_fields
+            obj, frame_collection_name, field_docs=dataset_doc.frame_fields
         )
 
     if not virtual:
@@ -6525,12 +6473,12 @@ def _merge_dataset_doc(
         schema = {fields[k]: v for k, v in schema.items() if k in fields}
 
     dataset._sample_doc_cls.merge_field_schema(
-        schema, expand_schema=expand_schema
+        dataset, schema, expand_schema=expand_schema
     )
 
     if has_frame_fields and frame_schema is not None:
         dataset._frame_doc_cls.merge_field_schema(
-            frame_schema, expand_schema=expand_schema
+            dataset, frame_schema, expand_schema=expand_schema
         )
 
     if not merge_info:

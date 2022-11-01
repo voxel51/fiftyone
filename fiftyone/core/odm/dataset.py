@@ -38,6 +38,7 @@ def create_field(
     fields=None,
     db_field=None,
     description=None,
+    info=None,
     **kwargs,
 ):
     """Creates the field defined by the given specification.
@@ -67,6 +68,7 @@ def create_field(
         db_field (None): the database field to store this field in. By default,
             ``name`` is used
         description (None): an optional description
+        info (None): an optional info dict
 
     Returns:
         a :class:`fiftyone.core.fields.Field`
@@ -78,7 +80,9 @@ def create_field(
             db_field = name
 
     # All user-defined fields are nullable
-    field_kwargs = dict(null=True, db_field=db_field, description=description)
+    field_kwargs = dict(
+        null=True, db_field=db_field, description=description, info=info
+    )
     field_kwargs.update(kwargs)
 
     if fields is not None:
@@ -139,6 +143,7 @@ class SampleFieldDocument(EmbeddedDocument):
     fields = ListField(EmbeddedDocumentField("SampleFieldDocument"))
     db_field = StringField(null=True)
     description = StringField(null=True)
+    info = DictField(null=True)
 
     def to_field(self):
         """Creates the :class:`fiftyone.core.fields.Field` specified by this
@@ -169,6 +174,7 @@ class SampleFieldDocument(EmbeddedDocument):
             fields=fields,
             db_field=self.db_field,
             description=self.description,
+            info=self.info,
         )
 
     @classmethod
@@ -195,6 +201,7 @@ class SampleFieldDocument(EmbeddedDocument):
             fields=cls._get_field_documents(field),
             db_field=field.db_field,
             description=field.description,
+            info=field.info,
         )
 
     @staticmethod

@@ -444,9 +444,8 @@ def make_clips_dataset(
             other_fields = [f for f in src_schema if f not in curr_schema]
 
         add_fields = [f for f in other_fields if f not in curr_schema]
-        dataset._sample_doc_cls.merge_field_schema(
-            {k: v for k, v in src_schema.items() if k in add_fields}
-        )
+        add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
+        dataset._sample_doc_cls.merge_field_schema(dataset, add_schema)
 
     _make_pretty_summary(dataset)
 

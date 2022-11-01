@@ -14,7 +14,6 @@ import six
 import sys
 
 from bson import Binary, json_util, ObjectId, SON
-import mongoengine.fields as mef
 import numpy as np
 import pytz
 
@@ -192,6 +191,7 @@ def get_field_kwargs(field):
         "fields": fields,
         "db_field": field.db_field,
         "description": field.description,
+        "info": field.info,
     }
 
     if isinstance(field, (fof.ListField, fof.DictField)):
@@ -289,6 +289,7 @@ def _get_field_kwargs(value, field, dynamic):
         "ftype": type(field),
         "db_field": field.db_field,
         "description": field.description,
+        "info": field.info,
     }
 
     if isinstance(field, (fof.ListField, fof.DictField)):
