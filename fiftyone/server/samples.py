@@ -27,7 +27,7 @@ from fiftyone.server.scalars import BSON, JSON, BSONArray
 @gql.type
 class MediaURL:
     field: str
-    url: str
+    url: t.Optional[str]
 
 
 @gql.interface
