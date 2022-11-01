@@ -57,7 +57,12 @@ class DatasetView(foc.SampleCollection):
     """
 
     def __init__(
-        self, dataset, _stages=None, _media_type=None, _group_slice=None
+        self,
+        dataset,
+        _stages=None,
+        _media_type=None,
+        _group_slice=None,
+        _name=None,
     ):
         if _stages is None:
             _stages = []
@@ -66,6 +71,7 @@ class DatasetView(foc.SampleCollection):
         self.__stages = _stages
         self.__media_type = _media_type
         self.__group_slice = _group_slice
+        self.__name = _name
 
     def __eq__(self, other):
         if type(other) != type(self):
@@ -239,6 +245,9 @@ class DatasetView(foc.SampleCollection):
     @property
     def name(self):
         """The name of the view."""
+        if self.__name is not None:
+            return self.__name
+
         return self.dataset_name + "-view"
 
     @property
@@ -1331,6 +1340,7 @@ class DatasetView(foc.SampleCollection):
             media_type = stage.get_media_type(self)
             if media_type is not None:
                 view._set_media_type(media_type)
+            view._set_name(None)
 
         return view
 
@@ -1339,6 +1349,9 @@ class DatasetView(foc.SampleCollection):
 
         if media_type != fom.GROUP:
             self.__group_slice = None
+
+    def _set_name(self, saved_view_name):
+        self.__name = saved_view_name
 
     def _get_filtered_schema(self, schema, frames=False):
         if schema is None:
