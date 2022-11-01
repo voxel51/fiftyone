@@ -1066,13 +1066,15 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
     def _set_dataset(self, dataset, path):
         super()._set_dataset(dataset, path)
 
-        for field_name in self._get_field_names():
+        for field_name, field in self._fields.items():
+            if not isinstance(field, Field):
+                continue
+
             if path is not None:
                 _path = path + "." + field_name
             else:
                 _path = None
 
-            field = self._fields[field_name]
             field._set_dataset(dataset, _path)
 
     @property
