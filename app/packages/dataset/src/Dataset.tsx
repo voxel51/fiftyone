@@ -58,6 +58,9 @@ const ViewBarWrapper = styled.div`
   background: var(--joy-palette-background-header);
   display: flex;
 `;
+const CoreDatasetContainer = styled.div`
+  height: calc(100% - 84px);
+`;
 
 export function Dataset({
   datasetName,
@@ -109,7 +112,9 @@ export function Dataset({
                 />
               )}
             </ViewBarWrapper>
-            <CoreDataset />
+            <CoreDatasetContainer>
+              <CoreDataset />
+            </CoreDatasetContainer>
           </DatasetLoader>
         </Suspense>
         <div id="modal" />
