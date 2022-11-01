@@ -518,6 +518,12 @@ class ListField(mongoengine.fields.ListField, Field):
 
         return etau.get_class_name(self)
 
+    def _set_dataset(self, dataset, path):
+        super()._set_dataset(dataset, path)
+
+        if self.field is not None:
+            self.field._set_dataset(dataset, path)
+
 
 class HeatmapRangeField(ListField):
     """A ``[min, max]`` range of the values in a
@@ -581,6 +587,12 @@ class DictField(mongoengine.fields.DictField, Field):
             )
 
         return etau.get_class_name(self)
+
+    def _set_dataset(self, dataset, path):
+        super()._set_dataset(dataset, path)
+
+        if self.field is not None:
+            self.field._set_dataset(dataset, path)
 
     def validate(self, value):
         if not all(map(lambda k: etau.is_str(k), value)):
