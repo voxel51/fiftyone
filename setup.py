@@ -42,7 +42,7 @@ INSTALL_REQUIRES = [
     "kaleido",
     "matplotlib",
     "mongoengine==0.24.2",
-    "motor~=3.0.0",
+    "motor==2.5.1",
     "ndjson",
     "numpy",
     "packaging",
