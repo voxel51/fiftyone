@@ -3010,7 +3010,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         field_doc.description = field.description
         field_doc.info = field.info
 
-        self._doc.save(safe=True)
+        try:
+            self._doc.save(safe=True)
+        except:
+            self._reload(hard=True)
+            raise
 
     def clone(self, name=None, persistent=False):
         """Creates a copy of the dataset.
