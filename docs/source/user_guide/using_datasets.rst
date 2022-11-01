@@ -320,6 +320,7 @@ retrieve a field and update it's metadata at any time:
 
     field = dataset.get_field("ground_truth")
     field.description = "Ground truth annotations"
+    field.info = {"url": "https://fiftyone.ai"}
     field.save()  # must save after edits
 
     field = dataset.get_field("ground_truth.detections.area")
@@ -330,6 +331,7 @@ retrieve a field and update it's metadata at any time:
 
     field = dataset.get_field("ground_truth")
     print(field.description)  # Ground truth annotations
+    print(field.info)  # {'url': 'https://fiftyone.ai'}
 
     field = dataset.get_field("ground_truth.detections.area")
     print(field.description)  # Area of the box, in pixels^2

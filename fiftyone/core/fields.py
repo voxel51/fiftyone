@@ -287,6 +287,7 @@ class Field(mongoengine.fields.BaseField):
 
             field = dataset.get_field("ground_truth")
             field.description = "Ground truth annotations"
+            field.info = {"url": "https://fiftyone.ai"}
             field.save()
 
             field = dataset.get_field("ground_truth.detections.area")
@@ -296,10 +297,11 @@ class Field(mongoengine.fields.BaseField):
             dataset.reload()
 
             field = dataset.get_field("ground_truth")
-            print(field.description)
+            print(field.description)  # Ground truth annotations
+            print(field.info)  # {'url': 'https://fiftyone.ai'}
 
             field = dataset.get_field("ground_truth.detections.area")
-            print(field.description)
+            print(field.description)  # 'Area of the box, in pixels^2'
         """
         if self.__dataset is None:
             return
