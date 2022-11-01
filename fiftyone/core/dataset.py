@@ -6001,31 +6001,6 @@ def _declare_fields(dataset, doc_cls, field_docs=None):
             doc_cls._declare_field(dataset, field_doc.name, field_doc)
 
 
-def _get_dataset_doc(collection_name, frames=False):
-    if frames:
-        # Clips datasets share their parent dataset's frame collection, but
-        # only the parent sample collection starts with "samples."
-        query = {
-            "frame_collection_name": collection_name,
-            "sample_collection_name": {"$regex": "^samples\\."},
-        }
-    else:
-        query = {"sample_collection_name": collection_name}
-
-    conn = foo.get_db_conn()
-    doc = conn.datasets.find_one(query, {"name": 1})
-
-    if doc is None:
-        dtype = "sample" if not frames else "frame"
-        raise ValueError(
-            "No dataset found with %s collection name '%s'"
-            % (dtype, collection_name)
-        )
-
-    dataset = load_dataset(doc["name"])
-    return dataset._doc
-
-
 def _load_clips_source_dataset(frame_collection_name):
     # All clips datasets have a source dataset with the same frame collection
     query = {
