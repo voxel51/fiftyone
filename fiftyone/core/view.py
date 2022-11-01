@@ -255,6 +255,13 @@ class DatasetView(foc.SampleCollection):
         return self.dataset_name + "-view"
 
     @property
+    def is_saved(self):
+        """Returns True/False whether the view is saved or not."""
+        if self.__name in self._root_dataset.list_views():
+            return True
+        return False
+
+    @property
     def dataset_name(self):
         """The name of the underlying dataset."""
         return self._root_dataset.name
