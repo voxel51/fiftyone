@@ -244,7 +244,11 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def name(self):
-        """The name of the view with which it was saved. Defaults to `<dataset_name>-view` for unsaved views."""
+        """The name of the view.
+
+        If this view is a saved view, its name will be returned.
+        Otherwise, a default name is returned.
+        """
         if self.__name is not None:
             return self.__name
 
@@ -1341,7 +1345,7 @@ class DatasetView(foc.SampleCollection):
             media_type = stage.get_media_type(self)
             if media_type is not None:
                 view._set_media_type(media_type)
-            view._set_name(None)
+        view._set_name(None)
 
         return view
 
