@@ -606,14 +606,14 @@ class HeatmapRangeField(ListField):
         info (None): an optional info dict
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
+    def __init__(self, **kwargs):
         if "null" not in kwargs:
             kwargs["null"] = True
 
         if "field" not in kwargs:
             kwargs["field"] = FloatField()
 
-        super().__init__(**kwargs, description=description, info=info)
+        super().__init__(**kwargs)
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -725,11 +725,6 @@ class KeypointsField(ListField):
         info (None): an optional info dict
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
-        super().__init__(
-            field=None, description=description, info=info, **kwargs
-        )
-
     def __str__(self):
         return etau.get_class_name(self)
 
@@ -751,9 +746,6 @@ class PolylinePointsField(ListField):
         description (None): an optional description
         info (None): an optional info dict
     """
-
-    def __init__(self, description=None, info=None, **kwargs):
-        super().__init__(description=description, info=info, **kwargs)
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -1051,10 +1043,11 @@ class FrameSupportField(ListField):
         info (None): an optional info dict
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
-        super().__init__(
-            field=IntField(), description=description, info=info, **kwargs
-        )
+    def __init__(self, **kwargs):
+        if "field" not in kwargs:
+            kwargs["field"] = IntField()
+
+        super().__init__(**kwargs)
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -1078,12 +1071,14 @@ class ClassesField(ListField):
 
     Args:
         description (None): an optional description
+        info (None): an optional info dict
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
-        super().__init__(
-            field=StringField(), description=description, info=info, **kwargs
-        )
+    def __init__(self, **kwargs):
+        if "field" not in kwargs:
+            kwargs["field"] = StringField()
+
+        super().__init__(**kwargs)
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -1100,10 +1095,11 @@ class TargetsField(IntDictField):
         info (None): an optional info dict
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
-        super().__init__(
-            field=StringField(), description=description, info=info, **kwargs
-        )
+    def __init__(self, **kwargs):
+        if "field" not in kwargs:
+            kwargs["field"] = StringField()
+
+        super().__init__(**kwargs)
 
     def __str__(self):
         return etau.get_class_name(self)
