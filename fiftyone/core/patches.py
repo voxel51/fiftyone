@@ -490,7 +490,7 @@ def make_patches_dataset(
 
         add_fields = [f for f in other_fields if f not in curr_schema]
         add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
-        dataset._sample_doc_cls.merge_field_schema(dataset, add_schema)
+        dataset._sample_doc_cls.merge_field_schema(add_schema)
 
     _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
 
@@ -628,7 +628,7 @@ def make_evaluation_patches_dataset(
 
         add_fields = [f for f in other_fields if f not in curr_schema]
         add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
-        dataset._sample_doc_cls.merge_field_schema(dataset, add_schema)
+        dataset._sample_doc_cls.merge_field_schema(add_schema)
 
     _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
 

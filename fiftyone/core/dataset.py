@@ -1141,6 +1141,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         subfield=None,
         fields=None,
         description=None,
+        info=None,
         **kwargs,
     ):
         """Adds a new sample field or embedded field to the dataset, if
@@ -1163,6 +1164,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
             description (None): an optional description
+            info (None): an optional info dict
 
         Raises:
             ValueError: if a field of the same name already exists and it is
@@ -1172,17 +1174,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             embedded_doc_type, fog.Group
         ):
             expanded = self._add_group_field(
-                field_name, description=description
+                field_name, description=description, info=info
             )
         else:
             expanded = self._sample_doc_cls.add_field(
-                self,
                 field_name,
                 ftype,
                 embedded_doc_type=embedded_doc_type,
                 subfield=subfield,
                 fields=fields,
                 description=description,
+                info=info,
                 **kwargs,
             )
 
@@ -1194,7 +1196,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expanded = self._add_group_field(field_name, default=value.name)
         else:
             expanded = self._sample_doc_cls.add_implied_field(
-                self, field_name, value, dynamic=dynamic
+                field_name, value, dynamic=dynamic
             )
 
         if expanded:
@@ -1229,7 +1231,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             elif field is not None:
                 schema[path] = field
 
-        expanded = self._sample_doc_cls.merge_field_schema(self, schema)
+        expanded = self._sample_doc_cls.merge_field_schema(schema)
 
         if expanded:
             self._reload()
@@ -1242,6 +1244,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         subfield=None,
         fields=None,
         description=None,
+        info=None,
         **kwargs,
     ):
         """Adds a new frame-level field or embedded field to the dataset, if
@@ -1266,6 +1269,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
             description (None): an optional description
+            info (None): an optional info dict
 
         Raises:
             ValueError: if a field of the same name already exists and it is
@@ -1277,13 +1281,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         expanded = self._frame_doc_cls.add_field(
-            self,
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
             fields=fields,
             description=description,
+            info=info,
             **kwargs,
         )
 
@@ -1297,7 +1301,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         expanded = self._frame_doc_cls.add_implied_field(
-            self, field_name, value, dynamic=dynamic
+            field_name, value, dynamic=dynamic
         )
 
         if expanded:
@@ -1337,36 +1341,38 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             elif field is not None:
                 schema[path] = field
 
-        expanded = self._frame_doc_cls.merge_field_schema(self, schema)
+        expanded = self._frame_doc_cls.merge_field_schema(schema)
 
         if expanded:
             self._reload()
 
-    def add_group_field(self, field_name, default=None, description=None):
+    def add_group_field(
+        self, field_name, default=None, description=None, info=None
+    ):
         """Adds a group field to the dataset, if necessary.
 
         Args:
             field_name: the field name
             default (None): a default group slice for the field
             description (None): an optional description
+            info (None): an optional info dict
 
         Raises:
             ValueError: if a group field with another name already exists
         """
         expanded = self._add_group_field(
-            field_name, default=default, description=description
+            field_name, default=default, description=description, info=info
         )
 
         if expanded:
             self._reload()
 
-    def _add_group_field(self, field_name, default=None, description=None):
+    def _add_group_field(self, field_name, default=None, **kwargs):
         expanded = self._sample_doc_cls.add_field(
-            self,
             field_name,
             fof.EmbeddedDocumentField,
             embedded_doc_type=fog.Group,
-            description=description,
+            **kwargs,
         )
 
         if not expanded:
@@ -1760,7 +1766,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _delete_sample_fields(self, field_names, error_level):
         field_names = _to_list(field_names)
         self._sample_doc_cls._delete_fields(
-            self, field_names, error_level=error_level
+            field_names, error_level=error_level
         )
 
         fields, embedded_fields = _parse_fields(field_names)
@@ -1776,7 +1782,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _remove_dynamic_sample_fields(self, field_names, error_level):
         field_names = _to_list(field_names)
         self._sample_doc_cls._remove_dynamic_fields(
-            self, field_names, error_level=error_level
+            field_names, error_level=error_level
         )
 
         self._reload()
@@ -1793,7 +1799,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         field_names = _to_list(field_names)
         self._frame_doc_cls._delete_fields(
-            self, field_names, error_level=error_level
+            field_names, error_level=error_level
         )
 
         fields, embedded_fields = _parse_fields(field_names)
@@ -1818,7 +1824,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         field_names = _to_list(field_names)
         self._frame_doc_cls._remove_dynamic_fields(
-            self, field_names, error_level=error_level
+            field_names, error_level=error_level
         )
 
         self._reload()
@@ -2989,11 +2995,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.save()
 
     def _save_field(self, field):
+        if self._is_generated:
+            raise ValueError(
+                "Cannot save fields on generated views. Use the dataset's "
+                "fields instead"
+            )
+
         path, is_frame_field = self._handle_frame_field(field.path)
         if is_frame_field:
-            field_doc = self._frame_doc_cls._get_field_doc(self, path)
+            field_doc = self._frame_doc_cls._get_field_doc(path)
         else:
-            field_doc = self._sample_doc_cls._get_field_doc(self, path)
+            field_doc = self._sample_doc_cls._get_field_doc(path)
 
         field_doc.description = field.description
         field_doc.info = field.info
@@ -5591,11 +5603,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     )
                 else:
                     expanded |= self._sample_doc_cls.add_implied_field(
-                        self,
-                        field_name,
-                        value,
-                        dynamic=dynamic,
-                        validate=False,
+                        field_name, value, dynamic=dynamic, validate=False
                     )
 
                 if not dynamic:
@@ -5652,11 +5660,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     continue
 
                 expanded |= self._frame_doc_cls.add_implied_field(
-                    self,
-                    field_name,
-                    value,
-                    dynamic=dynamic,
-                    validate=False,
+                    field_name, value, dynamic=dynamic, validate=False
                 )
 
                 if not dynamic:
@@ -6473,12 +6477,12 @@ def _merge_dataset_doc(
         schema = {fields[k]: v for k, v in schema.items() if k in fields}
 
     dataset._sample_doc_cls.merge_field_schema(
-        dataset, schema, expand_schema=expand_schema
+        schema, expand_schema=expand_schema
     )
 
     if has_frame_fields and frame_schema is not None:
         dataset._frame_doc_cls.merge_field_schema(
-            dataset, frame_schema, expand_schema=expand_schema
+            frame_schema, expand_schema=expand_schema
         )
 
     if not merge_info:

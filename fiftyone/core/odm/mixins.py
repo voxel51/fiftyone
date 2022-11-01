@@ -79,11 +79,6 @@ class DatasetMixin(object):
     def _fields_attr(cls):
         return "frame_fields" if cls._is_frames_doc else "sample_fields"
 
-    @classmethod
-    def _dataset_doc(cls):
-        collection_name = cls.__name__
-        return fod._get_dataset_doc(collection_name, frames=cls._is_frames_doc)
-
     def _get_field_names(self, include_private=False, use_db_fields=False):
         return self._get_fields_ordered(
             include_private=include_private,
@@ -142,7 +137,6 @@ class DatasetMixin(object):
         if not self.has_field(field_name):
             if create:
                 self.add_implied_field(
-                    self._dataset,
                     field_name,
                     value,
                     expand_schema=True,
@@ -159,7 +153,6 @@ class DatasetMixin(object):
 
             if dynamic:
                 self.add_implied_field(
-                    self._dataset,
                     field_name,
                     value,
                     expand_schema=create,
@@ -214,7 +207,6 @@ class DatasetMixin(object):
     @classmethod
     def merge_field_schema(
         cls,
-        dataset,
         schema,
         expand_schema=True,
         recursive=True,
@@ -223,7 +215,6 @@ class DatasetMixin(object):
         """Merges the field schema into this document.
 
         Args:
-            dataset: the :class:`fiftyone.core.dataset.Dataset`
             schema: a dictionary mapping field names or
                 ``embedded.field.names``to
                 :class:`fiftyone.core.fields.Field` instances
@@ -247,7 +238,6 @@ class DatasetMixin(object):
 
         for path, field in schema.items():
             new_fields = cls._merge_field(
-                dataset,
                 path,
                 field,
                 validate=validate,
@@ -266,22 +256,22 @@ class DatasetMixin(object):
             return False
 
         for path, field in new_schema.items():
-            cls._add_field_schema(dataset, path, field)
+            cls._add_field_schema(path, field)
 
-        dataset.save()
+        cls._dataset.save()
 
         return True
 
     @classmethod
     def add_field(
         cls,
-        dataset,
         path,
         ftype,
         embedded_doc_type=None,
         subfield=None,
         fields=None,
         description=None,
+        info=None,
         expand_schema=True,
         recursive=True,
         validate=True,
@@ -290,7 +280,6 @@ class DatasetMixin(object):
         """Adds a new field or embedded field to the document, if necessary.
 
         Args:
-            dataset: the :class:`fiftyone.core.dataset.Dataset`
             path: the field name or ``embedded.field.name``
             ftype: the field type to create. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
@@ -307,6 +296,7 @@ class DatasetMixin(object):
                 applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
             description (None): an optional description
+            info (None): an optional info dict
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that the field already exists with a
                 consistent type (False)
@@ -330,11 +320,11 @@ class DatasetMixin(object):
             subfield=subfield,
             fields=fields,
             description=description,
+            info=info,
             **kwargs,
         )
 
         return cls.merge_field_schema(
-            dataset,
             {path: field},
             expand_schema=expand_schema,
             recursive=recursive,
@@ -344,7 +334,6 @@ class DatasetMixin(object):
     @classmethod
     def add_implied_field(
         cls,
-        dataset,
         path,
         value,
         expand_schema=True,
@@ -356,7 +345,6 @@ class DatasetMixin(object):
         inferring the field type from the provided value.
 
         Args:
-            dataset: the :class:`fiftyone.core.dataset.Dataset`
             path: the field name or ``embedded.field.name``
             value: the field value
             expand_schema (True): whether to add new fields to the schema
@@ -380,7 +368,6 @@ class DatasetMixin(object):
         field = cls._create_implied_field(path, value, dynamic)
 
         return cls.merge_field_schema(
-            dataset,
             {path: field},
             expand_schema=expand_schema,
             recursive=recursive,
@@ -396,6 +383,7 @@ class DatasetMixin(object):
         subfield=None,
         fields=None,
         description=None,
+        info=None,
         **kwargs,
     ):
         field_name = path.rsplit(".", 1)[-1]
@@ -406,6 +394,7 @@ class DatasetMixin(object):
             subfield=subfield,
             fields=fields,
             description=description,
+            info=info,
             **kwargs,
         )
 
@@ -426,7 +415,7 @@ class DatasetMixin(object):
             new_paths: an iterable of new field names or
                 ``embedded.field.names``
         """
-        dataset = sample_collection._dataset
+        dataset = cls._dataset
         dataset_doc = dataset._doc
         media_type = dataset.media_type
         is_frame_field = cls._is_frames_doc
@@ -495,7 +484,7 @@ class DatasetMixin(object):
             )
 
         for path, new_path in schema_paths:
-            cls._rename_field_schema(dataset, path, new_path)
+            cls._rename_field_schema(path, new_path)
 
         if new_group_field:
             dataset_doc.group_field = new_group_field
@@ -514,9 +503,9 @@ class DatasetMixin(object):
             new_paths: an iterable of new field names or
                 ``embedded.field.names``
         """
-        dataset = sample_collection._dataset
+        dataset = cls._dataset
         dataset_doc = dataset._doc
-        media_type = dataset_doc.media_type
+        media_type = dataset.media_type
         is_frame_field = cls._is_frames_doc
         is_dataset = isinstance(sample_collection, fod.Dataset)
 
@@ -569,7 +558,7 @@ class DatasetMixin(object):
             cls._clone_fields_collection(sample_collection, _paths, _new_paths)
 
         for path, new_path in schema_paths:
-            cls._clone_field_schema(dataset, path, new_path)
+            cls._clone_field_schema(path, new_path)
 
         dataset_doc.save()
 
@@ -608,11 +597,10 @@ class DatasetMixin(object):
             cls._clear_fields_collection(sample_collection, coll_paths)
 
     @classmethod
-    def _delete_fields(cls, dataset, paths, error_level=0):
+    def _delete_fields(cls, paths, error_level=0):
         """Deletes the field(s) from the documents in this collection.
 
         Args:
-            dataset: the :class:`fiftyone.core.dataset.Dataset`
             paths: an iterable of field names or ``embedded.field.names``
             error_level (0): the error level to use. Valid values are:
 
@@ -620,6 +608,7 @@ class DatasetMixin(object):
             -   1: log warning if a field cannot be deleted
             -   2: ignore fields that cannot be deleted
         """
+        dataset = cls._dataset
         dataset_doc = dataset._doc
         media_type = dataset.media_type
         is_frame_field = cls._is_frames_doc
@@ -678,20 +667,19 @@ class DatasetMixin(object):
             cls._delete_fields_simple(del_paths)
 
         for del_path in del_schema_paths:
-            cls._delete_field_schema(dataset, del_path)
+            cls._delete_field_schema(del_path)
 
         if del_paths:
             dataset_doc.app_config._delete_paths(del_paths)
             dataset_doc.save()
 
     @classmethod
-    def _remove_dynamic_fields(cls, dataset, paths, error_level=0):
+    def _remove_dynamic_fields(cls, paths, error_level=0):
         """Removes the dynamic embedded field(s) from the collection's schema.
 
         The actual data is **not** deleted from the collection.
 
         Args:
-            dataset: the :class:`fiftyone.core.dataset.Dataset`
             paths: an iterable of ``embedded.field.names``
             error_level (0): the error level to use. Valid values are:
 
@@ -739,10 +727,10 @@ class DatasetMixin(object):
             del_paths.append(path)
 
         for del_path in del_paths:
-            cls._delete_field_schema(dataset, del_path)
+            cls._delete_field_schema(del_path)
 
         if del_paths:
-            dataset_doc = dataset._doc
+            dataset_doc = cls._dataset._doc
             dataset_doc.app_config._delete_paths(del_paths)
             dataset_doc.save()
 
@@ -755,9 +743,8 @@ class DatasetMixin(object):
 
         rename_expr = {k: v for k, v in zip(_paths, _new_paths)}
 
-        collection_name = cls.__name__
-        collection = get_db_conn()[collection_name]
-        collection.update_many({}, {"$rename": rename_expr})
+        coll = get_db_conn()[cls.collection_name]
+        coll.update_many({}, {"$rename": rename_expr})
 
     @classmethod
     def _rename_fields_collection(cls, sample_collection, paths, new_paths):
@@ -809,9 +796,8 @@ class DatasetMixin(object):
 
         set_expr = {v: "$" + k for k, v in zip(_paths, _new_paths)}
 
-        collection_name = cls.__name__
-        collection = get_db_conn()[collection_name]
-        collection.update_many({}, [{"$set": set_expr}])
+        coll = get_db_conn()[cls.collection_name]
+        coll.update_many({}, [{"$set": set_expr}])
 
     @classmethod
     def _clone_fields_collection(cls, sample_collection, paths, new_paths):
@@ -859,9 +845,8 @@ class DatasetMixin(object):
 
         _paths = cls._handle_db_fields(paths)
 
-        collection_name = cls.__name__
-        collection = get_db_conn()[collection_name]
-        collection.update_many({}, {"$set": {p: None for p in _paths}})
+        coll = get_db_conn()[cls.collection_name]
+        coll.update_many({}, {"$set": {p: None for p in _paths}})
 
     @classmethod
     def _clear_fields_collection(cls, sample_collection, paths):
@@ -894,9 +879,8 @@ class DatasetMixin(object):
 
         _paths = cls._handle_db_fields(paths)
 
-        collection_name = cls.__name__
-        collection = get_db_conn()[collection_name]
-        collection.update_many({}, [{"$unset": _paths}])
+        coll = get_db_conn()[cls.collection_name]
+        coll.update_many({}, [{"$unset": _paths}])
 
     @classmethod
     def _handle_db_field(cls, path, new_path=None):
@@ -929,7 +913,7 @@ class DatasetMixin(object):
         return tuple(cls._handle_db_field(p) for p in paths)
 
     @classmethod
-    def _merge_field(cls, dataset, path, field, validate=True, recursive=True):
+    def _merge_field(cls, path, field, validate=True, recursive=True):
         chunks = path.split(".")
         field_name = chunks[-1]
 
@@ -990,6 +974,7 @@ class DatasetMixin(object):
 
             return
 
+        dataset = cls._dataset
         media_type = dataset.media_type
         is_frame_field = cls._is_frames_doc
 
@@ -1017,20 +1002,20 @@ class DatasetMixin(object):
         return {path: field}
 
     @classmethod
-    def _add_field_schema(cls, dataset, path, field):
-        field_name, doc, field_docs = cls._parse_path(dataset, path)
+    def _add_field_schema(cls, path, field):
+        field_name, doc, field_docs = cls._parse_path(path)
 
         field = field.copy()
         field.db_field = _get_db_field(field, field_name)
         field.name = field_name
 
-        doc._declare_field(dataset, path, field)
+        doc._declare_field(cls._dataset, path, field)
         _add_field_doc(field_docs, field)
 
     @classmethod
-    def _rename_field_schema(cls, dataset, path, new_path):
+    def _rename_field_schema(cls, path, new_path):
         same_root, new_field_name = _parse_paths(path, new_path)
-        field_name, doc, field_docs = cls._parse_path(dataset, path)
+        field_name, doc, field_docs = cls._parse_path(path)
 
         field = doc._fields[field_name]
         new_db_field = _get_db_field(field, new_field_name)
@@ -1039,26 +1024,26 @@ class DatasetMixin(object):
         field.db_field = new_db_field
 
         if same_root:
-            doc._update_field(dataset, field_name, path, field)
+            doc._update_field(cls._dataset, field_name, path, field)
             _update_field_doc(field_docs, field_name, field)
         else:
             doc._undeclare_field(field_name)
             _delete_field_doc(field_docs, field_name)
 
-            _, new_doc, new_field_docs = cls._parse_path(dataset, new_path)
-            new_doc._declare_field(dataset, new_path, field)
+            _, new_doc, new_field_docs = cls._parse_path(new_path)
+            new_doc._declare_field(cls._dataset, new_path, field)
             _add_field_doc(new_field_docs, field)
 
     @classmethod
-    def _clone_field_schema(cls, dataset, path, new_path):
-        field_name, doc, _ = cls._parse_path(dataset, path)
+    def _clone_field_schema(cls, path, new_path):
+        field_name, doc, _ = cls._parse_path(path)
         field = doc._fields[field_name]
 
-        cls._add_field_schema(dataset, new_path, field)
+        cls._add_field_schema(new_path, field)
 
     @classmethod
-    def _delete_field_schema(cls, dataset, path):
-        field_name, doc, field_docs = cls._parse_path(dataset, path)
+    def _delete_field_schema(cls, path):
+        field_name, doc, field_docs = cls._parse_path(path)
 
         doc._undeclare_field(field_name)
         _delete_field_doc(field_docs, field_name)
@@ -1092,9 +1077,9 @@ class DatasetMixin(object):
         return field, is_default
 
     @classmethod
-    def _get_field_doc(cls, dataset, path, allow_missing=False):
+    def _get_field_doc(cls, path, allow_missing=False):
         chunks = path.split(".")
-        field_docs = dataset._doc[cls._fields_attr()]
+        field_docs = cls._dataset._doc[cls._fields_attr()]
 
         field_doc = None
         for chunk in chunks:
@@ -1118,12 +1103,11 @@ class DatasetMixin(object):
         return field_doc
 
     @classmethod
-    def _parse_path(cls, dataset, path, allow_missing=False):
+    def _parse_path(cls, path, allow_missing=False):
         chunks = path.split(".")
-
         field_name = chunks[-1]
         doc = cls
-        field_docs = dataset._doc[cls._fields_attr()]
+        field_docs = cls._dataset._doc[cls._fields_attr()]
 
         root = None
         for chunk in chunks[:-1]:
@@ -1410,10 +1394,6 @@ class NoDatasetMixin(object):
     @property
     def field_names(self):
         return self._get_field_names(include_private=False)
-
-    @property
-    def collection_name(self):
-        return None
 
     @property
     def in_db(self):
