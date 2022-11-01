@@ -244,7 +244,7 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def name(self):
-        """The name of the view."""
+        """The name of the view with which it was saved. Defaults to `<dataset_name>-view` for unsaved views."""
         if self.__name is not None:
             return self.__name
 
@@ -326,6 +326,7 @@ class DatasetView(foc.SampleCollection):
             a string summary
         """
         elements = [
+            ("View name:", self.name),
             ("Dataset:", self.dataset_name),
             ("Media type:", self.media_type),
             ("Num %s:" % self._elements_str, self.count()),

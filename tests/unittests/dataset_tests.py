@@ -2121,35 +2121,42 @@ class DatasetExtrasTests(unittest.TestCase):
         self.assertEqual(len(view), 1)
         self.assertTrue("image2" in view.first().filepath)
 
-        dataset.save_view("test", view)
+        unsaved_view_name = view.name
+        view_name = "test"
+        dataset.save_view(view_name, view)
 
         last_loaded_at1 = dataset._doc.views[0].last_loaded_at
         last_modified_at1 = dataset._doc.views[0].last_modified_at
 
         self.assertTrue(dataset.has_views)
-        self.assertTrue(dataset.has_view("test"))
-        self.assertListEqual(dataset.list_views(), ["test"])
+        self.assertTrue(dataset.has_view(view_name))
+        self.assertListEqual(dataset.list_views(), [view_name])
+        self.assertNotEqual(unsaved_view_name, view.name)
 
         self.assertIsNone(last_loaded_at1)
         self.assertIsNotNone(last_modified_at1)
 
-        also_view = dataset.load_view("test")
+        also_view = dataset.load_view(view_name)
         last_loaded_at2 = dataset._doc.views[0].last_loaded_at
 
         self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
         self.assertIsNotNone(last_loaded_at2)
 
-        info = dataset.get_view_info("test")
-        info["name"] = "new-name"
+        info = dataset.get_view_info(view_name)
+        new_view_name = "new-name"
+        info["name"] = new_view_name
 
-        dataset.update_view_info("test", info)
+        dataset.update_view_info(view_name, info)
         last_modified_at2 = dataset._doc.views[0].last_modified_at
 
         self.assertTrue(last_modified_at2 > last_modified_at1)
-        self.assertFalse(dataset.has_view("test"))
-        self.assertTrue(dataset.has_view("new-name"))
+        self.assertFalse(dataset.has_view(view_name))
+        self.assertTrue(dataset.has_view(new_view_name))
 
-        dataset.update_view_info("new-name", {"name": "test"})
+        updated_view = dataset.load_view(new_view_name)
+        self.assertEqual(updated_view.name, new_view_name)
+        dataset.update_view_info(new_view_name, {"name": view_name})
 
         #
         # Verify that saved views are included in clones
@@ -2158,22 +2165,22 @@ class DatasetExtrasTests(unittest.TestCase):
         dataset2 = dataset.clone()
 
         self.assertTrue(dataset2.has_views)
-        self.assertTrue(dataset2.has_view("test"))
-        self.assertListEqual(dataset2.list_views(), ["test"])
+        self.assertTrue(dataset2.has_view(view_name))
+        self.assertListEqual(dataset2.list_views(), [view_name])
 
-        view2 = dataset2.load_view("test")
+        view2 = dataset2.load_view(view_name)
 
         self.assertEqual(len(view2), 1)
         self.assertTrue("image2" in view2.first().filepath)
 
-        dataset.delete_view("test")
+        dataset.delete_view(view_name)
 
         self.assertFalse(dataset.has_views)
-        self.assertFalse(dataset.has_view("test"))
+        self.assertFalse(dataset.has_view(view_name))
         self.assertListEqual(dataset.list_views(), [])
 
         # Verify that cloned data is properly decoupled from source dataset
-        also_view2 = dataset2.load_view("test")
+        also_view2 = dataset2.load_view(view_name)
         self.assertIsNotNone(also_view2)
 
     def test_saved_views_for_app(self):
