@@ -234,8 +234,8 @@ class Field(mongoengine.fields.BaseField):
 
     def __init__(self, description=None, info=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
         self.__dataset = None
         self.__path = None
@@ -260,6 +260,74 @@ class Field(mongoengine.fields.BaseField):
         ``None`` if the field is not associated with a dataset.
         """
         return self.__path
+
+    @property
+    def description(self):
+        """A user-editable description of the field.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.add_dynamic_sample_fields()
+
+            field = dataset.get_field("ground_truth")
+            field.description = "Ground truth annotations"
+            field.save()
+
+            field = dataset.get_field("ground_truth.detections.area")
+            field.description = "Area of the box, in pixels^2"
+            field.save()
+
+            dataset.reload()
+
+            field = dataset.get_field("ground_truth")
+            print(field.description)  # Ground truth annotations
+
+            field = dataset.get_field("ground_truth.detections.area")
+            print(field.description)  # 'Area of the box, in pixels^2'
+        """
+        return self._description
+
+    @description.setter
+    def description(self, description):
+        self._description = description
+
+    @property
+    def info(self):
+        """A user-editable dictionary of information about the field.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.add_dynamic_sample_fields()
+
+            field = dataset.get_field("ground_truth")
+            field.info = {"url": "https://fiftyone.ai"}
+            field.save()
+
+            field = dataset.get_field("ground_truth.detections.area")
+            field.info = {"url": "https://fiftyone.ai"}
+            field.save()
+
+            dataset.reload()
+
+            field = dataset.get_field("ground_truth")
+            print(field.info)  # {'url': 'https://fiftyone.ai'}
+
+            field = dataset.get_field("ground_truth.detections.area")
+            print(field.info)  # {'url': 'https://fiftyone.ai'}
+        """
+        return self._info
+
+    @info.setter
+    def info(self, info):
+        self._info = info
 
     def copy(self):
         """Returns a copy of the field.
@@ -292,6 +360,7 @@ class Field(mongoengine.fields.BaseField):
 
             field = dataset.get_field("ground_truth.detections.area")
             field.description = "Area of the box, in pixels^2"
+            field.info = {"url": "https://fiftyone.ai"}
             field.save()
 
             dataset.reload()
@@ -302,6 +371,7 @@ class Field(mongoengine.fields.BaseField):
 
             field = dataset.get_field("ground_truth.detections.area")
             print(field.description)  # 'Area of the box, in pixels^2'
+            field.info = {"url": "https://fiftyone.ai"}
         """
         if self.__dataset is None:
             return
@@ -319,8 +389,8 @@ class IntField(mongoengine.fields.IntField, Field):
 
     def __init__(self, description=None, info=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
     def to_mongo(self, value):
         if value is None:
@@ -339,8 +409,8 @@ class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
 
     def __init__(self, description=None, info=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
     def to_mongo(self, value):
         if value is None:
@@ -365,8 +435,8 @@ class UUIDField(mongoengine.fields.UUIDField, Field):
 
     def __init__(self, description=None, info=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
 
 class BooleanField(mongoengine.fields.BooleanField, Field):
@@ -379,8 +449,8 @@ class BooleanField(mongoengine.fields.BooleanField, Field):
 
     def __init__(self, description=None, info=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
     def validate(self, value):
         if not isinstance(value, (bool, np.bool_)):
@@ -397,8 +467,8 @@ class DateField(mongoengine.fields.DateField, Field):
 
     def __init__(self, description=None, info=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
     def to_mongo(self, value):
         if value is None:
@@ -430,8 +500,8 @@ class DateTimeField(mongoengine.fields.DateTimeField, Field):
 
     def __init__(self, description=None, info=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
     def validate(self, value):
         if not isinstance(value, datetime):
@@ -448,8 +518,8 @@ class FloatField(mongoengine.fields.FloatField, Field):
 
     def __init__(self, description=None, info=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
     def to_mongo(self, value):
         if value is None:
@@ -482,8 +552,8 @@ class StringField(mongoengine.fields.StringField, Field):
 
     def __init__(self, description=None, info=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
 
 class ListField(mongoengine.fields.ListField, Field):
@@ -508,8 +578,8 @@ class ListField(mongoengine.fields.ListField, Field):
                 )
 
         super().__init__(field=field, **kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
     def __str__(self):
         if self.field is not None:
@@ -578,8 +648,8 @@ class DictField(mongoengine.fields.DictField, Field):
                 )
 
         super().__init__(field=field, **kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
     def __str__(self):
         if self.field is not None:
@@ -896,8 +966,8 @@ class VectorField(mongoengine.fields.BinaryField, Field):
 
     def __init__(self, description=None, info=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
     def to_mongo(self, value):
         if value is None:
@@ -937,8 +1007,8 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
 
     def __init__(self, description=None, info=None, **kwargs):
         super().__init__(**kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
     def to_mongo(self, value):
         if value is None:
@@ -1053,8 +1123,8 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
     def __init__(self, document_type, description=None, info=None, **kwargs):
         super().__init__(document_type, **kwargs)
         self.fields = kwargs.get("fields", [])
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
         self._selected_fields = None
         self._excluded_fields = None
         self.__fields = None
@@ -1283,8 +1353,8 @@ class EmbeddedDocumentListField(
 
     def __init__(self, document_type, description=None, info=None, **kwargs):
         super().__init__(document_type, **kwargs)
-        self.description = description
-        self.info = info
+        self._description = description
+        self._info = info
 
     def __str__(self):
         # pylint: disable=no-member
