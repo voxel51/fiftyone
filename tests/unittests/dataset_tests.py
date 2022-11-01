@@ -7,7 +7,6 @@ FiftyOne dataset-related unit tests.
 """
 from copy import copy, deepcopy
 from datetime import date, datetime
-import gc
 import os
 
 from bson import ObjectId
@@ -97,33 +96,24 @@ class DatasetTests(unittest.TestCase):
 
         dataset.tags = ["cat", "dog"]
 
-        del dataset
-        gc.collect()  # force garbage collection
+        dataset.reload()
 
-        dataset2 = fo.load_dataset(dataset_name)
-
-        self.assertEqual(dataset2.tags, ["cat", "dog"])
+        self.assertEqual(dataset.tags, ["cat", "dog"])
 
         # save() must be called to persist in-place edits
-        dataset2.tags.append("rabbit")
+        dataset.tags.append("rabbit")
 
-        del dataset2
-        gc.collect()  # force garbage collection
+        dataset.reload()
 
-        dataset3 = fo.load_dataset(dataset_name)
-
-        self.assertEqual(dataset3.tags, ["cat", "dog"])
+        self.assertEqual(dataset.tags, ["cat", "dog"])
 
         # This will persist the edits
-        dataset3.tags.append("rabbit")
-        dataset3.save()
+        dataset.tags.append("rabbit")
+        dataset.save()
 
-        del dataset3
-        gc.collect()  # force garbage collection
+        dataset.reload()
 
-        dataset4 = fo.load_dataset(dataset_name)
-
-        self.assertEqual(dataset4.tags, ["cat", "dog", "rabbit"])
+        self.assertEqual(dataset.tags, ["cat", "dog", "rabbit"])
 
     @drop_datasets
     def test_dataset_info(self):
@@ -139,13 +129,10 @@ class DatasetTests(unittest.TestCase):
         dataset.info["classes"] = classes
         dataset.save()
 
-        del dataset
-        gc.collect()  # force garbage collection
+        dataset.reload()
 
-        dataset2 = fo.load_dataset(dataset_name)
-
-        self.assertTrue("classes" in dataset2.info)
-        self.assertEqual(classes, dataset2.info["classes"])
+        self.assertTrue("classes" in dataset.info)
+        self.assertEqual(classes, dataset.info["classes"])
 
     @drop_datasets
     def test_dataset_field_metadata(self):
@@ -318,10 +305,7 @@ class DatasetTests(unittest.TestCase):
         dataset.app_config.grid_media_field = "thumbnail_path"
         dataset.save()
 
-        del dataset
-        gc.collect()  # force garbage collection
-
-        dataset = fo.load_dataset(dataset_name)
+        dataset.reload()
 
         self.assertListEqual(
             dataset.app_config.media_fields, ["filepath", "thumbnail_path"]
