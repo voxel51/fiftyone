@@ -123,6 +123,9 @@ def make_unique_dataset_name(root):
     Returns:
         the dataset name
     """
+    if not root:
+        return get_default_dataset_name()
+
     name = root
     dataset_names = _list_datasets(include_private=True)
 
@@ -5047,8 +5050,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             d: a JSON dictionary
-            name (None): a name for the new dataset. By default, ``d["name"]``
-                is used
+            name (None): a name for the new dataset
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
@@ -5063,7 +5065,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset`
         """
         if name is None:
-            name = d["name"]
+            name = d.get("name", None)
 
         if rel_dir is not None:
             rel_dir = fou.normalize_path(rel_dir)
@@ -5160,8 +5162,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             path_or_str: the path to a JSON file on disk or a JSON string
-            name (None): a name for the new dataset. By default, ``d["name"]``
-                is used
+            name (None): a name for the new dataset
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample, if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
