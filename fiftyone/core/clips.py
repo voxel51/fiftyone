@@ -148,24 +148,6 @@ class ClipsView(fov.DatasetView):
     def media_type(self):
         return fom.VIDEO
 
-    def _get_default_sample_fields(
-        self, include_private=False, use_db_fields=False
-    ):
-        fields = super()._get_default_sample_fields(
-            include_private=include_private, use_db_fields=use_db_fields
-        )
-
-        if use_db_fields:
-            return fields + ("_sample_id", "support")
-
-        return fields + ("sample_id", "support")
-
-    def _get_default_indexes(self, frames=False):
-        if frames:
-            return super()._get_default_indexes(frames=frames)
-
-        return ["id", "filepath", "sample_id"]
-
     def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
         if label_field == self._classification_field:
             _ids = self.values("_sample_id")
