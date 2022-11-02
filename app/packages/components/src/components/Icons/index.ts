@@ -6,4 +6,6 @@ export {
   KeyboardArrowDown,
   KeyboardArrowUp,
   IconButton,
+  Close,
+  Copy,
 } from "./Icons";
