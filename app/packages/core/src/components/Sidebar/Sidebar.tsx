@@ -57,7 +57,7 @@ const fn = (
   let scale = 1;
   if (activeKey) {
     const w = items[activeKey].el.parentElement.getBoundingClientRect().width;
-    scale = (w - 8) / (w - 16);
+    scale = (w - 12) / (w - 16);
   }
 
   const results = {};
