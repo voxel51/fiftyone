@@ -1285,10 +1285,6 @@ def deserialize_numpy_array(numpy_bytes, ascii=False):
     Returns:
         the numpy array
     """
-
-    if isinstance(numpy_bytes, list):
-        return np.array(numpy_bytes)
-
     if ascii:
         numpy_bytes = b64decode(numpy_bytes.encode("ascii"))
 
