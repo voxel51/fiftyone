@@ -160,6 +160,26 @@ class FramesView(fov.DatasetView):
 
         return ["id", "filepath", "sample_id", "_sample_id_1_frame_number_1"]
 
+    def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
+        ids, label_ids = super()._tag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
+        )
+
+        frame_field = self._source_collection._FRAMES_PREFIX + label_field
+        self._source_collection._tag_labels(
+            tags, frame_field, ids=ids, label_ids=label_ids
+        )
+
+    def _untag_labels(self, tags, label_field, ids=None, label_ids=None):
+        ids, label_ids = super()._untag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
+        )
+
+        frame_field = self._source_collection._FRAMES_PREFIX + label_field
+        self._source_collection._untag_labels(
+            tags, frame_field, ids=ids, label_ids=label_ids
+        )
+
     def set_values(self, field_name, *args, **kwargs):
         # The `set_values()` operation could change the contents of this view,
         # so we first record the sample IDs that need to be synced

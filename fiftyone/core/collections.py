@@ -17,9 +17,7 @@ import timeit
 import warnings
 
 from bson import ObjectId
-from deprecated import deprecated
-from fiftyone.core.odm.embedded_document import DynamicEmbeddedDocument
-from pymongo import InsertOne, UpdateOne
+from pymongo import InsertOne, UpdateOne, UpdateMany
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -28,7 +26,7 @@ import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.core.expressions as foe
-from fiftyone.core.expressions import ViewExpression as E, ViewField as F
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
@@ -1158,24 +1156,13 @@ class SampleCollection(object):
             tags: a tag or iterable of tags
         """
         if etau.is_str(tags):
-            tags = [tags]
+            update = {"$addToSet": {"tags": tags}}
         else:
-            tags = list(tags)
-
-        def _add_tags(_tags):
-            if not _tags:
-                return tags
-
-            for tag in tags:
-                if tag not in _tags:
-                    _tags.append(tag)
-
-            return _tags
+            update = {"$addToSet": {"tags": {"$each": list(tags)}}}
 
         # We only need to process samples that are missing a tag of interest
         view = self.match_tags(tags, bool=False, all=True)
-
-        view._edit_sample_tags(_add_tags)
+        view._edit_sample_tags(update)
 
     def untag_samples(self, tags):
         """Removes the tag(s) from all samples in this collection, if
@@ -1185,25 +1172,20 @@ class SampleCollection(object):
             tags: a tag or iterable of tags
         """
         if etau.is_str(tags):
-            tags = {tags}
+            update = {"$pull": {"tags": tags}}
         else:
-            tags = set(tags)
-
-        def _remove_tags(_tags):
-            if not _tags:
-                return _tags
-
-            return [t for t in _tags if t not in tags]
+            update = {"$pullAll": {"tags": list(tags)}}
 
         # We only need to process samples that have a tag of interest
         view = self.match_tags(tags)
+        view._edit_sample_tags(update)
 
-        view._edit_sample_tags(_remove_tags)
+    def _edit_sample_tags(self, update):
+        ops = []
+        for ids in fou.iter_batches(self.values("_id"), 100000):
+            ops.append(UpdateMany({"_id": {"$in": ids}}, update))
 
-    def _edit_sample_tags(self, edit_fcn):
-        tags = self.values("tags")
-        tags = _transform_values(tags, edit_fcn, level=1)
-        self.set_values("tags", tags)
+        self._dataset._bulk_write(ops)
 
     def count_sample_tags(self):
         """Counts the occurrences of sample tags in this collection.
@@ -1223,34 +1205,29 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
-        if etau.is_str(tags):
-            tags = [tags]
-        else:
-            tags = list(tags)
-
         if label_fields is None:
             label_fields = self._get_label_fields()
         elif etau.is_str(label_fields):
             label_fields = [label_fields]
 
-        def _add_tags(_tags):
-            if not _tags:
-                return tags
-
-            for tag in tags:
-                if tag not in _tags:
-                    _tags.append(tag)
-
-            return _tags
-
-        missing_tags = E(tags).difference(F("tags")).length() > 0
+        missing_tags = ~F("tags").contains(tags, all=True)
         match_expr = (F("tags") != None).if_else(missing_tags, True)
 
         for label_field in label_fields:
             # We only need to process labels that are missing a tag of interest
             view = self.filter_labels(label_field, match_expr)
+            view._tag_labels(tags, label_field)
 
-            view._edit_label_tags(_add_tags, label_field)
+    def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
+        if etau.is_str(tags):
+            update_fcn = lambda path: {"$addToSet": {path: tags}}
+        else:
+            tags = list(tags)
+            update_fcn = lambda path: {"$addToSet": {path: {"$each": tags}}}
+
+        return self._edit_label_tags(
+            update_fcn, label_field, ids=ids, label_ids=label_ids
+        )
 
     def untag_labels(self, tags, label_fields=None):
         """Removes the tag from all labels in the specified label field(s) of
@@ -1262,38 +1239,78 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
-        if etau.is_str(tags):
-            tags = {tags}
-        else:
-            tags = set(tags)
-
         if label_fields is None:
             label_fields = self._get_label_fields()
         elif etau.is_str(label_fields):
             label_fields = [label_fields]
 
-        def _remove_tags(_tags):
-            if not _tags:
-                return _tags
-
-            return [t for t in _tags if t not in tags]
-
         for label_field in label_fields:
             # We only need to process labels that have a tag of interest
             view = self.select_labels(tags=tags, fields=label_field)
+            view._untag_labels(tags, label_field)
 
-            view._edit_label_tags(_remove_tags, label_field)
+    def _untag_labels(self, tags, label_field, ids=None, label_ids=None):
+        if etau.is_str(tags):
+            update_fcn = lambda path: {"$pull": {path: tags}}
+        else:
+            tags = list(tags)
+            update_fcn = lambda path: {"$pullAll": {path: tags}}
 
-    def _edit_label_tags(self, edit_fcn, label_field):
-        label_type, tags_path = self._get_label_field_path(label_field, "tags")
+        return self._edit_label_tags(
+            update_fcn, label_field, ids=ids, label_ids=label_ids
+        )
 
-        level = 1
-        level += issubclass(label_type, fol._LABEL_LIST_FIELDS)
-        level += self._is_frame_field(tags_path)
+    def _edit_label_tags(
+        self, update_fcn, label_field, ids=None, label_ids=None
+    ):
+        label_type, root = self._get_label_field_path(label_field)
+        _root, is_frame_field = self._handle_frame_field(root)
+        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
 
-        tags = self.values(tags_path)
-        tags = _transform_values(tags, edit_fcn, level=level)
-        self.set_values(tags_path, tags)
+        ops = []
+
+        if is_list_field:
+            id_path = root + "._id"
+            tags_path = _root + ".$[label].tags"
+            update = update_fcn(tags_path)
+
+            if ids is None or label_ids is None:
+                if is_frame_field:
+                    ids, label_ids = self.values(["frames._id", id_path])
+                    ids = itertools.chain.from_iterable(ids)
+                    label_ids = itertools.chain.from_iterable(label_ids)
+                else:
+                    ids, label_ids = self.values(["_id", id_path])
+
+            for _id, _label_ids in zip(ids, label_ids):
+                if not _label_ids:
+                    continue
+
+                op = UpdateOne(
+                    {"_id": _id},
+                    update,
+                    array_filters=[{"label._id": {"$in": _label_ids}}],
+                )
+                ops.append(op)
+        else:
+            _id_path = _root + "._id"
+            id_path = root + "._id"
+            tags_path = _root + ".tags"
+            update = update_fcn(tags_path)
+
+            if label_ids is None:
+                if is_frame_field:
+                    label_ids = self.values(id_path, unwind=True)
+                else:
+                    label_ids = self.values(id_path)
+
+            for _label_ids in fou.iter_batches(label_ids, 100000):
+                ops.append(UpdateMany({_id_path: {"$in": _label_ids}}, update))
+
+        if ops:
+            self._dataset._bulk_write(ops, frames=is_frame_field)
+
+        return ids, label_ids
 
     def _get_selected_labels(self, ids=None, tags=None, fields=None):
         if ids is not None or tags is not None:

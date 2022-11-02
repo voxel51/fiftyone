@@ -2797,6 +2797,121 @@ class VideoTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             frame["ground_truth"]
 
+    @drop_datasets
+    def test_detection_frames(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+        )
+        sample1.frames[1] = fo.Frame(
+            filepath="frame11.jpg", detection=fo.Detection(label="cat")
+        )
+        sample1.frames[2] = fo.Frame(filepath="frame12.jpg")
+        sample1.frames[3] = fo.Frame(
+            filepath="frame13.jpg", detection=fo.Detection(label="dog")
+        )
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+        )
+        sample2.frames[1] = fo.Frame(
+            filepath="frame21.jpg", detection=fo.Detection(label="dog")
+        )
+        sample2.frames[3] = fo.Frame(filepath="frame23.jpg")
+        sample2.frames[5] = fo.Frame(
+            filepath="frame25.jpg", detection=fo.Detection(label="rabbit")
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        frames = dataset.to_frames()
+        view = frames.filter_labels("detection", F("label") == "dog")
+
+        view.tag_samples("test")
+
+        self.assertEqual(view.count_sample_tags(), {"test": 2})
+        self.assertEqual(dataset.count_sample_tags(), {})
+
+        view.untag_samples("test")
+
+        self.assertEqual(frames.count_sample_tags(), {})
+        self.assertEqual(dataset.count_sample_tags(), {})
+
+        view.tag_labels("test")
+
+        self.assertEqual(view.count_label_tags(), {"test": 2})
+        self.assertEqual(dataset.count_label_tags(), {"test": 2})
+
+        view.untag_labels("test")
+
+        self.assertEqual(view.count_label_tags(), {})
+        self.assertEqual(dataset.count_label_tags(), {})
+
+        view.tag_labels("test")
+
+        self.assertEqual(view.count_label_tags(), {"test": 2})
+        self.assertEqual(dataset.count_label_tags(), {"test": 2})
+
+        view.select_labels(tags="test").untag_labels("test")
+
+        self.assertEqual(view.count_label_tags(), {})
+        self.assertEqual(dataset.count_label_tags(), {})
+
+    @drop_datasets
+    def test_temporal_detection_clips(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+            event=fo.TemporalDetection(label="meeting", support=[1, 3]),
+        )
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample3 = fo.Sample(
+            filepath="video3.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+            event=fo.TemporalDetection(label="party", support=[3, 5]),
+        )
+
+        dataset.add_samples([sample1, sample2, sample3])
+
+        clips = dataset.to_clips("event")
+
+        self.assertEqual(len(clips), 2)
+
+        clips.tag_samples("test")
+
+        self.assertEqual(clips.count_sample_tags(), {"test": 2})
+        self.assertEqual(dataset.count_sample_tags(), {})
+
+        clips.untag_samples("test")
+
+        self.assertEqual(clips.count_sample_tags(), {})
+        self.assertEqual(dataset.count_sample_tags(), {})
+
+        clips.tag_labels("test")
+
+        self.assertEqual(clips.count_label_tags(), {"test": 2})
+        self.assertEqual(dataset.count_label_tags(), {"test": 2})
+
+        clips.untag_labels("test")
+
+        self.assertEqual(clips.count_label_tags(), {})
+        self.assertEqual(dataset.count_label_tags(), {})
+
+        clips.tag_labels("test")
+
+        self.assertEqual(clips.count_label_tags(), {"test": 2})
+        self.assertEqual(dataset.count_label_tags(), {"test": 2})
+
+        clips.select_labels(tags="test").untag_labels("test")
+
+        self.assertEqual(clips.count_label_tags(), {})
+        self.assertEqual(dataset.count_label_tags(), {})
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
