@@ -158,24 +158,6 @@ class FramesView(fov.DatasetView):
 
         return sample_only_fields
 
-    def _get_default_sample_fields(
-        self, include_private=False, use_db_fields=False
-    ):
-        fields = super()._get_default_sample_fields(
-            include_private=include_private, use_db_fields=use_db_fields
-        )
-
-        if use_db_fields:
-            return fields + ("_sample_id", "frame_number")
-
-        return fields + ("sample_id", "frame_number")
-
-    def _get_default_indexes(self, frames=False):
-        if frames:
-            return super()._get_default_indexes(frames=frames)
-
-        return ["id", "filepath", "sample_id", "_sample_id_1_frame_number_1"]
-
     def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
         ids, label_ids = super()._tag_labels(
             tags, label_field, ids=ids, label_ids=label_ids
