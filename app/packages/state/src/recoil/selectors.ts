@@ -40,6 +40,19 @@ export const mediaType = selector({
   },
 });
 
+export const savedViewsSelector = selector({
+  key: "datasetViews",
+  get: ({ get }) => {
+    console.log("dataset", get(atoms.dataset));
+    const savedViews = get(atoms.dataset)?.savedViews;
+
+    return savedViews;
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
 export const isVideoDataset = selector({
   key: "isVideoDataset",
   get: ({ get }) => get(mediaType) === "video",
