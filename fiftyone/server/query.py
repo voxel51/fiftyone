@@ -204,7 +204,7 @@ class Dataset:
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
-        doc["saved_views"] = doc.get("saved_views", [])
+        doc["saved_views"] = doc.get("saved_views", doc.get("views", []))
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -399,6 +399,7 @@ async def serialize_dataset(
 ) -> Dataset:
     def run():
         dataset = fo.load_dataset(name)
+
         dataset.reload()
         if view_name is not None:
             view = dataset.load_view(view_name)
