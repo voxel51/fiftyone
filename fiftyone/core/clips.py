@@ -226,8 +226,7 @@ class ClipsView(fov.DatasetView):
 
         super().set_values(field_name, *args, **kwargs)
 
-        if must_sync:
-            self._sync_source(fields=[field], ids=ids)
+        self._sync_source(fields=[field], ids=ids)
 
     def save(self, fields=None):
         """Saves the clips in this view to the underlying dataset.
