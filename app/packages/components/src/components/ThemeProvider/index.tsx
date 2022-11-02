@@ -56,6 +56,7 @@ let theme = extendJoyTheme({
         },
         custom: {
           shadow: "hsl(200, 0%, 90%)",
+          shadowDark: "hsl(200, 0%, 70%)",
         },
       },
     }),
@@ -104,6 +105,7 @@ let theme = extendJoyTheme({
         },
         custom: {
           shadow: "hsl(200, 0%, 10%)",
+          shadowDark: "hsl(200, 0%, 0%)",
         },
       },
     }),
