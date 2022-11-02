@@ -2856,7 +2856,7 @@ attributes to them as follows:
 
 By default, dynamic attributes are not included in a
 :ref:`dataset's schema <field-schemas>`, which means that these attributes may
-contain arbitrary heterogenous values across the dataset's samples.
+contain arbitrary heterogeneous values across the dataset's samples.
 
 However, FiftyOne provides methods that you can use to formally declare custom
 dynamic attributes, which allows you to enforce type constraints, filter by

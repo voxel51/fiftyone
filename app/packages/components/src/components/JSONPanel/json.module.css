@@ -37,6 +37,6 @@
 
 .lookerCloseJSON:hover,
 .lookerCopyJSON:hover {
-  background-color: rgb(225, 100, 40);
+  background-color: var(--joy-palette-primary-plainColor);
   transform: translate(0, -1px);
 }

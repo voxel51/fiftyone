@@ -1,4 +1,4 @@
-import { useTheme } from "../Theme";
+import { useTheme } from "../ThemeProvider";
 import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring, useSprings } from "@react-spring/web";
@@ -46,23 +46,23 @@ export default ({ active, options, color }: TabOptionProps) => {
     options.map((o, i) => ({
       backgroundColor:
         o.text === active
-          ? color || theme.brand
+          ? color || theme.primary.plainColor
           : hovering[i]
-          ? theme.background
-          : theme.backgroundLight,
-      color: hovering ? theme.font : theme.fontDark,
+          ? theme.background.body
+          : theme.background.level1,
+      color: hovering ? theme.text.primary : theme.text.secondary,
     }))
   );
 
   const [style, set] = useSpring(() => ({
-    background: theme.backgroundLight,
+    background: theme.background.level1,
   }));
 
   return (
     <TabOptionDiv
       style={style}
-      onMouseEnter={() => set({ background: theme.background })}
-      onMouseLeave={() => set({ background: theme.backgroundLight })}
+      onMouseEnter={() => set({ background: theme.background.body })}
+      onMouseLeave={() => set({ background: theme.background.level1 })}
     >
       {options.map(({ text, title, onClick }, i) => (
         <Tab

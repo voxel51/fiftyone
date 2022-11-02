@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { capitalize } from "@material-ui/core";
-import { Assessment, Fullscreen, FullscreenExit } from "@material-ui/icons";
+import { capitalize } from "@mui/material";
+import { Assessment, Fullscreen, FullscreenExit } from "@mui/icons-material";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 
@@ -15,8 +15,7 @@ import * as fos from "@fiftyone/state";
 export type Props = {};
 
 const Container = styled(Resizable)`
-  background-color: ${({ theme }) => theme.backgroundDark};
-  border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
+  background-color: ${({ theme }) => theme.background.level2};
   overflow: hidden;
   position: relative;
   width: 100%;
@@ -46,14 +45,15 @@ const PlotButton = styled.div`
   display: inline-block;
   margin-right: 5px;
   padding: 0 1em;
-  color: ${({ theme }) => theme.font};
-  background-color: ${({ theme }) => theme.backgroundLight};
+  color: ${({ theme }) => theme.text.secondary};
+  background-color: ${({ theme }) => theme.background.button};
   text-decoration: none;
   border-radius: 2px;
   font-weight: bold;
 
   &.active {
-    background-color: ${({ theme }) => theme.secondary};
+    background-color: ${({ theme }) => theme.neutral.plainColor};
+    color: ${({ theme }) => theme.text.buttonHighlight};
   }
 `;
 
@@ -107,6 +107,7 @@ const HorizontalNav = ({}: Props) => {
 
   const buttonLabels = [...DISTRIBUTION_PLOTS, ...pluginPlotLabels];
   const hasPlot = buttonLabels.includes(activePlot);
+  const compactLayout = useRecoilValue(fos.compactLayout);
 
   useEffect(() => {
     if (!hasPlot) {
@@ -117,8 +118,8 @@ const HorizontalNav = ({}: Props) => {
 
   return (
     <>
-      <Nav>
-        <PlotsButtons>
+      <Nav style={compactLayout ? { padding: "0.5rem 1rem 0" } : {}}>
+        <PlotsButtons style={compactLayout ? { paddingBottom: "0.5rem" } : {}}>
           {buttonLabels.map((e) => (
             <PlotButton
               key={e}
@@ -148,18 +149,20 @@ const HorizontalNav = ({}: Props) => {
               }}
             />
           )}
-          <PillButton
-            onClick={() => {
-              setExpanded(!expanded);
-              expanded && setMaximized(false);
-            }}
-            text={expanded ? "Hide" : "Show"}
-            open={expanded}
-            icon={<Assessment />}
-            highlight={!expanded}
-            arrow={true}
-            style={{ height: "2rem" }}
-          />
+          {!compactLayout && (
+            <PillButton
+              onClick={() => {
+                setExpanded(!expanded);
+                expanded && setMaximized(false);
+              }}
+              text={expanded ? "Hide" : "Show"}
+              open={expanded}
+              icon={<Assessment />}
+              highlight={!expanded}
+              arrow={true}
+              style={{ height: "2rem" }}
+            />
+          )}
         </NavButtons>
       </Nav>
       {expanded && (

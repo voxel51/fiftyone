@@ -1,10 +1,8 @@
-import { Theme } from "@fiftyone/components";
-import { darkTheme, getEventSource, toCamelCase } from "@fiftyone/utilities";
-import React, { Fragment, useEffect, useRef, useState } from "react";
+import React, { useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { RecoilRoot, useRecoilValue } from "recoil";
-import { Dataset, getEnvProps } from "./";
+import { RecoilRoot } from "recoil";
 import { RecoilRelayEnvironmentProvider } from "recoil-relay";
+import { Dataset, getEnvProps } from "./";
 
 // import "./index.css";
 
@@ -33,12 +31,12 @@ function LoadableDataset() {
     readOnly: false,
   });
   return (
-    <Fragment>
+    <>
       <DatasetSettings current={settings} onChange={setSettings} />
       <div style={{ height: "100vh", overflow: "hidden" }}>
         <Dataset datasetName={settings.dataset} readOnly={settings.readOnly} />
       </div>
-    </Fragment>
+    </>
   );
 }
 

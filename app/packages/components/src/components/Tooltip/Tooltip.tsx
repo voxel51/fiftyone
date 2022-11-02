@@ -52,8 +52,8 @@ const Tooltip = <P extends React.HTMLAttributes<T>, T extends HTMLElement>({
               {text}
               <Arrow
                 {...arrowProps}
-                backgroundColor={theme.backgroundDark}
-                borderColor={theme.backgroundDarkBorder}
+                backgroundColor={theme.background.level2}
+                borderColor={theme.primary.plainBorder}
                 borderWidth={1}
                 size={6}
               />

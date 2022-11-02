@@ -30,7 +30,7 @@
   height: 1em;
   margin: 0 2px 0;
   padding: 3px;
-  color: white;
+  color: var(--joy-palette-text-primary);
   font-size: 14px;
   line-height: 12px;
   border-radius: 3px;
@@ -46,5 +46,5 @@
 }
 
 .lookerTags > div > a {
-  color: white;
+  color: var(--joy-palette-text-primary);
 }

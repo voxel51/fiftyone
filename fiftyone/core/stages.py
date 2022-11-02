@@ -1305,15 +1305,24 @@ class Exists(ViewStage):
             self._field
         )
 
+        if is_frame_field and not field_name:
+            if self._bool:
+                expr = F("frames").length() > 0
+            else:
+                expr = F("frames").length() == 0
+
+            return [{"$match": {"$expr": expr.to_mongo()}}]
+
         if not is_frame_field:
             expr = F(field_name).exists(self._bool)
             return [{"$match": {"$expr": expr.to_mongo()}}]
 
-        expr = F("frames").filter(F(field_name).exists(self._bool))
-        return [
-            {"$set": {"frames": expr.to_mongo()}},
-            {"$match": {"$expr": (F("frames").length() > 0).to_mongo()}},
-        ]
+        if self._bool:
+            expr = F("frames").filter(F(field_name).exists()).length() > 0
+        else:
+            expr = F("frames").filter(F(field_name).exists()).length() == 0
+
+        return [{"$match": {"$expr": expr.to_mongo()}}]
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -4557,11 +4566,8 @@ def _replace_prefix(val, old, new):
 
 
 class MatchTags(ViewStage):
-    """Returns a view containing the samples in the collection that have (or do
-    not have) any of the given tag(s).
-
-    To match samples that must contain multiple tags, chain multiple
-    :class:`MatchTags` stages together.
+    """Returns a view containing the samples in the collection that have or
+    don't have any/all of the given tag(s).
 
     Examples::
 
@@ -4570,20 +4576,10 @@ class MatchTags(ViewStage):
         dataset = fo.Dataset()
         dataset.add_samples(
             [
-                fo.Sample(
-                    filepath="/path/to/image1.png",
-                    tags=["train"],
-                    ground_truth=fo.Classification(label="cat"),
-                ),
-                fo.Sample(
-                    filepath="/path/to/image2.png",
-                    tags=["test"],
-                    ground_truth=fo.Classification(label="cat"),
-                ),
-                fo.Sample(
-                    filepath="/path/to/image3.png",
-                    ground_truth=None,
-                ),
+                fo.Sample(filepath="image1.png", tags=["train"]),
+                fo.Sample(filepath="image2.png", tags=["test"]),
+                fo.Sample(filepath="image3.png", tags=["train", "test"]),
+                fo.Sample(filepath="image4.png"),
             ]
         )
 
@@ -4595,26 +4591,49 @@ class MatchTags(ViewStage):
         view = dataset.add_stage(stage)
 
         #
-        # Only include samples that have either the "test" or "train" tag
+        # Only include samples that do not have the "test" tag
+        #
+
+        stage = fo.MatchTags("test", bool=False)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples that have the "test" or "train" tags
         #
 
         stage = fo.MatchTags(["test", "train"])
         view = dataset.add_stage(stage)
 
         #
-        # Only include samples that do not have the "train" tag
+        # Only include samples that have the "test" and "train" tags
         #
 
-        stage = fo.MatchTags("train", bool=False)
+        stage = fo.MatchTags(["test", "train"], all=True)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples that do not have the "test" or "train" tags
+        #
+
+        stage = fo.MatchTags(["test", "train"], bool=False)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples that do not have the "test" and "train" tags
+        #
+
+        stage = fo.MatchTags(["test", "train"], bool=False, all=True)
         view = dataset.add_stage(stage)
 
     Args:
         tags: the tag or iterable of tags to match
         bool (None): whether to match samples that have (None or True) or do
             not have (False) the given tags
+        all (False): whether to match samples that have (or don't have) all
+            (True) or any (None or False) of the given tags
     """
 
-    def __init__(self, tags, bool=None):
+    def __init__(self, tags, bool=None, all=False):
         if etau.is_str(tags):
             tags = [tags]
         else:
@@ -4625,6 +4644,7 @@ class MatchTags(ViewStage):
 
         self._tags = tags
         self._bool = bool
+        self._all = all
 
     @property
     def tags(self):
@@ -4638,14 +4658,31 @@ class MatchTags(ViewStage):
         """
         return self._bool
 
+    @property
+    def all(self):
+        """Whether to match samples that have (or don't have) all (True) or any
+        (False) of the given tags.
+        """
+        return self._all
+
     def to_mongo(self, _):
         if self._bool:
+            if self._all:
+                # All of the tags
+                return [{"$match": {"tags": {"$all": self._tags}}}]
+
+            # Any of the tags
             return [{"$match": {"tags": {"$in": self._tags}}}]
 
+        if self._all:
+            # Not all of the tags
+            return [{"$match": {"tags": {"$not": {"$all": self._tags}}}}]
+
+        # Not any of the tags
         return [{"$match": {"tags": {"$nin": self._tags}}}]
 
     def _kwargs(self):
-        return [["tags", self._tags], ["bool", self._bool]]
+        return [["tags", self._tags], ["bool", self._bool], ["all", self._all]]
 
     @classmethod
     def _params(cls):
@@ -4660,6 +4697,12 @@ class MatchTags(ViewStage):
                 "type": "bool",
                 "default": "None",
                 "placeholder": "bool (default=None)",
+            },
+            {
+                "name": "all",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "all (default=False)",
             },
         ]
 

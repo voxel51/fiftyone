@@ -1,30 +1,30 @@
 {
-    "name": "@fiftyone/utilities",
-    "author": "Voxel51, Inc.",
-    "version": "0.0.0",
-    "description": "Generic JavaScript utilities for the FiftyOne monorepo",
-    "homepage": "https://github.com/voxel51/fiftyone/app/packages/utilities",
-    "license": "Apache-2.0",
-    "bugs": {
-        "url": "https://github.com/voxel51/fiftyone/"
-    },
-    "main": "./src/index.ts",
-    "scripts": {
-        "dev": "vite"
-    },
-    "files": [
-        "dist",
-        "README.md"
-    ],
-    "devDependencies": {
-        "prettier": "^2.7.1",
-        "typescript": "^4.7.4",
-        "typescript-plugin-css-modules": "^3.4.0",
-        "vite": "^3.0.0"
-    },
-    "dependencies": {
-        "@microsoft/fetch-event-source": "^2.0.1",
-        "lodash": "^4.17.21",
-        "mime": "^2.5.2"
-    }
+  "name": "@fiftyone/utilities",
+  "author": "Voxel51, Inc.",
+  "version": "0.0.0",
+  "description": "Generic JavaScript utilities for the FiftyOne monorepo",
+  "homepage": "https://github.com/voxel51/fiftyone/app/packages/utilities",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/voxel51/fiftyone/"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "vite"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "devDependencies": {
+    "prettier": "^2.7.1",
+    "typescript": "^4.7.4",
+    "typescript-plugin-css-modules": "^3.4.0",
+    "vite": "^3.0.0"
+  },
+  "dependencies": {
+    "@microsoft/fetch-event-source": "^2.0.1",
+    "lodash": "^4.17.21",
+    "mime": "^2.5.2"
+  }
 }

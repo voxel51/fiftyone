@@ -6264,7 +6264,7 @@ def _save_view(view, fields=None):
         frame_fields = dataset._handle_db_fields(frame_fields, frames=True)
 
     save_samples = sample_fields or all_fields
-    save_frames = frame_fields or all_fields
+    save_frames = contains_videos and (frame_fields or all_fields)
 
     # Must retrieve IDs now in case view changes after saving
     sample_ids = view.values("id")
@@ -6294,7 +6294,7 @@ def _save_view(view, fields=None):
     # Save frames
     #
 
-    if contains_videos:
+    if save_frames:
         # The view may modify the frames, so we route the frames through the
         # sample collection
         pipeline = view._pipeline(frames_only=True)
@@ -6313,7 +6313,7 @@ def _save_view(view, fields=None):
             pipeline.append({"$project": {f: True for f in frame_fields}})
             pipeline.append({"$merge": dataset._frame_collection_name})
             foo.aggregate(dataset._sample_collection, pipeline)
-        elif save_frames:
+        else:
             pipeline.append(
                 {
                     "$merge": {
@@ -6333,7 +6333,7 @@ def _save_view(view, fields=None):
             dataset._sample_collection_name, sample_ids=sample_ids
         )
 
-    if contains_videos and save_frames:
+    if save_frames:
         fofr.Frame._reload_docs(
             dataset._frame_collection_name, sample_ids=sample_ids
         )
