@@ -25,7 +25,7 @@ class View(HTTPEndpoint):
         dataset = fo.load_dataset(datasetName)
         if not dataset:
             return None
-        viewName = request.query_params["view_name"]
+        viewName = request.query_params["view"]
         view = dataset.load_view(viewName)
         return view
 

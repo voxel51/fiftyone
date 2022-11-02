@@ -166,14 +166,14 @@ type Mutation {
   setView(
     subscription: String!
     session: String
-    stages: BSONArray!
-    viewName: String
+    view: BSONArray!
+    dataset: String
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
   setGroupSlice(
     subscription: String!
     session: String
-    stages: BSONArray!
+    view: BSONArray!
     slice: String!
   ): Dataset!
 }

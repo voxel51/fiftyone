@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f15e802552f6a8f2316f1bed732f80b7>>
+ * @generated SignedSource<<09368f88e4658c2fa2b762b1214c1792>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -100,6 +100,14 @@ export type setViewMutation$data = {
       readonly version: string | null;
       readonly viewCls: string | null;
       readonly viewName: string | null;
+      readonly views: ReadonlyArray<{
+        readonly color: string | null;
+        readonly datasetId: string;
+        readonly description: string | null;
+        readonly name: string;
+        readonly urlName: string;
+        readonly viewStages: ReadonlyArray<string>;
+      }>;
     };
     readonly view: Array;
   };
@@ -500,6 +508,47 @@ v15 = [
           {
             "alias": null,
             "args": null,
+            "concreteType": "SavedView",
+            "kind": "LinkedField",
+            "name": "views",
+            "plural": true,
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "datasetId",
+                "storageKey": null
+              },
+              (v4/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "urlName",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "description",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "color",
+                "storageKey": null
+              },
+              (v11/*: any*/)
+            ],
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
             "concreteType": "NamedKeypointSkeleton",
             "kind": "LinkedField",
             "name": "skeletons",
@@ -617,16 +666,16 @@ return {
     "selections": (v15/*: any*/)
   },
   "params": {
-    "cacheID": "1b85e380c7a1513c5388e9424b7caff5",
+    "cacheID": "0d447895c3fcc0ddf76a3759bf9de9ac",
     "id": null,
     "metadata": {},
     "name": "setViewMutation",
     "operationKind": "mutation",
-    "text": "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $dataset: String!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, dataset: $dataset) {\n    dataset {\n      id\n      name\n      mediaType\n      groupSlice\n      defaultGroupSlice\n      groupField\n      groupMediaTypes {\n        name\n        mediaType\n      }\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      viewName\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n      appConfig {\n        gridMediaField\n        mediaFields\n        plugins\n        sidebarGroups {\n          name\n          paths\n        }\n      }\n    }\n    view\n  }\n}\n"
+    "text": "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $dataset: String!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, dataset: $dataset) {\n    dataset {\n      id\n      name\n      mediaType\n      groupSlice\n      defaultGroupSlice\n      groupField\n      groupMediaTypes {\n        name\n        mediaType\n      }\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      viewName\n      views {\n        datasetId\n        name\n        urlName\n        description\n        color\n        viewStages\n      }\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n      appConfig {\n        gridMediaField\n        mediaFields\n        plugins\n        sidebarGroups {\n          name\n          paths\n        }\n      }\n    }\n    view\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e5232de3039fd1a7f43228cb838edb6b";
+(node as any).hash = "0805ce9a16998a2feb0576f945f62989";
 
 export default node;
