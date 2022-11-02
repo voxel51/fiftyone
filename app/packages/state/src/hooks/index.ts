@@ -26,3 +26,4 @@ export * from "./useOnSelectLabel";
 export * from "./useStateUpdate";
 export { default as useTo } from "./useTo";
 export { default as useUpdateSample } from "./useUpdateSample";
+export { default as useHover } from "./useHover";

@@ -9,8 +9,10 @@ import { scrollbarStyles } from "../utils";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { replace } from "./Entries/GroupEntries";
-import { useTheme } from "@fiftyone/components";
+import { useTheme, Selection } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { Box } from "@material-ui/core";
+import ViewSelection from "./ViewSelection";
 const MARGIN = 3;
 
 const fn = (
@@ -705,6 +707,11 @@ const InteractiveSidebar = ({
           : undefined,
       }}
     >
+      {!modal && (
+        <Box style={{ padding: 8, paddingLeft: 16, paddingRight: 16 }}>
+          <ViewSelection />
+        </Box>
+      )}
       <SidebarColumn
         ref={container}
         onScroll={({ target }) => {
