@@ -14,6 +14,13 @@ export const datasetName = selector<string>({
   },
 });
 
+export const viewName = selector<string>({
+  key: "viewName",
+  get: ({ get }) => {
+    return get(atoms.view)?.name;
+  },
+});
+
 export const isNotebook = selector<boolean>({
   key: "isNotebook",
   get: () => {

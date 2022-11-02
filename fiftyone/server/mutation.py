@@ -34,6 +34,7 @@ class SelectedLabel:
 class ViewResponse:
     view: BSONArray
     dataset: Dataset
+    viewName: t.Optional[str] = None
 
 
 @gql.type
@@ -85,19 +86,26 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
-        view: BSONArray,
-        dataset: str,
+        stages: BSONArray,
+        view_name: t.Optional[str],
         info: Info,
     ) -> ViewResponse:
         state = get_state()
         state.selected = []
         state.selected_labels = []
-        state.view = fov.DatasetView._build(state.dataset, view)
+        if view_name and state.dataset.has_view(view_name):
+            state.view = state.dataset.load_view(view_name)
+        else:
+            state.view = fov.DatasetView._build(state.dataset, stages)
         await dispatch_event(subscription, StateUpdate(state=state))
         dataset = await Dataset.resolver(
-            state.dataset.name, view, view.name, info
+            state.dataset.name, stages, state.view.name, info
         )
-        return ViewResponse(view=state.view._serialize(), dataset=dataset)
+        return ViewResponse(
+            stages=state.view._serialize(),
+            dataset=dataset,
+            view_name=view_name,
+        )
 
     @gql.mutation
     async def store_teams_submission(self) -> bool:
@@ -117,5 +125,5 @@ class Mutation:
         state.dataset.group_slice = slice
         await dispatch_event(subscription, StateUpdate(state=state))
         return await Dataset.resolver(
-            state.dataset.name, view, view.name, info
+            state.dataset.name, view, state.viewName, info
         )

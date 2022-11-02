@@ -273,6 +273,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selectedLabels: [],
   showConfidence: false,
   showControls: true,
+  showHelp: false,
   showIndex: false,
   showJSON: false,
   showLabel: false,

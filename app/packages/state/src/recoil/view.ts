@@ -2,6 +2,7 @@ import { atom, selector } from "recoil";
 
 import { State } from "./types";
 
+// TODO: rename to stage for clarity?
 export const view = atom<State.Stage[]>({
   key: "view",
   default: [],
@@ -16,6 +17,8 @@ export const viewName = atom<string>({
   key: "viewName",
   default: null,
 });
+
+// TODO: do we need to pull in viewName here?
 export const isRootView = selector<boolean>({
   key: "isRootView",
   get: ({ get }) =>

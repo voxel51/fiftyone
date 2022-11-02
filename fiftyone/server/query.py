@@ -189,9 +189,6 @@ class Dataset:
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
         doc["views"] = doc.get("views", [])
-        # doc["view_names"] = [
-        #     viewDoc["name"] for viewDoc in doc.get("views", [])
-        # ]
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -391,6 +388,7 @@ def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
             ]
 
             data.view_cls = etau.get_class_name(view)
+            # if view.is_saved()
             data.view_name = view.name
 
         if view.media_type != data.media_type:

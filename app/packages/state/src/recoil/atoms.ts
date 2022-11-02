@@ -127,6 +127,12 @@ export const dataset = atom<State.Dataset>({
   default: null,
 });
 
+// TODO: use a better name than view
+export const view = atom<State.View>({
+  key: "view",
+  default: null,
+});
+
 export const selectedLabels = atom<State.SelectedLabelMap>({
   key: "selectedLabels",
   default: {},

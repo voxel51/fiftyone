@@ -77,6 +77,14 @@ export default graphql`
         version
         viewCls
         viewName
+        views {
+          datasetId
+          name
+          urlName
+          description
+          color
+          viewStages
+        }
         skeletons {
           name
           labels

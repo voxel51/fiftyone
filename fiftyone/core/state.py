@@ -59,6 +59,7 @@ class StateDescription(etas.Serializable):
                         json_util.dumps(self.view._serialize())
                     )
                     d["view_cls"] = etau.get_class_name(self.view)
+                    d["view_name"] = self.view.name
 
                 view = self.view if self.view is not None else self.dataset
                 if view.media_type == fom.GROUP:

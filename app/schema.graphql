@@ -166,14 +166,14 @@ type Mutation {
   setView(
     subscription: String!
     session: String
-    view: BSONArray!
-    dataset: String!
+    stages: BSONArray!
+    viewName: String
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
   setGroupSlice(
     subscription: String!
     session: String
-    view: BSONArray!
+    stages: BSONArray!
     slice: String!
   ): Dataset!
 }
@@ -309,4 +309,5 @@ type VideoSample implements Sample {
 type ViewResponse {
   view: BSONArray!
   dataset: Dataset!
+  viewName: String
 }

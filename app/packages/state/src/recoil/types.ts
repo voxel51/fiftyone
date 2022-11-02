@@ -109,6 +109,16 @@ export namespace State {
     defaultGroupSlice: string;
     groupField: string;
     appConfig: DatasetAppConfig;
+    views: View[];
+  }
+
+  export interface View {
+    datasetId;
+    name;
+    urlName;
+    description;
+    color;
+    viewStages;
   }
 
   export interface Filter {}
