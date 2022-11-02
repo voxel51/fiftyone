@@ -334,11 +334,6 @@ to update a field's metadata at any time:
     field = dataset.get_field("ground_truth.detections.area")
     print(field.description)  # Area of the box, in pixels^2
 
-.. note::
-
-    Did you know? You can view/edit field metadata directly
-    :ref:`in the App <fiftyone-app>`!
-
 .. _custom-app-config:
 
 Custom App config
