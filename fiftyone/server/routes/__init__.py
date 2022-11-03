@@ -29,7 +29,7 @@ from .values import Values
 routes = [
     ("/aggregate", Aggregate),
     ("/aggregations", Aggregations),
-    ("/coloscales", Colorscales),
+    ("/colorscales", Colorscales),
     ("/distributions", Distributions),
     ("/event", Event),
     ("/events", Events),
