@@ -123,6 +123,9 @@ def get_file_system(path):
     Returns:
         a :class:`FileSystem` enum
     """
+    if not path:
+        return FileSystem.LOCAL
+
     # Check MinIO first in case alias/endpoint clashes with another file system
     if (
         minio_alias_prefix is not None and path.startswith(minio_alias_prefix)
