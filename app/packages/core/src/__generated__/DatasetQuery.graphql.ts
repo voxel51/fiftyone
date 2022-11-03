@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0b2970abf6649f5c311edb3e2ad6445c>>
+ * @generated SignedSource<<b59dd36df47b7a9df4d75e3ea7064b85>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -64,7 +64,7 @@ export type DatasetQuery$data = {
       readonly ftype: string;
       readonly path: string;
       readonly subfield: string | null;
-    }>;
+    }> | null;
     readonly groupField: string | null;
     readonly groupMediaTypes: ReadonlyArray<{
       readonly mediaType: MediaType;

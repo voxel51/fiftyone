@@ -17,6 +17,15 @@ type AppConfig {
 
 scalar BSONArray
 
+type BoolCountValuesResponse {
+  values: [BoolValueCount!]!
+}
+
+type BoolValueCount {
+  count: Int!
+  value: Boolean
+}
+
 type BrainRun implements Run {
   key: String!
   version: String
@@ -38,6 +47,8 @@ enum ColorBy {
   label
 }
 
+union CountValuesResponses = BoolCountValuesResponse | IntCountValuesResponse | StrCountValuesResponse
+
 type Dataset {
   id: ID!
   name: String!
@@ -52,7 +63,7 @@ type Dataset {
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!
-  frameFields: [SampleField!]!
+  frameFields: [SampleField!]
   brainMethods: [BrainRun!]!
   evaluations: [EvaluationRun!]!
   version: String
@@ -89,15 +100,21 @@ type DatasetStrPageInfo {
   endCursor: String
 }
 
-"""
-Date (isoformat)
-"""
+"""Date (isoformat)"""
 scalar Date
 
-"""
-Date with time (isoformat)
-"""
+"""Date with time (isoformat)"""
 scalar DateTime
+
+type DatetimeHistogramValue {
+  count: Int!
+  min: DateTime!
+  max: DateTime!
+}
+
+type DatetimeHistogramValuesResponse {
+  values: [DatetimeHistogramValue!]!
+}
 
 type EvaluationRun implements Run {
   key: String!
@@ -114,6 +131,16 @@ type EvaluationRunConfig implements RunConfig {
   method: String
 }
 
+type FloatHistogramValue {
+  count: Int!
+  min: Float!
+  max: Float!
+}
+
+type FloatHistogramValuesResponse {
+  values: [FloatHistogramValue!]!
+}
+
 type Group {
   name: String!
   mediaType: MediaType!
@@ -124,11 +151,32 @@ input GroupElementFilter {
   slice: String = null
 }
 
+union HistogramValuesResponses = DatetimeHistogramValuesResponse | IntHistogramValuesResponse | FloatHistogramValuesResponse
+
 type ImageSample implements Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!
   aspectRatio: Float!
+}
+
+type IntCountValuesResponse {
+  values: [IntValueCount!]!
+}
+
+type IntHistogramValue {
+  count: Int!
+  min: Int!
+  max: Int!
+}
+
+type IntHistogramValuesResponse {
+  values: [IntHistogramValue!]!
+}
+
+type IntValueCount {
+  count: Int!
+  value: Int
 }
 
 scalar JSON
@@ -152,29 +200,11 @@ type MediaURL {
 
 type Mutation {
   setDataset(subscription: String!, session: String, name: String): Boolean!
-  setSelected(
-    subscription: String!
-    session: String
-    selected: [String!]!
-  ): Boolean!
-  setSelectedLabels(
-    subscription: String!
-    session: String
-    selectedLabels: [SelectedLabel!]!
-  ): Boolean!
-  setView(
-    subscription: String!
-    session: String
-    view: BSONArray!
-    dataset: String!
-  ): ViewResponse!
+  setSelected(subscription: String!, session: String, selected: [String!]!): Boolean!
+  setSelectedLabels(subscription: String!, session: String, selectedLabels: [SelectedLabel!]!): Boolean!
+  setView(subscription: String!, session: String, view: BSONArray!, dataset: String!): ViewResponse!
   storeTeamsSubmission: Boolean!
-  setGroupSlice(
-    subscription: String!
-    session: String
-    view: BSONArray!
-    slice: String!
-  ): Dataset!
+  setGroupSlice(subscription: String!, session: String, view: BSONArray!, slice: String!): Dataset!
 }
 
 type NamedKeypointSkeleton {
@@ -195,24 +225,16 @@ type PointCloudSample implements Sample {
 }
 
 type Query {
-  datasets(
-    search: String
-    first: Int = 200
-    after: String = null
-  ): DatasetStrConnection!
+  countValues(datasetName: String!, view: BSONArray!, path: String!): CountValuesResponses!
+  histogramValues(datasetName: String!, view: BSONArray!, path: String!): HistogramValuesResponses!
+  datasets(search: String, first: Int = 200, after: String = null): DatasetStrConnection!
   colorscale: [[Int!]!]
   config: AppConfig!
   context: String!
   dev: Boolean!
   doNotTrack: Boolean!
   dataset(name: String!, view: BSONArray): Dataset
-  samples(
-    dataset: String!
-    view: BSONArray!
-    first: Int = 20
-    after: String = null
-    filter: SampleFilter = null
-  ): SampleItemStrConnection!
+  samples(dataset: String!, view: BSONArray!, first: Int = 20, after: String = null, filter: SampleFilter = null): SampleItemStrConnection!
   sample(dataset: String!, view: BSONArray!, filter: SampleFilter!): SampleItem
   teamsSubmission: Boolean!
   uid: String!
@@ -280,6 +302,15 @@ input SelectedLabel {
 type SidebarGroup {
   name: String!
   paths: [String!]
+}
+
+type StrCountValuesResponse {
+  values: [StrValueCount!]!
+}
+
+type StrValueCount {
+  count: Int!
+  value: String
 }
 
 type Target {

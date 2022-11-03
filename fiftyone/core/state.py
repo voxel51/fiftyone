@@ -8,6 +8,9 @@ Defines the shared state between the FiftyOne App and backend.
 from bson import json_util
 import json
 import logging
+import typing as t
+
+import strawberry as gql
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -54,11 +57,20 @@ class StateDescription(etas.Serializable):
 
             if self.dataset is not None:
                 d["dataset"] = self.dataset.name
+                collection = self.dataset
                 if self.view is not None:
+                    collection = self.view
                     d["view"] = json.loads(
                         json_util.dumps(self.view._serialize())
                     )
                     d["view_cls"] = etau.get_class_name(self.view)
+
+                d["sample_fields"] = serialize_fields(
+                    collection.get_field_schema(flat=True)
+                )
+                d["frame_fields"] = serialize_fields(
+                    collection.get_frame_field_schema(flat=True)
+                )
 
                 view = self.view if self.view is not None else self.dataset
                 if view.media_type == fom.GROUP:
@@ -122,3 +134,33 @@ class StateDescription(etas.Serializable):
             selected_labels=d.get("selected_labels", []),
             view=view,
         )
+
+
+@gql.type
+class SampleField:
+    ftype: str
+    path: str
+    subfield: t.Optional[str]
+    embedded_doc_type: t.Optional[str]
+    db_field: t.Optional[str]
+
+
+def serialize_fields(schema: t.Dict) -> t.List[SampleField]:
+    return (
+        [
+            SampleField(
+                path=path,
+                db_field=field.db_field,
+                ftype=etau.get_class_name(field),
+                embedded_doc_type=etau.get_class_name(field.document_type)
+                if isinstance(field, fo.EmbeddedDocumentField)
+                else None,
+                subfield=etau.get_class_name(field.field)
+                if isinstance(field, (fo.DictField, fo.ListField))
+                else None,
+            )
+            for path, field in schema.items()
+        ]
+        if schema
+        else []
+    )

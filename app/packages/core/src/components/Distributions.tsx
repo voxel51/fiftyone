@@ -20,8 +20,9 @@ import {
   DATE_TIME_FIELD,
   getFetchFunction,
 } from "@fiftyone/utilities";
-import { extendedStagesUnsorted } from "@fiftyone/state";
+import { distribution, extendedStagesUnsorted } from "@fiftyone/state";
 import { useTheme } from "@fiftyone/components";
+import { graphQLSelector } from "recoil-relay";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -208,32 +209,10 @@ interface Distribution {
   ticks: number;
 }
 
-const distributions = selectorFamily<Distribution[], string>({
-  key: "distributions",
-  get:
-    (group) =>
-    async ({ get }) => {
-      get(fos.refresher);
-      const { distributions } = await getFetchFunction()(
-        "POST",
-        "/distributions",
-        {
-          group: group.toLowerCase(),
-          limit: LIMIT,
-          view: get(fos.view),
-          dataset: get(fos.datasetName),
-          filters: get(fos.filters),
-          extended: get(extendedStagesUnsorted),
-        }
-      );
-
-      return distributions as Distribution[];
-    },
-});
-
 const Distributions = ({ group }: { group: string }) => {
-  const data = useRecoilValueLoadable(distributions(group));
+  const data = useRecoilValueLoadable(distribution(group));
 
+  console.log(data);
   if (data.state === "loading") {
     return <Loading />;
   }

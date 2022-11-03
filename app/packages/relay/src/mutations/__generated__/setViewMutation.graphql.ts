@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d5399e5240f01306c6279b528da9ecb0>>
+ * @generated SignedSource<<da96a82a561375cac5a57b6a2bb55bb6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -67,7 +67,7 @@ export type setViewMutation$data = {
         readonly ftype: string;
         readonly path: string;
         readonly subfield: string | null;
-      }>;
+      }> | null;
       readonly groupField: string | null;
       readonly groupMediaTypes: ReadonlyArray<{
         readonly mediaType: MediaType;
