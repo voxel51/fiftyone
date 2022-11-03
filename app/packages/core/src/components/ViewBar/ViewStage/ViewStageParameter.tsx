@@ -11,6 +11,8 @@ import { useEventHandler, useObserve, useOutsideClick } from "@fiftyone/state";
 import ErrorMessage from "./ErrorMessage";
 import SearchResults from "./SearchResults";
 import { useTheme } from "@fiftyone/components";
+import { theme as themeState } from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
 
 const ViewStageParameterContainer = styled.div`
   display: flex;
@@ -150,6 +152,7 @@ const ObjectEditor = ({
   const [stageState] = useService(stageRef);
   const theme = useContext(ThemeContext);
   const containerRef = useRef(null);
+  const themeMode = useRecoilValue(themeState);
 
   const { active, value } = state.context;
 
@@ -199,6 +202,7 @@ const ObjectEditor = ({
     state.matches("editing"),
     active,
     stageState.matches("focusedViewBar.yes"),
+    themeMode,
   ]);
 
   const attach = () => {
