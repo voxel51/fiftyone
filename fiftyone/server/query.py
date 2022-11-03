@@ -72,6 +72,8 @@ class SampleField:
     subfield: t.Optional[str]
     embedded_doc_type: t.Optional[str]
     db_field: t.Optional[str]
+    description: t.Optional[str]
+    info: t.Optional[JSON]
 
 
 @gql.interface

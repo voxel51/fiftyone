@@ -31,6 +31,8 @@ const DatasetQuery = graphql`
         embeddedDocType
         path
         dbField
+        description
+        info
       }
       frameFields {
         ftype

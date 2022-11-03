@@ -47,10 +47,15 @@ import {
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { NameAndCountContainer, PillButton } from "../../utils";
-import { useTheme } from "@fiftyone/components";
+import { useTheme, InfoIcon, Theme } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
+<<<<<<< HEAD
 import Color from "color";
+=======
+import styled from 'styled-components';
+import ExternalLink from "@fiftyone/components/src/components/ExternalLink";
+>>>>>>> beb5a3bca (initial field app info)
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",
@@ -292,6 +297,8 @@ const FilterableEntry = React.memo(
     if (!field) {
       return null;
     }
+    
+    const entryInfo = useEntryInfo(field, {color, expandedPath});
 
     return (
       <RegularEntry
@@ -317,10 +324,14 @@ const FilterableEntry = React.memo(
                 key="checkbox"
               />
             )}
-            <NameAndCountContainer>
-              <span key="path">{path}</span>
+            <NameAndCountContainer {...entryInfo.iconContainerMouseEvents} ref={entryInfo.target}>
+              <span key="path">
+                {path}
+              </span>
+              {entryInfo.isVisible && <EntryInfo {...entryInfo}  />}
               {hidden}
               <PathEntryCounts key="count" modal={modal} path={expandedPath} />
+              
               {!disabled &&
                 expandable.state !== "loading" &&
                 expandable.contents && (
@@ -342,13 +353,6 @@ const FilterableEntry = React.memo(
           </>
         }
         onClick={!disabled ? () => setActive(!active) : null}
-        title={`${path} (${
-          field.embeddedDocType
-            ? field.embeddedDocType
-            : field.subfield
-            ? `${field.ftype}(${field.subfield})`
-            : field.ftype
-        })`}
         trigger={trigger}
       >
         <Suspense fallback={null}>
@@ -367,5 +371,240 @@ const FilterableEntry = React.memo(
     );
   }
 );
+
+function useEntryInfo(field, {expandedPath, color}) {
+  const target = useRef();
+  const [open, setOpen] = useState(false);
+  const timer = useRef();
+  const [isVisible, setVisible] = useState(false);
+
+  return {
+    isVisible,
+    open,
+    iconMouseEvents: {
+      onMouseOver() {
+        setOpen(true);
+        setVisible(true);
+      },
+      onMouseOut() {
+        setOpen(false);
+      },
+    },
+    iconContainerMouseEvents: {
+      onMouseOver() {
+        timer.current = setTimeout(() => setVisible(true), 1000);
+      },
+      onMouseOut() {
+        if (timer.current) clearTimeout(timer.current);
+        setVisible(false);
+      },
+    },
+    target,
+    field,
+    expandedPath,
+    color,
+  }
+}
+
+function EntryInfo({open, iconMouseEvents, matched, ...props}) {
+  const theme = useTheme();
+  const color = theme.font // : theme.fontDark;
+  return (
+    <>
+      <InfoIcon className='entryInfoIcon' style={{color}} {...iconMouseEvents} />
+      {open && <EntryInfoExpanded {...props} />}
+    </>
+  );
+}
+
+const EntryInfoExpandedContainer = styled.div`
+  background: ${({ theme }) => theme.backgroundLight};
+  border: 1px solid ${({ theme }) => theme.backgroundDark};
+  // border-radius: 5px;
+  padding: 0 0.5rem 0.5rem 0.5rem;
+  box-shadow: 0 0 5px ${({ theme }) => theme.backgroundDark};
+  border-left: 3px solid ${({color}) => color};
+`
+const EntryInfoTitle = styled.div`
+  font-weight: bold;
+  margin-top: -24px;
+  margin-left: -0.7rem;
+  > span {
+    font-size: 1.2rem;
+    display: inline-block;
+    background: ${({ theme }) => theme.backgroundLight};
+    padding: 0 1rem 0 1rem;
+    height: 24px;
+    border: 1px solid ${({ theme }) => theme.backgroundDark};
+    border-bottom: none;
+    border-left: 3px solid ${({color}) => color};
+  }
+`
+
+const EntryInfoDesc = styled.div`
+  font-size: 1rem;
+  margin: 0 0.5rem;
+`
+
+const EntryInfoHoverTarget = styled.div`
+  position: absolute;
+  width: 400px;
+  padding-left: 1rem;
+`
+
+function EntryInfoExpanded({field, target, color, expandedPath}) {
+  const el = useRef<HTMLElement>();
+
+  useEffect(() => {
+    if (!el.current) return;
+    const targetBounds = target.current.getBoundingClientRect();
+    const selfBounds = el.current.getBoundingClientRect();
+    const top = targetBounds.top - selfBounds.height / 2 + targetBounds.height / 2;
+    const left = targetBounds.left + targetBounds.width + 10;
+    el.current.style.top = top + 'px';
+    el.current.style.left = (left - 16) + 'px';
+  }, [field]);
+  if (!target.current) return null;
+
+  return ReactDOM.createPortal(
+    <EntryInfoHoverTarget ref={el}>
+      <EntryInfoExpandedContainer color={color}>
+        <EntryInfoTitle color={color}><span>{field.path}</span></EntryInfoTitle>
+        {field.description && <EntryInfoDesc>{field.description}</EntryInfoDesc>}
+        <EntryInfoTable {...field} type={field.embeddedDocType || field.ftype} expandedPath={expandedPath}  />
+      </EntryInfoExpandedContainer>
+    </EntryInfoHoverTarget>,
+    document.body
+  );
+}
+
+// a styled.table that uses the theme
+// to render a table with alternating
+// background colors for rows
+// and spaces out the rows and columns
+const EntryInfoTableContainer = styled.table`
+  border-collapse: collapse;
+  width: 100%;
+  td,
+  th {
+    padding: 0.1rem 0.5rem;
+    border: 1px solid ${({ theme }) => theme.border};
+  }
+  tr:nth-child(even) {
+    background: ${({ theme }) => theme.backgroundLight};
+  }
+  tr:nth-child(odd) {
+    background: ${({ theme }) => theme.backgroundDark};
+  }
+`;
+
+// a styled div that displays a count in italics
+const EntryCount = styled.div`
+  font-size: 0.9rem;
+  font-style: italic;
+  // margin: 0.5rem 0 0.5rem 0;
+`;
+
+function entryKeyToLabel(key) {
+  switch (key) {
+    case "embeddedDocType":
+      return "type";
+  }
+  return key;
+}
+
+// a react componont that renders a table
+// given an object where the keys are the first column
+// and the values are the second column
+function EntryInfoTable({info, type, expandedPath, subfield}) {
+  info = info || {}
+  const tableData = info;
+  const matchingName = type.includes('.labels.') ? 'labels' : 'samples';
+  return (
+    <EntryInfoTableContainer>
+      <tbody>
+        <tr>
+          <td>count</td>
+          <td><EntryCount>found <PathEntryCounts key="count" path={expandedPath} /> {matchingName}</EntryCount></td>
+        </tr>
+        {type && <tr>
+          <td>type</td>
+          <td><LinkToType type={type} subfield={subfield} /></td>
+        </tr>}
+        {Object.entries(tableData).filter(keyValueIsRenderable).map(([key, value]) => (
+          <tr key={key}>
+            <td>{entryKeyToLabel(key)}</td>
+            <td><LinkOrValue value={value} /></td>
+          </tr>
+        ))}
+      </tbody>
+    </EntryInfoTableContainer>
+  );
+}
+
+function keyValueIsRenderable([key, value]) {
+  if (value === undefined || value === null )
+    return true;
+
+  switch (typeof value) {
+    case "string":
+    case "number":
+    case "boolean":
+      return true;
+    default:
+      return false;
+  }
+}
+    
+
+
+function convertTypeToDocLink(type) {
+  const parts = type.split(".");
+  const modulePath = [];
+  let className = null;
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    const partLower = part.toLowerCase();
+    if (partLower !== part) {
+      className = part;
+    } else {
+      modulePath.push(part);
+    }
+  }
+  const fullPath = [...modulePath, className].join(".");
+
+  const BASE = 'https://voxel51.com/docs/fiftyone/api/'
+  
+  if (className) {
+    return {
+      href: `${BASE}${modulePath.join('.')}.html#${fullPath}`,
+      label: className
+    }
+  }
+  return {
+    href: `${BASE}${modulePath.join('.')}.html`,
+    label: modulePath.join('.')
+  }
+}
+
+function LinkToType({type, subfield}) {
+  const theme = useTheme();
+  const {href, label} = convertTypeToDocLink(type);
+  return (
+    <ExternalLink style={{color: theme.font}} href={href}>
+      {label} {subfield ? `(${subfield})` : null}
+    </ExternalLink>
+  )
+}
+
+// a react component that returns a link
+// if the given value is a string that is a valid url
+// otherwise it returns the value
+function LinkOrValue({value}) {
+  const theme = useTheme();
+  if (typeof value !== 'string') return value;
+  if (!value.startsWith('http')) return value;
+  return <ExternalLink style={{color: theme.font}} href={value}>{value}</ExternalLink>
+}
 
 export default React.memo(FilterableEntry);

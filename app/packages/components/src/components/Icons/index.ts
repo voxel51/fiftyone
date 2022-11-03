@@ -8,4 +8,5 @@ export {
   IconButton,
   Close,
   Copy,
+  InfoIcon
 } from "./Icons";

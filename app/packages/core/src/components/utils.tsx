@@ -340,11 +340,14 @@ export const NameAndCountContainer = styled.div`
   }
 
   & > span:first-child {
-    flex: 1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     margin-left: 6px;
+  }
+
+  & > .entryInfoIcon {
+    margin-right: auto;
   }
 
   & span {
