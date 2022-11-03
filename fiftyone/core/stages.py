@@ -4850,16 +4850,18 @@ class Select(ViewStage):
 
         pipeline = [{"$match": {"_id": {"$in": ids}}}]
 
-        if not self._ordered:
-            return pipeline
-
-        pipeline.extend(
-            [
-                {"$set": {"_select_order": {"$indexOfArray": [ids, "$_id"]}}},
-                {"$sort": {"_select_order": 1}},
-                {"$unset": "_select_order"},
-            ]
-        )
+        if self._ordered:
+            pipeline.extend(
+                [
+                    {
+                        "$set": {
+                            "_select_order": {"$indexOfArray": [ids, "$_id"]}
+                        }
+                    },
+                    {"$sort": {"_select_order": 1}},
+                    {"$unset": "_select_order"},
+                ]
+            )
 
         return pipeline
 
@@ -4972,19 +4974,24 @@ class SelectBy(ViewStage):
         else:
             values = self._values
 
-        if not self._ordered:
-            return [{"$match": {path: {"$in": values}}}]
+        pipeline = [{"$match": {path: {"$in": values}}}]
 
-        return [
-            {
-                "$set": {
-                    "_select_order": {"$indexOfArray": [values, "$" + path]}
-                }
-            },
-            {"$match": {"_select_order": {"$gt": -1}}},
-            {"$sort": {"_select_order": 1}},
-            {"$unset": "_select_order"},
-        ]
+        if self._ordered:
+            pipeline.extend(
+                [
+                    {
+                        "$set": {
+                            "_select_order": {
+                                "$indexOfArray": [values, "$" + path]
+                            }
+                        }
+                    },
+                    {"$sort": {"_select_order": 1}},
+                    {"$unset": "_select_order"},
+                ]
+            )
+
+        return pipeline
 
     def _kwargs(self):
         return [
@@ -5338,19 +5345,24 @@ class SelectGroups(ViewStage):
         id_path = sample_collection.group_field + "._id"
         ids = [ObjectId(_id) for _id in self._group_ids]
 
-        if not self._ordered:
-            return [{"$match": {id_path: {"$in": ids}}}]
+        pipeline = [{"$match": {id_path: {"$in": ids}}}]
 
-        return [
-            {
-                "$set": {
-                    "_select_order": {"$indexOfArray": [ids, "$" + id_path]}
-                }
-            },
-            {"$match": {"_select_order": {"$gt": -1}}},
-            {"$sort": {"_select_order": 1}},
-            {"$unset": "_select_order"},
-        ]
+        if self._ordered:
+            pipeline.extend(
+                [
+                    {
+                        "$set": {
+                            "_select_order": {
+                                "$indexOfArray": [ids, "$" + id_path]
+                            }
+                        }
+                    },
+                    {"$sort": {"_select_order": 1}},
+                    {"$unset": "_select_order"},
+                ]
+            )
+
+        return pipeline
 
     def _kwargs(self):
         return [["group_ids", self._group_ids], ["ordered", self._ordered]]
