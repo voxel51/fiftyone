@@ -1305,15 +1305,24 @@ class Exists(ViewStage):
             self._field
         )
 
+        if is_frame_field and not field_name:
+            if self._bool:
+                expr = F("frames").length() > 0
+            else:
+                expr = F("frames").length() == 0
+
+            return [{"$match": {"$expr": expr.to_mongo()}}]
+
         if not is_frame_field:
             expr = F(field_name).exists(self._bool)
             return [{"$match": {"$expr": expr.to_mongo()}}]
 
-        expr = F("frames").filter(F(field_name).exists(self._bool))
-        return [
-            {"$set": {"frames": expr.to_mongo()}},
-            {"$match": {"$expr": (F("frames").length() > 0).to_mongo()}},
-        ]
+        if self._bool:
+            expr = F("frames").filter(F(field_name).exists()).length() > 0
+        else:
+            expr = F("frames").filter(F(field_name).exists()).length() == 0
+
+        return [{"$match": {"$expr": expr.to_mongo()}}]
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():

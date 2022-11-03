@@ -5,8 +5,8 @@ Clips views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy
 from collections import defaultdict
+from copy import deepcopy
 
 from bson import ObjectId
 
@@ -148,17 +148,66 @@ class ClipsView(fov.DatasetView):
     def media_type(self):
         return fom.VIDEO
 
+    def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
+        if label_field == self._classification_field:
+            _ids = self.values("_sample_id")
+
+        _, label_ids = super()._tag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
+        )
+
+        if label_field == self._classification_field:
+            ids, label_ids = self._to_source_ids(label_field, _ids, label_ids)
+            self._source_collection._tag_labels(
+                tags, label_field, ids=ids, label_ids=label_ids
+            )
+
+    def _untag_labels(self, tags, label_field, ids=None, label_ids=None):
+        if label_field == self._classification_field:
+            _ids = self.values("_sample_id")
+
+        _, label_ids = super()._untag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
+        )
+
+        if label_field == self._classification_field:
+            ids, label_ids = self._to_source_ids(label_field, _ids, label_ids)
+            self._source_collection._untag_labels(
+                tags, label_field, ids=ids, label_ids=label_ids
+            )
+
+    def _to_source_ids(self, label_field, ids, label_ids):
+        label_type = self._source_collection._get_label_field_type(label_field)
+        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+
+        if not is_list_field:
+            return ids, label_ids
+
+        id_map = defaultdict(list)
+        for _id, _label_id in zip(ids, label_ids):
+            if etau.is_container(_label_id):
+                id_map[_id].extend(_label_id)
+            else:
+                id_map[_id].append(_label_id)
+
+        if not id_map:
+            return [], []
+
+        return zip(*id_map.items())
+
     def set_values(self, field_name, *args, **kwargs):
+        field = field_name.split(".", 1)[0]
+        must_sync = field == self._classification_field
+
         # The `set_values()` operation could change the contents of this view,
         # so we first record the sample IDs that need to be synced
-        if self._stages:
+        if must_sync and self._stages:
             ids = self.values("id")
         else:
             ids = None
 
         super().set_values(field_name, *args, **kwargs)
 
-        field = field_name.split(".", 1)[0]
         self._sync_source(fields=[field], ids=ids)
 
     def save(self, fields=None):
@@ -577,7 +626,10 @@ def _write_temporal_detection_clips(
     if other_fields:
         project.update({f: True for f in other_fields})
 
-    pipeline = [{"$project": project}]
+    pipeline = [
+        {"$project": project},
+        {"$match": {"$expr": {"$gt": ["$" + field, None]}}},
+    ]
 
     if label_type is fol.TemporalDetections:
         list_path = field + "." + label_type._LABEL_LIST_FIELD

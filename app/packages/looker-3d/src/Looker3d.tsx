@@ -269,6 +269,11 @@ export const usePathFilter = (): Partial => {
 };
 
 export function Looker3d(props) {
+  const mediaFieldValue = props?.api?.mediaFieldValue;
+  const mediaField = props?.api?.mediaField;
+  if (!mediaFieldValue) {
+    return <Loading>No value provided for "{mediaField}".</Loading>;
+  }
   return (
     <ErrorBoundary>
       <Looker3dCore {...props} />
@@ -276,7 +281,7 @@ export function Looker3d(props) {
   );
 }
 
-function Looker3dCore({ api: { sample, src } }) {
+function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
   const settings = fop.usePluginSettings("3d");
 
   const modal = true;
