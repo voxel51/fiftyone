@@ -4848,15 +4848,20 @@ class Select(ViewStage):
 
         ids = [ObjectId(_id) for _id in self._sample_ids]
 
-        if not self._ordered:
-            return [{"$match": {"_id": {"$in": ids}}}]
+        pipeline = [{"$match": {"_id": {"$in": ids}}}]
 
-        return [
-            {"$set": {"_select_order": {"$indexOfArray": [ids, "$_id"]}}},
-            {"$match": {"_select_order": {"$gt": -1}}},
-            {"$sort": {"_select_order": 1}},
-            {"$unset": "_select_order"},
-        ]
+        if not self._ordered:
+            return pipeline
+
+        pipeline.extend(
+            [
+                {"$set": {"_select_order": {"$indexOfArray": [ids, "$_id"]}}},
+                {"$sort": {"_select_order": 1}},
+                {"$unset": "_select_order"},
+            ]
+        )
+
+        return pipeline
 
     def _kwargs(self):
         return [["sample_ids", self._sample_ids], ["ordered", self._ordered]]
