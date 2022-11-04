@@ -247,12 +247,9 @@ class DatasetView(foc.SampleCollection):
         """The name of the view.
 
         If this view is a saved view, its name will be returned.
-        Otherwise, a default name is returned.
+        Otherwise, it will return None.
         """
-        if self.__name is not None:
-            return self.__name
-
-        return self.dataset_name + "-view"
+        return self.__name
 
     @property
     def is_saved(self):
