@@ -972,6 +972,9 @@ class VectorField(mongoengine.fields.BinaryField, Field):
         if value is None or isinstance(value, np.ndarray):
             return value
 
+        if isinstance(value, (list, tuple)):
+            return np.array(value)
+
         return fou.deserialize_numpy_array(value)
 
     def validate(self, value):

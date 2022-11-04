@@ -55,6 +55,7 @@ const SliderStyled = styled(SliderUnstyled)`
   .thumb:focus,
   .thumb.active {
     box-shadow: none;
+    z-index: 1;
   }
 
   .valueLabel::before {
@@ -68,7 +69,7 @@ const SliderStyled = styled(SliderUnstyled)`
     margin-top: -100%;
     padding: 0 0.25rem;
     color: transparent;
-    transform: none !important;
+    top: 100%;
     color: ${({ theme }) => theme.palette.text.primary};
     background: ${({ theme }) => theme.palette.background.level2};
     border: 1px solid ${({ theme }) => theme.palette.primary.plainBorder};
@@ -192,9 +193,10 @@ const BaseSlider = <T extends Range | number>({
           step={step}
           theme={{
             palette: {
-            ...theme,
-            color,
-            primary: { ...theme.primary, plainColor: color } }
+              ...theme,
+              color,
+              primary: { ...theme.primary, plainColor: color },
+            },
           }}
         />
         {showBounds && formatter(bounds[1])}

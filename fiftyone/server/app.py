@@ -35,7 +35,7 @@ class Static(StaticFiles):
         response = await super().get_response(path, scope)
 
         if response.status_code == 404:
-            full_path, stat_result = await self.lookup_path("index.html")
+            full_path, stat_result = self.lookup_path("index.html")
             return self.file_response(full_path, stat_result, scope)
 
         return response
