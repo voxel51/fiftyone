@@ -21,7 +21,7 @@ import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { view } from "./view";
 import { selectorFamily } from "recoil";
-import { expandPath, field, fields, labelFields } from "./schema";
+import { expandPath, fieldPaths, field, labelFields, fields } from "./schema";
 import {
   BOOLEAN_FIELD,
   DATE_FIELD,
@@ -37,6 +37,7 @@ import {
   VALID_DISTRIBUTION_TYPES,
   withPath,
 } from "@fiftyone/utilities";
+import { State } from "./types";
 
 export type AggregationResponseFrom<
   TAggregate extends { response: { aggregate: readonly unknown[] } }
@@ -275,6 +276,12 @@ export const distributionPaths = selectorFamily<string[], string>({
         case "sample tags":
           return ["tags"];
         case "other fields":
+          return get(
+            fieldPaths({
+              space: State.SPACE.SAMPLE,
+              ftype: VALID_DISTRIBUTION_TYPES,
+            })
+          ).filter((path) => !["filepath", "tags"].includes(path));
         default:
           throw new Error("unknown group");
       }

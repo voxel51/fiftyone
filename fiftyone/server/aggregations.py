@@ -86,8 +86,8 @@ class CountValues:
 
 @gql.input
 class Aggregation:
-    count_values: t.Optional[CountValues]
-    histogram_values: t.Optional[HistogramValues]
+    count_values: t.Optional[CountValues] = None
+    histogram_values: t.Optional[HistogramValues] = None
 
 
 HistogramValuesResponses = gql.union(
@@ -111,7 +111,10 @@ HISTOGRAM_VALUES_TYPES = {
 class Aggregations:
     @gql.field
     async def aggregate(
-        dataset_name: str, view: BSONArray, aggregations: t.List[Aggregation]
+        self,
+        dataset_name: str,
+        view: BSONArray,
+        aggregations: t.List[Aggregation],
     ) -> t.List[
         gql.union(
             "AggregationResponses",
@@ -131,9 +134,11 @@ class Aggregations:
         aggs = []
         for input in aggregations:
             if input.count_values:
-                resolve, agg = _count_values(view, input.count_values)
+                resolve, agg = await _count_values(view, input.count_values)
             elif input.histogram_values:
-                resolve, agg = _histogram_values(view, input.histogram_values)
+                resolve, agg = await _histogram_values(
+                    view, input.histogram_values
+                )
 
             aggs.append(agg)
             resolvers.append(resolve)

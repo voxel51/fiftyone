@@ -8,7 +8,6 @@ FiftyOne Server routes
 from .aggregate import Aggregate
 from .aggregations import Aggregations
 from .colorscales import Colorscales
-from .distributions import Distributions
 from .event import Event
 from .events import Events
 from .fiftyone import FiftyOne
@@ -30,7 +29,6 @@ routes = [
     ("/aggregate", Aggregate),
     ("/aggregations", Aggregations),
     ("/coloscales", Colorscales),
-    ("/distributions", Distributions),
     ("/event", Event),
     ("/events", Events),
     ("/fiftyone", FiftyOne),
