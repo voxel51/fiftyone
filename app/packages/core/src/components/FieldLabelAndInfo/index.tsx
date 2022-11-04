@@ -115,38 +115,25 @@ export default function FieldLabelAndInfo({
 }
 
 const FieldInfoExpandedContainer = styled.div`
-  background: ${({ theme }) => theme.background};
+  background: ${({ theme }) => theme.background.body};
   border-left: 5px solid ${({ color }) => color};
   border-radius: 2px;
   padding: 0.5rem;
-  box-shadow: 0 0 5px ${({ theme }) => theme.backgroundDark};
-`;
-const FieldInfoTitle = styled.div`
-  font-weight: bold;
-  position: absolute;
-  top: -30px;
-  margin-left: -7px;
-  // border-left: 3px solid ${({ color }) => color};
-  > span {
-    font-size: 1.2rem;
-    display: inline-block;
-    background: ${({ color }) => color};
-    padding: 0 1rem 0 1rem;
-  }
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
 `;
 
 const FieldInfoDesc = styled.div`
   text-overflow: ${({ collapsed }) => (collapsed ? "ellipsis" : "none")};
   white-space: ${({ collapsed }) => (collapsed ? "nowrap" : "pre-line")};
-  height: ${({ collapsed }) => (collapsed ? "2rem" : "inherit")};
+  height: ${({ collapsed }) => (collapsed ? "2.1rem" : "inherit")};
   font-size: 1rem;
-  margin: ${({ collapsed }) => (collapsed ? "0 0.25rem" : "0.25rem")};
+  // margin: ${({ collapsed }) => (collapsed ? "0 0.25rem" : "0.25rem")};
   margin-top: -5px;
   padding: 0.2rem 0;
-  line-height: 1.3rem;
-  max-height: calc(2rem * 6);
+  line-height: 1.5rem;
+  max-height: calc(2.1rem * 6);
   overflow-x: hidden;
-  overflow-y: ${({ collapsed }) => (collapsed ? "hidden" : "scroll")};
+  overflow-y: ${({ collapsed }) => (collapsed ? "hidden" : "auto")};
   color: ${({ theme }) => theme.font};
   ::-webkit-scrollbar {
     width: 0.5rem; // manage scrollbar width here
@@ -174,13 +161,13 @@ const FieldInfoHoverTarget = styled.div`
 const ContentValue = styled.div`
   font-size: 0.8rem;
   font-weight: bold;
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.text.primary};
 `;
 
 const ContentName = styled.div`
   font-size: 0.8rem;
   font-weight: bold;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.text.secondary};
 `;
 
 // a styled.table that uses the theme
@@ -195,10 +182,14 @@ const FieldInfoTableContainer = styled.table`
     padding: 0.1rem 0.5rem;
   }
   tr {
-    background: ${({ theme }) => theme.backgroundLight};
+    background: ${({ theme }) => theme.background.level1};
   }
   tr + tr {
-    border-top: solid 2px ${({ theme }) => theme.background};
+    border-top: solid 2px ${({ theme }) => theme.background.body};
+  }
+  a,
+  a:visited {
+    color: ${({ theme }) => theme.text.primary};
   }
 `;
 
