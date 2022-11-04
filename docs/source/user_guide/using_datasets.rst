@@ -318,15 +318,10 @@ that customize how the dataset is visualized in the
 
     session = fo.launch_app(dataset)
 
-Check out :ref:`this section <app-config>` for more information about
-customizing the behavior of the App.
-
 .. note::
 
-    Any settings stored in a dataset's
-    :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
-    the corresponding settings from your
-    :ref:`global App config <configuring-fiftyone-app>`.
+    Check out :ref:`this section <app-config>` for more information about
+    customizing the behavior of the App.
 
 .. _storing-classes:
 
