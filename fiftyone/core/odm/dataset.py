@@ -317,21 +317,28 @@ class DatasetAppConfig(EmbeddedDocument):
     plugins = DictField()
 
     @staticmethod
-    def default(sample_collection):
-        """Generates a default App config for the given collection.
+    def default_sidebar_groups(sample_collection):
+        """Generates the default ``sidebar_groups`` for the given collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            sidebar_groups = fo.DatasetAppConfig.default_sidebar_groups(dataset)
+            dataset.app_config.sidebar_groups = sidebar_groups
+            print(dataset.app_config)
 
         Args:
             sample_collection: a
                 :class:`fiftyone.core.collections.SampleCollection`
 
         Returns:
-            a :class:`DatasetAppConfig`
+            a list of :class:`SidebarGroupDocument` instances
         """
-        sidebar_groups = _make_default_sidebar_groups(sample_collection)
-
-        app_config = sample_collection.app_config.copy()
-        app_config.sidebar_groups = sidebar_groups
-        return app_config
+        return _make_default_sidebar_groups(sample_collection)
 
     def is_custom(self):
         """Determines whether this app config differs from the default one.
