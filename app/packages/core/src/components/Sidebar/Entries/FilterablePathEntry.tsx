@@ -330,8 +330,10 @@ const FilterableEntry = React.memo(
                 container,
               }) => (
                 <NameAndCountContainer ref={container}>
-                  <span key="path" ref={hoverTarget} {...hoverHanlders}>
-                    {label}
+                  <span key="path">
+                    <span ref={hoverTarget} {...hoverHanlders}>
+                      {label}
+                    </span>
                   </span>
                   {hidden}
                   <PathEntryCounts
