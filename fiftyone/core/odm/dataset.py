@@ -426,40 +426,30 @@ def _make_default_sidebar_groups(sample_collection):
         )
 
     sidebar_groups = [
-        SidebarGroupDocument(name="tags", expanded=True),
-        SidebarGroupDocument(name="label tags", expanded=True),
-        SidebarGroupDocument(name="metadata", paths=metadata, expanded=False),
-        SidebarGroupDocument(name="labels", paths=labels, expanded=True),
+        SidebarGroupDocument(name="tags"),
+        SidebarGroupDocument(name="label tags"),
+        SidebarGroupDocument(name="metadata", paths=metadata),
+        SidebarGroupDocument(name="labels", paths=labels),
     ]
 
     if frame_labels:
         sidebar_groups.append(
-            SidebarGroupDocument(
-                name="frame labels", paths=frame_labels, expanded=True
-            )
+            SidebarGroupDocument(name="frame labels", paths=frame_labels)
         )
 
     for name, paths in custom:
-        sidebar_groups.append(
-            SidebarGroupDocument(name=name, paths=paths, expanded=False)
-        )
+        sidebar_groups.append(SidebarGroupDocument(name=name, paths=paths))
 
     sidebar_groups.append(
-        SidebarGroupDocument(
-            name="primitives", paths=primitives, expanded=False
-        )
+        SidebarGroupDocument(name="primitives", paths=primitives)
     )
 
     if other:
-        sidebar_groups.append(
-            SidebarGroupDocument(name="other", paths=other, expanded=False)
-        )
+        sidebar_groups.append(SidebarGroupDocument(name="other", paths=other))
 
     if unsupported:
         sidebar_groups.append(
-            SidebarGroupDocument(
-                name="unsupported", paths=unsupported, expanded=False
-            )
+            SidebarGroupDocument(name="unsupported", paths=unsupported)
         )
 
     return sidebar_groups
