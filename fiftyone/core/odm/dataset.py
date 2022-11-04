@@ -293,8 +293,8 @@ class DatasetAppConfig(EmbeddedDocument):
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
         sidebar_groups (None): an optional list of
-            :class:`SidebarGroupDocument` describing sidebar groups to create
-            in the App
+            :class:`SidebarGroupDocument` describing sidebar groups to use in
+            the App
         plugins ({}): an optional dict mapping plugin names to plugin
             configuration dicts. Builtin plugins include:
 
