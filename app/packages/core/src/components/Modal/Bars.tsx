@@ -2,7 +2,7 @@ import { Bar, useTheme } from "@fiftyone/components";
 import { VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { currentSlice, hasPinnedSlice } from "@fiftyone/state";
-import { Checkbox } from "@material-ui/core";
+import { Checkbox } from "@mui/material";
 import React, { MutableRefObject, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { ModalActionsRow } from "../Actions";

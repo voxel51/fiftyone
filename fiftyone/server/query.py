@@ -170,6 +170,7 @@ class Dataset:
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
+    info: t.Optional[JSON]
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -190,7 +191,7 @@ class Dataset:
             for name, data in doc.get("skeletons", {}).items()
         )
         doc["group_media_types"] = [
-            Group(name, media_type)
+            Group(name=name, media_type=media_type)
             for name, media_type in doc.get("group_media_types", {}).items()
         ]
         doc["default_skeletons"] = doc.get("default_skeletons", None)

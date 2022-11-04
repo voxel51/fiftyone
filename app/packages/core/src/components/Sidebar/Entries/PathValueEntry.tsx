@@ -7,7 +7,7 @@ import {
   FRAME_SUPPORT_FIELD,
   LIST_FIELD,
 } from "@fiftyone/utilities";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@material-ui/icons";
+import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 
 import React, { Suspense, useMemo, useState } from "react";
@@ -116,7 +116,7 @@ const ScalarValueEntry = ({
 
 const ListContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
-  border: 1px solid #191c1f;
+  border: 1px solid var(--joy-palette-divider);
   border-radius: 2px;
   color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;

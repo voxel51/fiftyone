@@ -1,5 +1,5 @@
 import React from "react";
-import { Autorenew, Check } from "@material-ui/icons";
+import { Autorenew, Check } from "@mui/icons-material";
 import { constSelector, useRecoilState, useRecoilValue } from "recoil";
 
 import Checkbox from "../Common/Checkbox";

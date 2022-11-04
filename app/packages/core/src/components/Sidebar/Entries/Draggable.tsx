@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import { DragIndicator } from "@material-ui/icons";
+import { DragIndicator } from "@mui/icons-material";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useState } from "react";
 
@@ -51,7 +51,7 @@ const Draggable: React.FC<
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          boxShadow: `0 2px 20px ${theme.background.level2}`,
+          boxShadow: `0 2px 20px ${theme.custom.shadow}`,
           overflow: "hidden",
           ...style,
         }}

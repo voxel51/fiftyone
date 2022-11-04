@@ -57,7 +57,7 @@ const fn = (
   let scale = 1;
   if (activeKey) {
     const w = items[activeKey].el.parentElement.getBoundingClientRect().width;
-    scale = (w - 8) / (w - 16);
+    scale = (w - 12) / (w - 16);
   }
 
   const results = {};
@@ -377,14 +377,14 @@ const SidebarColumn = styled.div`
 
   scrollbar-color: ${({ theme }) => theme.text.tertiary}
     ${({ theme }) => theme.background.body};
-  background: ${({ theme }) => theme.background.body};
+  background: ${({ theme }) => theme.background.sidebar};
   ${scrollbarStyles}
 `;
 
 const Container = animated(styled.div`
   position: relative;
   min-height: 100%;
-  margin: 0 0.25rem 0 1.25rem;
+  margin: 0 0.25rem 0 1rem;
 
   & > div {
     position: absolute;

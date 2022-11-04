@@ -1,5 +1,5 @@
 import React, { useLayoutEffect } from "react";
-import { Radio as MaterialRadio } from "@material-ui/core";
+import { Radio as MaterialRadio } from "@mui/material";
 import { animated } from "@react-spring/web";
 import styled from "styled-components";
 

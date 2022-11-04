@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Close } from "@material-ui/icons";
+import { Close } from "@mui/icons-material";
 import { useRecoilState } from "recoil";
 
 import { getFetchFunction } from "@fiftyone/utilities";

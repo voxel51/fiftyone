@@ -21,7 +21,7 @@ body,
   position: absolute;
   width: 100%;
   height: 100%;
-  background-color: var(--joy-palette-neutral-soft-bg);
+  background-color: var(--joy-palette-background-modalBackdrop);
   top: 0;
   z-index: 1000;
   display: block;

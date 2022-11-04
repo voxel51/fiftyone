@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { useMachine } from "@xstate/react";
 import { useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
-import { Close, Help } from "@material-ui/icons";
+import { Close, Help } from "@mui/icons-material";
 
 import { useOutsideClick } from "@fiftyone/state";
 import { ExternalLink } from "../../utils/generic";
@@ -45,9 +45,9 @@ const IconsContainer = styled.div`
   z-index: 1;
   height: 100%;
   border-radius: 3px;
-  top 0;
-  height: 52px;
-  right: 0;
+  top 2px;
+  height: 48px;
+  right: 1px;
   background-image: linear-gradient(
     to right,
     rgba(0, 0, 0, 0),
@@ -170,13 +170,14 @@ const ViewBar = React.memo(() => {
           onClick={() => send("CLEAR")}
           style={{
             cursor: "pointer",
+            color: theme.text.secondary,
           }}
         />
         <ExternalLink
           href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar"
           style={{ display: "flex" }}
         >
-          <Help style={{ color: theme.text.primary }} />
+          <Help style={{ color: theme.text.secondary }} />
         </ExternalLink>
       </IconsContainer>
     </div>

@@ -21,6 +21,7 @@ import {
   getFetchFunction,
 } from "@fiftyone/utilities";
 import { extendedStagesUnsorted } from "@fiftyone/state";
+import { useTheme } from "@fiftyone/components";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -79,11 +80,12 @@ const Title = styled.div`
 `;
 
 const Distribution: React.FC<{ distribution: Distribution }> = (props) => {
+  const theme = useTheme();
   const { path, data, ticks, type } = props.distribution;
   const [ref, { height }] = useMeasure();
   const barWidth = 24;
   const container = useRef(null);
-  const stroke = "hsl(210, 20%, 90%)";
+  const stroke = theme.text.secondary;
   const fill = stroke;
   const isDateTime = useRecoilValue(
     fos.meetsType({ path, ftype: DATE_TIME_FIELD })

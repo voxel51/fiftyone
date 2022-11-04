@@ -5,6 +5,7 @@ Patches views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 from copy import deepcopy
 
 from bson import ObjectId
@@ -152,6 +153,78 @@ class _PatchesView(fov.DatasetView):
     def media_type(self):
         return fom.IMAGE
 
+    def _get_default_sample_fields(
+        self, include_private=False, use_db_fields=False
+    ):
+        fields = super()._get_default_sample_fields(
+            include_private=include_private, use_db_fields=use_db_fields
+        )
+
+        extras = ["_sample_id" if use_db_fields else "sample_id"]
+
+        if self._is_frames:
+            extras.append("_frame_id" if use_db_fields else "frame_id")
+            extras.append("frame_number")
+
+        return fields + tuple(extras)
+
+    def _get_default_indexes(self, frames=False):
+        if frames:
+            return super()._get_default_indexes(frames=frames)
+
+        names = ["id", "filepath", "sample_id"]
+        if self._is_frames:
+            names.extend(["frame_id", "_sample_id_1_frame_number_1"])
+
+        return names
+
+    def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
+        if label_field in self._label_fields:
+            _ids = self.values("_" + self._id_field)
+
+        _, label_ids = super()._tag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
+        )
+
+        if label_field in self._label_fields:
+            ids, label_ids = self._to_source_ids(label_field, _ids, label_ids)
+            self._source_collection._tag_labels(
+                tags, label_field, ids=ids, label_ids=label_ids
+            )
+
+    def _untag_labels(self, tags, label_field, ids=None, label_ids=None):
+        if label_field in self._label_fields:
+            _ids = self.values("_" + self._id_field)
+
+        _, label_ids = super()._untag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
+        )
+
+        if label_field in self._label_fields:
+            ids, label_ids = self._to_source_ids(label_field, _ids, label_ids)
+            self._source_collection._untag_labels(
+                tags, label_field, ids=ids, label_ids=label_ids
+            )
+
+    def _to_source_ids(self, label_field, ids, label_ids):
+        label_type = self._source_collection._get_label_field_type(label_field)
+        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+
+        if not is_list_field:
+            return ids, label_ids
+
+        id_map = defaultdict(list)
+        for _id, _label_id in zip(ids, label_ids):
+            if etau.is_container(_label_id):
+                id_map[_id].extend(_label_id)
+            else:
+                id_map[_id].append(_label_id)
+
+        if not id_map:
+            return [], []
+
+        return zip(*id_map.items())
+
     def set_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
         must_sync = field in self._label_fields
@@ -165,8 +238,7 @@ class _PatchesView(fov.DatasetView):
 
         super().set_values(field_name, *args, **kwargs)
 
-        if must_sync:
-            self._sync_source_field(field, ids=ids)
+        self._sync_source_field(field, ids=ids)
 
     def save(self, fields=None):
         """Saves the patches in this view to the underlying dataset.
@@ -267,6 +339,9 @@ class _PatchesView(fov.DatasetView):
         self._source_collection._set_labels(field, [sample_id], [doc])
 
     def _sync_source_field(self, field, ids=None):
+        if field not in self._label_fields:
+            return
+
         _, label_path = self._patches_dataset._get_label_field_path(field)
 
         if ids is not None:
@@ -287,6 +362,9 @@ class _PatchesView(fov.DatasetView):
             self._sync_source_root_field(field, update=update, delete=delete)
 
     def _sync_source_root_field(self, field, update=True, delete=False):
+        if field not in self._label_fields:
+            return
+
         _, label_id_path = self._get_label_field_path(field, "id")
         label_path = label_id_path.rsplit(".", 1)[0]
 

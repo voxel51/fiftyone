@@ -8,7 +8,7 @@ import {
   DatasetQuery$data,
 } from "./__generated__/DatasetQuery.graphql";
 
-const DatasetQueryNode = graphql`
+const DatasetQuery = graphql`
   query DatasetQuery($name: String!, $view: BSONArray = null) {
     dataset(name: $name, view: $view) {
       id
@@ -96,6 +96,7 @@ const DatasetQueryNode = graphql`
         }
         sidebarMode
       }
+      info
     }
   }
 `;
@@ -128,15 +129,13 @@ export function usePreLoadedDataset(
   { colorscale, config, state } = {}
 ): [DatasetQuery$data["dataset"], boolean] {
   const [ready, setReady] = useState(false);
-  const { dataset } = usePreloadedQuery<DatasetQuery>(
-    DatasetQueryNode,
-    queryRef
-  );
+
+  const { dataset } = usePreloadedQuery<DatasetQuery>(DatasetQuery, queryRef);
   usePrepareDataset(dataset, { colorscale, config, state }, setReady);
   return [dataset, ready];
 }
 export function useDatasetLoader() {
-  const [queryRef, loadQuery] = useQueryLoader(DatasetQueryNode);
+  const [queryRef, loadQuery] = useQueryLoader(DatasetQuery);
   return [
     queryRef,
     (name) => {

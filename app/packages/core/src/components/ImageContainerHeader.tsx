@@ -1,5 +1,5 @@
 import React, { Suspense } from "react";
-import { Apps } from "@material-ui/icons";
+import { Apps } from "@mui/icons-material";
 import styled from "styled-components";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
@@ -25,7 +25,7 @@ const SamplesHeader = styled.div`
     to top,
     rgba(0, 0, 0, 0),
     30%,
-    ${({ theme }) => theme.background.level2}
+    ${({ theme }) => theme.background.mediaSpace}
   );
   margin-left: -1rem;
 `;
@@ -45,6 +45,7 @@ const RightDiv = styled.div`
 
 const RightContainer = styled.div`
   display: flex;
+  color: ${({ theme }) => theme.text.secondary};
 `;
 
 const SliderContainer = styled.div`

@@ -11,7 +11,7 @@
   width: 300px;
 
   background: var(--joy-palette-background-body);
-  box-shadow: 0 2px 40px var(--joy-palette-background-level2);
+  box-shadow: 0 2px 40px var(--joy-palette-custom-shadow);
   border-radius: 3px;
   color: var(--joy-palette-text-primary);
 }

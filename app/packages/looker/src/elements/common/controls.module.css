@@ -134,9 +134,8 @@
   top: 50%;
   margin-top: -1.75rem;
   cursor: pointer;
-  background-color: var(--joy-palette-background-level3);
-  border: 1px solid var(--joy-palette-primary-plainBorder);
-  box-shadow: 0 8px 15px 0 var(--joy-palette-neutral-softBg);
+  background-color: var(--joy-palette-background-button);
+  box-shadow: 0 1px 3px var(--joy-palette-custom-shadowDark);
   border-radius: 3px;
   z-index: 100;
 }

@@ -1,5 +1,5 @@
 .header {
-  background-color: var(--joy-palette-background-body);
+  background-color: var(--joy-palette-background-header);
   display: flex;
   flex-shrink: 0;
   justify-content: space-between;

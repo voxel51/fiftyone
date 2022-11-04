@@ -7,7 +7,7 @@ import {
   LocalOffer,
   Remove,
   Visibility,
-} from "@material-ui/icons";
+} from "@mui/icons-material";
 import React, { useContext, useLayoutEffect, useRef, useState } from "react";
 import {
   selectorFamily,
@@ -382,7 +382,7 @@ const GroupEntry = React.memo(
     return (
       <div
         style={{
-          boxShadow: `0 2px 20px ${theme.background.level2}`,
+          boxShadow: `0 2px 20px ${theme.custom.shadow}`,
         }}
       >
         <div style={{ position: "relative", cursor: "pointer" }}>

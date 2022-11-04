@@ -2,7 +2,7 @@ import { Tooltip, useTheme } from "@fiftyone/components";
 import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring, useSprings } from "@react-spring/web";
-import { KeyboardArrowUp, KeyboardArrowDown } from "@material-ui/icons";
+import { KeyboardArrowUp, KeyboardArrowDown } from "@mui/icons-material";
 
 export const Box = styled.div`
   padding: 1em;
@@ -53,7 +53,7 @@ export const ContentDiv = styled.div`
   border-radius: 3px;
   background-color: ${({ theme }) => theme.background.level3};
   color: ${({ theme }) => theme.text.secondary};
-  border: 1px solid #191c1f;
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border-radius: 2px;
   padding: 0.5rem;
@@ -120,7 +120,10 @@ export const PillButton = React.memo(
     ) => {
       const theme = useTheme();
       const props = useSpring({
-        backgroundColor: !highlight ? theme.divider : theme.primary.plainColor,
+        backgroundColor: !highlight
+          ? theme.background.button
+          : theme.primary.plainColor,
+        color: !highlight ? theme.text.secondary : theme.text.buttonHighlight,
       });
 
       const children = (
@@ -153,7 +156,7 @@ export const PopoutDiv = animated(styled.div`
   background-color: ${({ theme }) => theme.background.level2};
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   border-radius: 2px;
-  box-shadow: 0 2px 20px ${({ theme }) => theme.background.level2};
+  box-shadow: 0 2px 20px ${({ theme }) => theme.custom.shadow};
   box-sizing: border-box;
   margin-top: 0.6rem;
   position: absolute;
@@ -302,7 +305,7 @@ export const Button = ({
   const [hover, setHover] = useState(false);
   color = color ?? theme.primary.plainColor;
   const props = useSpring({
-    backgroundColor: hover ? color : theme.background,
+    backgroundColor: hover ? color : theme.background.body,
     color: hover ? theme.text.primary : theme.text.secondary,
     config: {
       duration: 150,

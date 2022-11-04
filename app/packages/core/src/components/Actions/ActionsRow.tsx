@@ -4,7 +4,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { CircularProgress } from "@material-ui/core";
+import { CircularProgress } from "@mui/material";
 import {
   Bookmark,
   Check,
@@ -15,7 +15,7 @@ import {
   Settings,
   VisibilityOff,
   Wallpaper,
-} from "@material-ui/icons";
+} from "@mui/icons-material";
 import useMeasure from "react-use-measure";
 import {
   selectorFamily,

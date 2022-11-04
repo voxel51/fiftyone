@@ -5,7 +5,6 @@ FiftyOne Server routes
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .colorscales import Colorscales
 from .distributions import Distributions
 from .event import Event
 from .events import Events
@@ -24,7 +23,6 @@ from .values import Values
 
 
 routes = [
-    ("/coloscales", Colorscales),
     ("/distributions", Distributions),
     ("/event", Event),
     ("/events", Events),

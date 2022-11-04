@@ -6,7 +6,7 @@ import {
   useRecoilState,
   useRecoilValue,
 } from "recoil";
-import { Slider as SliderUnstyled } from "@material-ui/core";
+import { Slider as SliderUnstyled } from "@mui/material";
 
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 
@@ -24,7 +24,7 @@ const SliderContainer = styled.div`
 
 const SliderStyled = styled(SliderUnstyled)`
   && {
-    color: ${({ theme }) => theme.primary.plainColor};
+    color: ${({ theme }) => theme.palette.primary.plainColor};
     margin: 0 1.5rem 0 1.3rem;
     height: 8px;
   }
@@ -39,16 +39,14 @@ const SliderStyled = styled(SliderUnstyled)`
   .track {
     height: 8px;
     border-radius: 8px;
-    background: ${({ theme }) => theme.primary.plainColor};
+    background: ${({ theme }) => theme.palette.primary.plainColor};
   }
 
   .thumb {
     height: 16px;
     width: 16px;
-    top: 50%;
-    margin-top: -8.4px;
     border-radius: 8px;
-    background: ${({ theme }) => theme.primary.plainColor};
+    background: ${({ theme }) => theme.palette.primary.plainColor};
     box-shadow: none;
     color: transparent;
   }
@@ -59,24 +57,25 @@ const SliderStyled = styled(SliderUnstyled)`
     box-shadow: none;
   }
 
+  .valueLabel::before {
+    display: none;
+  }
   .valueLabel {
     width: auto;
-    margin-top: 0.5rem;
     font-weight: bold;
     font-family: "Palanquin", sans-serif;
     font-size: 14px;
-    padding: 0.2rem;
-    border-radius: 6rem;
+    margin-top: -100%;
+    padding: 0 0.25rem;
     color: transparent;
     transform: none !important;
-    margin-top: -4px;
+    color: ${({ theme }) => theme.palette.text.primary};
+    background: ${({ theme }) => theme.palette.background.level2};
+    border: 1px solid ${({ theme }) => theme.palette.primary.plainBorder};
   }
 
   .valueLabel > span > span {
     text-align: center;
-    color: ${({ theme }) => theme.text.primary};
-    background: ${({ theme }) => theme.background.level2};
-    border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   }
 ` as typeof SliderUnstyled;
 
@@ -192,9 +191,11 @@ const BaseSlider = <T extends Range | number>({
           min={bounds[0]}
           step={step}
           theme={{
-            ...theme,
-            color,
-            primary: { ...theme.primary, plainColor: color },
+            palette: {
+              ...theme,
+              color,
+              primary: { ...theme.primary, plainColor: color },
+            },
           }}
         />
         {showBounds && formatter(bounds[1])}

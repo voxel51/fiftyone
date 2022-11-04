@@ -1,6 +1,6 @@
 import React from "react";
-import { Checkbox } from "@material-ui/core";
-import { LocalOffer, Visibility } from "@material-ui/icons";
+import { Checkbox } from "@mui/material";
+import { LocalOffer, Visibility } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 
@@ -10,6 +10,7 @@ import { LabelTagCounts, PathEntryCounts, tagIsMatched } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import Color from "color";
 
 const ACTIVE_ATOM = {
   [fos.State.TagKey.LABEL]: fos.activeLabelTags,
@@ -110,7 +111,9 @@ const FilterableTagEntry = ({
     fos.pathColor({ path: tag, modal, tag: tagKey })
   );
   const { backgroundColor } = useSpring({
-    backgroundColor: matched ? "#6C757D" : theme.background.level1,
+    backgroundColor: matched
+      ? Color(color).alpha(0.25).string()
+      : theme.background.level1,
   });
 
   return (

@@ -1,10 +1,10 @@
 import React, { Suspense, useLayoutEffect, useMemo } from "react";
-import { Checkbox } from "@material-ui/core";
+import { Checkbox } from "@mui/material";
 import {
   KeyboardArrowDown,
   KeyboardArrowUp,
   VisibilityOff,
-} from "@material-ui/icons";
+} from "@mui/icons-material";
 import { useSpring } from "@react-spring/web";
 import {
   atomFamily,
@@ -50,6 +50,7 @@ import { NameAndCountContainer, PillButton } from "../../utils";
 import { useTheme } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
+import Color from "color";
 import { pathIsExpanded } from "./utils";
 
 const FILTERS = {
@@ -269,17 +270,17 @@ const FilterableEntry = React.memo(
     );
     const hidden = modal ? useHidden(path) : null;
 
-    const { backgroundColor } = useSpring({
-      backgroundColor: fieldIsFiltered ? "#6C757D" : theme.background.level1,
-    });
-
     if (!field) {
       return null;
     }
 
     return (
       <RegularEntry
-        backgroundColor={backgroundColor}
+        backgroundColor={
+          fieldIsFiltered
+            ? Color(color).alpha(0.25).string()
+            : theme.background.level1
+        }
         color={color}
         entryKey={entryKey}
         clickable={true}

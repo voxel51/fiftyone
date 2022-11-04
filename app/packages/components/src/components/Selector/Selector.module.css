@@ -39,7 +39,7 @@
   background-color: var(--joy-palette-background-level2);
   border: 1px solid var(--joy-palette-primary-plainBorder);
   border-radius: 2px;
-  box-shadow: 0 2px 20px var(--joy-palette-background-level2);
+  box-shadow: 0 2px 20px var(--joy-palette-custom-shadow);
   box-sizing: border-box;
   width: auto;
   overflow: visible;

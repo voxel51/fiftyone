@@ -1,7 +1,13 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import { Loading } from "@fiftyone/components";
+import {
+  IconButton,
+  KeyboardArrowDown,
+  KeyboardArrowUp,
+  Loading,
+  ThemeProvider,
+} from "@fiftyone/components";
 import {
   Dataset as CoreDataset,
   useDatasetLoader,
@@ -11,32 +17,74 @@ import {
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
-import { useEffect, useState, Suspense, Fragment } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { State } from "@fiftyone/state";
+
 import { usePlugins } from "@fiftyone/plugins";
-import styled, { ThemeContext } from "styled-components";
+import * as fos from "@fiftyone/state";
+import { State } from "@fiftyone/state";
+import { getEventSource, toCamelCase } from "@fiftyone/utilities";
+import { Suspense, useEffect, useState } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import styled from "styled-components";
 
 // built-in plugins
-import "@fiftyone/map";
 import "@fiftyone/looker-3d";
+import "@fiftyone/map";
 
 enum Events {
   STATE_UPDATE = "state_update",
 }
 
-const ViewBarWrapper = ({ children }) => <div>{children}</div>;
+const Container = styled.div`
+  width: 100%;
+  height: 100%;
+  background: var(--joy-palette-background-level2);
+  margin: 0;
+  padding: 0;
+  font-family: "Palanquin", sans-serif;
+  font-size: 14px;
 
-export function Dataset({ datasetName, environment, theme, readOnly }) {
-  theme = theme || darkTheme;
+  color: var(--joy-palette-text-primary);
+  display: flex;
+  flex-direction: column;
+  min-width: 660px;
+  & * {
+    font-family: var(--joy-fontFamily-body);
+  }
+`;
+const ViewBarWrapper = styled.div`
+  padding: 16px;
+  background: var(--joy-palette-background-header);
+  display: flex;
+`;
+const CoreDatasetContainer = styled.div`
+  height: calc(100% - 84px);
+`;
 
+export function Dataset({
+  datasetName,
+  environment,
+  theme,
+  themeMode,
+  compactLayout,
+  toggleHeaders,
+  hideHeaders,
+  readOnly,
+}) {
   const [initialState, setInitialState] = useState();
   const [datasetQueryRef, loadDataset] = useDatasetLoader(environment);
+  const setThemeMode = useSetRecoilState(fos.theme);
+  const setCompactLayout = useSetRecoilState(fos.compactLayout);
   const setReadOnly = useSetRecoilState(fos.readOnly);
 
   useEffect(() => {
     setReadOnly(readOnly);
     loadDataset(datasetName);
-  }, [datasetName, readOnly]);
+    if (themeMode) setThemeMode(themeMode);
+    if (compactLayout) setCompactLayout(themeMode);
+  }, [datasetName, themeMode, compactLayout, readOnly]);
+
   const subscription = useRecoilValue(fos.stateSubscription);
   useEventSource(datasetName, subscription, setInitialState);
   const plugins = usePlugins();
@@ -45,25 +93,10 @@ export function Dataset({ datasetName, environment, theme, readOnly }) {
   if (plugins.isLoading || !initialState) return loadingElement;
   if (plugins.error) return <div>Plugin error...</div>;
 
-  const Container = styled.div`
-    width: 100%;
-    height: 100%;
-    background: var(--joy-palette-background-level2);
-    margin: 0;
-    padding: 0;
-    font-family: "Palanquin", sans-serif;
-    font-size: 14px;
-
-    color: var(--joy-palette-text-primary);
-    display: flex;
-    flex-direction: column;
-    min-width: 660px;
-  `;
-  const themePalette = theme?.palette;
-  const ThemeWrapper = themePalette ? ThemeContext.Provider : Fragment;
+  const themeProviderProps = theme ? { customTheme: theme } : {};
 
   return (
-    <ThemeWrapper value={themePalette}>
+    <ThemeProvider {...themeProviderProps}>
       <Container>
         <Suspense fallback={loadingElement}>
           <DatasetLoader
@@ -72,13 +105,37 @@ export function Dataset({ datasetName, environment, theme, readOnly }) {
           >
             <ViewBarWrapper>
               <ViewBar />
+              {toggleHeaders && (
+                <HeadersToggle
+                  toggleHeaders={toggleHeaders}
+                  hideHeaders={hideHeaders}
+                />
+              )}
             </ViewBarWrapper>
-            <CoreDataset />
+            <CoreDatasetContainer>
+              <CoreDataset />
+            </CoreDatasetContainer>
           </DatasetLoader>
         </Suspense>
         <div id="modal" />
       </Container>
-    </ThemeWrapper>
+    </ThemeProvider>
+  );
+}
+
+function HeadersToggle({ toggleHeaders, hideHeaders }) {
+  return (
+    <IconButton
+      title={`${hideHeaders ? "Show" : "Hide"} headers`}
+      onClick={() => {
+        toggleHeaders();
+      }}
+      disableRipple
+      sx={{ color: (theme) => theme.palette.text.secondary }}
+    >
+      {hideHeaders && <KeyboardArrowDown />}
+      {!hideHeaders && <KeyboardArrowUp />}
+    </IconButton>
   );
 }
 
