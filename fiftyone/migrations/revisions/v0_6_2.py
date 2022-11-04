@@ -34,7 +34,7 @@ def up(db, dataset_name):
         if c.startswith("frames.") and ".".join(c.split(".")[1:]) not in colls:
             db[c].drop()
 
-    colls = set(db.collection_names())
+    colls = set(db.list_collection_names())
 
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)
