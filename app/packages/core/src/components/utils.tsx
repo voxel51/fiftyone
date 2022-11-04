@@ -346,7 +346,7 @@ export const NameAndCountContainer = styled.div`
     margin-left: 6px;
   }
 
-  & > .entryInfoIcon {
+  & > svg {
     margin-right: auto;
   }
 
