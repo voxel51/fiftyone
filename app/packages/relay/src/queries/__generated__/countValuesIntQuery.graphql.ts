@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ec74dff4ac27c12aff3baadd7ee26194>>
+ * @generated SignedSource<<d705fb4e0cd5d469ea3841c8bb36113e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,12 +15,12 @@ export type countValuesIntQuery$variables = {
   view: Array;
 };
 export type countValuesIntQuery$data = {
-  readonly countValues: {
+  readonly aggregate: ReadonlyArray<{
     readonly values?: ReadonlyArray<{
       readonly count: number;
       readonly value: number | null;
     }>;
-  };
+  }>;
 };
 export type countValuesIntQuery = {
   response: countValuesIntQuery$data;
@@ -45,14 +45,32 @@ v2 = {
 },
 v3 = [
   {
-    "kind": "Variable",
-    "name": "datasetName",
-    "variableName": "dataset"
+    "items": [
+      {
+        "fields": [
+          {
+            "fields": [
+              {
+                "kind": "Variable",
+                "name": "path",
+                "variableName": "path"
+              }
+            ],
+            "kind": "ObjectValue",
+            "name": "countValues"
+          }
+        ],
+        "kind": "ObjectValue",
+        "name": "aggregations.0"
+      }
+    ],
+    "kind": "ListValue",
+    "name": "aggregations"
   },
   {
     "kind": "Variable",
-    "name": "path",
-    "variableName": "path"
+    "name": "datasetName",
+    "variableName": "dataset"
   },
   {
     "kind": "Variable",
@@ -108,8 +126,8 @@ return {
         "args": (v3/*: any*/),
         "concreteType": null,
         "kind": "LinkedField",
-        "name": "countValues",
-        "plural": false,
+        "name": "aggregate",
+        "plural": true,
         "selections": [
           (v4/*: any*/)
         ],
@@ -134,8 +152,8 @@ return {
         "args": (v3/*: any*/),
         "concreteType": null,
         "kind": "LinkedField",
-        "name": "countValues",
-        "plural": false,
+        "name": "aggregate",
+        "plural": true,
         "selections": [
           {
             "alias": null,
@@ -151,16 +169,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "f870008fade2edeff8f32b165a024d26",
+    "cacheID": "d9baf2516e2c072f756e77b29eadb436",
     "id": null,
     "metadata": {},
     "name": "countValuesIntQuery",
     "operationKind": "query",
-    "text": "query countValuesIntQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $path: String!\n) {\n  countValues(datasetName: $dataset, view: $view, path: $path) {\n    __typename\n    ... on IntCountValuesResponse {\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
+    "text": "query countValuesIntQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $path: String!\n) {\n  aggregate(datasetName: $dataset, view: $view, aggregations: [{countValues: {path: $path}}]) {\n    __typename\n    ... on IntCountValuesResponse {\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "545ddfcb86507ae4a29ed2da0f96286a";
+(node as any).hash = "e2229043d4a56064d7988892539b6c12";
 
 export default node;

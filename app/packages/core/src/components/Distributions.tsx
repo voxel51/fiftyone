@@ -1,11 +1,10 @@
-import React, { useRef, PureComponent } from "react";
+import React, { useRef, PureComponent, Suspense } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
-import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import useMeasure from "react-use-measure";
 import { scrollbarStyles } from "./utils";
 
-import Loading from "./Loading";
 import { ContentDiv, ContentHeader } from "./utils";
 import {
   formatDateTime,
@@ -15,14 +14,9 @@ import {
 } from "../utils/generic";
 
 import * as fos from "@fiftyone/state";
-import {
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  getFetchFunction,
-} from "@fiftyone/utilities";
-import { distribution, extendedStagesUnsorted } from "@fiftyone/state";
-import { useTheme } from "@fiftyone/components";
-import { graphQLSelector } from "recoil-relay";
+import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
+import { distribution, distributionPaths } from "@fiftyone/state";
+import { useTheme, Loading } from "@fiftyone/components";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -80,9 +74,10 @@ const Title = styled.div`
   line-height: 2rem;
 `;
 
-const Distribution: React.FC<{ distribution: Distribution }> = (props) => {
+const Distribution: React.FC<{ path: string }> = ({ path }) => {
   const theme = useTheme();
-  const { path, data, ticks, type } = props.distribution;
+  const data = useRecoilValue(distribution(path));
+  console.log(data);
   const [ref, { height }] = useMeasure();
   const barWidth = 24;
   const container = useRef(null);
@@ -202,33 +197,17 @@ const DistributionsContainer = styled.div`
   ${scrollbarStyles}
 `;
 
-interface Distribution {
-  path: string;
-  type: string;
-  data: { key: string }[];
-  ticks: number;
-}
-
 const Distributions = ({ group }: { group: string }) => {
-  const data = useRecoilValueLoadable(distribution(group));
-
-  console.log(data);
-  if (data.state === "loading") {
-    return <Loading />;
-  }
-
-  if (data.state === "hasError") {
-    throw data.contents;
-  }
-
-  if (data.contents.length === 0) {
-    return <Loading text={`No ${group.toLowerCase()}`} />;
-  }
+  const paths = useRecoilValue(distributionPaths(group));
 
   return (
     <DistributionsContainer>
-      {data.contents.map((d: Distribution, i) => {
-        return <Distribution key={i} distribution={d} />;
+      {paths.map((path) => {
+        return (
+          <Suspense fallback={<Loading>Loading...</Loading>}>
+            <Distribution key={path} path={path} />
+          </Suspense>
+        );
       })}
     </DistributionsContainer>
   );

@@ -6,7 +6,11 @@ export default graphql`
     $view: BSONArray!
     $path: String!
   ) {
-    histogramValues(datasetName: $dataset, view: $view, path: $path) {
+    aggregate(
+      datasetName: $dataset
+      view: $view
+      aggregations: [{ histogramValues: { path: $path } }]
+    ) {
       ... on IntHistogramValuesResponse {
         values {
           count

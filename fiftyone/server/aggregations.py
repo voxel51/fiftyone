@@ -31,17 +31,23 @@ class ValueCount(t.Generic[T]):
 
 
 @gql.type
-class CountValuesResponse(t.Generic[T]):
-    values: t.List[ValueCount[T]]
+class BoolCountValuesResponse:
+    values: t.List[ValueCount[bool]]
+
+
+@gql.type
+class IntCountValuesResponse:
+    values: t.List[ValueCount[int]]
+
+
+@gql.type
+class StrCountValuesResponse:
+    values: t.List[ValueCount[str]]
 
 
 CountValuesResponses = gql.union(
     "CountValuesResponses",
-    (
-        CountValuesResponse[bool],
-        CountValuesResponse[int],
-        CountValuesResponse[str],
-    ),
+    (BoolCountValuesResponse, IntCountValuesResponse, StrCountValuesResponse),
 )
 COUNT_VALUES_TYPES = {fo.BooleanField, fo.IntField, fo.StringField}
 
@@ -54,18 +60,45 @@ class HistogramValue(t.Generic[T]):
 
 
 @gql.type
-class HistogramValuesResponse(t.Generic[T]):
-    values: t.List[HistogramValue[T]]
+class DatetimeHistogramValuesResponse:
+    values: t.List[HistogramValue[datetime]]
+
+
+@gql.type
+class FloatHistogramValuesResponse:
+    values: t.List[HistogramValue[float]]
+
+
+@gql.type
+class IntHistogramValuesResponse:
+    values: t.List[HistogramValue[int]]
+
+
+@gql.input
+class HistogramValues:
+    path: str
+
+
+@gql.input
+class CountValues:
+    path: str
+
+
+@gql.input
+class Aggregation:
+    count_values: t.Optional[CountValues]
+    histogram_values: t.Optional[HistogramValues]
 
 
 HistogramValuesResponses = gql.union(
     "HistogramValuesResponses",
     (
-        HistogramValuesResponse[datetime],
-        HistogramValuesResponse[int],
-        HistogramValuesResponse[float],
+        DatetimeHistogramValuesResponse,
+        FloatHistogramValuesResponse,
+        IntHistogramValuesResponse,
     ),
 )
+
 HISTOGRAM_VALUES_TYPES = {
     fo.DateField,
     fo.DateTimeField,
@@ -77,68 +110,41 @@ HISTOGRAM_VALUES_TYPES = {
 @gql.type
 class Aggregations:
     @gql.field
-    async def count_values(
-        dataset_name: str, view: BSONArray, path: str
-    ) -> CountValuesResponses:
+    async def aggregate(
+        dataset_name: str, view: BSONArray, aggregations: t.List[Aggregation]
+    ) -> t.List[
+        gql.union(
+            "AggregationResponses",
+            (
+                BoolCountValuesResponse,
+                IntCountValuesResponse,
+                StrCountValuesResponse,
+                DatetimeHistogramValuesResponse,
+                FloatHistogramValuesResponse,
+                IntHistogramValuesResponse,
+            ),
+        )
+    ]:
         view = await load_view(dataset_name, view)
-        field = view.get_field(path)
 
-        while isinstance(field, fo.ListField):
-            field = field.field
+        resolvers = []
+        aggs = []
+        for input in aggregations:
+            if input.count_values:
+                resolve, agg = _count_values(view, input.count_values)
+            elif input.histogram_values:
+                resolve, agg = _histogram_values(view, input.histogram_values)
 
-        _, data = await view._async_aggregate(
-            foa.CountValues(path, _first=LIST_LIMIT)
-        )
-        return CountValuesResponse(
-            [ValueCount(count, value) for value, count in data]
-        )
+            aggs.append(agg)
+            resolvers.append(resolve)
 
-    @gql.field
-    async def histogram_values(
-        dataset_name: str, view: BSONArray, path: str
-    ) -> HistogramValuesResponses:
-        view = await load_view(dataset_name, view)
-        field = view.get_field(path)
+        results = await view._async_aggregate(aggs)
 
-        while isinstance(field, fo.ListField):
-            field = field.field
+        responses = []
+        for resolver, result in zip(resolvers, results):
+            responses.append(resolver(result))
 
-        range = await view._async_aggregate(
-            foa.Bounds(path, safe=True, _count_nonfinites=True)
-        )
-        range = range.pop("bounds")
-        bins = _DEFAULT_NUM_HISTOGRAM_BINS
-
-        if range_[0] == range_[1]:
-            bins = 1
-            if range_[0] is None:
-                range_ = [0, 1]
-
-        if isinstance(range_[1], datetime):
-            range_ = (range_[0], range_[1] + timedelta(milliseconds=100))
-        elif isinstance(range_[1], date):
-            range_ = (range_[0], range_[1] + timedelta(days=1))
-        else:
-            range_ = (range_[0], range_[1] + 1e-6)
-
-        result = [{"key": k, "count": v} for k, v in result.items() if v > 0]
-
-        if isinstance(field, fo.IntField):
-            delta = range_[1] - range_[0]
-            range_ = (range_[0] - 0.5, range_[1] + 0.5)
-            if delta < _DEFAULT_NUM_HISTOGRAM_BINS:
-                bins = delta + 1
-
-        counts, edges, other = await view._async_aggregate(
-            foa.HistogramValues(path, bins=bins, range=range_)
-        )
-
-        return HistogramValuesResponse(
-            [
-                HistogramValue(count, edges[i], edges[i + 1])
-                for i, count in enumerate(counts)
-            ]
-        )
+        return responses
 
 
 async def load_view(
@@ -152,3 +158,78 @@ async def load_view(
     loop = asyncio.get_running_loop()
 
     return await loop.run_in_executor(None, run)
+
+
+async def _count_values(
+    view: foc.SampleCollection, input: CountValues
+) -> t.Tuple[t.Callable[[t.List], CountValuesResponses], foa.CountValues]:
+    field = view.get_field(input.path)
+
+    while isinstance(field, fo.ListField):
+        field = field.field
+
+    def resolve(data: t.List):
+        _, data = data
+        values = [ValueCount(count, value) for value, count in data]
+
+        if isinstance(field, fo.StringField):
+            return StrCountValuesResponse(values=values)
+
+        if isinstance(field, fo.BooleanField):
+            return BoolCountValuesResponse(values=values)
+
+        if isinstance(field, fo.IntField):
+            return IntCountValuesResponse(values=values)
+
+    return resolve, foa.CountValues(input.path, _first=LIST_LIMIT)
+
+
+async def _histogram_values(
+    view: foc.SampleCollection, input: HistogramValues
+) -> t.Tuple[t.Callable[[t.List], HistogramValuesResponses], foa.CountValues]:
+    field = view.get_field(input.path)
+
+    while isinstance(field, fo.ListField):
+        field = field.field
+
+    range = await view._async_aggregate(
+        foa.Bounds(input.path, safe=True, _count_nonfinites=True)
+    )
+    range_ = range.pop("bounds")
+    bins = _DEFAULT_NUM_HISTOGRAM_BINS
+
+    if range_[0] == range_[1]:
+        bins = 1
+        if range_[0] is None:
+            range_ = [0, 1]
+
+    if isinstance(range_[1], datetime):
+        range_ = (range_[0], range_[1] + timedelta(milliseconds=100))
+    elif isinstance(range_[1], date):
+        range_ = (range_[0], range_[1] + timedelta(days=1))
+    else:
+        range_ = (range_[0], range_[1] + 1e-6)
+
+    if isinstance(field, fo.IntField):
+        delta = range_[1] - range_[0]
+        range_ = (range_[0] - 0.5, range_[1] + 0.5)
+        if delta < _DEFAULT_NUM_HISTOGRAM_BINS:
+            bins = delta + 1
+
+    def resolve(data):
+        counts, edges, other = data
+        values = [
+            HistogramValue(count, edges[i], edges[i + 1])
+            for i, count in enumerate(counts)
+        ]
+
+        if isinstance(field, (fo.DateField, fo.DateTimeField)):
+            return DatetimeHistogramValuesResponse(values=values)
+
+        if isinstance(field, fo.FloatField):
+            return FloatHistogramValuesResponse(values=values)
+
+        if isinstance(field, fo.IntField):
+            return DatetimeHistogramValuesResponse(values=values)
+
+    return resolve, foa.HistogramValues(input.path, bins=bins, range=range_)

@@ -6,7 +6,11 @@ export default graphql`
     $view: BSONArray!
     $path: String!
   ) {
-    countValues(datasetName: $dataset, view: $view, path: $path) {
+    aggregate(
+      datasetName: $dataset
+      view: $view
+      aggregations: [{ countValues: { path: $path } }]
+    ) {
       ... on StrCountValuesResponse {
         values {
           count

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<865474f017642d9ea741346df01ce06c>>
+ * @generated SignedSource<<f919b4c192a3c52230fd2b5a18fea05f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,13 +15,13 @@ export type histogramValuesFloatQuery$variables = {
   view: Array;
 };
 export type histogramValuesFloatQuery$data = {
-  readonly histogramValues: {
+  readonly aggregate: ReadonlyArray<{
     readonly values?: ReadonlyArray<{
       readonly count: number;
       readonly max: number;
       readonly min: number;
     }>;
-  };
+  }>;
 };
 export type histogramValuesFloatQuery = {
   response: histogramValuesFloatQuery$data;
@@ -46,14 +46,32 @@ v2 = {
 },
 v3 = [
   {
-    "kind": "Variable",
-    "name": "datasetName",
-    "variableName": "dataset"
+    "items": [
+      {
+        "fields": [
+          {
+            "fields": [
+              {
+                "kind": "Variable",
+                "name": "path",
+                "variableName": "path"
+              }
+            ],
+            "kind": "ObjectValue",
+            "name": "histogramValues"
+          }
+        ],
+        "kind": "ObjectValue",
+        "name": "aggregations.0"
+      }
+    ],
+    "kind": "ListValue",
+    "name": "aggregations"
   },
   {
     "kind": "Variable",
-    "name": "path",
-    "variableName": "path"
+    "name": "datasetName",
+    "variableName": "dataset"
   },
   {
     "kind": "Variable",
@@ -116,8 +134,8 @@ return {
         "args": (v3/*: any*/),
         "concreteType": null,
         "kind": "LinkedField",
-        "name": "histogramValues",
-        "plural": false,
+        "name": "aggregate",
+        "plural": true,
         "selections": [
           (v4/*: any*/)
         ],
@@ -142,8 +160,8 @@ return {
         "args": (v3/*: any*/),
         "concreteType": null,
         "kind": "LinkedField",
-        "name": "histogramValues",
-        "plural": false,
+        "name": "aggregate",
+        "plural": true,
         "selections": [
           {
             "alias": null,
@@ -159,16 +177,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "8d361372a22af3dc0b606022dc111e01",
+    "cacheID": "5dc40ce746c3ab3332a926280f651326",
     "id": null,
     "metadata": {},
     "name": "histogramValuesFloatQuery",
     "operationKind": "query",
-    "text": "query histogramValuesFloatQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $path: String!\n) {\n  histogramValues(datasetName: $dataset, view: $view, path: $path) {\n    __typename\n    ... on FloatHistogramValuesResponse {\n      values {\n        count\n        min\n        max\n      }\n    }\n  }\n}\n"
+    "text": "query histogramValuesFloatQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $path: String!\n) {\n  aggregate(datasetName: $dataset, view: $view, aggregations: [{histogramValues: {path: $path}}]) {\n    __typename\n    ... on FloatHistogramValuesResponse {\n      values {\n        count\n        min\n        max\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0f59bfb0fb9a63c359ec96a078a673d7";
+(node as any).hash = "b94b470dcaf28157ee909eb69023b423";
 
 export default node;
