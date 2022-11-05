@@ -28,6 +28,7 @@ type RegularEntryProps = React.PropsWithChildren<{
   heading: ReactNode;
   left?: boolean;
   onClick?: MouseEventHandler;
+  onHeaderClick?: MouseEventHandler;
   title: string;
   trigger?: (
     event: React.MouseEvent<HTMLDivElement>,
@@ -47,11 +48,15 @@ const RegularEntry = React.forwardRef(
       heading,
       left = false,
       onClick,
+      onHeaderClick,
       title,
       trigger,
     }: RegularEntryProps,
     ref
   ) => {
+    const tolerance = 5;
+    const headerClickStart = useRef<MouseEvent>();
+
     return (
       <Container
         ref={ref}
@@ -63,7 +68,24 @@ const RegularEntry = React.forwardRef(
         title={title}
       >
         <Draggable color={color} entryKey={entryKey} trigger={trigger}>
-          <Header style={{ justifyContent: left ? "left" : "space-between" }}>
+          <Header
+            onMouseDown={(event: MouseEvent) => {
+              headerClickStart.current = event;
+            }}
+            onMouseUp={(event: MouseEvent) => {
+              if (!onHeaderClick) return;
+              const startX = headerClickStart.current.pageX;
+              const startY = headerClickStart.current.pageY;
+              const endX = event.pageX;
+              const endY = event.pageY;
+              const deltaX = Math.abs(endX - startX);
+              const deltaY = Math.abs(endY - startY);
+              if (deltaX <= tolerance && deltaY <= tolerance) {
+                onHeaderClick(event);
+              }
+            }}
+            style={{ justifyContent: left ? "left" : "space-between" }}
+          >
             {heading}
           </Header>
           {children}

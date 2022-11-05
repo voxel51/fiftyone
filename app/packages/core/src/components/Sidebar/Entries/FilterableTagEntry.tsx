@@ -153,7 +153,7 @@ const FilterableTagEntry = ({
           </NameAndCountContainer>
         </>
       }
-      onClick={() => setActive(!active)}
+      onHeaderClick={() => setActive(!active)}
       title={tag}
     />
   );
