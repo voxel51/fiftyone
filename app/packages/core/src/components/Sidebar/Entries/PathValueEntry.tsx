@@ -87,13 +87,6 @@ const ScalarValueEntry = ({
   return (
     <RegularEntry
       entryKey={entryKey}
-      title={`${path} (${
-        embeddedDocType
-          ? embeddedDocType
-          : subfield
-          ? `${ftype}(${subfield})`
-          : ftype
-      })`}
       backgroundColor={backgroundColor}
       color={color}
       heading={null}

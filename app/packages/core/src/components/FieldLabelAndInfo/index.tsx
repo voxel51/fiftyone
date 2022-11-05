@@ -165,6 +165,7 @@ const ContentValue = styled.div`
 `;
 
 const ContentName = styled.div`
+  // min-width: 50px;
   font-size: 0.8rem;
   font-weight: bold;
   color: ${({ theme }) => theme.text.secondary};
@@ -190,6 +191,11 @@ const FieldInfoTableContainer = styled.table`
   a,
   a:visited {
     color: ${({ theme }) => theme.text.primary};
+  }
+  tr td.nostretch {
+    width: 1%;
+    white-space: nowrap;
+    vertical-align: top;
   }
 `;
 
@@ -243,6 +249,7 @@ function FieldInfoExpanded({
       onMouseLeave={() => close()}
       ref={expandedRef}
       style={{ visibility: "hidden" }}
+      onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
         {/* <FieldInfoTitle color={color}><span>{field.path}</span></FieldInfoTitle> */}
@@ -432,10 +439,12 @@ function entryKeyToLabel(key) {
 // a react componont that renders a table
 // given an object where the keys are the first column
 // and the values are the second column
-function FieldInfoTable({ info, type, collapsed, subfield }) {
+function FieldInfoTable({ info, type, collapsed, subfield, description }) {
   info = info || {};
   const tableData = info;
-  let items = Object.entries(tableData).filter(keyValueIsRenderable);
+  let items = Object.entries(tableData)
+    .filter(keyValueIsRenderable)
+    .map(toRenderValue);
 
   if (collapsed) {
     items = items.slice(0, 2);
@@ -445,7 +454,9 @@ function FieldInfoTable({ info, type, collapsed, subfield }) {
       <tbody>
         {type && (
           <tr>
-            <td>
+            <td
+              className={items.length > 0 || description ? "nostretch" : null}
+            >
               <ContentName>type</ContentName>
             </td>
             <td>
@@ -457,7 +468,9 @@ function FieldInfoTable({ info, type, collapsed, subfield }) {
         )}
         {items.map(([key, value]) => (
           <tr key={key}>
-            <td>
+            <td
+              className={items.length > 0 || description ? "nostretch" : null}
+            >
               <ContentName>{entryKeyToLabel(key)}</ContentName>
             </td>
             <td>
@@ -482,6 +495,15 @@ function keyValueIsRenderable([key, value]) {
       return true;
     default:
       return false;
+  }
+}
+function toRenderValue([key, value]) {
+  switch (typeof value) {
+    case "boolean":
+      return [key, value ? "True" : "False"];
+      return;
+    default:
+      return [key, value];
   }
 }
 
@@ -531,8 +553,14 @@ function LinkOrValue({ value }) {
   const theme = useTheme();
   if (typeof value !== "string" || !value.startsWith("http"))
     return <Value>{value}</Value>;
+
+  const href = value;
+  if (value.length > 50) {
+    value = value.substr(0, 50) + "...";
+  }
+
   return (
-    <ExternalLink style={{ color: theme.font }} href={value}>
+    <ExternalLink style={{ color: theme.font }} href={href}>
       {value}
     </ExternalLink>
   );
