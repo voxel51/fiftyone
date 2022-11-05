@@ -30,8 +30,8 @@ import {
   Loading,
   PopoutSectionTitle,
   TabOption,
-  jsonIcon,
-  helpIcon,
+  JSONIcon,
+  HelpIcon,
 } from "@fiftyone/components";
 import { colorMap, dataset } from "@fiftyone/state";
 import { removeListener } from "process";
@@ -544,11 +544,11 @@ const ActionBarContainer = styled.div`
   transition: opacity 0.5s;
   width: 100%;
 
-  opacity: 0.9;
+  opacity: 0.95;
   height: 37px;
-  background-color: hsl(210, 11%, 11%);
-  border: 1px solid var(--joy-palette-divider);
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  background-color: var(--joy-palette-background-level3);
+  border: 1px solid var(--joy-palette-primary-plainBorder);
+  border-left: 0;
   padding: 0 1rem;
 `;
 
@@ -566,7 +566,11 @@ const ActionPopOverDiv = styled.div`
   width: 16rem;
   position: absolute;
   bottom: 2.5rem;
-  background-color: hsl(210, 11%, 11%);
+  background-color: var(--joy-palette-background-level2);
+  border: 1px solid var(--joy-palette-primary-plainBorder);
+  box-shadow: 0 8px 15px 0 var(--joy-palette-neutral-softBg);
+  border-radius: 3px;
+  color: var(--joy-palette-text-secondary);
   overflow: hidden;
 `;
 
@@ -587,13 +591,22 @@ const ActionItem = styled.div`
   align-content: center;
   text-align: center;
   cursor: pointer;
+  color: var(--joy-palette-text-secondary);
+  -webkit-transition: 0.2s ease-in-out;
+  -moz-transition: 0.2s ease-in-out;
+  -o-transition: 0.2s ease-in-out;
+  transition: 0.2s ease-in-out;
+
+  &:hover {
+    transform: translate(0, -1px);
+  }
 `;
 
 const ViewButton = styled.div`
   line-height: 1rem;
-  padding: 0.2rem 0.4rem;
-  background-color: #fff;
-  color: #000;
+  padding: 3px 6px;
+  background-color: var(--joy-palette-text-secondary);
+  color: var(--joy-palette-text-invert);
   border-radius: 1rem;
   border: none;
   font-weight: bold;
@@ -619,6 +632,8 @@ function ChooseColorSpace() {
     <Fragment>
       <ActionItem>
         <ColorLensIcon
+          sx={{ fontSize: 24 }}
+          color="inherit"
           onClick={(e) => {
             const targetAction = "colorBy";
             const nextAction =
@@ -675,8 +690,9 @@ function ViewJSON({ sample, jsonPanel }) {
   return (
     <Fragment>
       <ActionItem>
-        <img
-          src={jsonIcon}
+        <JSONIcon
+          sx={{ fontSize: 24 }}
+          color="inherit"
           onClick={(e) => {
             const targetAction = "json";
             const nextAction =
@@ -717,8 +733,9 @@ function ViewHelp({ helpPanel }) {
   return (
     <Fragment>
       <ActionItem>
-        <img
-          src={helpIcon}
+        <HelpIcon
+          sx={{ fontSize: 24 }}
+          color="inherit"
           onClick={(e) => {
             const targetAction = "help";
             const nextAction =

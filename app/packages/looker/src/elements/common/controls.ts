@@ -82,7 +82,7 @@ export class NextElement<State extends BaseState> extends BaseElement<
       return this.element;
     }
     if (showControls) {
-      this.element.style.opacity = "0.9";
+      this.element.style.opacity = "0.95";
       this.element.style.height = "unset";
       this.element.style.display = "flex";
     } else {
@@ -138,7 +138,7 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
       return this.element;
     }
     if (showControls) {
-      this.element.style.opacity = "0.9";
+      this.element.style.opacity = "0.95";
       this.element.style.height = "unset";
       this.element.style.display = "flex";
     } else {
@@ -188,7 +188,7 @@ export class ControlsElement<
       return this.element;
     }
     if (showControls) {
-      this.element.style.opacity = "0.9";
+      this.element.style.opacity = "0.95";
       this.element.style.height = "unset";
     } else {
       this.element.style.opacity = "0.0";
