@@ -190,7 +190,7 @@ async def _count_values(
         if isinstance(field, fo.IntField):
             return IntCountValuesResponse(values=values)
 
-    return resolve, foa.CountValues(input.field, _first=LIST_LIMIT)
+    return resolve, foa.CountValues(input.field, _first=LIST_LIMIT, _asc=False)
 
 
 async def _histogram_values(
