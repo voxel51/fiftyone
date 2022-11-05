@@ -544,12 +544,11 @@ const ActionBarContainer = styled.div`
   transition: opacity 0.5s;
   width: 100%;
 
-  opacity: 0.9;
+  opacity: 0.95;
   height: 37px;
   background-color: var(--joy-palette-background-level3);
   border: 1px solid var(--joy-palette-primary-plainBorder);
   border-left: 0;
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   padding: 0 1rem;
 `;
 
@@ -567,7 +566,11 @@ const ActionPopOverDiv = styled.div`
   width: 16rem;
   position: absolute;
   bottom: 2.5rem;
-  background-color: hsl(210, 11%, 11%);
+  background-color: var(--joy-palette-background-level2);
+  border: 1px solid var(--joy-palette-primary-plainBorder);
+  box-shadow: 0 8px 15px 0 var(--joy-palette-neutral-softBg);
+  border-radius: 3px;
+  color: var(--joy-palette-text-secondary);
   overflow: hidden;
 `;
 
