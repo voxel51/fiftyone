@@ -13,25 +13,21 @@ import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { view } from "./view";
 import { selectorFamily } from "recoil";
-import {
-  expandPath,
-  fieldPaths,
-  field,
-  labelFields,
-  fields,
-  pathIsShown,
-} from "./schema";
+import { expandPath, fieldPaths, field, labelFields, fields } from "./schema";
 import {
   BOOLEAN_FIELD,
   DATE_FIELD,
   DATE_TIME_FIELD,
   DETECTION,
+  DETECTIONS,
   FLOAT_FIELD,
   INT_FIELD,
   KEYPOINT,
+  KEYPOINTS,
   LABELS_PATH,
   LIST_FIELD,
   POLYLINE,
+  POLYLINES,
   STRING_FIELD,
   VALID_DISTRIBUTION_TYPES,
   withPath,
@@ -172,8 +168,11 @@ export const distribution = selectorFamily({
 
 const SKIP_FIELDS = {
   [withPath(LABELS_PATH, DETECTION)]: ["bounding_box"],
+  [withPath(LABELS_PATH, DETECTIONS)]: ["bounding_box"],
   [withPath(LABELS_PATH, KEYPOINT)]: ["points"],
+  [withPath(LABELS_PATH, KEYPOINTS)]: ["points"],
   [withPath(LABELS_PATH, POLYLINE)]: ["points"],
+  [withPath(LABELS_PATH, POLYLINES)]: ["points"],
 };
 
 export const distributionPaths = selectorFamily<string[], string>({
@@ -185,16 +184,18 @@ export const distributionPaths = selectorFamily<string[], string>({
 
       switch (group) {
         case "labels":
-          const labels = get(labelFields({})).map((l) => get(expandPath(l)));
+          const labels = get(labelFields({})).map((l) => [
+            l,
+            get(expandPath(l)),
+          ]);
           let paths = [];
           for (let index = 0; index < labels.length; index++) {
-            const path = labels[index];
+            const [parentPath, path] = labels[index];
             paths = [
               ...paths,
               ...get(fields({ path, ftype: VALID_DISTRIBUTION_TYPES }))
                 .filter(({ name }) => {
-                  console.log(path);
-                  const parent = get(field(path));
+                  const parent = get(field(parentPath));
 
                   return (
                     !SKIP_FIELDS[parent.embeddedDocType] ||
@@ -228,22 +229,23 @@ export const noDistributionPathsData = selectorFamily<boolean, string>({
     (group) =>
     ({ get }) => {
       const paths = get(distributionPaths(group));
+
       return paths.every((path) => {
         const data = get(distribution(path));
 
         switch (data.__typename) {
           case "BoolCountValuesResponse":
-            return data.values.length;
+            return !data.values.length;
           case "IntHistogramValuesResponse":
-            return data.counts.length;
+            return data.counts.length < 2;
           case "DatetimeHistogramValuesResponse":
-            return data.counts.length;
+            return !data.counts.length;
           case "DatetimeHistogramValuesResponse":
-            return data.counts.length;
+            return data.counts.length < 2;
           case "FloatHistogramValuesResponse":
-            return data.counts.length;
+            return data.counts.length < 2;
           case "StrCountValuesResponse":
-            return data.values.length;
+            return !data.values.length;
           default:
             throw new Error("invalid request");
         }

@@ -1,6 +1,6 @@
 import React, { useRef, PureComponent, Suspense, useMemo } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 import useMeasure from "react-use-measure";
 import { scrollbarStyles } from "./utils";
@@ -78,29 +78,58 @@ const Title = styled.div`
   line-height: 2rem;
 `;
 
-const DistributionRenderer: React.FC<{ path: string; height: number }> = ({
-  path,
-  height,
-}) => {
-  const theme = useTheme();
-  const { values } = useRecoilValue(distribution(path));
+const useData = (path: string) => {
+  const data = useRecoilValue(distribution(path));
 
-  if (!values) {
-    throw new Error("invalid");
+  switch (data.__typename) {
+    case "BoolCountValuesResponse":
+      return data.values.map(({ value, bool }) => ({
+        key: bool,
+        count: value,
+      }));
+    case "DatetimeHistogramValuesResponse":
+      return data.counts.length > 1
+        ? data.counts.map((count, i) => ({
+            count,
+            key:
+              (data.datetimes[i + 1] - data.datetimes[i]) / 2 +
+              data.datetimes[i],
+            edges: [data.datetimes[i], data.datetimes[i + 1]],
+          }))
+        : [];
+    case "FloatHistogramValuesResponse":
+      return data.counts.length > 1
+        ? data.counts.map((count, i) => ({
+            count: count,
+            key: (data.floats[i + 1] - data.floats[i]) / 2 + data.floats[i],
+            edges: [data.floats[i], data.floats[i + 1]],
+          }))
+        : [];
+    case "IntHistogramValuesResponse":
+      return data.counts.length > 1
+        ? data.counts.map((count, i) => ({
+            count,
+            key: (data.ints[i + 1] - data.ints[i]) / 2 + data.ints[i],
+            edges: [data.ints[i], data.ints[i + 1]],
+          }))
+        : [];
+    case "StrCountValuesResponse":
+      return data.values.map(({ value, str }) => ({
+        key: str,
+        count: value,
+      }));
+
+    default:
+      throw new Error("invalid");
   }
+};
 
-  const data = useMemo(() => {
-    return values.map((value) => {
-      return {
-        count: value.count,
-        edges: value.min !== undefined ? [value.min, value.max] : undefined,
-        key:
-          value.min !== undefined
-            ? (value.max - value.min) / 2 + value.min
-            : value.value,
-      };
-    });
-  }, [values]);
+const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
+  const [ref, { height }] = useMeasure();
+  const theme = useTheme();
+  const data = useData(path);
+
+  const hasMore = data.length >= LIMIT;
 
   const barWidth = 24;
   const container = useRef(null);
@@ -124,91 +153,82 @@ const DistributionRenderer: React.FC<{ path: string; height: number }> = ({
     }),
     {}
   );
+
   const CustomizedAxisTick = getAxisTick(
     isDateTime || isDate,
     isDate ? "UTC" : timeZone
   );
 
-  return (
-    <BarChart
-      ref={container}
-      height={height - 37}
-      width={values.length * (barWidth + 4) + 50}
-      barCategoryGap={"4px"}
-      data={strData}
-      margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
-    >
-      <XAxis
-        dataKey="key"
-        height={0.2 * height}
-        axisLine={false}
-        tick={<CustomizedAxisTick {...{ fill }} />}
-        tickLine={{ stroke }}
-      />
-      <YAxis
-        dataKey="count"
-        axisLine={false}
-        tick={{ fill }}
-        tickLine={{ stroke }}
-      />
-      <Tooltip
-        cursor={false}
-        content={(point) => {
-          const key = point?.payload[0]?.payload?.key;
-          const count = point?.payload[0]?.payload?.count;
-          if (typeof count !== "number") return null;
-
-          let title = `Value: ${key}`;
-
-          if (map[key]) {
-            if (isDateTime || isDate) {
-              const [{ datetime: start }, { datetime: end }] = map[key];
-              const [cFmt, dFmt] = getDateTimeRangeFormattersWithPrecision(
-                isDate ? "UTC" : timeZone,
-                start,
-                end
-              );
-              let range = dFmt.formatRange(start, end).replaceAll("/", "-");
-
-              if (dFmt.resolvedOptions().fractionalSecondDigits === 3) {
-                range = range.replaceAll(",", ".");
-              }
-              title = `Range: ${
-                cFmt ? cFmt.format(start).replaceAll("/", "-") : ""
-              } ${range.replaceAll("/", "-")}`;
-            } else {
-              title = `Range: [${map[key]
-                .map((e) => (Number.isInteger(e) ? e : e.toFixed(3)))
-                .join(", ")})`;
-            }
-          }
-
-          return <PlotTooltip title={title} count={count} />;
-        }}
-        contentStyle={{
-          background: "hsl(210, 20%, 23%)",
-          borderColor: "rgb(255, 109, 4)",
-        }}
-      />
-      <Bar
-        dataKey="count"
-        fill="rgb(255, 109, 4)"
-        barCategoryGap={0}
-        barSize={barWidth}
-      />
-    </BarChart>
-  );
-};
-
-const Distribution: React.FC<{ path: string }> = ({ path }) => {
-  const { values } = useRecoilValue(distribution(path));
-  const hasMore = values ? values.length >= LIMIT : false;
-  const [ref, { height }] = useMeasure();
-  return values && values.length ? (
+  return data.length ? (
     <Container ref={ref}>
       <Title>{`${path}${hasMore ? ` (first ${values?.length})` : ""}`}</Title>
+      <BarChart
+        ref={container}
+        height={height - 37}
+        width={data.length * (barWidth + 4) + 50}
+        barCategoryGap={"4px"}
+        data={strData}
+        margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
+      >
+        <XAxis
+          dataKey="key"
+          height={0.2 * height}
+          axisLine={false}
+          tick={<CustomizedAxisTick {...{ fill }} />}
+          tickLine={{ stroke }}
+        />
+        <YAxis
+          dataKey="count"
+          axisLine={false}
+          tick={{ fill }}
+          tickLine={{ stroke }}
+        />
+        <Tooltip
+          cursor={false}
+          content={(point) => {
+            const key = point?.payload[0]?.payload?.key;
+            const count = point?.payload[0]?.payload?.count;
+            if (typeof count !== "number") return null;
 
-      <DistributionRenderer path={path} height={height} />
+            let title = `Value: ${key}`;
+
+            if (map[key]) {
+              if (isDateTime || isDate) {
+                const [{ datetime: start }, { datetime: end }] = map[key];
+                const [cFmt, dFmt] = getDateTimeRangeFormattersWithPrecision(
+                  isDate ? "UTC" : timeZone,
+                  start,
+                  end
+                );
+                let range = dFmt.formatRange(start, end).replaceAll("/", "-");
+
+                if (dFmt.resolvedOptions().fractionalSecondDigits === 3) {
+                  range = range.replaceAll(",", ".");
+                }
+                title = `Range: ${
+                  cFmt ? cFmt.format(start).replaceAll("/", "-") : ""
+                } ${range.replaceAll("/", "-")}`;
+              } else {
+                title = `Range: [${map[key]
+                  .map((e) => (Number.isInteger(e) ? e : e.toFixed(3)))
+                  .join(", ")})`;
+              }
+            }
+
+            return <PlotTooltip title={title} count={count} />;
+          }}
+          contentStyle={{
+            background: "hsl(210, 20%, 23%)",
+            borderColor: "rgb(255, 109, 4)",
+          }}
+        />
+        <Bar
+          dataKey="count"
+          fill="rgb(255, 109, 4)"
+          barCategoryGap={0}
+          barSize={barWidth}
+        />
+      </BarChart>
     </Container>
   ) : null;
 };
@@ -223,19 +243,22 @@ const DistributionsContainer = styled.div`
 
 const Distributions = ({ group }: { group: string }) => {
   const paths = useRecoilValue(distributionPaths(group));
-  const noData = useRecoilValue(noDistributionPathsData(group));
+  const noData = useRecoilValueLoadable(noDistributionPathsData(group));
 
-  return (
-    <DistributionsContainer>
-      {paths.map((path) => {
-        return (
-          <Suspense fallback={<Loading>Loading...</Loading>}>
-            <Distribution key={path} path={path} />
-          </Suspense>
-        );
-      })}
-      {noData && <Loading>No data</Loading>}
-    </DistributionsContainer>
+  return noData.state === "hasValue" ? (
+    !noData.contents ? (
+      <Suspense fallback={<Loading>Loading...</Loading>}>
+        <DistributionsContainer>
+          {paths.map((path) => {
+            return <DistributionRenderer key={path} path={path} />;
+          })}
+        </DistributionsContainer>
+      </Suspense>
+    ) : (
+      <Loading>No data</Loading>
+    )
+  ) : (
+    <Loading>Loading...</Loading>
   );
 };
 
