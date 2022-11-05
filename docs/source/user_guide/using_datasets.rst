@@ -346,6 +346,11 @@ retrieve a field and update it's metadata at any time:
     and :meth:`info <fiftyone.core.fields.Field.info>` attributes in-place to
     save the changes to the database.
 
+.. note::
+
+    Did you know? You can view field metadata directly in the App by hovering
+    over fields or attributes :ref:`in the sidebar <app-fields-sidebar>`!
+
 .. _custom-app-config:
 
 Custom App config
