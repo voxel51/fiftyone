@@ -155,7 +155,7 @@ const NumericFieldFilter = ({
     return null;
 
   return (
-    <NamedRangeSliderContainer title={title}>
+    <NamedRangeSliderContainer>
       {named && name && (
         <FieldLabelAndInfo
           nested
