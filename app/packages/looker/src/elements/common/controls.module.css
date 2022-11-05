@@ -21,6 +21,7 @@
 
   background-color: var(--joy-palette-background-level3);
   border: 1px solid var(--joy-palette-primary-plainBorder);
+  border-right: 0;
   box-shadow: 0 8px 15px 0 var(--joy-palette-neutral-softBg);
 }
 

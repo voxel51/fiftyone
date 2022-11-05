@@ -15,7 +15,7 @@
   scrollbar-width: none;
   position: relative;
   pointer-events: all;
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .lookerPanel::-webkit-scrollbar {
@@ -71,6 +71,7 @@
 
 .lookerPanelClose:hover {
   background-color: var(--joy-palette-primary-plainColor);
+  color: var(--joy-palette-text-buttonHighlight);
   transform: translate(0, -1px);
 }
 
