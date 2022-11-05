@@ -9,7 +9,6 @@ from datetime import date, datetime, timedelta
 import typing as t
 
 import asyncio
-import eta.core.utils as etau
 import strawberry as gql
 
 import fiftyone as fo
@@ -26,22 +25,27 @@ _DEFAULT_NUM_HISTOGRAM_BINS = 25
 
 @gql.type
 class ValueCount(t.Generic[T]):
-    count: int
-    value: t.Union[T, None]
+    value: int
+    key: t.Union[T, None]
 
 
 @gql.type
-class BoolCountValuesResponse:
+class CountValuesResponse(t.Generic[T]):
+    values: t.List[ValueCount[T]]
+
+
+@gql.type
+class BoolCountValuesResponse(CountValuesResponse[bool]):
     values: t.List[ValueCount[bool]]
 
 
 @gql.type
-class IntCountValuesResponse:
+class IntCountValuesResponse(CountValuesResponse[int]):
     values: t.List[ValueCount[int]]
 
 
 @gql.type
-class StrCountValuesResponse:
+class StrCountValuesResponse(CountValuesResponse[str]):
     values: t.List[ValueCount[str]]
 
 
@@ -53,35 +57,35 @@ COUNT_VALUES_TYPES = {fo.BooleanField, fo.IntField, fo.StringField}
 
 
 @gql.type
-class HistogramValue(t.Generic[T]):
-    count: int
-    min: T
-    max: T
+class HistogramValuesResponse(t.Generic[T]):
+    counts: t.List[int]
+    edges: t.List[T]
+    other: int
 
 
 @gql.type
-class DatetimeHistogramValuesResponse:
-    values: t.List[HistogramValue[datetime]]
+class DatetimeHistogramValuesResponse(HistogramValuesResponse[datetime]):
+    edges: t.List[datetime]
 
 
 @gql.type
-class FloatHistogramValuesResponse:
-    values: t.List[HistogramValue[float]]
+class FloatHistogramValuesResponse(HistogramValuesResponse[float]):
+    edges: t.List[float]
 
 
 @gql.type
-class IntHistogramValuesResponse:
-    values: t.List[HistogramValue[int]]
+class IntHistogramValuesResponse(HistogramValuesResponse[int]):
+    edges: t.List[float]
 
 
 @gql.input
 class HistogramValues:
-    path: str
+    field: str
 
 
 @gql.input
 class CountValues:
-    path: str
+    field: str
 
 
 @gql.input
@@ -168,7 +172,7 @@ async def load_view(
 async def _count_values(
     view: foc.SampleCollection, input: CountValues
 ) -> t.Tuple[t.Callable[[t.List], CountValuesResponses], foa.CountValues]:
-    field = view.get_field(input.path)
+    field = view.get_field(input.field)
 
     while isinstance(field, fo.ListField):
         field = field.field
@@ -186,19 +190,19 @@ async def _count_values(
         if isinstance(field, fo.IntField):
             return IntCountValuesResponse(values=values)
 
-    return resolve, foa.CountValues(input.path, _first=LIST_LIMIT)
+    return resolve, foa.CountValues(input.field, _first=LIST_LIMIT)
 
 
 async def _histogram_values(
     view: foc.SampleCollection, input: HistogramValues
 ) -> t.Tuple[t.Callable[[t.List], HistogramValuesResponses], foa.CountValues]:
-    field = view.get_field(input.path)
+    field = view.get_field(input.field)
 
     while isinstance(field, fo.ListField):
         field = field.field
 
     range = await view._async_aggregate(
-        foa.Bounds(input.path, safe=True, _count_nonfinites=True)
+        foa.Bounds(input.field, safe=True, _count_nonfinites=True)
     )
     range_ = range.pop("bounds")
     bins = _DEFAULT_NUM_HISTOGRAM_BINS
@@ -223,18 +227,14 @@ async def _histogram_values(
 
     def resolve(data):
         counts, edges, other = data
-        values = [
-            HistogramValue(count, edges[i], edges[i + 1])
-            for i, count in enumerate(counts)
-        ]
-
+        data = {"counts": counts, "edges": edges, "other": other}
         if isinstance(field, (fo.DateField, fo.DateTimeField)):
-            return DatetimeHistogramValuesResponse(values=values)
+            return DatetimeHistogramValuesResponse(**data)
 
         if isinstance(field, fo.FloatField):
-            return FloatHistogramValuesResponse(values=values)
+            return FloatHistogramValuesResponse(**data)
 
         if isinstance(field, fo.IntField):
-            return DatetimeHistogramValuesResponse(values=values)
+            return IntHistogramValuesResponse(**data)
 
-    return resolve, foa.HistogramValues(input.path, bins=bins, range=range_)
+    return resolve, foa.HistogramValues(input.field, bins=bins, range=range_)

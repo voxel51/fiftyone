@@ -1,6 +1,6 @@
 input Aggregation {
-  countValues: CountValues
-  histogramValues: HistogramValues
+  countValues: CountValues = null
+  histogramValues: HistogramValues = null
 }
 
 union AggregationResponses =
@@ -35,8 +35,8 @@ type BoolCountValuesResponse {
 }
 
 type BoolValueCount {
-  count: Int!
-  value: Boolean
+  value: Int!
+  key: Boolean
 }
 
 type BrainRun implements Run {
@@ -61,7 +61,7 @@ enum ColorBy {
 }
 
 input CountValues {
-  path: String!
+  field: String!
 }
 
 type Dataset {
@@ -125,14 +125,10 @@ Date with time (isoformat)
 """
 scalar DateTime
 
-type DatetimeHistogramValue {
-  count: Int!
-  min: DateTime!
-  max: DateTime!
-}
-
 type DatetimeHistogramValuesResponse {
-  values: [DatetimeHistogramValue!]!
+  counts: [Int!]!
+  edges: [DateTime!]!
+  other: Int!
 }
 
 type EvaluationRun implements Run {
@@ -150,14 +146,10 @@ type EvaluationRunConfig implements RunConfig {
   method: String
 }
 
-type FloatHistogramValue {
-  count: Int!
-  min: Float!
-  max: Float!
-}
-
 type FloatHistogramValuesResponse {
-  values: [FloatHistogramValue!]!
+  counts: [Int!]!
+  edges: [Float!]!
+  other: Int!
 }
 
 type Group {
@@ -171,7 +163,7 @@ input GroupElementFilter {
 }
 
 input HistogramValues {
-  path: String!
+  field: String!
 }
 
 type ImageSample implements Sample {
@@ -185,19 +177,15 @@ type IntCountValuesResponse {
   values: [IntValueCount!]!
 }
 
-type IntHistogramValue {
-  count: Int!
-  min: Int!
-  max: Int!
-}
-
 type IntHistogramValuesResponse {
-  values: [IntHistogramValue!]!
+  counts: [Int!]!
+  edges: [Float!]!
+  other: Int!
 }
 
 type IntValueCount {
-  count: Int!
-  value: Int
+  value: Int!
+  key: Int
 }
 
 scalar JSON
@@ -361,8 +349,8 @@ type StrCountValuesResponse {
 }
 
 type StrValueCount {
-  count: Int!
-  value: String
+  value: Int!
+  key: String
 }
 
 type Target {

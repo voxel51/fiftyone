@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8684c038e7f6c1997cf7d34ac2ac78e0>>
+ * @generated SignedSource<<090b86da235e773defb8dd231539abaa>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,12 +15,23 @@ export type countValuesQuery$variables = {
   view: Array;
 };
 export type countValuesQuery$data = {
-  readonly countValues: {
-    readonly values?: ReadonlyArray<{
-      readonly count: number;
-      readonly value: boolean | null;
+  readonly aggregate: ReadonlyArray<{
+    readonly __typename: "BoolCountValuesResponse";
+    readonly values: ReadonlyArray<{
+      readonly bool: boolean | null;
+      readonly value: number;
     }>;
-  };
+  } | {
+    readonly __typename: "StrCountValuesResponse";
+    readonly values: ReadonlyArray<{
+      readonly str: string | null;
+      readonly value: number;
+    }>;
+  } | {
+    // This will never be '%other', but we need some
+    // value in case none of the concrete values match.
+    readonly __typename: "%other";
+  }>;
 };
 export type countValuesQuery = {
   response: countValuesQuery$data;
@@ -43,55 +54,119 @@ v2 = {
   "kind": "LocalArgument",
   "name": "view"
 },
-v3 = [
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "value",
+  "storageKey": null
+},
+v4 = [
   {
-    "kind": "Variable",
-    "name": "datasetName",
-    "variableName": "dataset"
-  },
-  {
-    "kind": "Variable",
-    "name": "path",
-    "variableName": "path"
-  },
-  {
-    "kind": "Variable",
-    "name": "view",
-    "variableName": "view"
+    "alias": null,
+    "args": [
+      {
+        "items": [
+          {
+            "fields": [
+              {
+                "fields": [
+                  {
+                    "kind": "Variable",
+                    "name": "field",
+                    "variableName": "path"
+                  }
+                ],
+                "kind": "ObjectValue",
+                "name": "countValues"
+              }
+            ],
+            "kind": "ObjectValue",
+            "name": "aggregations.0"
+          }
+        ],
+        "kind": "ListValue",
+        "name": "aggregations"
+      },
+      {
+        "kind": "Variable",
+        "name": "datasetName",
+        "variableName": "dataset"
+      },
+      {
+        "kind": "Variable",
+        "name": "view",
+        "variableName": "view"
+      }
+    ],
+    "concreteType": null,
+    "kind": "LinkedField",
+    "name": "aggregate",
+    "plural": true,
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "__typename",
+        "storageKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "BoolValueCount",
+            "kind": "LinkedField",
+            "name": "values",
+            "plural": true,
+            "selections": [
+              (v3/*: any*/),
+              {
+                "alias": "bool",
+                "args": null,
+                "kind": "ScalarField",
+                "name": "key",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          }
+        ],
+        "type": "BoolCountValuesResponse",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "StrValueCount",
+            "kind": "LinkedField",
+            "name": "values",
+            "plural": true,
+            "selections": [
+              (v3/*: any*/),
+              {
+                "alias": "str",
+                "args": null,
+                "kind": "ScalarField",
+                "name": "key",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          }
+        ],
+        "type": "StrCountValuesResponse",
+        "abstractKey": null
+      }
+    ],
+    "storageKey": null
   }
-],
-v4 = {
-  "kind": "InlineFragment",
-  "selections": [
-    {
-      "alias": null,
-      "args": null,
-      "concreteType": "BoolValueCount",
-      "kind": "LinkedField",
-      "name": "values",
-      "plural": true,
-      "selections": [
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "count",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "value",
-          "storageKey": null
-        }
-      ],
-      "storageKey": null
-    }
-  ],
-  "type": "BoolCountValuesResponse",
-  "abstractKey": null
-};
+];
 return {
   "fragment": {
     "argumentDefinitions": [
@@ -102,20 +177,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "countValuesQuery",
-    "selections": [
-      {
-        "alias": null,
-        "args": (v3/*: any*/),
-        "concreteType": null,
-        "kind": "LinkedField",
-        "name": "countValues",
-        "plural": false,
-        "selections": [
-          (v4/*: any*/)
-        ],
-        "storageKey": null
-      }
-    ],
+    "selections": (v4/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -128,39 +190,19 @@ return {
     ],
     "kind": "Operation",
     "name": "countValuesQuery",
-    "selections": [
-      {
-        "alias": null,
-        "args": (v3/*: any*/),
-        "concreteType": null,
-        "kind": "LinkedField",
-        "name": "countValues",
-        "plural": false,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "__typename",
-            "storageKey": null
-          },
-          (v4/*: any*/)
-        ],
-        "storageKey": null
-      }
-    ]
+    "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "c014e200f5c9748d735711e3e3c44243",
+    "cacheID": "9b50dae166f3375585e2a382235a680e",
     "id": null,
     "metadata": {},
     "name": "countValuesQuery",
     "operationKind": "query",
-    "text": "query countValuesQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $path: String!\n) {\n  countValues(datasetName: $dataset, view: $view, path: $path) {\n    __typename\n    ... on BoolCountValuesResponse {\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
+    "text": "query countValuesQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $path: String!\n) {\n  aggregate(datasetName: $dataset, view: $view, aggregations: [{countValues: {field: $path}}]) {\n    __typename\n    ... on BoolCountValuesResponse {\n      values {\n        value\n        bool: key\n      }\n    }\n    ... on StrCountValuesResponse {\n      values {\n        value\n        str: key\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e5523778c574ee0d2599ec31ec6c03f8";
+(node as any).hash = "587101f597e0a5b5913befc130c655f9";
 
 export default node;

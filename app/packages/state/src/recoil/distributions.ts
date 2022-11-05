@@ -2,18 +2,10 @@ import { VariablesOf } from "react-relay";
 import { graphQLSelectorFamily } from "recoil-relay";
 
 import {
-  countValuesBool,
-  countValuesBoolQuery,
-  countValuesInt,
-  countValuesIntQuery,
-  countValuesStr,
-  countValuesStrQuery,
-  histogramValuesDatetime,
-  histogramValuesDatetimeQuery,
-  histogramValuesFloat,
-  histogramValuesFloatQuery,
-  histogramValuesInt,
-  histogramValuesIntQuery,
+  countValues as countValuesGraphQL,
+  countValuesQuery,
+  histogramValues as histogramValuesGraphQL,
+  histogramValuesQuery,
 } from "@fiftyone/relay";
 
 import { RelayEnvironmentKey } from "./relay";
@@ -21,7 +13,14 @@ import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { view } from "./view";
 import { selectorFamily } from "recoil";
-import { expandPath, fieldPaths, field, labelFields, fields } from "./schema";
+import {
+  expandPath,
+  fieldPaths,
+  field,
+  labelFields,
+  fields,
+  pathIsShown,
+} from "./schema";
 import {
   BOOLEAN_FIELD,
   DATE_FIELD,
@@ -43,14 +42,14 @@ export type AggregationResponseFrom<
   TAggregate extends { response: { aggregate: readonly unknown[] } }
 > = TAggregate["response"]["aggregate"][0];
 
-const boolCountValues = graphQLSelectorFamily<
-  VariablesOf<countValuesBoolQuery>,
+const countValuesData = graphQLSelectorFamily<
+  VariablesOf<countValuesQuery>,
   string,
-  AggregationResponseFrom<countValuesBoolQuery>
+  AggregationResponseFrom<countValuesQuery>
 >({
-  key: "boolCountValues",
+  key: "countValuesData",
   environment: RelayEnvironmentKey,
-  query: countValuesBool,
+  query: countValuesGraphQL,
   variables:
     (path) =>
     ({ get }) => {
@@ -63,94 +62,14 @@ const boolCountValues = graphQLSelectorFamily<
   mapResponse: (data) => data.aggregate[0],
 });
 
-const intCountValues = graphQLSelectorFamily<
-  VariablesOf<countValuesIntQuery>,
+const histogramValuesData = graphQLSelectorFamily<
+  VariablesOf<histogramValuesQuery>,
   string,
-  AggregationResponseFrom<countValuesIntQuery>
+  AggregationResponseFrom<histogramValuesQuery>
 >({
-  key: "intCountValues",
+  key: "histogramValuesData",
   environment: RelayEnvironmentKey,
-  query: countValuesInt,
-  variables:
-    (path) =>
-    ({ get }) => {
-      return {
-        dataset: get(datasetName),
-        view: get(view),
-        path,
-      };
-    },
-  mapResponse: (data) => data.aggregate[0],
-});
-
-const strCountValues = graphQLSelectorFamily<
-  VariablesOf<countValuesStrQuery>,
-  string,
-  AggregationResponseFrom<countValuesStrQuery>
->({
-  key: "strCountValues",
-  environment: RelayEnvironmentKey,
-  query: countValuesStr,
-  variables:
-    (path) =>
-    ({ get }) => {
-      return {
-        dataset: get(datasetName),
-        view: get(view),
-        path,
-      };
-    },
-  mapResponse: (data) => data.aggregate[0],
-});
-
-const datetimeHistogramValues = graphQLSelectorFamily<
-  VariablesOf<histogramValuesDatetimeQuery>,
-  string,
-  AggregationResponseFrom<histogramValuesDatetimeQuery>
->({
-  key: "datetimeHistogramValues",
-  environment: RelayEnvironmentKey,
-  query: histogramValuesDatetime,
-  variables:
-    (path) =>
-    ({ get }) => {
-      return {
-        dataset: get(datasetName),
-        view: get(view),
-        path,
-      };
-    },
-  mapResponse: (data) => data.aggregate[0],
-});
-
-const intHistogramValues = graphQLSelectorFamily<
-  VariablesOf<histogramValuesIntQuery>,
-  string,
-  AggregationResponseFrom<histogramValuesIntQuery>
->({
-  key: "datetimeHistogramValues",
-  environment: RelayEnvironmentKey,
-  query: histogramValuesInt,
-  variables:
-    (path) =>
-    ({ get }) => {
-      return {
-        dataset: get(datasetName),
-        view: get(view),
-        path,
-      };
-    },
-  mapResponse: (data) => data.aggregate[0],
-});
-
-const floatHistogramValues = graphQLSelectorFamily<
-  VariablesOf<histogramValuesFloatQuery>,
-  string,
-  AggregationResponseFrom<histogramValuesFloatQuery>
->({
-  key: "floatHistogramValues",
-  environment: RelayEnvironmentKey,
-  query: histogramValuesFloat,
+  query: histogramValuesGraphQL,
   variables:
     (path) =>
     ({ get }) => {
@@ -172,14 +91,19 @@ export const countValues = selectorFamily({
       if (ftype === LIST_FIELD) {
         ftype = subfield;
       }
+      const data = get(countValuesData(path));
 
       switch (ftype) {
         case BOOLEAN_FIELD:
-          return get(boolCountValues(path));
+          if (data.__typename === "BoolCountValuesResponse") {
+            return data;
+          }
         case STRING_FIELD:
-          return get(strCountValues(path));
+          if (data.__typename === "StrCountValuesResponse") {
+            return data;
+          }
         default:
-          throw new Error("invalid");
+          throw new Error("invalid request");
       }
     },
 });
@@ -193,17 +117,27 @@ export const histogramValues = selectorFamily({
       if (ftype === LIST_FIELD) {
         ftype = subfield;
       }
+      const data = get(histogramValuesData(path));
+
       switch (ftype) {
         case INT_FIELD:
-          return get(intHistogramValues(path));
+          if (data.__typename === "IntHistogramValuesResponse") {
+            return data;
+          }
         case DATE_FIELD:
-          return get(datetimeHistogramValues(path));
+          if (data.__typename === "DatetimeHistogramValuesResponse") {
+            return data;
+          }
         case DATE_TIME_FIELD:
-          return get(datetimeHistogramValues(path));
+          if (data.__typename === "DatetimeHistogramValuesResponse") {
+            return data;
+          }
         case FLOAT_FIELD:
-          return get(floatHistogramValues(path));
+          if (data.__typename === "FloatHistogramValuesResponse") {
+            return data;
+          }
         default:
-          throw new Error("invalid");
+          throw new Error("invalid request");
       }
     },
 });
@@ -285,5 +219,34 @@ export const distributionPaths = selectorFamily<string[], string>({
         default:
           throw new Error("unknown group");
       }
+    },
+});
+
+export const noDistributionPathsData = selectorFamily<boolean, string>({
+  key: "noDistributionPathsData",
+  get:
+    (group) =>
+    ({ get }) => {
+      const paths = get(distributionPaths(group));
+      return paths.every((path) => {
+        const data = get(distribution(path));
+
+        switch (data.__typename) {
+          case "BoolCountValuesResponse":
+            return data.values.length;
+          case "IntHistogramValuesResponse":
+            return data.counts.length;
+          case "DatetimeHistogramValuesResponse":
+            return data.counts.length;
+          case "DatetimeHistogramValuesResponse":
+            return data.counts.length;
+          case "FloatHistogramValuesResponse":
+            return data.counts.length;
+          case "StrCountValuesResponse":
+            return data.values.length;
+          default:
+            throw new Error("invalid request");
+        }
+      });
     },
 });

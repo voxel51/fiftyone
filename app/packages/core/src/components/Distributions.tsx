@@ -15,7 +15,11 @@ import {
 
 import * as fos from "@fiftyone/state";
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
-import { distribution, distributionPaths } from "@fiftyone/state";
+import {
+  distribution,
+  distributionPaths,
+  noDistributionPathsData,
+} from "@fiftyone/state";
 import { useTheme, Loading } from "@fiftyone/components";
 
 const Container = styled.div`
@@ -200,16 +204,13 @@ const Distribution: React.FC<{ path: string }> = ({ path }) => {
   const { values } = useRecoilValue(distribution(path));
   const hasMore = values ? values.length >= LIMIT : false;
   const [ref, { height }] = useMeasure();
-  return (
+  return values && values.length ? (
     <Container ref={ref}>
       <Title>{`${path}${hasMore ? ` (first ${values?.length})` : ""}`}</Title>
-      {values && values.length ? (
-        <DistributionRenderer path={path} height={height} />
-      ) : (
-        <>No Data</>
-      )}
+
+      <DistributionRenderer path={path} height={height} />
     </Container>
-  );
+  ) : null;
 };
 
 const DistributionsContainer = styled.div`
@@ -222,6 +223,7 @@ const DistributionsContainer = styled.div`
 
 const Distributions = ({ group }: { group: string }) => {
   const paths = useRecoilValue(distributionPaths(group));
+  const noData = useRecoilValue(noDistributionPathsData(group));
 
   return (
     <DistributionsContainer>
@@ -232,6 +234,7 @@ const Distributions = ({ group }: { group: string }) => {
           </Suspense>
         );
       })}
+      {noData && <Loading>No data</Loading>}
     </DistributionsContainer>
   );
 };
