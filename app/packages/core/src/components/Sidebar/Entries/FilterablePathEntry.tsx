@@ -51,6 +51,7 @@ import { useTheme } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import Color from "color";
+import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",
@@ -317,38 +318,53 @@ const FilterableEntry = React.memo(
                 key="checkbox"
               />
             )}
-            <NameAndCountContainer>
-              <span key="path">{path}</span>
-              {hidden}
-              <PathEntryCounts key="count" modal={modal} path={expandedPath} />
-              {!disabled &&
-                expandable.state !== "loading" &&
-                expandable.contents && (
-                  <Arrow
-                    key="arrow"
-                    style={{ cursor: "pointer", margin: 0 }}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      setExpanded(!expanded);
-                    }}
-                    onMouseDown={(event) => {
-                      event.stopPropagation();
-                      event.preventDefault();
-                    }}
+            <FieldLabelAndInfo
+              field={field}
+              color={color}
+              expandedPath={expandedPath}
+              template={({
+                label,
+                hoverHanlders,
+                FieldInfoIcon,
+                hoverTarget,
+                container,
+              }) => (
+                <NameAndCountContainer ref={container}>
+                  <span key="path">
+                    <span ref={hoverTarget} {...hoverHanlders}>
+                      {label}
+                    </span>
+                  </span>
+                  {hidden}
+                  <PathEntryCounts
+                    key="count"
+                    modal={modal}
+                    path={expandedPath}
                   />
-                )}
-            </NameAndCountContainer>
+
+                  {!disabled &&
+                    expandable.state !== "loading" &&
+                    expandable.contents && (
+                      <Arrow
+                        key="arrow"
+                        style={{ cursor: "pointer", margin: 0 }}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setExpanded(!expanded);
+                        }}
+                        onMouseDown={(event) => {
+                          event.stopPropagation();
+                          event.preventDefault();
+                        }}
+                      />
+                    )}
+                </NameAndCountContainer>
+              )}
+            />
           </>
         }
         onClick={!disabled ? () => setActive(!active) : null}
-        title={`${path} (${
-          field.embeddedDocType
-            ? field.embeddedDocType
-            : field.subfield
-            ? `${field.ftype}(${field.subfield})`
-            : field.ftype
-        })`}
         trigger={trigger}
       >
         <Suspense fallback={null}>
