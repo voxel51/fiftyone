@@ -868,7 +868,11 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         return tuple(self._fields[f].db_field or f for f in field_names)
 
     def get_field_schema(
-        self, ftype=None, embedded_doc_type=None, include_private=False
+        self,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        flat=False,
     ):
         """Returns a schema dictionary describing the fields of the embedded
         document field.
@@ -882,6 +886,8 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
 
         Returns:
              a dict mapping field names to field types
@@ -897,6 +903,14 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                 field, ftype=ftype, embedded_doc_type=embedded_doc_type
             ):
                 schema[name] = field
+
+        if flat:
+            schema = flatten_schema(
+                schema,
+                ftype=ftype,
+                embedded_doc_type=embedded_doc_type,
+                include_private=include_private,
+            )
 
         return schema
 
