@@ -207,6 +207,14 @@ async def _histogram_values(
     range_ = range.pop("bounds")
     bins = _DEFAULT_NUM_HISTOGRAM_BINS
 
+    if isinstance(field, fo.IntField):
+        if range_[0] is None:
+            range_ = (0, 0)
+        delta = range_[1] - range_[0]
+        range_ = (range_[0] - 1, range_[1] + 1)
+        if delta < _DEFAULT_NUM_HISTOGRAM_BINS:
+            bins = delta + 1
+
     if range_[0] == range_[1]:
         bins = 1
         if range_[0] is None:
@@ -216,14 +224,8 @@ async def _histogram_values(
         range_ = (range_[0], range_[1] + timedelta(milliseconds=100))
     elif isinstance(range_[1], date):
         range_ = (range_[0], range_[1] + timedelta(days=1))
-    else:
+    elif not isinstance(field, fo.IntField):
         range_ = (range_[0], range_[1] + 1e-6)
-
-    if isinstance(field, fo.IntField):
-        delta = range_[1] - range_[0]
-        range_ = (range_[0] - 0.5, range_[1] + 0.5)
-        if delta < _DEFAULT_NUM_HISTOGRAM_BINS:
-            bins = delta + 1
 
     def resolve(data):
         counts, edges, other = data

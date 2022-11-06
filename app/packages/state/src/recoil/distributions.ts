@@ -237,13 +237,13 @@ export const noDistributionPathsData = selectorFamily<boolean, string>({
           case "BoolCountValuesResponse":
             return !data.values.length;
           case "IntHistogramValuesResponse":
-            return data.counts.length < 2;
+            return data.counts.length === 1 && data.counts[0] === 0;
           case "DatetimeHistogramValuesResponse":
-            return !data.counts.length;
+            return data.counts.length === 1 && data.counts[0] === 0;
           case "DatetimeHistogramValuesResponse":
-            return data.counts.length < 2;
+            return data.counts.length === 1 && data.counts[0] === 0;
           case "FloatHistogramValuesResponse":
-            return data.counts.length < 2;
+            return data.counts.length === 1 && data.counts[0] === 0;
           case "StrCountValuesResponse":
             return !data.values.length;
           default:

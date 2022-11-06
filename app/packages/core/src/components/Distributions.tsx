@@ -127,8 +127,8 @@ const useData = (path: string) => {
 const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
   const [ref, { height }] = useMeasure();
   const theme = useTheme();
-  const data = useData(path);
 
+  const data = useData(path);
   const hasMore = data.length >= LIMIT;
 
   const barWidth = 24;
@@ -159,6 +159,7 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
     isDate ? "UTC" : timeZone
   );
 
+  console.log(path, data);
   return data.length ? (
     <Container ref={ref}>
       <Title>{`${path}${hasMore ? ` (first ${values?.length})` : ""}`}</Title>
@@ -194,7 +195,7 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
 
             if (map[key]) {
               if (isDateTime || isDate) {
-                const [{ datetime: start }, { datetime: end }] = map[key];
+                const [start, end] = map[key];
                 const [cFmt, dFmt] = getDateTimeRangeFormattersWithPrecision(
                   isDate ? "UTC" : timeZone,
                   start,
@@ -245,6 +246,7 @@ const Distributions = ({ group }: { group: string }) => {
   const paths = useRecoilValue(distributionPaths(group));
   const noData = useRecoilValueLoadable(noDistributionPathsData(group));
 
+  console.log(noData);
   return noData.state === "hasValue" ? (
     !noData.contents ? (
       <Suspense fallback={<Loading>Loading...</Loading>}>
