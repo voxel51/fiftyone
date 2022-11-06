@@ -78,46 +78,69 @@ const Title = styled.div`
   line-height: 2rem;
 `;
 
+const getTicks = (data: { key: number; edges: [number, number] }[]) => {
+  const ticks: number[] = [];
+  for (
+    let index = 0;
+    index < data.length;
+    index += Math.max(Math.floor(data.length / 4), 1)
+  ) {
+    ticks.push(data[index].key);
+  }
+  return ticks;
+};
+
 const useData = (path: string) => {
   const data = useRecoilValue(distribution(path));
 
   switch (data.__typename) {
     case "BoolCountValuesResponse":
-      return data.values.map(({ value, bool }) => ({
-        key: bool,
-        count: value,
-      }));
+      return {
+        data: data.values.map(({ value, bool }) => ({
+          key: bool,
+          count: value,
+          ticks: null,
+        })),
+        ticks: null,
+      };
     case "DatetimeHistogramValuesResponse":
-      return data.counts.length > 1
-        ? data.counts.map((count, i) => ({
-            count,
-            key:
-              (data.datetimes[i + 1] - data.datetimes[i]) / 2 +
-              data.datetimes[i],
-            edges: [data.datetimes[i], data.datetimes[i + 1]],
-          }))
-        : [];
-    case "FloatHistogramValuesResponse":
-      return data.counts.length > 1
-        ? data.counts.map((count, i) => ({
-            count: count,
-            key: (data.floats[i + 1] - data.floats[i]) / 2 + data.floats[i],
-            edges: [data.floats[i], data.floats[i + 1]],
-          }))
-        : [];
-    case "IntHistogramValuesResponse":
-      return data.counts.length > 1
-        ? data.counts.map((count, i) => ({
-            count,
-            key: (data.ints[i + 1] - data.ints[i]) / 2 + data.ints[i],
-            edges: [data.ints[i], data.ints[i + 1]],
-          }))
-        : [];
-    case "StrCountValuesResponse":
-      return data.values.map(({ value, str }) => ({
-        key: str,
-        count: value,
+      const datetimes = data.counts.map((count, i) => ({
+        count,
+        key:
+          (data.datetimes[i + 1] - data.datetimes[i]) / 2 + data.datetimes[i],
+        edges: [data.datetimes[i], data.datetimes[i + 1]],
       }));
+
+      return data.counts.length > 1
+        ? { data: datetimes, ticks: getTicks(datetimes) }
+        : { data: [], ticks: null };
+    case "FloatHistogramValuesResponse":
+      const floats = data.counts.map((count, i) => ({
+        count: count,
+        key: (data.floats[i + 1] - data.floats[i]) / 2 + data.floats[i],
+        edges: [data.floats[i], data.floats[i + 1]],
+      }));
+
+      return data.counts.length > 1
+        ? { data: floats, ticks: getTicks(floats) }
+        : { data: [], ticks: null };
+    case "IntHistogramValuesResponse":
+      const ints = data.counts.map((count, i) => ({
+        count,
+        key: (data.ints[i + 1] - data.ints[i]) / 2 + data.ints[i],
+        edges: [data.ints[i], data.ints[i + 1]],
+      }));
+      return data.counts.length > 1
+        ? { data: ints, ticks: getTicks(ints) }
+        : { data: [], ticks: null };
+    case "StrCountValuesResponse":
+      return {
+        data: data.values.map(({ value, str }) => ({
+          key: str,
+          count: value,
+        })),
+        ticks: null,
+      };
 
     default:
       throw new Error("invalid");
@@ -128,7 +151,7 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
   const [ref, { height }] = useMeasure();
   const theme = useTheme();
 
-  const data = useData(path);
+  const { data, ticks } = useData(path);
   const hasMore = data.length >= LIMIT;
 
   const barWidth = 24;
@@ -158,11 +181,16 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
     isDateTime || isDate,
     isDate ? "UTC" : timeZone
   );
+  const ticksSetting =
+    ticks === null
+      ? { interval: 0 }
+      : {
+          ticks,
+        };
 
-  console.log(path, data);
   return data.length ? (
     <Container ref={ref}>
-      <Title>{`${path}${hasMore ? ` (first ${values?.length})` : ""}`}</Title>
+      <Title>{`${path}${hasMore ? ` (first ${data?.length})` : ""}`}</Title>
       <BarChart
         ref={container}
         height={height - 37}
@@ -177,6 +205,7 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
           axisLine={false}
           tick={<CustomizedAxisTick {...{ fill }} />}
           tickLine={{ stroke }}
+          {...ticksSetting}
         />
         <YAxis
           dataKey="count"
@@ -246,7 +275,6 @@ const Distributions = ({ group }: { group: string }) => {
   const paths = useRecoilValue(distributionPaths(group));
   const noData = useRecoilValueLoadable(noDistributionPathsData(group));
 
-  console.log(noData);
   return noData.state === "hasValue" ? (
     !noData.contents ? (
       <Suspense fallback={<Loading>Loading...</Loading>}>

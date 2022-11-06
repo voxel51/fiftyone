@@ -6,6 +6,7 @@ Defines the shared state between the FiftyOne App and backend.
 |
 """
 from bson import json_util
+from dataclasses import asdict
 import json
 import logging
 import typing as t
@@ -66,10 +67,10 @@ class StateDescription(etas.Serializable):
                     d["view_cls"] = etau.get_class_name(self.view)
 
                 d["sample_fields"] = serialize_fields(
-                    collection.get_field_schema(flat=True)
+                    collection.get_field_schema(flat=True), dicts=True
                 )
                 d["frame_fields"] = serialize_fields(
-                    collection.get_frame_field_schema(flat=True)
+                    collection.get_frame_field_schema(flat=True), dicts=True
                 )
 
                 view = self.view if self.view is not None else self.dataset
@@ -145,8 +146,8 @@ class SampleField:
     db_field: t.Optional[str]
 
 
-def serialize_fields(schema: t.Dict) -> t.List[SampleField]:
-    return (
+def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
+    data = (
         [
             SampleField(
                 path=path,
@@ -164,3 +165,8 @@ def serialize_fields(schema: t.Dict) -> t.List[SampleField]:
         if schema
         else []
     )
+
+    if dicts:
+        return [asdict(f) for f in data]
+
+    return data
