@@ -273,15 +273,123 @@ session by either manually configuring port forwarding or via the FiftyOne CLI:
 
 .. _app-fields-sidebar:
 
-Fields
-______
+Using the sidebar
+_________________
 
 Any labels, tags, and scalar fields can be overlaid on the samples in the App
-by toggling the corresponding display options on the lefthand side of the App.
+by toggling the corresponding display options in the App's sidebar:
 
 .. image:: /images/app/app-fields.gif
     :alt: app-fields
     :align: center
+
+.. _app-sidebar-mode:
+
+Sidebar mode
+------------
+
+Each time you load a new dataset or view in the App, the sidebar updates to
+show statistics for the current collection. For large datasets with many
+samples or fields, this may involve substantial computation.
+
+Therefore, the App supports three sidebar modes that you can choose between:
+
+-   `all`: always compute counts for all fields and stats for all fields whose
+    filter tray is expanded
+-   `fast`: only compute counts and stats for fields whose filter tray is
+    expanded
+-   `best` (*default*): automatically choose between `all` and `fast` mode
+    based on the size of the dataset
+
+When the sidebar mode is `best`, the App will choose `fast` mode if any of the
+following conditions are met:
+
+-   Any dataset with 10,000+ samples
+-   Any dataset with 1,000+ samples and 10+ fields
+-   Any video dataset with 1+ frame label fields
+
+You can toggle the sidebar mode dynamically for your current session via the
+App's settings menu:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    session = fo.launch_app(dataset)
+
+.. image:: /images/app/app-sidebar-mode.gif
+    :alt: app-sidebar-mode
+    :align: center
+
+You can permanently configure the default sidebar mode of a dataset by
+modifying the
+:class:`sidebar_mode <fiftyone.core.odm.dataset.DatasetAppConfig>` property of
+the :ref:`dataset's App config <custom-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Set the default sidebar mode to "fast"
+    dataset.app_config.sidebar_mode = "fast"
+    dataset.save()  # must save after edits
+
+    session.refresh()
+
+.. _app-sidebar-groups:
+
+Sidebar groups
+--------------
+
+You can customize the layout of the App's sidebar by creating/renaming/deleting
+groups and dragging fields between groups directly in the App:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    session = fo.launch_app(dataset)
+
+.. image:: /images/app/app-sidebar-groups.gif
+    :alt: app-sidebar-groups
+    :align: center
+
+.. note::
+
+    Any changes you make to a dataset's sidebar groups in the App are saved on
+    the dataset and will persist between sessions.
+
+You can also programmatically modify a dataset's sidebar groups by editing the
+:class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>` property
+of the :ref:`dataset's App config <custom-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Get the default sidebar groups for the dataset
+    sidebar_groups = fo.DatasetAppConfig.default_sidebar_groups(dataset)
+
+    # Collapse the `metadata` section by default
+    print(sidebar_groups[2].name)  # metadata
+    sidebar_groups[2].expanded = False
+
+    # Modify the dataset's App config
+    dataset.app_config.sidebar_groups = sidebar_groups
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    If a dataset has fields that do not appear in the dataset's
+    :class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>`
+    property, these fields will be dyanmically assigned to default groups in
+    the App at runtime.
 
 .. _app-filtering:
 
