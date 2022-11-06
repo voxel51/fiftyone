@@ -6,4 +6,8 @@ export {
   KeyboardArrowDown,
   KeyboardArrowUp,
   IconButton,
+  Close,
+  Copy,
+  JSONIcon,
+  HelpIcon,
 } from "./Icons";

@@ -50,7 +50,8 @@ export default ({ active, options, color }: TabOptionProps) => {
           : hovering[i]
           ? theme.background.body
           : theme.background.level1,
-      color: hovering ? theme.text.primary : theme.text.secondary,
+      color:
+        o.text === active ? theme.text.buttonHighlight : theme.text.secondary,
     }))
   );
 

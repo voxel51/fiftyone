@@ -9,7 +9,7 @@
   padding: 5px;
   line-height: 1;
   opacity: 0;
-  z-index: 20;
+  z-index: 100;
   display: flex;
   flex-direction: row;
   justify-content: center;

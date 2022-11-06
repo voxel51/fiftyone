@@ -445,7 +445,7 @@ class AnnotationConfig(EnvConfig):
     _BUILTIN_BACKENDS = {
         "cvat": {
             "config_cls": "fiftyone.utils.cvat.CVATBackendConfig",
-            "url": "https://cvat.org",
+            "url": "https://app.cvat.ai",
         },
         "labelbox": {
             "config_cls": "fiftyone.utils.labelbox.LabelboxBackendConfig",

@@ -306,7 +306,7 @@ export const Button = ({
   color = color ?? theme.primary.plainColor;
   const props = useSpring({
     backgroundColor: hover ? color : theme.background.body,
-    color: hover ? theme.text.primary : theme.text.secondary,
+    color: hover ? theme.text.buttonHighlight : theme.text.secondary,
     config: {
       duration: 150,
     },

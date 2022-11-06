@@ -25,8 +25,8 @@ _DEFAULT_NUM_HISTOGRAM_BINS = 25
 
 @gql.type
 class ValueCount(t.Generic[T]):
-    value: int
     key: t.Union[T, None]
+    value: int
 
 
 @gql.type
@@ -179,7 +179,7 @@ async def _count_values(
 
     def resolve(data: t.List):
         _, data = data
-        values = [ValueCount(count, value) for value, count in data]
+        values = [ValueCount(key=value, value=count) for value, count in data]
 
         if isinstance(field, fo.StringField):
             return StrCountValuesResponse(values=values)
@@ -190,7 +190,7 @@ async def _count_values(
         if isinstance(field, fo.IntField):
             return IntCountValuesResponse(values=values)
 
-    return resolve, foa.CountValues(input.field, _first=LIST_LIMIT)
+    return resolve, foa.CountValues(input.field, _first=LIST_LIMIT, _asc=False)
 
 
 async def _histogram_values(
