@@ -75,4 +75,4 @@ export function Close(props: SvgIconProps) {
 
 export { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 export { IconButton } from "@mui/material";
-export {InfoIcon};
+export { InfoIcon };

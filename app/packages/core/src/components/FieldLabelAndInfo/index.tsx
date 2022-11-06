@@ -1,19 +1,16 @@
 import { InfoIcon, useTheme } from "@fiftyone/components";
-import { useEventHandler } from "@fiftyone/state";
-import {
+import React, {
+  MutableRefObject,
   useEffect,
-  useLayoutEffect,
   useMemo,
-  useReducer,
   useRef,
   useState,
 } from "react";
 import { atom, useRecoilState } from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
-import { PillButton } from "../utils";
 
-const selectedFieldInfo = atom({
+const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
   default: null,
 });
@@ -22,7 +19,7 @@ const selectedFieldInfo = atom({
 // the given element for a specified amount of time
 const useHover = (ref, delay, onHover, onHoverEnd) => {
   const [hovering, setHovering] = useState(false);
-  const timer = useRef();
+  const timer = useRef<number>();
 
   const handleMouseOver = (e) => {
     timer.current = setTimeout(() => {
@@ -105,7 +102,6 @@ export default function FieldLabelAndInfo({
   template,
 }) {
   const fieldInfo = useFieldInfo(field, nested, { expandedPath, color });
-  const theme = useTheme();
   return (
     <>
       {template({ ...fieldInfo, FieldInfoIcon })}
@@ -122,7 +118,7 @@ const FieldInfoExpandedContainer = styled.div`
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
 `;
 
-const FieldInfoDesc = styled.div`
+const FieldInfoDesc = styled.div<{ collapsed: boolean }>`
   text-overflow: ${({ collapsed }) => (collapsed ? "ellipsis" : "none")};
   white-space: ${({ collapsed }) => (collapsed ? "nowrap" : "pre-line")};
   height: ${({ collapsed }) => (collapsed ? "2.1rem" : "inherit")};
@@ -199,13 +195,6 @@ const FieldInfoTableContainer = styled.table`
   }
 `;
 
-// a styled div that displays a count in italics
-const EntryCount = styled.div`
-  font-size: 0.9rem;
-  font-style: italic;
-  // margin: 0.5rem 0 0.5rem 0;
-`;
-
 const ShowMoreLink = styled.a`
   font-size: 0.8rem;
   font-weight: bold;
@@ -234,10 +223,7 @@ function FieldInfoExpanded({
   const updatePosition = () => {
     if (!el.current || !hoverTarget.current) return;
     el.current.style.visibility = "visible";
-    const { top, left, relativePosition } = computePopoverPosition(
-      el,
-      hoverTarget
-    );
+    const { top, left } = computePopoverPosition(el, hoverTarget);
     el.current.style.top = top + "px";
     el.current.style.left = left + "px";
   };
@@ -298,12 +284,15 @@ function ExpFieldInfoDesc({ collapsed, description, onViewMore }) {
 // the screen. It should also position
 // the popover above, below, left, or right
 // of the target element
-function computePopoverPosition(el, hoverTarget) {
+function computePopoverPosition(
+  el: MutableRefObject<HTMLElement>,
+  hoverTarget: MutableRefObject<HTMLElement>
+) {
   const targetBounds = hoverTarget.current.getBoundingClientRect();
   const selfBounds = el.current.getBoundingClientRect();
 
   let offscreenArea = Infinity;
-  let bestPosition = null;
+  let bestPosition: { top: number; left: number } | null = null;
   let bestScore = Infinity;
   const relativePositions = ["above", "below", "left", "right"];
 
@@ -323,7 +312,7 @@ function computePopoverPosition(el, hoverTarget) {
       width: selfBounds.width,
       ...position,
     };
-    const { area, correction } = offscreenAreaOf(newSelfBounds, windowBounds);
+    const { correction } = offscreenAreaOf(newSelfBounds, windowBounds);
     const correctedBounds = {
       ...newSelfBounds,
       top: newSelfBounds.top + correction.y,
@@ -339,9 +328,9 @@ function computePopoverPosition(el, hoverTarget) {
         left: correctedBounds.left,
       };
     }
-    console.log({ correction, bestPosition });
   }
-  return bestPosition;
+
+  return bestPosition as { top: number; left: number };
 }
 
 // a function that returns the area of the given
@@ -418,16 +407,6 @@ function computeRelativePosition(relativePosition, targetBounds, selfBounds) {
   }
 }
 
-function areaOffScreen({ top, left, height, width }) {
-  const windowWidth = window.innerWidth;
-  const windowHeight = window.innerHeight;
-  const area = width * height;
-  const areaOffscreen =
-    Math.max(0, left + width - windowWidth) *
-    Math.max(0, top + height - windowHeight);
-  return areaOffscreen / area;
-}
-
 function entryKeyToLabel(key) {
   switch (key) {
     case "embeddedDocType":
@@ -442,7 +421,7 @@ function entryKeyToLabel(key) {
 function FieldInfoTable({ info, type, collapsed, subfield, description }) {
   info = info || {};
   const tableData = info;
-  let items = Object.entries(tableData)
+  let items = Object.entries<any>(tableData)
     .filter(keyValueIsRenderable)
     .map(toRenderValue);
 
@@ -455,7 +434,9 @@ function FieldInfoTable({ info, type, collapsed, subfield, description }) {
         {type && (
           <tr>
             <td
-              className={items.length > 0 || description ? "nostretch" : null}
+              className={
+                items.length > 0 || description ? "nostretch" : undefined
+              }
             >
               <ContentName>type</ContentName>
             </td>
@@ -469,7 +450,9 @@ function FieldInfoTable({ info, type, collapsed, subfield, description }) {
         {items.map(([key, value]) => (
           <tr key={key}>
             <td
-              className={items.length > 0 || description ? "nostretch" : null}
+              className={
+                items.length > 0 || description ? "nostretch" : undefined
+              }
             >
               <ContentName>{entryKeyToLabel(key)}</ContentName>
             </td>
@@ -497,20 +480,19 @@ function keyValueIsRenderable([key, value]) {
       return false;
   }
 }
-function toRenderValue([key, value]) {
+function toRenderValue([key, value]): [string, string] {
   switch (typeof value) {
     case "boolean":
       return [key, value ? "True" : "False"];
-      return;
     default:
       return [key, value];
   }
 }
 
 function convertTypeToDocLink(type) {
-  const parts = type.split(".");
-  const modulePath = [];
-  let className = null;
+  const parts: string[] = type.split(".");
+  const modulePath: string[] = [];
+  let className: string | null = null;
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
     const partLower = part.toLowerCase();
@@ -540,7 +522,7 @@ function LinkToType({ type, subfield }) {
   const theme = useTheme();
   const { href, label } = convertTypeToDocLink(type);
   return (
-    <ExternalLink style={{ color: theme.font }} href={href}>
+    <ExternalLink style={{ color: theme.text.primary }} href={href}>
       {label} {subfield ? `(${subfield})` : null}
     </ExternalLink>
   );
@@ -560,7 +542,7 @@ function LinkOrValue({ value }) {
   }
 
   return (
-    <ExternalLink style={{ color: theme.font }} href={href}>
+    <ExternalLink style={{ color: theme.text.primary }} href={href}>
       {value}
     </ExternalLink>
   );
