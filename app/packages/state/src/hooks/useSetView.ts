@@ -41,7 +41,6 @@ const useSetView = () => {
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
-              console.log(router.history.location.state);
               router.history.location.state.state = {
                 ...router.history.location.state,
                 view: value,
