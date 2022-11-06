@@ -121,7 +121,7 @@ export function usePrepareDataset(
       });
       setReady(true);
     }
-  }, [dataset]);
+  }, [dataset, colorscale, config, state]);
 }
 export function usePreLoadedDataset(
   queryRef,
