@@ -1,19 +1,13 @@
-import { Sample } from "@fiftyone/looker/src/state";
 import { useMemo } from "react";
 import copyToClipboard from "copy-to-clipboard";
 import highlightJSON from "json-format-highlight";
 import * as fos from "../../";
 import usePanel from "./usePanel";
 
-type JSONPanelState = {
-  sample?: Sample;
-  isOpen: boolean;
-};
-
 export const JSON_COLORS = {
-  keyColor: "rgb(138, 138, 138)",
+  keyColor: "var(--joy-palette-text-tertiary)",
   numberColor: "rgb(225, 100, 40)",
-  stringColor: "rgb(238, 238, 238)",
+  stringColor: "var(--joy-palette-text-secondary)",
   nullColor: "rgb(225, 100, 40)",
   trueColor: "rgb(225, 100, 40)",
   falseColor: "rgb(225, 100, 40)",

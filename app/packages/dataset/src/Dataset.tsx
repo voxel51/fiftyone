@@ -44,14 +44,10 @@ const Container = styled.div`
   padding: 0;
   font-family: "Palanquin", sans-serif;
   font-size: 14px;
-
   color: var(--joy-palette-text-primary);
   display: flex;
   flex-direction: column;
   min-width: 660px;
-  & * {
-    font-family: var(--joy-fontFamily-body);
-  }
 `;
 const ViewBarWrapper = styled.div`
   padding: 16px;

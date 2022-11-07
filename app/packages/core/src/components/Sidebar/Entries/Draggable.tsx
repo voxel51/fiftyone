@@ -29,6 +29,9 @@ const Draggable: React.FC<
   return (
     <>
       <animated.div
+        onClick={(event) => {
+          event.stopPropagation();
+        }}
         onMouseDown={
           trigger
             ? (event) => {

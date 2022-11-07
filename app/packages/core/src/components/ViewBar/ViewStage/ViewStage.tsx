@@ -12,6 +12,8 @@ import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
 import { getMatch } from "./utils";
 import { useTheme } from "@fiftyone/components";
+import { theme as themeState } from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
 
 const ViewStageContainer = animated(styled.div`
   margin: 0.5rem;
@@ -84,6 +86,7 @@ const ViewStageButton = styled.div`
 
 export const AddViewStage = React.memo(({ send, index, active }) => {
   const theme = useTheme();
+  const themeMode = useRecoilValue(themeState);
   const [hovering, setHovering] = useState(false);
   const [props, set] = useSpring(() => ({
     background: theme.background,
@@ -104,7 +107,7 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
       borderColor: active ? theme.primary.plainColor : theme.text.tertiary,
     });
     active ? setEnterProps() : setLeaveProps();
-  }, [active]);
+  }, [active, themeMode]);
 
   const [addProps, setAdd] = useSpring(() => ({
     marginTop: active ? 0 : 31,
@@ -336,7 +339,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
               style={{
                 width: "1rem",
                 height: "1rem",
-                margin: "0.4rem 0.5rem 0.5rem 0",
+                margin: "0.4rem 0.5rem 0.75rem 0",
               }}
             >
               <ExternalLink
@@ -347,6 +350,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
                   style={{
                     width: "1rem",
                     height: "1rem",
+                    color: theme.text.secondary,
                   }}
                 />
               </ExternalLink>

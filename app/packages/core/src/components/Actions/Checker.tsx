@@ -78,7 +78,7 @@ const Check = ({
         onChange={() => !disabled && onCheck()}
         checked={checkmark === CheckState.ADD || checkmark === null}
         style={{
-          color: edited ? theme.primary.plainColor : theme.text.secondary,
+          color: theme.primary.plainColor,
           padding: "0 0.5rem 0 0",
         }}
       />

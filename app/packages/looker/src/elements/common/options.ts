@@ -8,9 +8,9 @@ import { BaseElement, Events } from "../base";
 import { lookerOptionsPanel, lookerOptionsInput } from "./options.module.css";
 import { makeCheckboxRow } from "./util";
 
-export class OptionsPanelElement<State extends BaseState> extends BaseElement<
-  State
-> {
+export class OptionsPanelElement<
+  State extends BaseState
+> extends BaseElement<State> {
   private showOptions: boolean = false;
   getEvents(): Events<State> {
     return {
@@ -46,7 +46,7 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
       return this.element;
     }
     if (showOptions) {
-      this.element.style.opacity = "0.9";
+      this.element.style.opacity = "0.95";
       this.element.style.display = "grid";
     } else {
       this.element.style.opacity = "0.0";
