@@ -5,7 +5,6 @@ import { useRecoilState } from "recoil";
 import { InputDiv } from "./utils";
 
 const Filter = ({ modal }: { modal: boolean }) => {
-  return null;
   const [debouncedValue, setDebouncedValue] = useRecoilState(textFilter(modal));
   const [value, setValue] = useState(() => debouncedValue);
 
