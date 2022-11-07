@@ -8605,33 +8605,44 @@ class SampleCollection(object):
     ):
         if frames:
             schema = self.get_frame_field_schema(
-                include_private=include_private
+                include_private=include_private, flat=True
             )
         else:
-            schema = self.get_field_schema(include_private=include_private)
+            schema = self.get_field_schema(
+                include_private=include_private, flat=True
+            )
 
         if schema is None:
             return None
 
         fields_map = {}
-        for field_name, field in schema.items():
-            if field.db_field != field_name:
-                if reverse:
-                    fields_map[field.db_field] = field_name
+        for path, field in schema.items():
+            chunks = path.rsplit(".", 1)
+            field_name = chunks[-1]
+            db_field_name = field.db_field
+
+            if db_field_name not in (None, field_name):
+                if len(chunks) > 1:
+                    _path = chunks[0] + "." + db_field_name
                 else:
-                    fields_map[field_name] = field.db_field
+                    _path = db_field_name
+
+                if reverse:
+                    fields_map[_path] = path
+                else:
+                    fields_map[path] = _path
 
         return fields_map
 
-    def _handle_db_field(self, field_name, frames=False):
+    def _handle_db_field(self, path, frames=False):
         # @todo handle "groups.<slice>.field.name", if it becomes necessary
         db_fields_map = self._get_db_fields_map(frames=frames)
-        return db_fields_map.get(field_name, field_name)
+        return db_fields_map.get(path, path)
 
-    def _handle_db_fields(self, field_names, frames=False):
+    def _handle_db_fields(self, paths, frames=False):
         # @todo handle "groups.<slice>.field.name", if it becomes necessary
         db_fields_map = self._get_db_fields_map(frames=frames)
-        return [db_fields_map.get(f, f) for f in field_names]
+        return [db_fields_map.get(p, p) for p in paths]
 
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
