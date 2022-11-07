@@ -129,7 +129,7 @@ class Aggregation(object):
             sample_collection: the
                 :class:`fiftyone.core.collections.SampleCollection` to which
                 the aggregation is being applied
-            context (None): the path context from which to resolve
+            context (None): a path context from which to resolve
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -1818,7 +1818,7 @@ class Schema(Aggregation):
 
         return schema
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         field_name = self._field_name
         doc_type = None
 
@@ -1833,7 +1833,10 @@ class Schema(Aggregation):
         self._doc_type = doc_type
 
         path, pipeline, _, _, _ = _parse_field_and_expr(
-            sample_collection, field_name, expr=self._expr
+            sample_collection,
+            field_name,
+            expr=self._expr,
+            context=context,
         )
 
         pipeline.extend(
