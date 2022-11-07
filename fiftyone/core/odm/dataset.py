@@ -235,7 +235,7 @@ class SidebarGroupDocument(EmbeddedDocument):
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"strict": False}
 
-    expanded = BooleanField(default=True, required=True)
+    expanded = BooleanField(default=None, required=False)
     name = StringField(required=True)
     paths = ListField(StringField(), default=[])
 

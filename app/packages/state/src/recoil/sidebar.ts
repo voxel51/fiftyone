@@ -33,6 +33,9 @@ import { State } from "./types";
 import * as viewAtoms from "./view";
 import { datasetName, isVideoDataset } from "./selectors";
 import { isLargeVideo, resolvedSidebarMode } from "./options";
+import { commitMutation, VariablesOf } from "react-relay";
+import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
+import { getCurrentEnvironment } from "../hooks/useRouter";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -440,6 +443,15 @@ export const sidebarGroups = selectorFamily<
     eviction: "most-recent",
   },
 });
+
+export const persistSidebarGroups = (
+  variables: VariablesOf<setSidebarGroupsMutation>
+) => {
+  commitMutation<setSidebarGroupsMutation>(getCurrentEnvironment(), {
+    mutation: setSidebarGroups,
+    variables,
+  });
+};
 
 export const sidebarEntries = selectorFamily<
   SidebarEntry[],
