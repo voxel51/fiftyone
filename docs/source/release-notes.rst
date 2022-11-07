@@ -15,17 +15,21 @@ App
   computing statistics only for currently visible fields
   `#2191 <https://github.com/voxel51/fiftyone/pull/2191>`_
 
-- Added support for configuring the
-  :ref:`sidebar mode <app-sidebar-mode>` dynamically in the App and
-  programmatically on a per-dataset basis
+- Added new :ref:`sidebar modes <app-sidebar-mode>` to the App with updated
+  default behavior that further optimizes the performance of the App for large
+  datasets `#2191 <https://github.com/voxel51/fiftyone/pull/2191>`_
+
+- Added support for configuring the :ref:`sidebar mode <app-sidebar-mode>`
+  dynamically in the App and programmatically on a per-dataset basis
   `#2191 <https://github.com/voxel51/fiftyone/pull/2191>`_
 
-- Added support for programmatically configuring the App's sidebar groups and
-  default expansion states on a per-dataset basis
-  `#2190 <https://github.com/voxel51/fiftyone/pull/2190>`_
+- Added support for programmatically configuring the App's
+  :ref:`sidebar groups <app-sidebar-groups>` and default expansion states on a
+  per-dataset basis `#2190 <https://github.com/voxel51/fiftyone/pull/2190>`_
 
 - Added support for viewing field-level descriptions in the App via a new
-  tooltip `#2216 <https://github.com/voxel51/fiftyone/pull/2216>`_
+  :ref:`field tooltip <app-fields-sidebar>`
+  `#2216 <https://github.com/voxel51/fiftyone/pull/2216>`_
 
 - Added support for filtering and viewing stats for custom embedded document
   attributes in the App
