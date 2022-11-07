@@ -561,9 +561,7 @@ export const filterFields = selectorFamily<string[], string>({
           }
 
           return (
-            name !== "tags" &&
-            !excluded.includes(name) &&
-            VALID_PRIMITIVE_TYPES.includes(ftype)
+            !excluded.includes(name) && VALID_PRIMITIVE_TYPES.includes(ftype)
           );
         })
         .map(({ name }) => [parentPath, name].join("."));

@@ -810,7 +810,7 @@ class CountValues(Aggregation):
                 "$group": {
                     "_id": None,
                     "result": {"$push": {"k": "$_id", "count": "$count"}},
-                    "count": {"$count": {}},
+                    "count": {"$sum": 1},
                 }
             },
         ]

@@ -61,5 +61,7 @@ class Pin(HTTPEndpoint):
 
         return {
             "state": state.serialize(),
-            "dataset": serialize_dataset(state.dataset, state.view),
+            "dataset": await serialize_dataset(
+                state.dataset.name, state.view._serialize()
+            ),
         }

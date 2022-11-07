@@ -240,8 +240,6 @@ export const noDistributionPathsData = selectorFamily<boolean, string>({
             return data.counts.length === 1 && data.counts[0] === 0;
           case "DatetimeHistogramValuesResponse":
             return data.counts.length === 1 && data.counts[0] === 0;
-          case "DatetimeHistogramValuesResponse":
-            return data.counts.length === 1 && data.counts[0] === 0;
           case "FloatHistogramValuesResponse":
             return data.counts.length === 1 && data.counts[0] === 0;
           case "StrCountValuesResponse":
