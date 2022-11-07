@@ -166,7 +166,7 @@ def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
                 )
                 else None,
                 description=field.description,
-                info=field.info,
+                info=json.loads(json.dumps(field.info)),  # mongoengine types
             )
             for path, field in schema.items()
         ]
