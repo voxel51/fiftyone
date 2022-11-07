@@ -11,8 +11,10 @@ import {
 import React, { useLayoutEffect, useRef, useState } from "react";
 import {
   selectorFamily,
+  SetterOrUpdater,
   useRecoilCallback,
   useRecoilState,
+  useRecoilStateLoadable,
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
@@ -32,7 +34,7 @@ const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
   get:
     (params) =>
     ({ get }) =>
-      get(fos.sidebarGroup({ ...params, loadingTags: true })).length,
+      get(fos.sidebarGroup({ ...params, loading: true })).length,
 });
 
 const TAGS = {
@@ -72,9 +74,7 @@ const numGroupFieldsFiltered = selectorFamily<
         f = (path) => labels.includes(path);
       }
 
-      for (const path of get(
-        fos.sidebarGroup({ ...params, loadingTags: true })
-      )) {
+      for (const path of get(fos.sidebarGroup({ ...params, loading: true }))) {
         if (
           get(fos.fieldIsFiltered({ path, modal: params.modal })) &&
           (!f || f(path))
@@ -121,7 +121,7 @@ const numGroupFieldsActive = selectorFamily<
       }
 
       const paths = new Set(
-        get(fos.sidebarGroup({ ...params, loadingTags: true }))
+        get(fos.sidebarGroup({ ...params, loading: true }))
       );
 
       return active.filter((p) => p.includes(f) && paths.has(p)).length;
@@ -180,11 +180,11 @@ export const useDeleteGroup = (modal: boolean, group: string) => {
     ({ set, snapshot }) =>
       async () => {
         const groups = await snapshot.getPromise(
-          fos.sidebarGroups({ modal, loadingTags: true })
+          fos.sidebarGroups({ modal, loading: true })
         );
         set(
-          fos.sidebarGroups({ modal, loadingTags: true }),
-          groups.filter(([name]) => name !== group)
+          fos.sidebarGroups({ modal, loading: true }),
+          groups.filter(({ name }) => name !== group)
         );
       },
     []
@@ -202,7 +202,7 @@ const useClearActive = (modal: boolean, group: string) => {
     ({ set, snapshot }) =>
       async () => {
         const paths = await snapshot.getPromise(
-          fos.sidebarGroup({ modal, group, loadingTags: true })
+          fos.sidebarGroup({ modal, group, loading: true })
         );
         const active = await snapshot.getPromise(fos.activeFields({ modal }));
 
@@ -258,7 +258,7 @@ const useClearFiltered = (modal: boolean, group: string) => {
     ({ set, snapshot }) =>
       async () => {
         let paths = await snapshot.getPromise(
-          fos.sidebarGroup({ modal, group, loadingTags: true })
+          fos.sidebarGroup({ modal, group, loading: true })
         );
         const filters = await snapshot.getPromise(
           modal ? fos.modalFilters : fos.filters
@@ -480,6 +480,27 @@ const GroupEntry = React.memo(
   }
 );
 
+const useShown = (
+  key: string,
+  modal: boolean
+): [boolean, SetterOrUpdater<boolean>] => {
+  const expanded = useRecoilValueLoadable(
+    fos.groupShown({ group: key, modal, loading: false })
+  );
+  const [expandedLoading, setExpanded] = useRecoilStateLoadable(
+    fos.groupShown({ group: key, modal, loading: true })
+  );
+
+  if (expanded.state === "hasValue") {
+    return [expanded.contents, setExpanded];
+  }
+
+  if (expandedLoading.state !== "hasValue") {
+    throw new Error(expandedLoading.contents);
+  }
+  return [expandedLoading.contents, setExpanded];
+};
+
 export const TagGroupEntry = React.memo(
   ({
     entryKey,
@@ -496,9 +517,7 @@ export const TagGroupEntry = React.memo(
       cb: () => void
     ) => void;
   }) => {
-    const [expanded, setExpanded] = useRecoilState(
-      fos.groupShown({ group: TAGS[tagKey], modal })
-    );
+    const [expanded, setExpanded] = useShown(TAGS[tagKey], modal);
     const { singular } = useRecoilValue(fos.elementNames);
     const name = `${
       tagKey === fos.State.TagKey.SAMPLE ? singular : "label"
@@ -556,9 +575,8 @@ interface PathGroupProps {
 
 export const PathGroupEntry = React.memo(
   ({ entryKey, name, modal, mutable = true, trigger }: PathGroupProps) => {
-    const [expanded, setExpanded] = useRecoilState(
-      fos.groupShown({ group: name, modal })
-    );
+    const [expanded, setExpanded] = useShown(name, modal);
+
     const renameGroup = useRenameGroup(modal, name);
     const onDelete = !modal ? useDeleteGroup(modal, name) : null;
     const empty = useRecoilValue(fos.groupIsEmpty({ modal, group: name }));

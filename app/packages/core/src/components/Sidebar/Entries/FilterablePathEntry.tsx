@@ -260,7 +260,8 @@ const FilterableEntry = React.memo(
 
     const field = useRecoilValue(fos.field(path));
     const data = useMemo(
-      () => getFilterData(expandedPath, modal, field, fields, skeleton),
+      () =>
+        getFilterData(expandedPath, modal, field as Field, fields, skeleton),
       [field, fields, expandedPath, modal, skeleton]
     );
     const fieldIsFiltered = useRecoilValue(

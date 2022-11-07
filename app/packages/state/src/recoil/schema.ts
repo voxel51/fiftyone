@@ -13,6 +13,7 @@ import {
   meetsFieldType,
   Schema,
   StrictField,
+  VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
@@ -546,8 +547,10 @@ export const filterFields = selectorFamily<string[], string>({
         topParentPath = parentPath.split(".").slice(0, -1).join(".");
       }
 
-      const label = LABELS.includes(get(field(topParentPath))?.embeddedDocType);
-      const excluded = EXCLUDED[parent?.embeddedDocType] || [];
+      const topParent = get(field(topParentPath));
+
+      const label = LABELS.includes(topParent.embeddedDocType);
+      const excluded = EXCLUDED[topParent?.embeddedDocType] || [];
 
       if (label && path.endsWith(".tags")) {
         return [[parentPath, "tags"].join(".")];
@@ -564,8 +567,13 @@ export const filterFields = selectorFamily<string[], string>({
             return false;
           }
 
+          if (label && name === "tags") {
+            return false;
+          }
+
           return (
-            !excluded.includes(name) && VALID_PRIMITIVE_TYPES.includes(ftype)
+            !label ||
+            (!excluded.includes(name) && VALID_PRIMITIVE_TYPES.includes(ftype))
           );
         })
         .map(({ name }) => [parentPath, name].join("."));

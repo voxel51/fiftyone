@@ -5,7 +5,7 @@ import React, { useState } from "react";
 
 const Draggable: React.FC<
   React.PropsWithChildren<{
-    color: string;
+    color?: string;
     entryKey: string;
     trigger?: (
       event: React.MouseEvent<HTMLDivElement>,

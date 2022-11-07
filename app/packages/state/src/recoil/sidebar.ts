@@ -102,21 +102,21 @@ export const useLabelTagText = (modal: boolean) => {
 
 export const useTagText = (modal: boolean) => {
   const { singular } = useRecoilValue(viewAtoms.elementNames);
-  const loadingTags =
+  const loading =
     useRecoilValueLoadable(readableTags({ modal, group: "tags" })).state ===
     "loading";
 
-  return loadingTags ? `Loading ${singular} tags...` : `No ${singular} tags`;
+  return loading ? `Loading ${singular} tags...` : `No ${singular} tags`;
 };
 
 export const useEntries = (
   modal: boolean
 ): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const [entries, setEntries] = useRecoilStateLoadable(
-    sidebarEntries({ modal, loadingTags: false, filtered: true })
+    sidebarEntries({ modal, loading: false, filtered: true })
   );
   const loadingEntries = useRecoilValue(
-    sidebarEntries({ modal, loadingTags: true, filtered: true })
+    sidebarEntries({ modal, loading: true, filtered: true })
   );
 
   return [
@@ -309,11 +309,11 @@ export const sidebarGroupsDefinition = atomFamily<
 
 export const sidebarGroups = selectorFamily<
   State.SidebarGroup[],
-  { modal: boolean; loadingTags: boolean; filtered?: boolean }
+  { modal: boolean; loading: boolean; filtered?: boolean }
 >({
   key: "sidebarGroups",
   get:
-    ({ modal, loadingTags, filtered = true }) =>
+    ({ modal, loading, filtered = true }) =>
     ({ get }) => {
       const f = get(textFilter(modal));
       let groups = get(sidebarGroupsDefinition(modal))
@@ -337,17 +337,23 @@ export const sidebarGroups = selectorFamily<
       const framesIndex = groupNames.indexOf("frame labels");
       const video = get(isVideoDataset);
 
-      if (!loadingTags) {
+      if (!loading) {
         const largeVideo = get(isLargeVideo);
-        if (video && typeof groups[framesIndex].expanded !== "boolean") {
+        if (
+          video &&
+          groups[framesIndex] &&
+          groups[framesIndex].expanded === undefined
+        ) {
           groups[framesIndex].expanded = !largeVideo;
         }
-        if (typeof groups[tagsIndex].expanded !== "boolean") {
+
+        if (groups[tagsIndex].expanded === undefined) {
           groups[tagsIndex].expanded =
-            get(resolvedSidebarMode(false)) === "all" ? true : false;
+            get(resolvedSidebarMode(false)) === "all";
         }
-        if (typeof groups[labelTagsIndex].expanded !== "boolean") {
-          groups[labelTagsIndex].expanded = !isLargeVideo;
+        if (groups[labelTagsIndex].expanded === undefined) {
+          groups[labelTagsIndex].expanded =
+            get(resolvedSidebarMode(false)) === "all" ? !largeVideo : false;
         }
         groups[tagsIndex].expanded &&
           (groups[tagsIndex].paths = get(
@@ -367,6 +373,22 @@ export const sidebarGroups = selectorFamily<
           )
             .filter((tag) => !filtered || tag.includes(f))
             .map((tag) => `_label_tags.${tag}`));
+      } else {
+        if (groups[labelTagsIndex].expanded === undefined) {
+          groups[labelTagsIndex].expanded = false;
+        }
+
+        if (
+          video &&
+          groups[framesIndex] &&
+          groups[framesIndex].expanded === undefined
+        ) {
+          groups[framesIndex].expanded = false;
+        }
+
+        if (groups[tagsIndex].expanded === undefined) {
+          groups[tagsIndex].expanded = false;
+        }
       }
 
       return groups.map((data) => ({
@@ -392,7 +414,7 @@ export const sidebarGroups = selectorFamily<
             sidebarGroup({
               modal,
               group: name,
-              loadingTags: false,
+              loading: false,
               filtered: false,
             })
           ),
@@ -455,7 +477,7 @@ export const persistSidebarGroups = (
 
 export const sidebarEntries = selectorFamily<
   SidebarEntry[],
-  { modal: boolean; loadingTags: boolean; filtered?: boolean }
+  { modal: boolean; loading: boolean; filtered?: boolean }
 >({
   key: "sidebarEntries",
   get:
@@ -469,7 +491,13 @@ export const sidebarEntries = selectorFamily<
               name: name,
               kind: EntryKind.GROUP,
             };
-            const shown = get(groupShown({ group: name, modal: params.modal }));
+            const shown = get(
+              groupShown({
+                group: name,
+                modal: params.modal,
+                loading: params.loading,
+              })
+            );
 
             return [
               group,
@@ -508,7 +536,11 @@ export const sidebarEntries = selectorFamily<
               {
                 name: entry.name,
                 expanded: get(
-                  groupShown({ modal: params.modal, group: entry.name })
+                  groupShown({
+                    modal: params.modal,
+                    group: entry.name,
+                    loading: params.loading,
+                  })
                 ),
                 paths: [],
               },
@@ -571,7 +603,7 @@ export const disabledPaths = selector<Set<string>>({
 
 export const sidebarGroupMapping = selectorFamily<
   { [name: string]: Omit<State.SidebarGroup, "name"> },
-  { modal: boolean; loadingTags: boolean; filtered?: boolean }
+  { modal: boolean; loading: boolean; filtered?: boolean }
 >({
   key: "sidebarGroupMapping",
   get:
@@ -586,7 +618,7 @@ export const sidebarGroupMapping = selectorFamily<
 
 export const sidebarGroup = selectorFamily<
   string[],
-  { modal: boolean; group: string; loadingTags: boolean; filtered?: boolean }
+  { modal: boolean; group: string; loading: boolean; filtered?: boolean }
 >({
   key: "sidebarGroup",
   get:
@@ -608,7 +640,7 @@ export const sidebarGroupNames = selectorFamily<string[], boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      return get(sidebarGroups({ modal, loadingTags: true })).map(
+      return get(sidebarGroups({ modal, loading: true })).map(
         ({ name }) => name
       );
     },
@@ -626,7 +658,7 @@ export const groupIsEmpty = selectorFamily<
     (params) =>
     ({ get }) => {
       return Boolean(
-        get(sidebarGroup({ ...params, loadingTags: true, filtered: false }))
+        get(sidebarGroup({ ...params, loading: true, filtered: false }))
           .length == 0
       );
     },
@@ -637,21 +669,20 @@ export const groupIsEmpty = selectorFamily<
 
 export const groupShown = selectorFamily<
   boolean,
-  { modal: boolean; group: string }
+  { modal: boolean; group: string; loading: boolean }
 >({
   key: "groupShown",
   get:
-    ({ group, modal }) =>
+    ({ group, modal, loading }) =>
     ({ get }) => {
-      return get(sidebarGroupMapping({ modal, loadingTags: true }))[group]
-        .expanded;
+      return get(sidebarGroupMapping({ modal, loading }))[group].expanded;
     },
   set:
     ({ modal, group }) =>
     ({ get, set }, expanded) => {
-      const current = get(sidebarGroups({ modal, loadingTags: true }));
+      const current = get(sidebarGroups({ modal, loading: true }));
       set(
-        sidebarGroups({ modal, loadingTags: true }),
+        sidebarGroups({ modal, loading: true }),
         current.map(({ name, ...data }) =>
           name === group
             ? { name, ...data, expanded: Boolean(expanded) }

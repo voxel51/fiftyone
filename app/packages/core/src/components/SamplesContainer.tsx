@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { Suspense, useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
@@ -7,6 +7,7 @@ import Grid from "./Grid";
 import ContainerHeader from "./ImageContainerHeader";
 import Sidebar, { Entries } from "./Sidebar";
 import * as fos from "@fiftyone/state";
+import { Loading } from "@fiftyone/components";
 
 const ContentColumn = styled.div`
   flex-grow: 1;
