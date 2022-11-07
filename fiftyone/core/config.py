@@ -417,8 +417,8 @@ class AppConfig(EnvConfig):
         if self.color_by not in supported_color_bys:
             logger.warning(
                 "Invalid color_by=%s. Must be one of %s. Defaulting to '%s'",
-                supported_color_bys,
                 self.color_by,
+                supported_color_bys,
                 default_color_by,
             )
             self.color_by = default_color_by
@@ -428,8 +428,8 @@ class AppConfig(EnvConfig):
         if self.theme not in supported_themes:
             logger.warning(
                 "Invalid theme=%s. Must be one of %s. Defaulting to '%s'",
-                supported_themes,
                 self.theme,
+                supported_themes,
                 default_theme,
             )
             self.theme = default_theme
