@@ -153,31 +153,6 @@ class _PatchesView(fov.DatasetView):
     def media_type(self):
         return fom.IMAGE
 
-    def _get_default_sample_fields(
-        self, include_private=False, use_db_fields=False
-    ):
-        fields = super()._get_default_sample_fields(
-            include_private=include_private, use_db_fields=use_db_fields
-        )
-
-        extras = ["_sample_id" if use_db_fields else "sample_id"]
-
-        if self._is_frames:
-            extras.append("_frame_id" if use_db_fields else "frame_id")
-            extras.append("frame_number")
-
-        return fields + tuple(extras)
-
-    def _get_default_indexes(self, frames=False):
-        if frames:
-            return super()._get_default_indexes(frames=frames)
-
-        names = ["id", "filepath", "sample_id"]
-        if self._is_frames:
-            names.extend(["frame_id", "_sample_id_1_frame_number_1"])
-
-        return names
-
     def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
         if label_field in self._label_fields:
             _ids = self.values("_" + self._id_field)
@@ -567,9 +542,8 @@ def make_patches_dataset(
             other_fields = [f for f in src_schema if f not in curr_schema]
 
         add_fields = [f for f in other_fields if f not in curr_schema]
-        dataset._sample_doc_cls.merge_field_schema(
-            {k: v for k, v in src_schema.items() if k in add_fields}
-        )
+        add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
+        dataset._sample_doc_cls.merge_field_schema(add_schema)
 
     _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
 
@@ -706,9 +680,8 @@ def make_evaluation_patches_dataset(
             other_fields = [f for f in src_schema if f not in curr_schema]
 
         add_fields = [f for f in other_fields if f not in curr_schema]
-        dataset._sample_doc_cls.merge_field_schema(
-            {k: v for k, v in src_schema.items() if k in add_fields}
-        )
+        add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
+        dataset._sample_doc_cls.merge_field_schema(add_schema)
 
     _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
 

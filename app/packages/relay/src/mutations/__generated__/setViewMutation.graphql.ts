@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0c247a792db558278d7fe712e415b580>>
+ * @generated SignedSource<<b87a82ee3feea6599ea3976f7328655a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -39,11 +39,11 @@ export type setViewMutation$data = {
           readonly patchesField: string | null;
         } | null;
         readonly key: string;
-        readonly timestamp: string | null;
+        readonly timestamp: any | null;
         readonly version: string | null;
         readonly viewStages: ReadonlyArray<string> | null;
       }>;
-      readonly createdAt: string | null;
+      readonly createdAt: any | null;
       readonly defaultGroupSlice: string | null;
       readonly defaultMaskTargets: ReadonlyArray<{
         readonly target: number;
@@ -60,7 +60,7 @@ export type setViewMutation$data = {
           readonly predField: string | null;
         } | null;
         readonly key: string;
-        readonly timestamp: string | null;
+        readonly timestamp: any | null;
         readonly version: string | null;
         readonly viewStages: ReadonlyArray<string> | null;
       }>;
@@ -70,7 +70,7 @@ export type setViewMutation$data = {
         readonly ftype: string;
         readonly path: string;
         readonly subfield: string | null;
-      }>;
+      }> | null;
       readonly groupField: string | null;
       readonly groupMediaTypes: ReadonlyArray<{
         readonly mediaType: MediaType;
@@ -78,7 +78,7 @@ export type setViewMutation$data = {
       }> | null;
       readonly groupSlice: string | null;
       readonly id: string;
-      readonly lastLoadedAt: string | null;
+      readonly lastLoadedAt: any | null;
       readonly maskTargets: ReadonlyArray<{
         readonly name: string;
         readonly targets: ReadonlyArray<{

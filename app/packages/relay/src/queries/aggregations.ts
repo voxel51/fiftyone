@@ -1,8 +1,8 @@
 import { graphql } from "react-relay";
 
 export default graphql`
-  query aggregateQuery($form: AggregateForm!) {
-    aggregate(form: $form) {
+  query aggregationsQuery($form: AggregationForm!) {
+    aggregations(form: $form) {
       ... on Aggregation {
         path
         count

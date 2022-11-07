@@ -2356,6 +2356,7 @@ _MONGO_TO_FIFTYONE_TYPES = {
     "bool": fof.BooleanField,
     "int": fof.IntField,
     "long": fof.IntField,
+    "date": fof.DateTimeField,
     "double": fof.FloatField,
     "decimal": fof.FloatField,
     "array": fof.ListField,

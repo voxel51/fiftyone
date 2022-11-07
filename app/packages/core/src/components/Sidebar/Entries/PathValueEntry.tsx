@@ -23,6 +23,7 @@ import * as fos from "@fiftyone/state";
 import RegularEntry from "./RegularEntry";
 
 import LoadingCircle from "../../Common/Loading";
+import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 
 const ScalarDiv = styled.div`
   & > div {
@@ -80,18 +81,12 @@ const ScalarValueEntry = ({
   });
   const color = useRecoilValue(fos.pathColor({ path, modal: true }));
 
-  const { ftype, subfield, embeddedDocType } = useRecoilValue(fos.field(path));
+  const field = useRecoilValue(fos.field(path));
+  const { ftype, subfield, embeddedDocType } = field;
 
   return (
     <RegularEntry
       entryKey={entryKey}
-      title={`${path} (${
-        embeddedDocType
-          ? embeddedDocType
-          : subfield
-          ? `${ftype}(${subfield})`
-          : ftype
-      })`}
       backgroundColor={backgroundColor}
       color={color}
       heading={null}
@@ -101,14 +96,20 @@ const ScalarValueEntry = ({
         <Suspense fallback={<div>Loading...</div>}>
           <Loadable path={path} />
         </Suspense>
-        <div
-          style={{
-            fontSize: "0.8rem",
-            color: theme.text.secondary,
-          }}
-        >
-          {path}
-        </div>
+        <FieldLabelAndInfo
+          field={field}
+          color={color}
+          template={({ label, hoverTarget }) => (
+            <div
+              style={{
+                fontSize: "0.8rem",
+                color: theme.text.secondary,
+              }}
+            >
+              <span ref={hoverTarget}>{label}</span>
+            </div>
+          )}
+        />
       </ScalarDiv>
     </RegularEntry>
   );

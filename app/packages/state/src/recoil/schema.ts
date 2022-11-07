@@ -5,7 +5,6 @@ import {
   DETECTIONS,
   EMBEDDED_DOCUMENT_FIELD,
   Field,
-  KEYPOINTS,
   LABELS,
   LABELS_PATH,
   LABEL_LIST,
@@ -14,28 +13,12 @@ import {
   meetsFieldType,
   Schema,
   StrictField,
-  STRING_FIELD,
-  VALID_KEYPOINTS,
-  VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
 
 import * as atoms from "./atoms";
 import { State } from "./types";
-import * as viewAtoms from "./view";
-import { isGroup } from "./groups";
-import { KeypointSkeleton } from "@fiftyone/looker/src/state";
-
-const RESERVED_FIELDS = [
-  "id",
-  "filepath",
-  "_rand",
-  "_media_type",
-  "metadata",
-  "tags",
-  "frames",
-];
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name] = {
@@ -84,71 +67,10 @@ export const buildSchema = (dataset: State.Dataset): Schema => {
   return schema;
 };
 
-const fieldFilter = (
-  fields: Schema,
-  view: State.Stage[],
-  space: State.SPACE,
-  isGroup: boolean
-) => {
-  view.forEach(({ _cls, kwargs }) => {
-    if (_cls === "fiftyone.core.stages.SelectFields") {
-      const supplied = kwargs[0][1] || [];
-      let names = new Set([...(supplied as []), ...RESERVED_FIELDS]);
-      if (space === State.SPACE.FRAME)
-        names = new Set(
-          [...names]
-            .filter((n) => n.split(".")[0] === "frames")
-            .map((n) => n.split(".").slice(1).join("."))
-        );
-
-      Object.keys(fields).forEach((f) => {
-        let context = fields;
-        let field: Field;
-        for (const i of f.split(".")) {
-          if (!context[i]) {
-            return;
-          }
-          field = context[i];
-          context = field.fields;
-        }
-        !names.has(f) &&
-          (fields[f].embeddedDocType !== "fiftyone.core.groups.Group" ||
-            !isGroup) &&
-          delete fields[f];
-      });
-    } else if (_cls === "fiftyone.core.stages.ExcludeFields") {
-      const supplied = kwargs[0][1] || [];
-      let names = Array.from(supplied as string[]);
-
-      if (space === State.SPACE.FRAME)
-        names = names
-          .filter((n) => n.split(".")[0] === "frames")
-          .map((n) => n.split(".").slice(1).join("."));
-
-      names.forEach((f) => {
-        let context = fields;
-        let field: Field;
-        for (const i of f.split(".")) {
-          if (!context[i]) {
-            return;
-          }
-          field = context[i];
-          context = field.fields;
-        }
-        field.embeddedDocType !== "fiftyone.core.groups.Group" &&
-          delete fields[f];
-      });
-    }
-  });
-};
-
-export const fieldSchema = selectorFamily<
-  Schema,
-  { space: State.SPACE; filtered?: boolean }
->({
+export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
   key: "fieldSchema",
   get:
-    ({ space, filtered }) =>
+    ({ space }) =>
     ({ get }) => {
       const dataset = get(atoms.dataset);
 
@@ -159,8 +81,6 @@ export const fieldSchema = selectorFamily<
       const fields = (
         space === State.SPACE.FRAME ? dataset.frameFields : dataset.sampleFields
       ).reduce(schemaReduce, {});
-
-      filtered && fieldFilter(fields, get(viewAtoms.view), space, get(isGroup));
 
       return fields;
     },
@@ -176,12 +96,10 @@ export const pathIsShown = selectorFamily<boolean, string>({
       }
 
       let keys = path.split(".");
-      let schema = get(
-        fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
-      );
+      let schema = get(fieldSchema({ space: State.SPACE.SAMPLE }));
 
       if (keys[0] === "frames" && !(keys[0] in schema)) {
-        schema = get(fieldSchema({ space: State.SPACE.FRAME, filtered: true }));
+        schema = get(fieldSchema({ space: State.SPACE.FRAME }));
         keys = keys.slice(1);
       }
 
@@ -244,12 +162,12 @@ export const fieldPaths = selectorFamily<
       }
 
       const sampleLabels = Object.keys(
-        get(fieldSchema({ space: State.SPACE.SAMPLE, filtered: true }))
+        get(fieldSchema({ space: State.SPACE.SAMPLE }))
       )
         .filter((l) => !l.startsWith("_"))
         .sort();
       const frameLabels = Object.keys(
-        get(fieldSchema({ space: State.SPACE.FRAME, filtered: true }))
+        get(fieldSchema({ space: State.SPACE.FRAME }))
       )
         .filter((l) => !l.startsWith("_"))
         .map((l) => "frames." + l)

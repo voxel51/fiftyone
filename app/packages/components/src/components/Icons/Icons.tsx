@@ -1,5 +1,5 @@
 import { SvgIcon, SvgIconProps } from "@mui/material";
-import { GitHub, MenuBook } from "@mui/icons-material";
+import { GitHub, MenuBook, Info as InfoIcon } from "@material-ui/icons";
 import React from "react";
 
 import ExternalLink from "../ExternalLink";
@@ -92,3 +92,4 @@ export function HelpIcon(props: SvgIconProps = {}) {
 
 export { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 export { IconButton } from "@mui/material";
+export { InfoIcon };

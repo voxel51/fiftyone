@@ -6,8 +6,8 @@
   "customScalars": {
     "BSON": "object",
     "BSONArray": "Array",
-    "Date": "string",
-    "DateTime": "string",
+    "Date": "number",
+    "DateTime": "number",
     "JSON": "object",
     "JSONArray": "Array"
   }

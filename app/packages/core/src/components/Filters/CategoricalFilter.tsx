@@ -22,6 +22,7 @@ import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import withSuspense from "./withSuspense";
+import FieldLabelAndInfo from "../FieldLabelAndInfo";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -352,18 +353,40 @@ const CategoricalFilter = <T extends V = V>({
 }: Props<T>) => {
   const name = path.split(".").slice(-1)[0];
   const color = useRecoilValue(fos.pathColor({ modal, path }));
-  const { count, results } = useRecoilValue(countsAtom);
   const selectedCounts = useRef(new Map<V["value"], number>());
   const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
   const useSearch = getUseSearch({ modal, path });
   const skeleton = useRecoilValue(isKeypointLabel(path));
   const theme = useTheme();
+  const field = useRecoilValue(fos.field(path));
+  const countsLoadable = useRecoilValueLoadable(countsAtom);
+
+  if (countsLoadable.state !== "hasValue") return null;
+
+  const { count, results } = countsLoadable.contents;
+
+  if (named && !results.length) {
+    return null;
+  }
 
   return (
-    <NamedCategoricalFilterContainer title={title}>
-      <NamedCategoricalFilterHeader>
-        {named && name && <>{name.replaceAll("_", " ")}</>}
-      </NamedCategoricalFilterHeader>
+    <NamedCategoricalFilterContainer>
+      <FieldLabelAndInfo
+        nested
+        field={field}
+        color={color}
+        template={({
+          label,
+          hoverHanlders,
+          FieldInfoIcon,
+          hoverTarget,
+          container,
+        }) => (
+          <NamedCategoricalFilterHeader>
+            <span ref={hoverTarget}>{label}</span>
+          </NamedCategoricalFilterHeader>
+        )}
+      />
       <CategoricalFilterContainer
         onMouseDown={(event) => event.stopPropagation()}
       >

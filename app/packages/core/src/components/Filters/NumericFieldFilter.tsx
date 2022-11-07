@@ -17,6 +17,7 @@ import { Button } from "../utils";
 import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
 import { formatDateTime } from "../../utils/generic";
 import withSuspense from "./withSuspense";
+import FieldLabelAndInfo from "../FieldLabelAndInfo";
 
 const NamedRangeSliderContainer = styled.div`
   margin: 3px;
@@ -130,6 +131,7 @@ const NumericFieldFilter = ({
   const bounds = useRecoilValue(fos.boundsAtom({ path, defaultRange }));
 
   const ftype = useRecoilValue(fos.fieldType({ path }));
+  const field = useRecoilValue(fos.field(path));
   const hasDefaultRange = useRecoilValue(
     fos.isDefaultRange({ modal, path, defaultRange })
   );
@@ -160,11 +162,24 @@ const NumericFieldFilter = ({
   }
 
   return (
-    <NamedRangeSliderContainer title={title}>
+    <NamedRangeSliderContainer>
       {named && name && (
-        <NamedRangeSliderHeader>
-          {name.replaceAll("_", " ")}
-        </NamedRangeSliderHeader>
+        <FieldLabelAndInfo
+          nested
+          field={field}
+          color={color}
+          template={({
+            label,
+            hoverHanlders,
+            FieldInfoIcon,
+            hoverTarget,
+            container,
+          }) => (
+            <NamedRangeSliderHeader>
+              <span ref={hoverTarget}>{label}</span>
+            </NamedRangeSliderHeader>
+          )}
+        />
       )}
 
       <RangeSliderContainer

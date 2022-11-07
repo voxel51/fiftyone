@@ -539,7 +539,7 @@ class Document(BaseDocument, mongoengine.Document):
 
     meta = {"abstract": True}
 
-    def save(self, validate=True, clean=True, **kwargs):
+    def save(self, validate=True, clean=True, safe=False, **kwargs):
         """Saves the document to the database.
 
         If the document already exists, it will be updated, otherwise it will
@@ -549,11 +549,22 @@ class Document(BaseDocument, mongoengine.Document):
             validate (True): whether to validate the document
             clean (True): whether to call the document's ``clean()`` method.
                 Only applicable when ``validate`` is True
+            safe (False): whether to ``reload()`` the document before raising
+                any validation errors
 
         Returns:
             self
         """
-        self._save(deferred=False, validate=validate, clean=clean, **kwargs)
+        try:
+            self._save(
+                deferred=False, validate=validate, clean=clean, **kwargs
+            )
+        except:
+            if safe:
+                self.reload()
+
+            raise
+
         return self
 
     def _save(self, deferred=False, validate=True, clean=True, **kwargs):

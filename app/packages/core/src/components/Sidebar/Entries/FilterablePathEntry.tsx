@@ -52,6 +52,7 @@ import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import Color from "color";
 import { pathIsExpanded } from "./utils";
+import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
@@ -299,36 +300,44 @@ const FilterableEntry = React.memo(
                 key="checkbox"
               />
             )}
-            <NameAndCountContainer>
-              <span key="path">{path}</span>
-              {hidden}
-              <PathEntryCounts key="count" modal={modal} path={expandedPath} />
-              {!disabled && (
-                <Arrow
-                  key="arrow"
-                  style={{ cursor: "pointer", margin: 0 }}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setExpanded(!expanded);
-                  }}
-                  onMouseDown={(event) => {
-                    event.stopPropagation();
-                    event.preventDefault();
-                  }}
-                />
+            <FieldLabelAndInfo
+              field={field}
+              color={color}
+              expandedPath={expandedPath}
+              template={({ label, hoverHanlders, hoverTarget, container }) => (
+                <NameAndCountContainer ref={container}>
+                  <span key="path">
+                    <span ref={hoverTarget} {...hoverHanlders}>
+                      {label}
+                    </span>
+                  </span>
+                  {hidden}
+                  <PathEntryCounts
+                    key="count"
+                    modal={modal}
+                    path={expandedPath}
+                  />
+                  {!disabled && (
+                    <Arrow
+                      key="arrow"
+                      style={{ cursor: "pointer", margin: 0 }}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setExpanded(!expanded);
+                      }}
+                      onMouseDown={(event) => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                      }}
+                    />
+                  )}
+                </NameAndCountContainer>
               )}
-            </NameAndCountContainer>
+            />
           </>
         }
         onHeaderClick={!disabled ? () => setActive(!active) : undefined}
-        title={`${path} (${
-          field.embeddedDocType
-            ? field.embeddedDocType
-            : field.subfield
-            ? `${field.ftype}(${field.subfield})`
-            : field.ftype
-        })`}
         trigger={trigger}
       >
         {expanded &&

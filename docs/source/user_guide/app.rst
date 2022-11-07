@@ -283,6 +283,14 @@ by toggling the corresponding display options on the lefthand side of the App.
     :alt: app-fields
     :align: center
 
+If you have :ref:`stored metadata <storing-field-metadata>` on your fields,
+then you can view this information in the App by hovering over field or
+attribute names in the App's sidebar:
+
+.. image:: /images/app/app-field-tooltips.gif
+    :alt: app-field-tooltips
+    :align: center
+
 .. _app-filtering:
 
 Filtering sample fields

@@ -1,15 +1,6 @@
-input AggregateForm {
-  dataset: String!
-  extendedStages: BSONArray!
-  filters: BSON
-  groupId: ID
-  hiddenLabels: [SelectedLabel!]!
-  index: Int
-  mixed: Boolean!
-  paths: [String!]!
-  sampleIds: [ID!]!
-  slice: String
-  view: BSONArray!
+input Aggregate {
+  countValues: CountValues = null
+  histogramValues: HistogramValues = null
 }
 
 union AggregateResult =
@@ -25,6 +16,28 @@ interface Aggregation {
   count: Int!
   exists: Int!
 }
+
+input AggregationForm {
+  dataset: String!
+  extendedStages: BSONArray!
+  filters: BSON
+  groupId: ID
+  hiddenLabels: [SelectedLabel!]!
+  index: Int
+  mixed: Boolean!
+  paths: [String!]!
+  sampleIds: [ID!]!
+  slice: String
+  view: BSONArray!
+}
+
+union AggregationResponses =
+    BoolCountValuesResponse
+  | IntCountValuesResponse
+  | StrCountValuesResponse
+  | DatetimeHistogramValuesResponse
+  | FloatHistogramValuesResponse
+  | IntHistogramValuesResponse
 
 type AppConfig {
   colorBy: ColorBy!
@@ -48,6 +61,15 @@ scalar BSON
 
 scalar BSONArray
 
+type BoolCountValuesResponse {
+  values: [BoolValueCount!]!
+}
+
+type BoolValueCount {
+  key: Boolean
+  value: Int!
+}
+
 type BooleanAggregation implements Aggregation {
   path: String!
   count: Int!
@@ -59,7 +81,7 @@ type BooleanAggregation implements Aggregation {
 type BrainRun implements Run {
   key: String!
   version: String
-  timestamp: DateTime
+  timestamp: datetime
   config: BrainRunConfig
   viewStages: [String!]
 }
@@ -77,6 +99,10 @@ enum ColorBy {
   label
 }
 
+input CountValues {
+  field: String!
+}
+
 type DataAggregation implements Aggregation {
   path: String!
   count: Int!
@@ -86,8 +112,8 @@ type DataAggregation implements Aggregation {
 type Dataset {
   id: ID!
   name: String!
-  createdAt: Date
-  lastLoadedAt: DateTime
+  createdAt: date
+  lastLoadedAt: datetime
   persistent: Boolean!
   groupMediaTypes: [Group!]
   groupField: String
@@ -97,7 +123,7 @@ type Dataset {
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!
-  frameFields: [SampleField!]!
+  frameFields: [SampleField!]
   brainMethods: [BrainRun!]!
   evaluations: [EvaluationRun!]!
   version: String
@@ -135,20 +161,16 @@ type DatasetStrPageInfo {
   endCursor: String
 }
 
-"""
-Date (isoformat)
-"""
-scalar Date
-
-"""
-Date with time (isoformat)
-"""
-scalar DateTime
+type DatetimeHistogramValuesResponse {
+  counts: [Int!]!
+  edges: [datetime!]!
+  other: Int!
+}
 
 type EvaluationRun implements Run {
   key: String!
   version: String
-  timestamp: DateTime
+  timestamp: datetime
   config: EvaluationRunConfig
   viewStages: [String!]
 }
@@ -171,6 +193,12 @@ type FloatAggregation implements Aggregation {
   ninf: Int!
 }
 
+type FloatHistogramValuesResponse {
+  counts: [Int!]!
+  edges: [Float!]!
+  other: Int!
+}
+
 type Group {
   name: String!
   mediaType: MediaType!
@@ -179,6 +207,10 @@ type Group {
 input GroupElementFilter {
   id: String = null
   slice: String = null
+}
+
+input HistogramValues {
+  field: String!
 }
 
 type ImageSample implements Sample {
@@ -194,6 +226,21 @@ type IntAggregation implements Aggregation {
   exists: Int!
   max: Float
   min: Float
+}
+
+type IntCountValuesResponse {
+  values: [IntValueCount!]!
+}
+
+type IntHistogramValuesResponse {
+  counts: [Int!]!
+  edges: [Float!]!
+  other: Int!
+}
+
+type IntValueCount {
+  key: Int
+  value: Int!
 }
 
 scalar JSON
@@ -265,12 +312,17 @@ type PointCloudSample implements Sample {
 }
 
 type Query {
+  aggregate(
+    datasetName: String!
+    view: BSONArray!
+    aggregations: [Aggregate!]!
+  ): [AggregationResponses!]!
   datasets(
     search: String
     first: Int = 200
     after: String = null
   ): DatasetStrConnection!
-  aggregate(form: AggregateForm!): [AggregateResult!]!
+  aggregations(form: AggregationForm!): [AggregateResult!]!
   colorscale: [[Int!]!]
   config: AppConfig!
   context: String!
@@ -300,7 +352,7 @@ type RootAggregation implements Aggregation {
 interface Run {
   key: String!
   version: String
-  timestamp: DateTime
+  timestamp: datetime
   config: RunConfig
   viewStages: [String!]
 }
@@ -321,6 +373,8 @@ type SampleField {
   subfield: String
   embeddedDocType: String
   dbField: String
+  description: String
+  info: JSON
 }
 
 input SampleFilter {
@@ -373,6 +427,15 @@ enum SidebarMode {
   fast
 }
 
+type StrCountValuesResponse {
+  values: [StrValueCount!]!
+}
+
+type StrValueCount {
+  key: String
+  value: Int!
+}
+
 type StringAggregation implements Aggregation {
   path: String!
   count: Int!
@@ -402,3 +465,7 @@ type ViewResponse {
   view: BSONArray!
   dataset: Dataset!
 }
+
+scalar date
+
+scalar datetime

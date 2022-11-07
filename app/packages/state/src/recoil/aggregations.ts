@@ -109,9 +109,9 @@ export const aggregationsTick = atom<number>({
 });
 
 export const aggregationQuery = graphQLSelectorFamily<
-  VariablesOf<foq.aggregateQuery>,
-  { extended: boolean; modal: boolean; paths: string[]; root: boolean },
-  ResponseFrom<foq.aggregateQuery>
+  VariablesOf<foq.aggregationsQuery>,
+  { extended: boolean; modal: boolean; paths: string[]; root?: boolean },
+  ResponseFrom<foq.aggregationsQuery>
 >({
   key: "aggregationQuery",
   environment: RelayEnvironmentKey,
@@ -153,7 +153,7 @@ export const aggregations = selectorFamily({
         extended = false;
       }
 
-      return get(aggregationQuery({ ...params, extended })).aggregate;
+      return get(aggregationQuery({ ...params, extended })).aggregations;
     },
 });
 

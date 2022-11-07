@@ -148,24 +148,6 @@ class ClipsView(fov.DatasetView):
     def media_type(self):
         return fom.VIDEO
 
-    def _get_default_sample_fields(
-        self, include_private=False, use_db_fields=False
-    ):
-        fields = super()._get_default_sample_fields(
-            include_private=include_private, use_db_fields=use_db_fields
-        )
-
-        if use_db_fields:
-            return fields + ("_sample_id", "support")
-
-        return fields + ("sample_id", "support")
-
-    def _get_default_indexes(self, frames=False):
-        if frames:
-            return super()._get_default_indexes(frames=frames)
-
-        return ["id", "filepath", "sample_id"]
-
     def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
         if label_field == self._classification_field:
             _ids = self.values("_sample_id")
@@ -226,8 +208,7 @@ class ClipsView(fov.DatasetView):
 
         super().set_values(field_name, *args, **kwargs)
 
-        if must_sync:
-            self._sync_source(fields=[field], ids=ids)
+        self._sync_source(fields=[field], ids=ids)
 
     def save(self, fields=None):
         """Saves the clips in this view to the underlying dataset.
@@ -512,9 +493,8 @@ def make_clips_dataset(
             other_fields = [f for f in src_schema if f not in curr_schema]
 
         add_fields = [f for f in other_fields if f not in curr_schema]
-        dataset._sample_doc_cls.merge_field_schema(
-            {k: v for k, v in src_schema.items() if k in add_fields}
-        )
+        add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
+        dataset._sample_doc_cls.merge_field_schema(add_schema)
 
     _make_pretty_summary(dataset)
 
