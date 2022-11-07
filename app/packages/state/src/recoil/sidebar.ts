@@ -32,7 +32,7 @@ import {
 import { State } from "./types";
 import * as viewAtoms from "./view";
 import { datasetName, isVideoDataset } from "./selectors";
-import { isLargeVideo, sidebarMode } from "./options";
+import { isLargeVideo, resolvedSidebarMode } from "./options";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -341,7 +341,7 @@ export const sidebarGroups = selectorFamily<
         }
         if (typeof groups[tagsIndex].expanded !== "boolean") {
           groups[tagsIndex].expanded =
-            get(sidebarMode(false)) === "all" ? true : false;
+            get(resolvedSidebarMode(false)) === "all" ? true : false;
         }
         if (typeof groups[labelTagsIndex].expanded !== "boolean") {
           groups[labelTagsIndex].expanded = !isLargeVideo;

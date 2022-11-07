@@ -15,7 +15,8 @@ const showEntryCounts = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const mode = get(fos.sidebarMode(params.modal));
+      const mode = get(fos.resolvedSidebarMode(params.modal));
+
       if (
         params.modal ||
         params.path === "" ||

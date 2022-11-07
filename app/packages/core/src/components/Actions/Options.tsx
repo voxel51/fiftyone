@@ -10,7 +10,12 @@ import Popout from "./Popout";
 import { Slider } from "../Common/RangeSlider";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { groupStatistics, isGroup, sidebarMode } from "@fiftyone/state";
+import {
+  configuredSidebarModeDefault,
+  groupStatistics,
+  isGroup,
+  sidebarMode,
+} from "@fiftyone/state";
 import RadioGroup from "../Common/RadioGroup";
 
 export const RefreshButton = ({ modal }) => {
@@ -217,7 +222,7 @@ const GroupStatistics = ({ modal }) => {
 };
 
 const SidebarMode = ({ modal }) => {
-  const [mode, setMode] = useRecoilState(sidebarMode(modal));
+  const [mode, setMode] = useRecoilState(configuredSidebarModeDefault(modal));
 
   return (
     <>

@@ -540,9 +540,13 @@ export const filterFields = selectorFamily<string[], string>({
       }
 
       const parentPath = keys.slice(0, -1).join(".");
-
       const parent = get(field(parentPath));
-      const label = LABELS.includes(parent?.embeddedDocType);
+      let topParentPath = parentPath;
+      if (parent.ftype === LIST_FIELD) {
+        topParentPath = parentPath.split(".").slice(0, -1).join(".");
+      }
+
+      const label = LABELS.includes(get(field(topParentPath))?.embeddedDocType);
       const excluded = EXCLUDED[parent?.embeddedDocType] || [];
 
       if (label && path.endsWith(".tags")) {
