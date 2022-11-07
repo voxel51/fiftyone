@@ -1,11 +1,10 @@
-import React, { useRef, PureComponent } from "react";
+import React, { useRef, PureComponent, Suspense, useMemo } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
-import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 import useMeasure from "react-use-measure";
 import { scrollbarStyles } from "./utils";
 
-import Loading from "./Loading";
 import { ContentDiv, ContentHeader } from "./utils";
 import {
   formatDateTime,
@@ -15,13 +14,13 @@ import {
 } from "../utils/generic";
 
 import * as fos from "@fiftyone/state";
+import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 import {
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  getFetchFunction,
-} from "@fiftyone/utilities";
-import { extendedStagesUnsorted } from "@fiftyone/state";
-import { useTheme } from "@fiftyone/components";
+  distribution,
+  distributionPaths,
+  noDistributionPathsData,
+} from "@fiftyone/state";
+import { useTheme, Loading } from "@fiftyone/components";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -79,10 +78,82 @@ const Title = styled.div`
   line-height: 2rem;
 `;
 
-const Distribution: React.FC<{ distribution: Distribution }> = (props) => {
-  const theme = useTheme();
-  const { path, data, ticks, type } = props.distribution;
+const getTicks = (data: { key: number; edges: [number, number] }[]) => {
+  const ticks: number[] = [];
+  for (
+    let index = 0;
+    index < data.length;
+    index += Math.max(Math.floor(data.length / 4), 1)
+  ) {
+    ticks.push(data[index].key);
+  }
+  return ticks;
+};
+
+const useData = (path: string) => {
+  const data = useRecoilValue(distribution(path));
+
+  switch (data.__typename) {
+    case "BoolCountValuesResponse":
+      return {
+        data: data.values.map(({ value, bool }) => ({
+          key: bool,
+          count: value,
+          ticks: null,
+        })),
+        ticks: null,
+      };
+    case "DatetimeHistogramValuesResponse":
+      const datetimes = data.counts.map((count, i) => ({
+        count,
+        key:
+          (data.datetimes[i + 1] - data.datetimes[i]) / 2 + data.datetimes[i],
+        edges: [data.datetimes[i], data.datetimes[i + 1]],
+      }));
+
+      return data.counts.length > 1
+        ? { data: datetimes, ticks: getTicks(datetimes) }
+        : { data: [], ticks: null };
+    case "FloatHistogramValuesResponse":
+      const floats = data.counts.map((count, i) => ({
+        count: count,
+        key: (data.floats[i + 1] - data.floats[i]) / 2 + data.floats[i],
+        edges: [data.floats[i], data.floats[i + 1]],
+      }));
+
+      return data.counts.length > 1
+        ? { data: floats, ticks: getTicks(floats) }
+        : { data: [], ticks: null };
+    case "IntHistogramValuesResponse":
+      const ints = data.counts.map((count, i) => ({
+        count,
+        key: (data.ints[i + 1] - data.ints[i]) / 2 + data.ints[i],
+        edges: [data.ints[i], data.ints[i + 1]],
+      }));
+      return data.counts.length > 1
+        ? { data: ints, ticks: getTicks(ints) }
+        : { data: [], ticks: null };
+    case "StrCountValuesResponse":
+      return {
+        data: data.values.map(({ value, str }) => ({
+          key: str,
+          count: value,
+        })),
+        ticks: null,
+      };
+
+    default:
+      throw new Error("invalid");
+  }
+};
+
+const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
   const [ref, { height }] = useMeasure();
+  const theme = useTheme();
+
+  const { data, ticks } = useData(path);
+  const hasMore = data.length >= LIMIT;
+
   const barWidth = 24;
   const container = useRef(null);
   const stroke = theme.text.secondary;
@@ -92,19 +163,11 @@ const Distribution: React.FC<{ distribution: Distribution }> = (props) => {
   );
   const isDate = useRecoilValue(fos.meetsType({ path, ftype: DATE_FIELD }));
   const timeZone = useRecoilValue(fos.timeZone);
-  const ticksSetting =
-    ticks === 0
-      ? { interval: ticks }
-      : {
-          ticks,
-        };
 
   const strData = data.map(({ key, ...rest }) => ({
     ...rest,
     key: isDateTime || isDate ? key : prettify(key),
   }));
-
-  const hasMore = data.length >= LIMIT;
 
   const map = strData.reduce(
     (acc, cur) => ({
@@ -113,14 +176,21 @@ const Distribution: React.FC<{ distribution: Distribution }> = (props) => {
     }),
     {}
   );
+
   const CustomizedAxisTick = getAxisTick(
     isDateTime || isDate,
     isDate ? "UTC" : timeZone
   );
+  const ticksSetting =
+    ticks === null
+      ? { interval: 0 }
+      : {
+          ticks,
+        };
 
-  return (
+  return data.length ? (
     <Container ref={ref}>
-      <Title>{`${path}${hasMore ? ` (first ${data.length})` : ""}`}</Title>
+      <Title>{`${path}${hasMore ? ` (first ${data?.length})` : ""}`}</Title>
       <BarChart
         ref={container}
         height={height - 37}
@@ -154,7 +224,7 @@ const Distribution: React.FC<{ distribution: Distribution }> = (props) => {
 
             if (map[key]) {
               if (isDateTime || isDate) {
-                const [{ datetime: start }, { datetime: end }] = map[key];
+                const [start, end] = map[key];
                 const [cFmt, dFmt] = getDateTimeRangeFormattersWithPrecision(
                   isDate ? "UTC" : timeZone,
                   start,
@@ -170,7 +240,7 @@ const Distribution: React.FC<{ distribution: Distribution }> = (props) => {
                 } ${range.replaceAll("/", "-")}`;
               } else {
                 title = `Range: [${map[key]
-                  .map((e) => (type === "IntField" ? e : e.toFixed(3)))
+                  .map((e) => (Number.isInteger(e) ? e : e.toFixed(3)))
                   .join(", ")})`;
               }
             }
@@ -190,7 +260,7 @@ const Distribution: React.FC<{ distribution: Distribution }> = (props) => {
         />
       </BarChart>
     </Container>
-  );
+  ) : null;
 };
 
 const DistributionsContainer = styled.div`
@@ -201,57 +271,24 @@ const DistributionsContainer = styled.div`
   ${scrollbarStyles}
 `;
 
-interface Distribution {
-  path: string;
-  type: string;
-  data: { key: string }[];
-  ticks: number;
-}
-
-const distributions = selectorFamily<Distribution[], string>({
-  key: "distributions",
-  get:
-    (group) =>
-    async ({ get }) => {
-      get(fos.refresher);
-      const { distributions } = await getFetchFunction()(
-        "POST",
-        "/distributions",
-        {
-          group: group.toLowerCase(),
-          limit: LIMIT,
-          view: get(fos.view),
-          dataset: get(fos.datasetName),
-          filters: get(fos.filters),
-          extended: get(extendedStagesUnsorted),
-        }
-      );
-
-      return distributions as Distribution[];
-    },
-});
-
 const Distributions = ({ group }: { group: string }) => {
-  const data = useRecoilValueLoadable(distributions(group));
+  const paths = useRecoilValue(distributionPaths(group));
+  const noData = useRecoilValueLoadable(noDistributionPathsData(group));
 
-  if (data.state === "loading") {
-    return <Loading />;
-  }
-
-  if (data.state === "hasError") {
-    throw data.contents;
-  }
-
-  if (data.contents.length === 0) {
-    return <Loading text={`No ${group.toLowerCase()}`} />;
-  }
-
-  return (
-    <DistributionsContainer>
-      {data.contents.map((d: Distribution, i) => {
-        return <Distribution key={i} distribution={d} />;
-      })}
-    </DistributionsContainer>
+  return noData.state === "hasValue" ? (
+    !noData.contents ? (
+      <Suspense fallback={<Loading>Loading...</Loading>}>
+        <DistributionsContainer>
+          {paths.map((path) => {
+            return <DistributionRenderer key={path} path={path} />;
+          })}
+        </DistributionsContainer>
+      </Suspense>
+    ) : (
+      <Loading>No data</Loading>
+    )
+  ) : (
+    <Loading>Loading...</Loading>
   );
 };
 
