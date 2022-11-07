@@ -215,7 +215,7 @@ class AppConfig:
     show_label: bool
     show_skeletons: bool
     show_tooltip: bool
-    theme: bool
+    theme: str
     timezone: t.Optional[str]
     use_frame_number: bool
 
