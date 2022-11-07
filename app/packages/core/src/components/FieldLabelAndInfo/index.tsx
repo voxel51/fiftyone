@@ -65,7 +65,7 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
     setSelectedField(null);
   }
 
-  const delay = 300;
+  const delay = 500;
   useHover(hoverTarget, delay, onHover, onHoverEnd);
 
   useEffect(() => {
