@@ -111,7 +111,12 @@ export default function FieldLabelAndInfo({
 }
 
 const FieldInfoExpandedContainer = styled.div`
-  background: ${({ theme }) => theme.background.body};
+  background: ${({ theme }) => {
+    if (theme.mode === "light") {
+      return theme.background.header;
+    }
+    return theme.background.body;
+  }};
   border-left: 5px solid ${({ color }) => color};
   border-radius: 2px;
   padding: 0.5rem;
@@ -179,7 +184,12 @@ const FieldInfoTableContainer = styled.table`
     padding: 0.1rem 0.5rem;
   }
   tr {
-    background: ${({ theme }) => theme.background.level1};
+    background: ${({ theme }) => {
+      if (theme.mode === "light") {
+        return theme.background.level1;
+      }
+      return theme.background.level1;
+    }};
   }
   tr + tr {
     border-top: solid 2px ${({ theme }) => theme.background.body};
