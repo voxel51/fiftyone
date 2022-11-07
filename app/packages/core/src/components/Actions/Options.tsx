@@ -221,7 +221,7 @@ const SidebarMode = ({ modal }) => {
 
   return (
     <>
-      <PopoutSectionTitle>Sidebar Mode</PopoutSectionTitle>
+      <PopoutSectionTitle>Sidebar mode</PopoutSectionTitle>
       <TabOption
         active={mode}
         options={["all", "best", "fast"].map((value) => ({
