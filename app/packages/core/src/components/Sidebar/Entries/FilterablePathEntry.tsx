@@ -364,7 +364,7 @@ const FilterableEntry = React.memo(
             />
           </>
         }
-        onClick={!disabled ? () => setActive(!active) : null}
+        onHeaderClick={!disabled ? () => setActive(!active) : undefined}
         trigger={trigger}
       >
         <Suspense fallback={null}>

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e24e8f7403dfa519de235a084ed5a4ae>>
+ * @generated SignedSource<<1db0d756d384928cff8b8e91ab77da7e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,7 +18,7 @@ export type paginateGroupPinnedSample_query$data = {
     readonly sample: object;
     readonly urls: ReadonlyArray<{
       readonly field: string;
-      readonly url: string;
+      readonly url: string | null;
     }>;
   } | {
     readonly __typename: "PointCloudSample";
@@ -26,7 +26,7 @@ export type paginateGroupPinnedSample_query$data = {
     readonly sample: object;
     readonly urls: ReadonlyArray<{
       readonly field: string;
-      readonly url: string;
+      readonly url: string | null;
     }>;
   } | {
     readonly __typename: "VideoSample";
@@ -36,7 +36,7 @@ export type paginateGroupPinnedSample_query$data = {
     readonly sample: object;
     readonly urls: ReadonlyArray<{
       readonly field: string;
-      readonly url: string;
+      readonly url: string | null;
     }>;
   } | {
     // This will never be '%other', but we need some

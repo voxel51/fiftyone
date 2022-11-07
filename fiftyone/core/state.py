@@ -6,8 +6,12 @@ Defines the shared state between the FiftyOne App and backend.
 |
 """
 from bson import json_util
+from dataclasses import asdict
 import json
 import logging
+import typing as t
+
+import strawberry as gql
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -17,6 +21,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.server.scalars import JSON
 
 
 logger = logging.getLogger(__name__)
@@ -54,11 +59,20 @@ class StateDescription(etas.Serializable):
 
             if self.dataset is not None:
                 d["dataset"] = self.dataset.name
+                collection = self.dataset
                 if self.view is not None:
+                    collection = self.view
                     d["view"] = json.loads(
                         json_util.dumps(self.view._serialize())
                     )
                     d["view_cls"] = etau.get_class_name(self.view)
+
+                d["sample_fields"] = serialize_fields(
+                    collection.get_field_schema(flat=True), dicts=True
+                )
+                d["frame_fields"] = serialize_fields(
+                    collection.get_frame_field_schema(flat=True), dicts=True
+                )
 
                 view = self.view if self.view is not None else self.dataset
                 if view.media_type == fom.GROUP:
@@ -122,3 +136,42 @@ class StateDescription(etas.Serializable):
             selected_labels=d.get("selected_labels", []),
             view=view,
         )
+
+
+@gql.type
+class SampleField:
+    ftype: str
+    path: str
+    subfield: t.Optional[str]
+    embedded_doc_type: t.Optional[str]
+    db_field: t.Optional[str]
+    description: t.Optional[str]
+    info: t.Optional[JSON]
+
+
+def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
+    data = (
+        [
+            SampleField(
+                path=path,
+                db_field=field.db_field,
+                ftype=etau.get_class_name(field),
+                embedded_doc_type=etau.get_class_name(field.document_type)
+                if isinstance(field, fo.EmbeddedDocumentField)
+                else None,
+                subfield=etau.get_class_name(field.field)
+                if isinstance(field, (fo.DictField, fo.ListField))
+                else None,
+                description=field.description,
+                info=field.info,
+            )
+            for path, field in schema.items()
+        ]
+        if schema
+        else []
+    )
+
+    if dicts:
+        return [asdict(f) for f in data]
+
+    return data

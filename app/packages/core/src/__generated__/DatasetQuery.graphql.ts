@@ -33,11 +33,11 @@ export type DatasetQuery$data = {
         readonly patchesField: string | null;
       } | null;
       readonly key: string;
-      readonly timestamp: string | null;
+      readonly timestamp: number | null;
       readonly version: string | null;
       readonly viewStages: ReadonlyArray<string> | null;
     }>;
-    readonly createdAt: string | null;
+    readonly createdAt: number | null;
     readonly defaultGroupSlice: string | null;
     readonly defaultMaskTargets: ReadonlyArray<{
       readonly target: number;
@@ -54,7 +54,7 @@ export type DatasetQuery$data = {
         readonly predField: string | null;
       } | null;
       readonly key: string;
-      readonly timestamp: string | null;
+      readonly timestamp: number | null;
       readonly version: string | null;
       readonly viewStages: ReadonlyArray<string> | null;
     }>;
@@ -64,7 +64,7 @@ export type DatasetQuery$data = {
       readonly ftype: string;
       readonly path: string;
       readonly subfield: string | null;
-    }>;
+    }> | null;
     readonly groupField: string | null;
     readonly groupMediaTypes: ReadonlyArray<{
       readonly mediaType: MediaType;
@@ -72,7 +72,7 @@ export type DatasetQuery$data = {
     }> | null;
     readonly id: string;
     readonly info: object | null;
-    readonly lastLoadedAt: string | null;
+    readonly lastLoadedAt: number | null;
     readonly maskTargets: ReadonlyArray<{
       readonly name: string;
       readonly targets: ReadonlyArray<{

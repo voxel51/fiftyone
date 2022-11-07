@@ -54,6 +54,7 @@ let theme = extendJoyTheme({
           secondary: "hsl(200, 0%, 30%)",
           tertiary: "hsl(200, 0%, 50%)",
           lookerTag: "hsl(200, 0%, 100%)",
+          invert: "hsl(200, 0%, 100%)",
         },
         custom: {
           shadow: "hsl(200, 0%, 90%)",
@@ -104,6 +105,7 @@ let theme = extendJoyTheme({
           tertiary: "hsl(200, 0%, 50%)",
           buttonHighlight: "hsl(200, 0%, 100%)",
           lookerTag: "hsl(200, 0%, 100%)",
+          invert: "hsl(200, 0%, 5%)",
         },
         custom: {
           shadow: "hsl(200, 0%, 10%)",

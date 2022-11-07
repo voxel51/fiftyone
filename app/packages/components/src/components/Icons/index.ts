@@ -8,5 +8,7 @@ export {
   IconButton,
   Close,
   Copy,
-  InfoIcon
+  InfoIcon,
+  JSONIcon,
+  HelpIcon,
 } from "./Icons";

@@ -5,7 +5,7 @@ import { useMutation } from "react-relay";
 import { useRecoilTransaction_UNSTABLE, useRecoilValue } from "recoil";
 import { State, stateSubscription, view } from "../recoil";
 import { RouterContext } from "../routing";
-import { getDatasetName, transformDataset } from "../utils";
+import { transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
 import useStateUpdate from "./useStateUpdate";
 import * as fos from "../";
@@ -14,6 +14,7 @@ const useSetView = () => {
   const send = useSendEvent(true);
   const updateState = useStateUpdate();
   const subscription = useRecoilValue(stateSubscription);
+  const router = useContext(RouterContext);
   const [commit] = useMutation<setViewMutation>(setView);
 
   const onError = useErrorHandler();
@@ -40,6 +41,13 @@ const useSetView = () => {
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
+              router.history.location.state.state = {
+                ...router.history.location.state,
+                view: value,
+                viewCls: dataset.viewCls,
+                selected: [],
+                selectedLabels: [],
+              };
               updateState({
                 dataset: transformDataset(dataset),
                 state: {

@@ -201,7 +201,7 @@ def get_field_kwargs(field):
 
     if isinstance(field, fof.EmbeddedDocumentField):
         kwargs["embedded_doc_type"] = field.document_type
-        for f in field._fields.values():
+        for f in field.get_field_schema().values():
             if not f.name.startswith("_"):
                 _kwargs = get_field_kwargs(f)
                 _kwargs["name"] = f.name

@@ -366,6 +366,10 @@ const CategoricalFilter = <T extends V = V>({
 
   const { count, results } = countsLoadable.contents;
 
+  if (named && !results.length) {
+    return null;
+  }
+
   return (
     <NamedCategoricalFilterContainer>
       <FieldLabelAndInfo

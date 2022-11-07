@@ -41,7 +41,7 @@ const toStrictField = (field: Field): StrictField => {
   };
 };
 
-const collapseFields = (paths): StrictField[] => {
+export const collapseFields = (paths): StrictField[] => {
   const schema: Schema = {};
   for (let i = 0; i < paths.length; i++) {
     const field = paths[i];
@@ -90,8 +90,6 @@ export const transformDataset = (dataset: any): Readonly<State.Dataset> => {
     defaultMaskTargets: convertTargets(dataset.defaultMaskTargets),
     brainMethods: [...dataset.brainMethods],
     evaluations: [...dataset.evaluations],
-    frameFields: collapseFields(dataset.frameFields),
-    sampleFields: collapseFields(dataset.sampleFields),
     maskTargets: targets,
     mediaType: dataset.mediaType,
   };
@@ -113,3 +111,6 @@ export const getDatasetName = (context: RoutingContext<any>): string => {
 
   return null;
 };
+
+export type ResponseFrom<TQuery extends { response: unknown }> =
+  TQuery["response"];
