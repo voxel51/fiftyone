@@ -22,9 +22,7 @@ import {
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { view } from "./view";
-
-export type ResponseFrom<TQuery extends { response: unknown }> =
-  TQuery["response"];
+import type { ResponseFrom } from "../utils";
 
 export const isGroup = selector<boolean>({
   key: "isGroup",

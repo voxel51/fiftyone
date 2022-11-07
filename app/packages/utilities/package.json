@@ -12,13 +12,11 @@
   "scripts": {
     "dev": "vite"
   },
-  "prettier": "@fiftyone/prettier-config",
   "files": [
     "dist",
     "README.md"
   ],
   "devDependencies": {
-    "@fiftyone/prettier-config": "*",
     "prettier": "^2.7.1",
     "typescript": "^4.7.4",
     "typescript-plugin-css-modules": "^3.4.0",

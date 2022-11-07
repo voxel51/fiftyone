@@ -1,0 +1,54 @@
+.form {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+
+  z-index: 1000;
+  right: 1rem;
+  bottom: 1rem;
+  padding: 1rem;
+  font-size: 1rem;
+  width: 300px;
+
+  background: var(--joy-palette-background-body);
+  box-shadow: 0 2px 40px var(--joy-palette-custom-shadow);
+  border-radius: 3px;
+  color: var(--joy-palette-text-primary);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+
+.text {
+  font-weight: unset;
+  margin-bottom: 1rem;
+  color: var(--joy-palette-text-secondary);
+}
+
+.form input {
+  width: 100%;
+  background-color: transparent;
+  border: none;
+  padding: 0.25rem 0;
+  margin-bottom: 1rem;
+  color: var(--joy-palette-text-primary);
+  line-height: 1rem;
+  border: none;
+  border-bottom: 1px solid var(--joy-palette-primary-plainColor);
+  font-weight: bold;
+  outline: none;
+}
+
+.teamsForm input:focus {
+  border-bottom: 1px solid var(--joy-palette-primary-plainColor);
+  outline: none;
+  font-weight: bold;
+}
+.teamsForm input::placeholder {
+  color: var(--joy-palette-text-secondary);
+  font-weight: bold;
+}

@@ -83,6 +83,7 @@ def evaluate_regressions(
     eval_method.ensure_requirements()
 
     eval_method.register_run(samples, eval_key)
+    eval_method.register_samples(samples, eval_key)
 
     results = eval_method.evaluate_samples(
         samples, eval_key=eval_key, missing=missing
@@ -114,6 +115,29 @@ class RegressionEvaluation(foe.EvaluationMethod):
     Args:
         config: a :class:`RegressionEvaluationConfig`
     """
+
+    def register_samples(self, samples, eval_key):
+        """Registers the collection on which evaluation will be performed.
+
+        This method will be called before calling :meth:`evaluate_samples`.
+        Subclasses can extend this method to perform any setup required for an
+        evaluation run.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            eval_key: the evaluation key for this evaluation
+        """
+        if eval_key is None:
+            return
+
+        dataset = samples._dataset
+        is_frame_field = samples._is_frame_field(self.config.gt_field)
+
+        if is_frame_field:
+            dataset.add_sample_field(eval_key, fof.FloatField)
+            dataset.add_frame_field(eval_key, fof.FloatField)
+        else:
+            dataset.add_sample_field(eval_key, fof.FloatField)
 
     def evaluate_samples(self, samples, eval_key=None, missing=None):
         """Evaluates the regression predictions in the given samples with
@@ -254,9 +278,6 @@ class SimpleEvaluation(RegressionEvaluation):
             except:
                 return None
 
-        # note: fields are manually declared so they'll exist even when
-        # `samples` is empty
-        dataset = samples._dataset
         if is_frame_field:
             frame_errors = [
                 list(map(compute_error, yp, yt))
@@ -267,17 +288,14 @@ class SimpleEvaluation(RegressionEvaluation):
             eval_frame = samples._FRAMES_PREFIX + eval_key
 
             # Sample-level errors
-            dataset.add_sample_field(eval_key, fof.FloatField)
             samples.set_values(eval_key, sample_errors)
 
             # Per-frame errors
-            dataset.add_frame_field(eval_key, fof.FloatField)
             samples.set_values(eval_frame, frame_errors)
         else:
             errors = list(map(compute_error, ypred, ytrue))
 
             # Per-sample errors
-            dataset.add_sample_field(eval_key, fof.FloatField)
             samples.set_values(eval_key, errors)
 
         return results

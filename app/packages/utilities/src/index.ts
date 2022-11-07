@@ -5,7 +5,6 @@ import { isElectron } from "./electron";
 export { isElectron } from "./electron";
 export { GraphQLError, NotFoundError, ServerError } from "./errors";
 export * from "./fetch";
-export * from "./theme";
 export * from "./Resource";
 export * from "./color";
 
@@ -273,6 +272,17 @@ export const VALID_PRIMITIVE_TYPES = [
   STRING_FIELD,
 ];
 
+export const VALID_DISTRIBUTION_TYPES = [
+  BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
+  INT_FIELD,
+  STRING_FIELD,
+];
+
 export const VALID_NUMERIC_TYPES = [
   DATE_FIELD,
   DATE_TIME_FIELD,
@@ -401,7 +411,10 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
   const H = 24 * M;
 
   const options: Intl.DateTimeFormatOptions = {
-    timeZone,
+    timeZone:
+      timeZone === "local"
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : timeZone,
     year: "numeric",
     day: twoDigit,
     month: twoDigit,

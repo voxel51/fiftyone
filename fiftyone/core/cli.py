@@ -2877,6 +2877,13 @@ class TransformImagesCommand(Command):
             ),
         )
         parser.add_argument(
+            "-i",
+            "--interpolation",
+            default=None,
+            type=int,
+            help="an optional `interpolation` argument for `cv2.resize()`",
+        )
+        parser.add_argument(
             "-e",
             "--ext",
             metavar="EXT",
@@ -2958,6 +2965,7 @@ class TransformImagesCommand(Command):
             size=args.size,
             min_size=args.min_size,
             max_size=args.max_size,
+            interpolation=args.interpolation,
             ext=args.ext,
             force_reencode=args.force_reencode,
             media_field=args.media_field,
@@ -3256,7 +3264,7 @@ def _register_main_command(command, version=None, recursive_help=True):
         parser.add_argument(
             "--all-help",
             action=_RecursiveHelpAction,
-            help="show help recurisvely and exit",
+            help="show help recursively and exit",
         )
 
     argcomplete.autocomplete(parser)
@@ -3278,7 +3286,7 @@ def _register_command(parent, name, command, recursive_help=True):
         parser.add_argument(
             "--all-help",
             action=_RecursiveHelpAction,
-            help="show help recurisvely and exit",
+            help="show help recursively and exit",
         )
 
     return parser

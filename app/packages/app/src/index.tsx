@@ -1,16 +1,13 @@
-import { Loading, Theme } from "@fiftyone/components";
-import { darkTheme, getEventSource, toCamelCase } from "@fiftyone/utilities";
+import { Loading, Setup, makeRoutes } from "@fiftyone/core";
+import { useScreenshot } from "@fiftyone/state";
+import { ThemeProvider } from "@fiftyone/components";
+import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot, useRecoilValue } from "recoil";
-
-import Setup from "./components/Setup";
-
-import { useScreenshot } from "./utils/hooks";
+import Network from "./Network";
 
 import "./index.css";
-import makeRoutes from "./makeRoutes";
-import Network from "./Network";
 import {
   modal,
   refresher,
@@ -93,6 +90,7 @@ const App: React.FC = ({}) => {
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
               const { colorscale, config, ...data } = payload.state;
+              payload.refresh && refresh();
 
               const state = {
                 ...toCamelCase(data),
@@ -162,9 +160,9 @@ const App: React.FC = ({}) => {
 createRoot(document.getElementById("root") as HTMLDivElement).render(
   <RecoilRoot>
     <EventsContext.Provider value={{ session: null }}>
-      <Theme theme={darkTheme}>
+      <ThemeProvider>
         <App />
-      </Theme>
+      </ThemeProvider>
     </EventsContext.Provider>
   </RecoilRoot>
 );

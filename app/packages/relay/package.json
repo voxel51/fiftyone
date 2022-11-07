@@ -13,14 +13,12 @@
     "compile": "relay-compiler",
     "dev": "vite"
   },
-  "prettier": "@fiftyone/prettier-config",
   "private": true,
   "files": [
     "dist",
     "README.md"
   ],
   "devDependencies": {
-    "@fiftyone/prettier-config": "*",
     "prettier": "^2.7.1",
     "relay-compiler": "^14.0.0",
     "relay-compiler-language-typescript": "^15.0.1",

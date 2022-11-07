@@ -5,17 +5,20 @@
   border-radius: 3px;
   text-align: center;
   padding: 0 0.5rem;
-  border: 1px solid var(--brand);
-  background: var(--brand-transparent);
-  box-shadow: 0 2px 40px var(--background-dark);
+  border: 1px solid var(--joy-palette-divider);
+  background: var(--joy-palette-background-viewBarButtons);
+  box-shadow: 0 2px 40px var(--joy-palette-custom-shadow);
+  color: var(--joy-palette-text-secondary);
 }
 
 .button:hover {
-  background: var(--brand);
+  background: var(--joy-palette-primary-plainColor);
+  color: var(--joy-palette-text-buttonHighlight);
+  border-color: var(--joy-palette-primary-plainColor);
 }
 
 .button:disabled {
-  border: 1px solid var(--font-dark);
+  border: 1px solid var(--joy-palette-primary-plainColor);
   cursor: default;
-  background: var(--background-dark);
+  background: var(--joy-palette-background-level2);
 }

@@ -7,16 +7,13 @@ Utilities for documents.
 """
 from collections import defaultdict
 from datetime import date, datetime
+import itertools
 import json
 import numbers
 import six
 import sys
 
-from bson import json_util
-from bson.binary import Binary
-from bson.objectid import ObjectId
-from bson.son import SON
-from mongoengine.fields import StringField
+from bson import Binary, json_util, ObjectId, SON
 import numpy as np
 import pytz
 
@@ -25,6 +22,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
+fol = fou.lazy_import("fiftyone.core.labels")
 food = fou.lazy_import("fiftyone.core.odm.document")
 fooe = fou.lazy_import("fiftyone.core.odm.embedded_document")
 
@@ -137,12 +135,14 @@ def validate_field_name(field_name, media_type=None, is_frame_field=False):
             "%s" % (field_name, type(field_name))
         )
 
-    if not field_name:
+    chunks = field_name.split(".")
+
+    if not all(c for c in chunks):
         raise ValueError(
             "Invalid field name '%s'. Field names cannot be empty" % field_name
         )
 
-    if field_name.startswith("_"):
+    if any(c.startswith("_") for c in chunks):
         raise ValueError(
             "Invalid field name: '%s'. Field names cannot start with '_'"
             % field_name
@@ -176,23 +176,22 @@ def validate_field_name(field_name, media_type=None, is_frame_field=False):
 
 
 def get_field_kwargs(field):
-    """Constructs the field keyword arguments dictionary for the given
-    :class:`fiftyone.core.fields.Field` instance.
+    """Constructs the field keyword arguments dictionary for the given field.
 
     Args:
         field: a :class:`fiftyone.core.fields.Field`
-        custom (True): include custom fields
 
     Returns:
         a field specification dict
     """
+    fields = []
+
     kwargs = {
         "ftype": type(field),
-        "fields": [],
+        "fields": fields,
         "db_field": field.db_field,
-        "required": field.required,
-        "primary_key": field.primary_key,
-        "null": field.null,
+        "description": field.description,
+        "info": field.info,
     }
 
     if isinstance(field, (fof.ListField, fof.DictField)):
@@ -202,23 +201,22 @@ def get_field_kwargs(field):
 
     if isinstance(field, fof.EmbeddedDocumentField):
         kwargs["embedded_doc_type"] = field.document_type
-        for f in getattr(field, "fields", []) + list(
-            field.document_type._fields.values()
-        ):
-
-            fkwargs = get_field_kwargs(f)
-            fkwargs["name"] = f.name
-            kwargs["fields"].append(fkwargs)
+        for f in field.get_field_schema().values():
+            if not f.name.startswith("_"):
+                _kwargs = get_field_kwargs(f)
+                _kwargs["name"] = f.name
+                fields.append(_kwargs)
 
     return kwargs
 
 
-def get_implied_field_kwargs(value):
+def get_implied_field_kwargs(value, dynamic=False):
     """Infers the field keyword arguments dictionary for a field that can hold
-    values of the given type.
+    the given value.
 
     Args:
         value: a value
+        dynamic (False): whether to declare dynamic embedded document fields
 
     Returns:
         a field specification dict
@@ -227,15 +225,7 @@ def get_implied_field_kwargs(value):
         return {
             "ftype": fof.EmbeddedDocumentField,
             "embedded_doc_type": type(value),
-            "fields": [
-                dict(
-                    name=name,
-                    **get_field_kwargs(value.__class__._fields[name]),
-                )
-                for name in value.__class__._fields
-                if getattr(value, name, None) is not None
-                and not name.startswith("_")
-            ],
+            "fields": _parse_embedded_doc_fields(value, dynamic),
         }
 
     if isinstance(value, (bool, np.bool_)):
@@ -263,35 +253,20 @@ def get_implied_field_kwargs(value):
         kwargs = {"ftype": fof.ListField}
 
         value_types = set(_get_list_value_type(v) for v in value)
+        value_types.discard(None)
 
         if value_types == {fof.IntField, fof.FloatField}:
-            kwargs["subfield"] = fof.FloatField
-        elif len(value_types) == 1:
+            value_types.discard(fof.IntField)
+
+        if len(value_types) == 1:
             value_type = next(iter(value_types))
-            if value_type is not None:
-                kwargs["subfield"] = value_type
+            kwargs["subfield"] = value_type
 
             if value_type == fof.EmbeddedDocumentField:
-                document_types = {v.__class__ for v in value}
-                if len(document_types) > 1:
-                    raise ValueError("Cannot merge types")
-
-                kwargs["embedded_doc_type"] = document_types.pop()
-
-                data = defaultdict(list)
-
-                for v in value:
-                    for n, f in v._fields.items():
-                        vv = getattr(v, n, None)
-                        if vv is not None:
-                            data[n].append(get_implied_field_kwargs(vv))
-
-                        data[n].append(get_field_kwargs(f))
-
-                kwargs["fields"] = [
-                    dict(name=n, **_merge_field_kwargs(l))
-                    for n, l in data.items()
-                ]
+                kwargs["embedded_doc_type"] = value_type.document_type
+                kwargs["fields"] = _parse_embedded_doc_list_fields(
+                    value, dynamic
+                )
 
         return kwargs
 
@@ -307,6 +282,162 @@ def get_implied_field_kwargs(value):
     raise TypeError(
         "Cannot infer an appropriate field type for value '%s'" % value
     )
+
+
+def _get_field_kwargs(value, field, dynamic):
+    kwargs = {
+        "ftype": type(field),
+        "db_field": field.db_field,
+        "description": field.description,
+        "info": field.info,
+    }
+
+    if isinstance(field, (fof.ListField, fof.DictField)):
+        field = field.field
+        if field is not None:
+            kwargs["subfield"] = type(field)
+            if isinstance(field, fof.EmbeddedDocumentField):
+                kwargs["embedded_doc_type"] = field.document_type
+                kwargs["fields"] = _parse_embedded_doc_list_fields(
+                    value, dynamic
+                )
+    elif isinstance(field, fof.EmbeddedDocumentField):
+        kwargs["embedded_doc_type"] = field.document_type
+        kwargs["fields"] = _parse_embedded_doc_fields(value, dynamic)
+
+    return kwargs
+
+
+def _parse_embedded_doc_fields(doc, dynamic):
+    fields = []
+
+    is_label = isinstance(doc, fol.Label)
+    for name, field in doc._fields.items():
+        # @todo remove once attributes are deprecated
+        if is_label and name == "attributes":
+            continue
+
+        value = getattr(doc, name, None)
+        if value is not None and not name.startswith("_"):
+            kwargs = _get_field_kwargs(value, field, dynamic)
+            kwargs["name"] = name
+            fields.append(kwargs)
+
+    if not dynamic:
+        return fields
+
+    for name in doc._dynamic_fields.keys():
+        value = getattr(doc, name, None)
+        if value is not None and not name.startswith("_"):
+            db_field = name if not isinstance(value, ObjectId) else "_" + name
+
+            kwargs = get_implied_field_kwargs(value, dynamic=dynamic)
+            kwargs["name"] = name
+            kwargs["db_field"] = db_field
+            fields.append(kwargs)
+
+    return fields
+
+
+def _parse_embedded_doc_list_fields(values, dynamic):
+    if not values:
+        return []
+
+    fields_dict = {}
+    fields = [_parse_embedded_doc_fields(v, dynamic) for v in values]
+    _merge_embedded_doc_fields(fields_dict, fields)
+    return _finalize_embedded_doc_fields(fields_dict)
+
+
+def _merge_embedded_doc_fields(fields_dict, fields_list):
+    for fields in fields_list:
+        for field in fields:
+            ftype = field["ftype"]
+            name = field["name"]
+
+            if name not in fields_dict:
+                fields_dict[name] = field
+                if ftype == fof.EmbeddedDocumentField:
+                    field["fields"] = {f["name"]: f for f in field["fields"]}
+            else:
+                efield = fields_dict[name]
+                etype = efield["ftype"]
+                if etype != ftype:
+                    # @todo could provide an `add_mixed=True` option to declare
+                    # mixed fields like this as a generic `Field`
+                    fields_dict[name] = None
+                elif ftype == fof.EmbeddedDocumentField:
+                    _merge_embedded_doc_fields(
+                        efield["fields"], field["fields"]
+                    )
+
+
+def _finalize_embedded_doc_fields(fields_dict):
+    fields = []
+    for field in fields_dict.values():
+        if field is not None:
+            fields.append(field)
+            if field.get("fype") == fof.EmbeddedDocumentField:
+                field["fields"] = _finalize_embedded_doc_fields(
+                    field["fields"]
+                )
+
+    return fields
+
+
+def validate_fields_match(name, field, existing_field):
+    """Validates that the types of the given fields match.
+
+    Embedded document fields are not validated, if applicable.
+
+    Args:
+        name: the field name or ``embedded.field.name``
+        field: a :class:`fiftyone.core.fields.Field`
+        existing_field: the reference :class:`fiftyone.core.fields.Field`
+
+    Raises:
+        ValueError: if the fields do not match
+    """
+    if not issubclass(type(field), type(existing_field)) and not issubclass(
+        type(existing_field), type(field)
+    ):
+        if isinstance(existing_field, fof.ObjectIdField) and isinstance(
+            field, fof.StringField
+        ):
+            return
+
+        raise ValueError(
+            "Field '%s' type %s does not match existing field type %s"
+            % (name, field, existing_field)
+        )
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        if not issubclass(
+            field.document_type, existing_field.document_type
+        ) and not issubclass(
+            existing_field.document_type, field.document_type
+        ):
+            raise ValueError(
+                "Embedded document field '%s' type %s does not match existing "
+                "field type %s"
+                % (name, field.document_type, existing_field.document_type)
+            )
+
+    if isinstance(field, (fof.ListField, fof.DictField)):
+        if (
+            field.field is not None
+            and existing_field.field is not None
+            and not isinstance(field.field, type(existing_field.field))
+        ):
+            raise ValueError(
+                "%s '%s' type %s does not match existing field type %s"
+                % (
+                    field.__class__.__name__,
+                    name,
+                    field.field,
+                    existing_field.field,
+                )
+            )
 
 
 def _get_list_value_type(value):
@@ -335,93 +466,6 @@ def _get_list_value_type(value):
         return fof.DateField
 
     return None
-
-
-numerics = (fof.FloatField, fof.IntField)
-strings = (fof.StringField, StringField)
-ids = (fof.StringField, StringField, fof.ObjectIdField)
-vectors = (fof.ListField, fof.VectorField)
-geo = (fof.GeoPointField, fof.ListField)
-poly = (fof.PolylinePointsField, fof.ListField)
-keypoints = (fof.KeypointsField, fof.ListField)
-frame = (fof.FrameSupportField, fof.ListField)
-
-
-def _resolve_ftype(one, two):
-    if not one:
-        return two
-    elif not two:
-        return one
-    elif one == two:
-        return one
-    elif one in numerics and two in numerics:
-        return fof.FloatField
-    elif one in strings and two in strings:
-        return fof.StringField
-    elif one in ids and two in ids:
-        return fof.ObjectIdField
-    elif one in vectors and two in vectors:
-        return fof.VectorField
-    elif one in geo and two in geo:
-        return fof.GeoPointField
-    elif one in poly and two in poly:
-        return fof.PolylinePointsField
-    elif one in frame and two in frame:
-        return fof.FrameSupportField
-    elif one in keypoints and two in keypoints:
-        return fof.KeypointsField
-
-    raise TypeError(f"Cannot merge {one} and {two}")
-
-
-def _merge_field_kwargs(fields_list):
-    kwargs = {"db_field": None}
-    for field_kwargs in fields_list:
-        ftype = _resolve_ftype(
-            kwargs.get("ftype", field_kwargs["ftype"]), field_kwargs["ftype"]
-        )
-        kwargs["ftype"] = ftype
-
-        if field_kwargs.get("db_field", None) is not None:
-            kwargs["db_field"] = field_kwargs["db_field"]
-
-        if issubclass(ftype, fof.ListField):
-            subfield = kwargs.get(
-                "subfield", field_kwargs.get("subfield", None)
-            )
-            proposed_subfield = field_kwargs.get("subfield", None)
-
-            kwargs["subfield"] = _resolve_ftype(subfield, proposed_subfield)
-
-            if kwargs["subfield"] == fof.EmbeddedDocumentField:
-                ftype = kwargs["subfield"]
-
-        if ftype == fof.EmbeddedDocumentField:
-            document_type = kwargs.get(
-                "embedded_doc_type",
-                field_kwargs.get("embedded_doc_type", None),
-            )
-            if (
-                document_type
-                and document_type != field_kwargs["embedded_doc_type"]
-            ):
-                raise TypeError("Cannot merge")
-
-            kwargs["embedded_doc_type"] = document_type
-            data = {f["name"]: f for f in field_kwargs.get("fields", [])}
-
-            for f in kwargs.get("fields", []):
-                if f["name"] in data:
-                    data[f["name"]] = _merge_field_kwargs([data[f["name"]], f])
-                else:
-                    data[f["name"]] = f
-
-            kwargs["fields"] = []
-            for name, v in data.items():
-                v["name"] = name
-                kwargs["fields"].append(v)
-
-    return kwargs
 
 
 class DocumentRegistry(object):

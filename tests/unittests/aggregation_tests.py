@@ -13,6 +13,7 @@ import numpy as np
 import unittest
 
 import fiftyone as fo
+import fiftyone.core.fields as fof
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
@@ -220,6 +221,86 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(d.mean("numeric_field"), 2)
 
         self.assertAlmostEqual(d.mean(2.0 * (F("numeric_field") + 1)), 6.0)
+
+    @drop_datasets
+    def test_schema(self):
+        d = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="image1.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        foo="bar",
+                        hello=True,
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        hello=None,
+                    ),
+                ]
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="rabbit",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        foo=None,
+                    ),
+                    fo.Detection(
+                        label="squirrel",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        hello="there",
+                    ),
+                ]
+            ),
+        )
+
+        d.add_samples([sample1, sample2])
+
+        schema = d.schema("ground_truth.detections")
+
+        expected_schema = {
+            "id": fof.ObjectIdField,
+            "attributes": fof.DictField,
+            "foo": fof.StringField,
+            "hello": [fof.BooleanField, fof.StringField],
+            "bounding_box": fof.ListField,
+            "tags": fof.ListField,
+            "label": fof.StringField,
+        }
+
+        self.assertSetEqual(set(schema.keys()), set(expected_schema.keys()))
+        for key, ftype in expected_schema.items():
+            if isinstance(ftype, list):
+                fields = schema[key]
+                self.assertIsInstance(fields, list)
+                self.assertSetEqual(set(type(f) for f in fields), set(ftype))
+            else:
+                self.assertEqual(type(schema[key]), ftype)
+
+        schema = d.schema("ground_truth.detections", dynamic_only=True)
+
+        expected_schema = {
+            "foo": fof.StringField,
+            "hello": [fof.BooleanField, fof.StringField],
+        }
+
+        self.assertSetEqual(set(schema.keys()), set(expected_schema.keys()))
+        for key, ftype in expected_schema.items():
+            if isinstance(ftype, list):
+                fields = schema[key]
+                self.assertIsInstance(fields, list)
+                self.assertSetEqual(set(type(f) for f in fields), set(ftype))
+            else:
+                self.assertEqual(type(schema[key]), ftype)
 
     @drop_datasets
     def test_quantiles(self):

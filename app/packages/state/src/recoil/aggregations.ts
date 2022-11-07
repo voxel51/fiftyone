@@ -291,8 +291,12 @@ const makeCountResults = <T extends string | null | boolean>(key) =>
 
         let count = CountValues[0];
         if (None) {
-          results.push([null, None]);
-          count++;
+          if (results.length) {
+            results.push([null, None]);
+            count++;
+          } else {
+            count = 0;
+          }
         }
 
         return {
@@ -408,7 +412,10 @@ export const count = selectorFamily<
         return get(counts({ extended, path, modal }))[value] || 0;
       }
 
-      return data[path].Count;
+      if (data[path]) {
+        return data[path].Count;
+      }
+      return new Promise(() => {});
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",

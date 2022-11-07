@@ -1522,7 +1522,7 @@ COCODetectionDataset
 .. admonition:: Supported label types
     :class: note
 
-    |Detections|, |Polylines|
+    |Detections|, |Polylines|, |Keypoints|
 
 The :class:`fiftyone.types.COCODetectionDataset` type represents a labeled
 dataset consisting of images and their associated object detections saved in

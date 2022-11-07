@@ -12,7 +12,6 @@
   "scripts": {
     "dev": "vite"
   },
-  "prettier": "@fiftyone/prettier-config",
   "private": true,
   "files": [
     "dist",
@@ -20,7 +19,6 @@
     "README.md"
   ],
   "devDependencies": {
-    "@fiftyone/prettier-config": "*",
     "@types/react-input-autosize": "^2.2.1",
     "prettier": "^2.7.1",
     "typescript": "^4.7.4",
@@ -28,8 +26,8 @@
     "vite": "^3.0.0"
   },
   "peerDependencies": {
-    "@material-ui/core": "*",
-    "@material-ui/icons": "*",
+    "@mui/icons-material": "^5.10.2",
+    "@mui/material": "^5.9.0",
     "@react-spring/web": "*",
     "react": "*",
     "react-relay": "*",
@@ -37,7 +35,11 @@
     "styled-components": "*"
   },
   "dependencies": {
+    "@emotion/react": "^11.10.4",
+    "@emotion/styled": "^11.10.4",
     "@fiftyone/state": "*",
+    "@mui/joy": "^5.0.0-alpha.46",
+    "@mui/material": "^5.9.0",
     "classnames": "^2.3.1",
     "framer-motion": "^6.2.7",
     "path-to-regexp": "^6.2.0",
