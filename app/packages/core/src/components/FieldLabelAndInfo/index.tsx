@@ -192,7 +192,13 @@ const FieldInfoTableContainer = styled.table`
     }};
   }
   tr + tr {
-    border-top: solid 2px ${({ theme }) => theme.background.body};
+    border-top: solid 2px
+      ${({ theme }) => {
+        if (theme.mode === "light") {
+          return theme.background.header;
+        }
+        return theme.background.body;
+      }};
   }
   a,
   a:visited {
@@ -279,7 +285,6 @@ function FieldInfoExpanded({
 }
 
 function ExpFieldInfoDesc({ collapsed, description, onViewMore }) {
-  console.log(description);
   return (
     <FieldInfoDesc
       collapsed={collapsed}
@@ -376,10 +381,8 @@ function getCenter(bounds) {
 }
 
 function distanceFromCenters(boundsA, boundsB) {
-  console.log({ boundsA, boundsB });
   const a = getCenter(boundsA);
   const b = getCenter(boundsB);
-  console.log({ a, b });
   return Math.abs(a.x - b.x);
   // return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 }
