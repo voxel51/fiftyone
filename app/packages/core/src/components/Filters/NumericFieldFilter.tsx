@@ -162,7 +162,11 @@ const NumericFieldFilter = ({
   }
 
   return (
-    <NamedRangeSliderContainer>
+    <NamedRangeSliderContainer
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
+    >
       {named && name && (
         <FieldLabelAndInfo
           nested

@@ -1,5 +1,6 @@
 import React, { Suspense } from "react";
 import styled from "styled-components";
+import { loading } from "./withSuspense.module.css";
 
 const Container = styled.div`
   margin: 3px;
@@ -13,6 +14,7 @@ const Header = styled.div`
 `;
 
 const Body = styled.div`
+  cursor: default;
   position: relative;
   background: ${({ theme }) => theme.background.level2};
   border: 1px solid #191c1f;
@@ -28,7 +30,7 @@ const LoadingContainer = ({ path }: { path?: string }) => {
     <Container>
       {path && <Header>{path.split(".").slice(-1)[0]}</Header>}
       <Body>
-        <div>Loading...</div>
+        <div className={loading}>Loading</div>
       </Body>
     </Container>
   );

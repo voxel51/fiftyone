@@ -370,7 +370,11 @@ const CategoricalFilter = <T extends V = V>({
   }
 
   return (
-    <NamedCategoricalFilterContainer>
+    <NamedCategoricalFilterContainer
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
+    >
       <FieldLabelAndInfo
         nested
         field={field}
