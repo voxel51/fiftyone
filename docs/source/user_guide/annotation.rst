@@ -10,7 +10,7 @@ labels on your :ref:`datasets <using-datasets>` or specific
 :ref:`views <using-views>` into them.
 
 By default, all annotation is performend via a native
-:ref:`CVAT integration <cvat-integration>` that uses `cvat.org <https://cvat.org>`_, but
+:ref:`CVAT integration <cvat-integration>` that uses `app.cvat.ai <https://app.cvat.ai>`_, but
 you can use a :ref:`self-hosted CVAT server <cvat-setup>`, switch to the
 :ref:`Labelbox backend <labelbox-integration>`, or even use a
 :ref:`custom annotation backend <custom-annotation-backend>`.
@@ -55,7 +55,7 @@ The example below demonstrates this workflow using the default
 
 .. note::
 
-    You must create an account at `cvat.org <https://cvat.org>`_ in order to
+    You must create an account at `app.cvat.ai <https://app.cvat.ai>`_ in order to
     run this example.
 
     Note that you can store your credentials as described in
@@ -150,7 +150,7 @@ FiftyOne:
 Setup
 _____
 
-By default, all annotation is performed via `cvat.org <https://cvat.org>`_,
+By default, all annotation is performed via `app.cvat.ai <https://app.cvat.ai>`_,
 which simply requires that you create an account and then configure your
 username and password credentials.
 
@@ -260,7 +260,7 @@ and the CLI:
             "backends": {
                 "cvat": {
                     "config_cls": "fiftyone.utils.cvat.CVATBackendConfig",
-                    "url": "https://cvat.org"
+                    "url": "https://app.cvat.ai"
                 }
             }
         }
@@ -279,7 +279,7 @@ and the CLI:
             "backends": {
                 "cvat": {
                     "config_cls": "fiftyone.utils.cvat.CVATBackendConfig",
-                    "url": "https://cvat.org"
+                    "url": "https://app.cvat.ai"
                 }
             }
         }

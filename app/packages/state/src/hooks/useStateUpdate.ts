@@ -28,7 +28,7 @@ import {
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
-import { viewsAreEqual } from "../utils";
+import { collapseFields, viewsAreEqual } from "../utils";
 
 interface StateUpdate {
   colorscale?: RGB[];
@@ -88,6 +88,8 @@ const useStateUpdate = () => {
       if (dataset) {
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
         dataset.evaluations = Object.values(dataset.evaluations || {});
+        dataset.sampleFields = collapseFields(dataset.sampleFields);
+        dataset.frameFields = collapseFields(dataset.frameFields);
 
         const groups = resolveGroups(dataset);
         const currentSidebar = get(sidebarGroupsDefinition(false));

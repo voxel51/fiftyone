@@ -84,7 +84,7 @@ class Tag(HTTPEndpoint):
             current_filter = F("frame_number").is_in([current_frame, 1])
             filter_frames = lambda f: F("frames").filter(f)
             expr = F.if_else(
-                F(view._get_db_fields_map()["id"]).to_string() == modal,
+                F("_id").to_string() == modal,
                 filter_frames(current_filter),
                 filter_frames(default_filter),
             )

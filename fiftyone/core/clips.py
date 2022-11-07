@@ -5,8 +5,8 @@ Clips views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy
 from collections import defaultdict
+from copy import deepcopy
 
 from bson import ObjectId
 
@@ -18,6 +18,7 @@ from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
@@ -140,14 +141,6 @@ class ClipsView(fov.DatasetView):
         )
 
     @property
-    def _element_str(self):
-        return "clip"
-
-    @property
-    def _elements_str(self):
-        return "clips"
-
-    @property
     def name(self):
         return self.dataset_name + "-clips"
 
@@ -155,35 +148,66 @@ class ClipsView(fov.DatasetView):
     def media_type(self):
         return fom.VIDEO
 
-    def _get_default_sample_fields(
-        self, include_private=False, use_db_fields=False
-    ):
-        fields = super()._get_default_sample_fields(
-            include_private=include_private, use_db_fields=use_db_fields
+    def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
+        if label_field == self._classification_field:
+            _ids = self.values("_sample_id")
+
+        _, label_ids = super()._tag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
         )
 
-        if use_db_fields:
-            return fields + ("_sample_id", "support")
+        if label_field == self._classification_field:
+            ids, label_ids = self._to_source_ids(label_field, _ids, label_ids)
+            self._source_collection._tag_labels(
+                tags, label_field, ids=ids, label_ids=label_ids
+            )
 
-        return fields + ("sample_id", "support")
+    def _untag_labels(self, tags, label_field, ids=None, label_ids=None):
+        if label_field == self._classification_field:
+            _ids = self.values("_sample_id")
 
-    def _get_default_indexes(self, frames=False):
-        if frames:
-            return super()._get_default_indexes(frames=frames)
+        _, label_ids = super()._untag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
+        )
 
-        return ["id", "filepath", "sample_id"]
+        if label_field == self._classification_field:
+            ids, label_ids = self._to_source_ids(label_field, _ids, label_ids)
+            self._source_collection._untag_labels(
+                tags, label_field, ids=ids, label_ids=label_ids
+            )
+
+    def _to_source_ids(self, label_field, ids, label_ids):
+        label_type = self._source_collection._get_label_field_type(label_field)
+        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+
+        if not is_list_field:
+            return ids, label_ids
+
+        id_map = defaultdict(list)
+        for _id, _label_id in zip(ids, label_ids):
+            if etau.is_container(_label_id):
+                id_map[_id].extend(_label_id)
+            else:
+                id_map[_id].append(_label_id)
+
+        if not id_map:
+            return [], []
+
+        return zip(*id_map.items())
 
     def set_values(self, field_name, *args, **kwargs):
+        field = field_name.split(".", 1)[0]
+        must_sync = field == self._classification_field
+
         # The `set_values()` operation could change the contents of this view,
         # so we first record the sample IDs that need to be synced
-        if self._stages:
+        if must_sync and self._stages:
             ids = self.values("id")
         else:
             ids = None
 
         super().set_values(field_name, *args, **kwargs)
 
-        field = field_name.split(".", 1)[0]
         self._sync_source(fields=[field], ids=ids)
 
     def save(self, fields=None):
@@ -444,15 +468,14 @@ def make_clips_dataset(
     )
     dataset.media_type = fom.VIDEO
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
-    dataset.create_index("sample_id")
     dataset.add_sample_field("support", fof.FrameSupportField)
+    dataset.create_index("sample_id")
 
     if clips_type == "detections":
-        dataset.add_sample_field(
-            field_or_expr,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Classification,
-        )
+        field = _get_label_field(sample_collection, field_or_expr)
+        kwargs = foo.get_field_kwargs(field)
+        kwargs["embedded_doc_type"] = fol.Classification
+        dataset.add_sample_field(field_or_expr, **kwargs)
 
     if clips_type == "trajectories":
         field_or_expr, _ = sample_collection._handle_frame_field(field_or_expr)
@@ -470,9 +493,8 @@ def make_clips_dataset(
             other_fields = [f for f in src_schema if f not in curr_schema]
 
         add_fields = [f for f in other_fields if f not in curr_schema]
-        dataset._sample_doc_cls.merge_field_schema(
-            {k: v for k, v in src_schema.items() if k in add_fields}
-        )
+        add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
+        dataset._sample_doc_cls.merge_field_schema(add_schema)
 
     _make_pretty_summary(dataset)
 
@@ -525,6 +547,11 @@ def _is_frame_support_field(sample_collection, field_path):
     )
 
 
+def _get_label_field(sample_collection, field_path):
+    _, path = sample_collection._get_label_field_path(field_path)
+    return sample_collection.get_field(path, leaf=True)
+
+
 def _make_pretty_summary(dataset):
     set_fields = ["id", "sample_id", "filepath", "support"]
     all_fields = dataset._sample_doc_cls._fields_ordered
@@ -557,8 +584,7 @@ def _write_support_clips(
     if other_fields:
         project.update({f: True for f in other_fields})
 
-    pipeline = src_collection._pipeline()
-    pipeline.append({"$project": project})
+    pipeline = [{"$project": project}]
 
     if is_list:
         pipeline.extend(
@@ -567,7 +593,7 @@ def _write_support_clips(
 
     pipeline.append({"$out": dataset._sample_collection_name})
 
-    src_dataset._aggregate(pipeline=pipeline)
+    src_collection._aggregate(post_pipeline=pipeline)
 
 
 def _write_temporal_detection_clips(
@@ -599,9 +625,10 @@ def _write_temporal_detection_clips(
     if other_fields:
         project.update({f: True for f in other_fields})
 
-    pipeline = src_collection._pipeline()
-
-    pipeline.append({"$project": project})
+    pipeline = [
+        {"$project": project},
+        {"$match": {"$expr": {"$gt": ["$" + field, None]}}},
+    ]
 
     if label_type is fol.TemporalDetections:
         list_path = field + "." + label_type._LABEL_LIST_FIELD
@@ -625,7 +652,7 @@ def _write_temporal_detection_clips(
         ]
     )
 
-    src_dataset._aggregate(pipeline=pipeline)
+    src_collection._aggregate(post_pipeline=pipeline)
 
 
 def _write_trajectories(dataset, src_collection, field, other_fields=None):
@@ -650,50 +677,47 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
         _allow_missing=True,
     )
 
-    src_collection = fod._always_select_field(src_collection, _tmp_field)
+    try:
+        src_collection = fod._always_select_field(src_collection, _tmp_field)
 
-    id_field = "_id" if not src_dataset._is_clips else "_sample_id"
+        id_field = "_id" if not src_dataset._is_clips else "_sample_id"
 
-    project = {
-        "_id": False,
-        "_sample_id": "$" + id_field,
-        _tmp_field: True,
-        "_media_type": True,
-        "filepath": True,
-        "metadata": True,
-        "tags": True,
-        field: True,
-    }
+        project = {
+            "_id": False,
+            "_sample_id": "$" + id_field,
+            _tmp_field: True,
+            "_media_type": True,
+            "filepath": True,
+            "metadata": True,
+            "tags": True,
+            field: True,
+        }
 
-    if other_fields:
-        project.update({f: True for f in other_fields})
+        if other_fields:
+            project.update({f: True for f in other_fields})
 
-    pipeline = src_collection._pipeline()
-
-    pipeline.extend(
-        [
-            {"$project": project},
-            {"$unwind": "$" + _tmp_field},
-            {
-                "$set": {
-                    "support": {"$slice": ["$" + _tmp_field, 2, 2]},
-                    field: {
-                        "_cls": "Label",
-                        "label": {"$arrayElemAt": ["$" + _tmp_field, 0]},
-                        "index": {"$arrayElemAt": ["$" + _tmp_field, 1]},
+        src_collection._aggregate(
+            post_pipeline=[
+                {"$project": project},
+                {"$unwind": "$" + _tmp_field},
+                {
+                    "$set": {
+                        "support": {"$slice": ["$" + _tmp_field, 2, 2]},
+                        field: {
+                            "_cls": "Label",
+                            "label": {"$arrayElemAt": ["$" + _tmp_field, 0]},
+                            "index": {"$arrayElemAt": ["$" + _tmp_field, 1]},
+                        },
+                        "_rand": {"$rand": {}},
                     },
-                    "_rand": {"$rand": {}},
                 },
-            },
-            {"$unset": _tmp_field},
-            {"$out": dataset._sample_collection_name},
-        ]
-    )
-
-    src_dataset._aggregate(pipeline=pipeline)
-
-    cleanup_op = {"$unset": {_tmp_field: ""}}
-    src_dataset._sample_collection.update_many({}, cleanup_op)
+                {"$unset": _tmp_field},
+                {"$out": dataset._sample_collection_name},
+            ]
+        )
+    finally:
+        cleanup_op = {"$unset": {_tmp_field: ""}}
+        src_dataset._sample_collection.update_many({}, cleanup_op)
 
 
 def _write_expr_clips(
@@ -732,38 +756,35 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
         _allow_missing=True,
     )
 
-    src_collection = fod._always_select_field(src_collection, _tmp_field)
+    try:
+        src_collection = fod._always_select_field(src_collection, _tmp_field)
 
-    id_field = "_id" if not src_dataset._is_clips else "_sample_id"
+        id_field = "_id" if not src_dataset._is_clips else "_sample_id"
 
-    project = {
-        "_id": False,
-        "_sample_id": "$" + id_field,
-        "_media_type": True,
-        "filepath": True,
-        "support": "$" + _tmp_field,
-        "metadata": True,
-        "tags": True,
-    }
+        project = {
+            "_id": False,
+            "_sample_id": "$" + id_field,
+            "_media_type": True,
+            "filepath": True,
+            "support": "$" + _tmp_field,
+            "metadata": True,
+            "tags": True,
+        }
 
-    if other_fields:
-        project.update({f: True for f in other_fields})
+        if other_fields:
+            project.update({f: True for f in other_fields})
 
-    pipeline = src_collection._pipeline()
-
-    pipeline.extend(
-        [
-            {"$project": project},
-            {"$unwind": "$support"},
-            {"$set": {"_rand": {"$rand": {}}}},
-            {"$out": dataset._sample_collection_name},
-        ]
-    )
-
-    src_dataset._aggregate(pipeline=pipeline)
-
-    cleanup_op = {"$unset": {_tmp_field: ""}}
-    src_dataset._sample_collection.update_many({}, cleanup_op)
+        src_collection._aggregate(
+            post_pipeline=[
+                {"$project": project},
+                {"$unwind": "$support"},
+                {"$set": {"_rand": {"$rand": {}}}},
+                {"$out": dataset._sample_collection_name},
+            ]
+        )
+    finally:
+        cleanup_op = {"$unset": {_tmp_field: ""}}
+        src_dataset._sample_collection.update_many({}, cleanup_op)
 
 
 def _get_trajectories(sample_collection, frame_field):

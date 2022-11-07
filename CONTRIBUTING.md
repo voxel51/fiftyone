@@ -3,10 +3,10 @@
 FiftyOne is open source and community contributions are welcome!
 
 If you have not already, we highly recommend browsing currently
-[active projects](https://github.com/voxel51/fiftyone/projects) to get a sense
-of what is planned for FiftyOne. Each project is a component of FiftyOne that
-we, the maintainers, deem critical to building a world-class ecosystem for
-building high quality CV/ML datasets and models.
+[active projects](https://github.com/voxel51/fiftyone/projects?type=classic) to
+get a sense of what is planned for FiftyOne. Each project is a component of
+FiftyOne that we, the maintainers, deem critical to building a world-class
+ecosystem for building high quality CV/ML datasets and models.
 
 Don't be intimidated by the procedures outlined below. They are not dogmatic
 and are only meant to help guide development as the project and number of
@@ -26,7 +26,7 @@ tweaks such as typos or other small improvements do not need to have a
 corresponding issue.
 
 FiftyOne maintainers [actively triage](ISSUE_TRIAGE.md) and respond to GitHub
-issues. In general, we recommend waiting for feebdack from a FiftyOne
+issues. In general, we recommend waiting for feedback from a FiftyOne
 maintainer or community member before proceeding to implement a feature or
 patch. This is particularly important for
 [significant changes](#write-designs-for-significant-changes), and will
@@ -36,8 +36,8 @@ typically be labeled during triage with `needs design`.
 
 After you have agreed upon an implementation strategy for your feature or patch
 with a FiftyOne maintainer, the next step is to introduce your changes (see
-[developing changes](#developing-changes-to-fiftyone)) as a pull request
-against the FiftyOne repository.
+[developer guide](#developer-guide)) as a pull request against the FiftyOne
+repository.
 
 Steps to make a pull request:
 

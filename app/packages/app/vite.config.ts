@@ -16,13 +16,13 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         "/plugins": {
-          target: "http://localhost:5151",
+          target: "http://127.0.0.1:5151",
           changeOrigin: false,
           secure: false,
           ws: false,
         },
         "/aggregate": {
-          target: "http://localhost:5151",
+          target: "http://127.0.0.1:5151",
           changeOrigin: false,
           secure: false,
           ws: false,

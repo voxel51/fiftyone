@@ -3,6 +3,12 @@
     "version": "0.0.0",
     "productName": "FiftyOne",
     "license": "Apache-2.0",
+    "prettier": {
+        "trailingComma": "es5",
+        "tabWidth": 2,
+        "semi": true,
+        "singleQuote": false
+    },
     "private": true,
     "main": "index.js",
     "scripts": {
@@ -12,7 +18,8 @@
         "dev:wpy": "concurrently -k yarn:dev yarn:dev:py",
         "postinstall": "patch-package",
         "start": "yarn workspace @fiftyone/app start",
-        "start-desktop": "yarn workspace FiftyOne start-desktop"
+        "start-desktop": "yarn workspace FiftyOne start-desktop",
+        "gen:schema": "strawberry export-schema fiftyone.server.app:schema > schema.graphql"
     },
     "devDependencies": {
         "concurrently": "^7.2.1",

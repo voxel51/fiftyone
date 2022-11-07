@@ -7,7 +7,6 @@ FiftyOne dataset-related unit tests.
 """
 from copy import copy, deepcopy
 from datetime import date, datetime
-import gc
 import os
 
 from bson import ObjectId
@@ -97,33 +96,24 @@ class DatasetTests(unittest.TestCase):
 
         dataset.tags = ["cat", "dog"]
 
-        del dataset
-        gc.collect()  # force garbage collection
+        dataset.reload()
 
-        dataset2 = fo.load_dataset(dataset_name)
-
-        self.assertEqual(dataset2.tags, ["cat", "dog"])
+        self.assertEqual(dataset.tags, ["cat", "dog"])
 
         # save() must be called to persist in-place edits
-        dataset2.tags.append("rabbit")
+        dataset.tags.append("rabbit")
 
-        del dataset2
-        gc.collect()  # force garbage collection
+        dataset.reload()
 
-        dataset3 = fo.load_dataset(dataset_name)
-
-        self.assertEqual(dataset3.tags, ["cat", "dog"])
+        self.assertEqual(dataset.tags, ["cat", "dog"])
 
         # This will persist the edits
-        dataset3.tags.append("rabbit")
-        dataset3.save()
+        dataset.tags.append("rabbit")
+        dataset.save()
 
-        del dataset3
-        gc.collect()  # force garbage collection
+        dataset.reload()
 
-        dataset4 = fo.load_dataset(dataset_name)
-
-        self.assertEqual(dataset4.tags, ["cat", "dog", "rabbit"])
+        self.assertEqual(dataset.tags, ["cat", "dog", "rabbit"])
 
     @drop_datasets
     def test_dataset_info(self):
@@ -139,13 +129,164 @@ class DatasetTests(unittest.TestCase):
         dataset.info["classes"] = classes
         dataset.save()
 
-        del dataset
-        gc.collect()  # force garbage collection
+        dataset.reload()
 
-        dataset2 = fo.load_dataset(dataset_name)
+        self.assertTrue("classes" in dataset.info)
+        self.assertEqual(classes, dataset.info["classes"])
 
-        self.assertTrue("classes" in dataset2.info)
-        self.assertEqual(classes, dataset2.info["classes"])
+    @drop_datasets
+    def test_dataset_field_metadata(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+
+        dataset.add_sample_field("field1", fo.StringField)
+
+        field = dataset.get_field("field1")
+        self.assertIsNone(field.description)
+        self.assertIsNone(field.info)
+
+        dataset.add_frame_field("field1", fo.StringField)
+
+        field = dataset.get_field("frames.field1")
+        self.assertIsNone(field.description)
+        self.assertIsNone(field.info)
+
+        dataset.add_sample_field(
+            "field2", fo.StringField, description="test", info={"foo": "bar"}
+        )
+
+        field = dataset.get_field("field2")
+        self.assertEqual(field.description, "test")
+        self.assertEqual(field.info, {"foo": "bar"})
+
+        dataset.add_frame_field(
+            "field2",
+            fo.StringField,
+            description="test2",
+            info={"foo2": "bar2"},
+        )
+
+        field = dataset.get_field("frames.field2")
+        self.assertEqual(field.description, "test2")
+        self.assertEqual(field.info, {"foo2": "bar2"})
+
+        sample = fo.Sample(
+            filepath="video.mp4",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", bounding_box=[0, 0, 1, 1]),
+                ]
+            ),
+        )
+        sample.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog", bounding_box=[0, 0, 1, 1]),
+                ]
+            ),
+        )
+
+        dataset.add_sample(sample)
+
+        field = dataset.get_field("ground_truth.detections.label")
+        self.assertIsNone(field.description)
+        self.assertIsNone(field.info)
+
+        field.description = "test"
+        field.info = {"foo": "bar"}
+        field.save()
+
+        dataset.reload()
+
+        field = dataset.get_field("ground_truth.detections.label")
+        self.assertEqual(field.description, "test")
+        self.assertEqual(field.info, {"foo": "bar"})
+
+        field = dataset.get_field("frames.ground_truth.detections.label")
+        self.assertIsNone(field.description)
+        self.assertIsNone(field.info)
+
+        field.description = "test2"
+        field.info = {"foo2": "bar2"}
+        field.save()
+
+        dataset.reload()
+
+        field = dataset.get_field("frames.ground_truth.detections.label")
+        self.assertEqual(field.description, "test2")
+        self.assertEqual(field.info, {"foo2": "bar2"})
+
+        #
+        # Updating fields retrieved from views is allowed
+        #
+
+        view = dataset.limit(1)
+
+        field = dataset.get_field("field2")
+        self.assertEqual(field.description, "test")
+        self.assertEqual(field.info, {"foo": "bar"})
+
+        field.description = None
+        field.info = None
+        field.save()
+
+        dataset.reload()
+
+        field = dataset.get_field("field2")
+        self.assertIsNone(field.description)
+        self.assertIsNone(field.info)
+
+        # Updating fields retrieved from views is allowed
+        field = dataset.get_field("frames.field2")
+        self.assertEqual(field.description, "test2")
+        self.assertEqual(field.info, {"foo2": "bar2"})
+
+        field.description = None
+        field.info = None
+        field.save()
+
+        dataset.reload()
+
+        field = dataset.get_field("frames.field2")
+        self.assertIsNone(field.description)
+        self.assertIsNone(field.info)
+
+        #
+        # Datasets should automatically refresh upon save() errors
+        #
+
+        field = dataset.get_field("ground_truth.detections.label")
+
+        with self.assertRaises(Exception):
+            field.description = False
+            field.save()
+
+        field = dataset.get_field("ground_truth.detections.label")
+        self.assertEqual(field.description, "test")
+
+        with self.assertRaises(Exception):
+            field.info = False
+            field.save()
+
+        field = dataset.get_field("ground_truth.detections.label")
+        self.assertEqual(field.info, {"foo": "bar"})
+
+        field = dataset.get_field("frames.ground_truth.detections.label")
+
+        with self.assertRaises(Exception):
+            field.description = False
+            field.save()
+
+        field = dataset.get_field("frames.ground_truth.detections.label")
+        self.assertEqual(field.description, "test2")
+
+        with self.assertRaises(Exception):
+            field.info = False
+            field.save()
+
+        # Datasets should automatically refresh upon save() errors
+        field = dataset.get_field("frames.ground_truth.detections.label")
+        self.assertEqual(field.info, {"foo2": "bar2"})
 
     @drop_datasets
     def test_dataset_app_config(self):
@@ -164,10 +305,7 @@ class DatasetTests(unittest.TestCase):
         dataset.app_config.grid_media_field = "thumbnail_path"
         dataset.save()
 
-        del dataset
-        gc.collect()  # force garbage collection
-
-        dataset = fo.load_dataset(dataset_name)
+        dataset.reload()
 
         self.assertListEqual(
             dataset.app_config.media_fields, ["filepath", "thumbnail_path"]
@@ -1461,8 +1599,9 @@ class DatasetTests(unittest.TestCase):
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_rename_fields(self):
-        dataset = fo.Dataset()
         sample = fo.Sample(filepath="/path/to/image.jpg", field=1)
+
+        dataset = fo.Dataset()
         dataset.add_sample(sample)
 
         dataset.rename_sample_field("field", "new_field")
@@ -1476,11 +1615,12 @@ class DatasetTests(unittest.TestCase):
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_rename_embedded_fields(self):
-        dataset = fo.Dataset()
         sample = fo.Sample(
             filepath="image.jpg",
             predictions=fo.Detections(detections=[fo.Detection(field=1)]),
         )
+
+        dataset = fo.Dataset()
         dataset.add_sample(sample)
 
         dataset.rename_sample_field(
@@ -1495,31 +1635,19 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             sample.predictions.detections[0].field
 
-        dataset.clear_sample_field("predictions.detections.field")
-        self.assertIsNone(sample.predictions.detections[0].field)
+        dataset.clear_sample_field("predictions.detections.new_field")
+        self.assertIsNone(sample.predictions.detections[0].new_field)
 
-        dataset.delete_sample_field("predictions.detections.field")
-        self.assertIsNotNone(sample.predictions.detections[0].new_field)
-        with self.assertRaises(AttributeError):
-            sample.predictions.detections[0].field
-
-        dataset.rename_sample_field(
-            "predictions.detections.new_field",
-            "predictions.detections.field",
-        )
-        self.assertEqual(sample.predictions.detections[0].field, 1)
-        self.assertListEqual(
-            dataset.values("predictions.detections.field", unwind=True),
-            [1],
-        )
+        dataset.delete_sample_field("predictions.detections.new_field")
         with self.assertRaises(AttributeError):
             sample.predictions.detections[0].new_field
 
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_clone_fields(self):
-        dataset = fo.Dataset()
         sample = fo.Sample(filepath="image.jpg", field=1)
+
+        dataset = fo.Dataset()
         dataset.add_sample(sample)
 
         dataset.clone_sample_field("field", "field_copy")
@@ -1552,8 +1680,9 @@ class DatasetTests(unittest.TestCase):
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_object_id_fields1(self):
-        dataset = fo.Dataset()
         sample = fo.Sample(filepath="image.jpg")
+
+        dataset = fo.Dataset()
         dataset.add_sample(sample)
 
         # Clone field
@@ -1739,11 +1868,12 @@ class DatasetTests(unittest.TestCase):
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_clone_embedded_fields(self):
-        dataset = fo.Dataset()
         sample = fo.Sample(
             filepath="image.jpg",
             predictions=fo.Detections(detections=[fo.Detection(field=1)]),
         )
+
+        dataset = fo.Dataset()
         dataset.add_sample(sample)
 
         dataset.clone_sample_field(
@@ -1780,10 +1910,11 @@ class DatasetTests(unittest.TestCase):
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_clone_frame_fields(self):
-        dataset = fo.Dataset()
         sample = fo.Sample(filepath="video.mp4")
         frame = fo.Frame(field=1)
         sample.frames[1] = frame
+
+        dataset = fo.Dataset()
         dataset.add_sample(sample)
 
         dataset.clone_frame_field("field", "field_copy")
@@ -1816,12 +1947,13 @@ class DatasetTests(unittest.TestCase):
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_clone_embedded_frame_fields(self):
-        dataset = fo.Dataset()
         sample = fo.Sample(filepath="video.mp4")
         frame = fo.Frame(
             predictions=fo.Detections(detections=[fo.Detection(field=1)])
         )
         sample.frames[1] = frame
+
+        dataset = fo.Dataset()
         dataset.add_sample(sample)
 
         dataset.clone_frame_field(
@@ -2841,6 +2973,770 @@ class DatasetDeletionTests(unittest.TestCase):
         num_labels_after = self.dataset.count("frames.ground_truth.detections")
 
         self.assertEqual(num_labels_after, num_labels - num_selected)
+
+
+class DynamicFieldTests(unittest.TestCase):
+    @drop_datasets
+    def test_dynamic_fields_dataset(self):
+        detections1 = fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="cat",
+                    bounding_box=[0, 0, 1, 1],
+                    area=1,
+                )
+            ]
+        )
+        detections2 = detections1.copy()
+
+        sample = fo.Sample(filepath="video.mp4", ground_truth=detections1)
+        sample.frames[1] = fo.Frame(ground_truth=detections2)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        # By default dynamic fields aren't declared
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("ground_truth.detections.area", schema)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertNotIn("ground_truth.detections.area", schema)
+
+        dynamic_schema = dataset.get_dynamic_field_schema()
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema()
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        # Declare all dynamic fields
+
+        dataset.add_dynamic_sample_fields()
+        dataset.add_dynamic_frame_fields()
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.area", schema)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.area", schema)
+
+        dynamic_schema = dataset.get_dynamic_field_schema()
+        self.assertEqual(dynamic_schema, {})
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema()
+        self.assertEqual(dynamic_schema, {})
+
+        # Manually declare embedded attributes
+
+        dataset.add_sample_field(
+            "ground_truth.detections.iscrowd",
+            fo.BooleanField,
+        )
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.iscrowd", schema)
+
+        dataset.add_frame_field(
+            "ground_truth.detections.iscrowd",
+            fo.BooleanField,
+        )
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.iscrowd", schema)
+
+        # Okay to redeclare embedded attributes
+
+        dataset.add_sample_field(
+            "ground_truth.detections.iscrowd",
+            fo.BooleanField,
+        )
+
+        dataset.add_frame_field(
+            "ground_truth.detections.iscrowd",
+            fo.BooleanField,
+        )
+
+        # But their type can't change type
+
+        with self.assertRaises(Exception):
+            dataset.add_sample_field(
+                "ground_truth.detections.iscrowd",
+                fo.IntField,
+            )
+
+        with self.assertRaises(Exception):
+            dataset.add_frame_field(
+                "ground_truth.detections.iscrowd",
+                fo.IntField,
+            )
+
+        # Add sample with valid dynamic attributes
+
+        detections1 = fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="cat",
+                    bounding_box=[0, 0, 1, 1],
+                    area=2,
+                    iscrowd=True,
+                )
+            ]
+        )
+        detections2 = detections1.copy()
+
+        sample = fo.Sample(filepath="video.mp4", ground_truth=detections1)
+        sample.frames[1] = fo.Frame(ground_truth=detections2)
+
+        dataset.add_sample(sample)
+
+        # Try adding sample with invalid dynamic attributes
+
+        detections1 = fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="cat",
+                    bounding_box=[0, 0, 1, 1],
+                    area="bad-value",
+                )
+            ]
+        )
+        detections2 = detections1.copy()
+
+        sample = fo.Sample(filepath="video.mp4", ground_truth=detections1)
+        sample.frames[1] = fo.Frame(ground_truth=detections2)
+
+        with self.assertRaises(Exception):
+            dataset.add_sample(sample)
+
+        # Automatically declare dynamic attributes
+
+        detections1 = fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="cat",
+                    bounding_box=[0, 0, 1, 1],
+                    foo="bar",
+                )
+            ]
+        )
+        detections2 = detections1.copy()
+
+        sample = fo.Sample(filepath="video.mp4", ground_truth=detections1)
+        sample.frames[1] = fo.Frame(ground_truth=detections2)
+
+        dataset.add_sample(sample, dynamic=True)
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.foo", schema)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.foo", schema)
+
+    @drop_datasets
+    def test_dynamic_fields_sample(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame()
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        detections1 = fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="cat",
+                    bounding_box=[0, 0, 1, 1],
+                    mood="surly",
+                )
+            ]
+        )
+        detections2 = detections1.copy()
+
+        # By default dynamic attributes aren't declared
+
+        sample["ground_truth"] = detections1
+        sample.frames[1]["ground_truth"] = detections2
+        sample.save()
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("ground_truth.detections.mood", schema)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertNotIn("ground_truth.detections.mood", schema)
+
+        # But this will declare the dynamic attributes
+
+        sample.set_field("ground_truth", detections1, dynamic=True)
+        sample.frames[1].set_field("ground_truth", detections2, dynamic=True)
+        sample.save()
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.mood", schema)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.mood", schema)
+
+        # Try invalid dynamic attributes
+
+        with self.assertRaises(Exception):
+            sample["ground_truth"].detections[0].mood = False
+            sample.save()
+
+        with self.assertRaises(Exception):
+            frame = sample.frames[1]
+            frame["ground_truth"].detections[0].mood = False
+            frame.save()
+
+        with self.assertRaises(Exception):
+            sample.frames[1]["ground_truth"].detections[0].mood = False
+            sample.save()
+
+    @drop_datasets
+    def test_dynamic_fields_clone_and_merge(self):
+        dataset1 = fo.Dataset()
+        dataset1.media_type = "video"
+
+        dataset1.add_sample_field(
+            "ground_truth",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Detections,
+        )
+        dataset1.add_sample_field(
+            "ground_truth.detections.mood",
+            fo.StringField,
+        )
+
+        dataset1.add_frame_field(
+            "ground_truth",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Detections,
+        )
+        dataset1.add_frame_field(
+            "ground_truth.detections.mood",
+            fo.StringField,
+        )
+
+        schema = dataset1.get_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.mood", schema)
+
+        schema = dataset1.get_frame_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.mood", schema)
+
+        detections1 = fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="cat",
+                    bounding_box=[0, 0, 1, 1],
+                    area=1,
+                )
+            ]
+        )
+        detections2 = detections1.copy()
+
+        sample = fo.Sample(filepath="video.mp4", ground_truth=detections1)
+        sample.frames[1] = fo.Frame(ground_truth=detections2)
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample, dynamic=True)
+
+        schema = dataset2.get_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.area", schema)
+
+        schema = dataset2.get_frame_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.area", schema)
+
+        dataset3 = dataset2.clone()
+
+        schema = dataset3.get_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.area", schema)
+
+        schema = dataset3.get_frame_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.area", schema)
+
+        dataset3.merge_samples(dataset1)
+
+        schema = dataset3.get_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.mood", schema)
+        self.assertIn("ground_truth.detections.area", schema)
+
+        schema = dataset3.get_frame_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.mood", schema)
+        self.assertIn("ground_truth.detections.area", schema)
+
+    @drop_datasets
+    def test_dynamic_fields_mixed(self):
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        float=1,
+                        mixed=True,
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        float=None,
+                        mixed=None,
+                    ),
+                ]
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="rabbit",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                    ),
+                    fo.Detection(
+                        label="squirrel",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        float=1.5,
+                        mixed="foo",
+                    ),
+                ]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        dataset.add_dynamic_sample_fields()
+
+        # int + float is resolved as FloatField
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.float", schema)
+        self.assertIsInstance(
+            schema["ground_truth.detections.float"],
+            fo.FloatField,
+        )
+
+        dynamic_schema = dataset.get_dynamic_field_schema()
+        self.assertIn("ground_truth.detections.mixed", dynamic_schema)
+
+        dataset.add_dynamic_sample_fields(add_mixed=True)
+
+        # Mixed type declared as generic Field
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.mixed", schema)
+        self.assertEqual(
+            type(schema["ground_truth.detections.mixed"]),
+            fo.Field,
+        )
+
+        dynamic_schema = dataset.get_dynamic_field_schema()
+        self.assertEqual(dynamic_schema, {})
+
+        # Ensure validation logic works
+
+        sample3 = fo.Sample(
+            filepath="image3.jpg",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="squirrel",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        float=2,
+                        mixed=[1, 2, 3],
+                    ),
+                ]
+            ),
+        )
+
+        dataset.add_sample(sample3)
+
+        sample = dataset.view().last()
+        detection = sample.ground_truth.detections[0]
+
+        self.assertEqual(detection.float, 2)
+        self.assertEqual(detection.mixed, [1, 2, 3])
+
+    @drop_datasets
+    def test_rename_dynamic_embedded_fields(self):
+        sample = fo.Sample(
+            filepath="image.jpg",
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample, dynamic=True)
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("predictions.detections.field", schema)
+
+        with self.assertRaises(Exception):
+            dataset.rename_sample_field(
+                "predictions.detections.id",
+                "predictions.detections.id_oops",
+            )
+
+        with self.assertRaises(Exception):
+            dataset.rename_sample_field(
+                "predictions.detections.bounding_box",
+                "predictions.detections.bounding_box_oops",
+            )
+
+        with self.assertRaises(Exception):
+            dataset.rename_sample_field(
+                "predictions.detections.confidence",
+                "predictions.detections.confidence_oops",
+            )
+
+        dataset.rename_sample_field(
+            "predictions.detections.field",
+            "predictions.detections.new_field",
+        )
+        self.assertEqual(sample.predictions.detections[0].new_field, 1)
+        self.assertListEqual(
+            dataset.values("predictions.detections.new_field", unwind=True),
+            [1],
+        )
+        with self.assertRaises(AttributeError):
+            sample.predictions.detections[0].field
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertIn("predictions.detections.new_field", schema)
+
+        dataset.clear_sample_field("predictions.detections.new_field")
+        self.assertIsNone(sample.predictions.detections[0].new_field)
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("predictions.detections.new_field", schema)
+
+        dataset.delete_sample_field("predictions.detections.new_field")
+        with self.assertRaises(AttributeError):
+            sample.predictions.detections[0].new_field
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("predictions.detections.new_field", schema)
+
+    @drop_datasets
+    def test_clone_dynamic_embedded_fields(self):
+        sample = fo.Sample(
+            filepath="image.jpg",
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample, dynamic=True)
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("predictions.detections.field", schema)
+
+        dataset.clone_sample_field(
+            "predictions.detections.field",
+            "predictions.detections.field_copy",
+        )
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("predictions.detections.field", schema)
+        self.assertIn("predictions.detections.field_copy", schema)
+
+        self.assertIsNotNone(sample.predictions.detections[0].field)
+        self.assertIsNotNone(sample.predictions.detections[0].field_copy)
+        self.assertListEqual(
+            dataset.values("predictions.detections.field", unwind=True),
+            [1],
+        )
+        self.assertListEqual(
+            dataset.values("predictions.detections.field_copy", unwind=True),
+            [1],
+        )
+
+        dataset.clear_sample_field("predictions.detections.field")
+        self.assertIsNone(sample.predictions.detections[0].field)
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("predictions.detections.field", schema)
+        self.assertIn("predictions.detections.field_copy", schema)
+
+        dataset.delete_sample_field("predictions.detections.field")
+        self.assertIsNotNone(sample.predictions.detections[0].field_copy)
+        with self.assertRaises(AttributeError):
+            sample.predictions.detections[0].field
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertIn("predictions.detections.field_copy", schema)
+
+        dataset.rename_sample_field(
+            "predictions.detections.field_copy",
+            "predictions.detections.field",
+        )
+        self.assertIsNotNone(sample.predictions.detections[0].field)
+        with self.assertRaises(AttributeError):
+            sample.predictions.detections[0].field_copy
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("predictions.detections.field", schema)
+        self.assertNotIn("predictions.detections.field_copy", schema)
+
+    @drop_datasets
+    def test_clone_dynamic_embedded_id_fields(self):
+        _id = ObjectId()
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            predictions=fo.Detections(detections=[fo.Detection(id_field=_id)]),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample, dynamic=True)
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("predictions.detections.id_field", schema)
+
+        id_field = schema["predictions.detections.id_field"]
+        self.assertEqual(id_field.name, "id_field")
+        self.assertEqual(id_field.db_field, "_id_field")
+
+        ids = dataset.values("predictions.detections.id_field", unwind=True)
+        _ids = dataset.values("predictions.detections._id_field", unwind=True)
+
+        self.assertListEqual(ids, [str(_id)])
+        self.assertListEqual(_ids, [_id])
+
+        dataset.clone_sample_field(
+            "predictions.detections.id_field",
+            "predictions.detections.id_field_copy",
+        )
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("predictions.detections.id_field", schema)
+        self.assertIn("predictions.detections.id_field_copy", schema)
+
+        id_field_copy = schema["predictions.detections.id_field_copy"]
+        self.assertEqual(id_field_copy.name, "id_field_copy")
+        self.assertEqual(id_field_copy.db_field, "_id_field_copy")
+
+        id_copys = dataset.values(
+            "predictions.detections.id_field_copy", unwind=True
+        )
+        _id_copys = dataset.values(
+            "predictions.detections._id_field_copy", unwind=True
+        )
+
+        self.assertListEqual(id_copys, [str(_id)])
+        self.assertListEqual(_id_copys, [_id])
+
+        self.assertIsNotNone(sample.predictions.detections[0].id_field)
+        self.assertIsNotNone(sample.predictions.detections[0].id_field_copy)
+
+        dataset.clear_sample_field("predictions.detections.id_field")
+
+        # @todo why does this raise an AttributeError?
+        # self.assertIsNone(sample.predictions.detections[0].id_field)
+
+        ids = dataset.values("predictions.detections.id_field", unwind=True)
+        self.assertListEqual(ids, [None])
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("predictions.detections.id_field", schema)
+        self.assertIn("predictions.detections.id_field_copy", schema)
+
+        dataset.delete_sample_field("predictions.detections.id_field")
+        self.assertIsNotNone(sample.predictions.detections[0].id_field_copy)
+        with self.assertRaises(AttributeError):
+            sample.predictions.detections[0].id_field
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("predictions.detections.id_field", schema)
+        self.assertIn("predictions.detections.id_field_copy", schema)
+
+        ids = dataset.values("predictions.detections.id_field", unwind=True)
+        self.assertListEqual(ids, [None])
+
+        dataset.rename_sample_field(
+            "predictions.detections.id_field_copy",
+            "predictions.detections.id_field",
+        )
+        self.assertIsNotNone(sample.predictions.detections[0].id_field)
+        with self.assertRaises(AttributeError):
+            sample.predictions.detections[0].id_field_copy
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("predictions.detections.id_field", schema)
+        self.assertNotIn("predictions.detections.id_field_copy", schema)
+
+        ids = dataset.values("predictions.detections.id_field", unwind=True)
+        _ids = dataset.values("predictions.detections._id_field", unwind=True)
+
+        self.assertListEqual(ids, [str(_id)])
+        self.assertListEqual(_ids, [_id])
+
+    @drop_datasets
+    def test_clone_dynamic_embedded_frame_fields(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath="video.mp4")
+        frame = fo.Frame(
+            predictions=fo.Detections(detections=[fo.Detection(field=1)])
+        )
+        sample.frames[1] = frame
+        dataset.add_sample(sample, dynamic=True)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("predictions.detections.field", schema)
+
+        with self.assertRaises(Exception):
+            dataset.rename_frame_field(
+                "predictions.detections.id",
+                "predictions.detections.id_oops",
+            )
+
+        with self.assertRaises(Exception):
+            dataset.rename_frame_field(
+                "predictions.detections.bounding_box",
+                "predictions.detections.bounding_box_oops",
+            )
+
+        with self.assertRaises(Exception):
+            dataset.rename_frame_field(
+                "predictions.detections.confidence",
+                "predictions.detections.confidence_oops",
+            )
+
+        dataset.clone_frame_field(
+            "predictions.detections.field",
+            "predictions.detections.field_copy",
+        )
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("predictions.detections.field", schema)
+        self.assertIn("predictions.detections.field_copy", schema)
+
+        self.assertIsNotNone(frame.predictions.detections[0].field)
+        self.assertIsNotNone(frame.predictions.detections[0].field_copy)
+        self.assertListEqual(
+            dataset.values("frames.predictions.detections.field", unwind=True),
+            [1],
+        )
+        self.assertListEqual(
+            dataset.values(
+                "frames.predictions.detections.field_copy", unwind=True
+            ),
+            [1],
+        )
+
+        dataset.clear_frame_field("predictions.detections.field")
+        self.assertIsNone(frame.predictions.detections[0].field)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("predictions.detections.field", schema)
+        self.assertIn("predictions.detections.field_copy", schema)
+
+        dataset.delete_frame_field("predictions.detections.field")
+        self.assertIsNotNone(frame.predictions.detections[0].field_copy)
+        with self.assertRaises(AttributeError):
+            frame.predictions.detections[0].field
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertIn("predictions.detections.field_copy", schema)
+
+        dataset.rename_frame_field(
+            "predictions.detections.field_copy",
+            "predictions.detections.field",
+        )
+        self.assertIsNotNone(frame.predictions.detections[0].field)
+        with self.assertRaises(AttributeError):
+            frame.predictions.detections[0].field_copy
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("predictions.detections.field", schema)
+        self.assertNotIn("predictions.detections.field_copy", schema)
+
+    @drop_datasets
+    def test_select_exclude_dynamic_fields(self):
+        sample = fo.Sample(
+            filepath="video.mp4",
+            field=1,
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
+        )
+        frame = fo.Frame(
+            field=1,
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
+        )
+        sample.frames[1] = frame
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample, dynamic=True)
+
+        # Sample fields
+
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("field", schema)
+        self.assertIn("predictions.detections.field", schema)
+
+        view = dataset.select_fields("predictions.detections.label")
+        schema = view.get_field_schema(flat=True)
+        sample = view.first()
+
+        self.assertNotIn("field", schema)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertFalse(sample.has_field("field"))
+        self.assertFalse(sample.predictions.detections[0].has_field("field"))
+
+        view = dataset.exclude_fields("predictions.detections.field")
+        schema = view.get_field_schema(flat=True)
+        sample = view.first()
+
+        self.assertIn("field", schema)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertTrue(sample.has_field("field"))
+        self.assertFalse(sample.predictions.detections[0].has_field("field"))
+
+        view = dataset.select_fields("predictions").exclude_fields(
+            "predictions.detections.field"
+        )
+        schema = view.get_field_schema(flat=True)
+        sample = view.first()
+
+        self.assertNotIn("field", schema)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertFalse(sample.has_field("field"))
+        self.assertFalse(sample.predictions.detections[0].has_field("field"))
+
+        # Frame fields
+
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertIn("field", schema)
+        self.assertIn("predictions.detections.field", schema)
+
+        view = dataset.select_fields("frames.predictions.detections.label")
+        schema = view.get_frame_field_schema(flat=True)
+        frame = view.first().frames.first()
+
+        self.assertNotIn("field", schema)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertFalse(frame.has_field("field"))
+        self.assertFalse(frame.predictions.detections[0].has_field("field"))
+
+        view = dataset.exclude_fields("frames.predictions.detections.field")
+        schema = view.get_frame_field_schema(flat=True)
+        frame = view.first().frames.first()
+
+        self.assertIn("field", schema)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertTrue(frame.has_field("field"))
+        self.assertFalse(frame.predictions.detections[0].has_field("field"))
+
+        view = dataset.select_fields("frames.predictions").exclude_fields(
+            "frames.predictions.detections.field"
+        )
+        schema = view.get_frame_field_schema(flat=True)
+        frame = view.first().frames.first()
+
+        self.assertNotIn("field", schema)
+        self.assertNotIn("predictions.detections.field", schema)
+        self.assertFalse(frame.has_field("field"))
+        self.assertFalse(frame.predictions.detections[0].has_field("field"))
 
 
 class CustomEmbeddedDocumentTests(unittest.TestCase):

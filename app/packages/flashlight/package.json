@@ -1,6 +1,6 @@
 {
   "name": "@fiftyone/flashlight",
-  "version": "0.2.0",
+  "version": "0.0.0",
   "author": "Voxel51, Inc.",
   "description": "Justified, scrubbable, and virtualized looker grid",
   "homepage": "https://github.com/voxel51/fiftyone/app/packages/flashlight",
@@ -12,14 +12,12 @@
   "scripts": {
     "dev": "vite"
   },
-  "prettier": "@fiftyone/prettier-config",
   "private": true,
   "files": [
     "dist",
     "README.md"
   ],
   "devDependencies": {
-    "@fiftyone/prettier-config": "*",
     "prettier": "^2.7.1",
     "typescript": "^4.7.4",
     "typescript-plugin-css-modules": "^3.4.0",

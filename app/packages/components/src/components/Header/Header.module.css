@@ -1,10 +1,10 @@
 .header {
-  background-color: var(--background);
+  background-color: var(--joy-palette-background-header);
   display: flex;
   flex-shrink: 0;
   justify-content: space-between;
   width: 100%;
-  border-bottom: 1px var(--background-border) solid;
+  border-bottom: 1px var(--joy-palette-primary-plainBorder) solid;
   height: 74px;
   justify-content: left;
   align-items: center;
@@ -31,7 +31,7 @@
 }
 
 .fiftyone {
-  color: var(--font);
+  color: var(--joy-palette-text-primary);
   font-weight: bold;
   font-size: 1.8rem;
   align-items: center;
@@ -43,7 +43,7 @@
   font-weight: bold;
   padding-left: 1rem;
   border-left-width: 1px;
-  border-color: var(--background-dark-border);
+  border-color: var(--joy-palette-primary-plainBorder);
   border-left-style: solid;
 }
 

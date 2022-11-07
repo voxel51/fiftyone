@@ -20,3 +20,7 @@ dist/
 
 /docs/build/
 /docs/source/api/
+
+/bin
+/lib
+pyvenv.cfg

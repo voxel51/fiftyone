@@ -1,6 +1,6 @@
 import { createResourceGroup, Resource } from "@fiftyone/utilities";
 import { Environment } from "react-relay";
-import { ConcreteRequest, OperationType, VariablesOf } from "relay-runtime";
+import { ConcreteRequest, OperationType } from "relay-runtime";
 import {} from "relay-runtime";
 import { Route } from "..";
 
