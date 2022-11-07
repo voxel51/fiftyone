@@ -1508,7 +1508,7 @@ class NoDatasetMixin(object):
 
 def _get_db_field(field, path):
     if field.db_field is None:
-        return None
+        return path.rsplit(".", 1)[-1]
 
     # This is hacky, but we must account for the fact that ObjectIdField often
     # uses db_field = "_<field_name>"
