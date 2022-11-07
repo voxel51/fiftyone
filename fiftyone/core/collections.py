@@ -2618,6 +2618,7 @@ class SampleCollection(object):
         use_masks=False,
         use_boxes=False,
         classwise=True,
+        dynamic=True,
         **kwargs,
     ):
         """Evaluates the specified predicted detections in this collection with
@@ -2702,6 +2703,8 @@ class SampleCollection(object):
                 instances rather than using their actual geometries
             classwise (True): whether to only match objects with the same class
                 label (True) or allow matches between classes (False)
+            dynamic (True): whether to declare the dynamic object-level
+                attributes that are populated on the dataset's schema
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
                 being used
@@ -2721,6 +2724,7 @@ class SampleCollection(object):
             use_masks=use_masks,
             use_boxes=use_boxes,
             classwise=classwise,
+            dynamic=dynamic,
             **kwargs,
         )
 

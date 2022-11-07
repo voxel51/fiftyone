@@ -13,9 +13,7 @@ import numpy as np
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
-import fiftyone.utils.iou as foui
 
 from .base import BaseEvaluationResults
 
@@ -35,6 +33,7 @@ def evaluate_detections(
     use_masks=False,
     use_boxes=False,
     classwise=True,
+    dynamic=True,
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -119,6 +118,8 @@ def evaluate_detections(
             rather than using their actual geometries
         classwise (True): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
+        dynamic (True): whether to declare the dynamic object-level attributes
+            that are populated on the dataset's schema
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -154,7 +155,7 @@ def evaluate_detections(
     eval_method.ensure_requirements()
 
     eval_method.register_run(samples, eval_key)
-    eval_method.register_samples(samples, eval_key)
+    eval_method.register_samples(samples, eval_key, dynamic=dynamic)
 
     processing_frames = samples._is_frame_field(pred_field)
 
@@ -254,7 +255,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
         self.gt_field = None
         self.pred_field = None
 
-    def register_samples(self, samples, eval_key):
+    def register_samples(self, samples, eval_key, dynamic=True):
         """Registers the collection on which evaluation will be performed.
 
         This method will be called before the first call to :meth:`evaluate`.
@@ -264,6 +265,8 @@ class DetectionEvaluation(foe.EvaluationMethod):
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             eval_key: the evaluation key for this evaluation
+            dynamic (True): whether to declare the dynamic object-level
+                attributes that are populated on the dataset's schema
         """
         _gt_field = self.config.gt_field
         _pred_field = self.config.pred_field
@@ -280,6 +283,18 @@ class DetectionEvaluation(foe.EvaluationMethod):
         tp_field = "%s_tp" % eval_key
         fp_field = "%s_fp" % eval_key
         fn_field = "%s_fn" % eval_key
+
+        dataset.add_sample_field(tp_field, fof.IntField)
+        dataset.add_sample_field(fp_field, fof.IntField)
+        dataset.add_sample_field(fn_field, fof.IntField)
+
+        if processing_frames:
+            dataset.add_frame_field(tp_field, fof.IntField)
+            dataset.add_frame_field(fp_field, fof.IntField)
+            dataset.add_frame_field(fn_field, fof.IntField)
+
+        if not dynamic:
+            return
 
         id_key = "%s_id" % eval_key
         iou_key = "%s_iou" % eval_key
@@ -298,15 +313,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
         pred_id = pred_prefix + "." + id_key
         pred_iou = pred_prefix + "." + iou_key
 
-        dataset.add_sample_field(tp_field, fof.IntField)
-        dataset.add_sample_field(fp_field, fof.IntField)
-        dataset.add_sample_field(fn_field, fof.IntField)
-
         if processing_frames:
-            dataset.add_frame_field(tp_field, fof.IntField)
-            dataset.add_frame_field(fp_field, fof.IntField)
-            dataset.add_frame_field(fn_field, fof.IntField)
-
             dataset.add_frame_field(gt_eval, fof.StringField)
             dataset.add_frame_field(gt_id, fof.StringField)
             dataset.add_frame_field(gt_iou, fof.FloatField)
