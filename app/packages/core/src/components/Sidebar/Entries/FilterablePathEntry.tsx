@@ -341,7 +341,7 @@ const FilterableEntry = React.memo(
             </NameAndCountContainer>
           </>
         }
-        onClick={!disabled ? () => setActive(!active) : null}
+        onHeaderClick={!disabled ? () => setActive(!active) : undefined}
         title={`${path} (${
           field.embeddedDocType
             ? field.embeddedDocType
