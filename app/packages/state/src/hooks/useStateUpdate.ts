@@ -25,6 +25,7 @@ import {
   similarityParameters,
   extendedSelection,
   selectedMediaField,
+  sidebarMode,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -105,6 +106,7 @@ const useStateUpdate = () => {
           previousDataset.id !== dataset.id ||
           dataset.groupSlice !== previousDataset.groupSlice
         ) {
+          reset(sidebarMode(false));
           reset(_activeFields({ modal: false }));
           let slice = dataset.groupSlice;
 

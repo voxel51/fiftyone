@@ -1,6 +1,11 @@
 import React from "react";
 import { Autorenew, Check } from "@mui/icons-material";
-import { constSelector, useRecoilState, useRecoilValue } from "recoil";
+import {
+  constSelector,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 
 import Checkbox from "../Common/Checkbox";
 import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
@@ -222,7 +227,8 @@ const GroupStatistics = ({ modal }) => {
 };
 
 const SidebarMode = ({ modal }) => {
-  const [mode, setMode] = useRecoilState(configuredSidebarModeDefault(modal));
+  const mode = useRecoilValue(configuredSidebarModeDefault(modal));
+  const setMode = useSetRecoilState(sidebarMode(modal));
 
   return (
     <>
