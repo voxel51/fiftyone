@@ -191,14 +191,8 @@ const FieldInfoTableContainer = styled.table`
       return theme.background.level1;
     }};
   }
-  tr + tr {
-    border-top: solid 2px
-      ${({ theme }) => {
-        if (theme.mode === "light") {
-          return theme.background.header;
-        }
-        return theme.background.body;
-      }};
+  tr {
+    border-top: solid 2px ${getBorderColor};
   }
   a,
   a:visited {
@@ -221,6 +215,13 @@ const ShowMoreLink = styled.a`
   text-decoration: underline;
   margin-left: 0.25rem;
 `;
+
+function getBorderColor({ theme }) {
+  if (theme.mode === "light") {
+    return theme.background.header;
+  }
+  return "red";
+}
 
 function FieldInfoExpanded({
   field,
