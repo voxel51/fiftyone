@@ -225,17 +225,172 @@ def _flatten(
 
 
 class Field(mongoengine.fields.BaseField):
-    """Base class for :class:`fiftyone.core.sample.Sample` fields."""
+    """A generic field.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
+
+    def __init__(self, description=None, info=None, **kwargs):
+        super().__init__(**kwargs)
+        self._description = description
+        self._info = info
+
+        self.__dataset = None
+        self.__path = None
 
     def __str__(self):
         return etau.get_class_name(self)
 
+    def _set_dataset(self, dataset, path):
+        self.__dataset = dataset
+        self.__path = path
+
+    @property
+    def _dataset(self):
+        """The :class:`fiftyone.core.dataset.Dataset` that this field belongs
+        to, or ``None`` if the field is not associated with a dataset.
+        """
+        return self.__dataset
+
+    @property
+    def path(self):
+        """The fully-qualified path of this field in the dataset's schema, or
+        ``None`` if the field is not associated with a dataset.
+        """
+        return self.__path
+
+    @property
+    def description(self):
+        """A user-editable description of the field.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.add_dynamic_sample_fields()
+
+            field = dataset.get_field("ground_truth")
+            field.description = "Ground truth annotations"
+            field.save()
+
+            field = dataset.get_field("ground_truth.detections.area")
+            field.description = "Area of the box, in pixels^2"
+            field.save()
+
+            dataset.reload()
+
+            field = dataset.get_field("ground_truth")
+            print(field.description)  # Ground truth annotations
+
+            field = dataset.get_field("ground_truth.detections.area")
+            print(field.description)  # 'Area of the box, in pixels^2'
+        """
+        return self._description
+
+    @description.setter
+    def description(self, description):
+        self._description = description
+
+    @property
+    def info(self):
+        """A user-editable dictionary of information about the field.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.add_dynamic_sample_fields()
+
+            field = dataset.get_field("ground_truth")
+            field.info = {"url": "https://fiftyone.ai"}
+            field.save()
+
+            field = dataset.get_field("ground_truth.detections.area")
+            field.info = {"url": "https://fiftyone.ai"}
+            field.save()
+
+            dataset.reload()
+
+            field = dataset.get_field("ground_truth")
+            print(field.info)  # {'url': 'https://fiftyone.ai'}
+
+            field = dataset.get_field("ground_truth.detections.area")
+            print(field.info)  # {'url': 'https://fiftyone.ai'}
+        """
+        return self._info
+
+    @info.setter
+    def info(self, info):
+        self._info = info
+
     def copy(self):
-        return deepcopy(self)
+        """Returns a copy of the field.
+
+        The returned copy is not associated with a dataset.
+
+        Returns:
+            a :class:`Field`
+        """
+        field = deepcopy(self)
+        field._set_dataset(None, None)
+        return field
+
+    def save(self):
+        """Saves any edits to this field's :attr:`description` and :attr:`info`
+        attributes.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.add_dynamic_sample_fields()
+
+            field = dataset.get_field("ground_truth")
+            field.description = "Ground truth annotations"
+            field.info = {"url": "https://fiftyone.ai"}
+            field.save()
+
+            field = dataset.get_field("ground_truth.detections.area")
+            field.description = "Area of the box, in pixels^2"
+            field.info = {"url": "https://fiftyone.ai"}
+            field.save()
+
+            dataset.reload()
+
+            field = dataset.get_field("ground_truth")
+            print(field.description)  # Ground truth annotations
+            print(field.info)  # {'url': 'https://fiftyone.ai'}
+
+            field = dataset.get_field("ground_truth.detections.area")
+            print(field.description)  # 'Area of the box, in pixels^2'
+            field.info = {"url": "https://fiftyone.ai"}
+        """
+        if self.__dataset is None:
+            return
+
+        self.__dataset._save_field(self)
 
 
 class IntField(mongoengine.fields.IntField, Field):
-    """A 32 bit integer field."""
+    """A 32 bit integer field.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
+
+    def __init__(self, description=None, info=None, **kwargs):
+        super().__init__(**kwargs)
+        self._description = description
+        self._info = info
 
     def to_mongo(self, value):
         if value is None:
@@ -245,7 +400,17 @@ class IntField(mongoengine.fields.IntField, Field):
 
 
 class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
-    """An Object ID field."""
+    """An Object ID field.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
+
+    def __init__(self, description=None, info=None, **kwargs):
+        super().__init__(**kwargs)
+        self._description = description
+        self._info = info
 
     def to_mongo(self, value):
         if value is None:
@@ -261,13 +426,31 @@ class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
 
 
 class UUIDField(mongoengine.fields.UUIDField, Field):
-    """A UUID field."""
+    """A UUID field.
 
-    pass
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
+
+    def __init__(self, description=None, info=None, **kwargs):
+        super().__init__(**kwargs)
+        self._description = description
+        self._info = info
 
 
 class BooleanField(mongoengine.fields.BooleanField, Field):
-    """A boolean field."""
+    """A boolean field.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
+
+    def __init__(self, description=None, info=None, **kwargs):
+        super().__init__(**kwargs)
+        self._description = description
+        self._info = info
 
     def validate(self, value):
         if not isinstance(value, (bool, np.bool_)):
@@ -275,7 +458,17 @@ class BooleanField(mongoengine.fields.BooleanField, Field):
 
 
 class DateField(mongoengine.fields.DateField, Field):
-    """A date field."""
+    """A date field.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
+
+    def __init__(self, description=None, info=None, **kwargs):
+        super().__init__(**kwargs)
+        self._description = description
+        self._info = info
 
     def to_mongo(self, value):
         if value is None:
@@ -298,7 +491,17 @@ class DateField(mongoengine.fields.DateField, Field):
 
 
 class DateTimeField(mongoengine.fields.DateTimeField, Field):
-    """A datetime field."""
+    """A datetime field.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
+
+    def __init__(self, description=None, info=None, **kwargs):
+        super().__init__(**kwargs)
+        self._description = description
+        self._info = info
 
     def validate(self, value):
         if not isinstance(value, datetime):
@@ -306,7 +509,17 @@ class DateTimeField(mongoengine.fields.DateTimeField, Field):
 
 
 class FloatField(mongoengine.fields.FloatField, Field):
-    """A floating point number field."""
+    """A floating point number field.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
+
+    def __init__(self, description=None, info=None, **kwargs):
+        super().__init__(**kwargs)
+        self._description = description
+        self._info = info
 
     def to_mongo(self, value):
         if value is None:
@@ -330,9 +543,17 @@ class FloatField(mongoengine.fields.FloatField, Field):
 
 
 class StringField(mongoengine.fields.StringField, Field):
-    """A unicode string field."""
+    """A unicode string field.
 
-    pass
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
+
+    def __init__(self, description=None, info=None, **kwargs):
+        super().__init__(**kwargs)
+        self._description = description
+        self._info = info
 
 
 class ListField(mongoengine.fields.ListField, Field):
@@ -344,9 +565,11 @@ class ListField(mongoengine.fields.ListField, Field):
     Args:
         field (None): an optional :class:`Field` instance describing the
             type of the list elements
+        description (None): an optional description
+        info (None): an optional info dict
     """
 
-    def __init__(self, field=None, **kwargs):
+    def __init__(self, field=None, description=None, info=None, **kwargs):
         if field is not None:
             if not isinstance(field, Field):
                 raise ValueError(
@@ -355,6 +578,8 @@ class ListField(mongoengine.fields.ListField, Field):
                 )
 
         super().__init__(field=field, **kwargs)
+        self._description = description
+        self._info = info
 
     def __str__(self):
         if self.field is not None:
@@ -365,10 +590,20 @@ class ListField(mongoengine.fields.ListField, Field):
 
         return etau.get_class_name(self)
 
+    def _set_dataset(self, dataset, path):
+        super()._set_dataset(dataset, path)
+
+        if self.field is not None:
+            self.field._set_dataset(dataset, path)
+
 
 class HeatmapRangeField(ListField):
     """A ``[min, max]`` range of the values in a
     :class:`fiftyone.core.labels.Heatmap`.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
     """
 
     def __init__(self, **kwargs):
@@ -400,9 +635,11 @@ class DictField(mongoengine.fields.DictField, Field):
     Args:
         field (None): an optional :class:`Field` instance describing the type
             of the values in the dict
+        description (None): an optional description
+        info (None): an optional info dict
     """
 
-    def __init__(self, field=None, **kwargs):
+    def __init__(self, field=None, description=None, info=None, **kwargs):
         if field is not None:
             if not isinstance(field, Field):
                 raise ValueError(
@@ -411,6 +648,8 @@ class DictField(mongoengine.fields.DictField, Field):
                 )
 
         super().__init__(field=field, **kwargs)
+        self._description = description
+        self._info = info
 
     def __str__(self):
         if self.field is not None:
@@ -420,6 +659,12 @@ class DictField(mongoengine.fields.DictField, Field):
             )
 
         return etau.get_class_name(self)
+
+    def _set_dataset(self, dataset, path):
+        super()._set_dataset(dataset, path)
+
+        if self.field is not None:
+            self.field._set_dataset(dataset, path)
 
     def validate(self, value):
         if not all(map(lambda k: etau.is_str(k), value)):
@@ -441,6 +686,8 @@ class IntDictField(DictField):
     Args:
         field (None): an optional :class:`Field` instance describing the type
             of the values in the dict
+        description (None): an optional description
+        info (None): an optional info dict
     """
 
     def to_mongo(self, value):
@@ -472,10 +719,11 @@ class KeypointsField(ListField):
     """A list of ``(x, y)`` coordinate pairs.
 
     If this field is not set, its default value is ``[]``.
-    """
 
-    def __init__(self, **kwargs):
-        super().__init__(field=None, **kwargs)
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -493,10 +741,11 @@ class PolylinePointsField(ListField):
     """A list of lists of ``(x, y)`` coordinate pairs.
 
     If this field is not set, its default value is ``[]``.
-    """
 
-    def __init__(self, **kwargs):
-        super().__init__(field=None, **kwargs)
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -522,7 +771,12 @@ class PolylinePointsField(ListField):
 
 
 class _GeoField(Field):
-    """Base class for GeoJSON fields."""
+    """Base class for GeoJSON fields.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
 
     # The GeoJSON type of the field. Subclasses must implement this
     _TYPE = None
@@ -544,6 +798,10 @@ class GeoPointField(_GeoField, mongoengine.fields.PointField):
     """A GeoJSON field storing a longitude and latitude coordinate point.
 
     The data is stored as ``[longitude, latitude]``.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
     """
 
     _TYPE = "Point"
@@ -558,9 +816,13 @@ class GeoPointField(_GeoField, mongoengine.fields.PointField):
 class GeoLineStringField(_GeoField, mongoengine.fields.LineStringField):
     """A GeoJSON field storing a line of longitude and latitude coordinates.
 
-    The data is stored as follow::
+    The data is stored as follows::
 
         [[lon1, lat1], [lon2, lat2], ...]
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
     """
 
     _TYPE = "LineString"
@@ -585,6 +847,10 @@ class GeoPolygonField(_GeoField, mongoengine.fields.PolygonField):
 
     where the first element describes the boundary of the polygon and any
     remaining entries describe holes.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
     """
 
     _TYPE = "Polygon"
@@ -602,6 +868,10 @@ class GeoMultiPointField(_GeoField, mongoengine.fields.MultiPointField):
     The data is stored as follows::
 
         [[lon1, lat1], [lon2, lat2], ...]
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
     """
 
     _TYPE = "MultiPoint"
@@ -625,6 +895,10 @@ class GeoMultiLineStringField(
             [[lon1, lat1], [lon2, lat2], ...],
             ...
         ]
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
     """
 
     _TYPE = "MultiLineString"
@@ -654,6 +928,10 @@ class GeoMultiPolygonField(_GeoField, mongoengine.fields.MultiPolygonField):
             ],
             ...
         ]
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
     """
 
     _TYPE = "MultiPolygon"
@@ -672,7 +950,16 @@ class VectorField(mongoengine.fields.BinaryField, Field):
     array values. The underlying data is serialized and stored in the database
     as zlib-compressed bytes generated by ``numpy.save`` and always retrieved
     as a numpy array.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
     """
+
+    def __init__(self, description=None, info=None, **kwargs):
+        super().__init__(**kwargs)
+        self._description = description
+        self._info = info
 
     def to_mongo(self, value):
         if value is None:
@@ -707,7 +994,16 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
     :class:`ArrayField` instances accept numpy array values. The underlying
     data is serialized and stored in the database as zlib-compressed bytes
     generated by ``numpy.save`` and always retrieved as a numpy array.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
     """
+
+    def __init__(self, description=None, info=None, **kwargs):
+        super().__init__(**kwargs)
+        self._description = description
+        self._info = info
 
     def to_mongo(self, value):
         if value is None:
@@ -728,7 +1024,12 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
 
 
 class FrameNumberField(IntField):
-    """A video frame number field."""
+    """A video frame number field.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
 
     def validate(self, value):
         try:
@@ -738,7 +1039,12 @@ class FrameNumberField(IntField):
 
 
 class FrameSupportField(ListField):
-    """A ``[first, last]`` frame support in a video."""
+    """A ``[first, last]`` frame support in a video.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+    """
 
     def __init__(self, **kwargs):
         if "field" not in kwargs:
@@ -765,10 +1071,17 @@ class ClassesField(ListField):
     """A :class:`ListField` that stores class label strings.
 
     If this field is not set, its default value is ``[]``.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
     """
 
     def __init__(self, **kwargs):
-        super().__init__(field=StringField(), **kwargs)
+        if "field" not in kwargs:
+            kwargs["field"] = StringField()
+
+        super().__init__(**kwargs)
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -779,10 +1092,17 @@ class TargetsField(IntDictField):
     targets.
 
     If this field is not set, its default value is ``{}``.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
     """
 
     def __init__(self, **kwargs):
-        super().__init__(field=StringField(), **kwargs)
+        if "field" not in kwargs:
+            kwargs["field"] = StringField()
+
+        super().__init__(**kwargs)
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -795,11 +1115,15 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
     Args:
         document_type: the :class:`fiftyone.core.odm.BaseEmbeddedDocument` type
             stored in this field
+        description (None): an optional description
+        info (None): an optional info dict
     """
 
-    def __init__(self, document_type, **kwargs):
+    def __init__(self, document_type, description=None, info=None, **kwargs):
         super().__init__(document_type, **kwargs)
         self.fields = kwargs.get("fields", [])
+        self._description = description
+        self._info = info
         self._selected_fields = None
         self._excluded_fields = None
         self.__fields = None
@@ -809,6 +1133,20 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
+
+    def _set_dataset(self, dataset, path):
+        super()._set_dataset(dataset, path)
+
+        for field_name, field in self._fields.items():
+            if not isinstance(field, Field):
+                continue
+
+            if path is not None:
+                _path = path + "." + field_name
+            else:
+                _path = None
+
+            field._set_dataset(dataset, _path)
 
     @property
     def _fields(self):
@@ -970,32 +1308,47 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
         return new_schema
 
-    def _declare_field(self, field_or_doc):
+    def _declare_field(self, dataset, path, field_or_doc):
         if isinstance(field_or_doc, foo.SampleFieldDocument):
             field = field_or_doc.to_field()
         else:
             field = field_or_doc
 
-        self.fields = [f for f in self.fields if f.name != field.name]
+        field_name = field.name
+
+        self.fields = [f for f in self.fields if f.name != field_name]
         self.fields.append(field)
 
-        prev = self._fields.pop(field.name, None)
-        self._fields[field.name] = field
+        prev = self._fields.pop(field_name, None)
 
         if prev is not None:
+            prev._set_dataset(None, None)
             field.required = prev.required
             field.null = prev.null
 
-    def _update_field(self, field_name, field):
+        field._set_dataset(dataset, path)
+        self._fields[field_name] = field
+
+    def _update_field(self, dataset, field_name, new_path, field):
+        new_field_name = field.name
+
         self.fields = [
             f if f.name != field_name else field for f in self.fields
         ]
-        self._fields.pop(field_name, None)
-        self._fields[field.name] = field
+        prev = self._fields.pop(field_name, None)
+
+        if prev is not None:
+            prev._set_dataset(None, None)
+
+        field._set_dataset(dataset, new_path)
+        self._fields[new_field_name] = field
 
     def _undeclare_field(self, field_name):
         self.fields = [f for f in self.fields if f.name != field_name]
-        self._fields.pop(field_name, None)
+        prev = self._fields.pop(field_name, None)
+
+        if prev is not None:
+            prev._set_dataset(None, None)
 
 
 class EmbeddedDocumentListField(
@@ -1007,7 +1360,14 @@ class EmbeddedDocumentListField(
     Args:
         document_type: the :class:`fiftyone.core.odm.BaseEmbeddedDocument` type
             stored in this field
+        description (None): an optional description
+        info (None): an optional info dict
     """
+
+    def __init__(self, document_type, description=None, info=None, **kwargs):
+        super().__init__(document_type, **kwargs)
+        self._description = description
+        self._info = info
 
     def __str__(self):
         # pylint: disable=no-member

@@ -305,6 +305,8 @@ type SampleField {
   subfield: String
   embeddedDocType: String
   dbField: String
+  description: String
+  info: JSON
 }
 
 input SampleFilter {

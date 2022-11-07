@@ -21,6 +21,7 @@ import ExcludeOption from "./Exclude";
 import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import FieldLabelAndInfo from "../FieldLabelAndInfo";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -359,6 +360,7 @@ const CategoricalFilter = <T extends V = V>({
   const useSearch = getUseSearch({ modal, path });
   const skeleton = useRecoilValue(isKeypointLabel(path));
   const theme = useTheme();
+  const field = useRecoilValue(fos.field(path));
 
   if (countsLoadable.state !== "hasValue") return null;
 
@@ -369,10 +371,23 @@ const CategoricalFilter = <T extends V = V>({
   }
 
   return (
-    <NamedCategoricalFilterContainer title={title}>
-      <NamedCategoricalFilterHeader>
-        {named && name && <>{name.replaceAll("_", " ")}</>}
-      </NamedCategoricalFilterHeader>
+    <NamedCategoricalFilterContainer>
+      <FieldLabelAndInfo
+        nested
+        field={field}
+        color={color}
+        template={({
+          label,
+          hoverHanlders,
+          FieldInfoIcon,
+          hoverTarget,
+          container,
+        }) => (
+          <NamedCategoricalFilterHeader>
+            <span ref={hoverTarget}>{label}</span>
+          </NamedCategoricalFilterHeader>
+        )}
+      />
       <CategoricalFilterContainer
         onMouseDown={(event) => event.stopPropagation()}
       >

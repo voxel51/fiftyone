@@ -37,6 +37,8 @@ def create_field(
     subfield=None,
     fields=None,
     db_field=None,
+    description=None,
+    info=None,
     **kwargs,
 ):
     """Creates the field defined by the given specification.
@@ -65,6 +67,8 @@ def create_field(
             ``ftype`` is :class:`fiftyone.core.fields.EmbeddedDocumentField`
         db_field (None): the database field to store this field in. By default,
             ``name`` is used
+        description (None): an optional description
+        info (None): an optional info dict
 
     Returns:
         a :class:`fiftyone.core.fields.Field`
@@ -76,7 +80,9 @@ def create_field(
             db_field = name
 
     # All user-defined fields are nullable
-    field_kwargs = dict(null=True, db_field=db_field)
+    field_kwargs = dict(
+        null=True, db_field=db_field, description=description, info=info
+    )
     field_kwargs.update(kwargs)
 
     if fields is not None:
@@ -89,7 +95,7 @@ def create_field(
         if subfield is not None:
             if inspect.isclass(subfield):
                 if issubclass(subfield, EmbeddedDocumentField):
-                    subfield = subfield(document_type=embedded_doc_type)
+                    subfield = subfield(embedded_doc_type)
                 else:
                     subfield = subfield()
 
@@ -134,10 +140,10 @@ class SampleFieldDocument(EmbeddedDocument):
     ftype = StringField()
     embedded_doc_type = StringField(null=True)
     subfield = StringField(null=True)
-    fields = ListField(
-        EmbeddedDocumentField(document_type="SampleFieldDocument")
-    )
+    fields = ListField(EmbeddedDocumentField("SampleFieldDocument"))
     db_field = StringField(null=True)
+    description = StringField(null=True)
+    info = DictField(null=True)
 
     def to_field(self):
         """Creates the :class:`fiftyone.core.fields.Field` specified by this
@@ -167,6 +173,8 @@ class SampleFieldDocument(EmbeddedDocument):
             subfield=subfield,
             fields=fields,
             db_field=self.db_field,
+            description=self.description,
+            info=self.info,
         )
 
     @classmethod
@@ -192,6 +200,8 @@ class SampleFieldDocument(EmbeddedDocument):
             subfield=cls._get_attr_repr(field, "field"),
             fields=cls._get_field_documents(field),
             db_field=field.db_field,
+            description=field.description,
+            info=field.info,
         )
 
     @staticmethod
@@ -306,7 +316,7 @@ class DatasetAppConfig(EmbeddedDocument):
     grid_media_field = StringField(default="filepath")
     modal_media_field = StringField(default="filepath")
     sidebar_groups = ListField(
-        EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
+        EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
     plugins = DictField()
 
@@ -400,21 +410,15 @@ class DatasetDocument(Document):
     default_group_slice = StringField()
     tags = ListField(StringField())
     info = DictField()
-    app_config = EmbeddedDocumentField(document_type=DatasetAppConfig)
+    app_config = EmbeddedDocumentField(DatasetAppConfig)
     classes = DictField(ClassesField())
     default_classes = ClassesField()
     mask_targets = DictField(TargetsField())
     default_mask_targets = TargetsField()
-    skeletons = DictField(
-        EmbeddedDocumentField(document_type=KeypointSkeleton)
-    )
-    default_skeleton = EmbeddedDocumentField(document_type=KeypointSkeleton)
-    sample_fields = EmbeddedDocumentListField(
-        document_type=SampleFieldDocument
-    )
-    frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
-    annotation_runs = DictField(
-        EmbeddedDocumentField(document_type=RunDocument)
-    )
-    brain_methods = DictField(EmbeddedDocumentField(document_type=RunDocument))
-    evaluations = DictField(EmbeddedDocumentField(document_type=RunDocument))
+    skeletons = DictField(EmbeddedDocumentField(KeypointSkeleton))
+    default_skeleton = EmbeddedDocumentField(KeypointSkeleton)
+    sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
+    frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
+    annotation_runs = DictField(EmbeddedDocumentField(RunDocument))
+    brain_methods = DictField(EmbeddedDocumentField(RunDocument))
+    evaluations = DictField(EmbeddedDocumentField(RunDocument))

@@ -21,6 +21,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.server.scalars import JSON
 
 
 logger = logging.getLogger(__name__)
@@ -144,6 +145,8 @@ class SampleField:
     subfield: t.Optional[str]
     embedded_doc_type: t.Optional[str]
     db_field: t.Optional[str]
+    description: t.Optional[str]
+    info: t.Optional[JSON]
 
 
 def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
@@ -159,6 +162,8 @@ def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
                 subfield=etau.get_class_name(field.field)
                 if isinstance(field, (fo.DictField, fo.ListField))
                 else None,
+                description=field.description,
+                info=field.info,
             )
             for path, field in schema.items()
         ]
