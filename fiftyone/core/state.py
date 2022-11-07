@@ -160,7 +160,10 @@ def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
                 if isinstance(field, fo.EmbeddedDocumentField)
                 else None,
                 subfield=etau.get_class_name(field.field)
-                if isinstance(field, (fo.DictField, fo.ListField))
+                if (
+                    isinstance(field, (fo.DictField, fo.ListField))
+                    and field.field is not None
+                )
                 else None,
                 description=field.description,
                 info=field.info,
