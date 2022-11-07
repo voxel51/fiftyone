@@ -88,6 +88,7 @@ def evaluate_classifications(
     eval_method.ensure_requirements()
 
     eval_method.register_run(samples, eval_key)
+    eval_method.register_samples(samples, eval_key)
 
     results = eval_method.evaluate_samples(
         samples, eval_key=eval_key, classes=classes, missing=missing
@@ -121,6 +122,19 @@ class ClassificationEvaluation(foe.EvaluationMethod):
         config: a :class:`ClassificationEvaluationConfig`
     """
 
+    def register_samples(self, samples, eval_key):
+        """Registers the collection on which evaluation will be performed.
+
+        This method will be called before calling :meth:`evaluate_samples`.
+        Subclasses can extend this method to perform any setup required for an
+        evaluation run.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            eval_key: the evaluation key for this evaluation
+        """
+        raise NotImplementedError("subclass must implement register_samples()")
+
     def evaluate_samples(
         self, samples, eval_key=None, classes=None, missing=None
     ):
@@ -142,16 +156,23 @@ class ClassificationEvaluation(foe.EvaluationMethod):
         raise NotImplementedError("subclass must implement evaluate_samples()")
 
     def get_fields(self, samples, eval_key):
+        is_frame_field = samples._is_frame_field(self.config.gt_field)
+
         fields = [eval_key]
-        if samples._is_frame_field(self.config.gt_field):
+
+        if is_frame_field:
             fields.append(samples._FRAMES_PREFIX + eval_key)
 
         return fields
 
     def cleanup(self, samples, eval_key):
-        samples._dataset.delete_sample_field(eval_key, error_level=1)
-        if samples._is_frame_field(self.config.gt_field):
-            samples._dataset.delete_frame_field(eval_key, error_level=1)
+        dataset = samples._dataset
+        is_frame_field = samples._is_frame_field(self.config.gt_field)
+
+        dataset.delete_sample_field(eval_key, error_level=1)
+
+        if is_frame_field:
+            dataset.delete_frame_field(eval_key, error_level=1)
 
     def _validate_run(self, samples, eval_key, existing_info):
         self._validate_fields_match(eval_key, "pred_field", existing_info)
@@ -179,6 +200,29 @@ class SimpleEvaluation(ClassificationEvaluation):
     Args:
         config: a :class:`SimpleClassificationEvaluationConfig`
     """
+
+    def register_samples(self, samples, eval_key):
+        """Registers the collection on which evaluation will be performed.
+
+        This method will be called before calling :meth:`evaluate_samples`.
+        Subclasses can extend this method to perform any setup required for an
+        evaluation run.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            eval_key: the evaluation key for this evaluation
+        """
+        if eval_key is None:
+            return
+
+        dataset = samples._dataset
+        is_frame_field = samples._is_frame_field(self.config.gt_field)
+
+        if is_frame_field:
+            dataset.add_sample_field(eval_key, fof.FloatField)
+            dataset.add_frame_field(eval_key, fof.BooleanField)
+        else:
+            dataset.add_sample_field(eval_key, fof.BooleanField)
 
     def evaluate_samples(
         self, samples, eval_key=None, classes=None, missing=None
@@ -221,27 +265,21 @@ class SimpleEvaluation(ClassificationEvaluation):
         if eval_key is None:
             return results
 
-        # note: fields are manually declared so they'll exist even when
-        # `samples` is empty
-        dataset = samples._dataset
         if is_frame_field:
             eval_frame = samples._FRAMES_PREFIX + eval_key
             gt = gt[len(samples._FRAMES_PREFIX) :]
             pred = pred[len(samples._FRAMES_PREFIX) :]
 
             # Sample-level accuracies
-            dataset.add_sample_field(eval_key, fof.FloatField)
             samples.set_field(
                 eval_key,
                 F("frames").map((F(gt) == F(pred)).to_double()).mean(),
             ).save(eval_key)
 
             # Per-frame accuracies
-            dataset.add_frame_field(eval_key, fof.BooleanField)
             samples.set_field(eval_frame, F(gt) == F(pred)).save(eval_frame)
         else:
             # Per-sample accuracies
-            dataset.add_sample_field(eval_key, fof.BooleanField)
             samples.set_field(eval_key, F(gt) == F(pred)).save(eval_key)
 
         return results
@@ -277,6 +315,29 @@ class TopKEvaluation(ClassificationEvaluation):
     Args:
         config: a :class:`TopKEvaluationConfig`
     """
+
+    def register_samples(self, samples, eval_key):
+        """Registers the collection on which evaluation will be performed.
+
+        This method will be called before calling :meth:`evaluate_samples`.
+        Subclasses can extend this method to perform any setup required for an
+        evaluation run.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            eval_key: the evaluation key for this evaluation
+        """
+        if eval_key is None:
+            return
+
+        dataset = samples._dataset
+        is_frame_field = samples._is_frame_field(self.config.gt_field)
+
+        if is_frame_field:
+            dataset.add_sample_field(eval_key, fof.FloatField)
+            dataset.add_frame_field(eval_key, fof.BooleanField)
+        else:
+            dataset.add_sample_field(eval_key, fof.BooleanField)
 
     def evaluate_samples(
         self, samples, eval_key=None, classes=None, missing=None
@@ -343,23 +404,17 @@ class TopKEvaluation(ClassificationEvaluation):
         if eval_key is None:
             return results
 
-        # note: fields are manually declared so they'll exist even when
-        # `samples` is empty
-        dataset = samples._dataset
         if is_frame_field:
             eval_frame = samples._FRAMES_PREFIX + eval_key
 
             # Sample-level accuracies
             avg_accuracies = [np.mean(c) if c else None for c in correct]
-            dataset.add_sample_field(eval_key, fof.FloatField)
             samples.set_values(eval_key, avg_accuracies)
 
             # Per-frame accuracies
-            dataset.add_frame_field(eval_key, fof.BooleanField)
             samples.set_values(eval_frame, correct)
         else:
             # Per-sample accuracies
-            dataset.add_sample_field(eval_key, fof.BooleanField)
             samples.set_values(eval_key, correct)
 
         return results
@@ -463,6 +518,29 @@ class BinaryEvaluation(ClassificationEvaluation):
         config: a :class:`BinaryEvaluationConfig`
     """
 
+    def register_samples(self, samples, eval_key):
+        """Registers the collection on which evaluation will be performed.
+
+        This method will be called before calling :meth:`evaluate_samples`.
+        Subclasses can extend this method to perform any setup required for an
+        evaluation run.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            eval_key: the evaluation key for this evaluation
+        """
+        if eval_key is None:
+            return
+
+        dataset = samples._dataset
+        is_frame_field = samples._is_frame_field(self.config.gt_field)
+
+        if is_frame_field:
+            dataset.add_sample_field(eval_key, fof.FloatField)
+            dataset.add_frame_field(eval_key, fof.StringField)
+        else:
+            dataset.add_sample_field(eval_key, fof.StringField)
+
     def evaluate_samples(
         self, samples, eval_key=None, classes=None, missing=None
     ):
@@ -512,9 +590,6 @@ class BinaryEvaluation(ClassificationEvaluation):
         if eval_key is None:
             return results
 
-        # note: fields are manually declared so they'll exist even when
-        # `samples` is empty
-        dataset = samples._dataset
         if is_frame_field:
             eval_frame = samples._FRAMES_PREFIX + eval_key
             gt = gt[len(samples._FRAMES_PREFIX) :]
@@ -524,7 +599,6 @@ class BinaryEvaluation(ClassificationEvaluation):
             Fpred = (F(pred) != None).if_else(F(pred), neg_label)
 
             # Sample-level accuracies
-            dataset.add_sample_field(eval_key, fof.FloatField)
             samples.set_field(
                 eval_key,
                 F("frames").map((Fgt == Fpred).to_double()).mean(),
@@ -532,7 +606,6 @@ class BinaryEvaluation(ClassificationEvaluation):
 
             # Per-frame accuracies
             # This implementation implicitly treats missing data as `neg_label`
-            dataset.add_frame_field(eval_key, fof.StringField)
             samples.set_field(
                 eval_frame,
                 F().switch(
@@ -547,7 +620,6 @@ class BinaryEvaluation(ClassificationEvaluation):
         else:
             # Per-sample accuracies
             # This implementation implicitly treats missing data as `neg_label`
-            dataset.add_sample_field(eval_key, fof.StringField)
             samples.set_field(
                 eval_key,
                 F().switch(

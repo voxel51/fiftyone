@@ -54,11 +54,9 @@ import Color from "color";
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",
-  get:
-    ({ modal, path }) =>
-    ({ get }) => {
-      return get(fos.count({ path, extended: false, modal })) > 0;
-    },
+  get: ({ modal, path }) => ({ get }) => {
+    return get(fos.count({ path, extended: false, modal })) > 0;
+  },
 });
 
 const FILTERS = {
@@ -174,32 +172,28 @@ const getFilterData = (
 
 const hiddenPathLabels = selectorFamily<string[], string>({
   key: "hiddenPathLabels",
-  get:
-    (path) =>
-    ({ get }) => {
-      const data = get(fos.pathHiddenLabelsMap);
-      const sampleId = get(fos.modal).sample._id;
+  get: (path) => ({ get }) => {
+    const data = get(fos.pathHiddenLabelsMap);
+    const sampleId = get(fos.modal).sample._id;
 
-      if (data[sampleId]) {
-        return data[sampleId][path] || [];
-      }
+    if (data[sampleId]) {
+      return data[sampleId][path] || [];
+    }
 
-      return [];
-    },
-  set:
-    (path) =>
-    ({ set, get }, value) => {
-      const data = get(fos.pathHiddenLabelsMap);
-      const sampleId = get(fos.modal).sample._id;
+    return [];
+  },
+  set: (path) => ({ set, get }, value) => {
+    const data = get(fos.pathHiddenLabelsMap);
+    const sampleId = get(fos.modal).sample._id;
 
-      set(fos.pathHiddenLabelsMap, {
-        ...data,
-        [sampleId]: {
-          ...data[sampleId],
-          [path]: value instanceof DefaultValue ? [] : value,
-        },
-      });
-    },
+    set(fos.pathHiddenLabelsMap, {
+      ...data,
+      [sampleId]: {
+        ...data[sampleId],
+        [path]: value instanceof DefaultValue ? [] : value,
+      },
+    });
+  },
 });
 
 const useHidden = (path: string) => {

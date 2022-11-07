@@ -10,7 +10,6 @@ import os
 import unittest
 
 from bson import Binary, ObjectId
-from mongoengine.errors import ValidationError
 import numpy as np
 
 import fiftyone as fo
@@ -147,7 +146,7 @@ class SampleInDatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
         sample = fo.Sample(filepath="/path/to/image.jpg", tags=51)
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(Exception):
             dataset.add_sample(sample)
 
         self.assertEqual(len(dataset), 0)
@@ -776,12 +775,12 @@ class SampleFieldTests(unittest.TestCase):
             sample.invalid_field
 
         # set field (default)
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(Exception):
             sample.tags = "invalid type"
             sample.save()
 
         # clear field (default)
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(Exception):
             sample.clear_field("filepath")
             sample.save()
 

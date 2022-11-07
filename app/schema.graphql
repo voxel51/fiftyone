@@ -1,3 +1,16 @@
+input Aggregation {
+  countValues: CountValues = null
+  histogramValues: HistogramValues = null
+}
+
+union AggregationResponses =
+    BoolCountValuesResponse
+  | IntCountValuesResponse
+  | StrCountValuesResponse
+  | DatetimeHistogramValuesResponse
+  | FloatHistogramValuesResponse
+  | IntHistogramValuesResponse
+
 type AppConfig {
   colorBy: ColorBy!
   colorPool: [String!]!
@@ -16,6 +29,15 @@ type AppConfig {
 }
 
 scalar BSONArray
+
+type BoolCountValuesResponse {
+  values: [BoolValueCount!]!
+}
+
+type BoolValueCount {
+  value: Int!
+  key: Boolean
+}
 
 type BrainRun implements Run {
   key: String!
@@ -38,6 +60,10 @@ enum ColorBy {
   label
 }
 
+input CountValues {
+  field: String!
+}
+
 type Dataset {
   id: ID!
   name: String!
@@ -52,7 +78,7 @@ type Dataset {
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!
-  frameFields: [SampleField!]!
+  frameFields: [SampleField!]
   brainMethods: [BrainRun!]!
   evaluations: [EvaluationRun!]!
   version: String
@@ -99,6 +125,12 @@ Date with time (isoformat)
 """
 scalar DateTime
 
+type DatetimeHistogramValuesResponse {
+  counts: [Int!]!
+  edges: [DateTime!]!
+  other: Int!
+}
+
 type EvaluationRun implements Run {
   key: String!
   version: String
@@ -114,6 +146,12 @@ type EvaluationRunConfig implements RunConfig {
   method: String
 }
 
+type FloatHistogramValuesResponse {
+  counts: [Int!]!
+  edges: [Float!]!
+  other: Int!
+}
+
 type Group {
   name: String!
   mediaType: MediaType!
@@ -124,11 +162,30 @@ input GroupElementFilter {
   slice: String = null
 }
 
+input HistogramValues {
+  field: String!
+}
+
 type ImageSample implements Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!
   aspectRatio: Float!
+}
+
+type IntCountValuesResponse {
+  values: [IntValueCount!]!
+}
+
+type IntHistogramValuesResponse {
+  counts: [Int!]!
+  edges: [Float!]!
+  other: Int!
+}
+
+type IntValueCount {
+  value: Int!
+  key: Int
 }
 
 scalar JSON
@@ -147,7 +204,7 @@ enum MediaType {
 
 type MediaURL {
   field: String!
-  url: String!
+  url: String
 }
 
 type Mutation {
@@ -195,6 +252,11 @@ type PointCloudSample implements Sample {
 }
 
 type Query {
+  aggregate(
+    datasetName: String!
+    view: BSONArray!
+    aggregations: [Aggregation!]!
+  ): [AggregationResponses!]!
   datasets(
     search: String
     first: Int = 200
@@ -280,6 +342,15 @@ input SelectedLabel {
 type SidebarGroup {
   name: String!
   paths: [String!]
+}
+
+type StrCountValuesResponse {
+  values: [StrValueCount!]!
+}
+
+type StrValueCount {
+  value: Int!
+  key: String
 }
 
 type Target {
