@@ -11,6 +11,7 @@ import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
 import { sidebarSampleId } from "./modal";
+import { refresher } from "./atoms";
 
 type DateTimeBound = { datetime: number } | null;
 
@@ -109,7 +110,7 @@ export const aggregationsTick = atom<number>({
 
 export const aggregationQuery = graphQLSelectorFamily<
   VariablesOf<foq.aggregateQuery>,
-  { extended: boolean; modal: boolean; paths: string[] },
+  { extended: boolean; modal: boolean; paths: string[]; root: boolean },
   ResponseFrom<foq.aggregateQuery>
 >({
   key: "aggregationQuery",
@@ -117,24 +118,26 @@ export const aggregationQuery = graphQLSelectorFamily<
   mapResponse: (response) => response,
   query: foq.aggregation,
   variables:
-    ({ extended, modal, paths }) =>
+    ({ extended, modal, paths, root = false }) =>
     ({ get }) => {
       const mixed = get(groupStatistics(modal)) === "group";
 
       return {
         form: {
+          index: get(refresher),
           dataset: get(selectors.datasetName),
-          extendedStages: get(selectors.extendedStagesUnsorted),
-          filters: extended
-            ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
-            : null,
-          groupId: modal && mixed ? get(groupId) : null,
-          hiddenLabels: get(selectors.hiddenLabelsArray),
+          extendedStages: root ? [] : get(selectors.extendedStagesUnsorted),
+          filters:
+            extended && !root
+              ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
+              : null,
+          groupId: !root && modal && mixed ? get(groupId) : null,
+          hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
           paths,
           mixed,
-          sampleIds: modal && !mixed ? [get(sidebarSampleId)] : [],
+          sampleIds: !root && modal && !mixed ? [get(sidebarSampleId)] : [],
           slice: get(currentSlice(modal)),
-          view: get(viewAtoms.view),
+          view: !root ? get(viewAtoms.view) : [],
         },
       };
     },

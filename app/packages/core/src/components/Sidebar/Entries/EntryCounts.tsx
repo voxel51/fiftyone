@@ -7,8 +7,6 @@ import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 
 import { pathIsExpanded } from "./utils";
 
-const BEST_COUNT = 51000;
-
 const showEntryCounts = selectorFamily<
   boolean,
   { path: string; modal: boolean }
@@ -18,21 +16,11 @@ const showEntryCounts = selectorFamily<
     (params) =>
     ({ get }) => {
       const mode = get(fos.sidebarMode(params.modal));
-
       if (
         params.modal ||
         params.path === "" ||
         mode === "all" ||
         get(pathIsExpanded(params))
-      ) {
-        return true;
-      }
-
-      if (
-        mode === "best" &&
-        (get(
-          fos.count({ modal: false, extended: false, path: "" })
-        ) as number) <= BEST_COUNT
       ) {
         return true;
       }

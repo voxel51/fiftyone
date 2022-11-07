@@ -5,6 +5,7 @@ FiftyOne Server routes
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from .aggregate import Aggregate
 from .distributions import Distributions
 from .event import Event
 from .events import Events
@@ -23,6 +24,7 @@ from .values import Values
 
 
 routes = [
+    ("/aggregate", Aggregate),
     ("/distributions", Distributions),
     ("/event", Event),
     ("/events", Events),

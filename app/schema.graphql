@@ -4,6 +4,7 @@ input AggregateForm {
   filters: BSON
   groupId: ID
   hiddenLabels: [SelectedLabel!]!
+  index: Int
   mixed: Boolean!
   paths: [String!]!
   sampleIds: [ID!]!
@@ -211,7 +212,7 @@ enum MediaType {
 
 type MediaURL {
   field: String!
-  url: String!
+  url: String
 }
 
 type Mutation {

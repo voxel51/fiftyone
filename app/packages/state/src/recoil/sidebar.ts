@@ -31,11 +31,8 @@ import {
 
 import { State } from "./types";
 import * as viewAtoms from "./view";
-import { commitMutation, VariablesOf } from "react-relay";
-import { getCurrentEnvironment } from "../hooks/useRouter";
-import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
-import { datasetName } from "./selectors";
-import { resolvedSidebarMode } from "./options";
+import { datasetName, isVideoDataset } from "./selectors";
+import { isLargeVideo, sidebarMode } from "./options";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -190,8 +187,8 @@ const fieldsReducer =
 const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 
 const DEFAULT_IMAGE_GROUPS = [
-  { name: "tags", paths: [], expanded: false },
-  { name: "label tags", paths: [], expanded: false },
+  { name: "tags", paths: [] },
+  { name: "label tags", paths: [] },
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
   { name: "primitives", paths: [] },
@@ -199,8 +196,8 @@ const DEFAULT_IMAGE_GROUPS = [
 ];
 
 const DEFAULT_VIDEO_GROUPS = [
-  { name: "tags", paths: [], expanded: false },
-  { name: "label tags", paths: [], expanded: false },
+  { name: "tags", paths: [] },
+  { name: "label tags", paths: [] },
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
   { name: "frame labels", paths: [] },
@@ -215,11 +212,6 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroup[] => {
     groups = dataset.frameFields.length
       ? DEFAULT_VIDEO_GROUPS
       : DEFAULT_IMAGE_GROUPS;
-
-    groups = groups.map(({ expanded, ...params }) => ({
-      ...params,
-      expanded: expanded !== undefined ? expanded : true,
-    }));
   }
 
   const present = new Set(groups.map(({ paths }) => paths).flat());
@@ -339,14 +331,20 @@ export const sidebarGroups = selectorFamily<
 
       const tagsIndex = groupNames.indexOf("tags");
       const labelTagsIndex = groupNames.indexOf("label tags");
+      const framesIndex = groupNames.indexOf("frame labels");
+      const video = get(isVideoDataset);
 
       if (!loadingTags) {
-        const mode = get(resolvedSidebarMode);
+        const largeVideo = get(isLargeVideo);
+        if (video && typeof groups[framesIndex].expanded !== "boolean") {
+          groups[framesIndex].expanded = !largeVideo;
+        }
         if (typeof groups[tagsIndex].expanded !== "boolean") {
-          groups[tagsIndex].expanded = mode === "all" ? true : false;
+          groups[tagsIndex].expanded =
+            get(sidebarMode(false)) === "all" ? true : false;
         }
         if (typeof groups[labelTagsIndex].expanded !== "boolean") {
-          groups[labelTagsIndex].expanded = mode === "all" ? true : false;
+          groups[labelTagsIndex].expanded = !isLargeVideo;
         }
         groups[tagsIndex].expanded &&
           (groups[tagsIndex].paths = get(
@@ -368,7 +366,10 @@ export const sidebarGroups = selectorFamily<
             .map((tag) => `_label_tags.${tag}`));
       }
 
-      return groups;
+      return groups.map((data) => ({
+        ...data,
+        expanded: data.expanded === undefined ? true : data.expanded,
+      }));
     },
   set:
     ({ modal }) =>
@@ -439,16 +440,6 @@ export const sidebarGroups = selectorFamily<
     eviction: "most-recent",
   },
 });
-
-export const persistSidebarGroups = (
-  variables: VariablesOf<setSidebarGroupsMutation>
-) => {
-  false &&
-    commitMutation<setSidebarGroupsMutation>(getCurrentEnvironment(), {
-      mutation: setSidebarGroups,
-      variables,
-    });
-};
 
 export const sidebarEntries = selectorFamily<
   SidebarEntry[],

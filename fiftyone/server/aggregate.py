@@ -40,6 +40,7 @@ class AggregateForm:
     filters: t.Optional[BSON]
     group_id: t.Optional[gql.ID]
     hidden_labels: t.List[SelectedLabel]
+    index: t.Optional[int]
     mixed: bool
     paths: t.List[str]
     sample_ids: t.List[gql.ID]
@@ -169,6 +170,12 @@ RESULT_MAPPING = {
     fof.BooleanField: BooleanAggregation,
     fof.EmbeddedDocumentField: DataAggregation,
     fof.FrameNumberField: IntAggregation,
+    fof.GeoMultiPointField: DataAggregation,
+    fof.GeoMultiPolygonField: DataAggregation,
+    fof.GeoMultiLineStringField: DataAggregation,
+    fof.GeoPointField: DataAggregation,
+    fof.GeoLineStringField: DataAggregation,
+    fof.GeoPolygonField: DataAggregation,
     fof.DateField: IntAggregation,
     fof.DateTimeField: IntAggregation,
     fof.IntField: IntAggregation,

@@ -8,7 +8,7 @@ import {
   Remove,
   Visibility,
 } from "@mui/icons-material";
-import React, { useContext, useLayoutEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import {
   selectorFamily,
   useRecoilCallback,
@@ -25,13 +25,7 @@ import { PillButton } from "../../utils";
 
 import { useTheme } from "@fiftyone/components";
 import Draggable from "./Draggable";
-import {
-  datasetName,
-  getDatasetName,
-  readableTags,
-  State,
-} from "@fiftyone/state";
-import { RouterContext } from "@fiftyone/state";
+import { datasetName, readableTags, State } from "@fiftyone/state";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
   key: "groupLength",
