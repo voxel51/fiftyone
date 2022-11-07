@@ -1,6 +1,7 @@
-import React, { useContext, useEffect, useRef } from "react";
+import { useTheme } from "@fiftyone/components";
+import React, { useEffect, useRef } from "react";
 import { animated, config, useSpring } from "@react-spring/web";
-import styled, { ThemeContext } from "styled-components";
+import styled from "styled-components";
 
 import { useFollow } from "@fiftyone/state";
 
@@ -9,7 +10,7 @@ const SearchResultDiv = animated(styled.div`
   margin: 0.25rem 0.25rem;
   padding: 0.1rem 0.25rem;
   font-weight: bold;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.text.secondary};
 `);
 
 interface SearchResultProps {
@@ -22,28 +23,36 @@ interface SearchResultProps {
 const SearchResult = React.memo(
   ({ result, isActive, send, highlight }: SearchResultProps) => {
     const ref = useRef(null);
-    const theme = useContext(ThemeContext);
+    const theme = useTheme();
     const [props, set] = useSpring(() => ({
-      backgroundColor: isActive ? theme.backgroundLight : theme.backgroundDark,
-      color: isActive ? theme.font : theme.fontDark,
+      backgroundColor: isActive
+        ? theme.background.level1
+        : theme.background.level2,
+      color: isActive ? theme.text.primary : theme.text.secondary,
     }));
 
     useEffect(() => {
       set({
         backgroundColor: isActive
-          ? theme.backgroundLight
-          : theme.backgroundDark,
-        color: isActive ? theme.font : theme.fontDark,
+          ? theme.background.level1
+          : theme.background.level2,
+        color: isActive ? theme.text.primary : theme.text.secondary,
       });
       isActive && ref.current && ref.current.scrollIntoView();
     }, [isActive, ref.current]);
 
     const handleMouseEnter = () =>
-      set({ backgroundColor: theme.backgroundLight, color: theme.font });
+      set({
+        backgroundColor: theme.background.level1,
+        color: theme.text.primary,
+      });
 
     const handleMouseLeave = () =>
       !isActive &&
-      set({ backgroundColor: theme.backgroundDark, color: theme.fontDark });
+      set({
+        backgroundColor: theme.background.level2,
+        color: theme.text.secondary,
+      });
 
     const setResult = (e) =>
       send({ type: "COMMIT", value: e.target.dataset.result, click: true });
@@ -68,10 +77,10 @@ const SearchResult = React.memo(
 );
 
 const SearchResultsDiv = animated(styled.div`
-  background-color: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  background-color: ${({ theme }) => theme.background.level2};
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   border-radius: 2px;
-  box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
+  box-shadow: 0 2px 20px ${({ theme }) => theme.custom.shadow};
   box-sizing: border-box;
   margin-top: 2.5rem;
   position: fixed;

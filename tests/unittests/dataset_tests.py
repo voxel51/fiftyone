@@ -7,7 +7,6 @@ FiftyOne dataset-related unit tests.
 """
 from copy import copy, deepcopy
 from datetime import date, datetime
-import gc
 import os
 
 from bson import ObjectId
@@ -97,33 +96,24 @@ class DatasetTests(unittest.TestCase):
 
         dataset.tags = ["cat", "dog"]
 
-        del dataset
-        gc.collect()  # force garbage collection
+        dataset.reload()
 
-        dataset2 = fo.load_dataset(dataset_name)
-
-        self.assertEqual(dataset2.tags, ["cat", "dog"])
+        self.assertEqual(dataset.tags, ["cat", "dog"])
 
         # save() must be called to persist in-place edits
-        dataset2.tags.append("rabbit")
+        dataset.tags.append("rabbit")
 
-        del dataset2
-        gc.collect()  # force garbage collection
+        dataset.reload()
 
-        dataset3 = fo.load_dataset(dataset_name)
-
-        self.assertEqual(dataset3.tags, ["cat", "dog"])
+        self.assertEqual(dataset.tags, ["cat", "dog"])
 
         # This will persist the edits
-        dataset3.tags.append("rabbit")
-        dataset3.save()
+        dataset.tags.append("rabbit")
+        dataset.save()
 
-        del dataset3
-        gc.collect()  # force garbage collection
+        dataset.reload()
 
-        dataset4 = fo.load_dataset(dataset_name)
-
-        self.assertEqual(dataset4.tags, ["cat", "dog", "rabbit"])
+        self.assertEqual(dataset.tags, ["cat", "dog", "rabbit"])
 
     @drop_datasets
     def test_dataset_info(self):
@@ -139,13 +129,164 @@ class DatasetTests(unittest.TestCase):
         dataset.info["classes"] = classes
         dataset.save()
 
-        del dataset
-        gc.collect()  # force garbage collection
+        dataset.reload()
 
-        dataset2 = fo.load_dataset(dataset_name)
+        self.assertTrue("classes" in dataset.info)
+        self.assertEqual(classes, dataset.info["classes"])
 
-        self.assertTrue("classes" in dataset2.info)
-        self.assertEqual(classes, dataset2.info["classes"])
+    @drop_datasets
+    def test_dataset_field_metadata(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+
+        dataset.add_sample_field("field1", fo.StringField)
+
+        field = dataset.get_field("field1")
+        self.assertIsNone(field.description)
+        self.assertIsNone(field.info)
+
+        dataset.add_frame_field("field1", fo.StringField)
+
+        field = dataset.get_field("frames.field1")
+        self.assertIsNone(field.description)
+        self.assertIsNone(field.info)
+
+        dataset.add_sample_field(
+            "field2", fo.StringField, description="test", info={"foo": "bar"}
+        )
+
+        field = dataset.get_field("field2")
+        self.assertEqual(field.description, "test")
+        self.assertEqual(field.info, {"foo": "bar"})
+
+        dataset.add_frame_field(
+            "field2",
+            fo.StringField,
+            description="test2",
+            info={"foo2": "bar2"},
+        )
+
+        field = dataset.get_field("frames.field2")
+        self.assertEqual(field.description, "test2")
+        self.assertEqual(field.info, {"foo2": "bar2"})
+
+        sample = fo.Sample(
+            filepath="video.mp4",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", bounding_box=[0, 0, 1, 1]),
+                ]
+            ),
+        )
+        sample.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog", bounding_box=[0, 0, 1, 1]),
+                ]
+            ),
+        )
+
+        dataset.add_sample(sample)
+
+        field = dataset.get_field("ground_truth.detections.label")
+        self.assertIsNone(field.description)
+        self.assertIsNone(field.info)
+
+        field.description = "test"
+        field.info = {"foo": "bar"}
+        field.save()
+
+        dataset.reload()
+
+        field = dataset.get_field("ground_truth.detections.label")
+        self.assertEqual(field.description, "test")
+        self.assertEqual(field.info, {"foo": "bar"})
+
+        field = dataset.get_field("frames.ground_truth.detections.label")
+        self.assertIsNone(field.description)
+        self.assertIsNone(field.info)
+
+        field.description = "test2"
+        field.info = {"foo2": "bar2"}
+        field.save()
+
+        dataset.reload()
+
+        field = dataset.get_field("frames.ground_truth.detections.label")
+        self.assertEqual(field.description, "test2")
+        self.assertEqual(field.info, {"foo2": "bar2"})
+
+        #
+        # Updating fields retrieved from views is allowed
+        #
+
+        view = dataset.limit(1)
+
+        field = dataset.get_field("field2")
+        self.assertEqual(field.description, "test")
+        self.assertEqual(field.info, {"foo": "bar"})
+
+        field.description = None
+        field.info = None
+        field.save()
+
+        dataset.reload()
+
+        field = dataset.get_field("field2")
+        self.assertIsNone(field.description)
+        self.assertIsNone(field.info)
+
+        # Updating fields retrieved from views is allowed
+        field = dataset.get_field("frames.field2")
+        self.assertEqual(field.description, "test2")
+        self.assertEqual(field.info, {"foo2": "bar2"})
+
+        field.description = None
+        field.info = None
+        field.save()
+
+        dataset.reload()
+
+        field = dataset.get_field("frames.field2")
+        self.assertIsNone(field.description)
+        self.assertIsNone(field.info)
+
+        #
+        # Datasets should automatically refresh upon save() errors
+        #
+
+        field = dataset.get_field("ground_truth.detections.label")
+
+        with self.assertRaises(Exception):
+            field.description = False
+            field.save()
+
+        field = dataset.get_field("ground_truth.detections.label")
+        self.assertEqual(field.description, "test")
+
+        with self.assertRaises(Exception):
+            field.info = False
+            field.save()
+
+        field = dataset.get_field("ground_truth.detections.label")
+        self.assertEqual(field.info, {"foo": "bar"})
+
+        field = dataset.get_field("frames.ground_truth.detections.label")
+
+        with self.assertRaises(Exception):
+            field.description = False
+            field.save()
+
+        field = dataset.get_field("frames.ground_truth.detections.label")
+        self.assertEqual(field.description, "test2")
+
+        with self.assertRaises(Exception):
+            field.info = False
+            field.save()
+
+        # Datasets should automatically refresh upon save() errors
+        field = dataset.get_field("frames.ground_truth.detections.label")
+        self.assertEqual(field.info, {"foo2": "bar2"})
 
     @drop_datasets
     def test_dataset_app_config(self):
@@ -164,10 +305,7 @@ class DatasetTests(unittest.TestCase):
         dataset.app_config.grid_media_field = "thumbnail_path"
         dataset.save()
 
-        del dataset
-        gc.collect()  # force garbage collection
-
-        dataset = fo.load_dataset(dataset_name)
+        dataset.reload()
 
         self.assertListEqual(
             dataset.app_config.media_fields, ["filepath", "thumbnail_path"]

@@ -1523,7 +1523,7 @@ class Schema(Aggregation):
     document field across all samples in a collection.
 
     Schema aggregations are useful for detecting the presence and types of
-    dynamic attributes of :class:`fiftyone.core.labels.Label` fields in across
+    dynamic attributes of :class:`fiftyone.core.labels.Label` fields across
     a collection.
 
     Examples::
@@ -2191,6 +2191,7 @@ _MONGO_TO_FIFTYONE_TYPES = {
     "bool": fof.BooleanField,
     "int": fof.IntField,
     "long": fof.IntField,
+    "date": fof.DateTimeField,
     "double": fof.FloatField,
     "decimal": fof.FloatField,
     "array": fof.ListField,

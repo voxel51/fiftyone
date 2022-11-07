@@ -2,7 +2,7 @@ import { Bar, useTheme } from "@fiftyone/components";
 import { VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { currentSlice, hasPinnedSlice } from "@fiftyone/state";
-import { Checkbox } from "@material-ui/core";
+import { Checkbox } from "@mui/material";
 import React, { MutableRefObject, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { ModalActionsRow } from "../Actions";
@@ -35,7 +35,7 @@ const SelectableBar: React.FC<
           disableRipple
           title={selected ? "Select sample" : "Selected"}
           checked={selected}
-          style={{ color: theme.brand }}
+          style={{ color: theme.primary.plainColor }}
           onClick={() => select(sampleId)}
         />
       </div>
@@ -68,7 +68,7 @@ export const GroupBar: React.FC<{
         position: "relative",
         top: "unset",
         left: "unset",
-        borderBottom: `1px solid var(--background-dark-border)`,
+        borderBottom: `1px solid var(--joy-pallete-primary-plainBorder)`,
         zIndex: 10000,
       }}
     >
@@ -76,7 +76,7 @@ export const GroupBar: React.FC<{
         {hasPinned && (
           <div
             style={{
-              color: "var(--font)",
+              color: "var(--joy-palette-text-primary)",
               display: "flex",
               fontSize: "1.2rem",
               fontWeight: "bold",
@@ -105,7 +105,7 @@ export const GroupSampleBar: React.FC<{
       {pinned && (
         <div
           style={{
-            color: "var(--font)",
+            color: "var(--joy-palette-text-primary)",
             display: "flex",
             fontSize: "1.2rem",
             fontWeight: "bold",

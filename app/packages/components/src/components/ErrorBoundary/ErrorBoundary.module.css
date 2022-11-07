@@ -13,7 +13,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 1.4rem;
-  color: var(--font);
+  color: var(--joy-palette-text-primary);
   font-weight: bold;
 }
 
@@ -39,11 +39,11 @@
 }
 
 .stack {
-  border: 1px solid #191c1f;
-  border-top: 2px solid var(--brand);
-  background: var(--background-darker);
+  border: 1px solid var(--joy-palette-divider);
+  border-top: 2px solid var(--joy-palette-primary-plainColor);
+  background: var(--joy-palette-background-level3);
   border-radius: 2px;
-  color: var(--font);
+  color: var(--joy-palette-text-primary);
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem 0 0.5rem;
   text-align: left;

@@ -121,7 +121,10 @@ class TorchCLIPModel(fout.TorchImageModel):
             dtype = torch.int
 
         text_features = torch.zeros(
-            len(all_tokens), self.config.context_length, dtype=dtype
+            len(all_tokens),
+            self.config.context_length,
+            dtype=dtype,
+            device=self.device,
         )
 
         for i, (prompt, tokens) in enumerate(zip(prompts, all_tokens)):

@@ -280,6 +280,77 @@ Datasets can also store more specific types of ancillary information such as
     the dataset's :meth:`info <fiftyone.core.dataset.Dataset.info>` property
     in-place to save the changes to the database.
 
+.. _storing-field-metadata:
+
+Storing field metadata
+----------------------
+
+You can store metadata such as descriptions and other info on the
+:ref:`fields <using-fields>` of your dataset.
+
+One approach is to manually declare the field with
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`
+with the appropriate metadata provided:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+    dataset.add_sample_field(
+        "int_field", fo.IntField, description="An integer field"
+    )
+
+    field = dataset.get_field("int_field")
+    print(field.description)  # An integer field
+
+You can also use
+:meth:`get_field() <fiftyone.core.collections.SampleCollection.get_field>` to
+retrieve a field and update it's metadata at any time:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.add_dynamic_sample_fields()
+
+    field = dataset.get_field("ground_truth")
+    field.description = "Ground truth annotations"
+    field.info = {"url": "https://fiftyone.ai"}
+    field.save()  # must save after edits
+
+    field = dataset.get_field("ground_truth.detections.area")
+    field.description = "Area of the box, in pixels^2"
+    field.info = {"url": "https://fiftyone.ai"}
+    field.save()  # must save after edits
+
+    dataset.reload()
+
+    field = dataset.get_field("ground_truth")
+    print(field.description)  # Ground truth annotations
+    print(field.info)  # {'url': 'https://fiftyone.ai'}
+
+    field = dataset.get_field("ground_truth.detections.area")
+    print(field.description)  # Area of the box, in pixels^2
+    print(field.info)  # {'url': 'https://fiftyone.ai'}
+
+.. note::
+
+    You must call
+    :meth:`field.save() <fiftyone.core.fields.Field.save>` after updating
+    the fields's :attr:`description <fiftyone.core.fields.Field.description>`
+    and :meth:`info <fiftyone.core.fields.Field.info>` attributes in-place to
+    save the changes to the database.
+
+.. note::
+
+    Did you know? You can view field metadata directly in the App by hovering
+    over fields or attributes :ref:`in the sidebar <app-fields-sidebar>`!
+
 .. _custom-app-config:
 
 Custom App config
@@ -895,6 +966,11 @@ printing it:
         filepath:   fiftyone.core.fields.StringField
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+
+.. note::
+
+    Did you know? You can :ref:`store metadata <storing-field-metadata>` such
+    as descriptions on your dataset's fields!
 
 .. _adding-sample-fields:
 
@@ -2811,7 +2887,7 @@ attributes to them as follows:
 
 By default, dynamic attributes are not included in a
 :ref:`dataset's schema <field-schemas>`, which means that these attributes may
-contain arbitrary heterogenous values across the dataset's samples.
+contain arbitrary heterogeneous values across the dataset's samples.
 
 However, FiftyOne provides methods that you can use to formally declare custom
 dynamic attributes, which allows you to enforce type constraints, filter by

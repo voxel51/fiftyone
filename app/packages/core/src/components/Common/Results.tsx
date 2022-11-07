@@ -7,10 +7,10 @@ import { getValueString } from "../Filters/utils";
 import { NameAndCountContainer } from "../utils";
 
 export const ResultsContainer = styled(animated.div)`
-  background-color: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  background-color: ${({ theme }) => theme.background.level2};
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   border-radius: 2px;
-  box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
+  box-shadow: 0 2px 20px ${({ theme }) => theme.custom.shadow};
   box-sizing: border-box;
   position: absolute;
   width: auto;

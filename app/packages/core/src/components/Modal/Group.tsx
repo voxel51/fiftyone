@@ -164,6 +164,8 @@ const withVisualizerPlugin = <
       onSelectLabel,
       useState: useRecoilValue,
       state: fos,
+      mediaFieldValue: urls[mediaField],
+      mediaField,
       src: getSampleSrc(urls[mediaField]),
     };
 
@@ -237,7 +239,7 @@ const DualView: React.FC = () => {
           }}
           style={{
             position: "relative",
-            borderRight: `1px solid ${theme.backgroundDarkBorder}`,
+            borderRight: `1px solid ${theme.primary.plainBorder}`,
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",

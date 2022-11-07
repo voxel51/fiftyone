@@ -17,9 +17,7 @@ import timeit
 import warnings
 
 from bson import ObjectId
-from deprecated import deprecated
-from fiftyone.core.odm.embedded_document import DynamicEmbeddedDocument
-from pymongo import InsertOne, UpdateOne
+from pymongo import InsertOne, UpdateOne, UpdateMany
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -1336,21 +1334,13 @@ class SampleCollection(object):
             tags: a tag or iterable of tags
         """
         if etau.is_str(tags):
-            tags = [tags]
+            update = {"$addToSet": {"tags": tags}}
         else:
-            tags = list(tags)
+            update = {"$addToSet": {"tags": {"$each": list(tags)}}}
 
-        def _add_tags(_tags):
-            if not _tags:
-                return tags
-
-            for tag in tags:
-                if tag not in _tags:
-                    _tags.append(tag)
-
-            return _tags
-
-        self._edit_sample_tags(_add_tags)
+        # We only need to process samples that are missing a tag of interest
+        view = self.match_tags(tags, bool=False, all=True)
+        view._edit_sample_tags(update)
 
     def untag_samples(self, tags):
         """Removes the tag(s) from all samples in this collection, if
@@ -1360,22 +1350,20 @@ class SampleCollection(object):
             tags: a tag or iterable of tags
         """
         if etau.is_str(tags):
-            tags = [tags]
+            update = {"$pull": {"tags": tags}}
         else:
-            tags = list(tags)
+            update = {"$pullAll": {"tags": list(tags)}}
 
-        def _remove_tags(_tags):
-            if not _tags:
-                return _tags
+        # We only need to process samples that have a tag of interest
+        view = self.match_tags(tags)
+        view._edit_sample_tags(update)
 
-            return [t for t in _tags if t not in tags]
+    def _edit_sample_tags(self, update):
+        ops = []
+        for ids in fou.iter_batches(self.values("_id"), 100000):
+            ops.append(UpdateMany({"_id": {"$in": ids}}, update))
 
-        self._edit_sample_tags(_remove_tags)
-
-    def _edit_sample_tags(self, edit_fcn):
-        tags = self.values("tags")
-        tags = _transform_values(tags, edit_fcn, level=1)
-        self.set_values("tags", tags)
+        self._dataset._bulk_write(ops)
 
     def count_sample_tags(self):
         """Counts the occurrences of sample tags in this collection.
@@ -1395,22 +1383,29 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
+        if label_fields is None:
+            label_fields = self._get_label_fields()
+        elif etau.is_str(label_fields):
+            label_fields = [label_fields]
+
+        missing_tags = ~F("tags").contains(tags, all=True)
+        match_expr = (F("tags") != None).if_else(missing_tags, True)
+
+        for label_field in label_fields:
+            # We only need to process labels that are missing a tag of interest
+            view = self.filter_labels(label_field, match_expr)
+            view._tag_labels(tags, label_field)
+
+    def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
         if etau.is_str(tags):
-            tags = [tags]
+            update_fcn = lambda path: {"$addToSet": {path: tags}}
         else:
             tags = list(tags)
+            update_fcn = lambda path: {"$addToSet": {path: {"$each": tags}}}
 
-        def _add_tags(_tags):
-            if not _tags:
-                return tags
-
-            for tag in tags:
-                if tag not in _tags:
-                    _tags.append(tag)
-
-            return _tags
-
-        self._edit_label_tags(_add_tags, label_fields=label_fields)
+        return self._edit_label_tags(
+            update_fcn, label_field, ids=ids, label_ids=label_ids
+        )
 
     def untag_labels(self, tags, label_fields=None):
         """Removes the tag from all labels in the specified label field(s) of
@@ -1422,40 +1417,78 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
-        if etau.is_str(tags):
-            tags = [tags]
-        else:
-            tags = list(tags)
-
-        def _remove_tags(_tags):
-            if not _tags:
-                return _tags
-
-            return [t for t in _tags if t not in tags]
-
-        self._edit_label_tags(_remove_tags, label_fields=label_fields)
-
-    def _edit_label_tags(self, edit_fcn, label_fields=None):
         if label_fields is None:
             label_fields = self._get_label_fields()
         elif etau.is_str(label_fields):
             label_fields = [label_fields]
 
         for label_field in label_fields:
-            label_type, tags_path = self._get_label_field_path(
-                label_field, "tags"
-            )
+            # We only need to process labels that have a tag of interest
+            view = self.select_labels(tags=tags, fields=label_field)
+            view._untag_labels(tags, label_field)
 
-            level = 1
-            level += issubclass(label_type, fol._LABEL_LIST_FIELDS)
-            level += self._is_frame_field(tags_path)
+    def _untag_labels(self, tags, label_field, ids=None, label_ids=None):
+        if etau.is_str(tags):
+            update_fcn = lambda path: {"$pull": {path: tags}}
+        else:
+            tags = list(tags)
+            update_fcn = lambda path: {"$pullAll": {path: tags}}
 
-            # Omit samples/frames with no labels
-            view = self.exists(label_field)
+        return self._edit_label_tags(
+            update_fcn, label_field, ids=ids, label_ids=label_ids
+        )
 
-            tags = view.values(tags_path)
-            tags = _transform_values(tags, edit_fcn, level=level)
-            view.set_values(tags_path, tags)
+    def _edit_label_tags(
+        self, update_fcn, label_field, ids=None, label_ids=None
+    ):
+        label_type, root = self._get_label_field_path(label_field)
+        _root, is_frame_field = self._handle_frame_field(root)
+        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+
+        ops = []
+
+        if is_list_field:
+            id_path = root + "._id"
+            tags_path = _root + ".$[label].tags"
+            update = update_fcn(tags_path)
+
+            if ids is None or label_ids is None:
+                if is_frame_field:
+                    ids, label_ids = self.values(["frames._id", id_path])
+                    ids = itertools.chain.from_iterable(ids)
+                    label_ids = itertools.chain.from_iterable(label_ids)
+                else:
+                    ids, label_ids = self.values(["_id", id_path])
+
+            for _id, _label_ids in zip(ids, label_ids):
+                if not _label_ids:
+                    continue
+
+                op = UpdateOne(
+                    {"_id": _id},
+                    update,
+                    array_filters=[{"label._id": {"$in": _label_ids}}],
+                )
+                ops.append(op)
+        else:
+            _id_path = _root + "._id"
+            id_path = root + "._id"
+            tags_path = _root + ".tags"
+            update = update_fcn(tags_path)
+
+            if label_ids is None:
+                if is_frame_field:
+                    label_ids = self.values(id_path, unwind=True)
+                else:
+                    label_ids = self.values(id_path)
+
+            for _label_ids in fou.iter_batches(label_ids, 100000):
+                ops.append(UpdateMany({_id_path: {"$in": _label_ids}}, update))
+
+        if ops:
+            self._dataset._bulk_write(ops, frames=is_frame_field)
+
+        return ids, label_ids
 
     def _get_selected_labels(self, ids=None, tags=None, fields=None):
         if ids is not None or tags is not None:
@@ -2585,6 +2618,7 @@ class SampleCollection(object):
         use_masks=False,
         use_boxes=False,
         classwise=True,
+        dynamic=True,
         **kwargs,
     ):
         """Evaluates the specified predicted detections in this collection with
@@ -2669,6 +2703,8 @@ class SampleCollection(object):
                 instances rather than using their actual geometries
             classwise (True): whether to only match objects with the same class
                 label (True) or allow matches between classes (False)
+            dynamic (True): whether to declare the dynamic object-level
+                attributes that are populated on the dataset's schema
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
                 being used
@@ -2688,6 +2724,7 @@ class SampleCollection(object):
             use_masks=use_masks,
             use_boxes=use_boxes,
             classwise=classwise,
+            dynamic=dynamic,
             **kwargs,
         )
 
@@ -4678,12 +4715,9 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def match_tags(self, tags, bool=None):
+    def match_tags(self, tags, bool=None, all=False):
         """Returns a view containing the samples in the collection that have
-        (or do not have) any of the given tag(s).
-
-        To match samples that must contain multiple tags, chain multiple
-        :meth:`match_tags` calls together.
+        or don't have any/all of the given tag(s).
 
         Examples::
 
@@ -4692,20 +4726,10 @@ class SampleCollection(object):
             dataset = fo.Dataset()
             dataset.add_samples(
                 [
-                    fo.Sample(
-                        filepath="/path/to/image1.png",
-                        tags=["train"],
-                        ground_truth=fo.Classification(label="cat"),
-                    ),
-                    fo.Sample(
-                        filepath="/path/to/image2.png",
-                        tags=["test"],
-                        ground_truth=fo.Classification(label="cat"),
-                    ),
-                    fo.Sample(
-                        filepath="/path/to/image3.png",
-                        ground_truth=None,
-                    ),
+                    fo.Sample(filepath="image1.png", tags=["train"]),
+                    fo.Sample(filepath="image2.png", tags=["test"]),
+                    fo.Sample(filepath="image3.png", tags=["train", "test"]),
+                    fo.Sample(filepath="image4.png"),
                 ]
             )
 
@@ -4716,26 +4740,46 @@ class SampleCollection(object):
             view = dataset.match_tags("test")
 
             #
-            # Only include samples that have either the "test" or "train" tag
+            # Only include samples that do not have the "test" tag
+            #
+
+            view = dataset.match_tags("test", bool=False)
+
+            #
+            # Only include samples that have the "test" or "train" tags
             #
 
             view = dataset.match_tags(["test", "train"])
 
             #
-            # Only include samples that do not have the "train" tag
+            # Only include samples that have the "test" and "train" tags
             #
 
-            view = dataset.match_tags("train", bool=False)
+            view = dataset.match_tags(["test", "train"], all=True)
+
+            #
+            # Only include samples that do not have the "test" or "train" tags
+            #
+
+            view = dataset.match_tags(["test", "train"], bool=False)
+
+            #
+            # Only include samples that do not have the "test" and "train" tags
+            #
+
+            view = dataset.match_tags(["test", "train"], bool=False, all=True)
 
         Args:
             tags: the tag or iterable of tags to match
             bool (None): whether to match samples that have (None or True) or
                 do not have (False) the given tags
+            all (False): whether to match samples that have (or don't have) all
+                (True) or any (False) of the given tags
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.MatchTags(tags, bool=bool))
+        return self._add_view_stage(fos.MatchTags(tags, bool=bool, all=all))
 
     @view_stage
     def mongo(self, pipeline):
@@ -6610,7 +6654,7 @@ class SampleCollection(object):
         embedded document field across all samples in the collection.
 
         Schema aggregations are useful for detecting the presence and types of
-        dynamic attributes of :class:`fiftyone.core.labels.Label` fields in
+        dynamic attributes of :class:`fiftyone.core.labels.Label` fields
         across a collection.
 
         Examples::
@@ -8565,33 +8609,44 @@ class SampleCollection(object):
     ):
         if frames:
             schema = self.get_frame_field_schema(
-                include_private=include_private
+                include_private=include_private, flat=True
             )
         else:
-            schema = self.get_field_schema(include_private=include_private)
+            schema = self.get_field_schema(
+                include_private=include_private, flat=True
+            )
 
         if schema is None:
             return None
 
         fields_map = {}
-        for field_name, field in schema.items():
-            if field.db_field != field_name:
-                if reverse:
-                    fields_map[field.db_field] = field_name
+        for path, field in schema.items():
+            chunks = path.rsplit(".", 1)
+            field_name = chunks[-1]
+            db_field_name = field.db_field
+
+            if db_field_name not in (None, field_name):
+                if len(chunks) > 1:
+                    _path = chunks[0] + "." + db_field_name
                 else:
-                    fields_map[field_name] = field.db_field
+                    _path = db_field_name
+
+                if reverse:
+                    fields_map[_path] = path
+                else:
+                    fields_map[path] = _path
 
         return fields_map
 
-    def _handle_db_field(self, field_name, frames=False):
+    def _handle_db_field(self, path, frames=False):
         # @todo handle "groups.<slice>.field.name", if it becomes necessary
         db_fields_map = self._get_db_fields_map(frames=frames)
-        return db_fields_map.get(field_name, field_name)
+        return db_fields_map.get(path, path)
 
-    def _handle_db_fields(self, field_names, frames=False):
+    def _handle_db_fields(self, paths, frames=False):
         # @todo handle "groups.<slice>.field.name", if it becomes necessary
         db_fields_map = self._get_db_fields_map(frames=frames)
-        return [db_fields_map.get(f, f) for f in field_names]
+        return [db_fields_map.get(p, p) for p in paths]
 
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()

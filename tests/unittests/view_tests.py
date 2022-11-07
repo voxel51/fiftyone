@@ -1441,11 +1441,42 @@ class ViewStageTests(unittest.TestCase):
                     frame.int_field
 
     def test_exists(self):
-        self.sample1["exists"] = True
-        self.sample1.save()
-        result = list(self.dataset.exists("exists"))
-        self.assertIs(len(result), 1)
-        self.assertEqual(result[0].id, self.sample1.id)
+        sample1 = fo.Sample(filepath="video1.mp4", index=1)
+        sample1.frames[1] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video2.mp4", foo="bar", index=2)
+        sample2.frames[1] = fo.Frame(foo="bar")
+
+        sample3 = fo.Sample(filepath="video3.mp4", index=3)
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.exists("foo")
+
+        self.assertEqual(view.values("index"), [2])
+
+        view = dataset.exists("foo", bool=False)
+
+        self.assertEqual(view.values("index"), [1, 3])
+
+        view = dataset.exists("frames")
+
+        self.assertEqual(view.values("index"), [1, 2])
+
+        view = dataset.exists("frames", bool=False)
+
+        self.assertEqual(view.values("index"), [3])
+
+        view = dataset.exists("frames.foo")
+
+        self.assertEqual(view.values("index"), [2])
+        self.assertEqual(view.count("frames"), 1)
+
+        view = dataset.exists("frames.foo", bool=False)
+
+        self.assertEqual(view.values("index"), [1, 3])
+        self.assertEqual(view.count("frames"), 1)
 
     def test_filter_field(self):
         self.sample1["test_class"] = fo.Classification(label="friend")
@@ -2248,11 +2279,51 @@ class ViewStageTests(unittest.TestCase):
         )
 
     def test_match_tags(self):
-        self.sample1.tags.append("test")
-        self.sample1.save()
-        result = list(self.dataset.match_tags(["test"]))
-        self.assertIs(len(result), 1)
-        self.assertEqual(result[0].id, self.sample1.id)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.png", tags=["train"], i=1),
+                fo.Sample(filepath="image2.png", tags=["test"], i=2),
+                fo.Sample(filepath="image3.png", tags=["train", "test"], i=3),
+                fo.Sample(filepath="image4.png", i=4),
+            ]
+        )
+
+        view = dataset.match_tags("test")
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 2)
+        self.assertListEqual(indexes, [2, 3])
+
+        view = dataset.match_tags("test", bool=False)
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 2)
+        self.assertListEqual(indexes, [1, 4])
+
+        view = dataset.match_tags(["test", "train"])
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 3)
+        self.assertListEqual(indexes, [1, 2, 3])
+
+        view = dataset.match_tags(["test", "train"], all=True)
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 1)
+        self.assertListEqual(indexes, [3])
+
+        view = dataset.match_tags(["test", "train"], bool=False)
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 1)
+        self.assertListEqual(indexes, [4])
+
+        view = dataset.match_tags(["test", "train"], bool=False, all=True)
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 3)
+        self.assertListEqual(indexes, [1, 2, 4])
 
     def test_re_match(self):
         result = list(self.dataset.match(F("filepath").re_match(r"two\.png$")))

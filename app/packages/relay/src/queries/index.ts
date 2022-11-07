@@ -1,3 +1,5 @@
+export * from "./__generated__/countValuesQuery.graphql";
+export * from "./__generated__/histogramValuesQuery.graphql";
 export * from "./__generated__/mainSampleQuery.graphql";
 export * from "./__generated__/paginateGroup_query.graphql";
 export * from "./__generated__/paginateGroupPageQuery.graphql";
@@ -10,4 +12,6 @@ export {
   paginateGroupPinnedSampleFragment,
 } from "./paginateGroup";
 
+export { default as countValues } from "./countValues";
+export { default as histogramValues } from "./histogramValues";
 export { default as mainSample } from "./mainSample";

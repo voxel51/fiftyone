@@ -16,6 +16,7 @@ import Checkbox from "../Common/Checkbox";
 import { Button } from "../utils";
 import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
 import { formatDateTime } from "../../utils/generic";
+import FieldLabelAndInfo from "../FieldLabelAndInfo";
 
 const NamedRangeSliderContainer = styled.div`
   margin: 3px;
@@ -28,10 +29,10 @@ const NamedRangeSliderHeader = styled.div`
 `;
 
 const RangeSliderContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid #191c1f;
+  background: ${({ theme }) => theme.background.level2};
+  border: 1px solid var(--joy-palette-divider);
   border-radius: 2px;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem 0 0.5rem;
 `;
@@ -129,6 +130,7 @@ const NumericFieldFilter = ({
   const bounds = useRecoilValue(fos.boundsAtom({ path, defaultRange }));
 
   const ftype = useRecoilValue(fos.fieldType({ path }));
+  const field = useRecoilValue(fos.field(path));
   const hasDefaultRange = useRecoilValue(
     fos.isDefaultRange({ modal, path, defaultRange })
   );
@@ -153,11 +155,24 @@ const NumericFieldFilter = ({
     return null;
 
   return (
-    <NamedRangeSliderContainer title={title}>
+    <NamedRangeSliderContainer>
       {named && name && (
-        <NamedRangeSliderHeader>
-          {name.replaceAll("_", " ")}
-        </NamedRangeSliderHeader>
+        <FieldLabelAndInfo
+          nested
+          field={field}
+          color={color}
+          template={({
+            label,
+            hoverHanlders,
+            FieldInfoIcon,
+            hoverTarget,
+            container,
+          }) => (
+            <NamedRangeSliderHeader>
+              <span ref={hoverTarget}>{label}</span>
+            </NamedRangeSliderHeader>
+          )}
+        />
       )}
       <RangeSliderContainer
         onMouseDown={(event) => event.stopPropagation()}

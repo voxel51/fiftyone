@@ -109,6 +109,7 @@ export namespace State {
     defaultGroupSlice: string;
     groupField: string;
     appConfig: DatasetAppConfig;
+    info: { [key: string]: string };
   }
 
   export interface Filter {}
