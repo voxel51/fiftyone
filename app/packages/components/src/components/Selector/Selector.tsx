@@ -85,15 +85,10 @@ const Selector = <T extends unknown>({
   const [search, setSearch] = useState("");
   const valuesRef = useRef<T[]>([]);
   const [active, setActive] = useState<number>();
-  const [current, setCurrent] = useState(() => value);
-  useLayoutEffect(() => {
-    setCurrent(value);
-  }, [value]);
 
   const onSelectWrapper = useMemo(() => {
     return (value: T) => {
       onSelect(value);
-      setCurrent(String(value));
       setEditing(false);
     };
   }, [onSelect]);
@@ -146,7 +141,7 @@ const Selector = <T extends unknown>({
           triggerProps.ref(node);
         }}
         className={style.input}
-        value={editing ? search : current || ""}
+        value={editing ? search : value || ""}
         placeholder={placeholder}
         onFocus={() => setEditing(true)}
         onBlur={(e) => {

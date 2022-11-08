@@ -3,6 +3,7 @@ import { graphql } from "react-relay";
 export default graphql`
   query aggregationsQuery($form: AggregationForm!) {
     aggregations(form: $form) {
+      __typename
       ... on Aggregation {
         path
         count
@@ -25,6 +26,7 @@ export default graphql`
       }
       ... on RootAggregation {
         slice
+        labelFieldCount
       }
       ... on StringAggregation {
         values {

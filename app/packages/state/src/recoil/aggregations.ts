@@ -1,21 +1,18 @@
 import * as foq from "@fiftyone/relay";
-import {
-  LABELS,
-  VALID_KEYPOINTS,
-  VALID_LABEL_TYPES,
-} from "@fiftyone/utilities";
+import { VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { VariablesOf } from "react-relay";
 import { atom, GetRecoilValue, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 
 import * as filterAtoms from "./filters";
-import { groupStatistics, groupId, ResponseFrom, currentSlice } from "./groups";
+import { ResponseFrom } from "../utils";
+import { groupStatistics, groupId, currentSlice } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
 import { sidebarSampleId } from "./modal";
-import { dataset, labelTagsRefresher, refresher, tagsRefresher } from "./atoms";
+import { refresher } from "./atoms";
 
 type DateTimeBound = { datetime: number } | null;
 
@@ -368,6 +365,10 @@ export const count = selectorFamily<
   get:
     ({ value, ...params }) =>
     ({ get }) => {
+      if (params.path === "_") {
+        return get(aggregation({ ...params, path: "" })).slice;
+      }
+
       const exists =
         Boolean(get(schemaAtoms.field(params.path))) || !params.path;
 

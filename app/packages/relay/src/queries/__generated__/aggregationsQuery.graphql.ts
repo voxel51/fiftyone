@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<89919dd0b453cc7add4cbc06e1c0fa87>>
+ * @generated SignedSource<<d93851c116849c4e40f1557eab71c56a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -33,10 +33,12 @@ export type aggregationsQuery$variables = {
 };
 export type aggregationsQuery$data = {
   readonly aggregations: ReadonlyArray<{
+    readonly __typename: string;
     readonly count?: number;
     readonly exists?: number;
     readonly false?: number;
     readonly inf?: number;
+    readonly labelFieldCount?: number;
     readonly max?: number | null;
     readonly min?: number | null;
     readonly nan?: number;
@@ -63,181 +65,189 @@ var v0 = [
     "name": "form"
   }
 ],
-v1 = [
-  {
-    "kind": "Variable",
-    "name": "form",
-    "variableName": "form"
-  }
-],
-v2 = {
+v1 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "count",
   "storageKey": null
 },
-v3 = {
-  "kind": "InlineFragment",
-  "selections": [
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "path",
-      "storageKey": null
-    },
-    (v2/*: any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "exists",
-      "storageKey": null
-    }
-  ],
-  "type": "Aggregation",
-  "abstractKey": "__isAggregation"
-},
-v4 = {
-  "kind": "InlineFragment",
-  "selections": [
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "false",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "true",
-      "storageKey": null
-    }
-  ],
-  "type": "BooleanAggregation",
-  "abstractKey": null
-},
-v5 = {
+v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "max",
   "storageKey": null
 },
-v6 = {
+v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "min",
   "storageKey": null
 },
-v7 = {
-  "kind": "InlineFragment",
-  "selections": [
-    (v5/*: any*/),
-    (v6/*: any*/)
-  ],
-  "type": "IntAggregation",
-  "abstractKey": null
-},
-v8 = {
-  "kind": "InlineFragment",
-  "selections": [
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "inf",
-      "storageKey": null
-    },
-    (v5/*: any*/),
-    (v6/*: any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "nan",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "ninf",
-      "storageKey": null
-    }
-  ],
-  "type": "FloatAggregation",
-  "abstractKey": null
-},
-v9 = {
-  "kind": "InlineFragment",
-  "selections": [
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "slice",
-      "storageKey": null
-    }
-  ],
-  "type": "RootAggregation",
-  "abstractKey": null
-},
-v10 = {
-  "kind": "InlineFragment",
-  "selections": [
-    {
-      "alias": null,
-      "args": null,
-      "concreteType": "StringAggregationValue",
-      "kind": "LinkedField",
-      "name": "values",
-      "plural": true,
-      "selections": [
-        (v2/*: any*/),
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "value",
-          "storageKey": null
-        }
-      ],
-      "storageKey": null
-    }
-  ],
-  "type": "StringAggregation",
-  "abstractKey": null
-};
+v4 = [
+  {
+    "alias": null,
+    "args": [
+      {
+        "kind": "Variable",
+        "name": "form",
+        "variableName": "form"
+      }
+    ],
+    "concreteType": null,
+    "kind": "LinkedField",
+    "name": "aggregations",
+    "plural": true,
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "__typename",
+        "storageKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "path",
+            "storageKey": null
+          },
+          (v1/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "exists",
+            "storageKey": null
+          }
+        ],
+        "type": "Aggregation",
+        "abstractKey": "__isAggregation"
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "false",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "true",
+            "storageKey": null
+          }
+        ],
+        "type": "BooleanAggregation",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          (v2/*: any*/),
+          (v3/*: any*/)
+        ],
+        "type": "IntAggregation",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "inf",
+            "storageKey": null
+          },
+          (v2/*: any*/),
+          (v3/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "nan",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "ninf",
+            "storageKey": null
+          }
+        ],
+        "type": "FloatAggregation",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "slice",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "labelFieldCount",
+            "storageKey": null
+          }
+        ],
+        "type": "RootAggregation",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "StringAggregationValue",
+            "kind": "LinkedField",
+            "name": "values",
+            "plural": true,
+            "selections": [
+              (v1/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "value",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          }
+        ],
+        "type": "StringAggregation",
+        "abstractKey": null
+      }
+    ],
+    "storageKey": null
+  }
+];
 return {
   "fragment": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
     "name": "aggregationsQuery",
-    "selections": [
-      {
-        "alias": null,
-        "args": (v1/*: any*/),
-        "concreteType": null,
-        "kind": "LinkedField",
-        "name": "aggregations",
-        "plural": true,
-        "selections": [
-          (v3/*: any*/),
-          (v4/*: any*/),
-          (v7/*: any*/),
-          (v8/*: any*/),
-          (v9/*: any*/),
-          (v10/*: any*/)
-        ],
-        "storageKey": null
-      }
-    ],
+    "selections": (v4/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -246,44 +256,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "aggregationsQuery",
-    "selections": [
-      {
-        "alias": null,
-        "args": (v1/*: any*/),
-        "concreteType": null,
-        "kind": "LinkedField",
-        "name": "aggregations",
-        "plural": true,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "__typename",
-            "storageKey": null
-          },
-          (v3/*: any*/),
-          (v4/*: any*/),
-          (v7/*: any*/),
-          (v8/*: any*/),
-          (v9/*: any*/),
-          (v10/*: any*/)
-        ],
-        "storageKey": null
-      }
-    ]
+    "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "922e989ab70870ccc57df3e765a48210",
+    "cacheID": "24f82b55735801c8b40f559b57b93993",
     "id": null,
     "metadata": {},
     "name": "aggregationsQuery",
     "operationKind": "query",
-    "text": "query aggregationsQuery(\n  $form: AggregationForm!\n) {\n  aggregations(form: $form) {\n    __typename\n    ... on Aggregation {\n      __isAggregation: __typename\n      path\n      count\n      exists\n    }\n    ... on BooleanAggregation {\n      false\n      true\n    }\n    ... on IntAggregation {\n      max\n      min\n    }\n    ... on FloatAggregation {\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      slice\n    }\n    ... on StringAggregation {\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
+    "text": "query aggregationsQuery(\n  $form: AggregationForm!\n) {\n  aggregations(form: $form) {\n    __typename\n    ... on Aggregation {\n      __isAggregation: __typename\n      path\n      count\n      exists\n    }\n    ... on BooleanAggregation {\n      false\n      true\n    }\n    ... on IntAggregation {\n      max\n      min\n    }\n    ... on FloatAggregation {\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      slice\n      labelFieldCount\n    }\n    ... on StringAggregation {\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "2914a9fdf4f94656e3ef0fe872138242";
+(node as any).hash = "6bfb2f0655f3723eba71c8734bd0abc6";
 
 export default node;

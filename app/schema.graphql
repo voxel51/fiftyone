@@ -348,6 +348,7 @@ type RootAggregation implements Aggregation {
   count: Int!
   exists: Int!
   slice: Int
+  labelFieldCount: Int!
 }
 
 interface Run {

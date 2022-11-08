@@ -49,14 +49,24 @@ export const resolvedSidebarMode = selectorFamily<"all" | "fast", boolean>({
         return mode;
       }
 
-      if (get(count({ path: "" })) >= 10000) {
+      const root = get(
+        aggregationQuery({
+          paths: [""],
+          root: true,
+          modal: false,
+          extended: false,
+        })
+      ).aggregations[0];
+
+      if (root.__typename !== "RootAggregation") {
+        throw new Error("unexpected type");
+      }
+
+      if (root.count >= 10000) {
         return "fast";
       }
 
-      if (
-        get(count({ path: "" })) >= 1000 &&
-        get(labelFields({})).length >= 10
-      ) {
+      if (root.count >= 1000 && root.labelFieldCount >= 10) {
         return "fast";
       }
 
