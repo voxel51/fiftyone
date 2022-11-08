@@ -155,12 +155,12 @@ export const useRenameGroup = (modal: boolean, group: string) => {
 
         const view = await snapshot.getPromise(fos.view);
         const shown = await snapshot.getPromise(
-          fos.groupShown({ modal, group })
+          fos.groupShown({ modal, group, loading: true })
         );
 
         replace[newName] = group;
 
-        set(fos.groupShown({ group: newName, modal }), shown);
+        set(fos.groupShown({ group: newName, modal, loading: true }), shown);
         set(fos.sidebarGroupsDefinition(modal), newGroups);
         !modal &&
           fos.persistSidebarGroups({

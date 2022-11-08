@@ -365,10 +365,8 @@ function getCenter(bounds) {
 }
 
 function distanceFromCenters(boundsA, boundsB) {
-  console.log({ boundsA, boundsB });
   const a = getCenter(boundsA);
   const b = getCenter(boundsB);
-  console.log({ a, b });
   return Math.abs(a.x - b.x);
   // return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 }
