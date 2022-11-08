@@ -303,8 +303,8 @@ class DatasetAppConfig(EmbeddedDocument):
             serve media in the App's grid view
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
-        sidebar_mode ("best"): the loading behavior of the sidebar. "best",
-            "fast", or "slow"
+        sidebar_mode (None): an optional default mode for the App sidebar.
+            Supported values are ``("all", "best", "fast")``
         sidebar_groups (None): an optional list of
             :class:`SidebarGroupDocument` describing sidebar groups to use in
             the App
