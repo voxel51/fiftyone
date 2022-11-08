@@ -170,6 +170,7 @@ function useEventSource(datasetName, subscription, setState) {
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
+                viewName: data.viewName,
               } as State.Description;
 
               setState((s) => ({ colorscale, config, state }));
