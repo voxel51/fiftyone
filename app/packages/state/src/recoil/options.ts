@@ -66,7 +66,7 @@ export const resolvedSidebarMode = selectorFamily<"all" | "fast", boolean>({
         return "fast";
       }
 
-      if (root.count >= 1000 && root.labelFieldCount >= 10) {
+      if (root.count >= 1000 && root.expandedFieldCount >= 15) {
         return "fast";
       }
 

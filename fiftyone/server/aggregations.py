@@ -14,7 +14,6 @@ import strawberry as gql
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
 from fiftyone.core.utils import datetime_to_timestamp
 import fiftyone.core.view as fov
 
@@ -84,7 +83,7 @@ class FloatAggregation(Aggregation):
 @gql.type
 class RootAggregation(Aggregation):
     slice: t.Optional[int]
-    label_field_count: int
+    expanded_field_count: int
 
 
 @gql.type
@@ -260,10 +259,8 @@ def _resolve_path_aggregation(
                 data["exists"] = data["count"]
 
         if cls == RootAggregation:
-            data["label_field_count"] = len(
-                view._root_dataset.get_field_schema(
-                    embedded_doc_type=fol.Label
-                )
+            data["expanded_field_count"] = _count_expanded_fields(
+                view._root_dataset
             )
 
         return from_dict(cls, data, config=Config(check_types=False))
@@ -276,3 +273,17 @@ class _CountExists(foa.Count):
 
     def __init__(self, field):
         super().__init__(field, _unwind=False)
+
+
+def _count_expanded_fields(collection: foc.SampleCollection) -> int:
+    schema = collection._root_dataset.get_field_schema()
+    count = 0
+    for field in schema:
+        while isinstance(field, fof.ListField):
+            field = field.field
+        if isinstance(field, fof.EmbeddedDocumentField):
+            count += len(schema[field].fields)
+        else:
+            count += 1
+
+    return count

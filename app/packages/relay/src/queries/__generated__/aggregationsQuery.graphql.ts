@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d93851c116849c4e40f1557eab71c56a>>
+ * @generated SignedSource<<7148fa7e6eea85cbb90c635c5b09a8f4>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -36,9 +36,9 @@ export type aggregationsQuery$data = {
     readonly __typename: string;
     readonly count?: number;
     readonly exists?: number;
+    readonly expandedFieldCount?: number;
     readonly false?: number;
     readonly inf?: number;
-    readonly labelFieldCount?: number;
     readonly max?: number | null;
     readonly min?: number | null;
     readonly nan?: number;
@@ -204,7 +204,7 @@ v4 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "labelFieldCount",
+            "name": "expandedFieldCount",
             "storageKey": null
           }
         ],
@@ -259,16 +259,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "24f82b55735801c8b40f559b57b93993",
+    "cacheID": "b5ddd04fa40c7494f289bd2f0c2881cc",
     "id": null,
     "metadata": {},
     "name": "aggregationsQuery",
     "operationKind": "query",
-    "text": "query aggregationsQuery(\n  $form: AggregationForm!\n) {\n  aggregations(form: $form) {\n    __typename\n    ... on Aggregation {\n      __isAggregation: __typename\n      path\n      count\n      exists\n    }\n    ... on BooleanAggregation {\n      false\n      true\n    }\n    ... on IntAggregation {\n      max\n      min\n    }\n    ... on FloatAggregation {\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      slice\n      labelFieldCount\n    }\n    ... on StringAggregation {\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
+    "text": "query aggregationsQuery(\n  $form: AggregationForm!\n) {\n  aggregations(form: $form) {\n    __typename\n    ... on Aggregation {\n      __isAggregation: __typename\n      path\n      count\n      exists\n    }\n    ... on BooleanAggregation {\n      false\n      true\n    }\n    ... on IntAggregation {\n      max\n      min\n    }\n    ... on FloatAggregation {\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      slice\n      expandedFieldCount\n    }\n    ... on StringAggregation {\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "6bfb2f0655f3723eba71c8734bd0abc6";
+(node as any).hash = "676548a3d76407ce3c5508d0b6a191df";
 
 export default node;
