@@ -972,7 +972,6 @@ class FacetAggregations(Aggregation):
     Examples::
 
         import fiftyone as fo
-        from fiftyone import ViewField as F
 
         dataset = fo.Dataset()
         dataset.add_samples(
