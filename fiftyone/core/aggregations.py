@@ -1772,9 +1772,17 @@ class Schema(Aggregation):
         _include_private=False,
     ):
         super().__init__(field_or_expr, expr=expr)
-        self.dynamic_only = dynamic_only
+        self._dynamic_only = dynamic_only
         self._include_private = _include_private
         self._doc_type = None
+
+    def _kwargs(self):
+        return [
+            ["field_or_expr", self._field_name],
+            ["expr", self._expr],
+            ["dynamic_only", self._dynamic_only],
+            ["_include_private", self._include_private],
+        ]
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1810,7 +1818,7 @@ class Schema(Aggregation):
             if not self._include_private and name.startswith("_"):
                 continue
 
-            if self.dynamic_only and name in doc_fields:
+            if self._dynamic_only and name in doc_fields:
                 continue
 
             if name in doc_fields:
