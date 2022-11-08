@@ -1009,7 +1009,7 @@ class FacetAggregations(Aggregation):
         #
 
         values, bounds = dataset.aggregate(
-            fo.FacetedAggregation(
+            fo.FacetAggregations(
                 "predictions.detections",
                 [fo.CountValues("label"), fo.Bounds("confidence")]
             )
