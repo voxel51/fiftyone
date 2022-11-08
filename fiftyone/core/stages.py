@@ -53,6 +53,8 @@ class ViewStage(object):
     view stages are represented by a :class:`fiftyone.core.view.DatasetView`.
     """
 
+    # tricky: this becomes shadowed by an instance attribute when _serialize()
+    # is called
     _uuid = None
 
     def __str__(self):
