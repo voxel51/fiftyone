@@ -1019,31 +1019,25 @@ class FacetAggregations(Aggregation):
 
     Args:
         field_name: a field name or ``embedded.field.name``
-        aggregations: sub-aggregations provided as either a ``dict`` or ``list``
+        aggregations: a list or dict of sub-aggregations
     """
 
-    def __init__(self, field_name: str, aggregations, _compiled=False):
-        super().__init__(field_name)
-        self._is_dict = isinstance(aggregations, dict)
-        self._compiled = _compiled
-        if not self._is_dict:
-            aggregations = {idx: agg for idx, agg in enumerate(aggregations)}
+    def __init__(self, field_name, aggregations, _compiled=False):
+        aggregations, is_dict = self._parse_aggregations(
+            field_name, aggregations
+        )
 
+        super().__init__(field_name)
         self._aggregations = aggregations
-        for agg in aggregations.values():
-            agg._field_name = (
-                ".".join([self._field_name, agg._field_name])
-                if agg._field_name
-                else self._field_name
-            )
+        self._is_dict = is_dict
+        self._compiled = _compiled
 
     def default_result(self):
         """Returns the default result for this aggregation.
 
         Returns:
-            The default result of each sub-aggregation in the same
-            container type as the sub-aggregations were provided, i.e.
-            ``dict`` or ``list``
+            the default result of each sub-aggregation in the same container
+            type as the sub-aggregations were provided (list or dict)
         """
         data = {
             key: agg.default_result()
@@ -1066,9 +1060,8 @@ class FacetAggregations(Aggregation):
             d: the result dict
 
         Returns:
-            The parsed result of each sub-aggregation in the same
-            container type as the sub-aggregations were provided, i.e.
-            ``dict`` or ``list``
+            the parsed result of each sub-aggregation in the same container
+            type as the sub-aggregations were provided (list or dict)
         """
         data = {}
         for key, agg in self._aggregations.items():
@@ -1093,13 +1086,14 @@ class FacetAggregations(Aggregation):
         self._path = path
 
         facets = {}
-        pipeline += [{"$facet": facets}]
         for agg in self._aggregations.values():
             facets[self._get_key(agg)] = []
             for stage in agg.to_mongo(
                 sample_collection, context=self.field_name
             ):
                 facets[self._get_key(agg)].append(stage)
+
+        pipeline += [{"$facet": facets}]
 
         return pipeline
 
@@ -1108,6 +1102,21 @@ class FacetAggregations(Aggregation):
         return str(
             f"_{agg.field_name.replace('.', '_')}_{agg.__class__.__name__}"
         )
+
+    @staticmethod
+    def _parse_aggregations(field_name, aggregations):
+        is_dict = isinstance(aggregations, dict)
+
+        if not is_dict:
+            aggregations = {idx: agg for idx, agg in enumerate(aggregations)}
+
+        for agg in aggregations.values():
+            if agg._field_name:
+                agg._field_name = field_name + "." + agg._field_name
+            else:
+                agg._field_name = field_name
+
+        return aggregations, is_dict
 
 
 class HistogramValues(Aggregation):
@@ -1664,7 +1673,8 @@ class Quantiles(Aggregation):
 
         return pipeline
 
-    def _parse_quantiles(self, quantiles):
+    @staticmethod
+    def _parse_quantiles(quantiles):
         is_scalar = not etau.is_container(quantiles)
 
         if is_scalar:
@@ -1823,14 +1833,12 @@ class Schema(Aggregation):
         doc_type = None
 
         if self._expr is None:
-            field_type = _get_field_type(
-                sample_collection,
-                field_name
-                if context is None
-                else ".".join([context, field_name]),
-                unwind=True,
-            )
+            if context is not None:
+                _path = context + "." + field_name
+            else:
+                _path = field_name
 
+            field_type = _get_field_type(sample_collection, _path, unwind=True)
             if isinstance(field_type, fof.EmbeddedDocumentField):
                 doc_type = field_type
 
@@ -2452,14 +2460,14 @@ def _parse_field_and_expr(
         root = True
         field_type = None
     else:
-        full_field_name = (
-            ".".join([context, field_name])
-            if context is not None
-            else field_name
-        )
-        root = "." not in full_field_name
+        if context is not None:
+            _field_name = context + "." + field_name
+        else:
+            _field_name = field_name
+
+        root = "." not in _field_name
         field_type = _get_field_type(
-            sample_collection, full_field_name, unwind=auto_unwind
+            sample_collection, _field_name, unwind=auto_unwind
         )
 
     found_expr = expr is not None

@@ -8118,7 +8118,6 @@ class SampleCollection(object):
         # Parse batch results
         if batch_aggs:
             result = list(_results[0])
-
             for idx, aggregation in batch_aggs.items():
                 results[idx] = self._parse_big_result(aggregation, result)
 
@@ -8137,7 +8136,6 @@ class SampleCollection(object):
             ):
                 for idx, d in data.items():
                     results[idx] = d
-
             else:
                 results[idx] = data
 
@@ -8186,7 +8184,6 @@ class SampleCollection(object):
                 ):
                     for idx, d in data.items():
                         results[idx] = d
-
                 else:
                     results[idx] = data
 
