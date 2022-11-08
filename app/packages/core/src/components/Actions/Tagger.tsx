@@ -40,6 +40,7 @@ import {
   groupId,
   groupStatistics,
   Lookers,
+  refresher,
 } from "@fiftyone/state";
 
 const IconDiv = styled.div`
@@ -63,7 +64,7 @@ const Loading = React.memo(({ loading }: { loading: boolean }) => {
       {loading && (
         <CircularProgress
           style={{
-            color: theme.text.primary,
+            color: theme.text.secondary,
             height: 16,
             width: 16,
             marginTop: "0.25rem",
@@ -388,6 +389,7 @@ const useTagCallback = (
           current_frame: lookerRef?.current?.frameNumber,
           changes,
         });
+        set(refresher, (i) => i + 1);
 
         if (samples) {
           set(fos.refreshGroupQuery, (cur) => cur + 1);
@@ -466,6 +468,21 @@ const usePlaceHolder = (
   };
 };
 
+const SuspenseLoading = () => {
+  return (
+    <TaggingContainerInput>
+      <TaggingInput
+        placeholder={"Loading..."}
+        title={"Loading..."}
+        focused={false}
+        disabled={true}
+        type={"text"}
+      />
+      <Loading loading={true} />
+    </TaggingContainerInput>
+  );
+};
+
 type TaggerProps = {
   modal: boolean;
   bounds: any;
@@ -512,7 +529,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
         </SwitchDiv>
       </SwitcherDiv>
       {labels && (
-        <Suspense fallback={null} key={"labels"}>
+        <Suspense fallback={<SuspenseLoading />} key={"labels"}>
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}
@@ -524,7 +541,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
         </Suspense>
       )}
       {!labels && (
-        <Suspense fallback={null} key={elementNames.plural}>
+        <Suspense fallback={<SuspenseLoading />} key={elementNames.plural}>
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}

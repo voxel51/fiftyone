@@ -4,7 +4,7 @@ import relay from "vite-plugin-relay";
 import { defineConfig } from "vite";
 import { viteExternalsPlugin } from "vite-plugin-externals";
 
-export default defineConfig(({ mode, command }) => {
+export default defineConfig(({ command }) => {
   const serve = command === "serve";
   const testApp = serve;
   const embed = !serve;

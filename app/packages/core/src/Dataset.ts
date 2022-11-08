@@ -24,6 +24,11 @@ const DatasetQuery = graphql`
         gridMediaField
         mediaFields
         plugins
+        sidebarGroups {
+          expanded
+          paths
+          name
+        }
       }
       sampleFields {
         ftype
@@ -96,6 +101,7 @@ const DatasetQuery = graphql`
           name
           paths
         }
+        sidebarMode
       }
       info
     }

@@ -25,6 +25,8 @@ import {
   similarityParameters,
   extendedSelection,
   selectedMediaField,
+  sidebarMode,
+  groupStatistics,
   theme,
 } from "../recoil";
 import { useColorScheme } from "@mui/material";
@@ -99,8 +101,8 @@ const useStateUpdate = () => {
         dataset.sampleFields = collapseFields(dataset.sampleFields);
         dataset.frameFields = collapseFields(dataset.frameFields);
 
-        const groups = resolveGroups(dataset);
         const currentSidebar = get(sidebarGroupsDefinition(false));
+        const groups = resolveGroups(dataset, currentSidebar);
 
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
@@ -113,6 +115,9 @@ const useStateUpdate = () => {
           previousDataset.id !== dataset.id ||
           dataset.groupSlice !== previousDataset.groupSlice
         ) {
+          if (dataset?.name !== previousDataset?.name) {
+            reset(sidebarMode(false));
+          }
           reset(_activeFields({ modal: false }));
           let slice = dataset.groupSlice;
 
@@ -121,6 +126,7 @@ const useStateUpdate = () => {
           }
 
           set(groupSlice(false), slice);
+          reset(groupStatistics(false));
 
           reset(similarityParameters);
           set(

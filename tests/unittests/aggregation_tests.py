@@ -1007,12 +1007,17 @@ class DatasetTests(unittest.TestCase):
             fo.Count("predictions.detections"),
             fo.CountValues("predictions.detections.label"),
             fo.Distinct("predictions.detections.label"),
+            fo.FacetAggregations(
+                "predictions.detections",
+                [fo.CountValues("label"), fo.Bounds("confidence")],
+            ),
             fo.HistogramValues(
                 "predictions.detections.confidence",
                 bins=50,
                 range=[0, 1],
             ),
             fo.Mean("predictions.detections[]", expr=bbox_area),
+            fo.Schema("predictions.detections"),
             fo.Std("predictions.detections[]", expr=bbox_area),
             fo.Sum("predictions.detections", expr=F().length()),
             fo.Values("id"),

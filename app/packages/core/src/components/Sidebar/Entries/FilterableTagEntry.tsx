@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Checkbox } from "@mui/material";
 import { LocalOffer, Visibility } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
@@ -107,6 +107,7 @@ const FilterableTagEntry = ({
   const [matched, setMatched] = useRecoilState(
     tagIsMatched({ key: tagKey, modal, tag })
   );
+
   const color = useRecoilValue(
     fos.pathColor({ path: tag, modal, tag: tagKey })
   );
@@ -119,7 +120,6 @@ const FilterableTagEntry = ({
   return (
     <RegularEntry
       backgroundColor={backgroundColor}
-      clickable
       color={color}
       heading={
         <>
@@ -130,6 +130,7 @@ const FilterableTagEntry = ({
               disableRipple={true}
               title={`Show ${elementsName} with the "${tag}" tag`}
               checked={active}
+              onClick={() => setActive(!active)}
               style={{
                 color: active ? color : theme.text.secondary,
                 padding: 0,
@@ -153,7 +154,6 @@ const FilterableTagEntry = ({
           </NameAndCountContainer>
         </>
       }
-      onHeaderClick={() => setActive(!active)}
       title={tag}
     />
   );

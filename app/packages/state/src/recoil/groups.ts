@@ -43,6 +43,15 @@ export const groupSlice = atomFamily<string, boolean>({
   default: null,
 });
 
+export const resolvedGroupSlice = selectorFamily<string, boolean>({
+  key: "resolvedGroupSlice",
+  get:
+    (modal) =>
+    ({ get }) => {
+      return get(groupSlice(modal)) || get(defaultGroupSlice);
+    },
+});
+
 export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
   key: "groupMediaTypes",
   get: ({ get }) => get(dataset).groupMediaTypes,

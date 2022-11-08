@@ -1,4 +1,5 @@
 import { InfoIcon, useTheme } from "@fiftyone/components";
+import { useEventHandler } from "@fiftyone/state";
 import React, {
   MutableRefObject,
   useEffect,
@@ -252,6 +253,8 @@ function FieldInfoExpanded({
       onMouseLeave={() => close()}
       ref={expandedRef}
       style={{ visibility: "hidden" }}
+      onMouseUp={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
@@ -285,7 +288,7 @@ function FieldInfoExpanded({
   );
 }
 
-function ExpFieldInfoDesc({ collapsed, description, onViewMore }) {
+function ExpFieldInfoDesc({ collapsed, description }) {
   return (
     <FieldInfoDesc
       collapsed={collapsed}

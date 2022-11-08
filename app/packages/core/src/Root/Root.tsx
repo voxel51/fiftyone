@@ -158,7 +158,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   const context = useContext(RouterContext);
   const dataset = getDatasetName(context);
   const { mode, setMode } = useColorScheme();
-  const [theme, setTheme] = useRecoilState(fos.theme);
+  const [_, setTheme] = useRecoilState(fos.theme);
 
   return (
     <>
@@ -240,6 +240,7 @@ const Root: Route<RootQuery> = ({ children, prepared }) => {
           showLabel
           showSkeletons
           showTooltip
+          sidebarMode
           theme
           timezone
           useFrameNumber

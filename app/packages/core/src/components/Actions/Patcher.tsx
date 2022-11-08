@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { selector, Snapshot, useRecoilCallback, useRecoilValue } from "recoil";
 import { useSpring } from "@react-spring/web";
 
@@ -11,7 +11,11 @@ import {
   toSnakeCase,
 } from "@fiftyone/utilities";
 
-import { useUnprocessedStateUpdate } from "@fiftyone/state";
+import {
+  RouterContext,
+  useSetView,
+  useUnprocessedStateUpdate,
+} from "@fiftyone/state";
 import {
   OBJECT_PATCHES,
   EVALUATION_PATCHES,
@@ -23,6 +27,7 @@ import { ActionOption } from "./Common";
 import { SwitcherDiv, SwitchDiv } from "./utils";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { State } from "@fiftyone/state";
 
 export const patchesFields = selector<string[]>({
   key: "patchesFields",
@@ -68,74 +73,91 @@ const evaluationKeys = selector<string[]>({
   },
 });
 
-export const sendPatch = async (
-  snapshot: Snapshot,
-  updateState: (resolve: fos.StateResolver) => void,
-  addStage?: object
-) => {
-  const subscription = await snapshot.getPromise(fos.stateSubscription);
-
-  return getFetchFunction()("POST", "/pin", {
-    filters: await snapshot.getPromise(fos.filters),
-    view: await snapshot.getPromise(fos.view),
-    dataset: await snapshot.getPromise(fos.datasetName),
-    sample_ids: await snapshot.getPromise(fos.selectedSamples),
-    labels: toSnakeCase(await snapshot.getPromise(fos.selectedLabels)),
-    add_stages: addStage ? [addStage] : null,
-    extended: await snapshot.getPromise(fos.extendedStages),
-    subscription,
-  }).then((data) => updateState(data));
-};
-
 const useToPatches = () => {
-  const updateState = useUnprocessedStateUpdate();
+  const onComplete = useRecoilCallback(
+    ({ set }) =>
+      () => {
+        set(fos.patching, false);
+      },
+    []
+  );
+  const setView = useSetView(true, true, onComplete);
   return useRecoilCallback(
-    ({ set, snapshot }) =>
+    ({ set }) =>
       async (field) => {
         set(fos.patching, true);
-        sendPatch(snapshot, updateState, {
-          _cls: "fiftyone.core.stages.ToPatches",
-          kwargs: [
-            ["field", field],
-            ["_state", null],
-          ],
-        }).then(() => set(fos.patching, false));
+        setView(
+          (v) => v,
+          [
+            {
+              _cls: "fiftyone.core.stages.ToPatches",
+              kwargs: [
+                ["field", field],
+                ["_state", null],
+              ],
+            },
+          ]
+        );
       },
     []
   );
 };
 
 const useToClips = () => {
-  const updateState = useUnprocessedStateUpdate();
+  const onComplete = useRecoilCallback(
+    ({ set }) =>
+      () => {
+        set(fos.patching, false);
+      },
+    []
+  );
+  const setView = useSetView(true, true, onComplete);
   return useRecoilCallback(
-    ({ set, snapshot }) =>
+    ({ set }) =>
       async (field) => {
         set(fos.patching, true);
-        sendPatch(snapshot, updateState, {
-          _cls: "fiftyone.core.stages.ToClips",
-          kwargs: [
-            ["field_or_expr", field],
-            ["_state", null],
-          ],
-        }).then(() => set(fos.patching, false));
+        setView(
+          (v) => v,
+          [
+            {
+              _cls: "fiftyone.core.stages.ToClips",
+              kwargs: [
+                ["field_or_expr", field],
+                ["_state", null],
+              ],
+            },
+          ]
+        );
       },
     []
   );
 };
 
 const useToEvaluationPatches = () => {
-  const updateState = useUnprocessedStateUpdate();
+  const onComplete = useRecoilCallback(
+    ({ set }) =>
+      () => {
+        set(fos.patching, false);
+      },
+    []
+  );
+  const setView = useSetView(true, true, onComplete);
   return useRecoilCallback(
-    ({ set, snapshot }) =>
-      async (evaluation: string) => {
+    ({ set }) =>
+      async (evaluation) => {
         set(fos.patching, true);
-        sendPatch(snapshot, updateState, {
-          _cls: "fiftyone.core.stages.ToEvaluationPatches",
-          kwargs: [
-            ["eval_key", evaluation],
-            ["_state", null],
-          ],
-        }).then(() => set(fos.patching, false));
+        setView(
+          (v) => v,
+          [
+            {
+              _cls: "fiftyone.core.stages.ToEvaluationPatches",
+              kwargs: [
+                ["eval_key", evaluation],
+                ["_state", null],
+              ],
+            },
+          ]
+        );
       },
     []
   );

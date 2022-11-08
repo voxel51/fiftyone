@@ -20,6 +20,7 @@ from .core.aggregations import (
     Count,
     CountValues,
     Distinct,
+    FacetAggregations,
     HistogramValues,
     Mean,
     Quantiles,

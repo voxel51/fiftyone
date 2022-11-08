@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5089c0d3f4431db72a359dc138237c4c>>
+ * @generated SignedSource<<ce1f87846d4218ba8bf61237d892b373>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,6 +10,7 @@
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
 export type ColorBy = "field" | "instance" | "label" | "%future added value";
+export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 export type Theme = "browser" | "dark" | "light" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type RootConfig_query$data = {
@@ -27,6 +28,7 @@ export type RootConfig_query$data = {
     readonly showLabel: boolean;
     readonly showSkeletons: boolean;
     readonly showTooltip: boolean;
+    readonly sidebarMode: SidebarMode;
     readonly theme: Theme;
     readonly timezone: string | null;
     readonly useFrameNumber: boolean;
@@ -142,6 +144,13 @@ return {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
+          "name": "sidebarMode",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
           "name": "theme",
           "storageKey": null
         },
@@ -169,6 +178,6 @@ return {
 };
 })();
 
-(node as any).hash = "56d74eee88eef2b223ccb488bdfae184";
+(node as any).hash = "10db4ba66fc31c702bc1aa415887af2f";
 
 export default node;
