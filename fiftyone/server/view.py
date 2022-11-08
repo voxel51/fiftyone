@@ -22,6 +22,7 @@ _LABEL_TAGS = "_label_tags"
 
 def get_view(
     dataset_name,
+    view_name=None,
     stages=None,
     filters=None,
     count_label_tags=False,
@@ -34,6 +35,7 @@ def get_view(
 
     Args:
         dataset_names: the dataset name
+        view_name (None): the name of the saved view
         stages (None): an optional list of serialized
             :class:`fiftyone.core.stages.ViewStage` instances
         filters (None): an optional ``dict`` of App defined filters
@@ -49,7 +51,11 @@ def get_view(
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
-    view = fod.load_dataset(dataset_name).view()
+    view = None
+    if view_name:
+        view = fod.load_dataset(dataset_name).load_view(view_name)
+    else:
+        view = fod.load_dataset(dataset_name).view()
     view.reload()
 
     if stages:
