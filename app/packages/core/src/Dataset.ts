@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { toCamelCase } from "@fiftyone/utilities";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { graphql, usePreloadedQuery, useQueryLoader } from "react-relay";
 
 import {
@@ -115,7 +115,7 @@ export function usePrepareDataset(
 ) {
   const update = fos.useStateUpdate();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (dataset) {
       update(() => {
         return {
