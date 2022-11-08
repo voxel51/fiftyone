@@ -175,5 +175,53 @@ const DatasetLoader: React.FC<
 
   if (!ready) return null;
 
-  return <>{children}</>;
-};
+  return children;
+}
+
+function useEventSource(datasetName, subscription, setState) {
+  const clearModal = fos.useClearModal();
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getEventSource(
+      "/events",
+      {
+        onopen: async () => {},
+        onmessage: (msg) => {
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          switch (msg.event) {
+            case Events.STATE_UPDATE: {
+              const { colorscale, config, ...data } = JSON.parse(
+                msg.data
+              ).state;
+
+              const state = {
+                ...toCamelCase(data),
+                view: data.view,
+                viewName: data.viewName,
+              } as State.Description;
+
+              setState((s) => ({ colorscale, config, state }));
+
+              break;
+            }
+          }
+        },
+        onclose: () => {
+          clearModal();
+        },
+      },
+      controller.signal,
+      {
+        initializer: datasetName,
+        subscription,
+        events: [Events.STATE_UPDATE],
+      }
+    );
+
+    return () => controller.abort();
+  }, []);
+}

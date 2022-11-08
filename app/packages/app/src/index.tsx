@@ -91,6 +91,7 @@ const App: React.FC = ({}) => {
                 ...toCamelCase(data),
                 view: data.view,
               } as State.Description;
+
               let dataset = getDatasetName(contextRef.current);
               if (readyStateRef.current !== AppReadyState.OPEN) {
                 if (dataset !== state.dataset) {

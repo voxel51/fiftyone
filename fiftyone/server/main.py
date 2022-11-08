@@ -24,7 +24,7 @@ from fiftyone.server.app import app
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=fo.config.default_app_port)
+    parser.add_argument("--port", type=str, default=fo.config.default_app_port)
     parser.add_argument(
         "--address", type=str, default=fo.config.default_app_address
     )
