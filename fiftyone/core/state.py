@@ -154,32 +154,42 @@ def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
 
     if schema:
         for path, field in schema.items():
-            doc_type = None
             if isinstance(field, fo.EmbeddedDocumentField):
-                doc_type = etau.get_class_name(field.document_type)
+                embedded_doc_type = etau.get_class_name(field.document_type)
             elif (
                 isinstance(field, fo.ListField)
                 and field.field
                 and isinstance(field.field, fo.EmbeddedDocumentField)
             ):
-                doc_type = etau.get_class_name(field.field.document_type)
+                embedded_doc_type = etau.get_class_name(
+                    field.field.document_type
+                )
+            else:
+                embedded_doc_type = None
+
+            if (
+                isinstance(field, (fo.DictField, fo.ListField))
+                and field.field is not None
+            ):
+                subfield = etau.get_class_name(field.field)
+            else:
+                subfield = None
+
+            if field.info is not None:
+                # Converts mongoengine types to primitives
+                info = json.loads(json.dumps(field.info))
+            else:
+                info = None
 
             data.append(
                 SampleField(
                     path=path,
                     db_field=field.db_field,
                     ftype=etau.get_class_name(field),
-                    embedded_doc_type=doc_type,
-                    subfield=etau.get_class_name(field.field)
-                    if (
-                        isinstance(field, (fo.DictField, fo.ListField))
-                        and field.field is not None
-                    )
-                    else None,
+                    embedded_doc_type=embedded_doc_type,
+                    subfield=subfield,
                     description=field.description,
-                    info=json.loads(
-                        json.dumps(field.info)
-                    ),  # mongoengine types
+                    info=info,
                 )
             )
 
