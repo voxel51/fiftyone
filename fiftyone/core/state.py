@@ -61,17 +61,21 @@ class StateDescription(etas.Serializable):
                 d["dataset"] = self.dataset.name
                 collection = self.dataset
                 if self.view is not None:
+                    # HEAD?
                     collection = self.view
                     d["view"] = json.loads(
-                        json_util.dumps(self.view._serialize())
+                            json_util.dumps(self.view._serialize())
                     )
                     d["view_cls"] = etau.get_class_name(self.view)
+                    d["view_name"] = self.view.name
+                d["saved_views"] = self.dataset.saved_views
 
                 d["sample_fields"] = serialize_fields(
-                    collection.get_field_schema(flat=True), dicts=True
+                        collection.get_field_schema(flat=True), dicts=True
                 )
                 d["frame_fields"] = serialize_fields(
-                    collection.get_frame_field_schema(flat=True), dicts=True
+                        collection.get_frame_field_schema(flat=True),
+                        dicts=True
                 )
 
                 view = self.view if self.view is not None else self.dataset

@@ -3040,7 +3040,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of saved view names
         """
-        return [view_doc.name for view_doc in self._doc.views]
+        return [view_doc.name for view_doc in self._doc.saved_views]
 
     def save_view(
         self,
@@ -3094,7 +3094,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             last_modified_at=now,
         )
 
-        self._doc.views.append(view_doc)
+        self._doc.saved_views.append(view_doc)
         self._doc.save()
 
         view._set_name(name)
@@ -3201,12 +3201,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def delete_views(self):
         """Deletes all saved views from this dataset."""
-        self._doc.views = []
+        self._doc.saved_views = []
         self._doc.save()
 
     def _get_view_doc(self, name, pop=False):
         idx = None
-        for i, view_doc in enumerate(self._doc.views):
+        for i, view_doc in enumerate(self._doc.saved_views):
             if name == view_doc.name:
                 idx = i
                 break
@@ -3215,24 +3215,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError("Dataset has no saved view '%s'" % name)
 
         if pop:
-            return self._doc.views.pop(idx)
+            return self._doc.saved_views.pop(idx)
 
-        return self._doc.views[idx]
+        return self._doc.saved_views[idx]
 
     def _views(self):
-        return self._doc.views
+        return self._doc.saved_views
 
     def _reorder_views(self, new_order):
-        if sorted(new_order) != list(range(len(self._doc.views))):
+        if sorted(new_order) != list(range(len(self._doc.saved_views))):
             raise ValueError("Invalid ordering %s" % list(new_order))
 
-        self._doc.views = [self._doc.views[i] for i in new_order]
+        self._doc.saved_views = [self._doc.saved_views[i] for i in new_order]
         self._doc.save()
 
     def _validate_view_name(self, name, skip=None, overwrite=False):
         url_name = fou.to_url_name(name)
 
-        for view_doc in self._doc.views:
+        for view_doc in self._doc.saved_views:
             if view_doc is skip:
                 continue
 
@@ -6361,7 +6361,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
         dataset_doc.default_group_slice = None
 
     # Runs/views get special treatment at the end
-    dataset_doc.views.clear()
+    dataset_doc.saved_views.clear()
     dataset_doc.annotation_runs.clear()
     dataset_doc.brain_methods.clear()
     dataset_doc.evaluations.clear()
@@ -6739,9 +6739,9 @@ def _clone_extras(dst_dataset, src_doc):
     dst_doc = dst_dataset._doc
 
     # Clone saved views
-    for _view_doc in src_doc.views:
+    for _view_doc in src_doc.saved_views:
         view_doc = _clone_view_doc(_view_doc)
-        dst_doc.views.append(view_doc)
+        dst_doc.saved_views.append(view_doc)
 
     # Clone annotation runs
     for anno_key, _run_doc in src_doc.annotation_runs.items():

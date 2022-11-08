@@ -559,4 +559,4 @@ class DatasetDocument(Document):
     annotation_runs = DictField(EmbeddedDocumentField(RunDocument))
     brain_methods = DictField(EmbeddedDocumentField(RunDocument))
     evaluations = DictField(EmbeddedDocumentField(RunDocument))
-    views = ListField(EmbeddedDocumentField(ViewDocument))
+    saved_views = ListField(EmbeddedDocumentField(ViewDocument))

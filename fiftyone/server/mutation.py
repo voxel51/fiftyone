@@ -38,6 +38,7 @@ class SelectedLabel:
 class ViewResponse:
     view: BSONArray
     dataset: Dataset
+    view_name: t.Optional[str] = None
 
 
 @gql.input
@@ -133,15 +134,18 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
-        view: BSONArray,
-        dataset: str,
+        view_stages: BSONArray,
+        view_name: t.Optional[str],
+        dataset_name: str,
         form: t.Optional[StateForm],
         info: Info,
     ) -> ViewResponse:
         state = get_state()
         state.selected = []
         state.selected_labels = []
-        if form:
+        if view_name and state.dataset.has_view(view_name):
+            state.view = state.dataset.load_view(view_name)
+        elif form:
             view = get_view(
                 dataset,
                 view,
@@ -162,14 +166,24 @@ class Mutation:
                 view = extend_view(view, form.extended, True)
 
             state.view = view
-            view = view._serialize()
+            view_stages = view._serialize()
 
         else:
-            state.view = fov.DatasetView._build(state.dataset, view)
+            state.view = fov.DatasetView._build(state.dataset, view_stages)
 
         await dispatch_event(subscription, StateUpdate(state=state))
-        dataset = await Dataset.resolver(state.dataset.name, view, info)
-        return ViewResponse(view=state.view._serialize(), dataset=dataset)
+        dataset = await Dataset.resolver(
+            name=state.dataset.name,
+            view_stages=view_stages,
+            view_name=view_name if view_name else state.view.name,
+            info=info,
+        )
+        return ViewResponse(
+            # TODO: should this be view_stages?
+            view_stages=state.view._serialize(),
+            dataset=dataset,
+            view_name=view_name if view_name else state.view.name,
+        )
 
     @gql.mutation
     async def store_teams_submission(self) -> bool:
@@ -181,11 +195,17 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
-        view: BSONArray,
+        view_stages: BSONArray,
+        view_name: t.Optional[str],
         slice: str,
         info: Info,
     ) -> Dataset:
         state = get_state()
         state.dataset.group_slice = slice
         await dispatch_event(subscription, StateUpdate(state=state))
-        return await Dataset.resolver(state.dataset.name, view, info)
+        return await Dataset.resolver(
+            name=state.dataset.name,
+            view_stages=view_stages,
+            view_name=view_name if view_name else state.view.name,
+            info=info,
+        )
