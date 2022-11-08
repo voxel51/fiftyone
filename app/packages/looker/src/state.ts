@@ -128,7 +128,7 @@ interface BaseConfig {
   fieldSchema: Schema;
   view: Stage[];
   dataset: string;
-  viewName: string;
+  // viewName: string;
 }
 
 export interface FrameConfig extends BaseConfig {

@@ -7,7 +7,6 @@ import {
   DatasetQuery,
   DatasetQuery$data,
 } from "./__generated__/DatasetQuery.graphql";
-import {graphql} from "relay-runtime";
 
 const DatasetQuery = graphql`
   query DatasetQuery(
