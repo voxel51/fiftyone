@@ -74,8 +74,8 @@ const RegularEntry = React.forwardRef(
             }}
             onMouseUp={(event: MouseEvent) => {
               if (!onHeaderClick) return;
-              const startX = headerClickStart.current.pageX;
-              const startY = headerClickStart.current.pageY;
+              const startX = headerClickStart?.current?.pageX;
+              const startY = headerClickStart?.current?.pageY;
               const endX = event.pageX;
               const endY = event.pageY;
               const deltaX = Math.abs(endX - startX);
