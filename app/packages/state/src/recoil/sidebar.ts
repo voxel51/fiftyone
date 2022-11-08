@@ -76,7 +76,7 @@ export const readableTags = selectorFamily<
   get:
     ({ modal, group }) =>
     ({ get }) => {
-      if (!modal && !get(groupShown({ group, modal }))) {
+      if (!modal && !get(groupShown({ group, modal, loading: true }))) {
         return [];
       }
 
@@ -309,11 +309,11 @@ export const sidebarGroupsDefinition = atomFamily<
 
 export const sidebarGroups = selectorFamily<
   State.SidebarGroup[],
-  { modal: boolean; loading: boolean; filtered?: boolean }
+  { modal: boolean; loading: boolean; filtered?: boolean; persist?: boolean }
 >({
   key: "sidebarGroups",
   get:
-    ({ modal, loading, filtered = true }) =>
+    ({ modal, loading, filtered = true, persist = true }) =>
     ({ get }) => {
       const f = get(textFilter(modal));
       let groups = get(sidebarGroupsDefinition(modal))
@@ -392,13 +392,10 @@ export const sidebarGroups = selectorFamily<
         }
       }
 
-      return groups.map((data) => ({
-        ...data,
-        expanded: data.expanded === undefined ? true : data.expanded,
-      }));
+      return groups;
     },
   set:
-    ({ modal }) =>
+    ({ modal, persist }) =>
     ({ set, get }, groups) => {
       if (groups instanceof DefaultValue) return;
 
@@ -456,6 +453,7 @@ export const sidebarGroups = selectorFamily<
       }
 
       !modal &&
+        persist &&
         persistSidebarGroups({
           dataset: get(datasetName),
           stages: get(viewAtoms.view),
@@ -676,17 +674,27 @@ export const groupShown = selectorFamily<
   get:
     ({ group, modal, loading }) =>
     ({ get }) => {
-      return get(sidebarGroupMapping({ modal, loading }))[group].expanded;
+      const expanded = get(sidebarGroupMapping({ modal, loading }))[group]
+        .expanded;
+      return expanded === undefined ? true : expanded;
     },
   set:
     ({ modal, group }) =>
     ({ get, set }, expanded) => {
       const current = get(sidebarGroups({ modal, loading: true }));
+
+      const def = get(sidebarGroupsDefinition(modal));
+      const tags = def.filter((e) => e.name === "tags")[0];
+      const labelTags = def.filter((e) => e.name === "label tags")[0];
       set(
-        sidebarGroups({ modal, loading: true }),
+        sidebarGroups({ modal, loading: true, persist: false }),
         current.map(({ name, ...data }) =>
           name === group
             ? { name, ...data, expanded: Boolean(expanded) }
+            : name === "tags"
+            ? { name, ...data, expanded: tags.expanded }
+            : name === "label tags"
+            ? { name, ...data, expanded: labelTags.expanded }
             : { name, ...data }
         )
       );

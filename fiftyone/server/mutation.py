@@ -70,15 +70,19 @@ class Mutation:
     ) -> bool:
         view = get_view(dataset, stages)
 
-        current = {
-            group.name: group.expanded
-            for group in view._dataset.app_config.sidebar_groups
-        }
+        current = (
+            {
+                group.name: group.expanded
+                for group in view._dataset.app_config.sidebar_groups
+            }
+            if view._dataset.app_config.sidebar_groups is not None
+            else {}
+        )
 
         view._dataset.app_config.sidebar_groups = [
             foo.SidebarGroupDocument(
                 name=group.name,
-                expanded=current[group.name],
+                expanded=current.get(group.name, None),
                 paths=group.paths,
             )
             for group in sidebar_groups

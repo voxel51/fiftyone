@@ -549,7 +549,7 @@ export const filterFields = selectorFamily<string[], string>({
 
       const topParent = get(field(topParentPath));
 
-      const label = LABELS.includes(topParent.embeddedDocType);
+      const label = LABELS.includes(topParent?.embeddedDocType);
       const excluded = EXCLUDED[topParent?.embeddedDocType] || [];
 
       if (label && path.endsWith(".tags")) {

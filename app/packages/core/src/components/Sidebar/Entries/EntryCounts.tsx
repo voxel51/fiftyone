@@ -9,7 +9,7 @@ import { pathIsExpanded } from "./utils";
 
 const showEntryCounts = selectorFamily<
   boolean,
-  { path: string; modal: boolean }
+  { always?: boolean; path: string; modal: boolean }
 >({
   key: "showEntryCounts",
   get:
@@ -20,6 +20,7 @@ const showEntryCounts = selectorFamily<
       if (
         params.modal ||
         params.path === "" ||
+        params.path === "tags" ||
         mode === "all" ||
         get(pathIsExpanded(params))
       ) {
