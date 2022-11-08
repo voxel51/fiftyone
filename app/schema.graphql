@@ -409,7 +409,7 @@ input SelectedLabel {
   labelId: ID!
   field: String!
   sampleId: ID!
-  frameNumber: Int
+  frameNumber: Int = null
 }
 
 type SidebarGroup {
@@ -436,6 +436,7 @@ input StateForm {
   sampleIds: [String!] = null
   labels: [SelectedLabel!] = null
   extended: BSON = null
+  slice: String = null
 }
 
 type StrCountValuesResponse {

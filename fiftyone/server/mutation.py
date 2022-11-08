@@ -20,6 +20,7 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.query import Dataset, SidebarGroup
 from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view, extend_view
@@ -51,6 +52,7 @@ class StateForm:
     sample_ids: t.Optional[t.List[str]] = None
     labels: t.Optional[t.List[SelectedLabel]] = None
     extended: t.Optional[BSON] = None
+    slice: t.Optional[str] = None
 
 
 @gql.type
@@ -140,7 +142,14 @@ class Mutation:
         state.selected = []
         state.selected_labels = []
         if form:
-            view = get_view(dataset, view, form.filters)
+            view = get_view(
+                dataset,
+                view,
+                form.filters,
+            )
+            if form.slice:
+                view = view.select_group_slices([form.slice])
+
             if form.sample_ids:
                 view = fov.make_optimized_select_view(view, form.sample_ids)
 

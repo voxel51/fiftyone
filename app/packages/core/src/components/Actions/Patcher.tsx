@@ -81,7 +81,7 @@ const useToPatches = () => {
       },
     []
   );
-  const setView = useSetView(true, onComplete);
+  const setView = useSetView(true, true, onComplete);
   return useRecoilCallback(
     ({ set }) =>
       async (field) => {
@@ -111,7 +111,7 @@ const useToClips = () => {
       },
     []
   );
-  const setView = useSetView(true, onComplete);
+  const setView = useSetView(true, true, onComplete);
   return useRecoilCallback(
     ({ set }) =>
       async (field) => {
@@ -141,7 +141,7 @@ const useToEvaluationPatches = () => {
       },
     []
   );
-  const setView = useSetView(true, onComplete);
+  const setView = useSetView(true, true, onComplete);
   return useRecoilCallback(
     ({ set }) =>
       async (evaluation) => {

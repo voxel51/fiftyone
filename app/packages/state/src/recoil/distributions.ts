@@ -20,10 +20,12 @@ import {
   DATE_TIME_FIELD,
   DETECTION,
   DETECTIONS,
+  EMBEDDED_DOCUMENT_FIELD,
   FLOAT_FIELD,
   INT_FIELD,
   KEYPOINT,
   KEYPOINTS,
+  LABELS,
   LABELS_PATH,
   LIST_FIELD,
   POLYLINE,
@@ -211,12 +213,32 @@ export const distributionPaths = selectorFamily<string[], string>({
         case "sample tags":
           return ["tags"];
         case "other fields":
-          return get(
+          const top = get(
             fieldPaths({
               space: State.SPACE.SAMPLE,
               ftype: VALID_DISTRIBUTION_TYPES,
             })
           ).filter((path) => !["filepath", "tags"].includes(path));
+
+          const embedded = get(
+            fieldPaths({
+              space: State.SPACE.SAMPLE,
+              ftype: EMBEDDED_DOCUMENT_FIELD,
+            })
+          );
+
+          return [
+            ...top,
+            ...embedded
+              .filter(
+                (path) => !LABELS.includes(get(field(path)).embeddedDocType)
+              )
+              .flatMap((path) =>
+                get(fieldPaths({ path, ftype: VALID_DISTRIBUTION_TYPES })).map(
+                  (name) => [path, name].join(".")
+                )
+              ),
+          ];
         default:
           throw new Error("unknown group");
       }

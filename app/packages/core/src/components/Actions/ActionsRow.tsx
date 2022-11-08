@@ -287,7 +287,7 @@ const SaveFilters = () => {
     reset(fos.similarityParameters);
     reset(fos.extendedSelection);
   });
-  const setView = useSetView(true, onComplete);
+  const setView = useSetView(true, false, onComplete);
 
   const saveFilters = useRecoilCallback(
     ({ snapshot, set }) =>

@@ -9,6 +9,8 @@ import {
 } from "recoil";
 import {
   filters,
+  groupSlice,
+  resolvedGroupSlice,
   selectedLabelList,
   selectedSamples,
   State,
@@ -21,7 +23,11 @@ import useSendEvent from "./useSendEvent";
 import useStateUpdate from "./useStateUpdate";
 import * as fos from "../";
 
-const useSetView = (patch: boolean = false, onComplete?: () => void) => {
+const useSetView = (
+  patch: boolean = false,
+  selectSlice: boolean = false,
+  onComplete?: () => void
+) => {
   const send = useSendEvent(true);
   const updateState = useStateUpdate();
   const subscription = useRecoilValue(stateSubscription);
@@ -59,6 +65,9 @@ const useSetView = (patch: boolean = false, onComplete?: () => void) => {
                     labels: snapshot.getLoadable(selectedLabelList).contents,
                     extended: snapshot.getLoadable(fos.extendedStages).contents,
                     addStages,
+                    slice: selectSlice
+                      ? snapshot.getLoadable(resolvedGroupSlice(false)).contents
+                      : null,
                   }
                 : {},
             },
