@@ -313,8 +313,8 @@ When the sidebar mode is `best`, the App will choose `fast` mode if any of the
 following conditions are met:
 
 -   Any dataset with 10,000+ samples
--   Any dataset with 1,000+ samples and 10+ fields
--   Any video dataset with 1+ frame label fields
+-   Any dataset with 1,000+ samples and 15+ top-level fields in the sidebar
+-   Any video dataset with frame-level label fields
 
 You can toggle the sidebar mode dynamically for your current session via the
 App's settings menu:
