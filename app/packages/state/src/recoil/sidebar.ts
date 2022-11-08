@@ -361,6 +361,7 @@ export const sidebarGroups = selectorFamily<
           )
             .filter((tag) => !filtered || tag.includes(f))
             .map((tag) => `tags.${tag}`));
+
         groups[labelTagsIndex].expanded &&
           (groups[labelTagsIndex].paths = get(
             aggregationAtoms.cumulativeValues({

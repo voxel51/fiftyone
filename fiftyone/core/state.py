@@ -150,29 +150,38 @@ class SampleField:
 
 
 def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
-    data = (
-        [
-            SampleField(
-                path=path,
-                db_field=field.db_field,
-                ftype=etau.get_class_name(field),
-                embedded_doc_type=etau.get_class_name(field.document_type)
-                if isinstance(field, fo.EmbeddedDocumentField)
-                else None,
-                subfield=etau.get_class_name(field.field)
-                if (
-                    isinstance(field, (fo.DictField, fo.ListField))
-                    and field.field is not None
+    data = []
+
+    if schema:
+        for path, field in schema.items():
+            doc_type = None
+            if isinstance(field, fo.EmbeddedDocumentField):
+                doc_type = etau.get_class_name(field.document_type)
+            elif (
+                isinstance(field, fo.ListField)
+                and field.field
+                and isinstance(field.field, fo.EmbeddedDocumentField)
+            ):
+                doc_type = etau.get_class_name(field.field.document_type)
+
+            data.append(
+                SampleField(
+                    path=path,
+                    db_field=field.db_field,
+                    ftype=etau.get_class_name(field),
+                    embedded_doc_type=doc_type,
+                    subfield=etau.get_class_name(field.field)
+                    if (
+                        isinstance(field, (fo.DictField, fo.ListField))
+                        and field.field is not None
+                    )
+                    else None,
+                    description=field.description,
+                    info=json.loads(
+                        json.dumps(field.info)
+                    ),  # mongoengine types
                 )
-                else None,
-                description=field.description,
-                info=json.loads(json.dumps(field.info)),  # mongoengine types
             )
-            for path, field in schema.items()
-        ]
-        if schema
-        else []
-    )
 
     if dicts:
         return [asdict(f) for f in data]
