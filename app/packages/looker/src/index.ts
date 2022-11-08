@@ -251,7 +251,6 @@ export abstract class Looker<
           stateOrUpdater instanceof Function
             ? stateOrUpdater(this.state)
             : stateOrUpdater;
-
         if (
           !this.lookerElement ||
           (Object.keys(updates).length === 0 && !postUpdate)

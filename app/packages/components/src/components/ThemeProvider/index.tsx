@@ -17,7 +17,6 @@ let theme = extendJoyTheme({
           button: "hsl(200, 0%, 90%)",
           header: "hsl(200, 0%, 100%)",
           input: "hsl(200, 0%, 98%)",
-          itemBackground: "hsl(200,0%,90%)",
           level1: "hsl(200, 0%, 95%)",
           level2: "hsl(200, 0%, 98%)",
           level3: "hsl(200, 0%, 95%)",
@@ -68,7 +67,6 @@ let theme = extendJoyTheme({
         background: {
           button: "hsl(200, 0%, 20%)",
           header: "hsl(200, 0%, 15%)",
-          itemBackground: "hsl(200,0%,20%)",
           body: "hsl(200, 0%, 15%)",
           looker: "hsl(200, 0%, 10%)",
           level1: "hsl(200, 0%, 20%)",
