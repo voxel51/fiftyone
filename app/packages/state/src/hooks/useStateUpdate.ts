@@ -106,7 +106,9 @@ const useStateUpdate = () => {
           previousDataset.id !== dataset.id ||
           dataset.groupSlice !== previousDataset.groupSlice
         ) {
-          reset(sidebarMode(false));
+          if (dataset?.name !== previousDataset?.name) {
+            reset(sidebarMode(false));
+          }
           reset(_activeFields({ modal: false }));
           let slice = dataset.groupSlice;
 
