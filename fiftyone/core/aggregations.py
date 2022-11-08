@@ -1898,13 +1898,6 @@ class Schema(Aggregation):
         doc_type = None
 
         if self._expr is None:
-            """
-            if context is not None:
-                _field_name = context + "." + field_name
-            else:
-                _field_name = field_name
-            """
-
             field_type = _get_field_type(
                 sample_collection, field_name, unwind=True
             )
@@ -2529,13 +2522,6 @@ def _parse_field_and_expr(
         root = True
         field_type = None
     else:
-        """
-        if context is not None:
-            _field_name = context + "." + field_name
-        else:
-            _field_name = field_name
-        """
-
         root = "." not in field_name
         field_type = _get_field_type(
             sample_collection, field_name, unwind=auto_unwind
