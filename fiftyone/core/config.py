@@ -429,6 +429,17 @@ class AppConfig(EnvConfig):
             )
             self.color_by = default_color_by
 
+        supported_sidebar_modes = {"all", "best", "fast"}
+        default_sidebar_mode = "best"
+        if self.sidebar_mode not in supported_sidebar_modes:
+            logger.warning(
+                "Invalid sidebar_mode=%s. Must be one of %s. Defaulting to '%s'",
+                self.sidebar_mode,
+                supported_sidebar_modes,
+                default_sidebar_mode,
+            )
+            self.sidebar_mode = default_sidebar_mode
+
         supported_themes = {"browser", "dark", "light"}
         default_theme = "browser"
         if self.theme not in supported_themes:
@@ -455,17 +466,6 @@ class AppConfig(EnvConfig):
                 )
             except Exception as e:
                 logger.warning("Failed to set mapbox token: %s", e)
-
-        supported_sidebar_modes = {"all", "best", "fast"}
-        default_sidebar_mode = "best"
-        if self.sidebar_mode not in supported_sidebar_modes:
-            logger.warning(
-                "Invalid sidebar_mode=%s. Must be one of %s. Defaulting to '%s'",
-                self.sidebar_mode,
-                supported_sidebar_modes,
-                default_sidebar_mode,
-            )
-            self.sidebar_mode = default_sidebar_mode
 
 
 class AppConfigError(etac.EnvConfigError):
