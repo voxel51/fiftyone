@@ -53,6 +53,7 @@ type AppConfig {
   showSkeletons: Boolean!
   showTooltip: Boolean!
   sidebarMode: SidebarMode!
+  theme: Theme!
   timezone: String
   useFrameNumber: Boolean!
 }
@@ -463,6 +464,12 @@ type StringAggregationValue {
 type Target {
   target: Int!
   value: String!
+}
+
+enum Theme {
+  browser
+  dark
+  light
 }
 
 type VideoSample implements Sample {

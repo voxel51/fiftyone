@@ -652,6 +652,9 @@ The FiftyOne App can be configured in the ways described below:
 | `sidebar_mode`            | `FIFTYONE_APP_SIDEBAR_MODE`            | `best`                      | The default loading behavior of the App's sidebar. Supported values are                  |
 |                           |                                        |                             | `{"all", "best", "fast"}`. See :ref:`this section <app-sidebar-mode>` for more details.  |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `theme`                   | `FIFTYONE_APP_THEME`                   | `"browser"`                 | The default theme to use in the App. Supported values are `{'browser', 'dark', 'light'}`.|
+|                           |                                        |                             | If `browser`, browser storage will be used, defaulting to `dark`.                        |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only |
 |                           |                                        |                             | applicable to video samples.                                                             |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
@@ -707,7 +710,11 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
+<<<<<<< HEAD
             "sidebar_mode": "best",
+=======
+            "theme": "browser",
+>>>>>>> develop
             "use_frame_number": false,
             "plugins": {}
         }
@@ -753,7 +760,11 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
+<<<<<<< HEAD
             "sidebar_mode": "best",
+=======
+            "theme": "browser",
+>>>>>>> develop
             "use_frame_number": false,
             "plugins": {}
         }

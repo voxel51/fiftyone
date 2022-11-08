@@ -22,8 +22,9 @@ export namespace State {
     showTooltip: boolean;
     sidebarMode: "all" | "best" | "fast";
     timezone: string | null;
+    theme: "browser" | "dark" | "light";
     useFrameNumber: boolean;
-    mediaFields: string[];
+    mediaFields?: string[];
   }
 
   export interface ID {

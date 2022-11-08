@@ -358,6 +358,12 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_SIDEBAR_MODE",
             default="best",
         )
+        self.theme = self.parse_string(
+            d,
+            "theme",
+            env_var="FIFTYONE_APP_THEME",
+            default="browser",
+        )
         self.use_frame_number = self.parse_bool(
             d,
             "use_frame_number",
@@ -422,6 +428,17 @@ class AppConfig(EnvConfig):
                 default_color_by,
             )
             self.color_by = default_color_by
+
+        supported_themes = {"browser", "dark", "light"}
+        default_theme = "browser"
+        if self.theme not in supported_themes:
+            logger.warning(
+                "Invalid theme=%s. Must be one of %s. Defaulting to '%s'",
+                self.theme,
+                supported_themes,
+                default_theme,
+            )
+            self.theme = default_theme
 
         if self.grid_zoom < 0 or self.grid_zoom > 10:
             logger.warning(
