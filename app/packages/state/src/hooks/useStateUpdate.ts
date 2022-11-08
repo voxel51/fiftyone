@@ -66,6 +66,7 @@ const useStateUpdate = () => {
       }
 
       state?.viewCls !== undefined && set(viewAtoms.viewCls, state.viewCls);
+      state?.viewName !== undefined && set(viewAtoms.viewName, state.viewName);
 
       state?.selected && set(selectedSamples, new Set(state.selected));
       state?.selectedLabels &&

@@ -8,7 +8,13 @@ import useTo from "./useTo";
 
 const useSetDataset = () => {
   const { to } = useTo({
-    state: { selected: [], selectedLabels: [], view: [], viewCls: null },
+    state: {
+      selected: [],
+      selectedLabels: [],
+      view: [],
+      viewCls: null,
+      viewName: null,
+    },
     variables: { view: [] },
   });
   const send = useSendEvent();
