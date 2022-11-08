@@ -287,15 +287,16 @@ class _CountExists(foa.Count):
 def _count_expanded_fields(collection: foc.SampleCollection) -> int:
     schema = collection._root_dataset.get_field_schema()
     count = 0
-    for field in schema:
+    for field in schema.values():
         while isinstance(field, fof.ListField):
             field = field.field
+
         if (
             isinstance(field, fof.EmbeddedDocumentField)
-            and field.document_type
+            and field.document_type is not None
             and not issubclass(field.document_type, fol.Label)
         ):
-            count += len(schema[field].fields)
+            count += len(field.fields)
         else:
             count += 1
 
