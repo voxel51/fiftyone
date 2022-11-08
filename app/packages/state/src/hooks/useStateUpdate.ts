@@ -27,6 +27,7 @@ import {
   selectedMediaField,
   theme,
 } from "../recoil";
+import { useColorScheme } from "@mui/material";
 
 import * as viewAtoms from "../recoil/view";
 import { collapseFields, viewsAreEqual } from "../utils";
@@ -43,6 +44,8 @@ export type StateResolver =
   | ((t: TransactionInterface_UNSTABLE) => StateUpdate);
 
 const useStateUpdate = () => {
+  const { setMode } = useColorScheme();
+
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
       const { colorscale, config, dataset, state } =
@@ -78,7 +81,10 @@ const useStateUpdate = () => {
           )
         );
 
-      config && config.theme !== "browser" && set(theme, config.theme);
+      if (config && config.theme !== "browser") {
+        set(theme, config.theme);
+        setMode(config.theme);
+      }
       const colorPool = get(colorPoolAtom);
       if (
         config &&
