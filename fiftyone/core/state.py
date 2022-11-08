@@ -150,29 +150,48 @@ class SampleField:
 
 
 def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
-    data = (
-        [
-            SampleField(
-                path=path,
-                db_field=field.db_field,
-                ftype=etau.get_class_name(field),
-                embedded_doc_type=etau.get_class_name(field.document_type)
-                if isinstance(field, fo.EmbeddedDocumentField)
-                else None,
-                subfield=etau.get_class_name(field.field)
-                if (
-                    isinstance(field, (fo.DictField, fo.ListField))
-                    and field.field is not None
+    data = []
+
+    if schema:
+        for path, field in schema.items():
+            if isinstance(field, fo.EmbeddedDocumentField):
+                embedded_doc_type = etau.get_class_name(field.document_type)
+            elif (
+                isinstance(field, fo.ListField)
+                and field.field
+                and isinstance(field.field, fo.EmbeddedDocumentField)
+            ):
+                embedded_doc_type = etau.get_class_name(
+                    field.field.document_type
                 )
-                else None,
-                description=field.description,
-                info=field.info,
+            else:
+                embedded_doc_type = None
+
+            if (
+                isinstance(field, (fo.DictField, fo.ListField))
+                and field.field is not None
+            ):
+                subfield = etau.get_class_name(field.field)
+            else:
+                subfield = None
+
+            if field.info is not None:
+                # Converts mongoengine types to primitives
+                info = json.loads(json.dumps(field.info))
+            else:
+                info = None
+
+            data.append(
+                SampleField(
+                    path=path,
+                    db_field=field.db_field,
+                    ftype=etau.get_class_name(field),
+                    embedded_doc_type=embedded_doc_type,
+                    subfield=subfield,
+                    description=field.description,
+                    info=info,
+                )
             )
-            for path, field in schema.items()
-        ]
-        if schema
-        else []
-    )
 
     if dicts:
         return [asdict(f) for f in data]

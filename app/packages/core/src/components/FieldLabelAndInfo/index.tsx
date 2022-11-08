@@ -191,8 +191,8 @@ const FieldInfoTableContainer = styled.table`
       return theme.background.level1;
     }};
   }
-  tr + tr {
-    border-top: solid 2px ${({ theme }) => theme.background.body};
+  tr {
+    border-top: solid 2px ${getBorderColor};
   }
   a,
   a:visited {
@@ -215,6 +215,13 @@ const ShowMoreLink = styled.a`
   text-decoration: underline;
   margin-left: 0.25rem;
 `;
+
+function getBorderColor({ theme }) {
+  if (theme.mode === "light") {
+    return theme.background.header;
+  }
+  return "red";
+}
 
 function FieldInfoExpanded({
   field,
@@ -279,7 +286,6 @@ function FieldInfoExpanded({
 }
 
 function ExpFieldInfoDesc({ collapsed, description, onViewMore }) {
-  console.log(description);
   return (
     <FieldInfoDesc
       collapsed={collapsed}
@@ -376,10 +382,8 @@ function getCenter(bounds) {
 }
 
 function distanceFromCenters(boundsA, boundsB) {
-  console.log({ boundsA, boundsB });
   const a = getCenter(boundsA);
   const b = getCenter(boundsB);
-  console.log({ a, b });
   return Math.abs(a.x - b.x);
   // return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 }
