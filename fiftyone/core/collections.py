@@ -8252,7 +8252,9 @@ class SampleCollection(object):
 
         compiled = defaultdict(dict)
         for idx, aggregation in aggs_map.items():
-            if aggregation.field_name is None:
+            if aggregation.field_name is None or isinstance(
+                aggregation, foa.FacetAggregations
+            ):
                 compiled[idx] = aggregation
                 continue
 
