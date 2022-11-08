@@ -1557,8 +1557,8 @@ def make_optimized_select_view(
 
 
 def _filter_schema(schema, selected_fields, excluded_fields):
-    selected_fields, roots1 = _parse_schema_fields(selected_fields)
-    excluded_fields, roots2 = _parse_schema_fields(excluded_fields)
+    selected_fields, roots1 = _parse_selected_fields(selected_fields)
+    excluded_fields, roots2 = _parse_excluded_fields(excluded_fields)
     filtered_roots = roots1 | roots2
 
     # Explicitly include roots of any embedded fields that have been selected
@@ -1591,7 +1591,7 @@ def _filter_schema(schema, selected_fields, excluded_fields):
             )
 
 
-def _parse_schema_fields(paths):
+def _parse_selected_fields(paths):
     d = defaultdict(set)
     r = set()
 
@@ -1599,12 +1599,31 @@ def _parse_schema_fields(paths):
         for path in paths:
             if "." in path:
                 chunks = path.split(".")
-                r.add(chunks[0])
+                root = chunks[0]
+                r.add(root)
 
                 for i in range(1, len(chunks)):
                     base = ".".join(chunks[:i])
                     leaf = chunks[i]
                     d[base].add(leaf)
+            else:
+                d[""].add(path)
+
+    return d, r
+
+
+def _parse_excluded_fields(paths):
+    d = defaultdict(set)
+    r = set()
+
+    if paths is not None:
+        for path in paths:
+            if "." in path:
+                root = path.split(".", 1)[0]
+                r.add(root)
+
+                base, leaf = path.rsplit(".", 1)
+                d[base].add(leaf)
             else:
                 d[""].add(path)
 
