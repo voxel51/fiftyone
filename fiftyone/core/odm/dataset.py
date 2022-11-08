@@ -240,10 +240,9 @@ class SidebarGroupDocument(EmbeddedDocument):
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"strict": False}
 
-    expanded = BooleanField(default=None, required=False)
     name = StringField(required=True)
     paths = ListField(StringField(), default=[])
-    expanded = BooleanField()
+    expanded = BooleanField(default=None)
 
 
 class KeypointSkeleton(EmbeddedDocument):
