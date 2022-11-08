@@ -26,6 +26,7 @@ import {
   extendedSelection,
   selectedMediaField,
   sidebarMode,
+  groupStatistics,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -117,6 +118,7 @@ const useStateUpdate = () => {
           }
 
           set(groupSlice(false), slice);
+          reset(groupStatistics(false));
 
           reset(similarityParameters);
           set(
