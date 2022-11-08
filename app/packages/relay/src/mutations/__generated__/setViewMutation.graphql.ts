@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7b2eab9ca89ecf66fb5c391886a976eb>>
+ * @generated SignedSource<<e1be8359c7383c395a06123931816a55>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -36,11 +36,11 @@ export type setViewMutation$data = {
           readonly patchesField: string | null;
         } | null;
         readonly key: string;
-        readonly timestamp: number | null;
+        readonly timestamp: any | null;
         readonly version: string | null;
         readonly viewStages: ReadonlyArray<string> | null;
       }>;
-      readonly createdAt: number | null;
+      readonly createdAt: any | null;
       readonly defaultGroupSlice: string | null;
       readonly defaultMaskTargets: ReadonlyArray<{
         readonly target: number;
@@ -57,7 +57,7 @@ export type setViewMutation$data = {
           readonly predField: string | null;
         } | null;
         readonly key: string;
-        readonly timestamp: number | null;
+        readonly timestamp: any | null;
         readonly version: string | null;
         readonly viewStages: ReadonlyArray<string> | null;
       }>;
@@ -75,7 +75,7 @@ export type setViewMutation$data = {
       }> | null;
       readonly groupSlice: string | null;
       readonly id: string;
-      readonly lastLoadedAt: number | null;
+      readonly lastLoadedAt: any | null;
       readonly maskTargets: ReadonlyArray<{
         readonly name: string;
         readonly targets: ReadonlyArray<{
