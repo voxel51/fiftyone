@@ -649,8 +649,8 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `sidebar_mode`            | `FIFTYONE_APP_SIDEBAR_MODE`            | `best`                      | The loading behavior of the sidebar. "all", "best", or "fast". See                       |
-|                           |                                        |                             | :ref:`this section <sidebar_mode>` for more details.                                     |
+| `sidebar_mode`            | `FIFTYONE_APP_SIDEBAR_MODE`            | `best`                      | The default loading behavior of the App's sidebar. Supported values are                  |
+|                           |                                        |                             | `{"all", "best", "fast"}`. See :ref:`this section <app-sidebar-mode>` for more details.  |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only |
 |                           |                                        |                             | applicable to video samples.                                                             |

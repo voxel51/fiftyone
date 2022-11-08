@@ -412,13 +412,16 @@ class AppConfig(EnvConfig):
         return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
 
     def _init(self):
-        if self.color_by not in {"field", "instance", "label"}:
+        supported_color_bys = {"field", "instance", "label"}
+        default_color_by = "field"
+        if self.color_by not in supported_color_bys:
             logger.warning(
-                "Invalid `color_by` option '%s'. Must be one of 'field', "
-                "'instance' or 'label'. Defaulting to 'field'",
+                "Invalid color_by=%s. Must be one of %s. Defaulting to '%s'",
                 self.color_by,
+                supported_color_bys,
+                default_color_by,
             )
-            self.color_by = "field"
+            self.color_by = default_color_by
 
         if self.grid_zoom < 0 or self.grid_zoom > 10:
             logger.warning(
@@ -436,13 +439,16 @@ class AppConfig(EnvConfig):
             except Exception as e:
                 logger.warning("Failed to set mapbox token: %s", e)
 
-        if self.sidebar_mode not in {"all", "best", "fast"}:
+        supported_sidebar_modes = {"all", "best", "fast"}
+        default_sidebar_mode = "best"
+        if self.sidebar_mode not in supported_sidebar_modes:
             logger.warning(
-                "Invalid `sidebar_mode` option '%s'. Must be one of 'all', "
-                "'best', or 'fast'. Defaulting to 'field'",
+                "Invalid sidebar_mode=%s. Must be one of %s. Defaulting to '%s'",
                 self.sidebar_mode,
+                supported_sidebar_modes,
+                default_sidebar_mode,
             )
-            self.sidebar_mode = "best"
+            self.sidebar_mode = default_sidebar_mode
 
 
 class AppConfigError(etac.EnvConfigError):
