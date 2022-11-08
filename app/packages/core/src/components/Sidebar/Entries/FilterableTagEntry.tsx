@@ -119,7 +119,6 @@ const FilterableTagEntry = ({
   return (
     <RegularEntry
       backgroundColor={backgroundColor}
-      clickable
       color={color}
       heading={
         <>
@@ -130,6 +129,7 @@ const FilterableTagEntry = ({
               disableRipple={true}
               title={`Show ${elementsName} with the "${tag}" tag`}
               checked={active}
+              onClick={() => setActive(!active)}
               style={{
                 color: active ? color : theme.text.secondary,
                 padding: 0,
@@ -153,7 +153,6 @@ const FilterableTagEntry = ({
           </NameAndCountContainer>
         </>
       }
-      onHeaderClick={() => setActive(!active)}
       title={tag}
     />
   );

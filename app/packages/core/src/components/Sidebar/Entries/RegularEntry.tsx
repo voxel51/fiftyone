@@ -16,7 +16,6 @@ const Header = styled.div`
   display: flex;
   font-weight: bold;
   width: 100%;
-  cursor: pointer;
   flex: 1;
 `;
 
