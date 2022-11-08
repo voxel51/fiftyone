@@ -5,6 +5,7 @@ FiftyOne Server aggregations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from dataclasses import asdict
 from datetime import date, datetime
 import typing as t
 
@@ -31,7 +32,7 @@ class SelectedLabel:
     label_id: gql.ID
     field: str
     sample_id: gql.ID
-    frame_number: t.Optional[int]
+    frame_number: t.Optional[int] = None
 
 
 @gql.input
@@ -130,7 +131,17 @@ async def aggregate_resolver(
         view = fov.make_optimized_select_view(view, form.sample_ids)
 
     if form.hidden_labels:
-        view = view.exclude_labels(form.hidden_labels)
+        view = view.exclude_labels(
+            [
+                {
+                    "sample_id": l.sample_id,
+                    "field": l.field,
+                    "label_id": l.label_id,
+                    "frame_number": l.frame_number,
+                }
+                for l in form.hidden_labels
+            ]
+        )
 
     if form.mixed:
         view = view.select_group_slices(_allow_mixed=True)
