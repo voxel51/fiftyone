@@ -201,6 +201,13 @@ class ColorBy(Enum):
     label = "label"
 
 
+@gql.enum
+class Theme(Enum):
+    browser = "browser"
+    dark = "dark"
+    light = "light"
+
+
 @gql.type
 class AppConfig:
     color_by: ColorBy
@@ -215,6 +222,7 @@ class AppConfig:
     show_label: bool
     show_skeletons: bool
     show_tooltip: bool
+    theme: Theme
     timezone: t.Optional[str]
     use_frame_number: bool
 

@@ -24,6 +24,7 @@ type AppConfig {
   showLabel: Boolean!
   showSkeletons: Boolean!
   showTooltip: Boolean!
+  theme: Theme!
   timezone: String
   useFrameNumber: Boolean!
 }
@@ -35,14 +36,14 @@ type BoolCountValuesResponse {
 }
 
 type BoolValueCount {
-  value: Int!
   key: Boolean
+  value: Int!
 }
 
 type BrainRun implements Run {
   key: String!
   version: String
-  timestamp: DateTime
+  timestamp: datetime
   config: BrainRunConfig
   viewStages: [String!]
 }
@@ -67,8 +68,8 @@ input CountValues {
 type Dataset {
   id: ID!
   name: String!
-  createdAt: Date
-  lastLoadedAt: DateTime
+  createdAt: date
+  lastLoadedAt: datetime
   persistent: Boolean!
   groupMediaTypes: [Group!]
   groupField: String
@@ -115,26 +116,16 @@ type DatasetStrPageInfo {
   endCursor: String
 }
 
-"""
-Date (isoformat)
-"""
-scalar Date
-
-"""
-Date with time (isoformat)
-"""
-scalar DateTime
-
 type DatetimeHistogramValuesResponse {
   counts: [Int!]!
-  edges: [DateTime!]!
+  edges: [datetime!]!
   other: Int!
 }
 
 type EvaluationRun implements Run {
   key: String!
   version: String
-  timestamp: DateTime
+  timestamp: datetime
   config: EvaluationRunConfig
   viewStages: [String!]
 }
@@ -184,8 +175,8 @@ type IntHistogramValuesResponse {
 }
 
 type IntValueCount {
-  value: Int!
   key: Int
+  value: Int!
 }
 
 scalar JSON
@@ -284,7 +275,7 @@ type Query {
 interface Run {
   key: String!
   version: String
-  timestamp: DateTime
+  timestamp: datetime
   config: RunConfig
   viewStages: [String!]
 }
@@ -351,13 +342,19 @@ type StrCountValuesResponse {
 }
 
 type StrValueCount {
-  value: Int!
   key: String
+  value: Int!
 }
 
 type Target {
   target: Int!
   value: String!
+}
+
+enum Theme {
+  browser
+  dark
+  light
 }
 
 type VideoSample implements Sample {
@@ -372,3 +369,7 @@ type ViewResponse {
   view: BSONArray!
   dataset: Dataset!
 }
+
+scalar date
+
+scalar datetime

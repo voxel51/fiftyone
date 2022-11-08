@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e5feb27d43e7b28b2b4e4d25d8e7abb0>>
+ * @generated SignedSource<<5089c0d3f4431db72a359dc138237c4c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,6 +10,7 @@
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
 export type ColorBy = "field" | "instance" | "label" | "%future added value";
+export type Theme = "browser" | "dark" | "light" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type RootConfig_query$data = {
   readonly colorscale: ReadonlyArray<ReadonlyArray<number>> | null;
@@ -26,6 +27,7 @@ export type RootConfig_query$data = {
     readonly showLabel: boolean;
     readonly showSkeletons: boolean;
     readonly showTooltip: boolean;
+    readonly theme: Theme;
     readonly timezone: string | null;
     readonly useFrameNumber: boolean;
   };
@@ -140,6 +142,13 @@ return {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
+          "name": "theme",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
           "name": "timezone",
           "storageKey": null
         },
@@ -160,6 +169,6 @@ return {
 };
 })();
 
-(node as any).hash = "84d84de0717c65bc7a17e0afd6384e08";
+(node as any).hash = "56d74eee88eef2b223ccb488bdfae184";
 
 export default node;
