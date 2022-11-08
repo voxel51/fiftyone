@@ -134,7 +134,7 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
-        view_stages: BSONArray,
+        view: BSONArray,
         view_name: t.Optional[str],
         dataset_name: str,
         form: t.Optional[StateForm],
@@ -169,18 +169,22 @@ class Mutation:
             view_stages = view._serialize()
 
         else:
+<<<<<<< HEAD
             state.view = fov.DatasetView._build(state.dataset, view_stages)
 
+=======
+            state.view = fov.DatasetView._build(state.dataset, view)
+>>>>>>> df969e414 (fix renaming conflicts)
         await dispatch_event(subscription, StateUpdate(state=state))
         dataset = await Dataset.resolver(
-            name=state.dataset.name,
-            view_stages=view_stages,
+            name=state.dataset.name,  # TODO: should this be dataset_name?
+            view=view,
             view_name=view_name if view_name else state.view.name,
             info=info,
         )
         return ViewResponse(
             # TODO: should this be view_stages?
-            view_stages=state.view._serialize(),
+            view=state.view._serialize(),
             dataset=dataset,
             view_name=view_name if view_name else state.view.name,
         )
@@ -195,7 +199,7 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
-        view_stages: BSONArray,
+        view: BSONArray,
         view_name: t.Optional[str],
         slice: str,
         info: Info,
@@ -205,7 +209,7 @@ class Mutation:
         await dispatch_event(subscription, StateUpdate(state=state))
         return await Dataset.resolver(
             name=state.dataset.name,
-            view_stages=view_stages,
+            view=view,
             view_name=view_name if view_name else state.view.name,
             info=info,
         )

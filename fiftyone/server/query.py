@@ -115,28 +115,13 @@ class SavedView:
     description: t.Optional[str]
     color: t.Optional[str]
     view_stages: t.List[str]
-    created_at = t.Optional[datetime]
-    last_modified_at = t.Optional[datetime]
-    last_loaded_at = t.Optional[datetime]
+    created_at: datetime
+    last_modified_at: t.Optional[datetime]
+    last_loaded_at: t.Optional[datetime]
 
     @gql.field
     def view_name(self) -> str:
         return self.name
-
-    @gql.field
-    def created_at(self) -> t.Optional[datetime]:
-        # pylint: disable=function-redefined
-        return self.created_at
-
-    @gql.field
-    def last_modified_at(self) -> t.Optional[datetime]:
-        # pylint: disable=function-redefined
-        return self.last_modified_at
-
-    @gql.field
-    def last_loaded_at(self) -> t.Optional[datetime]:
-        # pylint: disable=function-redefined
-        return self.last_loaded_at
 
 
 @gql.type
@@ -228,14 +213,13 @@ class Dataset:
 
     @classmethod
     async def resolver(
-        cls,
-        name: str,
-        view_stages: t.Optional[BSONArray],
-        view_name: t.Optional[str],
-        info: Info,
+            cls,
+            name: str,
+            view: t.Optional[BSONArray],
+            view_name: t.Optional[str],
+            info: Info,
     ) -> t.Optional["Dataset"]:
         return await serialize_dataset(name, view)
-
 
 dataset_dataloader = get_dataloader_resolver(
     Dataset, "datasets", "name", DATASET_FILTER
