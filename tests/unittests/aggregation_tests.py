@@ -1007,6 +1007,10 @@ class DatasetTests(unittest.TestCase):
             fo.Count("predictions.detections"),
             fo.CountValues("predictions.detections.label"),
             fo.Distinct("predictions.detections.label"),
+            fo.FacetAggregations(
+                "predictions.detections",
+                [fo.CountValues("label"), fo.Bounds("confidence")],
+            ),
             fo.HistogramValues(
                 "predictions.detections.confidence",
                 bins=50,
