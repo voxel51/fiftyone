@@ -208,14 +208,28 @@ const DEFAULT_VIDEO_GROUPS = [
   { name: "other", paths: [] },
 ];
 
-export const resolveGroups = (dataset: State.Dataset): State.SidebarGroup[] => {
+export const resolveGroups = (
+  dataset: State.Dataset,
+  current?: State.SidebarGroup[]
+): State.SidebarGroup[] => {
   let groups = dataset?.appConfig?.sidebarGroups;
+
+  const expanded = current.reduce((map, { name, expanded }) => {
+    map[name] = expanded;
+    return map;
+  }, {});
 
   if (!groups) {
     groups = dataset.frameFields.length
       ? DEFAULT_VIDEO_GROUPS
       : DEFAULT_IMAGE_GROUPS;
   }
+
+  groups = groups.map((group) => {
+    return expanded[group.name] !== undefined
+      ? { ...group, expanded: expanded[group.name] }
+      : group;
+  });
 
   const present = new Set(groups.map(({ paths }) => paths).flat());
 

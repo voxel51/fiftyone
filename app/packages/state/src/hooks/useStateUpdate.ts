@@ -92,8 +92,8 @@ const useStateUpdate = () => {
         dataset.sampleFields = collapseFields(dataset.sampleFields);
         dataset.frameFields = collapseFields(dataset.frameFields);
 
-        const groups = resolveGroups(dataset);
         const currentSidebar = get(sidebarGroupsDefinition(false));
+        const groups = resolveGroups(dataset, currentSidebar);
 
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
