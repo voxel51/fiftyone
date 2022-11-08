@@ -23,8 +23,9 @@ export namespace State {
     showLabel: boolean;
     showTooltip: boolean;
     timezone: string | null;
+    theme: "dark" | "light";
     useFrameNumber: boolean;
-    mediaFields: string[];
+    mediaFields?: string[];
   }
 
   export interface ID {
