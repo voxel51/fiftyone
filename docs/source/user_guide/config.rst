@@ -653,7 +653,7 @@ The FiftyOne App can be configured in the ways described below:
 |                           |                                        |                             | `{"all", "best", "fast"}`. See :ref:`this section <app-sidebar-mode>` for more details.   |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `theme`                   | `FIFTYONE_APP_THEME`                   | `"browser"`                 | The default theme to use in the App. Supported values are `{"browser", "dark", "light"}`. |
-|                           |                                        |                             | If `browser`, your last used theme will be persisted in your browser's storage.           |
+|                           |                                        |                             | If `"browser"`, your current theme will be persisted in your browser's storage.           |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only  |
 |                           |                                        |                             | applicable to video samples.                                                              |
