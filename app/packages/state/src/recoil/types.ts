@@ -20,6 +20,7 @@ export namespace State {
     showIndex: boolean;
     showLabel: boolean;
     showTooltip: boolean;
+    sidebarMode: "all" | "best" | "fast";
     timezone: string | null;
     useFrameNumber: boolean;
     mediaFields: string[];

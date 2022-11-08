@@ -31,6 +31,7 @@ import fiftyone.server.aggregate as fosa
 from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
+import fiftyone.server.events as fose
 from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
 from fiftyone.server.samples import (
@@ -243,7 +244,8 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def config(self) -> AppConfig:
-        d = fo.app_config.serialize()
+        config = fose.get_state().config
+        d = config.serialize()
         d["timezone"] = fo.config.timezone
         return from_dict(AppConfig, d, config=Config(check_types=False))
 
