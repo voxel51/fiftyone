@@ -73,10 +73,6 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
     setOpen(selectedField === instanceId);
   }, [selectedField]);
 
-  useEffect(() => {
-    if (hoverTarget.current) hoverTarget.current.style["user-select"] = "none";
-  }, [hoverTarget.current]);
-
   return {
     open,
     hoverTarget,
