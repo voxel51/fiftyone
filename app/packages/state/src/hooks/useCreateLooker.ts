@@ -34,10 +34,10 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   const mediaField = useRecoilValue(selectedMediaField(isModal));
 
   const fieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
+    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
   );
   const frameFieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema({ space: State.SPACE.FRAME, filtered: true })
+    schemaAtoms.fieldSchema({ space: State.SPACE.FRAME })
   );
 
   const create = useCallback(

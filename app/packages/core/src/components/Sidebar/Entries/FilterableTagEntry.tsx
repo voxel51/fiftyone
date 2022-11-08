@@ -107,6 +107,7 @@ const FilterableTagEntry = ({
   const [matched, setMatched] = useRecoilState(
     tagIsMatched({ key: tagKey, modal, tag })
   );
+
   const color = useRecoilValue(
     fos.pathColor({ path: tag, modal, tag: tagKey })
   );

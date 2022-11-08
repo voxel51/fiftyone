@@ -54,7 +54,7 @@ export const PathEntryCounts = ({
   }
 
   return shown.state === "loading" ? (
-    "..."
+    <>...</>
   ) : shown.contents ? (
     <SuspenseEntryCounts
       countAtom={getAtom(false)}
@@ -86,8 +86,9 @@ export const tagIsMatched = selectorFamily<
   key: "tagIsActive",
   get:
     ({ key, tag, modal }) =>
-    ({ get }) =>
-      get(fos.matchedTags({ key, modal })).has(tag),
+    ({ get }) => {
+      return get(fos.matchedTags({ key, modal })).has(tag);
+    },
   set:
     ({ key, tag, modal }) =>
     ({ get, set }, toggle) => {

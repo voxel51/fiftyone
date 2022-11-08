@@ -22,7 +22,7 @@ const Header = styled.div`
 
 type RegularEntryProps = React.PropsWithChildren<{
   backgroundColor?: SpringValue<string>;
-  entryKey: string;
+  entryKey?: string;
   color?: string;
   clickable?: boolean;
   heading: ReactNode;

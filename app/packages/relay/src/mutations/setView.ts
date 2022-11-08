@@ -6,12 +6,14 @@ export default graphql`
     $session: String
     $view: BSONArray!
     $dataset: String!
+    $form: StateForm!
   ) {
     setView(
       subscription: $subscription
       session: $session
       view: $view
       dataset: $dataset
+      form: $form
     ) {
       dataset {
         id

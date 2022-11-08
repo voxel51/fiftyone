@@ -2,15 +2,26 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import { useRecoilTransaction_UNSTABLE, useRecoilValue } from "recoil";
-import { State, stateSubscription, view } from "../recoil";
+import {
+  useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
+import {
+  filters,
+  selectedLabelList,
+  selectedSamples,
+  State,
+  stateSubscription,
+  view,
+} from "../recoil";
 import { RouterContext } from "../routing";
 import { transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
 import useStateUpdate from "./useStateUpdate";
 import * as fos from "../";
 
-const useSetView = () => {
+const useSetView = (patch: boolean = false, onComplete?: () => void) => {
   const send = useSendEvent(true);
   const updateState = useStateUpdate();
   const subscription = useRecoilValue(stateSubscription);
@@ -19,18 +30,19 @@ const useSetView = () => {
 
   const onError = useErrorHandler();
 
-  return useRecoilTransaction_UNSTABLE(
-    ({ get }) =>
+  return useRecoilCallback(
+    ({ snapshot }) =>
       (
         viewOrUpdater:
           | State.Stage[]
-          | ((current: State.Stage[]) => State.Stage[])
+          | ((current: State.Stage[]) => State.Stage[]),
+        addStages?: State.Stage[]
       ) => {
-        const dataset = get(fos.dataset);
+        const dataset = snapshot.getLoadable(fos.dataset).contents;
         send((session) => {
           const value =
             viewOrUpdater instanceof Function
-              ? viewOrUpdater(get(view))
+              ? viewOrUpdater(snapshot.getLoadable(view).contents)
               : viewOrUpdater;
           commit({
             variables: {
@@ -38,6 +50,17 @@ const useSetView = () => {
               session,
               view: value,
               dataset: dataset.name,
+              form: patch
+                ? {
+                    filters: snapshot.getLoadable(filters).contents,
+                    sampleIds: [
+                      ...snapshot.getLoadable(selectedSamples).contents,
+                    ],
+                    labels: snapshot.getLoadable(selectedLabelList).contents,
+                    extended: snapshot.getLoadable(fos.extendedStages).contents,
+                    addStages,
+                  }
+                : {},
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
@@ -57,6 +80,7 @@ const useSetView = () => {
                   selectedLabels: [],
                 },
               });
+              onComplete && onComplete();
             },
           });
         });

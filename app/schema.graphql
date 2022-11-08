@@ -284,6 +284,7 @@ type Mutation {
     session: String
     view: BSONArray!
     dataset: String!
+    form: StateForm
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
   setGroupSlice(
@@ -425,6 +426,14 @@ enum SidebarMode {
   all
   best
   fast
+}
+
+input StateForm {
+  addStages: BSONArray = null
+  filters: JSON = null
+  sampleIds: [String!] = null
+  labels: [SelectedLabel!] = null
+  extended: BSON = null
 }
 
 type StrCountValuesResponse {

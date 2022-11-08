@@ -15,7 +15,7 @@ import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
 import { sidebarSampleId } from "./modal";
-import { labelTagsRefresher, refresher, tagsRefresher } from "./atoms";
+import { dataset, labelTagsRefresher, refresher, tagsRefresher } from "./atoms";
 
 type DateTimeBound = { datetime: number } | null;
 

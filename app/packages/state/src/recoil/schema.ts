@@ -13,7 +13,6 @@ import {
   meetsFieldType,
   Schema,
   StrictField,
-  VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";

@@ -76,7 +76,7 @@ export const readableTags = selectorFamily<
   get:
     ({ modal, group }) =>
     ({ get }) => {
-      if (!modal && !get(groupShown({ group, modal, loading: true }))) {
+      if (!modal && !get(groupShown({ group, modal, loading: false }))) {
         return [];
       }
 
