@@ -96,7 +96,7 @@ export default function Selection(props: SelectionProps) {
   );
 
   return (
-    <div ref={ref}>
+    <div ref={ref} style={{ width: "100%" }}>
       <Select
         value={selectedId}
         listboxOpen={isOpen}
