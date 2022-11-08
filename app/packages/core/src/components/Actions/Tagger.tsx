@@ -40,6 +40,7 @@ import {
   groupId,
   groupStatistics,
   Lookers,
+  refresher,
 } from "@fiftyone/state";
 
 const IconDiv = styled.div`
@@ -388,6 +389,7 @@ const useTagCallback = (
           current_frame: lookerRef?.current?.frameNumber,
           changes,
         });
+        set(refresher, (i) => i + 1);
 
         if (samples) {
           set(fos.refreshGroupQuery, (cur) => cur + 1);

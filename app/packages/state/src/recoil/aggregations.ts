@@ -1,5 +1,9 @@
 import * as foq from "@fiftyone/relay";
-import { VALID_KEYPOINTS } from "@fiftyone/utilities";
+import {
+  LABELS,
+  VALID_KEYPOINTS,
+  VALID_LABEL_TYPES,
+} from "@fiftyone/utilities";
 import { VariablesOf } from "react-relay";
 import { atom, GetRecoilValue, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
@@ -11,7 +15,7 @@ import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
 import { sidebarSampleId } from "./modal";
-import { refresher } from "./atoms";
+import { labelTagsRefresher, refresher, tagsRefresher } from "./atoms";
 
 type DateTimeBound = { datetime: number } | null;
 
@@ -456,6 +460,7 @@ const gatherPaths = (
 
   const recurseFields = (path) => {
     const field = get(schemaAtoms.field(path));
+
     if (get(schemaAtoms.meetsType({ path, ftype, embeddedDocType }))) {
       paths.push(path);
     }
@@ -484,8 +489,8 @@ export const cumulativeCounts = selectorFamily<
   key: "cumulativeCounts",
   get:
     ({ extended, path: key, modal, ftype, embeddedDocType }) =>
-    ({ get }) =>
-      gatherPaths(get, ftype, embeddedDocType).reduce((result, path) => {
+    ({ get }) => {
+      return gatherPaths(get, ftype, embeddedDocType).reduce((result, path) => {
         const data = get(counts({ extended, modal, path: `${path}.${key}` }));
         for (const value in data) {
           if (!result[value]) {
@@ -495,7 +500,8 @@ export const cumulativeCounts = selectorFamily<
           result[value] += data[value];
         }
         return result;
-      }, {}),
+      }, {});
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
