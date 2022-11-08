@@ -1,4 +1,5 @@
 import { InfoIcon, useTheme } from "@fiftyone/components";
+import { useEventHandler } from "@fiftyone/state";
 import React, {
   MutableRefObject,
   useEffect,
@@ -71,6 +72,10 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
   useEffect(() => {
     setOpen(selectedField === instanceId);
   }, [selectedField]);
+
+  useEffect(() => {
+    if (hoverTarget.current) hoverTarget.current.style["user-select"] = "none";
+  }, [hoverTarget.current]);
 
   return {
     open,
@@ -252,6 +257,8 @@ function FieldInfoExpanded({
       onMouseLeave={() => close()}
       ref={expandedRef}
       style={{ visibility: "hidden" }}
+      onMouseUp={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>

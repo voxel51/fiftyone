@@ -331,6 +331,10 @@ const FilterableEntry = React.memo(
                         event.stopPropagation();
                         event.preventDefault();
                       }}
+                      onMouseUp={(event) => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                      }}
                     />
                   )}
                 </NameAndCountContainer>
