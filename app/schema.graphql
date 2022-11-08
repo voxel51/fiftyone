@@ -352,6 +352,7 @@ type Target {
 }
 
 enum Theme {
+  browser
   dark
   light
 }

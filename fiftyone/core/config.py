@@ -356,7 +356,7 @@ class AppConfig(EnvConfig):
             d,
             "theme",
             env_var="FIFTYONE_APP_THEME",
-            default="dark",
+            default="browser",
         )
         self.use_frame_number = self.parse_bool(
             d,
@@ -423,8 +423,8 @@ class AppConfig(EnvConfig):
             )
             self.color_by = default_color_by
 
-        supported_themes = {"dark", "light"}
-        default_theme = "dark"
+        supported_themes = {"browser", "dark", "light"}
+        default_theme = "browser"
         if self.theme not in supported_themes:
             logger.warning(
                 "Invalid theme=%s. Must be one of %s. Defaulting to '%s'",

@@ -23,7 +23,7 @@ export namespace State {
     showLabel: boolean;
     showTooltip: boolean;
     timezone: string | null;
-    theme: "dark" | "light";
+    theme: "browser" | "dark" | "light";
     useFrameNumber: boolean;
     mediaFields?: string[];
   }

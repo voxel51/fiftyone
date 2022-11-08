@@ -25,6 +25,7 @@ import {
   similarityParameters,
   extendedSelection,
   selectedMediaField,
+  theme,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -77,6 +78,7 @@ const useStateUpdate = () => {
           )
         );
 
+      config && config.theme !== "browser" && set(theme, config.theme);
       const colorPool = get(colorPoolAtom);
       if (
         config &&

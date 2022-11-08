@@ -649,7 +649,8 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `theme`                   | `FIFTYONE_APP_THEME`                   | `"dark"`                    | The default theme to use in the App. Supported values are `{'dark', 'light'}`.           |
+| `theme`                   | `FIFTYONE_APP_THEME`                   | `"browser"`                 | The default theme to use in the App. Supported values are `{'browser', 'dark', 'light'}`.|
+|                           |                                        |                             | If `browser`, browser storage will be used, defaulting to `dark`.                        |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only |
 |                           |                                        |                             | applicable to video samples.                                                             |
@@ -706,7 +707,7 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
-            "theme": "dark",
+            "theme": "browser",
             "use_frame_number": false,
             "plugins": {}
         }
@@ -752,7 +753,7 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
-            "theme": "dark",
+            "theme": "browser",
             "use_frame_number": false,
             "plugins": {}
         }

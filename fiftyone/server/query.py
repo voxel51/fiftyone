@@ -203,6 +203,7 @@ class ColorBy(Enum):
 
 @gql.enum
 class Theme(Enum):
+    browser = "browser"
     dark = "dark"
     light = "light"
 
