@@ -1,12 +1,11 @@
 import { Loading, Setup, makeRoutes } from "@fiftyone/core";
-import { useScreenshot, theme } from "@fiftyone/state";
+import { useScreenshot } from "@fiftyone/state";
 import { ThemeProvider } from "@fiftyone/components";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot, useRecoilValue } from "recoil";
 import Network from "./Network";
-import { useColorScheme } from "@mui/material";
 
 import "./index.css";
 import {
@@ -142,12 +141,6 @@ const App: React.FC = ({}) => {
 
     return () => controller.abort();
   }, []);
-
-  const { setMode } = useColorScheme();
-  const themeState = useRecoilValue(theme);
-  useEffect(() => {
-    setMode(themeState);
-  }, [themeState]);
 
   const plugins = usePlugins();
   const loadingElement = <Loading>Pixelating...</Loading>;
