@@ -1,6 +1,6 @@
 import React from "react";
 import { createBrowserHistory, createMemoryHistory } from "history";
-import { Environment, loadQuery, PreloadedQuery } from "react-relay";
+import { loadQuery, PreloadedQuery } from "react-relay";
 import {
   Environment,
   GraphQLResponse,

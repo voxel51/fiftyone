@@ -90,9 +90,11 @@ export default graphql`
           mediaFields
           plugins
           sidebarGroups {
+            expanded
             name
             paths
           }
+          sidebarMode
         }
       }
       view

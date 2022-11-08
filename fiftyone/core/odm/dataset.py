@@ -240,6 +240,7 @@ class SidebarGroupDocument(EmbeddedDocument):
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"strict": False}
 
+    expanded = BooleanField(default=None, required=False)
     name = StringField(required=True)
     paths = ListField(StringField(), default=[])
     expanded = BooleanField()
@@ -302,6 +303,8 @@ class DatasetAppConfig(EmbeddedDocument):
             serve media in the App's grid view
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
+        sidebar_mode ("best"): the loading behavior of the sidebar. "best",
+            "fast", or "slow"
         sidebar_groups (None): an optional list of
             :class:`SidebarGroupDocument` describing sidebar groups to use in
             the App
@@ -321,6 +324,7 @@ class DatasetAppConfig(EmbeddedDocument):
     media_fields = ListField(StringField(), default=["filepath"])
     grid_media_field = StringField(default="filepath")
     modal_media_field = StringField(default="filepath")
+    sidebar_mode = StringField(default=None)
     sidebar_groups = ListField(
         EmbeddedDocumentField(SidebarGroupDocument), default=None
     )

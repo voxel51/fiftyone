@@ -22,14 +22,14 @@ const Header = styled.div`
 
 type RegularEntryProps = React.PropsWithChildren<{
   backgroundColor?: SpringValue<string>;
-  entryKey?: string;
+  entryKey: string;
   color?: string;
   clickable?: boolean;
   heading: ReactNode;
   left?: boolean;
   onClick?: MouseEventHandler;
-  onHeaderClick?: MouseEventHandler;
-  title: string;
+  onHeaderClick?: MouseEventHandler<HTMLDivElement>;
+  title?: string;
   trigger?: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
@@ -66,26 +66,24 @@ const RegularEntry = React.forwardRef(
           cursor: clickable ? "pointer" : "unset",
         }}
         title={title}
+        onMouseDown={(event) => {
+          headerClickStart.current = event;
+        }}
+        onMouseUp={(event) => {
+          if (!onHeaderClick || !headerClickStart.current) return;
+          const startX = headerClickStart.current.pageX;
+          const startY = headerClickStart.current.pageY;
+          const endX = event.pageX;
+          const endY = event.pageY;
+          const deltaX = Math.abs(endX - startX);
+          const deltaY = Math.abs(endY - startY);
+          if (deltaX <= tolerance && deltaY <= tolerance) {
+            onHeaderClick(event);
+          }
+        }}
       >
         <Draggable color={color} entryKey={entryKey} trigger={trigger}>
-          <Header
-            onMouseDown={(event: MouseEvent) => {
-              headerClickStart.current = event;
-            }}
-            onMouseUp={(event: MouseEvent) => {
-              if (!onHeaderClick) return;
-              const startX = headerClickStart.current.pageX;
-              const startY = headerClickStart.current.pageY;
-              const endX = event.pageX;
-              const endY = event.pageY;
-              const deltaX = Math.abs(endX - startX);
-              const deltaY = Math.abs(endY - startY);
-              if (deltaX <= tolerance && deltaY <= tolerance) {
-                onHeaderClick(event);
-              }
-            }}
-            style={{ justifyContent: left ? "left" : "space-between" }}
-          >
+          <Header style={{ justifyContent: left ? "left" : "space-between" }}>
             {heading}
           </Header>
           {children}

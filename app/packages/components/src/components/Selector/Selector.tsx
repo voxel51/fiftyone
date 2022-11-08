@@ -1,5 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useCallback } from "react";
 import { Suspense } from "react";
 import Input from "react-input-autosize";
@@ -79,6 +85,18 @@ const Selector = <T extends unknown>({
   const [search, setSearch] = useState("");
   const valuesRef = useRef<T[]>([]);
   const [active, setActive] = useState<number>();
+  const [current, setCurrent] = useState(() => value);
+  useLayoutEffect(() => {
+    setCurrent(value);
+  }, [value]);
+
+  const onSelectWrapper = useMemo(() => {
+    return (value: T) => {
+      onSelect(value);
+      setCurrent(String(value));
+      setEditing(false);
+    };
+  }, [onSelect]);
 
   const ref = useRef<HTMLInputElement | null>();
   const hovering = useRef(false);
@@ -128,7 +146,7 @@ const Selector = <T extends unknown>({
           triggerProps.ref(node);
         }}
         className={style.input}
-        value={editing ? search : value || ""}
+        value={editing ? search : current || ""}
         placeholder={placeholder}
         onFocus={() => setEditing(true)}
         onBlur={(e) => {
@@ -150,9 +168,8 @@ const Selector = <T extends unknown>({
             const found = valuesRef.current
               .map((v) => toKey(v))
               .indexOf(search);
-            found >= 0 && onSelect(valuesRef.current[found]);
-            active !== undefined && onSelect(valuesRef.current[active]);
-            setEditing(false);
+            found >= 0 && onSelectWrapper(valuesRef.current[found]);
+            active !== undefined && onSelectWrapper(valuesRef.current[active]);
           }
         }}
         onKeyDown={(e) => {
@@ -200,8 +217,7 @@ const Selector = <T extends unknown>({
                   search={search}
                   useSearch={useSearch}
                   onSelect={(value) => {
-                    setEditing(false);
-                    onSelect(value);
+                    onSelectWrapper(value);
                   }}
                   component={component}
                   onResults={onResults}

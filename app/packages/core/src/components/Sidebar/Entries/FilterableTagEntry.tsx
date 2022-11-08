@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Checkbox } from "@mui/material";
 import { LocalOffer, Visibility } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";

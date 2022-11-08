@@ -88,8 +88,11 @@ async def add_event_listener(
                 dict_factory=dict_factory,
             )
             if data.state.dataset is not None:
-                d["dataset"] = serialize_dataset(
-                    data.state.dataset, data.state.view
+                d["dataset"] = await serialize_dataset(
+                    data.state.dataset.name,
+                    data.state.view._serialize()
+                    if data.state.view is not None
+                    else [],
                 )
 
             yield ServerSentEvent(
@@ -122,7 +125,10 @@ async def add_event_listener(
                     and event.state.dataset is not None
                 ):
                     d["dataset"] = serialize_dataset(
-                        event.state.dataset, event.state.view
+                        event.state.dataset.name,
+                        event.state.view._serialize()
+                        if event.state.view is not None
+                        else [],
                     )
 
                 yield ServerSentEvent(

@@ -15,25 +15,23 @@ const IconDiv = styled.div`
   }
 `;
 
-const Loading = React.memo(
-  ({ loading = true }: { loading?: boolean; }) => {
-    const theme = useTheme();
+const Loading = React.memo(({ loading = true }: { loading?: boolean }) => {
+  const theme = useTheme();
 
-    return (
-      <IconDiv>
-        {loading && (
-          <CircularProgress
-            style={{
-              color: theme.text.primary,
-              height: "100%",
-              width: "100%",
-              position: "absolute"
-            }}
-          />
-        )}
-      </IconDiv>
-    );
-  }
-);
+  return (
+    <IconDiv>
+      {loading && (
+        <CircularProgress
+          style={{
+            color: theme.text.primary,
+            height: "100%",
+            width: "100%",
+            position: "absolute",
+          }}
+        />
+      )}
+    </IconDiv>
+  );
+});
 
 export default Loading;

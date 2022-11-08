@@ -8,8 +8,6 @@ export namespace State {
     SAMPLE = "SAMPLE",
   }
 
-  export type SidebarGroups = [string, string[]][];
-
   export type PluginConfig = { [pluginName: string]: object };
   export interface Config {
     colorPool: string[];
@@ -77,12 +75,19 @@ export namespace State {
     name: string;
   }
 
+  export interface SidebarGroup {
+    expanded?: boolean;
+    name: string;
+    paths: string[];
+  }
+
   export interface DatasetAppConfig {
     gridMediaField?: string;
     modalMediaField?: string;
     mediaFields?: string[];
     plugins?: PluginConfig;
-    sidebarGroups?: { name: string; paths: string[] }[];
+    sidebarGroups?: SidebarGroup[];
+    sidebarMode?: "all" | "best" | "fast";
   }
   export interface Dataset {
     id: string;

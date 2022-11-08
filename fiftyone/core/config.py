@@ -352,6 +352,12 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_SHOW_TOOLTIP",
             default=True,
         )
+        self.sidebar_mode = self.parse_string(
+            d,
+            "sidebar_mode",
+            env_var="FIFTYONE_APP_SIDEBAR_MODE",
+            default="best",
+        )
         self.use_frame_number = self.parse_bool(
             d,
             "use_frame_number",
@@ -429,6 +435,14 @@ class AppConfig(EnvConfig):
                 )
             except Exception as e:
                 logger.warning("Failed to set mapbox token: %s", e)
+
+        if self.sidebar_mode not in {"all", "best", "fast"}:
+            logger.warning(
+                "Invalid `sidebar_mode` option '%s'. Must be one of 'all', "
+                "'best', or 'fast'. Defaulting to 'field'",
+                self.sidebar_mode,
+            )
+            self.sidebar_mode = "best"
 
 
 class AppConfigError(etac.EnvConfigError):

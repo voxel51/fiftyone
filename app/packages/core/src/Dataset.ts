@@ -96,6 +96,7 @@ const DatasetQuery = graphql`
           name
           paths
         }
+        sidebarMode
       }
       info
     }

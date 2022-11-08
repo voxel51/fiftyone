@@ -13,13 +13,15 @@ import eta.core.serial as etas
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.core.odm as foo
 from fiftyone.core.session.events import StateUpdate
 import fiftyone.core.view as fov
 
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
-from fiftyone.server.query import Dataset
+from fiftyone.server.query import Dataset, SidebarGroup
 from fiftyone.server.scalars import BSONArray
+from fiftyone.server.view import get_view
 
 
 @gql.input
@@ -34,6 +36,11 @@ class SelectedLabel:
 class ViewResponse:
     view: BSONArray
     dataset: Dataset
+
+
+@gql.input
+class SidebarGroupInput(SidebarGroup):
+    pass
 
 
 @gql.type
@@ -52,6 +59,31 @@ class Mutation:
         state.selected_labels = []
         state.view = None
         await dispatch_event(subscription, StateUpdate(state=state))
+        return True
+
+    @gql.mutation
+    async def set_sidebar_groups(
+        self,
+        dataset: str,
+        stages: BSONArray,
+        sidebar_groups: t.List[SidebarGroupInput],
+    ) -> bool:
+        view = get_view(dataset, stages)
+
+        current = {
+            group.name: group.expanded
+            for group in view._dataset.app_config.sidebar_groups
+        }
+
+        view._dataset.app_config.sidebar_groups = [
+            foo.SidebarGroupDocument(
+                name=group.name,
+                expanded=current[group.name],
+                paths=group.paths,
+            )
+            for group in sidebar_groups
+        ]
+        view._dataset._doc.save()
         return True
 
     @gql.mutation

@@ -649,6 +649,9 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `sidebar_mode`            | `FIFTYONE_APP_SIDEBAR_MODE`            | `best`                      | The loading behavior of the sidebar. "all", "best", or "fast". See                       |
+|                           |                                        |                             | :ref:`this section <sidebar_mode>` for more details.                                     |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only |
 |                           |                                        |                             | applicable to video samples.                                                             |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
@@ -704,6 +707,7 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
+            "sidebar_mode": "best",
             "use_frame_number": false,
             "plugins": {}
         }
@@ -749,6 +753,7 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
+            "sidebar_mode": "best",
             "use_frame_number": false,
             "plugins": {}
         }

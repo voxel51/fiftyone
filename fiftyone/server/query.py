@@ -5,7 +5,6 @@ FiftyOne Server queries
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from re import S
 import typing as t
 from dataclasses import asdict
 from datetime import date, datetime
@@ -28,7 +27,8 @@ from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
-import fiftyone.server.aggregations as fosa
+import fiftyone.server.aggregate as fosa
+from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.metadata import MediaType
@@ -110,6 +110,7 @@ class EvaluationRun(Run):
 class SidebarGroup:
     name: str
     paths: t.Optional[t.List[str]]
+    expanded: t.Optional[bool] = True
 
 
 @gql.type
@@ -123,11 +124,19 @@ class NamedKeypointSkeleton(KeypointSkeleton):
     name: str
 
 
+@gql.enum
+class SidebarMode(Enum):
+    all = "all"
+    best = "best"
+    fast = "fast"
+
+
 @gql.type
 class DatasetAppConfig:
     media_fields: t.List[str]
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
+    sidebar_mode: t.Optional[SidebarMode]
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
 
@@ -215,12 +224,16 @@ class AppConfig:
     show_label: bool
     show_skeletons: bool
     show_tooltip: bool
+    sidebar_mode: SidebarMode
     timezone: t.Optional[str]
     use_frame_number: bool
 
 
 @gql.type
-class Query(fosa.Aggregations):
+class Query(fosa.AggregateQuery):
+
+    aggregations = gql.field(resolver=aggregate_resolver)
+
     @gql.field
     def colorscale(self) -> t.Optional[t.List[t.List[int]]]:
         if fo.app_config.colorscale:

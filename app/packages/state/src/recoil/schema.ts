@@ -1,6 +1,9 @@
 import { atomFamily, selector, selectorFamily } from "recoil";
 
 import {
+  DETECTION,
+  DETECTIONS,
+  EMBEDDED_DOCUMENT_FIELD,
   Field,
   LABELS,
   LABELS_PATH,
@@ -10,6 +13,8 @@ import {
   meetsFieldType,
   Schema,
   StrictField,
+  VALID_LABEL_TYPES,
+  VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
 
@@ -226,26 +231,33 @@ export const fields = selectorFamily<
     },
 });
 
-export const field = selectorFamily<Field, string>({
+export const field = selectorFamily<Field | null, string>({
   key: "field",
   get:
     (path) =>
     ({ get }) => {
-      if (path.startsWith("frames.")) {
-        const framePath = path.slice("frames.".length);
+      let keys = path.split(".");
+      if (keys[0] === "frames") {
+        keys = keys.slice(1);
 
-        let field: Field = null;
         let schema = get(fieldSchema({ space: State.SPACE.FRAME }));
-        for (const name of framePath.split(".")) {
+        let field: Field = {
+          name: "frames",
+          ftype: LIST_FIELD,
+          subfield: EMBEDDED_DOCUMENT_FIELD,
+          embeddedDocType: "FRAMES",
+          fields: schema,
+          dbField: null,
+        };
+        for (const name of keys) {
           if (schema[name]) {
             field = schema[name];
             schema = field.fields;
+          } else {
+            return null;
           }
         }
-
-        if (field) {
-          return field;
-        }
+        return field;
       }
 
       let field: Field = null;
@@ -254,6 +266,8 @@ export const field = selectorFamily<Field, string>({
         if (schema[name]) {
           field = schema[name];
           schema = field.fields;
+        } else {
+          return null;
         }
       }
 
@@ -510,3 +524,63 @@ export const fieldType = selectorFamily<
       return ftype;
     },
 });
+
+export const filterFields = selectorFamily<string[], string>({
+  key: "filterFields",
+  get:
+    (path) =>
+    ({ get }) => {
+      const keys = path.split(".");
+      const f = get(field(path));
+
+      if (
+        keys.length === 1 ||
+        (f.ftype === LIST_FIELD && f.subfield === EMBEDDED_DOCUMENT_FIELD)
+      ) {
+        return [path];
+      }
+
+      const parentPath = keys.slice(0, -1).join(".");
+      const parent = get(field(parentPath));
+      let topParentPath = parentPath;
+      if (parent.ftype === LIST_FIELD) {
+        topParentPath = parentPath.split(".").slice(0, -1).join(".");
+      }
+
+      const topParent = get(field(topParentPath));
+
+      const label = LABELS.includes(topParent.embeddedDocType);
+      const excluded = EXCLUDED[topParent?.embeddedDocType] || [];
+
+      if (label && path.endsWith(".tags")) {
+        return [[parentPath, "tags"].join(".")];
+      }
+
+      return Object.entries(parent.fields)
+        .map(([name, data]) => ({ ...data, name }))
+        .filter(({ name, ftype, subfield }) => {
+          if (ftype === LIST_FIELD) {
+            ftype = subfield;
+          }
+
+          if (name.startsWith("_")) {
+            return false;
+          }
+
+          if (label && name === "tags") {
+            return false;
+          }
+
+          return (
+            !label ||
+            (!excluded.includes(name) && VALID_PRIMITIVE_TYPES.includes(ftype))
+          );
+        })
+        .map(({ name }) => [parentPath, name].join("."));
+    },
+});
+
+const EXCLUDED = {
+  [withPath(LABELS_PATH, DETECTION)]: ["bounding_box"],
+  [withPath(LABELS_PATH, DETECTIONS)]: ["bounding_box"],
+};

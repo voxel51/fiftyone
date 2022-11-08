@@ -1598,11 +1598,13 @@ def _parse_schema_fields(paths):
     if paths is not None:
         for path in paths:
             if "." in path:
-                root = path.split(".", 1)[0]
-                r.add(root)
+                chunks = path.split(".")
+                r.add(chunks[0])
 
-                base, leaf = path.rsplit(".", 1)
-                d[base].add(leaf)
+                for i in range(1, len(chunks)):
+                    base = ".".join(chunks[:i])
+                    leaf = chunks[i]
+                    d[base].add(leaf)
             else:
                 d[""].add(path)
 
