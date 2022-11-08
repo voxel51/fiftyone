@@ -395,7 +395,7 @@ export const sidebarGroups = selectorFamily<
       return groups;
     },
   set:
-    ({ modal, persist }) =>
+    ({ modal, persist = true }) =>
     ({ set, get }, groups) => {
       if (groups instanceof DefaultValue) return;
 
