@@ -124,7 +124,7 @@ async def add_event_listener(
                     and isinstance(event, StateUpdate)
                     and event.state.dataset is not None
                 ):
-                    d["dataset"] = serialize_dataset(
+                    d["dataset"] = await serialize_dataset(
                         event.state.dataset.name,
                         event.state.view._serialize()
                         if event.state.view is not None
