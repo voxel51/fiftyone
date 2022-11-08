@@ -16,7 +16,6 @@ const Header = styled.div`
   display: flex;
   font-weight: bold;
   width: 100%;
-  cursor: pointer;
   flex: 1;
 `;
 
@@ -54,8 +53,7 @@ const RegularEntry = React.forwardRef(
     }: RegularEntryProps,
     ref
   ) => {
-    const tolerance = 5;
-    const headerClickStart = useRef<MouseEvent>();
+    const headerRef = useRef();
 
     return (
       <Container
@@ -66,24 +64,26 @@ const RegularEntry = React.forwardRef(
           cursor: clickable ? "pointer" : "unset",
         }}
         title={title}
-        onMouseDown={(event) => {
-          headerClickStart.current = event;
-        }}
         onMouseUp={(event) => {
-          if (!onHeaderClick || !headerClickStart.current) return;
-          const startX = headerClickStart.current.pageX;
-          const startY = headerClickStart.current.pageY;
-          const endX = event.pageX;
-          const endY = event.pageY;
-          const deltaX = Math.abs(endX - startX);
-          const deltaY = Math.abs(endY - startY);
-          if (deltaX <= tolerance && deltaY <= tolerance) {
+          if (!onHeaderClick) return;
+          const validTarget =
+            headerRef.current.contains(event.target) ||
+            event.target === headerRef.current;
+          if (validTarget) {
             onHeaderClick(event);
           }
         }}
       >
-        <Draggable color={color} entryKey={entryKey} trigger={trigger}>
-          <Header style={{ justifyContent: left ? "left" : "space-between" }}>
+        <Draggable
+          color={color}
+          entryKey={entryKey}
+          trigger={trigger}
+          onMouseUp={(e) => e.stopPropagation()}
+        >
+          <Header
+            ref={headerRef}
+            style={{ justifyContent: left ? "left" : "space-between" }}
+          >
             {heading}
           </Header>
           {children}
