@@ -92,6 +92,7 @@ export const transformDataset = (dataset: any): Readonly<State.Dataset> => {
     evaluations: [...dataset.evaluations],
     maskTargets: targets,
     mediaType: dataset.mediaType,
+    savedViews: dataset.savedViews,
   };
 };
 
@@ -112,5 +113,23 @@ export const getDatasetName = (context: RoutingContext<any>): string => {
   return null;
 };
 
+
 export type ResponseFrom<TQuery extends { response: unknown }> =
-  TQuery["response"];
+    TQuery["response"];
+
+// export const getViewName = (context: RoutingContext<any>): string => {
+//   const result = matchPath(
+//     context.pathname,
+//     {
+//       path: "?view=:name",
+//       exact: true,
+//     },
+//     {}
+//   );
+//
+//   if (result) {
+//     return result.variables.name;
+//   }
+//
+//   return null;
+// };
