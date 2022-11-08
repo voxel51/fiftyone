@@ -83,7 +83,24 @@ const RegularEntry = React.forwardRef(
         }}
       >
         <Draggable color={color} entryKey={entryKey} trigger={trigger}>
-          <Header style={{ justifyContent: left ? "left" : "space-between" }}>
+          <Header
+            onMouseDown={(event: MouseEvent) => {
+              headerClickStart.current = event;
+            }}
+            onMouseUp={(event: MouseEvent) => {
+              if (!onHeaderClick) return;
+              const startX = headerClickStart?.current?.pageX;
+              const startY = headerClickStart?.current?.pageY;
+              const endX = event.pageX;
+              const endY = event.pageY;
+              const deltaX = Math.abs(endX - startX);
+              const deltaY = Math.abs(endY - startY);
+              if (deltaX <= tolerance && deltaY <= tolerance) {
+                onHeaderClick(event);
+              }
+            }}
+            style={{ justifyContent: left ? "left" : "space-between" }}
+          >
             {heading}
           </Header>
           {children}
