@@ -107,7 +107,7 @@
 .flashlightSection > div {
   position: absolute;
   contain: size layout paint;
-  background-color: hsl(214, 7%, 19%);
+  background-color: var(--joy-palette-background-body);
   overflow: hidden;
 }
 

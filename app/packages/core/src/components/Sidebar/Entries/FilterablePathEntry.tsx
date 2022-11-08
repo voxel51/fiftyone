@@ -285,7 +285,6 @@ const FilterableEntry = React.memo(
         }
         color={color}
         entryKey={entryKey}
-        clickable={true}
         heading={
           <>
             {!disabled && (
@@ -299,6 +298,7 @@ const FilterableEntry = React.memo(
                   padding: 0,
                 }}
                 key="checkbox"
+                onClick={!disabled ? () => setActive(!active) : undefined}
               />
             )}
             <FieldLabelAndInfo
@@ -331,6 +331,10 @@ const FilterableEntry = React.memo(
                         event.stopPropagation();
                         event.preventDefault();
                       }}
+                      onMouseUp={(event) => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                      }}
                     />
                   )}
                 </NameAndCountContainer>
@@ -338,7 +342,6 @@ const FilterableEntry = React.memo(
             />
           </>
         }
-        onHeaderClick={!disabled ? () => setActive(!active) : undefined}
         trigger={trigger}
       >
         {expanded &&

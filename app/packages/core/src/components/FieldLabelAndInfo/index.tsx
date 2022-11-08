@@ -1,4 +1,5 @@
 import { InfoIcon, useTheme } from "@fiftyone/components";
+import { useEventHandler } from "@fiftyone/state";
 import React, {
   MutableRefObject,
   useEffect,
@@ -65,12 +66,16 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
     setSelectedField(null);
   }
 
-  const delay = 300;
+  const delay = 500;
   useHover(hoverTarget, delay, onHover, onHoverEnd);
 
   useEffect(() => {
     setOpen(selectedField === instanceId);
   }, [selectedField]);
+
+  useEffect(() => {
+    if (hoverTarget.current) hoverTarget.current.style["user-select"] = "none";
+  }, [hoverTarget.current]);
 
   return {
     open,
@@ -111,7 +116,12 @@ export default function FieldLabelAndInfo({
 }
 
 const FieldInfoExpandedContainer = styled.div`
-  background: ${({ theme }) => theme.background.body};
+  background: ${({ theme }) => {
+    if (theme.mode === "light") {
+      return theme.background.header;
+    }
+    return theme.background.body;
+  }};
   border-left: 5px solid ${({ color }) => color};
   border-radius: 2px;
   padding: 0.5rem;
@@ -179,10 +189,15 @@ const FieldInfoTableContainer = styled.table`
     padding: 0.1rem 0.5rem;
   }
   tr {
-    background: ${({ theme }) => theme.background.level1};
+    background: ${({ theme }) => {
+      if (theme.mode === "light") {
+        return theme.background.level1;
+      }
+      return theme.background.level1;
+    }};
   }
-  tr + tr {
-    border-top: solid 2px ${({ theme }) => theme.background.body};
+  tr {
+    border-top: solid 2px ${getBorderColor};
   }
   a,
   a:visited {
@@ -205,6 +220,13 @@ const ShowMoreLink = styled.a`
   text-decoration: underline;
   margin-left: 0.25rem;
 `;
+
+function getBorderColor({ theme }) {
+  if (theme.mode === "light") {
+    return theme.background.header;
+  }
+  return "red";
+}
 
 function FieldInfoExpanded({
   field,
@@ -235,6 +257,8 @@ function FieldInfoExpanded({
       onMouseLeave={() => close()}
       ref={expandedRef}
       style={{ visibility: "hidden" }}
+      onMouseUp={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
