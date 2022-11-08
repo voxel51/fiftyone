@@ -8,6 +8,7 @@ import { filter } from "lodash";
 import { atom, useRecoilState, useSetRecoilState } from "recoil";
 
 import ViewDialog from "./ViewDialog";
+import { SelectionItemProps } from "@fiftyone/components/src/components/Selection/Option";
 
 const Box = styled.div`
   display: flex;
@@ -75,8 +76,9 @@ export const viewSearchTerm = atom({
 });
 export const viewDialogOpen = atom({
   key: "viewDialogOpen",
-  default: false,
+  default: true,
 });
+
 const DEFAULT_SELECTED = { id: "1", label: "All samples", color: "#9e9e9e" };
 
 export default function ViewSelection(props: {}) {
