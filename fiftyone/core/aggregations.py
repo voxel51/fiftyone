@@ -1824,7 +1824,11 @@ class Schema(Aggregation):
 
         if self._expr is None:
             field_type = _get_field_type(
-                sample_collection, field_name, unwind=True
+                sample_collection,
+                field_name
+                if context is None
+                else ".".join([context, field_name]),
+                unwind=True,
             )
 
             if isinstance(field_type, fof.EmbeddedDocumentField):
@@ -2448,9 +2452,14 @@ def _parse_field_and_expr(
         root = True
         field_type = None
     else:
-        root = "." not in field_name
+        full_field_name = (
+            ".".join([context, field_name])
+            if context is not None
+            else field_name
+        )
+        root = "." not in full_field_name
         field_type = _get_field_type(
-            sample_collection, field_name, unwind=auto_unwind
+            sample_collection, full_field_name, unwind=auto_unwind
         )
 
     found_expr = expr is not None
