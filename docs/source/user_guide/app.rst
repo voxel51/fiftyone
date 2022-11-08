@@ -283,6 +283,14 @@ by toggling the corresponding display options on the lefthand side of the App.
     :alt: app-fields
     :align: center
 
+If you have :ref:`stored metadata <storing-field-metadata>` on your fields,
+then you can view this information in the App by hovering over field or
+attribute names in the App's sidebar:
+
+.. image:: /images/app/app-field-tooltips.gif
+    :alt: app-field-tooltips
+    :align: center
+
 .. _app-filtering:
 
 Filtering sample fields
@@ -294,6 +302,12 @@ field, click the caret icon to the right of the field's name.
 
 Whenever you modify a filter element, the App will automatically update to show
 only those samples and/or labels that match the filter.
+
+.. note::
+
+    Did you know? When you
+    :ref:`declare custom attributes <dynamic-attributes>` on your dataset's
+    schema, they will automatically become filterable in the App!
 
 .. note::
 

@@ -142,23 +142,41 @@ class FramesView(fov.DatasetView):
     def media_type(self):
         return fom.IMAGE
 
-    def _get_default_sample_fields(
+    def _get_sample_only_fields(
         self, include_private=False, use_db_fields=False
     ):
-        fields = super()._get_default_sample_fields(
-            include_private=include_private, use_db_fields=use_db_fields
+        sample_only_fields = set(
+            self._get_default_sample_fields(
+                include_private=include_private, use_db_fields=use_db_fields
+            )
         )
 
-        if use_db_fields:
-            return fields + ("_sample_id", "frame_number")
+        # If sample_frames != dynamic, `filepath` can be synced
+        config = self._frames_stage.config or {}
+        if config.get("sample_frames", None) != "dynamic":
+            sample_only_fields.discard("filepath")
 
-        return fields + ("sample_id", "frame_number")
+        return sample_only_fields
 
-    def _get_default_indexes(self, frames=False):
-        if frames:
-            return super()._get_default_indexes(frames=frames)
+    def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
+        ids, label_ids = super()._tag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
+        )
 
-        return ["id", "filepath", "sample_id", "_sample_id_1_frame_number_1"]
+        frame_field = self._source_collection._FRAMES_PREFIX + label_field
+        self._source_collection._tag_labels(
+            tags, frame_field, ids=ids, label_ids=label_ids
+        )
+
+    def _untag_labels(self, tags, label_field, ids=None, label_ids=None):
+        ids, label_ids = super()._untag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
+        )
+
+        frame_field = self._source_collection._FRAMES_PREFIX + label_field
+        self._source_collection._untag_labels(
+            tags, frame_field, ids=ids, label_ids=label_ids
+        )
 
     def set_values(self, field_name, *args, **kwargs):
         # The `set_values()` operation could change the contents of this view,
@@ -273,16 +291,14 @@ class FramesView(fov.DatasetView):
         self._sync_source_schema()
 
         dst_dataset = self._source_collection._root_dataset
-        default_fields = set(
-            self._get_default_sample_fields(
-                include_private=True, use_db_fields=True
-            )
+        sample_only_fields = self._get_sample_only_fields(
+            include_private=True, use_db_fields=True
         )
 
         updates = {
             k: v
             for k, v in sample.to_mongo_dict().items()
-            if k not in default_fields
+            if k not in sample_only_fields
         }
 
         if not updates:
@@ -297,14 +313,12 @@ class FramesView(fov.DatasetView):
 
     def _sync_source(self, fields=None, ids=None, update=True, delete=False):
         dst_dataset = self._source_collection._root_dataset
-        default_fields = set(
-            self._get_default_sample_fields(
-                include_private=True, use_db_fields=True
-            )
+        sample_only_fields = self._get_sample_only_fields(
+            include_private=True, use_db_fields=True
         )
 
         if fields is not None:
-            fields = [f for f in fields if f not in default_fields]
+            fields = [f for f in fields if f not in sample_only_fields]
             if not fields:
                 return
 
@@ -323,10 +337,10 @@ class FramesView(fov.DatasetView):
                 )
 
             if fields is None:
-                default_fields.discard("_sample_id")
-                default_fields.discard("frame_number")
+                sample_only_fields.discard("_sample_id")
+                sample_only_fields.discard("frame_number")
 
-                pipeline.append({"$unset": list(default_fields)})
+                pipeline.append({"$unset": list(sample_only_fields)})
             else:
                 project = {f: True for f in fields}
                 project["_id"] = True

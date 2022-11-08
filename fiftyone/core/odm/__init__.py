@@ -53,10 +53,7 @@ from .frame import (
     DatasetFrameDocument,
     NoDatasetFrameDocument,
 )
-from .mixins import (
-    get_default_fields,
-    validate_fields_match,
-)
+from .mixins import get_default_fields
 from .runs import RunDocument
 from .sample import (
     DatasetSampleDocument,
@@ -68,6 +65,7 @@ from .utils import (
     validate_field_name,
     get_field_kwargs,
     get_implied_field_kwargs,
+    validate_fields_match,
 )
 from .views import ViewDocument
 
