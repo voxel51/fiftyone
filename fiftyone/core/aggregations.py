@@ -45,6 +45,8 @@ class Aggregation(object):
             floating point values
     """
 
+    # tricky: this becomes shadowed by an instance attribute when _serialize()
+    # is called
     _uuid = None
 
     def __init__(self, field_or_expr, expr=None, safe=False):
@@ -964,10 +966,13 @@ class Distinct(Aggregation):
 
 
 class FacetAggregations(Aggregation):
-    """Computes the sub-aggregations provided as a set a faceted aggregations,
-    optimally shaping the data, e.g. unwinding list fields, based on the parent
-    field name provided. Sub-aggregation field names are relative to the parent
-    field name.
+    """Efficiently computes a set of aggregations rooted at a common path using
+    faceted computations.
+
+    .. note::
+
+        All ``aggregations`` provided to this method are interpreted relative
+        to the provided ``field_name``.
 
     Examples::
 
@@ -1018,18 +1023,44 @@ class FacetAggregations(Aggregation):
 
     Args:
         field_name: a field name or ``embedded.field.name``
-        aggregations: a list or dict of sub-aggregations
+        aggregations: a list or dict of :class:`Aggregation` instances
     """
 
     def __init__(self, field_name, aggregations, _compiled=False):
-        aggregations, is_dict = self._parse_aggregations(
+        raw_aggregations, aggregations, is_dict = self._parse_aggregations(
             field_name, aggregations
         )
 
         super().__init__(field_name)
+        self._raw_aggregations = raw_aggregations
         self._aggregations = aggregations
-        self._is_dict = is_dict
         self._compiled = _compiled
+        self._is_dict = is_dict
+
+    def _serialize(self, include_uuid=True):
+        d = {
+            "_cls": etau.get_class_name(self),
+            "kwargs": self._kwargs(include_uuid=include_uuid),
+        }
+
+        if include_uuid:
+            if self._uuid is None:
+                self._uuid = str(uuid.uuid4())
+
+            d["_uuid"] = self._uuid
+
+        return d
+
+    def _kwargs(self, include_uuid=True):
+        aggregations = self._serialize_aggregations(
+            self._raw_aggregations, include_uuid=include_uuid
+        )
+
+        return [
+            ["field_name", self._field_name],
+            ["aggregations", aggregations],
+            ["_compiled", self._compiled],
+        ]
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1098,24 +1129,51 @@ class FacetAggregations(Aggregation):
 
     @staticmethod
     def _get_key(agg):
-        return str(
-            f"_{agg.field_name.replace('.', '_')}_{agg.__class__.__name__}"
-        )
+        return agg.field_name.replace(".", "_") + "_" + agg.__class__.__name__
 
     @staticmethod
     def _parse_aggregations(field_name, aggregations):
+        raw_aggregations = deepcopy(aggregations)
         is_dict = isinstance(aggregations, dict)
 
         if not is_dict:
             aggregations = {idx: agg for idx, agg in enumerate(aggregations)}
 
-        for agg in aggregations.values():
+        for key, agg in aggregations.items():
+            if isinstance(agg, dict):
+                agg = Aggregation._from_dict(agg)
+                aggregations[key] = agg
+
             if agg._field_name:
                 agg._field_name = field_name + "." + agg._field_name
             else:
                 agg._field_name = field_name
 
-        return aggregations, is_dict
+        return raw_aggregations, aggregations, is_dict
+
+    @staticmethod
+    def _serialize_aggregations(aggregations, include_uuid=True):
+        if isinstance(aggregations, dict):
+            return {
+                k: _serialize_aggregation(agg, include_uuid=include_uuid)
+                for k, agg in aggregations.items()
+            }
+
+        return [
+            _serialize_aggregation(agg, include_uuid=include_uuid)
+            for agg in aggregations
+        ]
+
+
+def _serialize_aggregation(agg_or_dict, include_uuid=True):
+    if isinstance(agg_or_dict, dict):
+        if not include_uuid:
+            agg_or_dict = deepcopy(agg_or_dict)
+            agg_or_dict.pop("_uuid", None)
+
+        return agg_or_dict
+
+    return agg_or_dict._serialize(include_uuid=include_uuid)
 
 
 class HistogramValues(Aggregation):
@@ -1772,9 +1830,17 @@ class Schema(Aggregation):
         _include_private=False,
     ):
         super().__init__(field_or_expr, expr=expr)
-        self.dynamic_only = dynamic_only
+        self._dynamic_only = dynamic_only
         self._include_private = _include_private
         self._doc_type = None
+
+    def _kwargs(self):
+        return [
+            ["field_or_expr", self._field_name],
+            ["expr", self._expr],
+            ["dynamic_only", self._dynamic_only],
+            ["_include_private", self._include_private],
+        ]
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1810,7 +1876,7 @@ class Schema(Aggregation):
             if not self._include_private and name.startswith("_"):
                 continue
 
-            if self.dynamic_only and name in doc_fields:
+            if self._dynamic_only and name in doc_fields:
                 continue
 
             if name in doc_fields:
