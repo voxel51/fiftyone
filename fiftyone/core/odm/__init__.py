@@ -43,6 +43,7 @@ from .dataset import (
     KeypointSkeleton,
     DatasetAppConfig,
     DatasetDocument,
+    SidebarGroupDocument,
 )
 from .document import (
     Document,

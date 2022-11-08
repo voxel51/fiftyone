@@ -100,7 +100,7 @@ const HorizontalNav = ({}: Props) => {
   const elementNames = useRecoilValue(fos.elementNames);
 
   const schema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE, filtered: true })
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
   const pluginPlots = useActivePlugins(PluginComponentType.Plot, { schema });
   const pluginPlotLabels = pluginPlots.map((p) => p.label);

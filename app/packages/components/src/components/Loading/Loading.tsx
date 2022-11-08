@@ -1,12 +1,19 @@
 import React from "react";
+import classNames from "classnames";
 
-import { loading } from "./Loading.module.css";
+import { ellipsis, loading } from "./Loading.module.css";
 
 const Loading: React.FC<
-  React.PropsWithChildren<{ style?: React.CSSProperties }>
-> = ({ children, style }) => {
+  React.PropsWithChildren<{
+    style?: React.CSSProperties;
+    ellipsisAnimation?: boolean;
+  }>
+> = ({ children, ellipsisAnimation = false, style }) => {
   return (
-    <div className={loading} style={style}>
+    <div
+      className={ellipsisAnimation ? classNames(ellipsis, loading) : loading}
+      style={style}
+    >
       <div>{children}</div>
     </div>
   );

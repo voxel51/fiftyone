@@ -6,6 +6,7 @@ Interface for sample collections.
 |
 """
 from collections import defaultdict
+from copy import copy
 import fnmatch
 import itertools
 import logging
@@ -8229,7 +8230,7 @@ class SampleCollection(object):
             pipelines.append(pipeline)
 
         # Build facet-able pipelines
-        facet_pipelines = self._build_faceted_pipelines(facet_aggs)
+        compiled_facet_aggs, facet_pipelines = self._build_facets(facet_aggs)
         for idx, pipeline in facet_pipelines.items():
             idx_map[idx] = len(pipelines)
             pipelines.append(pipeline)
@@ -8240,7 +8241,6 @@ class SampleCollection(object):
         # Parse batch results
         if batch_aggs:
             result = list(_results[0])
-
             for idx, aggregation in batch_aggs.items():
                 results[idx] = self._parse_big_result(aggregation, result)
 
@@ -8250,9 +8250,17 @@ class SampleCollection(object):
             results[idx] = self._parse_big_result(aggregation, result)
 
         # Parse facet-able results
-        for idx, aggregation in facet_aggs.items():
+        for idx, aggregation in compiled_facet_aggs.items():
             result = list(_results[idx_map[idx]])
-            results[idx] = self._parse_faceted_result(aggregation, result)
+            data = self._parse_faceted_result(aggregation, result)
+            if (
+                isinstance(aggregation, foa.FacetAggregations)
+                and aggregation._compiled
+            ):
+                for idx, d in data.items():
+                    results[idx] = d
+            else:
+                results[idx] = data
 
         return results[0] if scalar_result else results
 
@@ -8277,7 +8285,9 @@ class SampleCollection(object):
 
         if facet_aggs:
             # Build facet-able pipelines
-            facet_pipelines = self._build_faceted_pipelines(facet_aggs)
+            compiled_facet_aggs, facet_pipelines = self._build_facets(
+                facet_aggs
+            )
             for idx, pipeline in facet_pipelines.items():
                 idx_map[idx] = len(pipelines)
                 pipelines.append(pipeline)
@@ -8288,9 +8298,17 @@ class SampleCollection(object):
             _results = await foo.aggregate(collection, pipelines)
 
             # Parse facet-able results
-            for idx, aggregation in facet_aggs.items():
+            for idx, aggregation in compiled_facet_aggs.items():
                 result = list(_results[idx_map[idx]])
-                results[idx] = self._parse_faceted_result(aggregation, result)
+                data = self._parse_faceted_result(aggregation, result)
+                if (
+                    isinstance(aggregation, foa.FacetAggregations)
+                    and aggregation._compiled
+                ):
+                    for idx, d in data.items():
+                        results[idx] = d
+                else:
+                    results[idx] = data
 
         return results[0] if scalar_result else results
 
@@ -8349,16 +8367,49 @@ class SampleCollection(object):
             group_slices=aggregation._needs_group_slices(self),
         )
 
-    def _build_faceted_pipelines(self, aggs_map):
+    def _build_facets(self, aggs_map):
         pipelines = {}
+
+        compiled = defaultdict(dict)
         for idx, aggregation in aggs_map.items():
+            if aggregation.field_name is None or isinstance(
+                aggregation, foa.FacetAggregations
+            ):
+                compiled[idx] = aggregation
+                continue
+
+            keys = aggregation.field_name.split(".")
+            path = ""
+            subfield_name = keys[-1]
+            for num in range(len(keys), 0, -1):
+                path = ".".join(keys[:num])
+                subfield_name = ".".join(keys[num:])
+                field = self.get_field(path)
+                if isinstance(field, fof.ListField) and isinstance(
+                    field.field, fof.EmbeddedDocumentField
+                ):
+                    break
+
+            aggregation = copy(aggregation)
+            aggregation._field_name = subfield_name
+            compiled[path][idx] = aggregation
+
+        for field_name, aggregations in compiled.items():
+            if isinstance(aggregations, foa.Aggregation):
+                continue
+
+            compiled[field_name] = foa.FacetAggregations(
+                field_name, aggregations, _compiled=True
+            )
+
+        for idx, aggregation in compiled.items():
             pipelines[idx] = self._pipeline(
                 pipeline=aggregation.to_mongo(self),
                 attach_frames=aggregation._needs_frames(self),
                 group_slices=aggregation._needs_group_slices(self),
             )
 
-        return pipelines
+        return compiled, pipelines
 
     def _parse_big_result(self, aggregation, result):
         if result:

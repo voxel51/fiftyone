@@ -16,6 +16,7 @@ import Checkbox from "../Common/Checkbox";
 import { Button } from "../utils";
 import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
 import { formatDateTime } from "../../utils/generic";
+import withSuspense from "./withSuspense";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
 
 const NamedRangeSliderContainer = styled.div`
@@ -151,11 +152,21 @@ const NumericFieldFilter = ({
   const one = bounds[0] === bounds[1];
   const timeZone = useRecoilValue(fos.timeZone);
 
-  if (!hasBounds && nonfinites.length === 1 && nonfinites[0][0] === "none")
+  const hasNonfinites = !(
+    nonfinites.length === 0 ||
+    (nonfinites.length === 1 && nonfinites[0][0] === "none")
+  );
+
+  if (!hasNonfinites && !hasBounds && named) {
     return null;
+  }
 
   return (
-    <NamedRangeSliderContainer>
+    <NamedRangeSliderContainer
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
+    >
       {named && name && (
         <FieldLabelAndInfo
           nested
@@ -174,15 +185,31 @@ const NumericFieldFilter = ({
           )}
         />
       )}
+
       <RangeSliderContainer
         onMouseDown={(event) => event.stopPropagation()}
         style={{ cursor: "default" }}
       >
+        {!hasBounds && !named && !hasNonfinites && (
+          <Checkbox
+            key={"No results"}
+            color={color}
+            value={false}
+            disabled={true}
+            name={"No results"}
+            setValue={() => {}}
+          />
+        )}
         {hasBounds && !one ? (
           <RangeSlider
             showBounds={false}
             fieldType={ftype}
-            valueAtom={fos.rangeAtom({ modal, path, defaultRange })}
+            valueAtom={fos.rangeAtom({
+              modal,
+              path,
+              defaultRange,
+              withBounds: true,
+            })}
             boundsAtom={fos.boundsAtom({
               path,
               defaultRange,
@@ -254,4 +281,4 @@ const NumericFieldFilter = ({
   );
 };
 
-export default React.memo(NumericFieldFilter);
+export default React.memo(withSuspense(NumericFieldFilter));

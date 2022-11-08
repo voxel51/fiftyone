@@ -275,6 +275,7 @@ const Distributions = ({ group }: { group: string }) => {
   const paths = useRecoilValue(distributionPaths(group));
   const noData = useRecoilValueLoadable(noDistributionPathsData(group));
 
+  if (noData.state === "hasError") throw noData.contents;
   return noData.state === "hasValue" ? (
     !noData.contents ? (
       <Suspense fallback={<Loading>Loading...</Loading>}>

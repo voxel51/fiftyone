@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Generates documentation for FiftyOne.
 #
-# Copyright 2017-2020, Voxel51, Inc.
+# Copyright 2017-2022, Voxel51, Inc.
 # voxel51.com
 #
 
@@ -80,9 +80,8 @@ sphinx-apidoc --force --no-toc --separate --follow-links \
     --templatedir=docs/templates/apidoc \
     -o docs/source/api fiftyone \
         fiftyone/brain/internal \
-        fiftyone/brain/pytransform \
+        fiftyone/server \
         fiftyone/service
-rm -vf docs/source/api/*pytransform*.rst
 
 # Remove symlink
 rm fiftyone/brain

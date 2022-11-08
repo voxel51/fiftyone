@@ -8,11 +8,13 @@ import {
   Remove,
   Visibility,
 } from "@mui/icons-material";
-import React, { useContext, useLayoutEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import {
   selectorFamily,
+  SetterOrUpdater,
   useRecoilCallback,
   useRecoilState,
+  useRecoilStateLoadable,
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
@@ -25,15 +27,14 @@ import { PillButton } from "../../utils";
 
 import { useTheme } from "@fiftyone/components";
 import Draggable from "./Draggable";
-import { getDatasetName } from "@fiftyone/state";
-import { RouterContext } from "@fiftyone/state";
+import { datasetName, readableTags, State } from "@fiftyone/state";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
   key: "groupLength",
   get:
     (params) =>
     ({ get }) =>
-      get(fos.sidebarGroup({ ...params, loadingTags: true })).length,
+      get(fos.sidebarGroup({ ...params, loading: true })).length,
 });
 
 const TAGS = {
@@ -73,9 +74,7 @@ const numGroupFieldsFiltered = selectorFamily<
         f = (path) => labels.includes(path);
       }
 
-      for (const path of get(
-        fos.sidebarGroup({ ...params, loadingTags: true })
-      )) {
+      for (const path of get(fos.sidebarGroup({ ...params, loading: true }))) {
         if (
           get(fos.fieldIsFiltered({ path, modal: params.modal })) &&
           (!f || f(path))
@@ -122,7 +121,7 @@ const numGroupFieldsActive = selectorFamily<
       }
 
       const paths = new Set(
-        get(fos.sidebarGroup({ ...params, loadingTags: true }))
+        get(fos.sidebarGroup({ ...params, loading: true }))
       );
 
       return active.filter((p) => p.includes(f) && paths.has(p)).length;
@@ -132,8 +131,6 @@ const numGroupFieldsActive = selectorFamily<
 export const replace = {};
 
 export const useRenameGroup = (modal: boolean, group: string) => {
-  const context = useContext(RouterContext);
-
   return useRecoilCallback(
     ({ set, snapshot }) =>
       async (newName: string) => {
@@ -144,28 +141,33 @@ export const useRenameGroup = (modal: boolean, group: string) => {
         );
         if (
           !fos.validateGroupName(
-            current.map(([name]) => name).filter((name) => name !== group),
+            current.map(({ name }) => name).filter((name) => name !== group),
             newName
           )
         ) {
           return false;
         }
 
-        const newGroups = current.map<[string, string[]]>(([name, paths]) => [
-          name === group ? newName : name,
-          paths,
-        ]);
+        const newGroups = current.map(({ name, ...rest }) => ({
+          name: name === group ? newName : name,
+          ...rest,
+        }));
 
         const view = await snapshot.getPromise(fos.view);
         const shown = await snapshot.getPromise(
-          fos.groupShown({ modal, name: group })
+          fos.groupShown({ modal, group, loading: true })
         );
 
         replace[newName] = group;
 
-        set(fos.groupShown({ name: newName, modal }), shown);
+        set(fos.groupShown({ group: newName, modal, loading: true }), shown);
         set(fos.sidebarGroupsDefinition(modal), newGroups);
-        !modal && fos.persistGroups(getDatasetName(context), view, newGroups);
+        !modal &&
+          fos.persistSidebarGroups({
+            dataset: await snapshot.getPromise(datasetName),
+            stages: view,
+            sidebarGroups: newGroups,
+          });
         return true;
       },
     []
@@ -178,11 +180,11 @@ export const useDeleteGroup = (modal: boolean, group: string) => {
     ({ set, snapshot }) =>
       async () => {
         const groups = await snapshot.getPromise(
-          fos.sidebarGroups({ modal, loadingTags: true })
+          fos.sidebarGroups({ modal, loading: true })
         );
         set(
-          fos.sidebarGroups({ modal, loadingTags: true }),
-          groups.filter(([name]) => name !== group)
+          fos.sidebarGroups({ modal, loading: true }),
+          groups.filter(({ name }) => name !== group)
         );
       },
     []
@@ -200,7 +202,7 @@ const useClearActive = (modal: boolean, group: string) => {
     ({ set, snapshot }) =>
       async () => {
         const paths = await snapshot.getPromise(
-          fos.sidebarGroup({ modal, group, loadingTags: true })
+          fos.sidebarGroup({ modal, group, loading: true })
         );
         const active = await snapshot.getPromise(fos.activeFields({ modal }));
 
@@ -223,15 +225,6 @@ const useClearActive = (modal: boolean, group: string) => {
   );
 };
 
-const getTags = (modal, tagKey) =>
-  tagKey === fos.State.TagKey.LABEL
-    ? fos.cumulativeValues({
-        extended: false,
-        modal,
-        ...fos.MATCH_LABEL_TAGS,
-      })
-    : fos.values({ extended: false, modal, path: "tags" });
-
 const useClearMatched = ({
   modal,
   tagKey,
@@ -242,12 +235,12 @@ const useClearMatched = ({
   const [matched, setMatched] = useRecoilState(
     fos.matchedTags({ key: tagKey, modal })
   );
+  const group = tagKey === State.TagKey.LABEL ? "label tags" : "tags";
 
-  const current = useRecoilValueLoadable(getTags(modal, tagKey));
-  const all = useRecoilValueLoadable(getTags(modal, tagKey));
+  const current = useRecoilValueLoadable(readableTags({ modal, group }));
 
   useLayoutEffect(() => {
-    if (current.state === "loading" || all.state === "loading") return;
+    if (current.state === "loading") return;
 
     const newMatches = new Set<string>();
     matched.forEach((tag) => {
@@ -255,7 +248,7 @@ const useClearMatched = ({
     });
 
     newMatches.size !== matched.size && setMatched(newMatches);
-  }, [matched, current, all]);
+  }, [matched]);
 
   return () => setMatched(new Set());
 };
@@ -265,7 +258,7 @@ const useClearFiltered = (modal: boolean, group: string) => {
     ({ set, snapshot }) =>
       async () => {
         let paths = await snapshot.getPromise(
-          fos.sidebarGroup({ modal, group, loadingTags: true })
+          fos.sidebarGroup({ modal, group, loading: true })
         );
         const filters = await snapshot.getPromise(
           modal ? fos.modalFilters : fos.filters
@@ -487,6 +480,27 @@ const GroupEntry = React.memo(
   }
 );
 
+const useShown = (
+  key: string,
+  modal: boolean
+): [boolean, SetterOrUpdater<boolean>] => {
+  const expanded = useRecoilValueLoadable(
+    fos.groupShown({ group: key, modal, loading: false })
+  );
+  const [expandedLoading, setExpanded] = useRecoilStateLoadable(
+    fos.groupShown({ group: key, modal, loading: true })
+  );
+
+  if (expanded.state === "hasValue") {
+    return [expanded.contents, setExpanded];
+  }
+
+  if (expandedLoading.state !== "hasValue") {
+    throw new Error(expandedLoading.contents);
+  }
+  return [expandedLoading.contents, setExpanded];
+};
+
 export const TagGroupEntry = React.memo(
   ({
     entryKey,
@@ -503,12 +517,10 @@ export const TagGroupEntry = React.memo(
       cb: () => void
     ) => void;
   }) => {
-    const [expanded, setExpanded] = useRecoilState(
-      fos.groupShown({ name: TAGS[tagKey], modal })
-    );
-    const { plural } = useRecoilValue(fos.elementNames);
+    const [expanded, setExpanded] = useShown(TAGS[tagKey], modal);
+    const { singular } = useRecoilValue(fos.elementNames);
     const name = `${
-      tagKey === fos.State.TagKey.SAMPLE ? plural : "label"
+      tagKey === fos.State.TagKey.SAMPLE ? singular : "label"
     } tags`;
 
     return (
@@ -563,9 +575,8 @@ interface PathGroupProps {
 
 export const PathGroupEntry = React.memo(
   ({ entryKey, name, modal, mutable = true, trigger }: PathGroupProps) => {
-    const [expanded, setExpanded] = useRecoilState(
-      fos.groupShown({ name, modal })
-    );
+    const [expanded, setExpanded] = useShown(name, modal);
+
     const renameGroup = useRenameGroup(modal, name);
     const onDelete = !modal ? useDeleteGroup(modal, name) : null;
     const empty = useRecoilValue(fos.groupIsEmpty({ modal, group: name }));
