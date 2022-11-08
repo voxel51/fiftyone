@@ -14,6 +14,8 @@ import strawberry as gql
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 from fiftyone.core.utils import datetime_to_timestamp
 import fiftyone.core.view as fov
 
@@ -84,6 +86,7 @@ class FloatAggregation(Aggregation):
 class RootAggregation(Aggregation):
     slice: t.Optional[int]
     expanded_field_count: int
+    frame_label_field_count: t.Optional[int] = None
 
 
 @gql.type
@@ -262,6 +265,12 @@ def _resolve_path_aggregation(
             data["expanded_field_count"] = _count_expanded_fields(
                 view._root_dataset
             )
+            if view._root_dataset.media_type == fom.VIDEO:
+                data["frame_label_field_count"] = len(
+                    view._root_dataset.get_frame_field_schema(
+                        embedded_doc_type=fol.Label
+                    )
+                )
 
         return from_dict(cls, data, config=Config(check_types=False))
 
@@ -281,7 +290,11 @@ def _count_expanded_fields(collection: foc.SampleCollection) -> int:
     for field in schema:
         while isinstance(field, fof.ListField):
             field = field.field
-        if isinstance(field, fof.EmbeddedDocumentField):
+        if (
+            isinstance(field, fof.EmbeddedDocumentField)
+            and field.document_type
+            and not issubclass(field.document_type, fol.Label)
+        ):
             count += len(schema[field].fields)
         else:
             count += 1

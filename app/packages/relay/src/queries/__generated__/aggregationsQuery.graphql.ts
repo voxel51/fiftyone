@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7148fa7e6eea85cbb90c635c5b09a8f4>>
+ * @generated SignedSource<<c4f8ad094fbb0c6142293e8203aeae30>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -38,6 +38,7 @@ export type aggregationsQuery$data = {
     readonly exists?: number;
     readonly expandedFieldCount?: number;
     readonly false?: number;
+    readonly frameLabelFieldCount?: number | null;
     readonly inf?: number;
     readonly max?: number | null;
     readonly min?: number | null;
@@ -206,6 +207,13 @@ v4 = [
             "kind": "ScalarField",
             "name": "expandedFieldCount",
             "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "frameLabelFieldCount",
+            "storageKey": null
           }
         ],
         "type": "RootAggregation",
@@ -259,16 +267,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "b5ddd04fa40c7494f289bd2f0c2881cc",
+    "cacheID": "dadc0977809d96f1e7d1963b5abf37b0",
     "id": null,
     "metadata": {},
     "name": "aggregationsQuery",
     "operationKind": "query",
-    "text": "query aggregationsQuery(\n  $form: AggregationForm!\n) {\n  aggregations(form: $form) {\n    __typename\n    ... on Aggregation {\n      __isAggregation: __typename\n      path\n      count\n      exists\n    }\n    ... on BooleanAggregation {\n      false\n      true\n    }\n    ... on IntAggregation {\n      max\n      min\n    }\n    ... on FloatAggregation {\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      slice\n      expandedFieldCount\n    }\n    ... on StringAggregation {\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
+    "text": "query aggregationsQuery(\n  $form: AggregationForm!\n) {\n  aggregations(form: $form) {\n    __typename\n    ... on Aggregation {\n      __isAggregation: __typename\n      path\n      count\n      exists\n    }\n    ... on BooleanAggregation {\n      false\n      true\n    }\n    ... on IntAggregation {\n      max\n      min\n    }\n    ... on FloatAggregation {\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      slice\n      expandedFieldCount\n      frameLabelFieldCount\n    }\n    ... on StringAggregation {\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "676548a3d76407ce3c5508d0b6a191df";
+(node as any).hash = "e8a94130200106bfc8e3c6b02b19ee7c";
 
 export default node;

@@ -27,6 +27,7 @@ export default graphql`
       ... on RootAggregation {
         slice
         expandedFieldCount
+        frameLabelFieldCount
       }
       ... on StringAggregation {
         values {

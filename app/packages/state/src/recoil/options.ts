@@ -70,7 +70,7 @@ export const resolvedSidebarMode = selectorFamily<"all" | "fast", boolean>({
         return "fast";
       }
 
-      if (get(labelFields({ space: State.SPACE.FRAME })).length >= 1) {
+      if (root.frameLabelFieldCount >= 1) {
         return "fast";
       }
 
