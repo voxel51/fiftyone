@@ -50,7 +50,11 @@ const ViewStageInput = styled(AuosizeInput)`
   }
 
   & ::placeholder {
+<<<<<<< HEAD
+    color: ${({ theme }) => theme.text.primary};
+=======
     color: ${({ theme }) => theme.text.secondary};
+>>>>>>> develop
     font-weight: bold;
   }
 `;

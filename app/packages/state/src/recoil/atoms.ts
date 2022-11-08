@@ -1,9 +1,4 @@
-import {
-  atom,
-  atomFamily,
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-} from "recoil";
+import { atom, atomFamily, useRecoilCallback } from "recoil";
 
 import { Sample, RGB } from "@fiftyone/looker/src/state";
 

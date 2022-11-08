@@ -1,5 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useCallback } from "react";
 import { Suspense } from "react";
 import Input from "react-input-autosize";
@@ -80,6 +86,13 @@ const Selector = <T extends unknown>({
   const valuesRef = useRef<T[]>([]);
   const [active, setActive] = useState<number>();
 
+  const onSelectWrapper = useMemo(() => {
+    return (value: T) => {
+      onSelect(value);
+      setEditing(false);
+    };
+  }, [onSelect]);
+
   const ref = useRef<HTMLInputElement | null>();
   const hovering = useRef(false);
 
@@ -150,9 +163,8 @@ const Selector = <T extends unknown>({
             const found = valuesRef.current
               .map((v) => toKey(v))
               .indexOf(search);
-            found >= 0 && onSelect(valuesRef.current[found]);
-            active !== undefined && onSelect(valuesRef.current[active]);
-            setEditing(false);
+            found >= 0 && onSelectWrapper(valuesRef.current[found]);
+            active !== undefined && onSelectWrapper(valuesRef.current[active]);
           }
         }}
         onKeyDown={(e) => {
@@ -200,8 +212,7 @@ const Selector = <T extends unknown>({
                   search={search}
                   useSearch={useSearch}
                   onSelect={(value) => {
-                    setEditing(false);
-                    onSelect(value);
+                    onSelectWrapper(value);
                   }}
                   component={component}
                   onResults={onResults}

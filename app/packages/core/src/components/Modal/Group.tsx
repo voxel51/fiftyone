@@ -211,8 +211,7 @@ const PinnedSample: React.FC = () => {
 const DualView: React.FC = () => {
   const lookerRef = useRef<VideoLooker>();
   const theme = useTheme();
-
-  const [width, setWidth] = React.useState(1000);
+  const [width, setWidth] = React.useState("70%");
   const key = useRecoilValue(groupId);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
@@ -222,8 +221,8 @@ const DualView: React.FC = () => {
       <div className={mainGroup}>
         <Resizable
           size={{ height: "100% !important", width }}
-          minWidth={"30%"}
-          maxWidth={"70%"}
+          minWidth={300}
+          maxWidth={"90%"}
           enable={{
             top: false,
             right: true,

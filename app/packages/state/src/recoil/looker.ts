@@ -93,5 +93,6 @@ export const useLookerOptions = (
   );
 
   const loading = useRecoilValue(lookerOptions({ modal, withFilter: false }));
+
   return loaded.contents instanceof Promise ? loading : loaded.contents;
 };

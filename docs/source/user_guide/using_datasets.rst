@@ -358,9 +358,13 @@ Custom App config
 
 All |Dataset| instances have an
 :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property that
-contains a |DatasetAppConfig| you can use to store dataset-specific settings
-that customize how the dataset is visualized in the
+contains a |DatasetAppConfig| that you can use to store dataset-specific
+settings that customize how the dataset is visualized in the
 :ref:`FiftyOne App <fiftyone-app>`.
+
+For example, you can declare
+:ref:`multiple media fields <app-multiple-media-fields>` on a dataset and
+configure which field is used by various components of the App by default:
 
 .. code-block:: python
     :linenos:
@@ -389,15 +393,37 @@ that customize how the dataset is visualized in the
 
     session = fo.launch_app(dataset)
 
-Check out :ref:`this section <app-config>` for more information about
-customizing the behavior of the App.
+You can also configure the default loading behavior of the
+:ref:`filters sidebar <app-sidebar-mode>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Set the default sidebar mode to "fast"
+    dataset.app_config.sidebar_mode = "fast"
+    dataset.save()  # must save after edits
+
+or even configure the organization and default expansion state of the
+:ref:`sidebar's field groups <app-sidebar-groups>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Get the default sidebar groups for the dataset
+    sidebar_groups = fo.DatasetAppConfig.default_sidebar_groups(dataset)
+
+    # Collapse the `metadata` section by default
+    print(sidebar_groups[2].name)  # metadata
+    sidebar_groups[2].expanded = False
+
+    # Modify the dataset's App config
+    dataset.app_config.sidebar_groups = sidebar_groups
+    dataset.save()  # must save after edits
 
 .. note::
 
-    Any settings stored in a dataset's
-    :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
-    the corresponding settings from your
-    :ref:`global App config <configuring-fiftyone-app>`.
+    Check out :ref:`this section <app-config>` for more information about
+    customizing the behavior of the App.
 
 .. _storing-classes:
 
