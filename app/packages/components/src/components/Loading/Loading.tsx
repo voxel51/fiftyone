@@ -6,7 +6,7 @@ import { ellipsis, loading } from "./Loading.module.css";
 const Loading: React.FC<
   React.PropsWithChildren<{
     style?: React.CSSProperties;
-    ellipsisAnimation: boolean;
+    ellipsisAnimation?: boolean;
   }>
 > = ({ children, ellipsisAnimation = false, style }) => {
   return (

@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { selectorFamily, useRecoilValue } from "recoil";
+import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
 
 import * as fos from "@fiftyone/state";
 
@@ -46,9 +46,15 @@ export const PathEntryCounts = ({
       }),
     [modal, path]
   );
-  const shown = useRecoilValue(showEntryCounts({ path, modal }));
+  const shown = useRecoilValueLoadable(showEntryCounts({ path, modal }));
 
-  return shown ? (
+  if (shown.state === "hasError") {
+    throw shown.contents;
+  }
+
+  return shown.state === "loading" ? (
+    "..."
+  ) : shown.contents ? (
     <SuspenseEntryCounts
       countAtom={getAtom(false)}
       subcountAtom={getAtom(true)}
@@ -66,7 +72,6 @@ const labelTagCount = selectorFamily<
     ({ get }) =>
       get(
         fos.cumulativeCounts({
-          path: tag,
           ...fos.MATCH_LABEL_TAGS,
           ...rest,
         })
