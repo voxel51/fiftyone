@@ -108,6 +108,38 @@ class EvaluationRun(Run):
 
 
 @gql.type
+class SavedView:
+    dataset_id: str
+    name: str
+    url_name: str
+    description: t.Optional[str]
+    color: t.Optional[str]
+    view_stages: t.List[str]
+    created_at = t.Optional[datetime]
+    last_modified_at = t.Optional[datetime]
+    last_loaded_at = t.Optional[datetime]
+
+    @gql.field
+    def view_name(self) -> str:
+        return self.name
+
+    @gql.field
+    def created_at(self) -> t.Optional[datetime]:
+        # pylint: disable=function-redefined
+        return self.created_at
+
+    @gql.field
+    def last_modified_at(self) -> t.Optional[datetime]:
+        # pylint: disable=function-redefined
+        return self.last_modified_at
+
+    @gql.field
+    def last_loaded_at(self) -> t.Optional[datetime]:
+        # pylint: disable=function-redefined
+        return self.last_loaded_at
+
+
+@gql.type
 class SidebarGroup:
     name: str
     paths: t.Optional[t.List[str]]
@@ -160,6 +192,7 @@ class Dataset:
     frame_fields: t.Optional[t.List[SampleField]]
     brain_methods: t.List[BrainRun]
     evaluations: t.List[EvaluationRun]
+    saved_views: t.Optional[t.List[SavedView]]
     version: t.Optional[str]
     view_cls: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
@@ -181,6 +214,7 @@ class Dataset:
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
+        doc["saved_views"] = doc.get("saved_views", [])
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -194,7 +228,11 @@ class Dataset:
 
     @classmethod
     async def resolver(
-        cls, name: str, view: t.Optional[BSONArray], info: Info
+        cls,
+        name: str,
+        view_stages: t.Optional[BSONArray],
+        view_name: t.Optional[str],
+        info: Info,
     ) -> t.Optional["Dataset"]:
         return await serialize_dataset(name, view)
 
