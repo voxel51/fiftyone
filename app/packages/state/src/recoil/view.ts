@@ -12,6 +12,11 @@ export const viewCls = atom<string>({
   default: null,
 });
 
+export const viewName = atom<string>({
+  key: "viewName",
+  default: null,
+});
+
 export const isRootView = selector<boolean>({
   key: "isRootView",
   get: ({ get }) =>

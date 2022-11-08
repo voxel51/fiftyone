@@ -214,13 +214,14 @@ class Dataset:
 
     @classmethod
     async def resolver(
-            cls,
-            name: str,
-            view: t.Optional[BSONArray],
-            view_name: t.Optional[str],
-            info: Info,
+        cls,
+        name: str,
+        view: t.Optional[BSONArray],
+        view_name: t.Optional[str],
+        info: Info,
     ) -> t.Optional["Dataset"]:
-        return await serialize_dataset(name, view)
+        return await serialize_dataset(name, view, view_name)
+
 
 dataset_dataloader = get_dataloader_resolver(
     Dataset, "datasets", "name", DATASET_FILTER
@@ -343,6 +344,17 @@ class Query(fosa.AggregateQuery):
     def version(self) -> str:
         return foc.VERSION
 
+    @gql.field
+    def saved_view(
+        self, dataset_name: str, view_name: str
+    ) -> t.Optional[SavedView]:
+        ds = fo.load_dataset(dataset_name)
+        if ds.has_view(view_name):
+            for view in ds._doc.saved_views:
+                if view.name == view_name:
+                    return view
+        return
+
 
 def _flatten_fields(
     path: t.List[str], fields: t.List[t.Dict]
@@ -365,7 +377,9 @@ def _convert_targets(targets: t.Dict[str, str]) -> Target:
     return [Target(target=int(k), value=v) for k, v in targets.items()]
 
 
-async def serialize_dataset(name: str, serialized_view: BSONArray) -> Dataset:
+async def serialize_dataset(
+    name: str, serialized_view: BSONArray, view_name: t.Optional[str]
+) -> Dataset:
     def run():
         dataset = fo.load_dataset(name)
         dataset.reload()

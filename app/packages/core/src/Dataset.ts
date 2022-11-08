@@ -12,7 +12,7 @@ import {graphql} from "relay-runtime";
 const DatasetQuery = graphql`
   query DatasetQuery(
     $name: String!
-    $viewStages: BSONArray = null
+    $view: BSONArray = null
     $viewName: String = null
   ) {
     dataset(name: $name, view: $view, viewName: $viewName) {
