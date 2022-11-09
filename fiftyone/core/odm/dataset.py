@@ -408,7 +408,6 @@ def _make_default_sidebar_groups(sample_collection):
     custom = []
     primitives = []
     other = []
-    unsupported = []
 
     # Parse sample fields
     schema = sample_collection.get_field_schema()
@@ -420,7 +419,6 @@ def _make_default_sidebar_groups(sample_collection):
         custom,
         primitives,
         other,
-        unsupported,
     )
 
     # Parse frame fields
@@ -434,7 +432,6 @@ def _make_default_sidebar_groups(sample_collection):
             custom,
             primitives,
             other,
-            unsupported,
             frames=True,
         )
 
@@ -460,11 +457,6 @@ def _make_default_sidebar_groups(sample_collection):
     if other:
         sidebar_groups.append(SidebarGroupDocument(name="other", paths=other))
 
-    if unsupported:
-        sidebar_groups.append(
-            SidebarGroupDocument(name="unsupported", paths=unsupported)
-        )
-
     return sidebar_groups
 
 
@@ -476,7 +468,6 @@ def _parse_schema(
     custom,
     primitives,
     other,
-    unsupported,
     frames=False,
 ):
     for name, field in schema.items():
@@ -509,7 +500,7 @@ def _parse_schema(
             else:
                 primitives.append(name)
         else:
-            unsupported.append(name)
+            other.append(name)
 
 
 def _delete_path(paths, path):
