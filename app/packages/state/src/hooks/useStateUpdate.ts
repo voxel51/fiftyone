@@ -60,6 +60,7 @@ const useStateUpdate = () => {
 
         if (!viewsAreEqual(view || [], state.view || [])) {
           set(viewAtoms.view, state.view || []);
+          set(viewAtoms.viewName, state.viewName);
           reset(extendedSelection);
           reset(similarityParameters);
           reset(filters);
