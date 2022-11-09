@@ -94,11 +94,11 @@ export const readableTags = selectorFamily<
 });
 
 export const useLabelTagText = (modal: boolean) => {
-  const loadingLabelTags =
+  const loading =
     useRecoilValueLoadable(readableTags({ modal, group: "label tags" }))
       .state === "loading";
 
-  return loadingLabelTags ? "Loading label tags..." : "No label tags";
+  return { text: loading ? "Loading label tags..." : "No label tags", loading };
 };
 
 export const useTagText = (modal: boolean) => {
@@ -107,7 +107,10 @@ export const useTagText = (modal: boolean) => {
     useRecoilValueLoadable(readableTags({ modal, group: "tags" })).state ===
     "loading";
 
-  return loading ? `Loading ${singular} tags...` : `No ${singular} tags`;
+  return {
+    text: loading ? `Loading ${singular} tags...` : `No ${singular} tags`,
+    loading,
+  };
 };
 
 export const useEntries = (
