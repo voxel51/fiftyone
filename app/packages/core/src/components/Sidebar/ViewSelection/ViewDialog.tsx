@@ -18,6 +18,7 @@ import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import { useTheme } from "@fiftyone/components";
 import { viewDialogOpen } from ".";
+import { SelectionItemProps } from "@fiftyone/components/src/components/Selection/Option";
 
 const Box = styled.div`
   display: flex;
@@ -97,15 +98,32 @@ export const viewDialogContent = atom({
   },
 });
 
+const COLOR_OPTIONS = [
+  { id: "Green", label: "Green", color: "green" },
+  { id: "Red", label: "Red", color: "red" },
+  { id: "Blue", label: "Blue", color: "blue" },
+  { id: "Yellow", label: "Yellow", color: "yellow" },
+];
+
 export default function ViewDialog(props: Props) {
   const theme = useTheme();
   const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
-  const { name, description, color, isCreating } =
-    useRecoilValue(viewDialogContent);
+  const {
+    name: initialName,
+    description: initialDescription,
+    color: initialColor,
+    isCreating,
+  } = useRecoilValue(viewDialogContent);
 
-  const [nameValue, setNameValue] = useState<string>(name);
-  const [descriptionValue, setDescriptionValue] = useState<string>(description);
-  const [colorValue, setColorValue] = useState<string>(color);
+  const [nameValue, setNameValue] = useState<string>(initialName);
+  const [descriptionValue, setDescriptionValue] =
+    useState<string>(initialDescription);
+  const [colorOption, setColorOption] = useState<SelectionItemProps>({
+    label: initialName,
+    description: initialDescription,
+    color: initialColor,
+    id: initialName,
+  });
 
   const title = isCreating ? "Create view" : "Edit view";
 
@@ -154,6 +172,16 @@ export default function ViewDialog(props: Props) {
               placeholder="Enter a description"
               value={descriptionValue}
               onChange={(e) => setDescriptionValue(e.target.value)}
+            />
+          </InputContainer>
+          <InputContainer>
+            <Label>Color</Label>
+            <Selection
+              selected={colorOption}
+              setSelected={(item) => setColorOption(item)}
+              items={COLOR_OPTIONS}
+              compact
+              readonly
             />
           </InputContainer>
         </DialogContent>

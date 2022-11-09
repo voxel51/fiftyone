@@ -40,7 +40,7 @@ const TertiaryTextContainer = styled(TextContainer)`
 `;
 
 export type SelectionItemProps = {
-  description: string;
+  description?: string;
   id: string;
   label: string;
   color: string;
@@ -50,61 +50,61 @@ interface Props {
   item: SelectionItemProps;
   isSelected?: boolean;
   preDecorator?: React.ReactNode;
+  compact?: boolean; // compact form rows
+  readonly?: boolean;
 }
 
 export default function SelectionOption(props: Props) {
-  const { item, isSelected, preDecorator = null } = props;
+  const { item, isSelected, preDecorator = null, compact, readonly } = props;
 
   const [hoverRef, isHovered] = useHover();
   const { label, description } = item;
   const theme = useTheme();
 
   return (
-    <Tooltip title={description} size="md" placement="right">
-      <Box ref={hoverRef}>
-        {preDecorator}
-        <Box
-          style={{
-            width: "70%",
-            flexDirection: "column",
-          }}
-        >
-          <TextContainer>{label}</TextContainer>
-          <TertiaryTextContainer>{label}</TertiaryTextContainer>
-        </Box>
-        <Box style={{ width: "18%" }}>
-          {(isHovered || isSelected) && (
-            <EditBox>
-              <Box>
-                {isHovered && (
-                  <Edit
-                    color="disabled"
-                    fontSize="small"
-                    sx={{
-                      zIndex: "999",
-                      marginRight: isSelected ? "0.5rem" : "0",
-
-                      "&:hover": {
-                        color: theme.text.primary,
-                      },
-                    }}
-                  />
-                )}
-                {isSelected && (
-                  <Check
-                    color="disabled"
-                    fontSize="small"
-                    sx={{
-                      zIndex: "999",
-                      color: theme.text.primary,
-                    }}
-                  />
-                )}
-              </Box>
-            </EditBox>
-          )}
-        </Box>
+    <Box ref={hoverRef}>
+      {preDecorator}
+      <Box
+        style={{
+          width: compact ? "76%" : "70%",
+          flexDirection: "column",
+        }}
+      >
+        <TextContainer>{label}</TextContainer>
+        <TertiaryTextContainer>{description}</TertiaryTextContainer>
       </Box>
-    </Tooltip>
+      <Box style={{ width: "18%" }}>
+        {!readonly && (isHovered || isSelected) && (
+          <EditBox>
+            <Box>
+              {isHovered && (
+                <Edit
+                  color="disabled"
+                  fontSize="small"
+                  sx={{
+                    zIndex: "999",
+                    marginRight: isSelected ? "0.5rem" : "0",
+
+                    "&:hover": {
+                      color: theme.text.primary,
+                    },
+                  }}
+                />
+              )}
+              {isSelected && (
+                <Check
+                  color="disabled"
+                  fontSize="small"
+                  sx={{
+                    zIndex: "999",
+                    color: theme.text.primary,
+                  }}
+                />
+              )}
+            </Box>
+          </EditBox>
+        )}
+      </Box>
+    </Box>
   );
 }

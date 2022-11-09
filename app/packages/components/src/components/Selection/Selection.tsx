@@ -51,6 +51,8 @@ type SelectionProps = {
   onChange?: (item: string) => void;
   value?: string;
   disabled?: boolean; // TODO: MANI - add permissions
+  compact?: boolean; // compact form rows
+  readonly?: boolean; // no edits
 };
 
 const VIEW_LIST_MAX_HEIGHT = "300px";
@@ -63,6 +65,8 @@ export default function Selection(props: SelectionProps) {
     search,
     selected,
     setSelected,
+    compact,
+    readonly,
   } = props;
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState<boolean>(true);
@@ -84,6 +88,7 @@ export default function Selection(props: SelectionProps) {
       textOverflow: "ellipsis",
       width: "100%",
       display: "inline-block",
+      background: theme.background.level1,
     }),
     []
   );
@@ -107,6 +112,10 @@ export default function Selection(props: SelectionProps) {
               padding: "0px",
               maxHeight: VIEW_LIST_MAX_HEIGHT,
               overflow: "scroll",
+              background: theme.background.level1,
+              "&:hover": {
+                background: theme.background.level1,
+              },
             },
           },
           root: {
@@ -114,12 +123,21 @@ export default function Selection(props: SelectionProps) {
               ...textBoxStyle,
               display: "flex",
               padding: "0 1rem",
+              background: theme.background.level1,
+              "&:hover": {
+                background: theme.background.level1,
+              },
             },
           },
           button: {
             sx: {
               ...textBoxStyle,
               textAlign: "left",
+              background: theme.background.level1,
+
+              "&:hover": {
+                background: theme.background.level1,
+              },
             },
           },
         }}
@@ -172,10 +190,17 @@ export default function Selection(props: SelectionProps) {
                   item={itemProps}
                   isSelected={id === selectedId}
                   preDecorator={
-                    <Box style={{ width: "12%", display: "inline-block" }}>
+                    <Box
+                      style={{
+                        width: compact ? "6%" : "12%",
+                        display: "inline-block",
+                      }}
+                    >
                       <ColoredDot color={color} />
                     </Box>
                   }
+                  compact
+                  readonly
                 />
               </Option>
             );
