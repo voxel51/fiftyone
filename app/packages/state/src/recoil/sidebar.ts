@@ -23,6 +23,7 @@ import {
 import * as aggregationAtoms from "./aggregations";
 import {
   buildSchema,
+  field,
   fieldPaths,
   fields,
   filterPaths,
@@ -585,7 +586,13 @@ export const sidebarEntries = selectorFamily<
 export const disabledPaths = selector<Set<string>>({
   key: "disabledPaths",
   get: ({ get }) => {
-    const paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
+    let paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
+    paths = [
+      ...paths,
+      ...get(fieldPaths({ ftype: LIST_FIELD })).filter(
+        (path) => !get(field(path)).subfield
+      ),
+    ];
 
     get(
       fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE })
@@ -593,7 +600,9 @@ export const disabledPaths = selector<Set<string>>({
       Object.values(fields)
         .filter(
           ({ ftype, subfield }) =>
-            ftype === DICT_FIELD || subfield === DICT_FIELD
+            ftype === DICT_FIELD ||
+            subfield === DICT_FIELD ||
+            (ftype === LIST_FIELD && !subfield)
         )
         .forEach(({ name }) => paths.push(`${prefix}.${name}`));
     });
@@ -689,9 +698,13 @@ export const groupShown = selectorFamily<
   get:
     ({ group, modal, loading }) =>
     ({ get }) => {
-      const expanded = get(sidebarGroupMapping({ modal, loading }))[group]
-        .expanded;
-      return expanded === undefined ? true : expanded;
+      const data = get(sidebarGroupMapping({ modal, loading }))[group];
+
+      return data.expanded === undefined
+        ? !["tags", "label tags"].includes(group)
+          ? !data.paths.every((path) => get(disabledPaths).has(path))
+          : true
+        : data.expanded;
     },
   set:
     ({ modal, group }) =>
