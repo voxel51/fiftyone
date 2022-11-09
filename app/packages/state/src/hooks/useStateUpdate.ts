@@ -100,16 +100,11 @@ const useStateUpdate = () => {
         dataset.evaluations = Object.values(dataset.evaluations || {});
         dataset.sampleFields = collapseFields(dataset.sampleFields);
         dataset.frameFields = collapseFields(dataset.frameFields);
+        const previousDataset = get(datasetAtom);
 
         const currentSidebar = get(sidebarGroupsDefinition(false));
-        const groups = resolveGroups(dataset, currentSidebar);
+        let groups = resolveGroups(dataset, currentSidebar);
 
-        if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
-          set(sidebarGroupsDefinition(false), groups);
-          set(aggregationsTick, get(aggregationsTick) + 1);
-        }
-
-        const previousDataset = get(datasetAtom);
         if (
           !previousDataset ||
           previousDataset.id !== dataset.id ||
@@ -117,6 +112,7 @@ const useStateUpdate = () => {
         ) {
           if (dataset?.name !== previousDataset?.name) {
             reset(sidebarMode(false));
+            groups = resolveGroups(dataset);
           }
           reset(_activeFields({ modal: false }));
           let slice = dataset.groupSlice;
@@ -141,6 +137,9 @@ const useStateUpdate = () => {
           reset(filters);
         }
 
+        if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
+          set(sidebarGroupsDefinition(false), groups);
+        }
         set(datasetAtom, dataset);
       }
 

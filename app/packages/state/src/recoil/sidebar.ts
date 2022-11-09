@@ -214,11 +214,12 @@ export const resolveGroups = (
 ): State.SidebarGroup[] => {
   let groups = dataset?.appConfig?.sidebarGroups;
 
-  const expanded = current.reduce((map, { name, expanded }) => {
-    map[name] = expanded;
-    return map;
-  }, {});
-
+  const expanded = current
+    ? current.reduce((map, { name, expanded }) => {
+        map[name] = expanded;
+        return map;
+      }, {})
+    : {};
   if (!groups) {
     groups = dataset.frameFields.length
       ? DEFAULT_VIDEO_GROUPS
