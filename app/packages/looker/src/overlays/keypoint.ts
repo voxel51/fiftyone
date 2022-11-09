@@ -24,6 +24,7 @@ export default class KeypointOverlay<
     if (!this.label.points || !this.label.points.length) {
       return CONTAINS.NONE;
     }
+
     const result = this.getDistanceAndMaybePoint(state);
 
     if (result && result[0] <= state.pointRadius) {

@@ -126,8 +126,8 @@ interface BaseConfig {
   src: string;
   sampleId: string;
   fieldSchema: Schema;
-  dataset: string;
   view: Stage[];
+  dataset: string;
 }
 
 export interface FrameConfig extends BaseConfig {
@@ -344,7 +344,5 @@ export interface FrameChunkResponse extends FrameChunk {
   method: string;
   frames: FrameSample[];
   range: [number, number];
-  error?: {
-    error: string;
-  };
+  error?: boolean;
 }
