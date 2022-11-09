@@ -185,9 +185,45 @@ export default function ViewDialog(props: Props) {
             />
           </InputContainer>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsOpen(false)}>Cancel</Button>
-          <Button onClick={() => console.log("subscribe")}>Subscribe</Button>
+        <DialogActions
+          sx={{
+            width: "100%",
+            padding: "2rem",
+          }}
+        >
+          <Button
+            onClick={() => setIsOpen(false)}
+            sx={{
+              background: theme.background.level1,
+              color: theme.text.primary,
+              textTransform: "inherit",
+              padding: "0.5rem 1.25rem",
+              border: `1px solid ${theme.text.secondary}`,
+
+              "&:hover": {
+                background: theme.background.body,
+              },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => console.log("subscribe")}
+            sx={{
+              background: theme.text.secondary,
+              color: theme.background.level1,
+              textTransform: "inherit",
+              padding: "0.5rem 1.25rem",
+              border: `1px solid ${theme.text.secondary}`,
+
+              "&:hover": {
+                background: theme.text.primary,
+                border: `1px solid ${theme.text.secondary}`,
+              },
+            }}
+          >
+            Save view
+          </Button>
         </DialogActions>
       </DialogBody>
     </Dialog>
