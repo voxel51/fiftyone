@@ -2245,8 +2245,8 @@ class DatasetExtrasTests(unittest.TestCase):
     def test_saved_views(self):
         dataset = self.dataset
 
-        self.assertFalse(dataset.has_views)
-        self.assertListEqual(dataset.list_views(), [])
+        self.assertFalse(dataset.has_saved_views)
+        self.assertListEqual(dataset.list_saved_views(), [])
 
         view = dataset.match(F("filepath").contains_str("image2"))
 
@@ -2263,9 +2263,9 @@ class DatasetExtrasTests(unittest.TestCase):
 
         self.assertEqual(view.name, view_name)
         self.assertTrue(view.is_saved)
-        self.assertTrue(dataset.has_views)
-        self.assertTrue(dataset.has_view(view_name))
-        self.assertListEqual(dataset.list_views(), [view_name])
+        self.assertTrue(dataset.has_saved_views)
+        self.assertTrue(dataset.has_saved_view(view_name))
+        self.assertListEqual(dataset.list_saved_views(), [view_name])
 
         self.assertIsNone(last_loaded_at1)
         self.assertIsNotNone(last_modified_at1)
@@ -2279,27 +2279,28 @@ class DatasetExtrasTests(unittest.TestCase):
         self.assertIsNone(not_saved_view.name)
         self.assertFalse(not_saved_view.is_saved)
 
-        also_view = dataset.load_view(view_name)
+        also_view = dataset.load_saved_view(view_name)
+
         last_loaded_at2 = dataset._doc.views[0].last_loaded_at
 
         self.assertEqual(view, also_view)
         self.assertEqual(also_view.name, view_name)
         self.assertIsNotNone(last_loaded_at2)
 
-        info = dataset.get_view_info(view_name)
+        info = dataset.get_saved_view_info(view_name)
         new_view_name = "new-name"
         info["name"] = new_view_name
 
-        dataset.update_view_info(view_name, info)
+        dataset.update_saved_view_info(view_name, info)
         last_modified_at2 = dataset._doc.views[0].last_modified_at
 
         self.assertTrue(last_modified_at2 > last_modified_at1)
-        self.assertFalse(dataset.has_view(view_name))
-        self.assertTrue(dataset.has_view(new_view_name))
+        self.assertFalse(dataset.has_saved_view(view_name))
+        self.assertTrue(dataset.has_saved_view(new_view_name))
 
-        updated_view = dataset.load_view(new_view_name)
+        updated_view = dataset.load_saved_view(new_view_name)
         self.assertEqual(updated_view.name, new_view_name)
-        dataset.update_view_info(new_view_name, {"name": view_name})
+        dataset.update_saved_view_info(new_view_name, {"name": view_name})
 
         #
         # Verify that saved views are included in clones
@@ -2307,23 +2308,23 @@ class DatasetExtrasTests(unittest.TestCase):
 
         dataset2 = dataset.clone()
 
-        self.assertTrue(dataset2.has_views)
-        self.assertTrue(dataset2.has_view(view_name))
-        self.assertListEqual(dataset2.list_views(), [view_name])
+        self.assertTrue(dataset2.has_saved_views)
+        self.assertTrue(dataset2.has_saved_view(view_name))
+        self.assertListEqual(dataset2.list_saved_views(), [view_name])
 
-        view2 = dataset2.load_view(view_name)
+        view2 = dataset2.load_saved_view(view_name)
 
         self.assertEqual(len(view2), 1)
         self.assertTrue("image2" in view2.first().filepath)
 
-        dataset.delete_view(view_name)
+        dataset.delete_saved_view(view_name)
 
-        self.assertFalse(dataset.has_views)
-        self.assertFalse(dataset.has_view(view_name))
-        self.assertListEqual(dataset.list_views(), [])
+        self.assertFalse(dataset.has_saved_views)
+        self.assertFalse(dataset.has_saved_view(view_name))
+        self.assertListEqual(dataset.list_saved_views(), [])
 
         # Verify that cloned data is properly decoupled from source dataset
-        also_view2 = dataset2.load_view(view_name)
+        also_view2 = dataset2.load_saved_view(view_name)
         self.assertIsNotNone(also_view2)
 
     def test_saved_views_for_app(self):
@@ -2345,11 +2346,11 @@ class DatasetExtrasTests(unittest.TestCase):
 
         # Can't rename a view to an existing name
         with self.assertRaises(ValueError):
-            dataset.update_view_info("my-view1", {"name": "my_view2"})
+            dataset.update_saved_view_info("my-view1", {"name": "my_view2"})
 
         # Can't rename a view to an existing URL name
         with self.assertRaises(ValueError):
-            dataset.update_view_info("my-view1", {"name": "my_view2!"})
+            dataset.update_saved_view_info("my-view1", {"name": "my_view2!"})
 
         view_docs = dataset._views()
 
@@ -2367,14 +2368,14 @@ class DatasetExtrasTests(unittest.TestCase):
             list(reversed(names)),
         )
 
-        dataset.delete_view("my_view2")
+        dataset.delete_saved_view("my_view2")
 
         self.assertListEqual(
             [v.name for v in dataset._views()],
             [names[2], names[0]],
         )
 
-        dataset.delete_views()
+        dataset.delete_saved_views()
 
         self.assertListEqual(dataset._views(), [])
 

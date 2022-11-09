@@ -143,13 +143,15 @@ class Mutation:
         state = get_state()
         state.selected = []
         state.selected_labels = []
-        if view_name and state.dataset.has_view(view_name):
-            state.view = state.dataset.load_view(view_name)
+
+        if view_name and state.dataset.has_saved_view(view_name):
+            state.view = state.dataset.load_saved_view(view_name)
+
         elif form:
             view = get_view(
-                dataset_name,
-                view,
-                form.filters,
+                    dataset_name,
+                    view,
+                    form.filters,
             )
             if form.slice:
                 view = view.select_group_slices([form.slice])

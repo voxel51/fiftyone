@@ -53,7 +53,7 @@ def get_view(
     """
     view = None
     if view_name:
-        view = fod.load_dataset(dataset_name).load_view(view_name)
+        view = fod.load_dataset(dataset_name).load_saved_view(view_name)
     else:
         view = fod.load_dataset(dataset_name).view()
     view.reload()

@@ -2515,10 +2515,10 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset_type=fo.types.FiftyOneDataset,
         )
 
-        self.assertTrue("test" in dataset.list_views())
-        self.assertTrue("test" in dataset2.list_views())
+        self.assertTrue("test" in dataset.list_saved_views())
+        self.assertTrue("test" in dataset2.list_saved_views())
 
-        view2 = dataset2.load_view("test")
+        view2 = dataset2.load_saved_view("test")
         self.assertEqual(len(view), len(view2))
 
         # Test import/export of runs
@@ -2705,10 +2705,10 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset_type=fo.types.LegacyFiftyOneDataset,
         )
 
-        self.assertTrue("test" in dataset.list_views())
-        self.assertTrue("test" in dataset2.list_views())
+        self.assertTrue("test" in dataset.list_saved_views())
+        self.assertTrue("test" in dataset2.list_saved_views())
 
-        view2 = dataset2.load_view("test")
+        view2 = dataset2.load_saved_view("test")
         self.assertEqual(len(view), len(view2))
 
         # Test import/export of runs

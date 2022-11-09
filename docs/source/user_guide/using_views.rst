@@ -129,7 +129,7 @@ your dataset under a name of your choice:
     dataset.save_view("cats-view", cats_view)
 
 Then you can conveniently use
-:meth:`load_view() <fiftyone.core.dataset.Dataset.load_view>` to load the view
+:meth:`load_saved_view() <fiftyone.core.dataset.Dataset.load_saved_view>` to load the view
 in a future session:
 
 .. code-block:: python
@@ -140,14 +140,14 @@ in a future session:
     dataset = fo.load_dataset("quickstart")
 
     # Retrieve a saved view
-    cats_view = dataset.load_view("cats-view")
+    cats_view = dataset.load_saved_view("cats-view")
     print(cats_view)
 
     # Cleanup
     dataset.delete()
 
-You can also use :meth:`has_view() <fiftyone.core.dataset.Dataset.has_view>`
-and :meth:`delete_view() <fiftyone.core.dataset.Dataset.delete_view>` to manage
+You can also use :meth:`has_saved_view() <fiftyone.core.dataset.Dataset.has_saved_view>`
+and :meth:`delete_saved_view() <fiftyone.core.dataset.Dataset.delete_saved_view>` to manage
 your saved views.
 
 .. note::

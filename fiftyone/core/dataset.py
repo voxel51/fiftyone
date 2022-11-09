@@ -3019,11 +3019,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise
 
     @property
-    def has_views(self):
+    def has_saved_views(self):
         """Whether this dataset has any saved views."""
-        return bool(self.list_views())
+        return bool(self.list_saved_views())
 
-    def has_view(self, name):
+    def has_saved_view(self, name):
         """Whether this dataset has a saved view with the given name.
 
         Args:
@@ -3032,9 +3032,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             True/False
         """
-        return name in self.list_views()
+        return name in self.list_saved_views()
 
-    def list_views(self):
+    def list_saved_views(self):
         """Returns the names of saved views on this dataset.
 
         Returns:
@@ -3051,7 +3051,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite=False,
     ):
         """Saves the given view into this dataset under the given name so it
-        can be loaded later via :meth:`load_view`.
+        can be loaded later via :meth:`load_saved_view`.
 
         Examples::
 
@@ -3064,7 +3064,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             dataset.save_view("cats", view)
 
-            also_view = dataset.load_view("cats")
+            also_view = dataset.load_saved_view("cats")
             assert view == also_view
 
         Args:
@@ -3099,7 +3099,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         view._set_name(name)
 
-    def get_view_info(self, name):
+    def get_saved_view_info(self, name):
         """Loads the editable information about the saved view with the given
         name.
 
@@ -3112,7 +3112,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         view_doc = self._get_view_doc(name)
         return {f: view_doc[f] for f in view_doc._EDITABLE_FIELDS}
 
-    def update_view_info(self, name, info):
+    def update_saved_view_info(self, name, info):
         """Updates the editable information for the saved view with the given
         name.
 
@@ -3126,15 +3126,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             dataset.save_view("test", view)
 
-            info = dataset.get_view_info("test")
+            info = dataset.get_saved_view_info("test")
             info["name"] = "a new name"
 
-            dataset.update_view_info("test", info)
+            dataset.update_saved_view_info("test", info)
 
         Args:
             name: the name of a saved view
             info: a dict whose keys are a subset of the keys returned by
-                :meth:`get_view_info`
+                :meth:`get_saved_view_info`
         """
         view_doc = self._get_view_doc(name)
 
@@ -3156,7 +3156,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             view_doc.last_modified_at = datetime.utcnow()
             self._doc.save()
 
-    def load_view(self, name):
+    def load_saved_view(self, name):
         """Loads the saved view with the given name.
 
         Examples::
@@ -3170,7 +3170,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             dataset.save_view("cats", view)
 
-            also_view = dataset.load_view("cats")
+            also_view = dataset.load_saved_view("cats")
             assert view == also_view
 
         Args:
@@ -3190,7 +3190,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return view
 
-    def delete_view(self, name):
+    def delete_saved_view(self, name):
         """Deletes the saved view with the given name.
 
         Args:
@@ -3199,8 +3199,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         view_doc = self._get_view_doc(name, pop=True)
         self._doc.save()
 
-    def delete_views(self):
+    def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
+        print("Deleting saved views: ", self.list_saved_views())
         self._doc.saved_views = []
         self._doc.save()
 
@@ -3244,7 +3245,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         "Saved view with name '%s' already exists" % dup_name
                     )
 
-                self.delete_view(dup_name)
+                self.delete_saved_view(dup_name)
 
         return url_name
 

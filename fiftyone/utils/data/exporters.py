@@ -1708,7 +1708,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         # Exporting the information below only makes sense when exporting an
         # entire dataset
 
-        if dataset.has_views:
+        if dataset.has_saved_views:
             self._metadata["views"] = [
                 json_util.dumps(v.to_dict()) for v in dataset._doc.views
             ]
@@ -1961,7 +1961,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             and sample_collection == sample_collection._root_dataset
         )
 
-        if _export_views and dataset.has_views:
+        if _export_views and dataset.has_saved_views:
             dataset_dict["views"] = [v.to_dict() for v in dataset._doc.views]
 
         if _export_runs and dataset.has_annotation_runs:

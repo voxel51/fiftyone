@@ -1374,8 +1374,8 @@ class DatasetView(foc.SampleCollection):
     def _add_view_stage(self, stage):
         stage.validate(self)
 
-        if stage.has_view:
-            view = stage.load_view(self)
+        if stage.has_saved_view:
+            view = stage.load_saved_view(self)
         else:
             view = copy(self)
             view._stages.append(stage)

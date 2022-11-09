@@ -349,7 +349,7 @@ class Query(fosa.AggregateQuery):
         self, dataset_name: str, view_name: str
     ) -> t.Optional[SavedView]:
         ds = fo.load_dataset(dataset_name)
-        if ds.has_view(view_name):
+        if ds.has_saved_view(view_name):
             for view in ds._doc.saved_views:
                 if view.name == view_name:
                     return view

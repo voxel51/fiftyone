@@ -1863,9 +1863,9 @@ def _import_views(dataset, views):
             d = json_util.loads(d)
 
         name = d["name"]
-        if dataset.has_view(name):
+        if dataset.has_saved_view(name):
             logger.warning("Overwriting existing view '%s'", name)
-            dataset.delete_view(name)
+            dataset.delete_saved_view(name)
 
         d.pop("_id", None)
         view_doc = foo.ViewDocument.from_dict(d)
