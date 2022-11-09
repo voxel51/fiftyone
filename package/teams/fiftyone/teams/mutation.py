@@ -70,11 +70,36 @@ class Mutation(fosm.Mutation):
         session: t.Optional[str],
         view: BSONArray,
         dataset: str,
+        form: t.Optional[fosm.StateForm],
         info: Info,
     ) -> fosm.ViewResponse:
+        if form:
+            view = fosm.get_view(
+                dataset,
+                view,
+                form.filters,
+            )
+            if form.slice:
+                view = view.select_group_slices([form.slice])
+
+            if form.sample_ids:
+                view = fov.make_optimized_select_view(view, form.sample_ids)
+
+            if form.add_stages:
+                for d in form.add_stages:
+                    stage = fosm.ViewStage._from_dict(d)
+                    view = view.add_stage(stage)
+
+            if form.extended:
+                view = fosm.extend_view(view, form.extended, True)
+
+            result_view = view
+            view = view._serialize()
+
+        else:
+            result_view = fov.DatasetView._build(view._root_dataset, view)
+
+        dataset = await Dataset.resolver(view._root_dataset.name, view, info)
         return fosm.ViewResponse(
-            fov.DatasetView._build(
-                fo.load_dataset(dataset), view
-            )._serialize(),
-            await Dataset.resolver(dataset, view, info),
+            view=result_view._serialize(), dataset=dataset
         )

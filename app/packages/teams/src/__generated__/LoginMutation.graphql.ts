@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8b944d5c6d62515c2a5179da35fa21da>>
+ * @generated SignedSource<<f819deed90916d56e38e0e84e0e86548>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,22 +11,22 @@
 import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type UserInput = {
   email: string;
-  sub?: string | null;
   familyName?: string | null;
   givenName?: string | null;
+  sub?: string | null;
 };
 export type LoginMutation$variables = {
   user: UserInput;
 };
 export type LoginMutation$data = {
   readonly login: {
-    readonly id: string;
     readonly familyName: string | null;
+    readonly id: string;
   };
 };
 export type LoginMutation = {
-  variables: LoginMutation$variables;
   response: LoginMutation$data;
+  variables: LoginMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
