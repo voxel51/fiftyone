@@ -375,22 +375,24 @@ const CategoricalFilter = <T extends V = V>({
         e.stopPropagation();
       }}
     >
-      <FieldLabelAndInfo
-        nested
-        field={field}
-        color={color}
-        template={({
-          label,
-          hoverHanlders,
-          FieldInfoIcon,
-          hoverTarget,
-          container,
-        }) => (
-          <NamedCategoricalFilterHeader>
-            <span ref={hoverTarget}>{label}</span>
-          </NamedCategoricalFilterHeader>
-        )}
-      />
+      {named && (
+        <FieldLabelAndInfo
+          nested
+          field={field}
+          color={color}
+          template={({
+            label,
+            hoverHanlders,
+            FieldInfoIcon,
+            hoverTarget,
+            container,
+          }) => (
+            <NamedCategoricalFilterHeader>
+              <span ref={hoverTarget}>{label}</span>
+            </NamedCategoricalFilterHeader>
+          )}
+        />
+      )}
       <CategoricalFilterContainer
         onMouseDown={(event) => event.stopPropagation()}
       >
