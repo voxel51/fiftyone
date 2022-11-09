@@ -5,7 +5,7 @@ import React, {
   useState,
 } from "react";
 import numeral from "numeral";
-import { CircularProgress } from "@material-ui/core";
+import { CircularProgress } from "@mui/material";
 import {
   RecoilState,
   RecoilValue,
@@ -32,7 +32,7 @@ import {
 import { Button } from "../utils";
 import { PopoutSectionTitle } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
+import { getFetchFunction } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
@@ -40,7 +40,7 @@ import {
   groupId,
   groupStatistics,
   Lookers,
-  sidebarSampleId,
+  refresher,
 } from "@fiftyone/state";
 
 const IconDiv = styled.div`
@@ -53,7 +53,7 @@ const IconDiv = styled.div`
   & > svg {
     margin-top: 0.5rem;
     margin-right: 0.25rem;
-    color: ${({ theme }) => theme.font};
+    color: ${({ theme }) => theme.text.primary};
   }
 `;
 
@@ -64,7 +64,7 @@ const Loading = React.memo(({ loading }: { loading: boolean }) => {
       {loading && (
         <CircularProgress
           style={{
-            color: theme.font,
+            color: theme.text.secondary,
             height: 16,
             width: 16,
             marginTop: "0.25rem",
@@ -77,7 +77,7 @@ const Loading = React.memo(({ loading }: { loading: boolean }) => {
 
 const TaggingContainerInput = styled.div`
   font-size: 14px;
-  border-bottom: 1px ${({ theme }) => theme.brand} solid;
+  border-bottom: 1px ${({ theme }) => theme.primary.plainColor} solid;
   position: relative;
   margin: 0.5rem 0;
 `;
@@ -85,7 +85,7 @@ const TaggingContainerInput = styled.div`
 const TaggingInput = styled.input`
   background-color: transparent;
   border: none;
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.text.primary};
   height: 2rem;
   font-size: 14px;
   border: none;
@@ -100,7 +100,7 @@ const TaggingInput = styled.input`
   }
 
   &::placeholder {
-    color: ${({ theme }) => theme.fontDark};
+    color: ${({ theme }) => theme.text.secondary};
     font-weight: bold;
   }
 `;
@@ -363,7 +363,7 @@ const useTagCallback = (
         const { samples } = await getFetchFunction()("POST", "/tag", {
           ...tagParameters({
             activeFields: await snapshot.getPromise(
-              fos.labelPaths({ expanded: false })
+              fos.activeLabelFields({ modal })
             ),
             dataset: await snapshot.getPromise(fos.datasetName),
             filters: await snapshot.getPromise(
@@ -389,6 +389,7 @@ const useTagCallback = (
           current_frame: lookerRef?.current?.frameNumber,
           changes,
         });
+        set(refresher, (i) => i + 1);
 
         if (samples) {
           set(fos.refreshGroupQuery, (cur) => cur + 1);
@@ -417,7 +418,9 @@ const Loader = () => {
   const theme = useTheme();
   return (
     <div style={{ display: "flex", justifyContent: "center" }}>
-      <CircularProgress style={{ color: theme.fontDark, margin: "1rem 0" }} />
+      <CircularProgress
+        style={{ color: theme.text.secondary, margin: "1rem 0" }}
+      />
     </div>
   );
 };
@@ -465,6 +468,21 @@ const usePlaceHolder = (
   };
 };
 
+const SuspenseLoading = () => {
+  return (
+    <TaggingContainerInput>
+      <TaggingInput
+        placeholder={"Loading..."}
+        title={"Loading..."}
+        focused={false}
+        disabled={true}
+        type={"text"}
+      />
+      <Loading loading={true} />
+    </TaggingContainerInput>
+  );
+};
+
 type TaggerProps = {
   modal: boolean;
   bounds: any;
@@ -479,12 +497,16 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
   const elementNames = useRecoilValue(fos.elementNames);
   const theme = useTheme();
   const sampleProps = useSpring({
-    borderBottomColor: labels ? theme.backgroundDark : theme.brand,
+    borderBottomColor: labels
+      ? theme.background.level2
+      : theme.primary.plainColor,
     cursor: labels ? "pointer" : "default",
   });
 
   const labelProps = useSpring({
-    borderBottomColor: labels ? theme.brand : theme.backgroundDark,
+    borderBottomColor: labels
+      ? theme.primary.plainColor
+      : theme.background.level2,
     cursor: labels ? "default" : "pointer",
   });
 
@@ -507,7 +529,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
         </SwitchDiv>
       </SwitcherDiv>
       {labels && (
-        <Suspense fallback={null} key={"labels"}>
+        <Suspense fallback={<SuspenseLoading />} key={"labels"}>
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}
@@ -519,7 +541,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
         </Suspense>
       )}
       {!labels && (
-        <Suspense fallback={null} key={elementNames.plural}>
+        <Suspense fallback={<SuspenseLoading />} key={elementNames.plural}>
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}

@@ -57,7 +57,7 @@ const fn = (
   let scale = 1;
   if (activeKey) {
     const w = items[activeKey].el.parentElement.getBoundingClientRect().width;
-    scale = (w - 8) / (w - 16);
+    scale = (w - 12) / (w - 16);
   }
 
   const results = {};
@@ -375,16 +375,16 @@ const SidebarColumn = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
 
-  scrollbar-color: ${({ theme }) => theme.fontDarkest}
-    ${({ theme }) => theme.background};
-  background: ${({ theme }) => theme.background};
+  scrollbar-color: ${({ theme }) => theme.text.tertiary}
+    ${({ theme }) => theme.background.body};
+  background: ${({ theme }) => theme.background.sidebar};
   ${scrollbarStyles}
 `;
 
 const Container = animated(styled.div`
   position: relative;
   min-height: 100%;
-  margin: 0 0.25rem 0 1.25rem;
+  margin: 0 0.25rem 0 1rem;
 
   & > div {
     position: absolute;
@@ -698,10 +698,10 @@ const InteractiveSidebar = ({
       }}
       style={{
         borderLeft: modal
-          ? `1px solid ${theme.backgroundDarkBorder}`
+          ? `1px solid ${theme.primary.plainBorder}`
           : undefined,
         borderRight: !modal
-          ? `1px solid ${theme.backgroundDarkBorder}`
+          ? `1px solid ${theme.primary.plainBorder}`
           : undefined,
       }}
     >

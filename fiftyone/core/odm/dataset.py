@@ -9,28 +9,30 @@ import inspect
 
 import eta.core.utils as etau
 
-from mongoengine.fields import StringField as MongoStringField
-
 from fiftyone.core.fields import (
     Field,
-    ArrayField,
     BooleanField,
     ClassesField,
     DateTimeField,
     DictField,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
+    FloatField,
     IntField,
     ListField,
     ObjectIdField,
     StringField,
     TargetsField,
 )
+import fiftyone.core.utils as fou
 
 from .document import Document
 from .embedded_document import EmbeddedDocument, BaseEmbeddedDocument
 from .runs import RunDocument
 from .views import ViewDocument
+
+fol = fou.lazy_import("fiftyone.core.labels")
+fom = fou.lazy_import("fiftyone.core.metadata")
 
 
 def create_field(
@@ -38,13 +40,13 @@ def create_field(
     ftype,
     embedded_doc_type=None,
     subfield=None,
-    db_field=None,
     fields=None,
-    parent=None,
-    **field_kwargs
+    db_field=None,
+    description=None,
+    info=None,
+    **kwargs,
 ):
-    """Creates the :class:`fiftyone.core.fields.Field` instance defined by the
-    given specification.
+    """Creates the field defined by the given specification.
 
     .. note::
 
@@ -65,17 +67,16 @@ def create_field(
             contained field. Only applicable when ``ftype`` is
             :class:`fiftyone.core.fields.ListField` or
             :class:`fiftyone.core.fields.DictField`
+        fields (None): a list of :class:`fiftyone.core.fields.Field` instances
+            defining embedded document attributes. Only applicable when
+            ``ftype`` is :class:`fiftyone.core.fields.EmbeddedDocumentField`
         db_field (None): the database field to store this field in. By default,
             ``name`` is used
-        fields (None): the subfields of the
-            :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            Only applicable when ``ftype`` is
-            :class:`fiftyone.core.fields.EmbeddedDocumentField`
-        parent (None): a parent
-        **field_kwargs: mongoengine field kwargs
+        description (None): an optional description
+        info (None): an optional info dict
 
     Returns:
-        a :class:`fiftyone.core.fields.Field` instance
+        a :class:`fiftyone.core.fields.Field`
     """
     if db_field is None:
         if issubclass(ftype, ObjectIdField) and not name.startswith("_"):
@@ -84,31 +85,24 @@ def create_field(
             db_field = name
 
     # All user-defined fields are nullable
-    kwargs = dict(null=True, db_field=db_field)
-    kwargs.update(field_kwargs)
+    field_kwargs = dict(
+        null=True, db_field=db_field, description=description, info=info
+    )
+    field_kwargs.update(kwargs)
 
     if fields is not None:
-        for idx, value in enumerate(fields):
-            if isinstance(value, (Field, MongoStringField)):
-                continue
-
-            fields[idx] = create_field(**value)
+        fields = [
+            create_field(**f) if not isinstance(f, Field) else f
+            for f in fields
+        ]
 
     if issubclass(ftype, (ListField, DictField)):
         if subfield is not None:
             if inspect.isclass(subfield):
                 if issubclass(subfield, EmbeddedDocumentField):
-                    subfield = create_field(
-                        name,
-                        subfield,
-                        embedded_doc_type=embedded_doc_type,
-                        fields=fields or [],
-                        parent=parent,
-                    )
+                    subfield = subfield(embedded_doc_type)
                 else:
                     subfield = subfield()
-
-                subfield.name = name
 
             if not isinstance(subfield, Field):
                 raise ValueError(
@@ -116,9 +110,14 @@ def create_field(
                     % (type(subfield), Field)
                 )
 
-            kwargs["field"] = subfield
+            if (
+                isinstance(subfield, EmbeddedDocumentField)
+                and fields is not None
+            ):
+                subfield.fields = fields
 
-    if issubclass(ftype, EmbeddedDocumentField):
+            field_kwargs["field"] = subfield
+    elif issubclass(ftype, EmbeddedDocumentField):
         if embedded_doc_type is None or not issubclass(
             embedded_doc_type, BaseEmbeddedDocument
         ):
@@ -127,11 +126,10 @@ def create_field(
                 % (embedded_doc_type, BaseEmbeddedDocument)
             )
 
-        kwargs.update(
-            {"document_type": embedded_doc_type, "fields": fields or []}
-        )
+        field_kwargs["document_type"] = embedded_doc_type
+        field_kwargs["fields"] = fields or []
 
-    field = ftype(**kwargs)
+    field = ftype(**field_kwargs)
     field.name = name
 
     return field
@@ -145,12 +143,12 @@ class SampleFieldDocument(EmbeddedDocument):
 
     name = StringField()
     ftype = StringField()
-    subfield = StringField(null=True)
     embedded_doc_type = StringField(null=True)
+    subfield = StringField(null=True)
+    fields = ListField(EmbeddedDocumentField("SampleFieldDocument"))
     db_field = StringField(null=True)
-    fields = ListField(
-        EmbeddedDocumentField(document_type="SampleFieldDocument")
-    )
+    description = StringField(null=True)
+    info = DictField(null=True)
 
     def to_field(self):
         """Creates the :class:`fiftyone.core.fields.Field` specified by this
@@ -178,8 +176,10 @@ class SampleFieldDocument(EmbeddedDocument):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
-            db_field=self.db_field,
             fields=fields,
+            db_field=self.db_field,
+            description=self.description,
+            info=self.info,
         )
 
     @classmethod
@@ -201,97 +201,13 @@ class SampleFieldDocument(EmbeddedDocument):
         return cls(
             name=field.name,
             ftype=etau.get_class_name(field),
-            subfield=cls._get_attr_repr(field, "field"),
             embedded_doc_type=embedded_doc_type,
-            db_field=field.db_field,
+            subfield=cls._get_attr_repr(field, "field"),
             fields=cls._get_field_documents(field),
+            db_field=field.db_field,
+            description=field.description,
+            info=field.info,
         )
-
-    def matches_field(self, field):
-        """Determines whether this sample field matches the given field.
-
-        Args:
-            field: a :class:`fiftyone.core.fields.Field` instance
-
-        Returns:
-            True/False
-        """
-        if self.name != field.name:
-            return False
-
-        if self.ftype != etau.get_class_name(field):
-            return False
-
-        if self.subfield and self.subfield != etau.get_class_name(field.field):
-            return False
-
-        if (
-            self.embedded_doc_type
-            and self.embedded_doc_type
-            != etau.get_class_name(field.document_type)
-        ):
-            return False
-
-        if self.db_field != field.db_field:
-            return False
-
-        cur_fields = {f.name: f for f in list(getattr(self, "fields", []))}
-        fields = {f.name: f for f in getattr(field, "fields", [])}
-        if cur_fields and fields:
-            if len(fields) != len(cur_fields):
-                return False
-
-            if any([name not in cur_fields for name in fields]):
-                return False
-
-            return any(
-                [not cur_fields[name].matches(fields[name]) for name in fields]
-            )
-
-        return True
-
-    def merge_doc(self, other):
-        if self.ftype != other.ftype:
-            raise TypeError("Cannot merge")
-
-        if other.ftype == etau.get_class_name(ListField):
-            if (
-                self.subfield
-                and other.subfield
-                and self.subfield != other.subfield
-            ):
-                raise TypeError("Cannot merge")
-
-            self.subfield = other.subfield or self.subfield
-
-        if self.name == other.name and self.db_field is None:
-            self.db_field = other.db_field or self.db_field
-
-        embedded_doc = etau.get_class_name(EmbeddedDocumentField)
-        if other.ftype == embedded_doc or self.subfield == embedded_doc:
-            if (
-                self.embedded_doc_type
-                and other.embedded_doc_type
-                and self.embedded_doc_type != other.embedded_doc_type
-            ):
-                raise TypeError("Cannot merge")
-
-            self.embedded_doc_type = (
-                other.embedded_doc_type or self.embedded_doc_type
-            )
-
-            others = {f.name: f for f in other.fields}
-
-            new = []
-            for i, field in enumerate(self.fields):
-                if field.name in others:
-                    self.fields[i] = field.merge_doc(others[field.name])
-                else:
-                    new.append(field)
-
-            self.fields = self.fields + new
-
-        return self
 
     @staticmethod
     def _get_attr_repr(field, attr_name):
@@ -306,9 +222,6 @@ class SampleFieldDocument(EmbeddedDocument):
         if not isinstance(field, EmbeddedDocumentField):
             return None
 
-        if not hasattr(field, "fields"):
-            return None
-
         return [
             cls.from_field(value)
             for value in field.get_field_schema().values()
@@ -320,8 +233,9 @@ class SidebarGroupDocument(EmbeddedDocument):
 
     Args:
         name: the name of the sidebar group
-        paths: the list of ``field`` or ``embedded.field.name`` paths in the
-            group
+        paths ([]): the list of ``field`` or ``embedded.field.name`` paths in
+            the group
+        expanded (None): whether this group should be expanded by default
     """
 
     # strict=False lets this class ignore unknown fields from other versions
@@ -329,6 +243,7 @@ class SidebarGroupDocument(EmbeddedDocument):
 
     name = StringField(required=True)
     paths = ListField(StringField(), default=[])
+    expanded = BooleanField(default=None)
 
 
 class KeypointSkeleton(EmbeddedDocument):
@@ -388,9 +303,11 @@ class DatasetAppConfig(EmbeddedDocument):
             serve media in the App's grid view
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
+        sidebar_mode (None): an optional default mode for the App sidebar.
+            Supported values are ``("all", "best", "fast")``
         sidebar_groups (None): an optional list of
-            :class:`SidebarGroupDocument` describing sidebar groups to create
-            in the App
+            :class:`SidebarGroupDocument` describing sidebar groups to use in
+            the App
         plugins ({}): an optional dict mapping plugin names to plugin
             configuration dicts. Builtin plugins include:
 
@@ -401,13 +318,41 @@ class DatasetAppConfig(EmbeddedDocument):
                 options
     """
 
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"strict": False}
+
     media_fields = ListField(StringField(), default=["filepath"])
     grid_media_field = StringField(default="filepath")
     modal_media_field = StringField(default="filepath")
+    sidebar_mode = StringField(default=None)
     sidebar_groups = ListField(
-        EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
+        EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
     plugins = DictField()
+
+    @staticmethod
+    def default_sidebar_groups(sample_collection):
+        """Generates the default ``sidebar_groups`` for the given collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            sidebar_groups = fo.DatasetAppConfig.default_sidebar_groups(dataset)
+            dataset.app_config.sidebar_groups = sidebar_groups
+            print(dataset.app_config)
+
+        Args:
+            sample_collection: a
+                :class:`fiftyone.core.collections.SampleCollection`
+
+        Returns:
+            a list of :class:`SidebarGroupDocument` instances
+        """
+        return _make_default_sidebar_groups(sample_collection)
 
     def is_custom(self):
         """Determines whether this app config differs from the default one.
@@ -456,6 +401,118 @@ class DatasetAppConfig(EmbeddedDocument):
             self._rename_path(path, new_path)
 
 
+def _make_default_sidebar_groups(sample_collection):
+    # Possible sidebar groups
+    metadata = []
+    labels = []
+    frame_labels = []
+    custom = []
+    primitives = []
+    other = []
+    unsupported = []
+
+    # Parse sample fields
+    schema = sample_collection.get_field_schema()
+    _parse_schema(
+        schema,
+        metadata,
+        labels,
+        frame_labels,
+        custom,
+        primitives,
+        other,
+        unsupported,
+    )
+
+    # Parse frame fields
+    if sample_collection._contains_videos():
+        schema = sample_collection.get_frame_field_schema()
+        _parse_schema(
+            schema,
+            metadata,
+            labels,
+            frame_labels,
+            custom,
+            primitives,
+            other,
+            unsupported,
+            frames=True,
+        )
+
+    sidebar_groups = [
+        SidebarGroupDocument(name="tags"),
+        SidebarGroupDocument(name="label tags"),
+        SidebarGroupDocument(name="metadata", paths=metadata),
+        SidebarGroupDocument(name="labels", paths=labels),
+    ]
+
+    if frame_labels:
+        sidebar_groups.append(
+            SidebarGroupDocument(name="frame labels", paths=frame_labels)
+        )
+
+    for name, paths in custom:
+        sidebar_groups.append(SidebarGroupDocument(name=name, paths=paths))
+
+    sidebar_groups.append(
+        SidebarGroupDocument(name="primitives", paths=primitives)
+    )
+
+    if other:
+        sidebar_groups.append(SidebarGroupDocument(name="other", paths=other))
+
+    if unsupported:
+        sidebar_groups.append(
+            SidebarGroupDocument(name="unsupported", paths=unsupported)
+        )
+
+    return sidebar_groups
+
+
+def _parse_schema(
+    schema,
+    metadata,
+    labels,
+    frame_labels,
+    custom,
+    primitives,
+    other,
+    unsupported,
+    frames=False,
+):
+    for name, field in schema.items():
+        if frames:
+            name = "frames." + name
+        else:
+            if name == "tags":
+                continue
+
+        if isinstance(field, EmbeddedDocumentField):
+            if issubclass(field.document_type, fol.Label):
+                if frames:
+                    frame_labels.append(name)
+                else:
+                    labels.append(name)
+            else:
+                paths = [
+                    name + "." + n for n in field.get_field_schema().keys()
+                ]
+                if issubclass(field.document_type, fom.Metadata):
+                    metadata.extend(paths)
+                else:
+                    custom.append((name, paths))
+        elif isinstance(
+            field,
+            (ObjectIdField, IntField, FloatField, StringField, BooleanField),
+        ):
+            if frames:
+                other.append(name)
+            else:
+                primitives.append(name)
+        else:
+            unsupported.append(name)
+
+
 def _delete_path(paths, path):
     del_inds = []
     for idx, p in enumerate(paths):
@@ -501,19 +558,15 @@ class DatasetDocument(Document):
     tags = ListField(StringField())
     description = StringField()
     info = DictField()
-    app_config = EmbeddedDocumentField(document_type=DatasetAppConfig)
+    app_config = EmbeddedDocumentField(DatasetAppConfig)
     classes = DictField(ClassesField())
     default_classes = ClassesField()
     mask_targets = DictField(TargetsField())
     default_mask_targets = TargetsField()
-    skeletons = DictField(
-        EmbeddedDocumentField(document_type=KeypointSkeleton)
-    )
-    default_skeleton = EmbeddedDocumentField(document_type=KeypointSkeleton)
-    sample_fields = EmbeddedDocumentListField(
-        document_type=SampleFieldDocument
-    )
-    frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
+    skeletons = DictField(EmbeddedDocumentField(KeypointSkeleton))
+    default_skeleton = EmbeddedDocumentField(KeypointSkeleton)
+    sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
+    frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
     annotation_runs = DictField(EmbeddedDocumentField(RunDocument))
     brain_methods = DictField(EmbeddedDocumentField(RunDocument))
     evaluations = DictField(EmbeddedDocumentField(RunDocument))

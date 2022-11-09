@@ -1,14 +1,13 @@
-import { Loading, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
-  Field,
   formatDate,
   formatDateTime,
   FRAME_SUPPORT_FIELD,
   LIST_FIELD,
 } from "@fiftyone/utilities";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@material-ui/icons";
+import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 
 import React, { Suspense, useMemo, useState } from "react";
@@ -24,6 +23,7 @@ import * as fos from "@fiftyone/state";
 import RegularEntry from "./RegularEntry";
 
 import LoadingCircle from "../../Common/Loading";
+import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 
 const ScalarDiv = styled.div`
   & > div {
@@ -77,22 +77,16 @@ const ScalarValueEntry = ({
 }) => {
   const theme = useTheme();
   const { backgroundColor } = useSpring({
-    backgroundColor: theme.backgroundLight,
+    backgroundColor: theme.background.level1,
   });
   const color = useRecoilValue(fos.pathColor({ path, modal: true }));
 
-  const { ftype, subfield, embeddedDocType } = useRecoilValue(fos.field(path));
+  const field = useRecoilValue(fos.field(path));
+  const { ftype, subfield, embeddedDocType } = field;
 
   return (
     <RegularEntry
       entryKey={entryKey}
-      title={`${path} (${
-        embeddedDocType
-          ? embeddedDocType
-          : subfield
-          ? `${ftype}(${subfield})`
-          : ftype
-      })`}
       backgroundColor={backgroundColor}
       color={color}
       heading={null}
@@ -102,24 +96,30 @@ const ScalarValueEntry = ({
         <Suspense fallback={<div>Loading...</div>}>
           <Loadable path={path} />
         </Suspense>
-        <div
-          style={{
-            fontSize: "0.8rem",
-            color: theme.fontDark,
-          }}
-        >
-          {path}
-        </div>
+        <FieldLabelAndInfo
+          field={field}
+          color={color}
+          template={({ label, hoverTarget }) => (
+            <div
+              style={{
+                fontSize: "0.8rem",
+                color: theme.text.secondary,
+              }}
+            >
+              <span ref={hoverTarget}>{label}</span>
+            </div>
+          )}
+        />
       </ScalarDiv>
     </RegularEntry>
   );
 };
 
 const ListContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid #191c1f;
+  background: ${({ theme }) => theme.background.level2};
+  border: 1px solid var(--joy-palette-divider);
   border-radius: 2px;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
 `;
@@ -143,7 +143,7 @@ const ListValueEntry = ({
   const color = useRecoilValue(fos.pathColor({ path, modal: true }));
   const theme = useTheme();
   const { backgroundColor } = useSpring({
-    backgroundColor: theme.backgroundLight,
+    backgroundColor: theme.background.level1,
   });
   const { ftype, subfield, embeddedDocType } = useRecoilValue(fos.field(path));
 

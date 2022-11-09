@@ -4,7 +4,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { CircularProgress } from "@material-ui/core";
+import { CircularProgress } from "@mui/material";
 import {
   Bookmark,
   Check,
@@ -15,7 +15,7 @@ import {
   Settings,
   VisibilityOff,
   Wallpaper,
-} from "@material-ui/icons";
+} from "@mui/icons-material";
 import useMeasure from "react-use-measure";
 import {
   selectorFamily,
@@ -28,15 +28,11 @@ import styled from "styled-components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
 import OptionsActions from "./Options";
-import Patcher, { patchesFields, sendPatch } from "./Patcher";
+import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import { PillButton } from "../utils";
-import {
-  useEventHandler,
-  useOutsideClick,
-  useUnprocessedStateUpdate,
-} from "@fiftyone/state";
+import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import Similar from "./Similar";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
@@ -45,7 +41,7 @@ const Loading = () => {
   const theme = useTheme();
   return (
     <CircularProgress
-      style={{ padding: 2, height: 22, width: 22, color: theme.font }}
+      style={{ padding: 2, height: 22, width: 22, color: theme.text.primary }}
     />
   );
 };
@@ -286,21 +282,22 @@ const SaveFilters = () => {
   const hasFiltersValue = useRecoilValue(fos.hasFilters(false));
   const extended = Object.keys(useRecoilValue(fos.extendedStages)).length > 0;
   const loading = useRecoilValue(fos.savingFilters);
-  const updateState = useUnprocessedStateUpdate();
+  const onComplete = useRecoilCallback(({ set, reset }) => () => {
+    set(fos.savingFilters, false);
+    reset(fos.similarityParameters);
+    reset(fos.extendedSelection);
+  });
+  const setView = useSetView(true, false, onComplete);
 
   const saveFilters = useRecoilCallback(
-    ({ snapshot, set, reset }) =>
+    ({ snapshot, set }) =>
       async () => {
         const loading = await snapshot.getPromise(fos.savingFilters);
         if (loading) {
           return;
         }
         set(fos.savingFilters, true);
-        sendPatch(snapshot, updateState, undefined).then(() => {
-          set(fos.savingFilters, false);
-          reset(fos.similarityParameters);
-          reset(fos.extendedSelection);
-        });
+        setView((v) => v);
       },
     []
   );

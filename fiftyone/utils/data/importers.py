@@ -54,6 +54,7 @@ def import_samples(
     label_field=None,
     tags=None,
     expand_schema=True,
+    dynamic=False,
     add_info=True,
 ):
     """Adds the samples from the given :class:`DatasetImporter` to the dataset.
@@ -81,6 +82,8 @@ def import_samples(
         expand_schema (True): whether to dynamically add new sample fields
             encountered to the dataset schema. If False, an error is raised
             if a sample's schema is not a subset of the dataset schema
+        dynamic (False): whether to declare dynamic attributes of embedded
+            document fields that are encountered
         add_info (True): whether to add dataset info from the importer (if
             any) to the dataset
 
@@ -117,8 +120,13 @@ def import_samples(
     #
 
     with dataset_importer:
-        parse_sample, expand_schema = _build_parse_sample_fcn(
-            dataset, dataset_importer, label_field, tags, expand_schema
+        parse_sample, expand_schema, dynamic = _build_parse_sample_fcn(
+            dataset,
+            dataset_importer,
+            label_field,
+            tags,
+            expand_schema,
+            dynamic,
         )
 
         try:
@@ -132,7 +140,10 @@ def import_samples(
             samples = map(parse_sample, iter(dataset_importer))
 
         sample_ids = dataset.add_samples(
-            samples, expand_schema=expand_schema, num_samples=num_samples
+            samples,
+            expand_schema=expand_schema,
+            dynamic=dynamic,
+            num_samples=num_samples,
         )
 
         if add_info and dataset_importer.has_dataset_info:
@@ -160,6 +171,7 @@ def merge_samples(
     merge_lists=True,
     overwrite=True,
     expand_schema=True,
+    dynamic=False,
     add_info=True,
 ):
     """Merges the samples from the given :class:`DatasetImporter` into the
@@ -248,6 +260,8 @@ def merge_samples(
         expand_schema (True): whether to dynamically add new fields encountered
             to the dataset schema. If False, an error is raised if a sample's
             schema is not a subset of the dataset schema
+        dynamic (False): whether to declare dynamic attributes of embedded
+            document fields that are encountered
         add_info (True): whether to add dataset info from the importer (if any)
             to the dataset
     """
@@ -293,8 +307,13 @@ def merge_samples(
     #
 
     with dataset_importer:
-        parse_sample, expand_schema = _build_parse_sample_fcn(
-            dataset, dataset_importer, label_field, tags, expand_schema
+        parse_sample, expand_schema, dynamic = _build_parse_sample_fcn(
+            dataset,
+            dataset_importer,
+            label_field,
+            tags,
+            expand_schema,
+            dynamic,
         )
 
         try:
@@ -318,6 +337,7 @@ def merge_samples(
             merge_lists=merge_lists,
             overwrite=overwrite,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             num_samples=num_samples,
         )
 
@@ -354,7 +374,7 @@ def _generate_group_samples(dataset_importer, parse_sample):
 
 
 def _build_parse_sample_fcn(
-    dataset, dataset_importer, label_field, tags, expand_schema
+    dataset, dataset_importer, label_field, tags, expand_schema, dynamic
 ):
     if isinstance(dataset_importer, GenericSampleDatasetImporter):
         # Generic sample/group dataset
@@ -369,7 +389,11 @@ def _build_parse_sample_fcn(
         #
         # @todo add support for pre-declaring frame field schemas?
         #
-        if expand_schema and dataset_importer.has_sample_field_schema:
+        if (
+            expand_schema
+            and not dynamic
+            and dataset_importer.has_sample_field_schema
+        ):
             dataset._apply_field_schema(
                 dataset_importer.get_sample_field_schema()
             )
@@ -445,7 +469,7 @@ def _build_parse_sample_fcn(
         except:
             can_expand_now = False
 
-        if expand_schema and can_expand_now:
+        if expand_schema and not dynamic and can_expand_now:
             dataset._ensure_label_field(
                 label_field, dataset_importer.label_cls
             )
@@ -499,7 +523,7 @@ def _build_parse_sample_fcn(
             "Unsupported DatasetImporter type %s" % type(dataset_importer)
         )
 
-    return parse_sample, expand_schema
+    return parse_sample, expand_schema, dynamic
 
 
 def build_dataset_importer(
@@ -996,7 +1020,9 @@ class GenericSampleDatasetImporter(DatasetImporter):
     @property
     def has_sample_field_schema(self):
         """Whether this importer produces a sample field schema."""
-        raise NotImplementedError("subclass must implement has_dataset_info")
+        raise NotImplementedError(
+            "subclass must implement has_sample_field_schema"
+        )
 
     def get_sample_field_schema(self):
         """Returns a dictionary describing the field schema of the samples

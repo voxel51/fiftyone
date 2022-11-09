@@ -1,10 +1,10 @@
 import React, { Suspense, useLayoutEffect, useMemo } from "react";
-import { Checkbox } from "@material-ui/core";
+import { Checkbox } from "@mui/material";
 import {
   KeyboardArrowDown,
   KeyboardArrowUp,
   VisibilityOff,
-} from "@material-ui/icons";
+} from "@mui/icons-material";
 import { useSpring } from "@react-spring/web";
 import {
   atomFamily,
@@ -50,15 +50,9 @@ import { NameAndCountContainer, PillButton } from "../../utils";
 import { useTheme } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
-
-const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
-  key: "sidebarCanExpand",
-  get:
-    ({ modal, path }) =>
-    ({ get }) => {
-      return get(fos.count({ path, extended: false, modal })) > 0;
-    },
-});
+import Color from "color";
+import { pathIsExpanded } from "./utils";
+import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
@@ -223,11 +217,6 @@ const useHidden = (path: string) => {
   ) : null;
 };
 
-const pathIsExpanded = atomFamily<boolean, { modal: boolean; path: string }>({
-  key: "pathIsExpanded",
-  default: false,
-});
-
 const FilterableEntry = React.memo(
   ({
     entryKey,
@@ -251,15 +240,16 @@ const FilterableEntry = React.memo(
       cb: () => void
     ) => void;
   }) => {
-    const [expanded, setExpanded] = useRecoilState(
-      pathIsExpanded({ modal, path })
-    );
     const theme = useTheme();
-    const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
+
     const skeleton = useRecoilValue(fos.getSkeleton);
     const expandedPath = useRecoilValue(fos.expandPath(path));
+    const [expanded, setExpanded] = useRecoilState(
+      pathIsExpanded({ modal, path: expandedPath })
+    );
+    const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
     const color = disabled
-      ? theme.backgroundDark
+      ? theme.background.level2
       : useRecoilValue(fos.pathColor({ path, modal }));
     const fields = useRecoilValue(
       fos.fields({
@@ -270,7 +260,8 @@ const FilterableEntry = React.memo(
 
     const field = useRecoilValue(fos.field(path));
     const data = useMemo(
-      () => getFilterData(expandedPath, modal, field, fields, skeleton),
+      () =>
+        getFilterData(expandedPath, modal, field as Field, fields, skeleton),
       [field, fields, expandedPath, modal, skeleton]
     );
     const fieldIsFiltered = useRecoilValue(
@@ -279,17 +270,7 @@ const FilterableEntry = React.memo(
     const [active, setActive] = useRecoilState(
       fos.activeField({ modal, path })
     );
-    const expandable = useRecoilValueLoadable(canExpand({ modal, path }));
     const hidden = modal ? useHidden(path) : null;
-
-    useLayoutEffect(() => {
-      if (expandable.state !== "loading" && !expandable.contents && expanded) {
-        setExpanded(false);
-      }
-    }, [expandable.state, expandable.contents, expanded]);
-    const { backgroundColor } = useSpring({
-      backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
-    });
 
     if (!field) {
       return null;
@@ -297,7 +278,11 @@ const FilterableEntry = React.memo(
 
     return (
       <RegularEntry
-        backgroundColor={backgroundColor}
+        backgroundColor={
+          fieldIsFiltered
+            ? Color(color).alpha(0.25).string()
+            : theme.background.level1
+        }
         color={color}
         entryKey={entryKey}
         heading={
@@ -308,59 +293,67 @@ const FilterableEntry = React.memo(
                 checked={active}
                 title={`Show ${path}`}
                 style={{
-                  color: active ? color : theme.fontDark,
+                  color: active ? color : theme.text.secondary,
                   marginLeft: 2,
                   padding: 0,
                 }}
                 key="checkbox"
+                onClick={!disabled ? () => setActive(!active) : undefined}
               />
             )}
-            <NameAndCountContainer>
-              <span key="path">{path}</span>
-              {hidden}
-              <PathEntryCounts key="count" modal={modal} path={expandedPath} />
-              {!disabled &&
-                expandable.state !== "loading" &&
-                expandable.contents && (
-                  <Arrow
-                    key="arrow"
-                    style={{ cursor: "pointer", margin: 0 }}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      setExpanded(!expanded);
-                    }}
-                    onMouseDown={(event) => {
-                      event.stopPropagation();
-                      event.preventDefault();
-                    }}
+            <FieldLabelAndInfo
+              field={field}
+              color={color}
+              expandedPath={expandedPath}
+              template={({ label, hoverHanlders, hoverTarget, container }) => (
+                <NameAndCountContainer ref={container}>
+                  <span key="path">
+                    <span ref={hoverTarget} {...hoverHanlders}>
+                      {label}
+                    </span>
+                  </span>
+                  {hidden}
+                  <PathEntryCounts
+                    key="count"
+                    modal={modal}
+                    path={expandedPath}
                   />
-                )}
-            </NameAndCountContainer>
+                  {!disabled && (
+                    <Arrow
+                      key="arrow"
+                      style={{ cursor: "pointer", margin: 0 }}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setExpanded(!expanded);
+                      }}
+                      onMouseDown={(event) => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                      }}
+                      onMouseUp={(event) => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                      }}
+                    />
+                  )}
+                </NameAndCountContainer>
+              )}
+            />
           </>
         }
-        onClick={!disabled ? () => setActive(!active) : null}
-        title={`${path} (${
-          field.embeddedDocType
-            ? field.embeddedDocType
-            : field.subfield
-            ? `${field.ftype}(${field.subfield})`
-            : field.ftype
-        })`}
         trigger={trigger}
       >
-        <Suspense fallback={null}>
-          {expanded &&
-            data.map(({ ftype, listField, ...props }) => {
-              return React.createElement(FILTERS[ftype], {
-                key: props.path,
-                onFocus,
-                onBlur,
-                title: listField ? `${LIST_FIELD}(${ftype})` : ftype,
-                ...props,
-              });
-            })}
-        </Suspense>
+        {expanded &&
+          data.map(({ ftype, listField, ...props }) => {
+            return React.createElement(FILTERS[ftype], {
+              key: props.path,
+              onFocus,
+              onBlur,
+              title: listField ? `${LIST_FIELD}(${ftype})` : ftype,
+              ...props,
+            });
+          })}
       </RegularEntry>
     );
   }

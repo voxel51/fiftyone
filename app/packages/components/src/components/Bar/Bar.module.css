@@ -12,7 +12,7 @@
     to top,
     rgba(0, 0, 0, 0),
     30%,
-    var(--background-dark)
+    var(--joy-palette-background-level2)
   );
 
   display: flex;

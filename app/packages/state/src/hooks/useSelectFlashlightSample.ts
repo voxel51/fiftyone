@@ -3,10 +3,8 @@ import { useRecoilTransaction_UNSTABLE } from "recoil";
 import { selectedSamples } from "../recoil/atoms";
 import useSetSelected from "./useSetSelected";
 
-const argFact =
-  <T extends unknown>(compareFn) =>
-  (array: T[]) =>
-    array.map((el, idx) => [el, idx]).reduce<T>(compareFn, array[0])[1];
+const argFact = (compareFn) => (array) =>
+  array.map((el, idx) => [el, idx]).reduce(compareFn)[1];
 
 const argMin = argFact((max, el) => (el[0] < max[0] ? el : max));
 
@@ -78,15 +76,15 @@ export default () => {
         flashlight: Flashlight<number>,
         { shiftKey, sampleId }: SelectThumbnailData
       ) => {
-        const selected = new Set(get(selectedSamples));
+        let selected = new Set(get(selectedSamples));
         const items = [...selected];
         const map = flashlight.itemIndexes;
         const index = map[sampleId];
 
         if (shiftKey && !selected.has(sampleId)) {
-          addRange(index, items, map);
+          selected = addRange(index, items, map);
         } else if (shiftKey) {
-          removeRange(index, selected, map);
+          selected = removeRange(index, selected, map);
         } else {
           selected.has(sampleId)
             ? selected.delete(sampleId)

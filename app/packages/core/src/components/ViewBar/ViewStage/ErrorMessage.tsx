@@ -2,16 +2,16 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { config, animated, useSpring } from "@react-spring/web";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
-import { ReportProblem } from "@material-ui/icons";
+import { ReportProblem } from "@mui/icons-material";
 
 import { useFollow, useOutsideClick } from "@fiftyone/state";
 
 const ErrorMessageDiv = animated(styled.div`
   box-sizing: border-box;
   border-radius: 3px;
-  background-color: ${({ theme }) => theme.backgroundDarker};
-  box-shadow: 0 2px 25px 0 ${({ theme }) => theme.darkShadow};
-  color: ${({ theme }) => theme.fontDark};
+  background-color: ${({ theme }) => theme.background.level3};
+  box-shadow: 0 2px 25px 0 ${({ theme }) => theme.primary.plainBorder};
+  color: ${({ theme }) => theme.text.secondary};
   border-radius: 2px;
   padding: 0.5rem;
   line-height: 1rem;
@@ -23,7 +23,7 @@ const ErrorMessageDiv = animated(styled.div`
 `);
 
 const ErrorHeader = styled.div`
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.text.primary};
   display: flex;
   padding-bottom: 0.5rem;
 `;
@@ -76,7 +76,10 @@ const ErrorMessage = React.memo(
           <>
             <ErrorHeader>
               <ReportProblem
-                style={{ color: theme.error, marginRight: "0.5rem" }}
+                style={{
+                  color: theme.danger.plainColor,
+                  marginRight: "0.5rem",
+                }}
               />
               <div
                 style={{ marginTop: "0.25rem" }}

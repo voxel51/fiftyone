@@ -1,6 +1,5 @@
 import React, { Suspense } from "react";
 import { RecoilValue, useRecoilValue } from "recoil";
-import LoadingCircle from "./Loading";
 
 const EntryCounts = ({
   countAtom,
@@ -15,7 +14,7 @@ const EntryCounts = ({
   ];
 
   if (typeof count !== "number") {
-    return <LoadingCircle />;
+    return "...";
   }
 
   if (count === subcount || count === 0) {

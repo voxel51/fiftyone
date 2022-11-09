@@ -1,9 +1,35 @@
 import React, { useCallback } from "react";
-import { selectorFamily } from "recoil";
+import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
 
 import * as fos from "@fiftyone/state";
 
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
+
+import { pathIsExpanded } from "./utils";
+
+const showEntryCounts = selectorFamily<
+  boolean,
+  { always?: boolean; path: string; modal: boolean }
+>({
+  key: "showEntryCounts",
+  get:
+    (params) =>
+    ({ get }) => {
+      const mode = get(fos.resolvedSidebarMode(params.modal));
+
+      if (
+        params.modal ||
+        params.path === "" ||
+        params.path.split(".")[0] === "tags" ||
+        mode === "all" ||
+        get(pathIsExpanded(params))
+      ) {
+        return true;
+      }
+
+      return false;
+    },
+});
 
 export const PathEntryCounts = ({
   modal,
@@ -21,13 +47,20 @@ export const PathEntryCounts = ({
       }),
     [modal, path]
   );
+  const shown = useRecoilValueLoadable(showEntryCounts({ path, modal }));
 
-  return (
+  if (shown.state === "hasError") {
+    throw shown.contents;
+  }
+
+  return shown.state === "loading" ? (
+    <>...</>
+  ) : shown.contents ? (
     <SuspenseEntryCounts
       countAtom={getAtom(false)}
       subcountAtom={getAtom(true)}
     />
-  );
+  ) : null;
 };
 
 const labelTagCount = selectorFamily<
@@ -40,7 +73,6 @@ const labelTagCount = selectorFamily<
     ({ get }) =>
       get(
         fos.cumulativeCounts({
-          path: tag,
           ...fos.MATCH_LABEL_TAGS,
           ...rest,
         })
@@ -54,8 +86,9 @@ export const tagIsMatched = selectorFamily<
   key: "tagIsActive",
   get:
     ({ key, tag, modal }) =>
-    ({ get }) =>
-      get(fos.matchedTags({ key, modal })).has(tag),
+    ({ get }) => {
+      return get(fos.matchedTags({ key, modal })).has(tag);
+    },
   set:
     ({ key, tag, modal }) =>
     ({ get, set }, toggle) => {

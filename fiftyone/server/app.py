@@ -5,6 +5,7 @@ FiftyOne Server app.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from datetime import date, datetime
 import os
 
 from starlette.applications import Starlette
@@ -28,6 +29,7 @@ from fiftyone.server.extensions import EndSession
 from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
 from fiftyone.server.routes import routes
+from fiftyone.server.scalars import Date, DateTime
 
 
 class Static(StaticFiles):
@@ -35,7 +37,7 @@ class Static(StaticFiles):
         response = await super().get_response(path, scope)
 
         if response.status_code == 404:
-            full_path, stat_result = await self.lookup_path("index.html")
+            full_path, stat_result = self.lookup_path("index.html")
             return self.file_response(full_path, stat_result, scope)
 
         return response
@@ -50,7 +52,15 @@ class HeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
-schema = gql.Schema(mutation=Mutation, query=Query, extensions=[EndSession])
+schema = gql.Schema(
+    mutation=Mutation,
+    query=Query,
+    extensions=[EndSession],
+    scalar_overrides={
+        date: Date,
+        datetime: DateTime,
+    },
+)
 
 
 app = Starlette(
@@ -70,7 +80,13 @@ app = Starlette(
     debug=foc.DEV_INSTALL,
     routes=[Route(route, endpoint) for route, endpoint in routes]
     + [
-        Route("/graphql", GraphQL(schema, graphiql=foc.DEV_INSTALL)),
+        Route(
+            "/graphql",
+            GraphQL(
+                schema,
+                graphiql=foc.DEV_INSTALL,
+            ),
+        ),
         Mount(
             "/plugins",
             app=Static(
