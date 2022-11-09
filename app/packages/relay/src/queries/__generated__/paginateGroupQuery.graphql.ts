@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1df96bc7e4d60864c3a5f49fc263c010>>
+ * @generated SignedSource<<982f8d1f19b73ac2d5d3d82b5019176f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -230,21 +230,6 @@ return {
         "name": "paginateGroupPinnedSample_query",
         "selections": [
           (v13/*: any*/)
-        ],
-        "args": null,
-        "argumentDefinitions": [
-          {
-            "kind": "RootArgument",
-            "name": "dataset"
-          },
-          {
-            "kind": "RootArgument",
-            "name": "pinnedSampleFilter"
-          },
-          {
-            "kind": "RootArgument",
-            "name": "view"
-          }
         ]
       }
     ],
