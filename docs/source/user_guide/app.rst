@@ -392,6 +392,18 @@ of the :ref:`dataset's App config <custom-app-config>`:
 
     session = fo.launch_app(dataset)
 
+You can conveniently reset the sidebar groups to their default state by setting
+:class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>` to `None`:
+
+.. code-block:: python
+    :linenos:
+
+    # Reset sidebar groups
+    dataset.app_config.sidebar_groups = None
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
 .. note::
 
     If a dataset has fields that do not appear in the dataset's
