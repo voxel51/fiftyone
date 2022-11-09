@@ -318,7 +318,7 @@ const GroupHeader = styled.div`
   justify-content: space-between;
   vertical-align: middle;
   align-items: center;
-  font-weight: bold;
+  font-weight: normal;
   color: ${({ theme }) => theme.text.secondary};
   background: ${({ theme }) => theme.neutral.softBg};
   user-select: text;
@@ -336,7 +336,7 @@ const GroupInput = styled.input`
   border: none;
   outline: none;
   text-transform: uppercase;
-  font-weight: bold;
+  font-weight: normal;
   color: ${({ theme }) => theme.text.secondary};
 `;
 

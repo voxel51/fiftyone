@@ -32,7 +32,7 @@
 
 .fiftyone {
   color: var(--joy-palette-text-primary);
-  font-weight: bold;
+  font-weight: normal;
   font-size: 1.8rem;
   align-items: center;
   display: flex;
@@ -40,7 +40,7 @@
 }
 
 .dataset {
-  font-weight: bold;
+  font-weight: normal;
   padding-left: 1rem;
   border-left-width: 1px;
   border-color: var(--joy-palette-primary-plainBorder);

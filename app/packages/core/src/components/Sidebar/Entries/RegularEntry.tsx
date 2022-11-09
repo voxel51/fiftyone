@@ -14,7 +14,7 @@ const Container = animated(styled.div`
 const Header = styled.div`
   vertical-align: middle;
   display: flex;
-  font-weight: bold;
+  font-weight: normal;
   width: 100%;
   flex: 1;
 `;

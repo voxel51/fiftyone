@@ -14,7 +14,7 @@
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  font-weight: bold;
+  font-weight: normal;
   color: var(--joy-palette-text-secondary);
   display: none;
   background-color: var(--joy-palette-background-level2);

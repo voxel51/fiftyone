@@ -28,7 +28,7 @@ import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 const ScalarDiv = styled.div`
   & > div {
     user-select: text;
-    font-weight: bold;
+    font-weight: normal;
     padding: 0 3px;
     overflow: hidden;
     text-overflow: ellipsis;

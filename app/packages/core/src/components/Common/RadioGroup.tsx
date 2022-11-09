@@ -18,7 +18,7 @@ const StyledRadio = animated(styled(ItemAction)`
 
 const RadioName = styled.div`
   text-overflow: ellipses;
-  font-weight: bold;
+  font-weight: normal;
   flex-grow: 1;
 `;
 

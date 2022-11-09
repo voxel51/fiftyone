@@ -16,7 +16,7 @@ const ErrorMessageDiv = animated(styled.div`
   padding: 0.5rem;
   line-height: 1rem;
   margin-top: 2.5rem;
-  font-weight: bold;
+  font-weight: normal;
   position: fixed;
   width: auto;
   z-index: 802;

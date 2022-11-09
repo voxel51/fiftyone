@@ -36,7 +36,7 @@ const CategoricalFilterContainer = styled.div`
 
 const NamedCategoricalFilterContainer = styled.div`
   margin: 3px;
-  font-weight: bold;
+  font-weight: normal;
 `;
 
 const NamedCategoricalFilterHeader = styled.div`

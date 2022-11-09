@@ -9,7 +9,7 @@ const SearchResultDiv = animated(styled.div`
   cursor: pointer;
   margin: 0.25rem 0.25rem;
   padding: 0.1rem 0.25rem;
-  font-weight: bold;
+  font-weight: normal;
   color: ${({ theme }) => theme.text.secondary};
 `);
 

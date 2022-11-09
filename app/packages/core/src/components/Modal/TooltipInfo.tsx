@@ -25,13 +25,13 @@ const ContentItemDiv = styled.div`
 
 const ContentValue = styled.div`
   font-size: 0.8rem;
-  font-weight: bold;
+  font-weight: normal;
   color: ${({ theme }) => theme.text.primary};
 `;
 
 const ContentName = styled.div`
   font-size: 0.7rem;
-  font-weight: bold;
+  font-weight: normal;
   padding-bottom: 0.3rem;
   color: ${({ theme }) => theme.text.secondary};
 `;

@@ -36,7 +36,7 @@
 
 .lookerShortcutTitle {
   color: var(--joy-palette-text-secondary);
-  font-weight: bold;
+  font-weight: normal;
 }
 
 .lookerShortcutDetail {

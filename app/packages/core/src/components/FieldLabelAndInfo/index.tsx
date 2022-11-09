@@ -162,14 +162,14 @@ const FieldInfoHoverTarget = styled.div`
 
 const ContentValue = styled.div`
   font-size: 0.8rem;
-  font-weight: bold;
+  font-weight: normal;
   color: ${({ theme }) => theme.text.primary};
 `;
 
 const ContentName = styled.div`
   // min-width: 50px;
   font-size: 0.8rem;
-  font-weight: bold;
+  font-weight: normal;
   color: ${({ theme }) => theme.text.secondary};
 `;
 
@@ -208,7 +208,7 @@ const FieldInfoTableContainer = styled.table`
 
 const ShowMoreLink = styled.a`
   font-size: 0.8rem;
-  font-weight: bold;
+  font-weight: normal;
   cursor: pointer;
   display: inline-block;
   text-align: right;

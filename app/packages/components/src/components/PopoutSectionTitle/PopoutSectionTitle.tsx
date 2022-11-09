@@ -6,5 +6,5 @@ export default styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.primary.plainBorder};
   font-size: 1rem;
   line-height: 2;
-  font-weight: bold;
+  font-weight: normal;
 `;

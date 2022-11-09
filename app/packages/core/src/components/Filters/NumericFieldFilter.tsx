@@ -21,7 +21,7 @@ import FieldLabelAndInfo from "../FieldLabelAndInfo";
 
 const NamedRangeSliderContainer = styled.div`
   margin: 3px;
-  font-weight: bold;
+  font-weight: normal;
 `;
 
 const NamedRangeSliderHeader = styled.div`

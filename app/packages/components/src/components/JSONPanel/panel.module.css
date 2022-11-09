@@ -5,7 +5,7 @@
 .lookerPanel {
   padding: 1rem;
   line-height: 1;
-  font-weight: bold;
+  font-weight: normal;
   color: var(--joy-palette-text-secondary);
   background-color: var(--joy-palette-background-level3);
   border: 1px solid var(--joy-palette-primary-plainBorder);

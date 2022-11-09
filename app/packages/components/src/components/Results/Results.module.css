@@ -50,7 +50,7 @@
   color: var(--joy-palette-text-primary);
   padding: 0 0.25rem;
   font-size: 1rem;
-  font-weight: bold;
+  font-weight: normal;
   display: flex;
   justify-content: center;
   align-content: center;

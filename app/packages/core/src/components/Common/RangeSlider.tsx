@@ -16,7 +16,7 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 
 const SliderContainer = styled.div`
-  font-weight: bold;
+  font-weight: normal;
   display: flex;
   padding: 1.5rem 0 0.5rem;
   line-height: 1.9rem;
@@ -63,7 +63,7 @@ const SliderStyled = styled(SliderUnstyled)`
   }
   .valueLabel {
     width: auto;
-    font-weight: bold;
+    font-weight: normal;
     font-family: "Palanquin", sans-serif;
     font-size: 14px;
     margin-top: -100%;

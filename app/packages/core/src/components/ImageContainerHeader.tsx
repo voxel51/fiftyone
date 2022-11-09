@@ -40,7 +40,7 @@ const RightDiv = styled.div`
   border-right-width: 1px;
   margin: 0 0.25rem;
   padding-right: 1rem;
-  font-weight: bold;
+  font-weight: normal;
 `;
 
 const RightContainer = styled.div`

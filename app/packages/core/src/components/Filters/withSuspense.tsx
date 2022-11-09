@@ -4,7 +4,7 @@ import { loading } from "./withSuspense.module.css";
 
 const Container = styled.div`
   margin: 3px;
-  font-weight: bold;
+  font-weight: normal;
 `;
 
 const Header = styled.div`

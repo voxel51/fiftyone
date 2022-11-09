@@ -14,7 +14,7 @@
   justify-content: space-between;
   font-size: 1.4rem;
   color: var(--joy-palette-text-primary);
-  font-weight: bold;
+  font-weight: normal;
 }
 
 .heading > div {
@@ -34,7 +34,7 @@
 }
 
 .message {
-  font-weight: bold;
+  font-weight: normal;
   text-align: center;
 }
 

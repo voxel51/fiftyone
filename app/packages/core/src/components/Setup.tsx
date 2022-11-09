@@ -19,7 +19,7 @@ const SectionTitle = styled.div`
   font-size: 2rem;
   line-height: 3rem;
   color: ${({ theme }) => theme.text.primary};
-  font-weight: bold;
+  font-weight: normal;
 `;
 
 const Text = styled.p`
@@ -141,7 +141,7 @@ const Title = styled.div`
   font-size: 2.5rem;
   line-height: 3.5rem;
   color: ${({ theme }) => theme.text.primary};
-  font-weight: bold;
+  font-weight: normal;
 `;
 
 const Subtitle = styled.div`
@@ -163,7 +163,7 @@ const TabsContainer = styled.div`
 const Tab = animated(styled.div`
   font-size: 1rem;
   line-height: 3em;
-  font-weight: bold;
+  font-weight: normal;
   padding: 0 0.5em;
   cursor: pointer;
   border-bottom-width: 3px;

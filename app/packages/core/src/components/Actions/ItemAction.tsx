@@ -5,7 +5,7 @@ export const ItemAction = animated(styled.div`
   cursor: pointer;
   margin: 0 -0.5rem;
   padding: 0.25rem 0.5rem;
-  font-weight: bold;
+  font-weight: normal;
   display: flex;
   justify-content: center;
   align-content: center;

@@ -39,16 +39,16 @@
   line-height: 1rem;
   border: none;
   border-bottom: 1px solid var(--joy-palette-primary-plainColor);
-  font-weight: bold;
+  font-weight: normal;
   outline: none;
 }
 
 .teamsForm input:focus {
   border-bottom: 1px solid var(--joy-palette-primary-plainColor);
   outline: none;
-  font-weight: bold;
+  font-weight: normal;
 }
 .teamsForm input::placeholder {
   color: var(--joy-palette-text-secondary);
-  font-weight: bold;
+  font-weight: normal;
 }

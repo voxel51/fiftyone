@@ -19,7 +19,7 @@
   font-size: 1.2rem;
   border: none;
   align-items: center;
-  font-weight: bold;
+  font-weight: normal;
   text-overflow: ellipsis;
   width: 100%;
 }
@@ -27,12 +27,12 @@
 .input input:focus {
   border: none;
   outline: none;
-  font-weight: bold;
+  font-weight: normal;
 }
 
 .input input::placeholder {
   color: var(--joy-palette-text-secondary);
-  font-weight: bold;
+  font-weight: normal;
 }
 
 .resultsContainer {
@@ -53,7 +53,7 @@
   color: var(--joy-palette-text-primary);
   padding: 0 0.25rem;
   font-size: 1rem;
-  font-weight: bold;
+  font-weight: normal;
   display: flex;
   justify-content: center;
   align-content: center;

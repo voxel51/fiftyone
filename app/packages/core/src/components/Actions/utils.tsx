@@ -27,7 +27,7 @@ export const SwitchDiv = animated(styled.div`
   font-size: 1rem;
   padding-left: 0.4rem;
   line-height: 2;
-  font-weight: bold;
+  font-weight: normal;
   border-bottom-color: ${({ theme }) => theme.primary.plainColor};
   border-bottom-style: solid;
   border-bottom-width: 2px;

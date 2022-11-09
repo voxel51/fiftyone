@@ -59,7 +59,7 @@ export const ContentDiv = styled.div`
   padding: 0.5rem;
   line-height: 1rem;
   margin-top: 2.5rem;
-  font-weight: bold;
+  font-weight: normal;
   width: auto;
   z-index: 802;
 `;
@@ -77,7 +77,7 @@ const PillButtonDiv = animated(styled.div`
   background-color: ${({ theme }) => theme.divider};
   border-radius: 1rem;
   border: none;
-  font-weight: bold;
+  font-weight: normal;
   display: flex;
   justify-content: space-between;
   opacity: 1;
@@ -173,12 +173,12 @@ export const PopoutSectionTitle = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background.level1};
   font-size: 1rem;
   line-height: 2;
-  font-weight: bold;
+  font-weight: normal;
 `;
 
 const TabOptionDiv = animated(styled.div`
   display: flex;
-  font-weight: bold;
+  font-weight: normal;
   cursor: pointer;
   justify-content: space-between;
   margin: 0.5rem -0.5rem;

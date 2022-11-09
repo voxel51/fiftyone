@@ -73,7 +73,7 @@ const getAxisTick = (isDateTime, timeZone) => {
 };
 
 const Title = styled.div`
-  font-weight: bold;
+  font-weight: normal;
   font-size: 1rem;
   line-height: 2rem;
 `;

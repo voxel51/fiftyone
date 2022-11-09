@@ -49,7 +49,7 @@ const PlotButton = styled.div`
   background-color: ${({ theme }) => theme.background.button};
   text-decoration: none;
   border-radius: 2px;
-  font-weight: bold;
+  font-weight: normal;
 
   &.active {
     background-color: ${({ theme }) => theme.neutral.plainColor};

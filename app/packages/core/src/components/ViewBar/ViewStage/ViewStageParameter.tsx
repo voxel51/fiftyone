@@ -35,7 +35,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
     padding: 0.5rem 0 0.5rem 0.5rem;
     color: ${({ theme }) => theme.text.primary};
     height: 1rem;
-    font-weight: bold;
+    font-weight: normal;
   }
 
   & > input:focus {
@@ -49,7 +49,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 `);
 
 const ObjectEditorContainer = animated(styled.div`
-  font-weight: bold;
+  font-weight: normal;
   position: fixed;
   line-height: 1rem;
   font-size: 14px;
@@ -99,7 +99,7 @@ const SubmitButton = animated(styled.button`
   position: relative;
   line-height: 1rem;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: normal;
   position: absolute;
   bottom: 0.5rem;
   right: 0.5rem;

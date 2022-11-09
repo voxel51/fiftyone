@@ -4,7 +4,7 @@ import styled from "styled-components";
 export const InputDiv = styled.div`
   box-sizing: border-box;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: normal;
   user-select: none;
   padding-top: 2px;
 
@@ -21,7 +21,7 @@ export const InputDiv = styled.div`
     outline: none;
     border-bottom: 2px solid ${({ theme }) => theme.background.level1};
     text-transform: uppercase;
-    font-weight: bold;
+    font-weight: normal;
     padding: 3px;
   }
 `;

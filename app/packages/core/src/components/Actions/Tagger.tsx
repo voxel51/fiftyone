@@ -90,18 +90,18 @@ const TaggingInput = styled.input`
   font-size: 14px;
   border: none;
   align-items: center;
-  font-weight: bold;
+  font-weight: normal;
   width: 100%;
 
   &:focus {
     border: none;
     outline: none;
-    font-weight: bold;
+    font-weight: normal;
   }
 
   &::placeholder {
     color: ${({ theme }) => theme.text.secondary};
-    font-weight: bold;
+    font-weight: normal;
   }
 `;
 

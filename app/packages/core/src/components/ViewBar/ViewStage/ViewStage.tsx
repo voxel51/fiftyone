@@ -39,13 +39,13 @@ const ViewStageInput = styled(AuosizeInput)`
     color: ${({ theme }) => theme.text.primary};
     height: 1rem;
     border: none;
-    font-weight: bold;
+    font-weight: normal;
   }
 
   & input:focus {
     border: none;
     outline: none;
-    font-weight: bold;
+    font-weight: normal;
     padding-right: 0;
   }
 
@@ -55,7 +55,7 @@ const ViewStageInput = styled(AuosizeInput)`
 =======
     color: ${({ theme }) => theme.text.secondary};
 >>>>>>> develop
-    font-weight: bold;
+    font-weight: normal;
   }
 `;
 
@@ -67,7 +67,7 @@ const ViewStageButtonContainer = animated(styled.div`
   position: relative;
   margin: 0.5rem;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: normal;
 
   padding: 0 0.25rem;
 
@@ -186,7 +186,7 @@ const ViewStageDeleteButton = animated(styled.button`
   height: 100%;
   border: none;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: normal;
   margin: 0;
 
   :focus {

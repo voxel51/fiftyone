@@ -609,7 +609,7 @@ const ViewButton = styled.div`
   color: var(--joy-palette-text-invert);
   border-radius: 1rem;
   border: none;
-  font-weight: bold;
+  font-weight: normal;
   display: flex;
   justify-content: space-between;
   opacity: 1;

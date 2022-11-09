@@ -10,7 +10,7 @@ const Container = styled.div`
 
 const Text = styled.div`
   padding-top: 1rem;
-  font-weight: bold;
+  font-weight: normal;
   text-align: center;
   color: ${({ theme }) => theme.text.secondary};
   font-size: 1.5rem;

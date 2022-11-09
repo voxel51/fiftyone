@@ -7,5 +7,5 @@ export const BestMatchDiv = styled.div`
   color: ${({ theme }) => theme.primary.plainColor};
   height: 1rem;
   border: none;
-  font-weight: bold;
+  font-weight: normal;
 `;

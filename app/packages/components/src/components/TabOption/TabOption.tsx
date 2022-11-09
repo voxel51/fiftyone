@@ -7,7 +7,7 @@ const Tab = animated(styled.div``);
 
 const TabOptionDiv = animated(styled.div`
   display: flex;
-  font-weight: bold;
+  font-weight: normal;
   cursor: pointer;
   justify-content: space-between;
   margin: 0.5rem -0.5rem;
