@@ -354,6 +354,15 @@ const isURL = (() => {
   const nonLocalhostDomainRE = /^[^\s\.]+\.\S{2,}$/;
 
   return (string) => {
+    return true;
+    if (string.startsWith("gs://")) {
+      return false;
+    }
+
+    if (string.startsWith("s3://")) {
+      return false;
+    }
+
     if (typeof string !== "string") {
       return false;
     }
