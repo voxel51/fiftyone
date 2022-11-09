@@ -705,14 +705,15 @@ export const groupShown = selectorFamily<
 
       return data.expanded === undefined
         ? !["tags", "label tags"].includes(group)
-          ? !data.paths.every((path) => get(disabledPaths).has(path))
+          ? !disabledPaths.size ||
+            !data.paths.every((path) => get(disabledPaths).has(path))
           : true
         : data.expanded;
     },
   set:
     ({ modal, group }) =>
     ({ get, set }, expanded) => {
-      const current = get(sidebarGroups({ modal, loading: true }));
+      const current = get(sidebarGroups({ modal, loading: false }));
 
       const def = get(sidebarGroupsDefinition(modal));
       const tags = def.filter((e) => e.name === "tags")[0];
