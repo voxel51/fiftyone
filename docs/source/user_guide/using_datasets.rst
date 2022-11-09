@@ -403,6 +403,8 @@ You can also configure the default loading behavior of the
     dataset.app_config.sidebar_mode = "fast"
     dataset.save()  # must save after edits
 
+    session = fo.launch_app(dataset)
+
 or even configure the organization and default expansion state of the
 :ref:`sidebar's field groups <app-sidebar-groups>`:
 
@@ -419,6 +421,21 @@ or even configure the organization and default expansion state of the
     # Modify the dataset's App config
     dataset.app_config.sidebar_groups = sidebar_groups
     dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+You can conveniently reset a dataset's App config by setting the
+:meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property to
+`None`:
+
+.. code-block:: python
+    :linenos:
+
+    # Reset App config
+    dataset.app_config = None
+    print(dataset.app_config)
+
+    session = fo.launch_app(dataset)
 
 .. note::
 
