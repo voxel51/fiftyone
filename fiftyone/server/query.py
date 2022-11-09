@@ -378,7 +378,7 @@ def _convert_targets(targets: t.Dict[str, str]) -> Target:
 
 
 async def serialize_dataset(
-    name: str, serialized_view: BSONArray, view_name: t.Optional[str]
+    name: str, serialized_view: BSONArray, view_name: t.Optional[str] = None
 ) -> Dataset:
     def run():
         dataset = fo.load_dataset(name)
@@ -415,7 +415,6 @@ async def serialize_dataset(
 
         if dataset.media_type == fom.GROUP:
             data.group_slice = collection.group_slice
-
         return data
 
     loop = asyncio.get_running_loop()
