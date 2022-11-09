@@ -73,12 +73,12 @@ class Mutation(fosm.Mutation):
         form: t.Optional[fosm.StateForm],
         info: Info,
     ) -> fosm.ViewResponse:
+        view = fosm.get_view(
+            dataset,
+            view,
+            form.filters,
+        )
         if form:
-            view = fosm.get_view(
-                dataset,
-                view,
-                form.filters,
-            )
             if form.slice:
                 view = view.select_group_slices([form.slice])
 
@@ -97,9 +97,11 @@ class Mutation(fosm.Mutation):
             view = view._serialize()
 
         else:
-            result_view = fov.DatasetView._build(view._root_dataset, view)
+            result_view = fov.DatasetView._build(dataset, view)
 
-        dataset = await Dataset.resolver(view._root_dataset.name, view, info)
+        dataset = await Dataset.resolver(
+            result_view._root_dataset.name, view, info
+        )
         return fosm.ViewResponse(
             view=result_view._serialize(), dataset=dataset
         )
