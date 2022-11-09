@@ -220,6 +220,7 @@ export const resolveGroups = (
         return map;
       }, {})
     : {};
+
   if (!groups) {
     groups = dataset.frameFields.length
       ? DEFAULT_VIDEO_GROUPS

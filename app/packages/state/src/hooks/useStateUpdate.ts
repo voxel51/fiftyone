@@ -100,6 +100,7 @@ const useStateUpdate = () => {
         dataset.evaluations = Object.values(dataset.evaluations || {});
         dataset.sampleFields = collapseFields(dataset.sampleFields);
         dataset.frameFields = collapseFields(dataset.frameFields);
+
         const previousDataset = get(datasetAtom);
 
         const currentSidebar = get(sidebarGroupsDefinition(false));

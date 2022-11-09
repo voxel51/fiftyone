@@ -174,7 +174,7 @@ class Dataset:
             doc.get("default_mask_targets", {})
         )
         doc["mask_targets"] = [
-            NamedTargets(name, _convert_targets(targets))
+            NamedTargets(name=name, targets=_convert_targets(targets))
             for name, targets in doc.get("mask_targets", {}).items()
         ]
         doc["sample_fields"] = _flatten_fields([], doc["sample_fields"])
@@ -339,7 +339,7 @@ def _flatten_fields(
 
 
 def _convert_targets(targets: t.Dict[str, str]) -> Target:
-    return [Target(value=v, target=int(k)) for k, v in targets.items()]
+    return [Target(target=int(k), value=v) for k, v in targets.items()]
 
 
 async def serialize_dataset(name: str, serialized_view: BSONArray) -> Dataset:
