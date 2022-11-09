@@ -258,7 +258,10 @@ export const resolveGroups = (
     dataset.sampleFields.map(({ name, ...rest }) => [name, rest])
   );
 
-  let other = dataset.sampleFields.reduce(fieldsReducer([DICT_FIELD]), []);
+  let other = dataset.sampleFields.reduce(
+    fieldsReducer([DICT_FIELD, null, undefined]),
+    []
+  );
 
   dataset.sampleFields
     .filter(({ embeddedDocType }) => !LABELS.includes(embeddedDocType))
@@ -272,7 +275,7 @@ export const resolveGroups = (
       other = [
         ...other,
         ...(fields[name].fields || [])
-          .reduce(fieldsReducer([DICT_FIELD]), [])
+          .reduce(fieldsReducer([DICT_FIELD, null, undefined]), [])
           .map((subfield) => `${name}.${subfield}`),
       ];
 
