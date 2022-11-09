@@ -213,7 +213,7 @@ export const resolveGroups = (
   dataset: State.Dataset,
   current?: State.SidebarGroup[]
 ): State.SidebarGroup[] => {
-  let groups = dataset?.appConfig?.sidebarGroups;
+  let groups = JSON.parse(JSON.stringify(dataset?.appConfig?.sidebarGroups));
 
   const expanded = current
     ? current.reduce((map, { name, expanded }) => {
