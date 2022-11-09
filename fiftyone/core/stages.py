@@ -11,6 +11,7 @@ from copy import deepcopy
 import itertools
 import random
 import reprlib
+from tracemalloc import start
 import uuid
 import warnings
 
@@ -52,6 +53,8 @@ class ViewStage(object):
     view stages are represented by a :class:`fiftyone.core.view.DatasetView`.
     """
 
+    # tricky: this becomes shadowed by an instance attribute when _serialize()
+    # is called
     _uuid = None
 
     def __str__(self):
@@ -5165,8 +5168,7 @@ class SelectFields(ViewStage):
 
         for path in paths:
             selected_paths.add(path)
-            if "." in path:
-                roots.add(path.rsplit(".", 1)[0])
+            roots.update(_get_roots(path))
 
         for path in roots:
             selected_paths.update(
@@ -5195,8 +5197,7 @@ class SelectFields(ViewStage):
         _, paths = fou.split_frame_fields(self.field_names)
         for path in paths:
             selected_paths.add(path)
-            if "." in path:
-                roots.add(path.rsplit(".", 1)[0])
+            roots.update(_get_roots(path))
 
         for path in roots:
             selected_paths.update(
@@ -5268,6 +5269,11 @@ class SelectFields(ViewStage):
             return
 
         sample_collection.validate_fields_exist(self.field_names)
+
+
+def _get_roots(path):
+    chunks = path.split(".")
+    return {".".join(chunks[:i]) for i in range(1, len(chunks))}
 
 
 class SelectFrames(ViewStage):

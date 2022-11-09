@@ -688,6 +688,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @app_config.setter
     def app_config(self, config):
+        if config is None:
+            config = DatasetAppConfig()
+
         self._doc.app_config = config
         self._doc.save(safe=True)
 

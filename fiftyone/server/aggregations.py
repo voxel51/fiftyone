@@ -1,242 +1,314 @@
 """
 FiftyOne Server aggregations
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from datetime import date, datetime, timedelta
+from dataclasses import asdict
+from datetime import date, datetime
 import typing as t
 
-import asyncio
+from dacite import Config, from_dict
 import strawberry as gql
 
-import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
+import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
+from fiftyone.core.utils import datetime_to_timestamp
+import fiftyone.core.view as fov
 
 from fiftyone.server.constants import LIST_LIMIT
-from fiftyone.server.data import T
-from fiftyone.server.scalars import BSONArray
-
-
-_DEFAULT_NUM_HISTOGRAM_BINS = 25
-
-
-@gql.type
-class ValueCount(t.Generic[T]):
-    key: t.Union[T, None]
-    value: int
-
-
-@gql.type
-class CountValuesResponse(t.Generic[T]):
-    values: t.List[ValueCount[T]]
-
-
-@gql.type
-class BoolCountValuesResponse(CountValuesResponse[bool]):
-    values: t.List[ValueCount[bool]]
-
-
-@gql.type
-class IntCountValuesResponse(CountValuesResponse[int]):
-    values: t.List[ValueCount[int]]
-
-
-@gql.type
-class StrCountValuesResponse(CountValuesResponse[str]):
-    values: t.List[ValueCount[str]]
-
-
-CountValuesResponses = gql.union(
-    "CountValuesResponses",
-    (BoolCountValuesResponse, IntCountValuesResponse, StrCountValuesResponse),
-)
-COUNT_VALUES_TYPES = {fo.BooleanField, fo.IntField, fo.StringField}
-
-
-@gql.type
-class HistogramValuesResponse(t.Generic[T]):
-    counts: t.List[int]
-    edges: t.List[T]
-    other: int
-
-
-@gql.type
-class DatetimeHistogramValuesResponse(HistogramValuesResponse[datetime]):
-    edges: t.List[datetime]
-
-
-@gql.type
-class FloatHistogramValuesResponse(HistogramValuesResponse[float]):
-    edges: t.List[float]
-
-
-@gql.type
-class IntHistogramValuesResponse(HistogramValuesResponse[int]):
-    edges: t.List[float]
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
+from fiftyone.server.scalars import BSON, BSONArray
+from fiftyone.server.utils import meets_type
+import fiftyone.server.view as fosv
 
 
 @gql.input
-class HistogramValues:
+class SelectedLabel:
+    label_id: gql.ID
     field: str
+    sample_id: gql.ID
+    frame_number: t.Optional[int] = None
 
 
 @gql.input
-class CountValues:
-    field: str
+class AggregationForm:
+    dataset: str
+    extended_stages: BSONArray
+    filters: t.Optional[BSON]
+    group_id: t.Optional[gql.ID]
+    hidden_labels: t.List[SelectedLabel]
+    index: t.Optional[int]
+    mixed: bool
+    paths: t.List[str]
+    sample_ids: t.List[gql.ID]
+    slice: t.Optional[str]
+    view: BSONArray
 
 
-@gql.input
+@gql.interface
 class Aggregation:
-    count_values: t.Optional[CountValues] = None
-    histogram_values: t.Optional[HistogramValues] = None
+    path: str
+    count: int
+    exists: int
 
 
-HistogramValuesResponses = gql.union(
-    "HistogramValuesResponses",
+@gql.type
+class BooleanAggregation(Aggregation):
+    false: int
+    true: int
+
+
+@gql.type
+class DataAggregation(Aggregation):
+    pass
+
+
+@gql.type
+class IntAggregation(Aggregation):
+    max: t.Optional[float]
+    min: t.Optional[float]
+
+
+@gql.type
+class FloatAggregation(Aggregation):
+    inf: int
+    max: t.Optional[float]
+    min: t.Optional[float]
+    nan: int
+    ninf: int
+
+
+@gql.type
+class RootAggregation(Aggregation):
+    slice: t.Optional[int]
+    expanded_field_count: int
+    frame_label_field_count: t.Optional[int] = None
+
+
+@gql.type
+class StringAggregationValue:
+    count: int
+    value: str
+
+
+@gql.type
+class StringAggregation(Aggregation):
+    values: t.List[StringAggregationValue]
+
+
+AggregateResult = gql.union(
+    "AggregateResult",
     (
-        DatetimeHistogramValuesResponse,
-        FloatHistogramValuesResponse,
-        IntHistogramValuesResponse,
+        BooleanAggregation,
+        DataAggregation,
+        IntAggregation,
+        FloatAggregation,
+        RootAggregation,
+        StringAggregation,
     ),
 )
 
-HISTOGRAM_VALUES_TYPES = {
-    fo.DateField,
-    fo.DateTimeField,
-    fo.IntField,
-    fo.FloatField,
+
+async def aggregate_resolver(
+    form: AggregationForm,
+) -> t.List[AggregateResult]:
+    view = fosv.get_view(
+        form.dataset,
+        stages=form.view,
+        filters=form.filters,
+        extended_stages=form.extended_stages,
+        sample_filter=SampleFilter(
+            group=GroupElementFilter(id=form.group_id, slice=form.slice)
+        ),
+    )
+
+    if form.sample_ids:
+        view = fov.make_optimized_select_view(view, form.sample_ids)
+
+    if form.hidden_labels:
+        view = view.exclude_labels(
+            [
+                {
+                    "sample_id": l.sample_id,
+                    "field": l.field,
+                    "label_id": l.label_id,
+                    "frame_number": l.frame_number,
+                }
+                for l in form.hidden_labels
+            ]
+        )
+
+    if form.mixed:
+        view = view.select_group_slices(_allow_mixed=True)
+
+    aggregations, deserializers = zip(
+        *[_resolve_path_aggregation(path, view) for path in form.paths]
+    )
+    counts = [len(a) for a in aggregations]
+    flattened = []
+    for aggs in aggregations:
+        flattened += aggs
+
+    result = await view._async_aggregate(flattened)
+    results = []
+    offset = 0
+    for length, deserialize in zip(counts, deserializers):
+        results.append(deserialize(result[offset : length + offset]))
+        offset += length
+
+    if form.mixed and "" in form.paths:
+        slice_view = fosv.get_view(
+            form.dataset,
+            stages=form.view,
+            filters=form.filters,
+            extended_stages=form.extended_stages,
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(id=form.group_id, slice=form.slice)
+            ),
+        )
+
+        for result in results:
+            if isinstance(result, RootAggregation):
+                result.slice = await slice_view._async_aggregate(foa.Count())
+                break
+
+    return results
+
+
+RESULT_MAPPING = {
+    fof.BooleanField: BooleanAggregation,
+    fof.EmbeddedDocumentField: DataAggregation,
+    fof.FrameNumberField: IntAggregation,
+    fof.GeoMultiPointField: DataAggregation,
+    fof.GeoMultiPolygonField: DataAggregation,
+    fof.GeoMultiLineStringField: DataAggregation,
+    fof.GeoPointField: DataAggregation,
+    fof.GeoLineStringField: DataAggregation,
+    fof.GeoPolygonField: DataAggregation,
+    fof.DateField: IntAggregation,
+    fof.DateTimeField: IntAggregation,
+    fof.IntField: IntAggregation,
+    fof.FloatField: FloatAggregation,
+    fof.ObjectIdField: StringAggregation,
+    fof.StringField: StringAggregation,
 }
 
 
-@gql.type
-class Aggregations:
-    @gql.field
-    async def aggregate(
-        self,
-        dataset_name: str,
-        view: BSONArray,
-        aggregations: t.List[Aggregation],
-    ) -> t.List[
-        gql.union(
-            "AggregationResponses",
-            (
-                BoolCountValuesResponse,
-                IntCountValuesResponse,
-                StrCountValuesResponse,
-                DatetimeHistogramValuesResponse,
-                FloatHistogramValuesResponse,
-                IntHistogramValuesResponse,
-            ),
-        )
-    ]:
-        view = await load_view(dataset_name, view)
+def _resolve_path_aggregation(
+    path: str, view: foc.SampleCollection
+) -> AggregateResult:
+    aggregations: t.List[foa.Aggregation] = [foa.Count(path if path else None)]
+    field = view.get_field(path)
+    while isinstance(field, fof.ListField):
+        field = field.field
 
-        resolvers = []
-        aggs = []
-        for input in aggregations:
-            if input.count_values:
-                resolve, agg = await _count_values(view, input.count_values)
-            elif input.histogram_values:
-                resolve, agg = await _histogram_values(
-                    view, input.histogram_values
+    cls = RESULT_MAPPING[field.__class__] if path else RootAggregation
+
+    if meets_type(field, fof.BooleanField):
+        aggregations.append(foa.CountValues(path))
+
+    elif meets_type(field, (fof.DateField, fof.DateTimeField, fof.IntField)):
+        aggregations.append(foa.Bounds(path))
+
+    elif meets_type(field, fof.FloatField):
+        aggregations.append(
+            foa.Bounds(
+                path,
+                safe=True,
+                _count_nonfinites=True,
+            )
+        )
+
+    elif meets_type(field, (fof.ObjectIdField, fof.StringField)):
+        aggregations.append(foa.CountValues(path, _first=LIST_LIMIT))
+
+    if isinstance(field, fof.ListField):
+        aggregations.append(_CountExists(path))
+
+    data = {"path": path}
+
+    def from_results(results):
+        for aggregation, result in zip(aggregations, results):
+            if isinstance(aggregation, foa.Bounds):
+                if isinstance(field, fof.FloatField):
+                    mn, mx = result["bounds"]
+                    data["inf"] = result["inf"]
+                    data["min"] = mn
+                    data["max"] = mx
+                    data["nan"] = result["nan"]
+                    data["ninf"] = result["-inf"]
+                else:
+                    mn, mx = result
+                    data["min"] = (
+                        datetime_to_timestamp(mn)
+                        if meets_type(mn, (datetime, date))
+                        else mn
+                    )
+                    data["max"] = (
+                        datetime_to_timestamp(mx)
+                        if meets_type(mx, (datetime, date))
+                        else mx
+                    )
+            elif isinstance(aggregation, foa.Count):
+                data["count"] = result
+            elif isinstance(aggregation, foa.CountValues):
+                if isinstance(field, fof.BooleanField):
+                    data["true"] = result.get(True, 0)
+                    data["false"] = result.get(False, 0)
+                else:
+                    _, result = result
+                    data["values"] = [
+                        {"value": value, "count": count}
+                        for value, count in result
+                    ]
+            elif isinstance(aggregation, _CountExists):
+                data["exists"] = result
+
+            if "exists" not in data:
+                data["exists"] = data["count"]
+
+        if cls == RootAggregation:
+            data["expanded_field_count"] = _count_expanded_fields(
+                view._root_dataset
+            )
+            if view._root_dataset.media_type == fom.VIDEO:
+                data["frame_label_field_count"] = len(
+                    view._root_dataset.get_frame_field_schema(
+                        embedded_doc_type=fol.Label
+                    )
                 )
 
-            aggs.append(agg)
-            resolvers.append(resolve)
+        return from_dict(cls, data, config=Config(check_types=False))
 
-        results = await view._async_aggregate(aggs)
-
-        responses = []
-        for resolver, result in zip(resolvers, results):
-            responses.append(resolver(result))
-
-        return responses
+    return aggregations, from_results
 
 
-async def load_view(
-    name: str, serialized_view: BSONArray
-) -> foc.SampleCollection:
-    def run() -> foc.SampleCollection:
-        dataset = fo.load_dataset(name)
-        dataset.reload()
-        return fo.DatasetView._build(dataset, serialized_view or [])
+class _CountExists(foa.Count):
+    """Named helper aggregation for counting existence"""
 
-    loop = asyncio.get_running_loop()
-
-    return await loop.run_in_executor(None, run)
+    def __init__(self, field):
+        super().__init__(field, _unwind=False)
 
 
-async def _count_values(
-    view: foc.SampleCollection, input: CountValues
-) -> t.Tuple[t.Callable[[t.List], CountValuesResponses], foa.CountValues]:
-    field = view.get_field(input.field)
+def _count_expanded_fields(collection: foc.SampleCollection) -> int:
+    schema = collection._root_dataset.get_field_schema()
+    count = 0
+    for field in schema.values():
+        while isinstance(field, fof.ListField):
+            field = field.field
 
-    while isinstance(field, fo.ListField):
-        field = field.field
+        if (
+            isinstance(field, fof.EmbeddedDocumentField)
+            and field.document_type is not None
+            and not issubclass(field.document_type, fol.Label)
+        ):
+            count += len(field.fields)
+        else:
+            count += 1
 
-    def resolve(data: t.List):
-        _, data = data
-        values = [ValueCount(key=value, value=count) for value, count in data]
-
-        if isinstance(field, fo.StringField):
-            return StrCountValuesResponse(values=values)
-
-        if isinstance(field, fo.BooleanField):
-            return BoolCountValuesResponse(values=values)
-
-        if isinstance(field, fo.IntField):
-            return IntCountValuesResponse(values=values)
-
-    return resolve, foa.CountValues(input.field, _first=LIST_LIMIT, _asc=False)
-
-
-async def _histogram_values(
-    view: foc.SampleCollection, input: HistogramValues
-) -> t.Tuple[t.Callable[[t.List], HistogramValuesResponses], foa.CountValues]:
-    field = view.get_field(input.field)
-
-    while isinstance(field, fo.ListField):
-        field = field.field
-
-    range = await view._async_aggregate(
-        foa.Bounds(input.field, safe=True, _count_nonfinites=True)
-    )
-    range_ = range.pop("bounds")
-    bins = _DEFAULT_NUM_HISTOGRAM_BINS
-
-    if isinstance(field, fo.IntField):
-        if range_[0] is None:
-            range_ = (0, 0)
-        delta = range_[1] - range_[0]
-        range_ = (range_[0] - 1, range_[1] + 1)
-        if delta < _DEFAULT_NUM_HISTOGRAM_BINS:
-            bins = delta + 1
-
-    if range_[0] == range_[1]:
-        bins = 1
-        if range_[0] is None:
-            range_ = [0, 1]
-
-    if isinstance(range_[1], datetime):
-        range_ = (range_[0], range_[1] + timedelta(milliseconds=100))
-    elif isinstance(range_[1], date):
-        range_ = (range_[0], range_[1] + timedelta(days=1))
-    elif not isinstance(field, fo.IntField):
-        range_ = (range_[0], range_[1] + 1e-6)
-
-    def resolve(data):
-        counts, edges, other = data
-        data = {"counts": counts, "edges": edges, "other": other}
-        if isinstance(field, (fo.DateField, fo.DateTimeField)):
-            return DatetimeHistogramValuesResponse(**data)
-
-        if isinstance(field, fo.FloatField):
-            return FloatHistogramValuesResponse(**data)
-
-        if isinstance(field, fo.IntField):
-            return IntHistogramValuesResponse(**data)
-
-    return resolve, foa.HistogramValues(input.field, bins=bins, range=range_)
+    return count

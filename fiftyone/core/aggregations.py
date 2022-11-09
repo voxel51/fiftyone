@@ -45,6 +45,8 @@ class Aggregation(object):
             floating point values
     """
 
+    # tricky: this becomes shadowed by an instance attribute when _serialize()
+    # is called
     _uuid = None
 
     def __init__(self, field_or_expr, expr=None, safe=False):
@@ -122,13 +124,14 @@ class Aggregation(object):
         """
         return False
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         """Returns the MongoDB aggregation pipeline for this aggregation.
 
         Args:
             sample_collection: the
                 :class:`fiftyone.core.collections.SampleCollection` to which
                 the aggregation is being applied
+            context (None): a path context from which to resolve
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -355,6 +358,14 @@ class Bounds(Aggregation):
         Returns:
             ``(None, None)``
         """
+        if self._count_nonfinites:
+            return {
+                "bounds": (None, None),
+                "inf": 0,
+                "-inf": 0,
+                "nan": 0,
+            }
+
         return None, None
 
     def parse_result(self, d):
@@ -382,12 +393,13 @@ class Bounds(Aggregation):
 
         return bounds
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe and not self._count_nonfinites,
+            context=context,
         )
 
         self._field_type = field_type
@@ -547,7 +559,7 @@ class Count(Aggregation):
         """
         return d["count"]
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         if self._field_name is None and self._expr is None:
             return [{"$count": "count"}]
 
@@ -557,6 +569,7 @@ class Count(Aggregation):
             expr=self._expr,
             safe=self._safe,
             unwind=self._unwind,
+            context=context,
         )
 
         if not sample_collection._contains_videos() or path != "frames":
@@ -718,22 +731,23 @@ class CountValues(Aggregation):
                 return (0, [])
 
             return (
-                count[0]["count"],
+                count,
                 [
                     [p(i["k"]), i["count"]]
-                    for i in d["result"][0]["result"]
+                    for i in d["result"]
                     if i["k"] is not None
                 ],
             )
 
         return {p(i["k"]): i["count"] for i in d["result"]}
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            context=context,
         )
 
         self._field_type = field_type
@@ -791,19 +805,16 @@ class CountValues(Aggregation):
         sort[self._sort_by] = order
         sort["count" if self._sort_by != "count" else "_id"] = order
 
-        result = [
+        return pipeline + [
             {"$sort": sort},
             {"$limit": limit},
             {
                 "$group": {
                     "_id": None,
                     "result": {"$push": {"k": "$_id", "count": "$count"}},
+                    "count": {"$sum": 1},
                 }
             },
-        ]
-
-        return pipeline + [
-            {"$facet": {"count": [{"$count": "count"}], "result": result}}
         ]
 
 
@@ -927,12 +938,13 @@ class Distinct(Aggregation):
 
         return values
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            context=context,
         )
 
         self._field_type = field_type
@@ -951,6 +963,217 @@ class Distinct(Aggregation):
         ]
 
         return pipeline
+
+
+class FacetAggregations(Aggregation):
+    """Efficiently computes a set of aggregations rooted at a common path using
+    faceted computations.
+
+    .. note::
+
+        All ``aggregations`` provided to this method are interpreted relative
+        to the provided ``field_name``.
+
+    Examples::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    tags=["sunny"],
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat", confidence=0.4),
+                            fo.Detection(label="dog", confidence=0.5),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    tags=["sunny", "cloudy"],
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat", confidence=0.6),
+                            fo.Detection(label="rabbit", confidence=0.7),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    predictions=None,
+                ),
+            ]
+        )
+
+        #
+        # Compute prediction label value counts and confidence bounds
+        #
+
+        values, bounds = dataset.aggregate(
+            fo.FacetAggregations(
+                "predictions.detections",
+                [fo.CountValues("label"), fo.Bounds("confidence")]
+            )
+        )
+        print(values)  # label value counts
+        print(bounds)  # confidence bounds
+
+    Args:
+        field_name: a field name or ``embedded.field.name``
+        aggregations: a list or dict of :class:`Aggregation` instances
+    """
+
+    def __init__(self, field_name, aggregations, _compiled=False):
+        raw_aggregations, aggregations, is_dict = self._parse_aggregations(
+            field_name, aggregations
+        )
+
+        super().__init__(field_name)
+        self._raw_aggregations = raw_aggregations
+        self._aggregations = aggregations
+        self._compiled = _compiled
+        self._is_dict = is_dict
+
+    def _serialize(self, include_uuid=True):
+        d = {
+            "_cls": etau.get_class_name(self),
+            "kwargs": self._kwargs(include_uuid=include_uuid),
+        }
+
+        if include_uuid:
+            if self._uuid is None:
+                self._uuid = str(uuid.uuid4())
+
+            d["_uuid"] = self._uuid
+
+        return d
+
+    def _kwargs(self, include_uuid=True):
+        aggregations = self._serialize_aggregations(
+            self._raw_aggregations, include_uuid=include_uuid
+        )
+
+        return [
+            ["field_name", self._field_name],
+            ["aggregations", aggregations],
+            ["_compiled", self._compiled],
+        ]
+
+    def default_result(self):
+        """Returns the default result for this aggregation.
+
+        Returns:
+            the default result of each sub-aggregation in the same container
+            type as the sub-aggregations were provided (list or dict)
+        """
+        data = {
+            key: agg.default_result()
+            for key, agg in self._aggregations.items()
+        }
+
+        if self._is_dict:
+            return data
+
+        results = [None] * len(self._aggregations)
+        for idx, d in data.items():
+            results[idx] = d
+
+        return results
+
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            the parsed result of each sub-aggregation in the same container
+            type as the sub-aggregations were provided (list or dict)
+        """
+        data = {}
+        for key, agg in self._aggregations.items():
+            try:
+                data[key] = agg.parse_result(d[self._get_key(agg)][0])
+            except:
+                data[key] = agg.default_result()
+
+        if self._is_dict:
+            return data
+
+        results = [None] * len(self._aggregations)
+        for idx, d in data.items():
+            results[idx] = d
+
+        return results
+
+    def to_mongo(self, sample_collection, context=None):
+        path, pipeline, _, _, _ = _parse_field_and_expr(
+            sample_collection, self._field_name, context=context
+        )
+        self._path = path
+
+        facets = {}
+        for agg in self._aggregations.values():
+            facets[self._get_key(agg)] = []
+            for stage in agg.to_mongo(
+                sample_collection, context=self.field_name
+            ):
+                facets[self._get_key(agg)].append(stage)
+
+        pipeline += [{"$facet": facets}]
+
+        return pipeline
+
+    @staticmethod
+    def _get_key(agg):
+        return agg.field_name.replace(".", "_") + "_" + agg.__class__.__name__
+
+    @staticmethod
+    def _parse_aggregations(field_name, aggregations):
+        raw_aggregations = deepcopy(aggregations)
+        is_dict = isinstance(aggregations, dict)
+
+        if not is_dict:
+            aggregations = {idx: agg for idx, agg in enumerate(aggregations)}
+
+        for key, agg in aggregations.items():
+            if isinstance(agg, dict):
+                agg = Aggregation._from_dict(agg)
+                aggregations[key] = agg
+
+            if agg._field_name:
+                agg._field_name = field_name + "." + agg._field_name
+            else:
+                agg._field_name = field_name
+
+        return raw_aggregations, aggregations, is_dict
+
+    @staticmethod
+    def _serialize_aggregations(aggregations, include_uuid=True):
+        if isinstance(aggregations, dict):
+            return {
+                k: _serialize_aggregation(agg, include_uuid=include_uuid)
+                for k, agg in aggregations.items()
+            }
+
+        return [
+            _serialize_aggregation(agg, include_uuid=include_uuid)
+            for agg in aggregations
+        ]
+
+
+def _serialize_aggregation(agg_or_dict, include_uuid=True):
+    if isinstance(agg_or_dict, dict):
+        if not include_uuid:
+            agg_or_dict = deepcopy(agg_or_dict)
+            agg_or_dict.pop("_uuid", None)
+
+        return agg_or_dict
+
+    return agg_or_dict._serialize(include_uuid=include_uuid)
 
 
 class HistogramValues(Aggregation):
@@ -1103,9 +1326,12 @@ class HistogramValues(Aggregation):
 
         return self._parse_result_edges(d)
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            context=context,
         )
 
         self._field_type = field_type
@@ -1335,12 +1561,13 @@ class Mean(Aggregation):
         """
         return d["mean"]
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            context=context,
         )
 
         if id_to_str:
@@ -1471,12 +1698,13 @@ class Quantiles(Aggregation):
 
         return d["quantiles"]
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            context=context,
         )
 
         if id_to_str:
@@ -1502,7 +1730,8 @@ class Quantiles(Aggregation):
 
         return pipeline
 
-    def _parse_quantiles(self, quantiles):
+    @staticmethod
+    def _parse_quantiles(quantiles):
         is_scalar = not etau.is_container(quantiles)
 
         if is_scalar:
@@ -1601,9 +1830,17 @@ class Schema(Aggregation):
         _include_private=False,
     ):
         super().__init__(field_or_expr, expr=expr)
-        self.dynamic_only = dynamic_only
+        self._dynamic_only = dynamic_only
         self._include_private = _include_private
         self._doc_type = None
+
+    def _kwargs(self):
+        return [
+            ["field_or_expr", self._field_name],
+            ["expr", self._expr],
+            ["dynamic_only", self._dynamic_only],
+            ["_include_private", self._include_private],
+        ]
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1639,7 +1876,7 @@ class Schema(Aggregation):
             if not self._include_private and name.startswith("_"):
                 continue
 
-            if self.dynamic_only and name in doc_fields:
+            if self._dynamic_only and name in doc_fields:
                 continue
 
             if name in doc_fields:
@@ -1656,7 +1893,7 @@ class Schema(Aggregation):
 
         return schema
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         field_name = self._field_name
         doc_type = None
 
@@ -1664,14 +1901,16 @@ class Schema(Aggregation):
             field_type = _get_field_type(
                 sample_collection, field_name, unwind=True
             )
-
             if isinstance(field_type, fof.EmbeddedDocumentField):
                 doc_type = field_type
 
         self._doc_type = doc_type
 
         path, pipeline, _, _, _ = _parse_field_and_expr(
-            sample_collection, field_name, expr=self._expr
+            sample_collection,
+            field_name,
+            expr=self._expr,
+            context=context,
         )
 
         pipeline.extend(
@@ -1820,12 +2059,13 @@ class Std(Aggregation):
         """
         return d["std"]
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            context=context,
         )
 
         if id_to_str:
@@ -1932,12 +2172,13 @@ class Sum(Aggregation):
         """
         return d["sum"]
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            context=context,
         )
 
         if id_to_str:
@@ -2138,7 +2379,7 @@ class Values(Aggregation):
 
         return values
 
-    def to_mongo(self, sample_collection, big_field="values"):
+    def to_mongo(self, sample_collection, big_field="values", context=None):
         (
             path,
             pipeline,
@@ -2151,6 +2392,7 @@ class Values(Aggregation):
             expr=self._expr,
             unwind=self._unwind,
             allow_missing=self._allow_missing,
+            context=context,
         )
 
         self._big_field = big_field
@@ -2260,6 +2502,7 @@ def _parse_field_and_expr(
     safe=False,
     unwind=True,
     allow_missing=False,
+    context=None,
 ):
     # unwind can be {True, False, -1}
     auto_unwind = unwind != False
@@ -2328,6 +2571,17 @@ def _parse_field_and_expr(
     if id_to_str or type(field_type) in fof._PRIMITIVE_FIELDS:
         field_type = None
 
+    if context:
+        if is_frame_field:
+            context = ".".join(context.split(".")[1:])
+
+        unwind_list_fields = list(
+            filter(lambda f: not context.startswith(f), unwind_list_fields)
+        )
+        other_list_fields = list(
+            filter(lambda f: not context.startswith(f), other_list_fields)
+        )
+
     if keep_top_level:
         if is_frame_field:
             if not root:
@@ -2344,15 +2598,17 @@ def _parse_field_and_expr(
         pipeline.append({"$project": {path: True}})
     elif auto_unwind:
         if is_frame_field:
-            pipeline.append({"$unwind": "$frames"})
-            if not root:
+            if context is None:
+                pipeline.append({"$unwind": "$frames"})
+
+            if not root and not context:
                 pipeline.extend(
                     [
                         {"$project": {"frames." + path: True}},
                         {"$replaceRoot": {"newRoot": "$frames"}},
                     ]
                 )
-        else:
+        elif not context:
             pipeline.append({"$project": {path: True}})
     elif unwind_list_fields:
         pipeline.append({"$project": {path: True}})

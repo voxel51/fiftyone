@@ -25,7 +25,11 @@ import {
   similarityParameters,
   extendedSelection,
   selectedMediaField,
+  sidebarMode,
+  groupStatistics,
+  theme,
 } from "../recoil";
+import { useColorScheme } from "@mui/material";
 
 import * as viewAtoms from "../recoil/view";
 import { collapseFields, viewsAreEqual } from "../utils";
@@ -42,6 +46,8 @@ export type StateResolver =
   | ((t: TransactionInterface_UNSTABLE) => StateUpdate);
 
 const useStateUpdate = () => {
+  const { setMode } = useColorScheme();
+
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
       const { colorscale, config, dataset, state } =
@@ -77,6 +83,10 @@ const useStateUpdate = () => {
           )
         );
 
+      if (config && config.theme !== "browser") {
+        set(theme, config.theme);
+        setMode(config.theme);
+      }
       const colorPool = get(colorPoolAtom);
       if (
         config &&
@@ -91,8 +101,8 @@ const useStateUpdate = () => {
         dataset.sampleFields = collapseFields(dataset.sampleFields);
         dataset.frameFields = collapseFields(dataset.frameFields);
 
-        const groups = resolveGroups(dataset);
         const currentSidebar = get(sidebarGroupsDefinition(false));
+        const groups = resolveGroups(dataset, currentSidebar);
 
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
@@ -105,6 +115,9 @@ const useStateUpdate = () => {
           previousDataset.id !== dataset.id ||
           dataset.groupSlice !== previousDataset.groupSlice
         ) {
+          if (dataset?.name !== previousDataset?.name) {
+            reset(sidebarMode(false));
+          }
           reset(_activeFields({ modal: false }));
           let slice = dataset.groupSlice;
 
@@ -113,6 +126,7 @@ const useStateUpdate = () => {
           }
 
           set(groupSlice(false), slice);
+          reset(groupStatistics(false));
 
           reset(similarityParameters);
           set(

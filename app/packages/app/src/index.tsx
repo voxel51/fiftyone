@@ -1,5 +1,6 @@
+import { ThemeProvider } from "@fiftyone/components";
 import { Loading, Setup, makeRoutes } from "@fiftyone/core";
-import { useScreenshot } from "@fiftyone/state";
+import { useRefresh, useScreenshot } from "@fiftyone/state";
 import { ThemeProvider } from "@fiftyone/components";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
@@ -13,9 +14,9 @@ import {
   refresher,
   State,
   stateSubscription,
-  useRefresh,
   useReset,
   useClearModal,
+  useScreenshot,
 } from "@fiftyone/state";
 import { usePlugins } from "@fiftyone/plugins";
 import { useRouter } from "@fiftyone/state";
@@ -40,14 +41,8 @@ const App: React.FC = ({}) => {
   const readyStateRef = useRef<AppReadyState>();
   readyStateRef.current = readyState;
   const subscription = useRecoilValue(stateSubscription);
+  const { context, environment } = useRouter(makeRoutes, []);
   const refresh = useRefresh();
-  const refreshRouter = useRecoilValue(refresher);
-
-  const { context, environment } = useRouter(makeRoutes, [
-    readyState === AppReadyState.CLOSED,
-    refreshRouter,
-  ]);
-
   const contextRef = useRef(context);
   contextRef.current = context;
   const reset = useReset();

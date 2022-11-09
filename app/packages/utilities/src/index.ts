@@ -215,6 +215,7 @@ export const VALID_LABEL_TYPES = [
   ...VALID_CLASS_TYPES,
   ...VALID_OBJECT_TYPES,
   ...VALID_MASK_TYPES,
+  "Regression",
 ];
 
 export const LABEL_LISTS = [

@@ -17,17 +17,24 @@ const AddGroup = () => {
         );
         if (
           !fos.validateGroupName(
-            current.map(([name]) => name),
+            current.map(({ name }) => name),
             newGroup
           )
         ) {
           return;
         }
-        const newGroups: fos.State.SidebarGroups = [...current, [newGroup, []]];
+        const newGroups: fos.State.SidebarGroup[] = [
+          ...current,
+          { name: newGroup, paths: [] },
+        ];
 
         const view = await snapshot.getPromise(fos.view);
         set(fos.sidebarGroupsDefinition(false), newGroups);
-        fos.persistGroups(getDatasetName(context), view, newGroups);
+        fos.persistSidebarGroups({
+          dataset: getDatasetName(context),
+          stages: view,
+          sidebarGroups: newGroups,
+        });
       },
     []
   );
