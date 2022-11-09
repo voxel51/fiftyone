@@ -86,7 +86,6 @@ class StateDescription(etas.Serializable):
 
             if self.config.colorscale:
                 d["colorscale"] = self.config.get_colormap()
-
             return d
 
     def attributes(self):
