@@ -705,7 +705,7 @@ export const groupShown = selectorFamily<
 
       return data.expanded === undefined
         ? !["tags", "label tags"].includes(group)
-          ? !disabledPaths.size ||
+          ? !data.paths.length ||
             !data.paths.every((path) => get(disabledPaths).has(path))
           : true
         : data.expanded;
