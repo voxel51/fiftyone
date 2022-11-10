@@ -305,11 +305,11 @@ const FilterableEntry = React.memo(
               field={field}
               color={color}
               expandedPath={expandedPath}
-              template={({ label, hoverHanlders, hoverTarget, container }) => (
+              template={({ hoverHanlders, hoverTarget, container }) => (
                 <NameAndCountContainer ref={container}>
                   <span key="path">
                     <span ref={hoverTarget} {...hoverHanlders}>
-                      {label}
+                      {path}
                     </span>
                   </span>
                   {hidden}
