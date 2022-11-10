@@ -28,7 +28,7 @@ const Body = styled.div`
 export const LoadingContainer = ({ path }: { path?: string; text: string }) => {
   return (
     <Container>
-      {path && <Header>{path}</Header>}
+      {path && <Header>{path.split(".").slice(-1)[0]}</Header>}
       <Body>
         <LoadingDots text={"Loading"} />
       </Body>

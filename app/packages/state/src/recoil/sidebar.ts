@@ -98,7 +98,7 @@ export const useLabelTagText = (modal: boolean) => {
     useRecoilValueLoadable(readableTags({ modal, group: "label tags" }))
       .state === "loading";
 
-  return { text: loading ? "Loading label tags..." : "No label tags", loading };
+  return { text: loading ? "Loading label tags" : "No label tags", loading };
 };
 
 export const useTagText = (modal: boolean) => {
@@ -108,7 +108,7 @@ export const useTagText = (modal: boolean) => {
     "loading";
 
   return {
-    text: loading ? `Loading ${singular} tags...` : `No ${singular} tags`,
+    text: loading ? `Loading ${singular} tags` : `No ${singular} tags`,
     loading,
   };
 };
