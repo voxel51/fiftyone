@@ -2887,6 +2887,7 @@ __metadata:
     "@auth0/auth0-react": ^1.9.0
     "@fiftyone/app": "*"
     "@fiftyone/components": "*"
+    "@fiftyone/core": "*"
     "@fiftyone/utilities": "*"
     "@types/react": ^18.0.9
     "@types/react-dom": ^18.0.3
