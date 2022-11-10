@@ -134,7 +134,7 @@ export const isFramesView = selector<boolean>({
 
 export const persistSavedView = (name: String, description?: String) => {
   getFetchFunction()("POST", "/view", {
-    dataset: useRecoilValue(datasetName),
+    dataset,
     view,
     name: name,
     description: description,

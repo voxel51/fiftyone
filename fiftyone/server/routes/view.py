@@ -4,63 +4,44 @@ FiftyOne Server ``/view`` route.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# import glob
-# import os
-# import numpy as np
-#
-# from starlette.endpoints import HTTPEndpoint
-# from starlette.requests import Request
-#
-# import eta.core.serial as etas
-# import fiftyone.server.view as fosv
-#
-import fiftyone as fo
 
-# from fiftyone.server.decorators import route
-#
-#
-# class View(HTTPEndpoint):
-#     @route
-#     async def get(self, request: Request, data: dict):
-#         datasetName = request.query_params["dataset"]
-#         dataset = fo.load_dataset(datasetName)
-#         if not dataset:
-#             return None
-#         viewName = request.query_params["view"]
-#         view = dataset.load_view(viewName)
-#         return view
-#
-#     # @route
-#     # async def post(self, request: Request, data: dict):
-#     #     return {}
+import fiftyone as fo
+import fiftyone.core.view as fov
+from fiftyone.core.session.events import StateUpdate
+
+import fiftyone.server.events as fose
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
-
-import fiftyone.core.odm.dataset as food
-
 from fiftyone.server.decorators import route
-import fiftyone.server.view as fosv
 
 
 class View(HTTPEndpoint):
     @route
     async def get(self, request: Request, data: dict):
-        dataset_name = request.query_params["dataset"]
+        # print("GET REQUEST:\n\trequest: \n\t\turl:{}\n\t\tquery_params:{}\n\tdata:{}\n".format(
+        #         request.url, request.query_params, data))
+        subscription = data.get("subscription")
+        dataset_name = data.get("dataset")
+        view_name = data.get("name")
         dataset = fo.load_dataset(dataset_name)
-        if not dataset:
-            return None
-        view_name = request.query_params["view"]
         view = dataset.load_view(view_name)
-        return view
+
+        state = fose.get_state()
+        state.view = view
+
+        await fose.dispatch_event(subscription, StateUpdate(state=state))
 
     @route
     async def post(self, request: Request, data: dict):
+        # print('POST REQUEST:\n\trequest:{}\n\tdata:{}\n'.format(request,
+        #                                                         data))
+
         dataset_name = data.get("dataset", None)
         dataset = fo.load_dataset(dataset_name)
         view_stages = data.get("view", None)
         view_name = data.get("name")
         description = data.get("description")
-        view = fosv.get_view(dataset, stages=view_stages)
+        view = fov.DatasetView._build(dataset, view_stages)
 
         dataset.save_view(view_name, view, description=description)
 
