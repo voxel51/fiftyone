@@ -1,13 +1,18 @@
 import { useTheme } from "@fiftyone/components";
 import { useSpring } from "@react-spring/core";
 import React from "react";
+import LoadingDots from "../../Common/LoadingDots";
 
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
 
-const EmptyEntry = ({ useText }: { useText: () => string }) => {
+const EmptyEntry = ({
+  useText,
+}: {
+  useText: () => { text: string; loading: boolean };
+}) => {
   const theme = useTheme();
-  const text = useText();
+  const { text, loading } = useText();
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
   });
@@ -16,7 +21,9 @@ const EmptyEntry = ({ useText }: { useText: () => string }) => {
     <RegularEntry
       heading={
         <NameAndCountContainer>
-          <span style={{ color: theme.text.tertiary }}>{text}</span>
+          <span style={{ color: theme.text.tertiary }}>
+            {loading ? <LoadingDots text={text} /> : text}
+          </span>
         </NameAndCountContainer>
       }
       title={text}
