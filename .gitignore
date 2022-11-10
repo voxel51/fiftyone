@@ -22,3 +22,6 @@ dist/
 /docs/source/api/
 
 /docker/README.pdf
+/bin
+/lib
+pyvenv.cfg

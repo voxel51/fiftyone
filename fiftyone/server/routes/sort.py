@@ -46,7 +46,7 @@ class Sort(HTTPEndpoint):
             view = None
 
         return {
-            "dataset": serialize_dataset(dataset, state.view)
+            "dataset": await serialize_dataset(dataset_name, stages)
             if changed
             else None,
             "state": state.serialize(),

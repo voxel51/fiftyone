@@ -1,4 +1,4 @@
-import { getFetchOrigin } from "@fiftyone/utilities";
+import { getFetchOrigin, getFetchPathPrefix } from "@fiftyone/utilities";
 
 export const getSampleSrc = (url: string) => {
   try {
@@ -8,5 +8,7 @@ export const getSampleSrc = (url: string) => {
     }
   } catch {}
 
-  return `${getFetchOrigin()}/media?filepath=${encodeURIComponent(url)}`;
+  return `${getFetchOrigin()}${getFetchPathPrefix()}/media?filepath=${encodeURIComponent(
+    url
+  )}`;
 };

@@ -93,6 +93,7 @@ interface BaseOptions {
   showControls: boolean;
   showIndex: boolean;
   showJSON: boolean;
+  showHelp: boolean;
   showLabel: boolean;
   showOverlays: boolean;
   showTooltip: boolean;
@@ -125,8 +126,8 @@ interface BaseConfig {
   src: string;
   sampleId: string;
   fieldSchema: Schema;
-  dataset: string;
   view: Stage[];
+  dataset: string;
 }
 
 export interface FrameConfig extends BaseConfig {
@@ -201,7 +202,6 @@ export interface BaseState {
   dashLength: number;
   relativeCoordinates: Coordinates;
   mouseIsOnOverlay: boolean;
-  showHelp: boolean;
   overlaysPrepared: boolean;
   disableOverlays: boolean;
   zoomToContent: boolean;
@@ -344,7 +344,5 @@ export interface FrameChunkResponse extends FrameChunk {
   method: string;
   frames: FrameSample[];
   range: [number, number];
-  error?: {
-    error: string;
-  };
+  error?: boolean;
 }

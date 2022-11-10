@@ -1,45 +1,22 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
+import { Copy as CopyIcon, Close as CloseIcon } from "@fiftyone/components";
 import {
   lookerPanel,
   lookerPanelContainer,
   lookerPanelVerticalContainer,
-  lookerPanelClose,
 } from "./panel.module.css";
 import {
   lookerCopyJSON,
   lookerCloseJSON,
   lookerJSONPanel,
 } from "./json.module.css";
-import closeIcon from "../../icons/close.svg";
-import clipboardIcon from "../../icons/clipboard.svg";
 
-function Close({ onClick }) {
-  return (
-    <img
-      src={closeIcon}
-      className={lookerCloseJSON}
-      title="Close JSON"
-      onClick={onClick}
-    />
-  );
-}
-
-function Copy({ onClick }) {
-  return (
-    <img
-      src={clipboardIcon}
-      className={lookerCopyJSON}
-      title="Copy JSON to clipboard"
-      onClick={onClick}
-    />
-  );
-}
-
-export default function JSONPanel({ jsonHTML, onClose, onCopy }) {
+export default function JSONPanel({ containerRef, jsonHTML, onClose, onCopy }) {
   return (
     <div
+      ref={containerRef}
       className={`${lookerJSONPanel} ${lookerPanelContainer}`}
       onClick={(e) => e.stopPropagation()}
     >
@@ -47,8 +24,22 @@ export default function JSONPanel({ jsonHTML, onClose, onCopy }) {
         <div className={lookerPanel}>
           {jsonHTML && <pre dangerouslySetInnerHTML={jsonHTML} />}
         </div>
-        <Close onClick={onClose} />
-        <Copy onClick={onCopy} />
+        <CloseIcon
+          className={lookerCloseJSON}
+          titleAccess="Close JSON"
+          onClick={onClose}
+          sx={{
+            fontSize: "1.75rem",
+          }}
+        />
+        <CopyIcon
+          className={lookerCopyJSON}
+          titleAccess="Copy JSON to clipboard"
+          onClick={onCopy}
+          sx={{
+            fontSize: "1.75rem",
+          }}
+        />
       </div>
     </div>
   );

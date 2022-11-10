@@ -9,8 +9,8 @@ CVAT Integration
 open-source image and video annotation tools available, and we've made it easy
 to upload your data directly from FiftyOne to CVAT to add or edit labels.
 
-You can use CVAT either through the demo server at
-`cvat.org <https://cvat.org>`_ or through a
+You can use CVAT either through the hosted server at
+`app.cvat.ai <https://app.cvat.ai>`_ or through a
 `self-hosted server <https://openvinotoolkit.github.io/cvat/docs/administration/basics/installation/>`_.
 In either case, FiftyOne provides :ref:`simple setup <cvat-setup>` instructions
 that you can use to specify the necessary account credentials and server
@@ -18,7 +18,7 @@ endpoint to use.
 
 CVAT provides three levels of abstraction for annotation workflows: projects,
 tasks, and jobs. A job contains one or more images and can be assigned to a
-specfic annotator or reviewer. A task defines the label schema to use for
+specific annotator or reviewer. A task defines the label schema to use for
 annotation and contains one or more jobs. A project can optionally be created
 to group multiple tasks together under a shared label schema.
 
@@ -78,7 +78,7 @@ The example below demonstrates this workflow.
 
 .. note::
 
-    You must create an account at `cvat.org <https://cvat.org>`_ in order to
+    You must create an account at `app.cvat.ai <https://app.cvat.ai>`_ in order to
     run this example.
 
     Note that you can store your credentials as described in
@@ -173,11 +173,11 @@ FiftyOne:
 Setup
 _____
 
-FiftyOne supports both `cvat.org <https://cvat.org>`_ and
+FiftyOne supports both `app.cvat.ai <https://app.cvat.ai>`_ and
 `self-hosted servers <https://openvinotoolkit.github.io/cvat/docs/administration/basics/installation/>`_.
 
 The easiest way to get started is to use the default server
-`cvat.org <https://cvat.org>`_, which simply requires creating an account and
+`app.cvat.ai <https://app.cvat.ai>`_, which simply requires creating an account and
 then providing your authentication credentials as shown below.
 
 .. note::

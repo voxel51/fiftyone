@@ -9,7 +9,6 @@ import { debounce } from "lodash";
 import mapbox, { GeoJSONSource, LngLatBounds } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import React from "react";
-import { useErrorHandler } from "react-error-boundary";
 import Map, { Layer, MapRef, Source } from "react-map-gl";
 
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -206,7 +205,7 @@ const Plot: React.FC<{}> = () => {
                 id={"cluster"}
                 filter={["has", "point_count"]}
                 paint={{
-                  "circle-color": theme.brand,
+                  "circle-color": theme.primary.plainColor,
                   "circle-opacity": 0.7,
                   "circle-radius": [
                     "step",

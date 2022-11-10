@@ -26,6 +26,7 @@ export const lookerOptions = selectorFamily<
   get:
     ({ modal, withFilter }) =>
     ({ get }) => {
+      const panels = get(atoms.lookerPanels);
       const showConfidence = get(
         selectors.appConfigOption({ modal: true, key: "showConfidence" })
       );
@@ -41,6 +42,7 @@ export const lookerOptions = selectorFamily<
       const useFrameNumber = get(
         selectors.appConfigOption({ modal: true, key: "useFrameNumber" })
       );
+
       const video = get(selectors.isVideoDataset)
         ? {
             loop: modal
@@ -52,6 +54,8 @@ export const lookerOptions = selectorFamily<
         : {};
 
       return {
+        showJSON: panels.json.isOpen,
+        showHelp: panels.help.isOpen,
         showConfidence,
         showControls: true,
         showIndex,
@@ -89,5 +93,6 @@ export const useLookerOptions = (
   );
 
   const loading = useRecoilValue(lookerOptions({ modal, withFilter: false }));
+
   return loaded.contents instanceof Promise ? loading : loaded.contents;
 };
