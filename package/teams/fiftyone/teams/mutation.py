@@ -15,16 +15,13 @@ from pymongo import ReturnDocument
 import strawberry as gql
 import typing as t
 
-import fiftyone as fo
-
 from fiftyone.server.data import Info
+import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
-
 
 import fiftyone.server.mutation as fosm
 from fiftyone.server.query import Dataset
 from fiftyone.server.scalars import BSONArray
-
 
 from fiftyone.teams.query import User
 
@@ -87,7 +84,7 @@ class Mutation(fosm.Mutation):
 
             if form.add_stages:
                 for d in form.add_stages:
-                    stage = fosm.ViewStage._from_dict(d)
+                    stage = fos.ViewStage._from_dict(d)
                     view = view.add_stage(stage)
 
             if form.extended:
