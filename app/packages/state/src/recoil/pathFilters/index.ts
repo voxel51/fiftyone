@@ -75,9 +75,9 @@ export const pathFilter = selectorFamily<
       const filters = paths.reduce((f, path) => {
         if (path.startsWith("_")) return f;
 
-        const { embeddedDocType } = get(schemaAtoms.field(path));
+        const field = get(schemaAtoms.field(path));
 
-        if (LABELS.includes(embeddedDocType)) {
+        if (field && LABELS.includes(field.embeddedDocType)) {
           const expandedPath = get(schemaAtoms.expandPath(path));
           const labelFields = get(
             schemaAtoms.fields({
@@ -109,7 +109,7 @@ export const pathFilter = selectorFamily<
 
             return matched && fs.every((filter) => filter(value));
           };
-        } else {
+        } else if (field) {
           f[path] = get(primitiveFilter({ modal, path }));
         }
 

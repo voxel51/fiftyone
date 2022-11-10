@@ -327,37 +327,12 @@ You must also add `?authSource=admin` to your database URI:
 
     mongodb://[username:password@]host[:port]/?authSource=admin
 
-.. note::
-
-    **Apple Silicon users**: MongoDB does not yet provide a native build for
-    Apple Silicon, so you currently must use `dataset_uri` with a MongoDB
-    distribution that you have installed yourself.
-
-    Users have reported success
-    `installing MongoDB v4.4 on Apple Silicon <https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x>`_
-    as follows:
-
-    .. code-block:: shell
-
-        brew tap mongodb/brew
-        brew install mongodb-community@4.4
-
 Using a different MongoDB version
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FiftyOne is designed for and distributed with **MongoDB v4.4**.
+FiftyOne is designed for **MongoDB v4.4 or later**.
 
-Users have reported success connecting to MongoDB v5 databases, but if you wish
-to do this, you should
-`set the feature compatibility version <https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion>`_
-to 4.4 to ensure proper function:
-
-.. code-block:: shell
-
-    mongo --shell
-    > db.adminCommand({setFeatureCompatibilityVersion: "4.4"})
-
-If you wish to connect FiftyOne to a MongoDB database whose version is not
+If you wish to connect FiftyOne to a MongoDB database whose version is no
 explicitly supported, you will also need to set the `database_validation`
 property of your FiftyOne config to `False` to suppress a runtime error that
 will otherwise occur.
@@ -642,44 +617,50 @@ property.
 
 The FiftyOne App can be configured in the ways described below:
 
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| Config field              | Environment variable                   | Default value               | Description                                                                              |
-+===========================+========================================+=============================+==========================================================================================+
-| `color_by`                | `FIFTYONE_APP_COLOR_BY`                | `"field"`                   | Whether to color labels by their field name (`"field"`), `label` value (`"label"`), or   |
-|                           |                                        |                             | render each instance ID/trajectory index (`"instance"`).                                 |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `color_pool`              | `FIFTYONE_APP_COLOR_POOL`              | See below                   | A list of browser supported color strings from which the App should draw from when       |
-|                           |                                        |                             | drawing labels (e.g., object bounding boxes).                                            |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `colorscale`              | `FIFTYONE_APP_COLORSCALE`              | `"viridis"`                 | The colorscale to use when rendering heatmaps in the App. See                            |
-|                           |                                        |                             | :ref:`this section <heatmaps>` for more details.                                         |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `grid_zoom`               | `FIFTYONE_APP_GRID_ZOOM`               | `5`                         | The zoom level of the App's sample grid. Larger values result in larger samples (and )   |
-|                           |                                        |                             | (thus fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `loop_videos`             | `FIFTYONE_APP_LOOP_VIDEOS`             | `False`                     | Whether to loop videos by default in the expanded sample view.                           |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `multicolor_keypoints`    | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`    | `False`                     | Whether to independently coloy keypoint points by their index                            |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `notebook_height`         | `FIFTYONE_APP_NOTEBOOK_HEIGHT`         | `800`                       | The height of App instances displayed in notebook cells.                                 |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_confidence`         | `FIFTYONE_APP_SHOW_CONFIDENCE`         | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.     |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_index`              | `FIFTYONE_APP_SHOW_INDEX`              | `True`                      | Whether to show indexes when rendering labels in the App's expanded sample view.         |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_label`              | `FIFTYONE_APP_SHOW_LABEL`              | `True`                      | Whether to show the label value when rendering detection labels in the App's expanded    |
-|                           |                                        |                             | sample view.                                                                             |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_skeletons`          | `FIFTYONE_APP_SHOW_SKELETONS`          | `True`                      | Whether to show keypoint skeletons, if available.                                        |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only |
-|                           |                                        |                             | applicable to video samples.                                                             |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for       |
-|                           |                                        |                             | details.                                                                                 |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| Config field              | Environment variable                   | Default value               | Description                                                                               |
++===========================+========================================+=============================+===========================================================================================+
+| `color_by`                | `FIFTYONE_APP_COLOR_BY`                | `"field"`                   | Whether to color labels by their field name (`"field"`), `label` value (`"label"`), or    |
+|                           |                                        |                             | render each instance ID/trajectory index (`"instance"`).                                  |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `color_pool`              | `FIFTYONE_APP_COLOR_POOL`              | See below                   | A list of browser supported color strings from which the App should draw from when        |
+|                           |                                        |                             | drawing labels (e.g., object bounding boxes).                                             |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `colorscale`              | `FIFTYONE_APP_COLORSCALE`              | `"viridis"`                 | The colorscale to use when rendering heatmaps in the App. See                             |
+|                           |                                        |                             | :ref:`this section <heatmaps>` for more details.                                          |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `grid_zoom`               | `FIFTYONE_APP_GRID_ZOOM`               | `5`                         | The zoom level of the App's sample grid. Larger values result in larger samples (and thus |
+|                           |                                        |                             | fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                       |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `loop_videos`             | `FIFTYONE_APP_LOOP_VIDEOS`             | `False`                     | Whether to loop videos by default in the expanded sample view.                            |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `multicolor_keypoints`    | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`    | `False`                     | Whether to independently coloy keypoint points by their index                             |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `notebook_height`         | `FIFTYONE_APP_NOTEBOOK_HEIGHT`         | `800`                       | The height of App instances displayed in notebook cells.                                  |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `show_confidence`         | `FIFTYONE_APP_SHOW_CONFIDENCE`         | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.      |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `show_index`              | `FIFTYONE_APP_SHOW_INDEX`              | `True`                      | Whether to show indexes when rendering labels in the App's expanded sample view.          |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `show_label`              | `FIFTYONE_APP_SHOW_LABEL`              | `True`                      | Whether to show the label value when rendering detection labels in the App's expanded     |
+|                           |                                        |                             | sample view.                                                                              |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `show_skeletons`          | `FIFTYONE_APP_SHOW_SKELETONS`          | `True`                      | Whether to show keypoint skeletons, if available.                                         |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view.  |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `sidebar_mode`            | `FIFTYONE_APP_SIDEBAR_MODE`            | `best`                      | The default loading behavior of the App's sidebar. Supported values are                   |
+|                           |                                        |                             | `{"all", "best", "fast"}`. See :ref:`this section <app-sidebar-mode>` for more details.   |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `theme`                   | `FIFTYONE_APP_THEME`                   | `"browser"`                 | The default theme to use in the App. Supported values are `{"browser", "dark", "light"}`. |
+|                           |                                        |                             | If `"browser"`, your current theme will be persisted in your browser's storage.           |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only  |
+|                           |                                        |                             | applicable to video samples.                                                              |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for        |
+|                           |                                        |                             | details.                                                                                  |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 
 Viewing your App config
 -----------------------
@@ -729,6 +710,8 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
+            "sidebar_mode": "best",
+            "theme": "browser",
             "use_frame_number": false,
             "plugins": {}
         }
@@ -774,6 +757,8 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
+            "sidebar_mode": "best",
+            "theme": "browser",
             "use_frame_number": false,
             "plugins": {}
         }

@@ -352,6 +352,18 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_SHOW_TOOLTIP",
             default=True,
         )
+        self.sidebar_mode = self.parse_string(
+            d,
+            "sidebar_mode",
+            env_var="FIFTYONE_APP_SIDEBAR_MODE",
+            default="best",
+        )
+        self.theme = self.parse_string(
+            d,
+            "theme",
+            env_var="FIFTYONE_APP_THEME",
+            default="browser",
+        )
         self.use_frame_number = self.parse_bool(
             d,
             "use_frame_number",
@@ -406,13 +418,38 @@ class AppConfig(EnvConfig):
         return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
 
     def _init(self):
-        if self.color_by not in {"field", "instance", "label"}:
+        supported_color_bys = {"field", "instance", "label"}
+        default_color_by = "field"
+        if self.color_by not in supported_color_bys:
             logger.warning(
-                "Invalid `color_by` option '%s'. Must be one of 'field', "
-                "'instance' or 'label'. Defaulting to 'field'",
+                "Invalid color_by=%s. Must be one of %s. Defaulting to '%s'",
                 self.color_by,
+                supported_color_bys,
+                default_color_by,
             )
-            self.color_by = "field"
+            self.color_by = default_color_by
+
+        supported_sidebar_modes = {"all", "best", "fast"}
+        default_sidebar_mode = "best"
+        if self.sidebar_mode not in supported_sidebar_modes:
+            logger.warning(
+                "Invalid sidebar_mode=%s. Must be one of %s. Defaulting to '%s'",
+                self.sidebar_mode,
+                supported_sidebar_modes,
+                default_sidebar_mode,
+            )
+            self.sidebar_mode = default_sidebar_mode
+
+        supported_themes = {"browser", "dark", "light"}
+        default_theme = "browser"
+        if self.theme not in supported_themes:
+            logger.warning(
+                "Invalid theme=%s. Must be one of %s. Defaulting to '%s'",
+                self.theme,
+                supported_themes,
+                default_theme,
+            )
+            self.theme = default_theme
 
         if self.grid_zoom < 0 or self.grid_zoom > 10:
             logger.warning(
@@ -445,7 +482,7 @@ class AnnotationConfig(EnvConfig):
     _BUILTIN_BACKENDS = {
         "cvat": {
             "config_cls": "fiftyone.utils.cvat.CVATBackendConfig",
-            "url": "https://cvat.org",
+            "url": "https://app.cvat.ai",
         },
         "labelbox": {
             "config_cls": "fiftyone.utils.labelbox.LabelboxBackendConfig",

@@ -147,13 +147,6 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
         pip install --upgrade pip setuptools wheel
         pip install fiftyone
 
-**Apple Silicon users**:
-
-- MongoDB does not yet provide a native build for Apple Silicon, so you must
-  follow :ref:`these instructions <configuring-mongodb-connection>` to
-  configure FiftyOne to use a MongoDB instance that you have installed
-  yourself.
-
 **Mac users:**
 
 - You must have the

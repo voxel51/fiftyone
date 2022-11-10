@@ -11,6 +11,7 @@ from copy import deepcopy
 import itertools
 import random
 import reprlib
+from tracemalloc import start
 import uuid
 import warnings
 
@@ -52,6 +53,8 @@ class ViewStage(object):
     view stages are represented by a :class:`fiftyone.core.view.DatasetView`.
     """
 
+    # tricky: this becomes shadowed by an instance attribute when _serialize()
+    # is called
     _uuid = None
 
     def __str__(self):
@@ -566,9 +569,9 @@ class ExcludeBy(ViewStage):
         return self._values
 
     def to_mongo(self, sample_collection):
-        path, field, _ = sample_collection._handle_id_fields(self._field)
+        path, is_id_field, _ = sample_collection._handle_id_fields(self._field)
 
-        if isinstance(field, fof.ObjectIdField):
+        if is_id_field:
             values = [
                 value if isinstance(value, ObjectId) else ObjectId(value)
                 for value in self._values
@@ -609,17 +612,23 @@ class ExcludeFields(ViewStage):
                 fo.Sample(
                     filepath="/path/to/image1.png",
                     ground_truth=fo.Classification(label="cat"),
-                    predictions=fo.Classification(label="cat", confidence=0.9),
+                    predictions=fo.Classification(
+                        label="cat",
+                        confidence=0.9,
+                        mood="surly",
+                    ),
                 ),
                 fo.Sample(
                     filepath="/path/to/image2.png",
                     ground_truth=fo.Classification(label="dog"),
-                    predictions=fo.Classification(label="dog", confidence=0.8),
+                    predictions=fo.Classification(
+                        label="dog",
+                        confidence=0.8,
+                        mood="happy",
+                    ),
                 ),
                 fo.Sample(
                     filepath="/path/to/image3.png",
-                    ground_truth=None,
-                    predictions=None,
                 ),
             ]
         )
@@ -631,8 +640,21 @@ class ExcludeFields(ViewStage):
         stage = fo.ExcludeFields("predictions")
         view = dataset.add_stage(stage)
 
+        #
+        # Exclude the `mood` attribute from all classifications in the
+        # `predictions` field
+        #
+
+        stage = fo.ExcludeFields("predictions.mood")
+        view = dataset.add_stage(stage)
+
+        #
+        # Exclude the `predictions` field from all samples
+        #
+
     Args:
-        field_names: a field name or iterable of field names to exclude
+        field_names: a field name or iterable of field names to exclude. May
+            contain ``embedded.field.name`` as well
     """
 
     def __init__(self, field_names, _allow_missing=False):
@@ -650,41 +672,52 @@ class ExcludeFields(ViewStage):
         return self._field_names
 
     def get_excluded_fields(self, sample_collection, frames=False):
-        if sample_collection._contains_videos():
-            fields, frame_fields = fou.split_frame_fields(self.field_names)
-            return frame_fields if frames else fields
+        if frames:
+            return self._get_excluded_frame_fields(sample_collection)
 
-        return self.field_names
+        return self._get_excluded_fields(sample_collection)
+
+    def _get_excluded_fields(self, sample_collection, use_db_fields=False):
+        if sample_collection._contains_videos():
+            excluded_paths, _ = fou.split_frame_fields(self.field_names)
+        else:
+            excluded_paths = self.field_names
+
+        if use_db_fields:
+            return sample_collection._handle_db_fields(excluded_paths)
+
+        return excluded_paths
+
+    def _get_excluded_frame_fields(
+        self, sample_collection, use_db_fields=False
+    ):
+        if not sample_collection._contains_videos():
+            return None
+
+        _, excluded_paths = fou.split_frame_fields(self.field_names)
+
+        if use_db_fields:
+            return sample_collection._handle_db_fields(
+                excluded_paths, frames=True
+            )
+
+        return excluded_paths
 
     def to_mongo(self, sample_collection):
-        excluded_fields = self.get_excluded_fields(
-            sample_collection, frames=False
+        excluded_paths = self._get_excluded_fields(
+            sample_collection, use_db_fields=True
         )
-        excluded_fields = sample_collection._handle_db_fields(excluded_fields)
 
         if sample_collection._contains_videos():
-            excluded_frame_fields = self.get_excluded_fields(
-                sample_collection, frames=True
+            excluded_frame_paths = self._get_excluded_frame_fields(
+                sample_collection, use_db_fields=True
             )
-            excluded_frame_fields = sample_collection._handle_db_fields(
-                excluded_frame_fields, frames=True
-            )
+            _merge_frame_paths(excluded_paths, excluded_frame_paths)
 
-            excluded_frame_fields = [
-                sample_collection._FRAMES_PREFIX + f
-                for f in excluded_frame_fields
-            ]
-
-            if excluded_frame_fields:
-                # Don't project on root `frames` and embedded fields
-                # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
-                excluded_fields = [f for f in excluded_fields if f != "frames"]
-                excluded_fields += excluded_frame_fields
-
-        if not excluded_fields:
+        if not excluded_paths:
             return []
 
-        return [{"$unset": excluded_fields}]
+        return [{"$unset": excluded_paths}]
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -721,38 +754,52 @@ class ExcludeFields(ViewStage):
         if self._allow_missing:
             return
 
+        # Validate that all root fields exist
         # Using dataset here allows a field to be excluded multiple times
         sample_collection._dataset.validate_fields_exist(self.field_names)
 
         if sample_collection._contains_videos():
-            fields, frame_fields = fou.split_frame_fields(self.field_names)
+            paths, frame_paths = fou.split_frame_fields(self.field_names)
         else:
-            fields = self.field_names
-            frame_fields = None
+            paths = self.field_names
+            frame_paths = None
 
-        if fields:
-            default_fields = set(
-                sample_collection._get_default_sample_fields(
-                    include_private=True
+        if paths:
+            defaults = set()
+            for root, _paths in _parse_paths(paths).items():
+                default_fields = sample_collection._get_default_sample_fields(
+                    path=root, include_private=True
                 )
-            )
+                defaults.update(_paths & set(default_fields))
 
-            defaults = [f for f in fields if f in default_fields]
             if defaults:
                 raise ValueError("Cannot exclude default fields %s" % defaults)
 
-        if frame_fields:
-            default_frame_fields = set(
-                sample_collection._get_default_frame_fields(
-                    include_private=True
+        if frame_paths:
+            defaults = set()
+            for root, _paths in _parse_paths(frame_paths).items():
+                default_fields = sample_collection._get_default_frame_fields(
+                    path=root, include_private=True
                 )
-            )
+                defaults.update(_paths & set(default_fields))
 
-            defaults = [f for f in frame_fields if f in default_frame_fields]
             if defaults:
                 raise ValueError(
                     "Cannot exclude default frame fields %s" % defaults
                 )
+
+
+def _parse_paths(paths):
+    d = defaultdict(set)
+
+    for path in paths:
+        if "." in path:
+            base = path.rsplit(".", 1)[0]
+            d[base].add(path)
+        else:
+            d[None].add(path)
+
+    return d
 
 
 class ExcludeFrames(ViewStage):
@@ -1261,15 +1308,24 @@ class Exists(ViewStage):
             self._field
         )
 
+        if is_frame_field and not field_name:
+            if self._bool:
+                expr = F("frames").length() > 0
+            else:
+                expr = F("frames").length() == 0
+
+            return [{"$match": {"$expr": expr.to_mongo()}}]
+
         if not is_frame_field:
             expr = F(field_name).exists(self._bool)
             return [{"$match": {"$expr": expr.to_mongo()}}]
 
-        expr = F("frames").filter(F(field_name).exists(self._bool))
-        return [
-            {"$set": {"frames": expr.to_mongo()}},
-            {"$match": {"$expr": (F("frames").length() > 0).to_mongo()}},
-        ]
+        if self._bool:
+            expr = F("frames").filter(F(field_name).exists()).length() > 0
+        else:
+            expr = F("frames").filter(F(field_name).exists()).length() == 0
+
+        return [{"$match": {"$expr": expr.to_mongo()}}]
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -4513,11 +4569,8 @@ def _replace_prefix(val, old, new):
 
 
 class MatchTags(ViewStage):
-    """Returns a view containing the samples in the collection that have (or do
-    not have) any of the given tag(s).
-
-    To match samples that must contain multiple tags, chain multiple
-    :class:`MatchTags` stages together.
+    """Returns a view containing the samples in the collection that have or
+    don't have any/all of the given tag(s).
 
     Examples::
 
@@ -4526,20 +4579,10 @@ class MatchTags(ViewStage):
         dataset = fo.Dataset()
         dataset.add_samples(
             [
-                fo.Sample(
-                    filepath="/path/to/image1.png",
-                    tags=["train"],
-                    ground_truth=fo.Classification(label="cat"),
-                ),
-                fo.Sample(
-                    filepath="/path/to/image2.png",
-                    tags=["test"],
-                    ground_truth=fo.Classification(label="cat"),
-                ),
-                fo.Sample(
-                    filepath="/path/to/image3.png",
-                    ground_truth=None,
-                ),
+                fo.Sample(filepath="image1.png", tags=["train"]),
+                fo.Sample(filepath="image2.png", tags=["test"]),
+                fo.Sample(filepath="image3.png", tags=["train", "test"]),
+                fo.Sample(filepath="image4.png"),
             ]
         )
 
@@ -4551,26 +4594,49 @@ class MatchTags(ViewStage):
         view = dataset.add_stage(stage)
 
         #
-        # Only include samples that have either the "test" or "train" tag
+        # Only include samples that do not have the "test" tag
+        #
+
+        stage = fo.MatchTags("test", bool=False)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples that have the "test" or "train" tags
         #
 
         stage = fo.MatchTags(["test", "train"])
         view = dataset.add_stage(stage)
 
         #
-        # Only include samples that do not have the "train" tag
+        # Only include samples that have the "test" and "train" tags
         #
 
-        stage = fo.MatchTags("train", bool=False)
+        stage = fo.MatchTags(["test", "train"], all=True)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples that do not have the "test" or "train" tags
+        #
+
+        stage = fo.MatchTags(["test", "train"], bool=False)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples that do not have the "test" and "train" tags
+        #
+
+        stage = fo.MatchTags(["test", "train"], bool=False, all=True)
         view = dataset.add_stage(stage)
 
     Args:
         tags: the tag or iterable of tags to match
         bool (None): whether to match samples that have (None or True) or do
             not have (False) the given tags
+        all (False): whether to match samples that have (or don't have) all
+            (True) or any (None or False) of the given tags
     """
 
-    def __init__(self, tags, bool=None):
+    def __init__(self, tags, bool=None, all=False):
         if etau.is_str(tags):
             tags = [tags]
         else:
@@ -4581,6 +4647,7 @@ class MatchTags(ViewStage):
 
         self._tags = tags
         self._bool = bool
+        self._all = all
 
     @property
     def tags(self):
@@ -4594,14 +4661,31 @@ class MatchTags(ViewStage):
         """
         return self._bool
 
+    @property
+    def all(self):
+        """Whether to match samples that have (or don't have) all (True) or any
+        (False) of the given tags.
+        """
+        return self._all
+
     def to_mongo(self, _):
         if self._bool:
+            if self._all:
+                # All of the tags
+                return [{"$match": {"tags": {"$all": self._tags}}}]
+
+            # Any of the tags
             return [{"$match": {"tags": {"$in": self._tags}}}]
 
+        if self._all:
+            # Not all of the tags
+            return [{"$match": {"tags": {"$not": {"$all": self._tags}}}}]
+
+        # Not any of the tags
         return [{"$match": {"tags": {"$nin": self._tags}}}]
 
     def _kwargs(self):
-        return [["tags", self._tags], ["bool", self._bool]]
+        return [["tags", self._tags], ["bool", self._bool], ["all", self._all]]
 
     @classmethod
     def _params(cls):
@@ -4616,6 +4700,12 @@ class MatchTags(ViewStage):
                 "type": "bool",
                 "default": "None",
                 "placeholder": "bool (default=None)",
+            },
+            {
+                "name": "all",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "all (default=False)",
             },
         ]
 
@@ -4805,15 +4895,22 @@ class Select(ViewStage):
 
         ids = [ObjectId(_id) for _id in self._sample_ids]
 
-        if not self._ordered:
-            return [{"$match": {"_id": {"$in": ids}}}]
+        pipeline = [{"$match": {"_id": {"$in": ids}}}]
 
-        return [
-            {"$set": {"_select_order": {"$indexOfArray": [ids, "$_id"]}}},
-            {"$match": {"_select_order": {"$gt": -1}}},
-            {"$sort": {"_select_order": 1}},
-            {"$unset": "_select_order"},
-        ]
+        if self._ordered:
+            pipeline.extend(
+                [
+                    {
+                        "$set": {
+                            "_select_order": {"$indexOfArray": [ids, "$_id"]}
+                        }
+                    },
+                    {"$sort": {"_select_order": 1}},
+                    {"$unset": "_select_order"},
+                ]
+            )
+
+        return pipeline
 
     def _kwargs(self):
         return [["sample_ids", self._sample_ids], ["ordered", self._ordered]]
@@ -4914,9 +5011,9 @@ class SelectBy(ViewStage):
         return self._ordered
 
     def to_mongo(self, sample_collection):
-        path, field, _ = sample_collection._handle_id_fields(self._field)
+        path, is_id_field, _ = sample_collection._handle_id_fields(self._field)
 
-        if isinstance(field, fof.ObjectIdField):
+        if is_id_field:
             values = [
                 value if isinstance(value, ObjectId) else ObjectId(value)
                 for value in self._values
@@ -4924,19 +5021,24 @@ class SelectBy(ViewStage):
         else:
             values = self._values
 
-        if not self._ordered:
-            return [{"$match": {path: {"$in": values}}}]
+        pipeline = [{"$match": {path: {"$in": values}}}]
 
-        return [
-            {
-                "$set": {
-                    "_select_order": {"$indexOfArray": [values, "$" + path]}
-                }
-            },
-            {"$match": {"_select_order": {"$gt": -1}}},
-            {"$sort": {"_select_order": 1}},
-            {"$unset": "_select_order"},
-        ]
+        if self._ordered:
+            pipeline.extend(
+                [
+                    {
+                        "$set": {
+                            "_select_order": {
+                                "$indexOfArray": [values, "$" + path]
+                            }
+                        }
+                    },
+                    {"$sort": {"_select_order": 1}},
+                    {"$unset": "_select_order"},
+                ]
+            )
+
+        return pipeline
 
     def _kwargs(self):
         return [
@@ -4978,17 +5080,30 @@ class SelectFields(ViewStage):
             [
                 fo.Sample(
                     filepath="/path/to/image1.png",
-                    numeric_field=1.0,
-                    numeric_list_field=[-1, 0, 1],
+                    uniqueness=1.0,
+                    ground_truth=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                mood="surly",
+                                age=51,
+                            ),
+                            fo.Detection(
+                                label="dog",
+                                bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                mood="happy",
+                                age=52,
+                            ),
+                        ]
+                    )
                 ),
                 fo.Sample(
                     filepath="/path/to/image2.png",
-                    numeric_field=-1.0,
-                    numeric_list_field=[-2, -1, 0, 1],
+                    uniqueness=0.0,
                 ),
                 fo.Sample(
                     filepath="/path/to/image3.png",
-                    numeric_field=None,
                 ),
             ]
         )
@@ -5001,15 +5116,24 @@ class SelectFields(ViewStage):
         view = dataset.add_stage(stage)
 
         #
-        # Include only the `numeric_field` field (and the default fields) on
-        # each sample
+        # Include only the `uniqueness` field (and the default fields) on each
+        # sample
         #
 
-        stage = fo.SelectFields("numeric_field")
+        stage = fo.SelectFields("uniqueness")
+        view = dataset.add_stage(stage)
+
+        #
+        # Include only the `mood` attribute (and the default attributes) of
+        # each `Detection` in the `ground_truth` field
+        #
+
+        stage = fo.SelectFields("ground_truth.detections.mood")
         view = dataset.add_stage(stage)
 
     Args:
-        field_names (None): a field name or iterable of field names to select
+        field_names (None): a field name or iterable of field names to select.
+            May contain ``embedded.field.name`` as well
     """
 
     def __init__(self, field_names=None, _allow_missing=False):
@@ -5028,67 +5152,85 @@ class SelectFields(ViewStage):
 
     def get_selected_fields(self, sample_collection, frames=False):
         if frames:
-            if not sample_collection._contains_videos():
-                return None
+            return self._get_selected_frame_fields(sample_collection)
 
-            default_fields = sample_collection._get_default_frame_fields(
-                include_private=True
-            )
+        return self._get_selected_fields(sample_collection)
 
-            selected_fields = []
-            for field in self.field_names:
-                (
-                    field_name,
-                    is_frame_field,
-                ) = sample_collection._handle_frame_field(field)
-                if is_frame_field:
-                    selected_fields.append(field_name)
+    def _get_selected_fields(self, sample_collection, use_db_fields=False):
+        selected_paths = set()
+        roots = {None}  # must always select default fields
+
+        if sample_collection._contains_videos():
+            selected_paths.add("frames")
+            paths, _ = fou.split_frame_fields(self.field_names)
         else:
-            default_fields = sample_collection._get_default_sample_fields(
-                include_private=True
+            paths = self.field_names
+
+        for path in paths:
+            selected_paths.add(path)
+            roots.update(_get_roots(path))
+
+        for path in roots:
+            selected_paths.update(
+                sample_collection._get_default_sample_fields(
+                    path=path, include_private=True
+                )
             )
 
-            if sample_collection._contains_videos():
-                default_fields += ("frames",)
+        _remove_path_collisions(selected_paths)
+        selected_paths = list(selected_paths)
 
-            selected_fields = []
-            for field in self.field_names:
-                if not sample_collection._is_frame_field(field):
-                    selected_fields.append(field)
+        if use_db_fields:
+            return sample_collection._handle_db_fields(selected_paths)
 
-        return list(set(selected_fields) | set(default_fields))
+        return selected_paths
+
+    def _get_selected_frame_fields(
+        self, sample_collection, use_db_fields=False
+    ):
+        if not sample_collection._contains_videos():
+            return None
+
+        selected_paths = set()
+        roots = {None}  # must always select default fields
+
+        _, paths = fou.split_frame_fields(self.field_names)
+        for path in paths:
+            selected_paths.add(path)
+            roots.update(_get_roots(path))
+
+        for path in roots:
+            selected_paths.update(
+                sample_collection._get_default_frame_fields(
+                    path=path, include_private=True
+                )
+            )
+
+        _remove_path_collisions(selected_paths)
+        selected_paths = list(selected_paths)
+
+        if use_db_fields:
+            return sample_collection._handle_db_fields(
+                selected_paths, frames=True
+            )
+
+        return selected_paths
 
     def to_mongo(self, sample_collection):
-        selected_fields = self.get_selected_fields(
-            sample_collection, frames=False
-        )
-        selected_fields = sample_collection._handle_db_fields(
-            selected_fields, frames=False
+        selected_paths = self._get_selected_fields(
+            sample_collection, use_db_fields=True
         )
 
         if sample_collection._contains_videos():
-            selected_frame_fields = self.get_selected_fields(
-                sample_collection, frames=True
+            selected_frame_paths = self._get_selected_frame_fields(
+                sample_collection, use_db_fields=True
             )
-            selected_frame_fields = sample_collection._handle_db_fields(
-                selected_frame_fields, frames=True
-            )
+            _merge_frame_paths(selected_paths, selected_frame_paths)
 
-            selected_frame_fields = [
-                sample_collection._FRAMES_PREFIX + f
-                for f in selected_frame_fields
-            ]
-
-            if selected_frame_fields:
-                # Don't project on root `frames` and embedded fields
-                # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
-                selected_fields = [f for f in selected_fields if f != "frames"]
-                selected_fields += selected_frame_fields
-
-        if not selected_fields:
+        if not selected_paths:
             return []
 
-        return [{"$project": {fn: True for fn in selected_fields}}]
+        return [{"$project": {f: True for f in selected_paths}}]
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -5127,6 +5269,11 @@ class SelectFields(ViewStage):
             return
 
         sample_collection.validate_fields_exist(self.field_names)
+
+
+def _get_roots(path):
+    chunks = path.split(".")
+    return {".".join(chunks[:i]) for i in range(1, len(chunks))}
 
 
 class SelectFrames(ViewStage):
@@ -5290,19 +5437,24 @@ class SelectGroups(ViewStage):
         id_path = sample_collection.group_field + "._id"
         ids = [ObjectId(_id) for _id in self._group_ids]
 
-        if not self._ordered:
-            return [{"$match": {id_path: {"$in": ids}}}]
+        pipeline = [{"$match": {id_path: {"$in": ids}}}]
 
-        return [
-            {
-                "$set": {
-                    "_select_order": {"$indexOfArray": [ids, "$" + id_path]}
-                }
-            },
-            {"$match": {"_select_order": {"$gt": -1}}},
-            {"$sort": {"_select_order": 1}},
-            {"$unset": "_select_order"},
-        ]
+        if self._ordered:
+            pipeline.extend(
+                [
+                    {
+                        "$set": {
+                            "_select_order": {
+                                "$indexOfArray": [ids, "$" + id_path]
+                            }
+                        }
+                    },
+                    {"$sort": {"_select_order": 1}},
+                    {"$unset": "_select_order"},
+                ]
+            )
+
+        return pipeline
 
     def _kwargs(self):
         return [["group_ids", self._group_ids], ["ordered", self._ordered]]
@@ -7058,6 +7210,31 @@ def _parse_labels_list_field(sample_collection, field_path):
     path = field_path + "." + label_type._LABEL_LIST_FIELD
 
     return path, is_frame_field
+
+
+def _remove_path_collisions(paths):
+    # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
+    roots = set()
+    for path in paths:
+        chunks = path.split(".")
+        for i in range(1, len(chunks)):
+            roots.add(".".join(chunks[:i]))
+
+    for root in roots:
+        paths.discard(root)
+
+
+def _merge_frame_paths(paths, frame_paths):
+    if not frame_paths:
+        return
+
+    try:
+        # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
+        paths.remove("frames")
+    except:
+        pass
+
+    paths.extend(["frames." + f for f in frame_paths])
 
 
 def _parse_labels(labels):

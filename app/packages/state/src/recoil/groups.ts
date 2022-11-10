@@ -22,9 +22,7 @@ import {
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { view } from "./view";
-
-export type ResponseFrom<TQuery extends { response: unknown }> =
-  TQuery["response"];
+import type { ResponseFrom } from "../utils";
 
 export const isGroup = selector<boolean>({
   key: "isGroup",
@@ -43,6 +41,15 @@ export const defaultGroupSlice = selector<string>({
 export const groupSlice = atomFamily<string, boolean>({
   key: "groupSlice",
   default: null,
+});
+
+export const resolvedGroupSlice = selectorFamily<string, boolean>({
+  key: "resolvedGroupSlice",
+  get:
+    (modal) =>
+    ({ get }) => {
+      return get(groupSlice(modal)) || get(defaultGroupSlice);
+    },
 });
 
 export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({

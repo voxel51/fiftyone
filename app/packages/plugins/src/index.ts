@@ -1,6 +1,6 @@
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
-import { getFetchFunction } from "@fiftyone/utilities";
+import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
 import * as recoil from "recoil";
 import * as fos from "@fiftyone/state";
 import * as _ from "lodash";
@@ -22,8 +22,9 @@ window.recoil = recoil;
 window.__fos__ = fos;
 
 function usingRegistry() {
-  if (!window.__fo_plugin_registry__)
+  if (!window.__fo_plugin_registry__) {
     window.__fo_plugin_registry__ = new PluginComponentRegistry();
+  }
   return window.__fo_plugin_registry__;
 }
 
@@ -68,7 +69,7 @@ export async function loadPlugins() {
   for (const { scriptPath, name } of plugins) {
     const pluginSetting = settings && settings[name];
     if (!pluginSetting || pluginSetting.enabled !== false) {
-      await loadScript(name, scriptPath);
+      await loadScript(name, `${getFetchOrigin()}${scriptPath}`);
     }
   }
 }
@@ -147,8 +148,13 @@ interface PluginComponentRegistration<T extends {} = {}> {
 
 const DEFAULT_ACTIVATOR = () => true;
 
-function assert(ok, msg) {
-  if (ok === false || ok === null || ok === undefined) throw new Error(msg);
+function assert(ok, msg, printWarningOnly = false) {
+  const failed = ok === false || ok === null || ok === undefined;
+  if (failed && printWarningOnly) console.warn(msg);
+  else if (failed) throw new Error(msg);
+}
+function warn(ok, msg) {
+  assert(ok, msg, true);
 }
 const REQUIRED = ["name", "type", "component"];
 class PluginComponentRegistry {
@@ -166,7 +172,7 @@ class PluginComponentRegistry {
         `${fieldName} is required to register a Plugin Component`
       );
     }
-    assert(
+    warn(
       !this.data.has(name),
       `${name} is already a registered Plugin Component`
     );
@@ -184,6 +190,9 @@ class PluginComponentRegistry {
     }
 
     return results;
+  }
+  clear() {
+    this.data.clear();
   }
 }
 

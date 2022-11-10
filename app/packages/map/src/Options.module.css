@@ -15,11 +15,11 @@
 
 .link {
   display: flex;
-  color: var(--brand);
+  color: var(--joy-palette-primary-plainColor);
   align-items: center;
   cursor: pointer;
-  border-bottom: 1px var(--brand) solid;
-  background: var(--background-transparent);
+  border-bottom: 1px var(--joy-palette-primary-plainColor) solid;
+  background: var(--joy-palette-neutral-softBg);
   border-top-left-radius: 3px;
   border-top-right-radius: 3px;
   padding: 0.25rem;

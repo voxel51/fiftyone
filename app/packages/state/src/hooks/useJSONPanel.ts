@@ -1,32 +1,25 @@
-import { Sample } from "@fiftyone/looker/src/state";
-import { useState, useMemo, useEffect } from "react";
-import { atom, useRecoilState } from "recoil";
+import { useMemo } from "react";
 import copyToClipboard from "copy-to-clipboard";
 import highlightJSON from "json-format-highlight";
 import * as fos from "../../";
-
-type JSONPanelState = {
-  sample?: Sample;
-  isOpen: boolean;
-};
+import usePanel from "./usePanel";
 
 export const JSON_COLORS = {
-  keyColor: "rgb(138, 138, 138)",
+  keyColor: "var(--joy-palette-text-tertiary)",
   numberColor: "rgb(225, 100, 40)",
-  stringColor: "rgb(238, 238, 238)",
+  stringColor: "var(--joy-palette-text-secondary)",
   nullColor: "rgb(225, 100, 40)",
   trueColor: "rgb(225, 100, 40)",
   falseColor: "rgb(225, 100, 40)",
 };
 
 export default function useJSONPanel() {
-  const [state, setFullState] = useRecoilState(fos.lookerPanels);
-  const { sample, isOpen } = state.json || {};
-  const setState = (update) =>
-    setFullState((fullState) => ({
-      ...fullState,
-      json: update(fullState.json),
-    }));
+  const { containerRef, open, close, toggle, state } = usePanel(
+    "json",
+    fos.lookerPanels
+  );
+
+  const { sample, isOpen } = state || {};
   const json = useMemo(
     () => (sample ? JSON.stringify(sample, null, 2) : null),
     [sample]
@@ -35,49 +28,17 @@ export default function useJSONPanel() {
     () => ({ __html: highlightJSON(json, JSON_COLORS) }),
     [json]
   );
-  function close() {
-    setState((s) => ({ ...s, isOpen: false }));
-  }
 
-  function handleClick() {
-    close();
-  }
-
-  useEffect(() => {
-    window.addEventListener("click", handleClick);
-    return () => {
-      window.removeEventListener("click", handleClick);
-    };
-  }, []);
+  const updateSample = (sample) => (s) => ({ ...s, sample });
 
   return {
+    containerRef,
     open(sample) {
-      setFullState((s) => ({
-        ...s,
-        json: {
-          sample,
-          isOpen: true,
-        },
-        help: {
-          ...s.help,
-          isOpen: false,
-        },
-      }));
+      open(updateSample(sample));
     },
     close,
     toggle(sample) {
-      setFullState((s) => ({
-        ...s,
-        help: {
-          ...s.help,
-          isOpen: false,
-        },
-        json: {
-          ...s.json,
-          sample,
-          isOpen: !s.json.isOpen,
-        },
-      }));
+      toggle(updateSample(sample));
     },
     copy() {
       copyToClipboard(json);

@@ -13,23 +13,13 @@ import {
   lookerPanelFlex,
   lookerPanelHeader,
 } from "./panel.module.css";
-import closeIcon from "../../icons/close.svg";
+import { Close as CloseIcon } from "@fiftyone/components";
 import { Fragment } from "react";
 
-function Close({ onClick }) {
-  return (
-    <img
-      src={closeIcon}
-      className={lookerPanelClose}
-      title="Close JSON"
-      onClick={onClick}
-    />
-  );
-}
-
-export default function HelpPanel({ onClose, items }) {
+export default function HelpPanel({ containerRef, onClose, items }) {
   return (
     <div
+      ref={containerRef}
       className={`${lookerPanelContainer}`}
       onClick={(e) => e.stopPropagation()}
     >
@@ -43,7 +33,14 @@ export default function HelpPanel({ onClose, items }) {
               ))}
             </Items>
           </Scroll>
-          <Close onClick={onClose} />
+          <CloseIcon
+            className={lookerPanelClose}
+            titleAccess="Close JSON"
+            onClick={onClose}
+            sx={{
+              fontSize: "1.75rem",
+            }}
+          />
         </div>
       </div>
     </div>

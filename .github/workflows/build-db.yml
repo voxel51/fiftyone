@@ -44,6 +44,11 @@ jobs:
         run: |
           cd package/db
           python setup.py bdist_wheel --plat-name ${{ matrix.platform }}
+      - name: Build wheel (macOS Arm64)
+        if: ${{ matrix.platform == 'mac-arm64' }}
+        run: |
+          cd package/db
+          python setup.py bdist_wheel --plat-name mac-arm64
       - name: Build wheel (Ubuntu 20.04 x86_64)
         if: ${{ matrix.platform == 'linux-x86_64' }}
         env:
@@ -111,13 +116,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/db-v.*-rc\..*$ ]]; then
-             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
-             echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
-          else
-             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
-             echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
-          fi
+          echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
+          echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
       - name: Upload to pypi
         env:
           TWINE_USERNAME: __token__

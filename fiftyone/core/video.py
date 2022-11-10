@@ -142,23 +142,41 @@ class FramesView(fov.DatasetView):
     def media_type(self):
         return fom.IMAGE
 
-    def _get_default_sample_fields(
+    def _get_sample_only_fields(
         self, include_private=False, use_db_fields=False
     ):
-        fields = super()._get_default_sample_fields(
-            include_private=include_private, use_db_fields=use_db_fields
+        sample_only_fields = set(
+            self._get_default_sample_fields(
+                include_private=include_private, use_db_fields=use_db_fields
+            )
         )
 
-        if use_db_fields:
-            return fields + ("_sample_id", "frame_number")
+        # If sample_frames != dynamic, `filepath` can be synced
+        config = self._frames_stage.config or {}
+        if config.get("sample_frames", None) != "dynamic":
+            sample_only_fields.discard("filepath")
 
-        return fields + ("sample_id", "frame_number")
+        return sample_only_fields
 
-    def _get_default_indexes(self, frames=False):
-        if frames:
-            return super()._get_default_indexes(frames=frames)
+    def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
+        ids, label_ids = super()._tag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
+        )
 
-        return ["id", "filepath", "sample_id", "_sample_id_1_frame_number_1"]
+        frame_field = self._source_collection._FRAMES_PREFIX + label_field
+        self._source_collection._tag_labels(
+            tags, frame_field, ids=ids, label_ids=label_ids
+        )
+
+    def _untag_labels(self, tags, label_field, ids=None, label_ids=None):
+        ids, label_ids = super()._untag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
+        )
+
+        frame_field = self._source_collection._FRAMES_PREFIX + label_field
+        self._source_collection._untag_labels(
+            tags, frame_field, ids=ids, label_ids=label_ids
+        )
 
     def set_values(self, field_name, *args, **kwargs):
         # The `set_values()` operation could change the contents of this view,
@@ -272,16 +290,15 @@ class FramesView(fov.DatasetView):
     def _sync_source_sample(self, sample):
         self._sync_source_schema()
 
-        default_fields = set(
-            self._get_default_sample_fields(
-                include_private=True, use_db_fields=True
-            )
+        dst_dataset = self._source_collection._root_dataset
+        sample_only_fields = self._get_sample_only_fields(
+            include_private=True, use_db_fields=True
         )
 
         updates = {
             k: v
             for k, v in sample.to_mongo_dict().items()
-            if k not in default_fields
+            if k not in sample_only_fields
         }
 
         if not updates:
@@ -292,26 +309,21 @@ class FramesView(fov.DatasetView):
             "frame_number": sample.frame_number,
         }
 
-        self._source_collection._dataset._frame_collection.update_one(
-            match, {"$set": updates}
-        )
+        dst_dataset._frame_collection.update_one(match, {"$set": updates})
 
     def _sync_source(self, fields=None, ids=None, update=True, delete=False):
-        default_fields = set(
-            self._get_default_sample_fields(
-                include_private=True, use_db_fields=True
-            )
+        dst_dataset = self._source_collection._root_dataset
+        sample_only_fields = self._get_sample_only_fields(
+            include_private=True, use_db_fields=True
         )
 
         if fields is not None:
-            fields = [f for f in fields if f not in default_fields]
+            fields = [f for f in fields if f not in sample_only_fields]
             if not fields:
                 return
 
         if update:
             self._sync_source_schema(fields=fields)
-
-            dst_coll = self._source_collection._dataset._frame_collection_name
 
             pipeline = []
 
@@ -325,10 +337,10 @@ class FramesView(fov.DatasetView):
                 )
 
             if fields is None:
-                default_fields.discard("_sample_id")
-                default_fields.discard("frame_number")
+                sample_only_fields.discard("_sample_id")
+                sample_only_fields.discard("frame_number")
 
-                pipeline.append({"$unset": list(default_fields)})
+                pipeline.append({"$unset": list(sample_only_fields)})
             else:
                 project = {f: True for f in fields}
                 project["_id"] = True
@@ -339,7 +351,7 @@ class FramesView(fov.DatasetView):
             pipeline.append(
                 {
                     "$merge": {
-                        "into": dst_coll,
+                        "into": dst_dataset._frame_collection_name,
                         "on": ["_sample_id", "frame_number"],
                         "whenMatched": "merge",
                         "whenNotMatched": "discard",
@@ -351,7 +363,7 @@ class FramesView(fov.DatasetView):
 
         if delete:
             frame_ids = self._frames_dataset.exclude(self).values("id")
-            self._source_collection._dataset._clear_frames(frame_ids=frame_ids)
+            dst_dataset._clear_frames(frame_ids=frame_ids)
 
     def _sync_source_schema(self, fields=None, delete=False):
         if delete:
@@ -360,6 +372,7 @@ class FramesView(fov.DatasetView):
             schema = self._frames_dataset.get_field_schema()
 
         src_schema = self._source_collection.get_frame_field_schema()
+        dst_dataset = self._source_collection._root_dataset
 
         add_fields = []
         del_fields = []
@@ -394,13 +407,11 @@ class FramesView(fov.DatasetView):
 
         for field_name in add_fields:
             field_kwargs = foo.get_field_kwargs(schema[field_name])
-            self._source_collection._dataset.add_frame_field(
-                field_name, **field_kwargs
-            )
+            dst_dataset.add_frame_field(field_name, **field_kwargs)
 
         if delete:
             for field_name in del_fields:
-                self._source_collection._dataset.delete_frame_field(field_name)
+                dst_dataset.delete_frame_field(field_name)
 
     def _sync_source_keep_fields(self):
         schema = self.get_field_schema()
@@ -592,7 +603,7 @@ def make_frames_dataset(
     _make_pretty_summary(dataset)
 
     # Initialize frames dataset
-    ids_to_sample, frames_to_sample = _init_frames(
+    sample_view, frames_to_sample = _init_frames(
         dataset,
         sample_collection,
         sample_frames,
@@ -607,14 +618,10 @@ def make_frames_dataset(
     )
 
     # Sample frames, if necessary
-    if ids_to_sample:
+    if sample_view is not None:
         logger.info("Sampling video frames...")
-        to_sample_view = sample_collection._root_dataset.select(
-            ids_to_sample, ordered=True
-        )
-
         fouv.sample_videos(
-            to_sample_view,
+            sample_view,
             output_dir=output_dir,
             rel_dir=rel_dir,
             frames_patt=frames_patt,
@@ -629,7 +636,7 @@ def make_frames_dataset(
         )
 
     # Merge frame data
-    pipeline = sample_collection._pipeline(frames_only=True)
+    pipeline = []
 
     if sample_frames == "dynamic":
         pipeline.append({"$unset": "filepath"})
@@ -645,7 +652,7 @@ def make_frames_dataset(
         }
     )
 
-    sample_collection._dataset._aggregate(pipeline=pipeline)
+    sample_collection._aggregate(frames_only=True, post_pipeline=pipeline)
 
     # Delete samples for frames without filepaths
     if sample_frames == True:
@@ -857,6 +864,8 @@ def _init_frames(
     # We first populate `sample_map` and then convert to `ids_to_sample` and
     # `frames_to_sample` here to avoid resampling frames when working with clip
     # views with multiple overlapping clips into the same video
+    #
+
     ids_to_sample = []
     frames_to_sample = []
     for video_path, sample_frame_numbers in sample_map.items():
@@ -866,7 +875,17 @@ def _init_frames(
 
         frames_to_sample.append(sample_frame_numbers)
 
-    return ids_to_sample, frames_to_sample
+    if ids_to_sample:
+        if src_dataset.media_type == fom.GROUP:
+            sample_view = src_dataset.select_group_slices(media_type=fom.VIDEO)
+        else:
+            sample_view = src_dataset
+
+        sample_view = sample_view.select(ids_to_sample, ordered=True)
+    else:
+        sample_view = None
+
+    return sample_view, frames_to_sample
 
 
 def _insert_docs(docs, src_docs, src_inds, dataset, src_dataset):

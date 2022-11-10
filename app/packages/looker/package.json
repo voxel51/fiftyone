@@ -12,7 +12,6 @@
   "scripts": {
     "dev": "vite"
   },
-  "prettier": "@fiftyone/prettier-config",
   "private": true,
   "files": [
     "dist",
@@ -28,7 +27,6 @@
     "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "@fiftyone/prettier-config": "*",
     "@types/color-string": "^1.5.0",
     "@types/lru-cache": "^5.1.0",
     "@types/uuid": "^8.3.0",

@@ -150,9 +150,9 @@ Custom fields can contain any Python primitive data type:
 -   |ListField|: contains Python `list` instances
 -   |DictField|: contains Python `dict` instances
 
-The elements of list and dict fields may be homogenous or heterogenous, and may
-even contain nested lists and dicts. Fields can also contain more complex data
-types like :ref:`labels <using-labels>`.
+The elements of list and dict fields may be homogenous or heterogeneous, and
+may even contain nested lists and dicts. Fields can also contain more complex
+data types like :ref:`labels <using-labels>`.
 
 Fields can be dynamically created, modified, and deleted. When a new |Field| is
 assigned to a |Sample| in a |Dataset|, or a |Sample| with new fields is added

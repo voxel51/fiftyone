@@ -13,7 +13,6 @@
     "dev": "vite",
     "test": "jest"
   },
-  "prettier": "@fiftyone/prettier-config",
   "private": true,
   "files": [
     "dist",
@@ -21,7 +20,6 @@
   ],
   "devDependencies": {
     "@babel/preset-typescript": "^7.17.12",
-    "@fiftyone/prettier-config": "*",
     "@fiftyone/utilities": "workspace:^",
     "@types/react": "^18.0.12",
     "jest": "^28.1.1",
