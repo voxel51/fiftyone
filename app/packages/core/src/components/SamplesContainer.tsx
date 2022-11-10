@@ -129,7 +129,9 @@ const SamplesContainer = React.memo(() => {
                     ? () => fos.useTagText(false)
                     : group === "label tags"
                     ? () => fos.useLabelTagText(false)
-                    : () => "No fields"
+                    : () => ({
+                        text: "No fields",
+                      })
                 }
                 key={key}
               />
