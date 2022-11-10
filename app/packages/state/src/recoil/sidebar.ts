@@ -225,9 +225,11 @@ export const resolveGroups = (
       }, {})
     : {};
   if (!groups) {
-    groups = dataset.frameFields.length
-      ? DEFAULT_VIDEO_GROUPS
-      : DEFAULT_IMAGE_GROUPS;
+    groups = JSON.parse(
+      JSON.stringify(
+        dataset.frameFields.length ? DEFAULT_VIDEO_GROUPS : DEFAULT_IMAGE_GROUPS
+      )
+    );
   }
 
   groups = groups.map((group) => {
