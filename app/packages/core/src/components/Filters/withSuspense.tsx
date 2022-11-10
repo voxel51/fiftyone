@@ -1,6 +1,6 @@
 import React, { Suspense } from "react";
 import styled from "styled-components";
-import { loading } from "./withSuspense.module.css";
+import LoadingDots from "../Common/LoadingDots";
 
 const Container = styled.div`
   margin: 3px;
@@ -25,12 +25,12 @@ const Body = styled.div`
   position: relative;
 `;
 
-const LoadingContainer = ({ path }: { path?: string }) => {
+export const LoadingContainer = ({ path }: { path?: string; text: string }) => {
   return (
     <Container>
       {path && <Header>{path.split(".").slice(-1)[0]}</Header>}
       <Body>
-        <div className={loading}>Loading</div>
+        <LoadingDots text={"Loading"} />
       </Body>
     </Container>
   );

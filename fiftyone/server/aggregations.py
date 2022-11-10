@@ -183,6 +183,7 @@ async def aggregate_resolver(
 RESULT_MAPPING = {
     fof.BooleanField: BooleanAggregation,
     fof.EmbeddedDocumentField: DataAggregation,
+    fof.DictField: DataAggregation,
     fof.FrameNumberField: IntAggregation,
     fof.GeoMultiPointField: DataAggregation,
     fof.GeoMultiPolygonField: DataAggregation,
@@ -207,7 +208,11 @@ def _resolve_path_aggregation(
     while isinstance(field, fof.ListField):
         field = field.field
 
-    cls = RESULT_MAPPING[field.__class__] if path else RootAggregation
+    cls = (
+        RESULT_MAPPING.get(field.__class__, DataAggregation)
+        if path
+        else RootAggregation
+    )
 
     if meets_type(field, fof.BooleanField):
         aggregations.append(foa.CountValues(path))
