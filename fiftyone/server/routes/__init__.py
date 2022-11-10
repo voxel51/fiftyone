@@ -19,7 +19,7 @@ from .stages import Stages
 from .tag import Tag
 from .tagging import Tagging
 from .values import Values
-
+from .view import View
 
 routes = [
     ("/aggregate", Aggregate),
@@ -36,4 +36,5 @@ routes = [
     ("/tag", Tag),
     ("/tagging", Tagging),
     ("/values", Values),
+    ("/view", View),
 ]
