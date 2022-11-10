@@ -38,12 +38,18 @@ const escape: Control = {
     update(
       ({
         hasDefaultZoom,
-        showHelp,
         showOptions,
-        options: { fullscreen: fullscreenSetting, showJSON, selectedLabels },
+        options: {
+          fullscreen: fullscreenSetting,
+          showJSON,
+          showHelp,
+          selectedLabels,
+        },
       }) => {
         if (showHelp) {
-          return { showHelp: false };
+          dispatchEvent("panels", { showHelp: "close" });
+          return {};
+          // return { options: {showHelp: false} };
         }
 
         if (showOptions) {
@@ -51,7 +57,7 @@ const escape: Control = {
         }
 
         if (showJSON) {
-          dispatchEvent("options", { showJSON: false });
+          dispatchEvent("panels", { showJSON: "close" });
           return { options: { showJSON: false } };
         }
 
@@ -210,19 +216,12 @@ export const help: Control = {
         return {};
       }
 
-      if (!showHelp) {
-        dispatchEvent("options", {
-          showJSON: false,
-          showHelp: true,
-          SHORTCUTS,
-        });
-        return { showHelp: true, options: { showJSON: false, showHelp: true } };
-      }
-
-      dispatchEvent("options", {
-        showHelp: false,
+      dispatchEvent("panels", {
+        showHelp: "toggle",
+        SHORTCUTS,
       });
-      return { showHelp: false };
+
+      return {};
     });
   },
 };
@@ -386,23 +385,7 @@ export const json: Control = {
   shortcut: "j",
   detail: "View JSON",
   action: (update, dispatchEvent) => {
-    let newJSON = null;
-    update(
-      ({ disableOverlays, config: { thumbnail }, options: { showJSON } }) => {
-        if (thumbnail) {
-          return {};
-        }
-
-        newJSON = disableOverlays ? false : !showJSON;
-
-        if (newJSON) {
-          return { showHelp: false, options: { showJSON: newJSON } };
-        }
-
-        return { options: { showJSON: false } };
-      }
-    );
-    newJSON !== null && dispatchEvent("options", { showJSON: newJSON });
+    dispatchEvent("panels", { showJSON: "toggle" });
   },
 };
 

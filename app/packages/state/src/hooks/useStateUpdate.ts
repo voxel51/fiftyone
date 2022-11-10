@@ -25,10 +25,14 @@ import {
   similarityParameters,
   extendedSelection,
   selectedMediaField,
+  sidebarMode,
+  groupStatistics,
+  theme,
 } from "../recoil";
+import { useColorScheme } from "@mui/material";
 
 import * as viewAtoms from "../recoil/view";
-import { viewsAreEqual } from "../utils";
+import { collapseFields, viewsAreEqual } from "../utils";
 
 interface StateUpdate {
   colorscale?: RGB[];
@@ -42,6 +46,8 @@ export type StateResolver =
   | ((t: TransactionInterface_UNSTABLE) => StateUpdate);
 
 const useStateUpdate = () => {
+  const { setMode } = useColorScheme();
+
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
       const { colorscale, config, dataset, state } =
@@ -77,6 +83,10 @@ const useStateUpdate = () => {
           )
         );
 
+      if (config && config.theme !== "browser") {
+        set(theme, config.theme);
+        setMode(config.theme);
+      }
       const colorPool = get(colorPoolAtom);
       if (
         config &&
@@ -88,21 +98,22 @@ const useStateUpdate = () => {
       if (dataset) {
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
         dataset.evaluations = Object.values(dataset.evaluations || {});
-
-        const groups = resolveGroups(dataset);
-        const currentSidebar = get(sidebarGroupsDefinition(false));
-
-        if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
-          set(sidebarGroupsDefinition(false), groups);
-          set(aggregationsTick, get(aggregationsTick) + 1);
-        }
-
+        dataset.sampleFields = collapseFields(dataset.sampleFields);
+        dataset.frameFields = collapseFields(dataset.frameFields);
         const previousDataset = get(datasetAtom);
+
+        const currentSidebar = get(sidebarGroupsDefinition(false));
+        let groups = resolveGroups(dataset, currentSidebar);
+
         if (
           !previousDataset ||
           previousDataset.id !== dataset.id ||
           dataset.groupSlice !== previousDataset.groupSlice
         ) {
+          if (dataset?.name !== previousDataset?.name) {
+            reset(sidebarMode(false));
+            groups = resolveGroups(dataset);
+          }
           reset(_activeFields({ modal: false }));
           let slice = dataset.groupSlice;
 
@@ -111,6 +122,7 @@ const useStateUpdate = () => {
           }
 
           set(groupSlice(false), slice);
+          reset(groupStatistics(false));
 
           reset(similarityParameters);
           set(
@@ -125,6 +137,9 @@ const useStateUpdate = () => {
           reset(filters);
         }
 
+        if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
+          set(sidebarGroupsDefinition(false), groups);
+        }
         set(datasetAtom, dataset);
       }
 

@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.9.2"
+VERSION = "0.10.0"
 
 
 def get_version():
@@ -41,8 +41,8 @@ INSTALL_REQUIRES = [
     "Jinja2>=3",
     "kaleido",
     "matplotlib",
-    "mongoengine==0.20.0",
-    "motor>=2.3,<3",
+    "mongoengine==0.24.2",
+    "motor>=2.3",
     "ndjson",
     "numpy",
     "packaging",
@@ -51,7 +51,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
-    "pymongo>=3.11,<4",
+    "pymongo>=3.11",
     "pytz",
     "PyYAML",
     "retrying",
@@ -60,8 +60,8 @@ INSTALL_REQUIRES = [
     "setuptools",
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
-    "starlette==0.16.0",
-    "strawberry-graphql==0.96.0",
+    "starlette==0.20.4",
+    "strawberry-graphql==0.138.1",
     "tabulate",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
@@ -76,8 +76,8 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.9.1,<0.10",
-    "fiftyone-db>=0.3,<0.4",
+    "fiftyone-brain>=0.9.2,<0.10",
+    "fiftyone-db>=0.4,<0.5",
     "voxel51-eta>=0.8.1,<0.9",
 ]
 
@@ -115,7 +115,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.14.2,<0.15"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.15.0,<0.16"]}
 
 
 with open("README.md", "r") as fh:

@@ -54,7 +54,7 @@ To enable tab completion in `tcsh`, add these lines to your `~/.tcshrc`:
 
     eval `register-python-argcomplete --shell tcsh fiftyone`
 
-.._cli-fiftyone-main:
+.. _cli-fiftyone-main:
 
 FiftyOne CLI
 ------------
@@ -74,7 +74,7 @@ The FiftyOne command-line interface.
     optional arguments:
       -h, --help            show this help message and exit
       -v, --version         show version info
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {quickstart,annotation,app,config,constants,convert,datasets,migrate,utils,zoo}
@@ -295,7 +295,7 @@ Tools for working with FiftyOne datasets.
 
     optional arguments:
       -h, --help            show this help message and exit
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {list,info,create,head,tail,stream,export,delete}
@@ -847,8 +847,8 @@ Transforms the images in a dataset per the specified parameters.
 .. code-block:: text
 
     fiftyone utils transform-images [-h] [--size SIZE] [--min-size MIN_SIZE]
-                                    [--max-size MAX_SIZE] [-e EXT] [-f]
-                                    [--media-field MEDIA_FIELD]
+                                    [--max-size MAX_SIZE] [-i INTERPOLATION]
+                                    [-e EXT] [-f] [--media-field MEDIA_FIELD]
                                     [--output-field OUTPUT_FIELD]
                                     [-o OUTPUT_DIR] [-r REL_DIR]
                                     [-d] [-n NUM_WORKERS] [-s]
@@ -869,6 +869,8 @@ Transforms the images in a dataset per the specified parameters.
                             can be -1 if no constraint should be applied
       --max-size MAX_SIZE   a maximum `width,height` for each image. A dimension
                             can be -1 if no constraint should be applied
+      -i INTERPOLATION, --interpolation INTERPOLATION
+                            an optional `interpolation` argument for `cv2.resize()`
       -e EXT, --ext EXT     an image format to convert to (e.g., '.png' or '.jpg')
       -f, --force-reencode  whether to re-encode images whose parameters already
                             meet the specified values
@@ -1335,7 +1337,7 @@ Tools for working with the FiftyOne Zoo.
 
     optional arguments:
       -h, --help         show this help message and exit
-      --all-help         show help recurisvely and exit
+      --all-help         show help recursively and exit
 
     available commands:
       {datasets,models}
@@ -1360,7 +1362,7 @@ Tools for working with the FiftyOne Dataset Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {list,find,info,download,load}
@@ -1666,7 +1668,7 @@ Tools for working with the FiftyOne Model Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {list,find,info,requirements,download,apply,embed,delete}

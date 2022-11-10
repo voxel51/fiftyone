@@ -36,7 +36,7 @@ def get_dataloader(
     ) -> t.List[t.Optional[T]]:
         results = {}
         if config.key == "id":
-            config.key == "_id"
+            config.key = "_id"
         async for doc in db[config.collection].find(
             {"$and": [{config.key: {"$in": keys}}] + config.filters}
         ):

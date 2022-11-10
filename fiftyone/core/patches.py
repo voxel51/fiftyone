@@ -5,6 +5,7 @@ Patches views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 from copy import deepcopy
 
 from bson import ObjectId
@@ -16,15 +17,12 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
 
 
-_SINGLE_TYPES_MAP = {
-    fol.Detections: fol.Detection,
-    fol.Polylines: fol.Polyline,
-}
 _PATCHES_TYPES = (fol.Detections, fol.Polylines)
 _NO_MATCH_ID = ""
 
@@ -125,10 +123,6 @@ class _PatchesView(fov.DatasetView):
         return self._source_collection._root_dataset
 
     @property
-    def _is_frames(self):
-        return self._source_collection._is_frames
-
-    @property
     def _stages(self):
         return self.__stages
 
@@ -152,14 +146,6 @@ class _PatchesView(fov.DatasetView):
         raise NotImplementedError("subclass must implement _label_fields")
 
     @property
-    def _element_str(self):
-        return "patch"
-
-    @property
-    def _elements_str(self):
-        return "patches"
-
-    @property
     def name(self):
         return self.dataset_name + "-patches"
 
@@ -167,30 +153,52 @@ class _PatchesView(fov.DatasetView):
     def media_type(self):
         return fom.IMAGE
 
-    def _get_default_sample_fields(
-        self, include_private=False, use_db_fields=False
-    ):
-        fields = super()._get_default_sample_fields(
-            include_private=include_private, use_db_fields=use_db_fields
+    def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
+        if label_field in self._label_fields:
+            _ids = self.values("_" + self._id_field)
+
+        _, label_ids = super()._tag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
         )
 
-        extras = ["_sample_id" if use_db_fields else "sample_id"]
+        if label_field in self._label_fields:
+            ids, label_ids = self._to_source_ids(label_field, _ids, label_ids)
+            self._source_collection._tag_labels(
+                tags, label_field, ids=ids, label_ids=label_ids
+            )
 
-        if self._is_frames:
-            extras.append("_frame_id" if use_db_fields else "frame_id")
-            extras.append("frame_number")
+    def _untag_labels(self, tags, label_field, ids=None, label_ids=None):
+        if label_field in self._label_fields:
+            _ids = self.values("_" + self._id_field)
 
-        return fields + tuple(extras)
+        _, label_ids = super()._untag_labels(
+            tags, label_field, ids=ids, label_ids=label_ids
+        )
 
-    def _get_default_indexes(self, frames=False):
-        if frames:
-            return super()._get_default_indexes(frames=frames)
+        if label_field in self._label_fields:
+            ids, label_ids = self._to_source_ids(label_field, _ids, label_ids)
+            self._source_collection._untag_labels(
+                tags, label_field, ids=ids, label_ids=label_ids
+            )
 
-        names = ["id", "filepath", "sample_id"]
-        if self._is_frames:
-            names.extend(["frame_id", "_sample_id_1_frame_number_1"])
+    def _to_source_ids(self, label_field, ids, label_ids):
+        label_type = self._source_collection._get_label_field_type(label_field)
+        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
 
-        return names
+        if not is_list_field:
+            return ids, label_ids
+
+        id_map = defaultdict(list)
+        for _id, _label_id in zip(ids, label_ids):
+            if etau.is_container(_label_id):
+                id_map[_id].extend(_label_id)
+            else:
+                id_map[_id].append(_label_id)
+
+        if not id_map:
+            return [], []
+
+        return zip(*id_map.items())
 
     def set_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
@@ -205,8 +213,7 @@ class _PatchesView(fov.DatasetView):
 
         super().set_values(field_name, *args, **kwargs)
 
-        if must_sync:
-            self._sync_source_field(field, ids=ids)
+        self._sync_source_field(field, ids=ids)
 
     def save(self, fields=None):
         """Saves the patches in this view to the underlying dataset.
@@ -307,6 +314,9 @@ class _PatchesView(fov.DatasetView):
         self._source_collection._set_labels(field, [sample_id], [doc])
 
     def _sync_source_field(self, field, ids=None):
+        if field not in self._label_fields:
+            return
+
         _, label_path = self._patches_dataset._get_label_field_path(field)
 
         if ids is not None:
@@ -327,6 +337,9 @@ class _PatchesView(fov.DatasetView):
             self._sync_source_root_field(field, update=update, delete=delete)
 
     def _sync_source_root_field(self, field, update=True, delete=False):
+        if field not in self._label_fields:
+            return
+
         _, label_id_path = self._get_label_field_path(field, "id")
         label_path = label_id_path.rsplit(".", 1)[0]
 
@@ -504,13 +517,11 @@ def make_patches_dataset(
         other_fields = [other_fields]
 
     is_frame_patches = sample_collection._is_frames
+    patches_field = _get_patches_field(
+        sample_collection, field, keep_label_lists
+    )
 
-    if keep_label_lists:
-        field_type = sample_collection._get_label_field_type(field)
-    else:
-        field_type = _get_single_label_field_type(sample_collection, field)
-
-    dataset = fod.Dataset(name=name, _patches=True)
+    dataset = fod.Dataset(name=name, _patches=True, _frames=is_frame_patches)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
@@ -521,9 +532,7 @@ def make_patches_dataset(
         dataset.create_index("frame_id")
         dataset.create_index([("sample_id", 1), ("frame_number", 1)])
 
-    dataset.add_sample_field(
-        field, fof.EmbeddedDocumentField, embedded_doc_type=field_type
-    )
+    dataset.add_sample_field(field, **foo.get_field_kwargs(patches_field))
 
     if other_fields:
         src_schema = sample_collection.get_field_schema()
@@ -533,9 +542,8 @@ def make_patches_dataset(
             other_fields = [f for f in src_schema if f not in curr_schema]
 
         add_fields = [f for f in other_fields if f not in curr_schema]
-        dataset._sample_doc_cls.merge_field_schema(
-            {k: v for k, v in src_schema.items() if k in add_fields}
-        )
+        add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
+        dataset._sample_doc_cls.merge_field_schema(add_schema)
 
     _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
 
@@ -550,13 +558,12 @@ def make_patches_dataset(
     return dataset
 
 
-def _get_single_label_field_type(sample_collection, field):
-    label_type = sample_collection._get_label_field_type(field)
+def _get_patches_field(sample_collection, field_name, keep_label_lists):
+    if keep_label_lists:
+        return sample_collection.get_field(field_name)
 
-    if label_type not in _SINGLE_TYPES_MAP:
-        raise ValueError("Unsupported label field type %s" % label_type)
-
-    return _SINGLE_TYPES_MAP[label_type]
+    _, path = sample_collection._get_label_field_path(field_name)
+    return sample_collection.get_field(path, leaf=True)
 
 
 def make_evaluation_patches_dataset(
@@ -641,11 +648,11 @@ def make_evaluation_patches_dataset(
     if etau.is_str(other_fields):
         other_fields = [other_fields]
 
-    pred_type = sample_collection._get_label_field_type(pred_field)
-    gt_type = sample_collection._get_label_field_type(gt_field)
+    _gt_field = sample_collection.get_field(gt_field)
+    _pred_field = sample_collection.get_field(pred_field)
 
     # Setup dataset with correct schema
-    dataset = fod.Dataset(name=name, _patches=True)
+    dataset = fod.Dataset(name=name, _patches=True, _frames=is_frame_patches)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
@@ -656,12 +663,8 @@ def make_evaluation_patches_dataset(
         dataset.create_index("frame_id")
         dataset.create_index([("sample_id", 1), ("frame_number", 1)])
 
-    dataset.add_sample_field(
-        gt_field, fof.EmbeddedDocumentField, embedded_doc_type=gt_type
-    )
-    dataset.add_sample_field(
-        pred_field, fof.EmbeddedDocumentField, embedded_doc_type=pred_type
-    )
+    dataset.add_sample_field(gt_field, **foo.get_field_kwargs(_gt_field))
+    dataset.add_sample_field(pred_field, **foo.get_field_kwargs(_pred_field))
 
     if crowd_attr is not None:
         dataset.add_sample_field("crowd", fof.BooleanField)
@@ -677,9 +680,8 @@ def make_evaluation_patches_dataset(
             other_fields = [f for f in src_schema if f not in curr_schema]
 
         add_fields = [f for f in other_fields if f not in curr_schema]
-        dataset._sample_doc_cls.merge_field_schema(
-            {k: v for k, v in src_schema.items() if k in add_fields}
-        )
+        add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
+        dataset._sample_doc_cls.merge_field_schema(add_schema)
 
     _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
 
@@ -868,9 +870,8 @@ def _merge_matched_labels(dataset, src_collection, eval_key, field):
     eval_id = eval_key + "_id"
     eval_field = list_field + "." + eval_id
 
-    pipeline = src_collection._pipeline()
-    pipeline.extend(
-        [
+    src_collection._aggregate(
+        post_pipeline=[
             {"$project": {list_field: True}},
             {"$unwind": "$" + list_field},
             {
@@ -908,27 +909,27 @@ def _merge_matched_labels(dataset, src_collection, eval_key, field):
         ]
     )
 
-    src_collection._dataset._aggregate(pipeline=pipeline)
-
 
 def _write_samples(dataset, src_collection):
-    pipeline = src_collection._pipeline(detach_frames=True, detach_groups=True)
-    pipeline.append({"$out": dataset._sample_collection_name})
-
-    src_collection._dataset._aggregate(pipeline=pipeline)
+    src_collection._aggregate(
+        detach_frames=True,
+        detach_groups=True,
+        post_pipeline=[{"$out": dataset._sample_collection_name}],
+    )
 
 
 def _add_samples(dataset, src_collection):
-    pipeline = src_collection._pipeline(detach_frames=True, detach_groups=True)
-    pipeline.append(
-        {
-            "$merge": {
-                "into": dataset._sample_collection_name,
-                "on": "_id",
-                "whenMatched": "keepExisting",
-                "whenNotMatched": "insert",
+    src_collection._aggregate(
+        detach_frames=True,
+        detach_groups=True,
+        post_pipeline=[
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "on": "_id",
+                    "whenMatched": "keepExisting",
+                    "whenNotMatched": "insert",
+                }
             }
-        }
+        ],
     )
-
-    src_collection._dataset._aggregate(pipeline=pipeline)

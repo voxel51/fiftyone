@@ -1,9 +1,4 @@
-import {
-  atom,
-  atomFamily,
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-} from "recoil";
+import { atom, atomFamily, useRecoilCallback } from "recoil";
 
 import { Sample, RGB } from "@fiftyone/looker/src/state";
 
@@ -237,4 +232,30 @@ export const lookerPanels = atom({
     json: { isOpen: false },
     help: { isOpen: false },
   },
+});
+
+export const theme = atom<"dark" | "light">({
+  key: "theme",
+  default: "dark",
+  effects: [
+    ({ setSelf, onSet }) => {
+      const muiModeKey = "mui-mode";
+      const muiMode = localStorage.getItem(muiModeKey) as "light" | "dark";
+      if (muiMode != null) setSelf(muiMode);
+      onSet((newValue, oldValue, isReset) => {
+        if (isReset) localStorage.removeItem(muiModeKey);
+        else localStorage.setItem(muiModeKey, newValue);
+      });
+    },
+  ],
+});
+
+export const compactLayout = atom({
+  key: "compactLayout",
+  default: false,
+});
+
+export const readOnly = atom({
+  key: "readOnly",
+  default: false,
 });

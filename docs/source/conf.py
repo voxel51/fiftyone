@@ -118,7 +118,7 @@ nbsphinx_prolog = """
             </a>
         </td>
         <td>
-            <a target="_blank" href="https://gitcdn.link/repo/voxel51/fiftyone/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}" download>
+            <a target="_blank" href="https://gitcdn.link/cdn/voxel51/fiftyone/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}" download>
                 <img src="../_static/images/icons/cloud-icon-256px.png"> &nbsp; Download notebook
             </a>
         </td>
@@ -184,11 +184,14 @@ html_context = {
     "link_contactus": "mailto:solutions@voxel51.com?subject=[Voxel51]%20Contact%20us",
     "link_docs_fiftyone": "https://voxel51.com/docs/fiftyone/",
     "link_fiftyone": "https://voxel51.com/fiftyone/",
+    "link_fiftyone_teams": "https://voxel51.com/fiftyone-teams/",
+    "link_usecases": "https://voxel51.com/computer-vision-use-cases/",
     "link_fiftyone_tutorials": "https://voxel51.com/docs/fiftyone/tutorials/index.html",
     "link_fiftyone_examples": "https://github.com/voxel51/fiftyone-examples",
     "link_fiftyone_quickstart": "https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb",
     "link_home": "https://voxel51.com/",
     "link_ourstory": "https://voxel51.com/ourstory/",
+    "link_voxel51_jobs": "https://voxel51.com/jobs/",
     "link_press": "https://voxel51.com/press/",
     "link_privacypolicy": "https://voxel51.com/privacy/",
     "link_termsofservice": "https://voxel51.com/terms/",

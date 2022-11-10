@@ -3269,9 +3269,6 @@ class CVATBackend(foua.AnnotationBackend):
     def upload_annotations(self, samples, launch_editor=False):
         api = self.connect_to_api()
 
-        # @todo support passing native cloud paths to CVAT
-        samples.download_media()
-
         logger.info("Uploading samples to CVAT...")
         results = api.upload_samples(samples, self)
 
@@ -4242,6 +4239,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         cloud_manifest = config.cloud_manifest
         config.job_reviewers = self._parse_reviewers(config.job_reviewers)
 
+        if cloud_manifest == False:
+            # Media will be uploaded to CVAT from local cache
+            samples.download_media()
+
         project_name, project_id = self._parse_project_details(
             config.project_name, config.project_id
         )
@@ -4302,40 +4303,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # might get labels
             samples.ensure_frames()
 
-        for idx, offset in enumerate(range(0, num_samples, batch_size)):
-            samples_batch = samples[offset : (offset + batch_size)]
-
-            if cloud_manifest:
-                # IMPORTANT: CVAT organizes media within a task alphabetically
-                # by filename, so we must sort the samples by filename to
-                # ensure annotations are uploaded properly
-                #
-                # When cloud manifests are not being used, upload_data() uses
-                # filename mangling to preserve the order of samples_batch in
-                # the CVAT task. However, when cloud manifests are being used,
-                # that approach is not viable, so we must sort by filename or
-                # else existing labels will not be uploaded correctly.
-                #
-                # Note that we don't always sort by media field because,
-                # whenever possible, we prefer to maintain the order of the
-                # users view, since they may have intentionally sorted it in a
-                # particular way that they want to preserve in CVAT.
-                samples_batch = self._sort_by_media_field(
-                    samples_batch, media_field
-                )
-
-            anno_tags = []
-            anno_shapes = []
-            anno_tracks = []
-
-            for label_field, label_info in label_schema.items():
-                _tags = []
-                _shapes = []
-                _tracks = []
-
-                if label_field not in id_map:
-                    id_map[label_field] = {}
-
         logger.info("Uploading samples to CVAT...")
 
         pb_kwargs = {"total": num_samples, "iters_str": "samples"}
@@ -4345,6 +4312,26 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         with fou.ProgressBar(**pb_kwargs) as pb:
             for idx, offset in enumerate(range(0, num_samples, batch_size)):
                 samples_batch = samples[offset : (offset + batch_size)]
+
+                if cloud_manifest:
+                    # IMPORTANT: CVAT organizes media within a task alphabetically
+                    # by filename, so we must sort the samples by filename to
+                    # ensure annotations are uploaded properly
+                    #
+                    # When cloud manifests are not being used, upload_data() uses
+                    # filename mangling to preserve the order of samples_batch in
+                    # the CVAT task. However, when cloud manifests are being used,
+                    # that approach is not viable, so we must sort by filename or
+                    # else existing labels will not be uploaded correctly.
+                    #
+                    # Note that we don't always sort by media field because,
+                    # whenever possible, we prefer to maintain the order of the
+                    # users view, since they may have intentionally sorted it in a
+                    # particular way that they want to preserve in CVAT.
+                    samples_batch = self._sort_by_media_field(
+                        samples_batch, media_field
+                    )
+
                 anno_tags = []
                 anno_shapes = []
                 anno_tracks = []

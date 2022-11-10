@@ -5,7 +5,7 @@ import { graphql } from "relay-runtime";
 import { Loading } from "@fiftyone/components";
 
 import { NetworkRenderer } from "@fiftyone/app/src/Network";
-import makeRoutes from "@fiftyone/app/src/makeRoutes";
+import { makeRoutes } from "@fiftyone/core";
 import { useMutation } from "react-relay";
 import { RouterContext } from "@fiftyone/state";
 

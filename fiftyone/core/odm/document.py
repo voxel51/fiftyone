@@ -105,13 +105,13 @@ class SerializableDocument(object):
         """
         raise NotImplementedError("Subclass must implement get_field()")
 
-    def set_field(self, field_name, value, create=False):
+    def set_field(self, field_name, value, create=True):
         """Sets the value of a field of the document.
 
         Args:
             field_name: the field name
             value: the field value
-            create (False): whether to create the field if it does not exist
+            create (True): whether to create the field if it does not exist
 
         Raises:
             ValueError: if ``field_name`` is not an allowed field name or does
@@ -219,7 +219,7 @@ class SerializableDocument(object):
             ):
                 continue
 
-            self.set_field(field, value, create=True)
+            self.set_field(field, value)
 
     def to_dict(self, extended=False):
         """Serializes this document to a BSON/JSON dictionary.
@@ -305,7 +305,14 @@ class MongoEngineBaseDocument(SerializableDocument):
     def get_field(self, field_name):
         return getattr(self, field_name)
 
-    def set_field(self, field_name, value, create=False):
+    def set_field(
+        self,
+        field_name,
+        value,
+        create=True,
+        validate=True,
+        dynamic=False,
+    ):
         if not create and not self.has_field(field_name):
             raise AttributeError(
                 "%s has no field '%s'" % (self.__class__.__name__, field_name)
@@ -532,7 +539,7 @@ class Document(BaseDocument, mongoengine.Document):
 
     meta = {"abstract": True}
 
-    def save(self, validate=True, clean=True, **kwargs):
+    def save(self, validate=True, clean=True, safe=False, **kwargs):
         """Saves the document to the database.
 
         If the document already exists, it will be updated, otherwise it will
@@ -542,11 +549,22 @@ class Document(BaseDocument, mongoengine.Document):
             validate (True): whether to validate the document
             clean (True): whether to call the document's ``clean()`` method.
                 Only applicable when ``validate`` is True
+            safe (False): whether to ``reload()`` the document before raising
+                any validation errors
 
         Returns:
             self
         """
-        self._save(deferred=False, validate=validate, clean=clean, **kwargs)
+        try:
+            self._save(
+                deferred=False, validate=validate, clean=clean, **kwargs
+            )
+        except:
+            if safe:
+                self.reload()
+
+            raise
+
         return self
 
     def _save(self, deferred=False, validate=True, clean=True, **kwargs):

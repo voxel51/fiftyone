@@ -1,6 +1,6 @@
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
-import { Loading, Theme } from "@fiftyone/components";
-import { darkTheme, setFetchFunction } from "@fiftyone/utilities";
+import { Loading, ThemeProvider } from "@fiftyone/components";
+import { setFetchFunction } from "@fiftyone/utilities";
 import React, { Suspense, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -102,9 +102,9 @@ const App = () => {
 createRoot(document.getElementById("root") as HTMLDivElement).render(
   <RecoilRoot>
     <EventsContext.Provider value={{}}>
-      <Theme theme={darkTheme}>
+      <ThemeProvider>
         <App />
-      </Theme>
+      </ThemeProvider>
     </EventsContext.Provider>
   </RecoilRoot>
 );

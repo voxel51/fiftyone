@@ -20,6 +20,7 @@
         "@auth0/auth0-react": "^1.9.0",
         "@fiftyone/app": "*",
         "@fiftyone/components": "*",
+        "@fiftyone/core": "*",
         "@fiftyone/utilities": "*"
     },
     "devDependencies": {

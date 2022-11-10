@@ -1,3 +1,44 @@
+input Aggregate {
+  countValues: CountValues = null
+  histogramValues: HistogramValues = null
+}
+
+union AggregateResult =
+    BooleanAggregation
+  | DataAggregation
+  | IntAggregation
+  | FloatAggregation
+  | RootAggregation
+  | StringAggregation
+
+interface Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+}
+
+input AggregationForm {
+  dataset: String!
+  extendedStages: BSONArray!
+  filters: BSON
+  groupId: ID
+  hiddenLabels: [SelectedLabel!]!
+  index: Int
+  mixed: Boolean!
+  paths: [String!]!
+  sampleIds: [ID!]!
+  slice: String
+  view: BSONArray!
+}
+
+union AggregationResponses =
+    BoolCountValuesResponse
+  | IntCountValuesResponse
+  | StrCountValuesResponse
+  | DatetimeHistogramValuesResponse
+  | FloatHistogramValuesResponse
+  | IntHistogramValuesResponse
+
 type AppConfig {
   colorBy: ColorBy!
   colorPool: [String!]!
@@ -11,16 +52,37 @@ type AppConfig {
   showLabel: Boolean!
   showSkeletons: Boolean!
   showTooltip: Boolean!
+  sidebarMode: SidebarMode!
+  theme: Theme!
   timezone: String
   useFrameNumber: Boolean!
 }
 
+scalar BSON
+
 scalar BSONArray
+
+type BoolCountValuesResponse {
+  values: [BoolValueCount!]!
+}
+
+type BoolValueCount {
+  key: Boolean
+  value: Int!
+}
+
+type BooleanAggregation implements Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+  false: Int!
+  true: Int!
+}
 
 type BrainRun implements Run {
   key: String!
   version: String
-  timestamp: DateTime
+  timestamp: datetime
   config: BrainRunConfig
   viewStages: [String!]
 }
@@ -38,11 +100,21 @@ enum ColorBy {
   label
 }
 
+input CountValues {
+  field: String!
+}
+
+type DataAggregation implements Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+}
+
 type Dataset {
   id: ID!
   name: String!
-  createdAt: Date
-  lastLoadedAt: DateTime
+  createdAt: date
+  lastLoadedAt: datetime
   persistent: Boolean!
   groupMediaTypes: [Group!]
   groupField: String
@@ -52,7 +124,7 @@ type Dataset {
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!
-  frameFields: [SampleField!]!
+  frameFields: [SampleField!]
   brainMethods: [BrainRun!]!
   evaluations: [EvaluationRun!]!
   version: String
@@ -60,12 +132,14 @@ type Dataset {
   defaultSkeleton: KeypointSkeleton
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
+  info: JSON
 }
 
 type DatasetAppConfig {
   mediaFields: [String!]!
   plugins: JSON
   sidebarGroups: [SidebarGroup!]
+  sidebarMode: SidebarMode
   modalMediaField: String
   gridMediaField: String
 }
@@ -88,20 +162,16 @@ type DatasetStrPageInfo {
   endCursor: String
 }
 
-"""
-Date (isoformat)
-"""
-scalar Date
-
-"""
-Date with time (isoformat)
-"""
-scalar DateTime
+type DatetimeHistogramValuesResponse {
+  counts: [Int!]!
+  edges: [datetime!]!
+  other: Int!
+}
 
 type EvaluationRun implements Run {
   key: String!
   version: String
-  timestamp: DateTime
+  timestamp: datetime
   config: EvaluationRunConfig
   viewStages: [String!]
 }
@@ -111,6 +181,23 @@ type EvaluationRunConfig implements RunConfig {
   gtField: String
   predField: String
   method: String
+}
+
+type FloatAggregation implements Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+  inf: Int!
+  max: Float
+  min: Float
+  nan: Int!
+  ninf: Int!
+}
+
+type FloatHistogramValuesResponse {
+  counts: [Int!]!
+  edges: [Float!]!
+  other: Int!
 }
 
 type Group {
@@ -123,11 +210,38 @@ input GroupElementFilter {
   slice: String = null
 }
 
+input HistogramValues {
+  field: String!
+}
+
 type ImageSample implements Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!
   aspectRatio: Float!
+}
+
+type IntAggregation implements Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+  max: Float
+  min: Float
+}
+
+type IntCountValuesResponse {
+  values: [IntValueCount!]!
+}
+
+type IntHistogramValuesResponse {
+  counts: [Int!]!
+  edges: [Float!]!
+  other: Int!
+}
+
+type IntValueCount {
+  key: Int
+  value: Int!
 }
 
 scalar JSON
@@ -146,11 +260,16 @@ enum MediaType {
 
 type MediaURL {
   field: String!
-  url: String!
+  url: String
 }
 
 type Mutation {
   setDataset(subscription: String!, session: String, name: String): Boolean!
+  setSidebarGroups(
+    dataset: String!
+    stages: BSONArray!
+    sidebarGroups: [SidebarGroupInput!]!
+  ): Boolean!
   setSelected(
     subscription: String!
     session: String
@@ -166,6 +285,7 @@ type Mutation {
     session: String
     view: BSONArray!
     dataset: String!
+    form: StateForm
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
   setGroupSlice(
@@ -194,11 +314,17 @@ type PointCloudSample implements Sample {
 }
 
 type Query {
+  aggregate(
+    datasetName: String!
+    view: BSONArray!
+    aggregations: [Aggregate!]!
+  ): [AggregationResponses!]!
   datasets(
     search: String
     first: Int = 200
     after: String = null
   ): DatasetStrConnection!
+  aggregations(form: AggregationForm!): [AggregateResult!]!
   colorscale: [[Int!]!]
   config: AppConfig!
   context: String!
@@ -218,10 +344,19 @@ type Query {
   version: String!
 }
 
+type RootAggregation implements Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+  slice: Int
+  expandedFieldCount: Int!
+  frameLabelFieldCount: Int
+}
+
 interface Run {
   key: String!
   version: String
-  timestamp: DateTime
+  timestamp: datetime
   config: RunConfig
   viewStages: [String!]
 }
@@ -242,6 +377,8 @@ type SampleField {
   subfield: String
   embeddedDocType: String
   dbField: String
+  description: String
+  info: JSON
 }
 
 input SampleFilter {
@@ -270,20 +407,69 @@ type SampleItemStrPageInfo {
 }
 
 input SelectedLabel {
+  labelId: ID!
   field: String!
-  labelId: String!
-  sampleId: String!
+  sampleId: ID!
   frameNumber: Int = null
 }
 
 type SidebarGroup {
   name: String!
   paths: [String!]
+  expanded: Boolean
+}
+
+input SidebarGroupInput {
+  name: String!
+  paths: [String!]
+  expanded: Boolean = true
+}
+
+enum SidebarMode {
+  all
+  best
+  fast
+}
+
+input StateForm {
+  addStages: BSONArray = null
+  filters: JSON = null
+  sampleIds: [String!] = null
+  labels: [SelectedLabel!] = null
+  extended: BSON = null
+  slice: String = null
+}
+
+type StrCountValuesResponse {
+  values: [StrValueCount!]!
+}
+
+type StrValueCount {
+  key: String
+  value: Int!
+}
+
+type StringAggregation implements Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+  values: [StringAggregationValue!]!
+}
+
+type StringAggregationValue {
+  count: Int!
+  value: String!
 }
 
 type Target {
   target: Int!
   value: String!
+}
+
+enum Theme {
+  browser
+  dark
+  light
 }
 
 type VideoSample implements Sample {
@@ -298,3 +484,7 @@ type ViewResponse {
   view: BSONArray!
   dataset: Dataset!
 }
+
+scalar date
+
+scalar datetime
