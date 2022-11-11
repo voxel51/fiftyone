@@ -1293,7 +1293,8 @@ class SampleCollection(object):
         if field_name not in schema:
             ftype = "frame field" if is_frame_field else "field"
             raise ValueError(
-                "%s has no %s '%s'" % (type(self), ftype, field_name)
+                "%s has no %s '%s'"
+                % (self.__class__.__name__, ftype, field_name)
             )
 
         field = schema[field_name]
@@ -9329,7 +9330,11 @@ def _parse_field_name(
             ftype = "frame field" if is_frame_field else "field"
             raise ValueError(
                 "%s has no %s '%s'"
-                % (type(sample_collection), ftype, root_field_name)
+                % (
+                    sample_collection.__class__.__name__,
+                    ftype,
+                    root_field_name,
+                )
             )
 
     # Detect list fields in schema
