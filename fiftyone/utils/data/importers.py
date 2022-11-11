@@ -1480,10 +1480,10 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
     def import_extras(self, sample_collection):
         dataset = sample_collection._dataset
 
-        # Import views
-        views = self._metadata.get("views", None)
+        # Import saved views
+        views = self._metadata.get("saved_views", None)
         if views:
-            _import_views(dataset, views)
+            _import_saved_views(dataset, views)
 
         # Import annotation runs
         annotation_runs = self._metadata.get("annotation_runs", None)
@@ -1670,7 +1670,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         #   - `dataset` is non-empty but no migration is required
         #
 
-        views = dataset_dict.pop("views", {})
+        views = dataset_dict.pop("saved_views", {})
         annotations = dataset_dict.pop("annotation_runs", {})
         brain_methods = dataset_dict.pop("brain_methods", {})
         evaluations = dataset_dict.pop("evaluations", {})
@@ -1773,11 +1773,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             )
 
         #
-        # Import views
+        # Import saved views
         #
 
         if empty_import:
-            _import_views(dataset, views)
+            _import_saved_views(dataset, views)
 
         #
         # Import runs
@@ -1857,7 +1857,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         )
 
 
-def _import_views(dataset, views):
+def _import_saved_views(dataset, views):
     for d in views:
         if etau.is_str(d):
             d = json_util.loads(d)

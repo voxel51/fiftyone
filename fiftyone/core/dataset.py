@@ -3076,17 +3076,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view._root_dataset is not self:
             raise ValueError("Cannot save view into a different dataset")
 
-        url_name = self._validate_view_name(name, overwrite=overwrite)
+        view._set_name(name)
+        url_name = self._validate_saved_view_name(name, overwrite=overwrite)
 
         now = datetime.utcnow()
 
         view_doc = foo.ViewDocument(
-            dataset_id=self._doc.id,
-            name=name,
-            url_name=url_name,
-            description=description,
-            color=color,
-            view_stages=[
+                dataset_id=self._doc.id,
+                name=name,
+                url_name=url_name,
+                description=description,
+                color=color,
+                view_stages=[
                 json_util.dumps(s)
                 for s in view._serialize(include_uuids=False)
             ],
@@ -3096,8 +3097,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.saved_views.append(view_doc)
         self._doc.save()
-
-        view._set_name(name)
 
     def get_saved_view_info(self, name):
         """Loads the editable information about the saved view with the given
@@ -3146,7 +3145,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for key, value in info.items():
             if value != view_doc[key]:
                 if key == "name":
-                    url_name = self._validate_view_name(value, skip=view_doc)
+                    url_name = self._validate_saved_view_name(
+                            value, skip=view_doc
+                    )
                     view_doc.url_name = url_name
 
                 view_doc[key] = value
@@ -6404,10 +6405,10 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     # Clone extras (full datasets only)
     if view is None and (
-        dataset.has_views
-        or dataset.has_annotation_runs
-        or dataset.has_brain_runs
-        or dataset.has_evaluations
+            dataset.has_saved_views
+            or dataset.has_annotation_runs
+            or dataset.has_brain_runs
+            or dataset.has_evaluations
     ):
         _clone_extras(clone_dataset, dataset._doc)
 

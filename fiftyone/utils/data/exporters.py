@@ -1710,7 +1710,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
         if dataset.has_saved_views:
             self._metadata["saved_views"] = [
-                json_util.dumps(v.to_dict()) for v in dataset._doc.views
+                json_util.dumps(v.to_dict()) for v in dataset._doc.saved_views
             ]
 
         if dataset.has_annotation_runs:
@@ -1796,7 +1796,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.utils.normalize_path`
-        export_views (True): whether to include saved views in the export.
+        export_saved_views (True): whether to include saved views in the export.
             Only applicable when exporting full datasets
         export_runs (True): whether to include annotation/brain/evaluation
             runs in the export. Only applicable when exporting full datasets
@@ -1811,7 +1811,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         export_dir,
         export_media=None,
         rel_dir=None,
-        export_views=True,
+        export_saved_views=True,
         export_runs=True,
         use_dirs=False,
         ordered=True,
@@ -1826,7 +1826,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         self.export_media = export_media
         self.rel_dir = rel_dir
-        self.export_views = export_views
+        self.export_saved_views = export_saved_views
         self.export_runs = export_runs
         self.use_dirs = use_dirs
         self.ordered = ordered
@@ -1951,8 +1951,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         # reconstructed based on the information encoded in the run's document
         #
 
-        _export_views = (
-            self.export_views
+        _export_saved_views = (
+            self.export_saved_views
             and sample_collection == sample_collection._root_dataset
         )
 
@@ -1961,9 +1961,9 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             and sample_collection == sample_collection._root_dataset
         )
 
-        if _export_views and dataset.has_saved_views:
+        if _export_saved_views and dataset.has_saved_views:
             dataset_dict["saved_views"] = [
-                v.to_dict() for v in dataset._doc.views
+                v.to_dict() for v in dataset._doc.saved_views
             ]
 
         if _export_runs and dataset.has_annotation_runs:

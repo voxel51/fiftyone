@@ -2258,8 +2258,8 @@ class DatasetExtrasTests(unittest.TestCase):
         view_name = "test"
         dataset.save_view(view_name, view)
 
-        last_loaded_at1 = dataset._doc.views[0].last_loaded_at
-        last_modified_at1 = dataset._doc.views[0].last_modified_at
+        last_loaded_at1 = dataset._doc.saved_views[0].last_loaded_at
+        last_modified_at1 = dataset._doc.saved_views[0].last_modified_at
 
         self.assertEqual(view.name, view_name)
         self.assertTrue(view.is_saved)
@@ -2281,7 +2281,7 @@ class DatasetExtrasTests(unittest.TestCase):
 
         also_view = dataset.load_saved_view(view_name)
 
-        last_loaded_at2 = dataset._doc.views[0].last_loaded_at
+        last_loaded_at2 = dataset._doc.saved_views[0].last_loaded_at
 
         self.assertEqual(view, also_view)
         self.assertEqual(also_view.name, view_name)
@@ -2292,7 +2292,7 @@ class DatasetExtrasTests(unittest.TestCase):
         info["name"] = new_view_name
 
         dataset.update_saved_view_info(view_name, info)
-        last_modified_at2 = dataset._doc.views[0].last_modified_at
+        last_modified_at2 = dataset._doc.saved_views[0].last_modified_at
 
         self.assertTrue(last_modified_at2 > last_modified_at1)
         self.assertFalse(dataset.has_saved_view(view_name))
@@ -2352,32 +2352,32 @@ class DatasetExtrasTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.update_saved_view_info("my-view1", {"name": "my_view2!"})
 
-        view_docs = dataset._views()
+        view_docs = dataset._saved_views()
 
         self.assertListEqual([v.name for v in view_docs], names)
         self.assertListEqual([v.url_name for v in view_docs], url_names)
 
         # Wrong list of indexes
         with self.assertRaises(ValueError):
-            dataset._reorder_views([3, 2, 1, 0])
+            dataset._reorder_saved_views([3, 2, 1, 0])
 
-        dataset._reorder_views([2, 1, 0])
+        dataset._reorder_saved_views([2, 1, 0])
 
         self.assertListEqual(
-            [v.name for v in dataset._views()],
-            list(reversed(names)),
+                [v.name for v in dataset._saved_views()],
+                list(reversed(names)),
         )
 
         dataset.delete_saved_view("my_view2")
 
         self.assertListEqual(
-            [v.name for v in dataset._views()],
-            [names[2], names[0]],
+                [v.name for v in dataset._saved_views()],
+                [names[2], names[0]],
         )
 
         dataset.delete_saved_views()
 
-        self.assertListEqual(dataset._views(), [])
+        self.assertListEqual(dataset._saved_views(), [])
 
     def test_runs(self):
         dataset = self.dataset
