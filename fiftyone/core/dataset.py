@@ -3223,13 +3223,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _saved_views(self):
         return self._doc.saved_views
 
-    def _reorder_saved_views(self, new_order):
-        if sorted(new_order) != list(range(len(self._doc.saved_views))):
-            raise ValueError("Invalid ordering %s" % list(new_order))
-
-        self._doc.saved_views = [self._doc.saved_views[i] for i in new_order]
-        self._doc.save()
-
     def _validate_saved_view_name(self, name, skip=None, overwrite=False):
         url_name = fou.to_url_name(name)
 
