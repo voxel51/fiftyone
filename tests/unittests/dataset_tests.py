@@ -2118,23 +2118,33 @@ class DatasetExtrasTests(unittest.TestCase):
 
         view = dataset.match(F("filepath").contains_str("image2"))
 
+        self.assertIsNone(view.name)
+        self.assertFalse(view.is_saved)
         self.assertEqual(len(view), 1)
         self.assertTrue("image2" in view.first().filepath)
 
-        unsaved_view_name = view.name
         view_name = "test"
         dataset.save_view(view_name, view)
 
         last_loaded_at1 = dataset._doc.views[0].last_loaded_at
         last_modified_at1 = dataset._doc.views[0].last_modified_at
 
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
         self.assertTrue(dataset.has_views)
         self.assertTrue(dataset.has_view(view_name))
         self.assertListEqual(dataset.list_views(), [view_name])
-        self.assertNotEqual(unsaved_view_name, view.name)
 
         self.assertIsNone(last_loaded_at1)
         self.assertIsNotNone(last_modified_at1)
+
+        not_saved_view = view.view()
+        self.assertIsNone(not_saved_view.name)
+        self.assertFalse(not_saved_view.is_saved)
+
+        not_saved_view = view.limit(1)
+        self.assertIsNone(not_saved_view.name)
+        self.assertFalse(not_saved_view.is_saved)
 
         also_view = dataset.load_view(view_name)
         last_loaded_at2 = dataset._doc.views[0].last_loaded_at
