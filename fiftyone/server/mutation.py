@@ -212,3 +212,20 @@ class Mutation:
             view_name=view_name if view_name else state.view.name,
             info=info,
         )
+
+    @gql.mutation
+    async def save_view(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        view_name: str,
+        description: t.Optional[str] = None,
+        color: t.Optional[str] = None,
+    ) -> bool:
+        state = get_state()
+        state.dataset.save_view(
+            view_name, state.view, description=description, color=color
+        )
+        state.view = state.dataset.load_view(view_name)
+        await dispatch_event(subscription, StateUpdate(state=state))
+        return True
