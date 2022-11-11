@@ -2138,9 +2138,10 @@ class DatasetExtrasTests(unittest.TestCase):
         self.assertIsNone(last_loaded_at1)
         self.assertIsNotNone(last_modified_at1)
 
-        not_saved_view = view.view()
-        self.assertIsNone(not_saved_view.name)
-        self.assertFalse(not_saved_view.is_saved)
+        still_saved_view = deepcopy(view)
+        self.assertEqual(still_saved_view.name, view_name)
+        self.assertTrue(still_saved_view.is_saved)
+        self.assertEqual(still_saved_view, view)
 
         not_saved_view = view.limit(1)
         self.assertIsNone(not_saved_view.name)
