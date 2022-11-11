@@ -22,6 +22,7 @@ _LABEL_TAGS = "_label_tags"
 
 def get_view(
     dataset_name,
+    *,
     view_name=None,
     stages=None,
     filters=None,
@@ -52,10 +53,11 @@ def get_view(
         a :class:`fiftyone.core.view.DatasetView`
     """
     view = None
-    if view_name:
-        view = fod.load_dataset(dataset_name).load_view(view_name)
+    dataset = fod.load_dataset(dataset_name)
+    if dataset.has_views and dataset.has_view(view_name):
+        view = dataset.load_view(view_name)
     else:
-        view = fod.load_dataset(dataset_name).view()
+        view = dataset.view()
     view.reload()
 
     if stages:

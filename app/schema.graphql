@@ -29,6 +29,7 @@ input AggregationForm {
   sampleIds: [ID!]!
   slice: String
   view: BSONArray!
+  viewName: String = null
 }
 
 union AggregationResponses =

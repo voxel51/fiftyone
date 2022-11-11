@@ -48,6 +48,7 @@ class AggregationForm:
     sample_ids: t.List[gql.ID]
     slice: t.Optional[str]
     view: BSONArray
+    viewName: t.Optional[str] = None
 
 
 @gql.interface
