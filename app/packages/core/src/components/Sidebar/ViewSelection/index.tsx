@@ -8,7 +8,6 @@ import { filter } from "lodash";
 import { atom, useRecoilState, useSetRecoilState } from "recoil";
 
 import ViewDialog from "./ViewDialog";
-import { SelectionItemProps } from "@fiftyone/components/src/components/Selection/Option";
 
 const Box = styled.div`
   display: flex;
@@ -36,7 +35,7 @@ export const viewSearchTerm = atom({
 });
 export const viewDialogOpen = atom({
   key: "viewDialogOpen",
-  default: false,
+  default: true,
 });
 
 const DEFAULT_SELECTED = {
@@ -72,13 +71,14 @@ interface Props {
 
 export default function ViewSelection(props: Props) {
   const { items = [] } = props;
+  console.log("items", items);
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
 
   const viewOptions: DatasetViewOption[] = [
     DEFAULT_SELECTED,
     ...items.map((item: DatasetView) => {
       const { name, urlName, color, description, createdAt } = item;
-      const createdAtText = `Created ${new Date(createdAt).toDateString()}`;
+      const createdAtText = `created ${new Date(createdAt).toDateString()}`;
 
       return {
         id: urlName,
@@ -87,19 +87,23 @@ export default function ViewSelection(props: Props) {
         description: description || createdAtText,
       };
     }),
-  ];
+  ] as DatasetViewOption[];
 
   // TODO: get saved views here from state and pass as items instead
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
-  const [selected, setSelected] = useState<SelectionItemProps>(viewOptions[0]);
+  const [selected, setSelected] = useState<DatasetViewOption>(viewOptions[0]);
 
-  const searchedData = filter(viewOptions, ({ id, label, description }) => {
-    return (
-      id === "1" ||
-      label?.toLowerCase().includes(viewSearch) ||
-      description?.toLowerCase().includes(viewSearch)
-    );
-  });
+  const searchedData: DatasetViewOption[] = filter(
+    viewOptions,
+    ({ id, label, description }: DatasetViewOption) => {
+      return (
+        id === "1" ||
+        label?.toLowerCase().includes(viewSearch) ||
+        description?.toLowerCase().includes(viewSearch)
+      );
+    }
+  ) as DatasetViewOption[];
+  console.log("searchedData", searchedData);
 
   return (
     <Box style={{ width: "100%" }}>

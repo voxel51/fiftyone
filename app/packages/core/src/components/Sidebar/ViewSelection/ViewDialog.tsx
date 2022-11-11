@@ -1,24 +1,20 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
-import { Add } from "@mui/icons-material";
 import styled from "styled-components";
 
 import { Selection } from "@fiftyone/components";
-import { filter } from "lodash";
-import { atom, useRecoilState, useRecoilValue } from "recoil";
+import { atom, atomFamily, useRecoilState, useRecoilValue } from "recoil";
 
 import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import { useTheme } from "@fiftyone/components";
 import { viewDialogOpen } from ".";
-import { SelectionItemProps } from "@fiftyone/components/src/components/Selection/Option";
+import { DatasetViewOption } from "@fiftyone/components/src/components/Selection/Option";
 
 const Box = styled.div`
   display: flex;
@@ -86,6 +82,19 @@ const NameInput = styled.input`
   }
 `;
 
+// TODO: consolidate
+export const COLOR_OPTIONS = [
+  { id: "blue", label: "Blue", color: "#2970FF" },
+  { id: "cyan", label: "Cyan", color: "#06AED4" },
+  { id: "green", label: "Green", color: "#16B364" },
+  { id: "yellow", label: "Yellow", color: "#FAC515" },
+  { id: "orange", label: "Orange", color: "#EF6820" },
+  { id: "red", label: "Red", color: "#F04438" },
+  { id: "pink", label: "Pink", color: "#EE46BC" },
+  { id: "purple", label: "Purple", color: "#7A5AF8" },
+  { id: "gray", label: "Gray", color: "#667085" },
+];
+
 interface Props {}
 
 export const viewDialogContent = atom({
@@ -93,17 +102,10 @@ export const viewDialogContent = atom({
   default: {
     name: "",
     description: "",
-    color: "green",
+    color: COLOR_OPTIONS[0].id,
     isCreating: true, // vs. editing
   },
 });
-
-const COLOR_OPTIONS = [
-  { id: "Green", label: "Green", color: "green" },
-  { id: "Red", label: "Red", color: "red" },
-  { id: "Blue", label: "Blue", color: "blue" },
-  { id: "Yellow", label: "Yellow", color: "yellow" },
-];
 
 export default function ViewDialog(props: Props) {
   const theme = useTheme();
@@ -118,14 +120,18 @@ export default function ViewDialog(props: Props) {
   const [nameValue, setNameValue] = useState<string>(initialName);
   const [descriptionValue, setDescriptionValue] =
     useState<string>(initialDescription);
-  const [colorOption, setColorOption] = useState<SelectionItemProps>({
-    label: initialName,
-    description: initialDescription,
-    color: initialColor,
-    id: initialName,
+
+  const theColorOption =
+    COLOR_OPTIONS.filter((color) => color.label)?.[0] || COLOR_OPTIONS[0];
+  const [colorOption, setColorOption] = useState<DatasetViewOption>({
+    label: theColorOption?.id,
+    description: "",
+    color: theColorOption?.color,
+    id: theColorOption?.id,
   });
 
   const title = isCreating ? "Create view" : "Edit view";
+  console.log("colorOption", colorOption);
 
   return (
     <Dialog open={isOpen} onClose={() => setIsOpen(false)}>

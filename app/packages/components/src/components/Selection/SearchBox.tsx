@@ -41,7 +41,14 @@ export const SearchBox = ({
 }) => {
   const theme = useTheme();
   return (
-    <Box>
+    <Box
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 9999,
+        background: theme.background.level3,
+      }}
+    >
       <SearchInput
         value={searchTerm}
         placeholder={searchPlaceholder}

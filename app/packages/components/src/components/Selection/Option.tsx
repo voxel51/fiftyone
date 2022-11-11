@@ -42,8 +42,8 @@ const TertiaryTextContainer = styled(TextContainer)`
 export interface DatasetViewOption {
   id: string;
   label: string;
-  color: string | null;
-  description: string | null;
+  color?: string | null;
+  description?: string | null;
 }
 
 interface Props {
