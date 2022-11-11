@@ -107,7 +107,6 @@ const DatasetQuery = graphql`
       }
       version
       viewCls
-      viewName
       appConfig {
         mediaFields
         gridMediaField

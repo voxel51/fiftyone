@@ -147,7 +147,7 @@ class Mutation:
             state.view = state.dataset.load_view(view_name)
         elif form:
             view = get_view(
-                dataset,
+                dataset_name,
                 view,
                 form.filters,
             )
@@ -166,15 +166,10 @@ class Mutation:
                 view = extend_view(view, form.extended, True)
 
             state.view = view
-            view_stages = view._serialize()
+            view = view._serialize()
 
         else:
-<<<<<<< HEAD
-            state.view = fov.DatasetView._build(state.dataset, view_stages)
-
-=======
             state.view = fov.DatasetView._build(state.dataset, view)
->>>>>>> df969e414 (fix renaming conflicts)
         await dispatch_event(subscription, StateUpdate(state=state))
         dataset = await Dataset.resolver(
             name=dataset_name,

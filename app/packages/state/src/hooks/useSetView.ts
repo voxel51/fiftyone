@@ -52,20 +52,20 @@ const useSetView = (
               : viewOrUpdater;
           commit({
             variables: {
-                subscription,
-                session,
-                view: value,
-                datasetName: dataset.name,
-                form: patch
-                    ? {
-                        filters: snapshot.getLoadable(filters).contents,
-                        sampleIds: [
-                            ...snapshot.getLoadable(selectedSamples).contents,
-                        ],
-                        labels: snapshot.getLoadable(selectedLabelList).contents,
-                        extended: snapshot.getLoadable(fos.extendedStages).contents,
-                        addStages,
-                        slice: selectSlice
+              subscription,
+              session,
+              view: value,
+              datasetName: dataset.name,
+              form: patch
+                ? {
+                    filters: snapshot.getLoadable(filters).contents,
+                    sampleIds: [
+                      ...snapshot.getLoadable(selectedSamples).contents,
+                    ],
+                    labels: snapshot.getLoadable(selectedLabelList).contents,
+                    extended: snapshot.getLoadable(fos.extendedStages).contents,
+                    addStages,
+                    slice: selectSlice
                       ? snapshot.getLoadable(resolvedGroupSlice(false)).contents
                       : null,
                   }

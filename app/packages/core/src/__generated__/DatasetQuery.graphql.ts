@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b4353899be29c7b8b0fe6652bfbb6668>>
+ * @generated SignedSource<<85cf390c3babb403e0fb7ad6039d2b99>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,6 +10,7 @@
 
 import { ConcreteRequest, Query } from 'relay-runtime';
 export type MediaType = "group" | "image" | "point_cloud" | "video" | "%future added value";
+export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 export type DatasetQuery$variables = {
   name: string;
   view?: Array | null;
@@ -22,9 +23,11 @@ export type DatasetQuery$data = {
       readonly mediaFields: ReadonlyArray<string>;
       readonly plugins: object | null;
       readonly sidebarGroups: ReadonlyArray<{
+        readonly expanded: boolean | null;
         readonly name: string;
         readonly paths: ReadonlyArray<string> | null;
       }> | null;
+      readonly sidebarMode: SidebarMode | null;
     } | null;
     readonly brainMethods: ReadonlyArray<{
       readonly config: {
@@ -375,15 +378,29 @@ v20 = [
             "name": "sidebarGroups",
             "plural": true,
             "selections": [
-              (v1/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "expanded",
+                "storageKey": null
+              },
               {
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
                 "name": "paths",
                 "storageKey": null
-              }
+              },
+              (v1/*: any*/)
             ],
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "sidebarMode",
             "storageKey": null
           }
         ],
@@ -648,16 +665,16 @@ return {
     "selections": (v20/*: any*/)
   },
   "params": {
-    "cacheID": "f110a9ba0e993b8fe7cfcaefc3d6612c",
+    "cacheID": "5c62b3b97eb56018e7ad4c9a755ff36d",
     "id": null,
     "metadata": {},
     "name": "DatasetQuery",
     "operationKind": "query",
-    "text": "query DatasetQuery(\n  $name: String!\n  $view: BSONArray = null\n  $viewName: String = null\n) {\n  dataset(name: $name, view: $view, viewName: $viewName) {\n    id\n    name\n    mediaType\n    defaultGroupSlice\n    groupField\n    groupMediaTypes {\n      name\n      mediaType\n    }\n    appConfig {\n      gridMediaField\n      mediaFields\n      plugins\n      sidebarGroups {\n        name\n        paths\n      }\n    }\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n      description\n      info\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    savedViews {\n      datasetId\n      name\n      urlName\n      description\n      color\n      viewStages\n      createdAt\n      lastModifiedAt\n      lastLoadedAt\n    }\n    lastLoadedAt\n    createdAt\n    skeletons {\n      name\n      labels\n      edges\n    }\n    defaultSkeleton {\n      labels\n      edges\n    }\n    version\n    viewCls\n    info\n  }\n}\n"
+    "text": "query DatasetQuery(\n  $name: String!\n  $view: BSONArray = null\n  $viewName: String = null\n) {\n  dataset(name: $name, view: $view, viewName: $viewName) {\n    id\n    name\n    mediaType\n    defaultGroupSlice\n    groupField\n    groupMediaTypes {\n      name\n      mediaType\n    }\n    appConfig {\n      gridMediaField\n      mediaFields\n      plugins\n      sidebarGroups {\n        expanded\n        paths\n        name\n      }\n      sidebarMode\n    }\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n      description\n      info\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    savedViews {\n      datasetId\n      name\n      urlName\n      description\n      color\n      viewStages\n      createdAt\n      lastModifiedAt\n      lastLoadedAt\n    }\n    lastLoadedAt\n    createdAt\n    skeletons {\n      name\n      labels\n      edges\n    }\n    defaultSkeleton {\n      labels\n      edges\n    }\n    version\n    viewCls\n    info\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "023e300717aa22c53df6919fa2c7f1a7";
+(node as any).hash = "07771c41525c74e0b1a8ef7e0278bf12";
 
 export default node;
