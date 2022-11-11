@@ -90,7 +90,12 @@ class EvaluationPatchView(_PatchView):
 
 class _PatchesView(fov.DatasetView):
     def __init__(
-        self, source_collection, patches_stage, patches_dataset, _stages=None
+        self,
+        source_collection,
+        patches_stage,
+        patches_dataset,
+        _stages=None,
+        _name=None,
     ):
         if _stages is None:
             _stages = []
@@ -99,6 +104,7 @@ class _PatchesView(fov.DatasetView):
         self._patches_stage = patches_stage
         self._patches_dataset = patches_dataset
         self.__stages = _stages
+        self.__name = _name
 
     def __copy__(self):
         return self.__class__(
@@ -106,6 +112,7 @@ class _PatchesView(fov.DatasetView):
             deepcopy(self._patches_stage),
             self._patches_dataset,
             _stages=deepcopy(self.__stages),
+            _name=self.__name,
         )
 
     @property
@@ -158,10 +165,6 @@ class _PatchesView(fov.DatasetView):
     @property
     def _elements_str(self):
         return "patches"
-
-    @property
-    def name(self):
-        return self.dataset_name + "-patches"
 
     @property
     def media_type(self):
@@ -380,10 +383,19 @@ class PatchesView(_PatchesView):
     """
 
     def __init__(
-        self, source_collection, patches_stage, patches_dataset, _stages=None
+        self,
+        source_collection,
+        patches_stage,
+        patches_dataset,
+        _stages=None,
+        _name=None,
     ):
         super().__init__(
-            source_collection, patches_stage, patches_dataset, _stages=_stages
+            source_collection,
+            patches_stage,
+            patches_dataset,
+            _stages=_stages,
+            _name=_name,
         )
 
         self._patches_field = patches_stage.field
@@ -425,10 +437,19 @@ class EvaluationPatchesView(_PatchesView):
     """
 
     def __init__(
-        self, source_collection, patches_stage, patches_dataset, _stages=None
+        self,
+        source_collection,
+        patches_stage,
+        patches_dataset,
+        _stages=None,
+        _name=None,
     ):
         super().__init__(
-            source_collection, patches_stage, patches_dataset, _stages=_stages
+            source_collection,
+            patches_stage,
+            patches_dataset,
+            _stages=_stages,
+            _name=_name,
         )
 
         eval_key = patches_stage.eval_key

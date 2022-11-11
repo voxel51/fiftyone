@@ -74,7 +74,12 @@ class ClipsView(fov.DatasetView):
     """
 
     def __init__(
-        self, source_collection, clips_stage, clips_dataset, _stages=None
+        self,
+        source_collection,
+        clips_stage,
+        clips_dataset,
+        _stages=None,
+        _name=None,
     ):
         if _stages is None:
             _stages = []
@@ -86,6 +91,7 @@ class ClipsView(fov.DatasetView):
         self._clips_stage = clips_stage
         self._clips_dataset = clips_dataset
         self.__stages = _stages
+        self.__name = _name
 
     def __copy__(self):
         return self.__class__(
@@ -93,6 +99,7 @@ class ClipsView(fov.DatasetView):
             deepcopy(self._clips_stage),
             self._clips_dataset,
             _stages=deepcopy(self.__stages),
+            _name=self.__name,
         )
 
     @staticmethod
@@ -146,10 +153,6 @@ class ClipsView(fov.DatasetView):
     @property
     def _elements_str(self):
         return "clips"
-
-    @property
-    def name(self):
-        return self.dataset_name + "-clips"
 
     @property
     def media_type(self):

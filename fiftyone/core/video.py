@@ -84,7 +84,12 @@ class FramesView(fov.DatasetView):
     """
 
     def __init__(
-        self, source_collection, frames_stage, frames_dataset, _stages=None
+        self,
+        source_collection,
+        frames_stage,
+        frames_dataset,
+        _stages=None,
+        _name=None,
     ):
         if _stages is None:
             _stages = []
@@ -93,6 +98,7 @@ class FramesView(fov.DatasetView):
         self._frames_stage = frames_stage
         self._frames_dataset = frames_dataset
         self.__stages = _stages
+        self.__name = _name
 
     def __copy__(self):
         return self.__class__(
@@ -100,6 +106,7 @@ class FramesView(fov.DatasetView):
             deepcopy(self._frames_stage),
             self._frames_dataset,
             _stages=deepcopy(self.__stages),
+            _name=self.__name,
         )
 
     @property
@@ -133,10 +140,6 @@ class FramesView(fov.DatasetView):
             + [self._frames_stage]
             + self.__stages
         )
-
-    @property
-    def name(self):
-        return self.dataset_name + "-frames"
 
     @property
     def media_type(self):
