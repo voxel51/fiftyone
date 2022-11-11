@@ -122,8 +122,6 @@ export default function ViewDialog(props: Props) {
   const [descriptionValue, setDescriptionValue] =
     useState<string>(initialDescription);
 
-  console.log("nameValue", initialName, nameValue);
-
   const theColorOption =
     COLOR_OPTIONS.filter((color) => color.label === initialColor)?.[0] ||
     COLOR_OPTIONS[0];
