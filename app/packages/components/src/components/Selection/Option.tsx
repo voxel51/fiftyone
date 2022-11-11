@@ -52,10 +52,18 @@ interface Props {
   preDecorator?: React.ReactNode;
   compact?: boolean; // compact form rows
   readonly?: boolean;
+  onEdit?: (item: DatasetViewOption) => void;
 }
 
 export default function SelectionOption(props: Props) {
-  const { item, isSelected, preDecorator = null, compact, readonly } = props;
+  const {
+    item,
+    isSelected,
+    preDecorator = null,
+    compact,
+    readonly,
+    onEdit,
+  } = props;
 
   const [hoverRef, isHovered] = useHover();
   const { label, description } = item;
@@ -77,17 +85,25 @@ export default function SelectionOption(props: Props) {
         {!readonly && (isHovered || isSelected) && (
           <EditBox>
             <Box>
-              {isHovered && (
+              {isHovered && item.id !== "1" && (
                 <Edit
                   color="disabled"
                   fontSize="small"
                   sx={{
-                    zIndex: "999",
+                    zIndex: "9999",
                     marginRight: isSelected ? "0.5rem" : "0",
 
                     "&:hover": {
                       color: theme.text.primary,
                     },
+                  }}
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    console.log("click", item);
+                    if (onEdit) {
+                      onEdit(item);
+                    }
                   }}
                 />
               )}

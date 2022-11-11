@@ -53,6 +53,7 @@ type SelectionProps = {
   disabled?: boolean; // TODO: MANI - add permissions
   compact?: boolean; // compact UI
   readonly?: boolean; // no edits available
+  onEdit?: (item: DatasetViewOption) => void;
 };
 
 const VIEW_LIST_MAX_HEIGHT = "300px";
@@ -81,6 +82,7 @@ export default function Selection(props: SelectionProps) {
     setSelected,
     compact,
     readonly,
+    onEdit,
   } = props;
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -224,6 +226,7 @@ export default function Selection(props: SelectionProps) {
                   }
                   compact={compact}
                   readonly={readonly}
+                  onEdit={onEdit}
                 />
               </Option>
             );
