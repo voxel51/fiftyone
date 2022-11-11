@@ -180,7 +180,6 @@ class Dataset:
     saved_views: t.Optional[t.List[SavedView]]
     version: t.Optional[str]
     view_cls: t.Optional[str]
-    # view_stages: t.Optional[t.List[str]]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
@@ -226,6 +225,13 @@ class Dataset:
 dataset_dataloader = get_dataloader_resolver(
     Dataset, "datasets", "name", DATASET_FILTER
 )
+
+
+# @gql.type
+# class CurrentView:
+#     name = t.Optional[str] = None
+#     stages = t.Optional[t.List[str]] = None
+#
 
 
 @gql.enum
@@ -349,7 +355,7 @@ class Query(fosa.AggregateQuery):
         self, dataset_name: str, view_name: str
     ) -> t.Optional[SavedView]:
         ds = fo.load_dataset(dataset_name)
-        if ds.has_view(view_name):
+        if ds.has_views & ds.has_view(view_name):
             for view in ds._doc.saved_views:
                 if view.name == view_name:
                     return view
@@ -383,7 +389,10 @@ async def serialize_dataset(
     def run():
         dataset = fo.load_dataset(name)
         dataset.reload()
-        view = fov.DatasetView._build(dataset, serialized_view or [])
+        if view_name:
+            view = dataset.load_view(view_name)
+        else:
+            view = fov.DatasetView._build(dataset, serialized_view or [])
 
         doc = dataset._doc.to_dict()
         Dataset.modifier(doc)

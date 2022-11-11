@@ -31,8 +31,8 @@ def get_tag_view(
 ) -> foc.SampleCollection:
     view = fosv.get_view(
         dataset,
-        stages,
-        filters,
+        stages=stages,
+        filters=filters,
         extended_stages=extended_stages,
         sample_filter=sample_filter,
     )

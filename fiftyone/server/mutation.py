@@ -81,7 +81,7 @@ class Mutation:
         stages: BSONArray,
         sidebar_groups: t.List[SidebarGroupInput],
     ) -> bool:
-        view = get_view(dataset, stages)
+        view = get_view(dataset, stages=stages)
 
         current = (
             {
@@ -147,9 +147,9 @@ class Mutation:
             state.view = state.dataset.load_view(view_name)
         elif form:
             view = get_view(
-                dataset_name,
-                view,
-                form.filters,
+                    dataset_name,
+                    stages=view,
+                    filters=form.filters,
             )
             if form.slice:
                 view = view.select_group_slices([form.slice])
@@ -218,9 +218,26 @@ class Mutation:
         color: t.Optional[str] = None,
     ) -> bool:
         state = get_state()
-        state.dataset.save_view(
-            view_name, state.view, description=description, color=color
+        dataset = state.dataset
+        dataset.save_view(
+                view_name, state.view, description=description, color=color
         )
-        state.view = state.dataset.load_view(view_name)
+        dataset.reload()
+        state.view = dataset.load_view(view_name)
+        state.name = view_name
         await dispatch_event(subscription, StateUpdate(state=state))
-        return True
+
+        return state.view
+
+
+@gql.mutation
+async def delete_view(
+        self, subscription: str, session: t.Optional[str], view_name: str
+) -> bool:
+    state = get_state()
+    deleted_view = state.dataset.delete_view(view_name)
+    if state.view_name == view_name:
+        state.view = None
+        state.view_name = None
+    await dispatch_event(subscription, StateUpdate(state=state))
+    return state.dataset.saved_views
