@@ -43,7 +43,6 @@ export interface DatasetViewOption {
   id: string;
   label: string;
   color?: string | null;
-  description?: string | null;
 }
 
 interface Props {
@@ -66,7 +65,7 @@ export default function SelectionOption(props: Props) {
   } = props;
 
   const [hoverRef, isHovered] = useHover();
-  const { label, description } = item;
+  const { label } = item;
   const theme = useTheme();
 
   return (
@@ -79,7 +78,6 @@ export default function SelectionOption(props: Props) {
         }}
       >
         <TextContainer>{label}</TextContainer>
-        <TertiaryTextContainer>{description}</TertiaryTextContainer>
       </Box>
       <Box style={{ width: "18%" }}>
         {!readonly && (isHovered || isSelected) && (
