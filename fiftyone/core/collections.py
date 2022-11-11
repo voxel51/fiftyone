@@ -1291,10 +1291,9 @@ class SampleCollection(object):
             schema = self.get_field_schema()
 
         if field_name not in schema:
-            ftype = "Frame field" if is_frame_field else "Field"
+            ftype = "frame field" if is_frame_field else "field"
             raise ValueError(
-                "%s '%s' does not exist on collection '%s'"
-                % (ftype, field_name, self.name)
+                "%s has no %s '%s'" % (type(self), ftype, field_name)
             )
 
         field = schema[field_name]
@@ -7892,7 +7891,7 @@ class SampleCollection(object):
         )
 
         d = {
-            "name": self.name,
+            "name": self._dataset.name,
             "version": self._dataset.version,
             "media_type": self.media_type,
         }
@@ -9327,10 +9326,10 @@ def _parse_field_name(
         root_field_name = field_name.split(".", 1)[0]
 
         if sample_collection.get_field(prefix + root_field_name) is None:
-            ftype = "Frame field" if is_frame_field else "Field"
+            ftype = "frame field" if is_frame_field else "field"
             raise ValueError(
-                "%s '%s' does not exist on collection '%s'"
-                % (ftype, root_field_name, sample_collection.name)
+                "%s has no %s '%s'"
+                % (type(sample_collection), ftype, root_field_name)
             )
 
     # Detect list fields in schema
