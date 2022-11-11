@@ -129,6 +129,7 @@ class DatasetView(foc.SampleCollection):
             _stages=deepcopy(self.__stages),
             _media_type=self.__media_type,
             _group_slice=self.__group_slice,
+            _name=self.__name,
         )
 
     @property
