@@ -244,19 +244,13 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def name(self):
-        """The name of the view.
-
-        If this view is a saved view, its name will be returned.
-        Otherwise, it will return None.
-        """
+        """The name of the view if it is a saved view; otherwise None."""
         return self.__name
 
     @property
     def is_saved(self):
-        """Returns True/False whether the view is saved or not."""
-        if self.__name in self._root_dataset.list_views():
-            return True
-        return False
+        """Whether the view is a saved view or not."""
+        return self.__name is not None
 
     @property
     def dataset_name(self):
@@ -1351,6 +1345,7 @@ class DatasetView(foc.SampleCollection):
             media_type = stage.get_media_type(self)
             if media_type is not None:
                 view._set_media_type(media_type)
+
         view._set_name(None)
 
         return view
@@ -1361,8 +1356,8 @@ class DatasetView(foc.SampleCollection):
         if media_type != fom.GROUP:
             self.__group_slice = None
 
-    def _set_name(self, saved_view_name):
-        self.__name = saved_view_name
+    def _set_name(self, name):
+        self.__name = name
 
     def _get_filtered_schema(self, schema, frames=False):
         if schema is None:

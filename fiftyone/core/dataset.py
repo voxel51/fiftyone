@@ -2844,7 +2844,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if view._root_dataset is not self:
             raise ValueError("Cannot save view into a different dataset")
-        view._set_name(name)
+
         url_name = self._validate_view_name(name, overwrite=overwrite)
 
         now = datetime.utcnow()
@@ -2865,6 +2865,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.views.append(view_doc)
         self._doc.save()
+
+        view._set_name(name)
 
     def get_view_info(self, name):
         """Loads the editable information about the saved view with the given
@@ -2951,6 +2953,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
         view = fov.DatasetView._build(self, stage_dicts)
         view._set_name(name)
+
         view_doc.last_loaded_at = datetime.utcnow()
         self._doc.save()
 
