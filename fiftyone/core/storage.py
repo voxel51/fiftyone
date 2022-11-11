@@ -39,6 +39,7 @@ s3_client = None
 gcs_client = None
 minio_client = None
 http_client = None
+bucket_clients = {}
 client_lock = threading.Lock()
 
 minio_alias_prefix = None
@@ -79,8 +80,19 @@ class FileSystem(object):
     LOCAL = "local"
 
 
+_FILE_SYSTEMS_WITH_BUCKETS = {FileSystem.S3, FileSystem.GCS, FileSystem.MINIO}
+
+
 class S3StorageClient(etast.S3StorageClient):
     """.. autoclass:: eta.core.storage.S3StorageClient"""
+
+    def __init__(self, _prefix=None, **kwargs):
+        super().__init__(**kwargs)
+        self._prefix = _prefix
+
+    @property
+    def prefix(self):
+        return self._prefix
 
     def get_local_path(self, remote_path):
         return self._strip_prefix(remote_path)
@@ -89,12 +101,28 @@ class S3StorageClient(etast.S3StorageClient):
 class GoogleCloudStorageClient(etast.GoogleCloudStorageClient):
     """.. autoclass:: eta.core.storage.GoogleCloudStorageClient"""
 
+    def __init__(self, _prefix=None, **kwargs):
+        super().__init__(**kwargs)
+        self._prefix = _prefix
+
+    @property
+    def prefix(self):
+        return self._prefix
+
     def get_local_path(self, remote_path):
         return self._strip_prefix(remote_path)
 
 
 class MinIOStorageClient(etast.MinIOStorageClient):
     """.. autoclass:: eta.core.storage.MinIOStorageClient"""
+
+    def __init__(self, _prefix=None, **kwargs):
+        super().__init__(**kwargs)
+        self._prefix = _prefix
+
+    @property
+    def prefix(self):
+        return self._prefix
 
     def get_local_path(self, remote_path):
         return self._strip_prefix(remote_path)
@@ -209,11 +237,11 @@ def get_bucket_name(path):
         the bucket name string
     """
     fs = get_file_system(path)
-    if fs not in [FileSystem.S3, FileSystem.GCS, FileSystem.MINIO]:
+    if fs not in _FILE_SYSTEMS_WITH_BUCKETS:
         return ""
 
     path = split_prefix(path)[1]
-    return path.split(sep(path))[0]
+    return path.split("/")[0]
 
 
 def is_local(path):
@@ -264,22 +292,57 @@ def normalize_path(path):
     return path.rstrip("/")
 
 
-def get_client(fs):
-    """Returns the storage client for the given file system.
+def get_client(fs=None, path=None):
+    """Returns the storage client for the given file system or path.
+
+    If a ``path`` is provided, a bucket-specific client is returned, if one is
+    available. Otherwise, the client for the given file system is returned.
 
     Args:
-        fs: a :class:`FileSystem` enum
+        fs (None): a :class:`FileSystem` value
+        path (None): a path
 
     Returns:
         a :class:`eta.core.storage.StorageClient`
+
+    Raises:
+        ValueError: if no suitable client could be constructed
     """
     # Client creation may not be thread-safe, so we lock for safety
     # https://stackoverflow.com/a/61943955/16823653
     with client_lock:
-        return _get_client(fs)
+        return _get_client(fs=fs, path=path)
 
 
-def _get_client(fs):
+def _get_client(fs=None, path=None):
+    if path is not None:
+        fs = get_file_system(path)
+    elif fs is None:
+        raise ValueError("You must provide either a file system or a path")
+
+    # Return bucket credentials, if possible
+    if path is not None and fs in _FILE_SYSTEMS_WITH_BUCKETS:
+        global bucket_clients
+
+        if fs not in bucket_clients:
+            bucket_clients[fs] = {}
+
+        _path = split_prefix(path)[1]
+        _bucket_clients = bucket_clients[fs]
+
+        for prefix, bucket_client in _bucket_clients.items():
+            if _path.startswith(prefix):
+                return bucket_client
+
+        bucket_credentials = _get_bucket_credentials(fs, _path)
+
+        if bucket_credentials is not None:
+            prefix = bucket_credentials.prefix
+            bucket_client = _make_bucket_client(bucket_credentials)
+            _bucket_clients[prefix] = bucket_client
+            return bucket_client
+
+    # Otherwise fallback to file system credentials
     if fs == FileSystem.S3:
         global s3_client
 
@@ -334,7 +397,7 @@ def get_url(path, **kwargs):
     if fs == FileSystem.HTTP:
         return path
 
-    client = get_client(fs)
+    client = get_client(path=path)
 
     if not hasattr(client, "generate_signed_url"):
         raise ValueError(
@@ -945,7 +1008,7 @@ def open_file(path, mode="r"):
 
         return
 
-    client = get_client(fs)
+    client = get_client(path=path)
     is_writing = mode in ("w", "wb")
 
     if mode == "r":
@@ -1108,7 +1171,7 @@ def exists(path):
     if fs == FileSystem.LOCAL:
         return os.path.exists(path)
 
-    client = get_client(fs)
+    client = get_client(path=path)
 
     if os.path.splitext(path)[1]:
         return client.is_file(path)
@@ -1130,7 +1193,7 @@ def isfile(path):
     if fs == FileSystem.LOCAL:
         return os.path.isfile(path)
 
-    client = get_client(fs)
+    client = get_client(path=path)
     return client.is_file(path)
 
 
@@ -1150,7 +1213,7 @@ def isdir(dirpath):
     if fs == FileSystem.LOCAL:
         return os.path.isdir(dirpath)
 
-    client = get_client(fs)
+    client = get_client(path=dirpath)
     return client.is_folder(dirpath)
 
 
@@ -1218,7 +1281,7 @@ def ensure_empty_dir(dirpath, cleanup=False):
         etau.ensure_empty_dir(dirpath, cleanup=cleanup)
         return
 
-    client = get_client(fs)
+    client = get_client(path=dirpath)
 
     if cleanup:
         client.delete_folder(dirpath)
@@ -1379,7 +1442,7 @@ def list_files(
             sort=sort,
         )
 
-    client = get_client(fs)
+    client = get_client(path=dirpath)
 
     filepaths = client.list_files_in_folder(dirpath, recursive=recursive)
 
@@ -1444,12 +1507,12 @@ def get_glob_matches(glob_patt):
     if fs == FileSystem.LOCAL:
         return etau.get_glob_matches(glob_patt)
 
-    client = get_client(fs)
-
     root, found_special = get_glob_root(glob_patt)
 
     if not found_special:
         return [glob_patt]
+
+    client = get_client(path=root)
 
     filepaths = client.list_files_in_folder(root, recursive=True)
     return sorted(
@@ -1647,7 +1710,7 @@ def delete_dir(dirpath):
         etau.delete_dir(dirpath)
         return
 
-    client = get_client(fs)
+    client = get_client(path=dirpath)
     client.delete_folder(dirpath)
 
 
@@ -1709,8 +1772,7 @@ def upload_media(
     remote_paths = [paths_map[f] for f in filepaths]
 
     if not overwrite:
-        fs = get_file_system(remote_dir)
-        client = get_client(fs)
+        client = get_client(path=remote_dir)
         existing = set(client.list_files_in_folder(remote_dir, recursive=True))
         paths_map = {f: r for f, r in paths_map.items() if r not in existing}
 
@@ -1786,6 +1848,72 @@ def _make_client(fs, num_workers=None):
         return HTTPStorageClient(**kwargs)
 
     raise ValueError("Unsupported file system '%s'" % fs)
+
+
+def _make_bucket_client(bucket_credentials, num_workers=None):
+    if num_workers is None:
+        num_workers = fo.media_cache_config.num_workers
+
+    kwargs = {}
+
+    if num_workers is not None and num_workers > 10:
+        kwargs["max_pool_connections"] = num_workers
+
+    fs = bucket_credentials.file_system
+    prefix = bucket_credentials.prefix
+
+    if fs == FileSystem.S3:
+        credentials = _load_s3_bucket_credentials(bucket_credentials)
+        return S3StorageClient(
+            credentials=credentials, _prefix=prefix, **kwargs
+        )
+
+    if fs == FileSystem.GCS:
+        credentials = _load_gcs_bucket_credentials(bucket_credentials)
+        return GoogleCloudStorageClient(
+            credentials=credentials, _prefix=prefix, **kwargs
+        )
+
+    if fs == FileSystem.MINIO:
+        credentials = _load_minio_bucket_credentials(bucket_credentials)
+        return MinIOStorageClient(
+            credentials=credentials, _prefix=prefix, **kwargs
+        )
+
+    raise ValueError(
+        "Unsupported file system '%s'" % bucket_credentials.file_system
+    )
+
+
+def _get_bucket_credentials(fs, path):
+    for bc in fo.media_cache_config.bucket_credentials:
+        if bc.file_system == fs and path.startswith(bc.prefix):
+            return bc
+
+    return None
+
+
+def _load_s3_bucket_credentials(bucket_credentials):
+    credentials, _ = S3StorageClient.load_credentials(
+        credentials_path=bucket_credentials.config_file,
+        profile=bucket_credentials.profile,
+    )
+    return credentials
+
+
+def _load_gcs_bucket_credentials(bucket_credentials):
+    credentials, _ = GoogleCloudStorageClient.load_credentials(
+        credentials_path=bucket_credentials.config_file
+    )
+    return credentials
+
+
+def _load_minio_bucket_credentials(bucket_credentials):
+    credentials, _ = MinIOStorageClient.load_credentials(
+        credentials_path=bucket_credentials.config_file,
+        profile=bucket_credentials.profile,
+    )
+    return credentials
 
 
 def _load_s3_credentials():
@@ -1886,21 +2014,21 @@ def _copy_file(inpath, outpath, cleanup=False):
                 shutil.copy(inpath, outpath)
         else:
             # Local -> remote
-            client = get_client(fso)
+            client = get_client(path=outpath)
             client.upload(inpath, outpath)
             if cleanup:
                 os.remove(inpath)
     elif fso == FileSystem.LOCAL:
         # Remote -> local
-        client = get_client(fsi)
+        client = get_client(path=inpath)
         client.download(inpath, outpath)
         if cleanup:
             client.delete(inpath)
     else:
         # Remote -> remote
-        clienti = get_client(fsi)
+        clienti = get_client(path=inpath)
         b = clienti.download_bytes(inpath)
-        cliento = get_client(fso)
+        cliento = get_client(path=outpath)
         cliento.upload_bytes(b, outpath)
         if cleanup:
             clienti.delete(inpath)
@@ -1913,7 +2041,7 @@ def _delete_file(filepath):
         etau.delete_file(filepath)
         return
 
-    client = get_client(fs)
+    client = get_client(path=filepath)
     client.delete(filepath)
 
 

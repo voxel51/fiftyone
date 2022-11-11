@@ -646,7 +646,13 @@ class MediaCacheConfig(EnvConfig):
             default=None,
         )
 
+        self.bucket_credentials = self._parse_bucket_credentials(d)
+
         self._set_defaults()
+
+    def _parse_bucket_credentials(self, d):
+        creds = d.get("bucket_credentials", [])
+        return [BucketCredentials(c) for c in creds]
 
     def _set_defaults(self):
         if self.cache_dir is None:
@@ -656,6 +662,16 @@ class MediaCacheConfig(EnvConfig):
 
         if self.num_workers is None:
             self.num_workers = multiprocessing.cpu_count()
+
+
+class BucketCredentials(Config):
+    """Per-bucket cloud credentials."""
+
+    def __init__(self, d):
+        self.file_system = self.parse_string(d, "file_system")
+        self.prefix = self.parse_string(d, "prefix")
+        self.config_file = self.parse_string(d, "config_file")
+        self.profile = self.parse_string(d, "profile", default=None)
 
 
 def locate_config():
