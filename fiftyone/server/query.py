@@ -5,13 +5,13 @@ FiftyOne Server queries
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from re import S
 import typing as t
 from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import os
 
+import asyncio
 import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
@@ -22,13 +22,16 @@ from dacite import Config, from_dict
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
-import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
+from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
+import fiftyone.server.aggregate as fosa
+from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
+import fiftyone.server.events as fose
 from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
 from fiftyone.server.samples import (
@@ -37,6 +40,7 @@ from fiftyone.server.samples import (
     paginate_samples,
 )
 from fiftyone.server.scalars import BSONArray, JSON
+
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -63,15 +67,6 @@ class Target:
 class NamedTargets:
     name: str
     targets: t.List[Target]
-
-
-@gql.type
-class SampleField:
-    ftype: str
-    path: str
-    subfield: t.Optional[str]
-    embedded_doc_type: t.Optional[str]
-    db_field: t.Optional[str]
 
 
 @gql.interface
@@ -116,6 +111,7 @@ class EvaluationRun(Run):
 class SidebarGroup:
     name: str
     paths: t.Optional[t.List[str]]
+    expanded: t.Optional[bool] = True
 
 
 @gql.type
@@ -129,11 +125,19 @@ class NamedKeypointSkeleton(KeypointSkeleton):
     name: str
 
 
+@gql.enum
+class SidebarMode(Enum):
+    all = "all"
+    best = "best"
+    fast = "fast"
+
+
 @gql.type
 class DatasetAppConfig:
     media_fields: t.List[str]
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
+    sidebar_mode: t.Optional[SidebarMode]
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
 
@@ -153,7 +157,7 @@ class Dataset:
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]
-    frame_fields: t.List[SampleField]
+    frame_fields: t.Optional[t.List[SampleField]]
     brain_methods: t.List[BrainRun]
     evaluations: t.List[EvaluationRun]
     version: t.Optional[str]
@@ -161,6 +165,7 @@ class Dataset:
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
+    info: t.Optional[JSON]
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -169,7 +174,7 @@ class Dataset:
             doc.get("default_mask_targets", {})
         )
         doc["mask_targets"] = [
-            NamedTargets(name, _convert_targets(targets))
+            NamedTargets(name=name, targets=_convert_targets(targets))
             for name, targets in doc.get("mask_targets", {}).items()
         ]
         doc["sample_fields"] = _flatten_fields([], doc["sample_fields"])
@@ -181,7 +186,7 @@ class Dataset:
             for name, data in doc.get("skeletons", {}).items()
         )
         doc["group_media_types"] = [
-            Group(name, media_type)
+            Group(name=name, media_type=media_type)
             for name, media_type in doc.get("group_media_types", {}).items()
         ]
         doc["default_skeletons"] = doc.get("default_skeletons", None)
@@ -191,42 +196,7 @@ class Dataset:
     async def resolver(
         cls, name: str, view: t.Optional[BSONArray], info: Info
     ) -> t.Optional["Dataset"]:
-        assert info is not None
-        dataset = await dataset_dataloader(name, info)
-        if dataset is None:
-            return dataset
-
-        ds = fo.load_dataset(name)
-        ds.reload()
-        view = fov.DatasetView._build(ds, view or [])
-        if view._dataset != ds:
-            d = view._dataset._serialize()
-            dataset.id = view._dataset._doc.id
-            dataset.media_type = d["media_type"]
-            dataset.sample_fields = [
-                from_dict(SampleField, s)
-                for s in _flatten_fields([], d["sample_fields"])
-            ]
-            dataset.frame_fields = [
-                from_dict(SampleField, s)
-                for s in _flatten_fields([], d.get("frame_fields", []))
-            ]
-
-            dataset.view_cls = etau.get_class_name(view)
-
-        if view.media_type != ds.media_type:
-            dataset.id = ObjectId()
-            dataset.media_type = view.media_type
-
-        if dataset.media_type == fom.GROUP:
-            dataset.group_slice = view.group_slice
-
-        # old dataset docs, e.g. from imports have frame fields attached even for
-        # image datasets. we need to remove them
-        if dataset.media_type == fom.IMAGE:
-            dataset.frame_fields = []
-
-        return dataset
+        return await serialize_dataset(name, view)
 
 
 dataset_dataloader = get_dataloader_resolver(
@@ -239,6 +209,13 @@ class ColorBy(Enum):
     field = "field"
     instance = "instance"
     label = "label"
+
+
+@gql.enum
+class Theme(Enum):
+    browser = "browser"
+    dark = "dark"
+    light = "light"
 
 
 @gql.type
@@ -255,12 +232,17 @@ class AppConfig:
     show_label: bool
     show_skeletons: bool
     show_tooltip: bool
+    sidebar_mode: SidebarMode
+    theme: Theme
     timezone: t.Optional[str]
     use_frame_number: bool
 
 
 @gql.type
-class Query:
+class Query(fosa.AggregateQuery):
+
+    aggregations = gql.field(resolver=aggregate_resolver)
+
     @gql.field
     def colorscale(self) -> t.Optional[t.List[t.List[int]]]:
         if fo.app_config.colorscale:
@@ -270,7 +252,8 @@ class Query:
 
     @gql.field
     def config(self) -> AppConfig:
-        d = fo.app_config.serialize()
+        config = fose.get_state().config
+        d = config.serialize()
         d["timezone"] = fo.config.timezone
         return from_dict(AppConfig, d, config=Config(check_types=False))
 
@@ -338,47 +321,6 @@ class Query:
         return foc.VERSION
 
 
-def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
-    doc = dataset._doc.to_dict()
-    Dataset.modifier(doc)
-    data = from_dict(Dataset, doc, config=Config(check_types=False))
-    data.view_cls = None
-
-    collection = dataset.view()
-    if view is not None:
-        if view._dataset != dataset:
-            d = view._dataset._serialize()
-            data.media_type = d["media_type"]
-
-            data.id = view._dataset._doc.id
-            data.sample_fields = [
-                from_dict(SampleField, s)
-                for s in _flatten_fields([], d["sample_fields"])
-            ]
-            data.frame_fields = [
-                from_dict(SampleField, s)
-                for s in _flatten_fields([], d["frame_fields"])
-            ]
-
-            data.view_cls = etau.get_class_name(view)
-
-        if view.media_type != data.media_type:
-            data.id = ObjectId()
-            data.media_type = view.media_type
-
-        collection = view
-
-    if dataset.media_type == fom.GROUP:
-        data.group_slice = collection.group_slice
-
-    # old dataset docs, e.g. from imports have frame fields attached even for
-    # image datasets. we need to remove them
-    if dataset.media_type != fom.VIDEO:
-        data.frame_fields = []
-
-    return asdict(data)
-
-
 def _flatten_fields(
     path: t.List[str], fields: t.List[t.Dict]
 ) -> t.List[t.Dict]:
@@ -397,4 +339,48 @@ def _flatten_fields(
 
 
 def _convert_targets(targets: t.Dict[str, str]) -> Target:
-    return [Target(value=v, target=int(k)) for k, v in targets.items()]
+    return [Target(target=int(k), value=v) for k, v in targets.items()]
+
+
+async def serialize_dataset(name: str, serialized_view: BSONArray) -> Dataset:
+    def run():
+        dataset = fo.load_dataset(name)
+        dataset.reload()
+        view = fov.DatasetView._build(dataset, serialized_view or [])
+
+        doc = dataset._doc.to_dict()
+        Dataset.modifier(doc)
+        data = from_dict(Dataset, doc, config=Config(check_types=False))
+        data.view_cls = None
+
+        collection = dataset.view()
+        if view is not None:
+            if view._dataset != dataset:
+                d = view._dataset._serialize()
+                data.media_type = d["media_type"]
+
+                data.id = view._dataset._doc.id
+
+                data.view_cls = etau.get_class_name(view)
+
+            if view.media_type != data.media_type:
+                data.id = ObjectId()
+                data.media_type = view.media_type
+
+            collection = view
+
+        data.sample_fields = serialize_fields(
+            collection.get_field_schema(flat=True)
+        )
+        data.frame_fields = serialize_fields(
+            collection.get_frame_field_schema(flat=True)
+        )
+
+        if dataset.media_type == fom.GROUP:
+            data.group_slice = collection.group_slice
+
+        return data
+
+    loop = asyncio.get_running_loop()
+
+    return await loop.run_in_executor(None, run)

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<834054b17e431ba1b208fb4df817f662>>
+ * @generated SignedSource<<5dd66d8bb092f30a878ecc8d1737dd8d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -29,7 +29,7 @@ export type mainSampleQuery$data = {
     readonly sample?: object;
     readonly urls?: ReadonlyArray<{
       readonly field: string;
-      readonly url: string;
+      readonly url: string | null;
     }>;
   } | null;
 };

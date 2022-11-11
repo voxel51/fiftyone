@@ -1,26 +1,26 @@
 {
-    "name": "@fiftyone/flashlight",
-    "version": "0.2.0",
-    "author": "Voxel51, Inc.",
-    "description": "Justified, scrubbable, and virtualized looker grid",
-    "homepage": "https://github.com/voxel51/fiftyone/app/packages/flashlight",
-    "license": "Apache-2.0",
-    "bugs": {
-        "url": "https://github.com/voxel51/fiftyone"
-    },
-    "main": "./src/index.ts",
-    "scripts": {
-        "dev": "vite"
-    },
-    "private": true,
-    "files": [
-        "dist",
-        "README.md"
-    ],
-    "devDependencies": {
-        "prettier": "^2.7.1",
-        "typescript": "^4.7.4",
-        "typescript-plugin-css-modules": "^3.4.0",
-        "vite": "^3.0.0"
-    }
+  "name": "@fiftyone/flashlight",
+  "version": "0.0.0",
+  "author": "Voxel51, Inc.",
+  "description": "Justified, scrubbable, and virtualized looker grid",
+  "homepage": "https://github.com/voxel51/fiftyone/app/packages/flashlight",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/voxel51/fiftyone"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "vite"
+  },
+  "private": true,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "devDependencies": {
+    "prettier": "^2.7.1",
+    "typescript": "^4.7.4",
+    "typescript-plugin-css-modules": "^3.4.0",
+    "vite": "^3.0.0"
+  }
 }

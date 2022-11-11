@@ -98,13 +98,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/desktop-v.*-rc\..*$ ]]; then
-             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
-             echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
-          else
-             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
-             echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
-          fi
+          echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
+          echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
       - name: Upload to pypi
         env:
           TWINE_USERNAME: __token__

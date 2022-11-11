@@ -21,13 +21,11 @@ export type Range = [number | null | undefined, number | null | undefined];
 const getFilter = (
   get: GetRecoilValue,
   modal: boolean,
-  path: string,
-  defaultRange?: Range
+  path: string
 ): NumericFilter => {
-  const bounds = get(boundsAtom({ path, defaultRange }));
   const result = {
     _CLS: "numeric",
-    range: bounds,
+    range: [null, null] as Range,
     none: true,
     nan: true,
     inf: true,
@@ -39,9 +37,9 @@ const getFilter = (
   return result;
 };
 
-const meetsDefault = (filter: NumericFilter, bounds: Range) => {
+const meetsDefault = (filter: NumericFilter) => {
   return (
-    filter.range.every((r, i) => r === bounds[i]) &&
+    filter.range.every((r) => r === null) &&
     filter.none &&
     filter.nan &&
     filter.inf &&
@@ -56,13 +54,11 @@ const setFilter = (
   modal: boolean,
   path: string,
   key: string,
-  value: boolean | Range | DefaultValue,
-  defaultRange?: Range
+  value: boolean | Range | DefaultValue
 ) => {
-  const bounds = get(boundsAtom({ path, defaultRange }));
   const filter = {
-    range: bounds,
-    ...getFilter(get, modal, path, defaultRange),
+    range: [null, null] as Range,
+    ...getFilter(get, modal, path),
     [key]: value,
     _CLS: "numeric",
   };
@@ -72,8 +68,8 @@ const setFilter = (
     [key]: value,
   };
 
-  const isDefault = meetsDefault(check, bounds);
-  if (!isDefault && meetsDefault({ ...check, range: bounds }, bounds)) {
+  const isDefault = meetsDefault(check);
+  if (!isDefault && meetsDefault({ ...check, range: [null, null] })) {
     set(filterAtoms.filter({ modal, path }), {
       range: filter.range,
       _CLS: "numeric",
@@ -126,25 +122,30 @@ export const rangeAtom = selectorFamily<
     defaultRange?: Range;
     modal: boolean;
     path: string;
+    withBounds?: boolean;
   }
 >({
   key: "filterNumericFieldRange",
   get:
-    ({ defaultRange, modal, path }) =>
+    ({ modal, path, defaultRange, withBounds }) =>
     ({ get }) => {
-      return getFilter(get, modal, path, defaultRange).range;
+      const range = getFilter(get, modal, path).range;
+      if (withBounds && range.every((r) => r === null)) {
+        return get(boundsAtom({ path, defaultRange }));
+      }
+
+      return range;
     },
   set:
-    ({ defaultRange, modal, path }) =>
+    ({ modal, path }) =>
     ({ get, set }, range) => {
-      setFilter(get, set, modal, path, "range", range, defaultRange);
+      setFilter(get, set, modal, path, "range", range);
     },
 });
 
 export const nonfiniteAtom = selectorFamily<
   boolean,
   {
-    defaultRange?: Range;
     modal: boolean;
     path: string;
     key: "nan" | "none" | "inf" | "ninf";
@@ -152,13 +153,13 @@ export const nonfiniteAtom = selectorFamily<
 >({
   key: "nonfiniteAtom",
   get:
-    ({ defaultRange, modal, path, key }) =>
+    ({ modal, path, key }) =>
     ({ get }) =>
-      getFilter(get, modal, path, defaultRange)[key],
+      getFilter(get, modal, path)[key],
   set:
-    ({ defaultRange, modal, path, key }) =>
+    ({ modal, path, key }) =>
     ({ get, set }, value) =>
-      setFilter(get, set, modal, path, key, value, defaultRange),
+      setFilter(get, set, modal, path, key, value),
 });
 
 export const excludeAtom = selectorFamily<
@@ -171,14 +172,14 @@ export const excludeAtom = selectorFamily<
 >({
   key: "filterNumericFieldExclude",
   get:
-    ({ modal, path, defaultRange }) =>
+    ({ modal, path }) =>
     ({ get }) => {
-      return getFilter(get, modal, path, defaultRange).exclude;
+      return getFilter(get, modal, path).exclude;
     },
   set:
     ({ modal, path, defaultRange }) =>
     ({ get, set }, value) => {
-      setFilter(get, set, modal, path, "exclude", value, defaultRange);
+      setFilter(get, set, modal, path, "exclude", value);
     },
 });
 
@@ -192,12 +193,9 @@ export const numericFieldIsFiltered = selectorFamily<
 >({
   key: "numericFieldIsFiltered",
   get:
-    ({ path, defaultRange, modal }) =>
+    ({ path, modal }) =>
     ({ get }) =>
-      !meetsDefault(
-        getFilter(get, Boolean(modal), path, defaultRange),
-        get(boundsAtom({ path, defaultRange }))
-      ),
+      !meetsDefault(getFilter(get, Boolean(modal), path)),
 });
 
 export const isDefaultRange = selectorFamily<

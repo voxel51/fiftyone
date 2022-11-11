@@ -16,7 +16,6 @@ const Header = styled.div`
   display: flex;
   font-weight: bold;
   width: 100%;
-  cursor: pointer;
   flex: 1;
 `;
 
@@ -28,7 +27,8 @@ type RegularEntryProps = React.PropsWithChildren<{
   heading: ReactNode;
   left?: boolean;
   onClick?: MouseEventHandler;
-  title: string;
+  onHeaderClick?: MouseEventHandler<HTMLDivElement>;
+  title?: string;
   trigger?: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
@@ -47,33 +47,43 @@ const RegularEntry = React.forwardRef(
       heading,
       left = false,
       onClick,
+      onHeaderClick,
       title,
       trigger,
     }: RegularEntryProps,
     ref
   ) => {
-    const canCommit = useRef(false);
+    const headerRef = useRef();
 
     return (
       <Container
         ref={ref}
-        onMouseDown={() => {
-          canCommit.current = true;
-        }}
-        onMouseMove={() => {
-          canCommit.current && (canCommit.current = false);
-        }}
-        onMouseUp={(event) => {
-          canCommit.current && onClick && onClick(event);
-        }}
+        onClick={onClick}
         style={{
           backgroundColor,
           cursor: clickable ? "pointer" : "unset",
         }}
         title={title}
+        onMouseUp={(event) => {
+          if (!onHeaderClick) return;
+          const validTarget =
+            headerRef.current.contains(event.target) ||
+            event.target === headerRef.current;
+          if (validTarget) {
+            onHeaderClick(event);
+          }
+        }}
       >
-        <Draggable color={color} entryKey={entryKey} trigger={trigger}>
-          <Header style={{ justifyContent: left ? "left" : "space-between" }}>
+        <Draggable
+          color={color}
+          entryKey={entryKey}
+          trigger={trigger}
+          onMouseUp={(e) => e.stopPropagation()}
+        >
+          <Header
+            ref={headerRef}
+            style={{ justifyContent: left ? "left" : "space-between" }}
+          >
             {heading}
           </Header>
           {children}

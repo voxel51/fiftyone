@@ -4,7 +4,6 @@ import styled from "styled-components";
 import { animated, useSpring } from "@react-spring/web";
 
 import { ContentDiv, ContentHeader } from "../utils";
-import { useEventHandler } from "@fiftyone/utilities";
 import * as fos from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 
@@ -27,14 +26,14 @@ const ContentItemDiv = styled.div`
 const ContentValue = styled.div`
   font-size: 0.8rem;
   font-weight: bold;
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.text.primary};
 `;
 
 const ContentName = styled.div`
   font-size: 0.7rem;
   font-weight: bold;
   padding-bottom: 0.3rem;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.text.secondary};
 `;
 
 const ContentItem = ({
@@ -143,7 +142,7 @@ const Border = ({ color, id }) => {
 };
 
 const BorderDiv = styled.div`
-  border-top: 2px solid ${({ theme }) => theme.font};
+  border-top: 2px solid ${({ theme }) => theme.text.primary};
   width: 100%;
   padding: 0.5rem 0 0;
 `;

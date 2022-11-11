@@ -21,12 +21,14 @@ import ExcludeOption from "./Exclude";
 import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import withSuspense from "./withSuspense";
+import FieldLabelAndInfo from "../FieldLabelAndInfo";
 
 const CategoricalFilterContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid #191c1f;
+  background: ${({ theme }) => theme.background.level2};
+  border: 1px solid var(--joy-palette-divider);
   border-radius: 2px;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
   position: relative;
@@ -317,11 +319,9 @@ export const isKeypointLabel = selectorFamily<boolean, string>({
   get:
     (path) =>
     ({ get }) => {
-      const { CountValues } = get(
-        fos.aggregations({ modal: false, extended: false })
-      )[path] as fos.CategoricalAggregations;
+      const field = get(fos.field(path));
 
-      if (!CountValues) {
+      if (!field) {
         const keys = path.split(".");
         let parent = keys[0];
 
@@ -353,22 +353,46 @@ const CategoricalFilter = <T extends V = V>({
 }: Props<T>) => {
   const name = path.split(".").slice(-1)[0];
   const color = useRecoilValue(fos.pathColor({ modal, path }));
-  const countsLoadable = useRecoilValueLoadable(countsAtom);
   const selectedCounts = useRef(new Map<V["value"], number>());
   const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
   const useSearch = getUseSearch({ modal, path });
   const skeleton = useRecoilValue(isKeypointLabel(path));
   const theme = useTheme();
+  const field = useRecoilValue(fos.field(path));
+  const countsLoadable = useRecoilValueLoadable(countsAtom);
 
   if (countsLoadable.state !== "hasValue") return null;
 
   const { count, results } = countsLoadable.contents;
 
+  if (named && !results.length) {
+    return null;
+  }
+
   return (
-    <NamedCategoricalFilterContainer title={title}>
-      <NamedCategoricalFilterHeader>
-        {named && name && <>{name.replaceAll("_", " ")}</>}
-      </NamedCategoricalFilterHeader>
+    <NamedCategoricalFilterContainer
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
+    >
+      {named && (
+        <FieldLabelAndInfo
+          nested
+          field={field}
+          color={color}
+          template={({
+            label,
+            hoverHanlders,
+            FieldInfoIcon,
+            hoverTarget,
+            container,
+          }) => (
+            <NamedCategoricalFilterHeader>
+              <span ref={hoverTarget}>{label}</span>
+            </NamedCategoricalFilterHeader>
+          )}
+        />
+      )}
       <CategoricalFilterContainer
         onMouseDown={(event) => event.stopPropagation()}
       >
@@ -381,7 +405,7 @@ const CategoricalFilter = <T extends V = V>({
             component={ResultComponent}
             onSelect={onSelect}
             inputStyle={{
-              color: theme.fontDark,
+              color: theme.text.secondary,
               fontSize: "1rem",
               width: "100%",
             }}
@@ -404,4 +428,4 @@ const CategoricalFilter = <T extends V = V>({
   );
 };
 
-export default CategoricalFilter;
+export default withSuspense(CategoricalFilter);

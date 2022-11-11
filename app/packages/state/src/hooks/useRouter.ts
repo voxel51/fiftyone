@@ -1,5 +1,5 @@
 import { Environment } from "relay-runtime";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef } from "react";
 
 import {
   RouteDefinition,
@@ -8,20 +8,26 @@ import {
   getEnvironment,
 } from "../routing";
 
+let currentEnvironment: Environment = null;
+
+export const getCurrentEnvironment = () => {
+  return currentEnvironment;
+};
+
 const useRouter = (
   makeRoutes: (environment: Environment) => RouteDefinition[],
   deps?: React.DependencyList | undefined
 ) => {
-  const [environment] = useState(getEnvironment);
   const router = useRef<Router<any>>();
 
   router.current = useMemo(() => {
+    currentEnvironment = getEnvironment();
     router.current && router.current.cleanup();
 
-    return createRouter(environment, makeRoutes(environment));
-  }, [environment, ...(deps || [])]);
+    return createRouter(currentEnvironment, makeRoutes(currentEnvironment));
+  }, [...(deps || [])]);
 
-  return { context: router.current.context, environment };
+  return { context: router.current.context, environment: currentEnvironment };
 };
 
 export default useRouter;

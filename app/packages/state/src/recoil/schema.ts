@@ -1,6 +1,9 @@
 import { atomFamily, selector, selectorFamily } from "recoil";
 
 import {
+  DETECTION,
+  DETECTIONS,
+  EMBEDDED_DOCUMENT_FIELD,
   Field,
   LABELS,
   LABELS_PATH,
@@ -10,23 +13,12 @@ import {
   meetsFieldType,
   Schema,
   StrictField,
+  VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
 
 import * as atoms from "./atoms";
 import { State } from "./types";
-import * as viewAtoms from "./view";
-import { isGroup } from "./groups";
-
-const RESERVED_FIELDS = [
-  "id",
-  "filepath",
-  "_rand",
-  "_media_type",
-  "metadata",
-  "tags",
-  "frames",
-];
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name] = {
@@ -75,51 +67,10 @@ export const buildSchema = (dataset: State.Dataset): Schema => {
   return schema;
 };
 
-const fieldFilter = (
-  fields: Schema,
-  view: State.Stage[],
-  space: State.SPACE,
-  isGroup: boolean
-) => {
-  view.forEach(({ _cls, kwargs }) => {
-    if (_cls === "fiftyone.core.stages.SelectFields") {
-      const supplied = kwargs[0][1] || [];
-      let names = new Set([...(supplied as []), ...RESERVED_FIELDS]);
-      if (space === State.SPACE.FRAME)
-        names = new Set(
-          Array.from(names).map((n) => n.slice("frames.".length))
-        );
-
-      Object.keys(fields).forEach(
-        (f) =>
-          !names.has(f) &&
-          (fields[f].embeddedDocType !== "fiftyone.core.groups.Group" ||
-            !isGroup) &&
-          delete fields[f]
-      );
-    } else if (_cls === "fiftyone.core.stages.ExcludeFields") {
-      const supplied = kwargs[0][1] || [];
-      let names = Array.from(supplied as string[]);
-
-      if (space === State.SPACE.FRAME)
-        names = names.map((n) => n.slice("frames.".length));
-
-      names.forEach(
-        (f) =>
-          fields[f].embeddedDocType !== "fiftyone.core.groups.Group" &&
-          delete fields[f]
-      );
-    }
-  });
-};
-
-export const fieldSchema = selectorFamily<
-  Schema,
-  { space: State.SPACE; filtered?: boolean }
->({
+export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
   key: "fieldSchema",
   get:
-    ({ space, filtered }) =>
+    ({ space }) =>
     ({ get }) => {
       const dataset = get(atoms.dataset);
 
@@ -130,8 +81,6 @@ export const fieldSchema = selectorFamily<
       const fields = (
         space === State.SPACE.FRAME ? dataset.frameFields : dataset.sampleFields
       ).reduce(schemaReduce, {});
-
-      filtered && fieldFilter(fields, get(viewAtoms.view), space, get(isGroup));
 
       return fields;
     },
@@ -147,12 +96,10 @@ export const pathIsShown = selectorFamily<boolean, string>({
       }
 
       let keys = path.split(".");
-      let schema = get(
-        fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
-      );
+      let schema = get(fieldSchema({ space: State.SPACE.SAMPLE }));
 
       if (keys[0] === "frames" && !(keys[0] in schema)) {
-        schema = get(fieldSchema({ space: State.SPACE.FRAME, filtered: true }));
+        schema = get(fieldSchema({ space: State.SPACE.FRAME }));
         keys = keys.slice(1);
       }
 
@@ -215,12 +162,12 @@ export const fieldPaths = selectorFamily<
       }
 
       const sampleLabels = Object.keys(
-        get(fieldSchema({ space: State.SPACE.SAMPLE, filtered: true }))
+        get(fieldSchema({ space: State.SPACE.SAMPLE }))
       )
         .filter((l) => !l.startsWith("_"))
         .sort();
       const frameLabels = Object.keys(
-        get(fieldSchema({ space: State.SPACE.FRAME, filtered: true }))
+        get(fieldSchema({ space: State.SPACE.FRAME }))
       )
         .filter((l) => !l.startsWith("_"))
         .map((l) => "frames." + l)
@@ -283,26 +230,33 @@ export const fields = selectorFamily<
     },
 });
 
-export const field = selectorFamily<Field, string>({
+export const field = selectorFamily<Field | null, string>({
   key: "field",
   get:
     (path) =>
     ({ get }) => {
-      if (path.startsWith("frames.")) {
-        const framePath = path.slice("frames.".length);
+      let keys = path.split(".");
+      if (keys[0] === "frames") {
+        keys = keys.slice(1);
 
-        let field: Field = null;
         let schema = get(fieldSchema({ space: State.SPACE.FRAME }));
-        for (const name of framePath.split(".")) {
+        let field: Field = {
+          name: "frames",
+          ftype: LIST_FIELD,
+          subfield: EMBEDDED_DOCUMENT_FIELD,
+          embeddedDocType: "FRAMES",
+          fields: schema,
+          dbField: null,
+        };
+        for (const name of keys) {
           if (schema[name]) {
             field = schema[name];
             schema = field.fields;
+          } else {
+            return null;
           }
         }
-
-        if (field) {
-          return field;
-        }
+        return field;
       }
 
       let field: Field = null;
@@ -311,6 +265,8 @@ export const field = selectorFamily<Field, string>({
         if (schema[name]) {
           field = schema[name];
           schema = field.fields;
+        } else {
+          return null;
         }
       }
 
@@ -567,3 +523,63 @@ export const fieldType = selectorFamily<
       return ftype;
     },
 });
+
+export const filterFields = selectorFamily<string[], string>({
+  key: "filterFields",
+  get:
+    (path) =>
+    ({ get }) => {
+      const keys = path.split(".");
+      const f = get(field(path));
+
+      if (
+        keys.length === 1 ||
+        (f.ftype === LIST_FIELD && f.subfield === EMBEDDED_DOCUMENT_FIELD)
+      ) {
+        return [path];
+      }
+
+      const parentPath = keys.slice(0, -1).join(".");
+      const parent = get(field(parentPath));
+      let topParentPath = parentPath;
+      if (parent.ftype === LIST_FIELD) {
+        topParentPath = parentPath.split(".").slice(0, -1).join(".");
+      }
+
+      const topParent = get(field(topParentPath));
+
+      const label = LABELS.includes(topParent?.embeddedDocType);
+      const excluded = EXCLUDED[topParent?.embeddedDocType] || [];
+
+      if (label && path.endsWith(".tags")) {
+        return [[parentPath, "tags"].join(".")];
+      }
+
+      return Object.entries(parent.fields)
+        .map(([name, data]) => ({ ...data, name }))
+        .filter(({ name, ftype, subfield }) => {
+          if (ftype === LIST_FIELD) {
+            ftype = subfield;
+          }
+
+          if (name.startsWith("_")) {
+            return false;
+          }
+
+          if (label && name === "tags") {
+            return false;
+          }
+
+          return (
+            !label ||
+            (!excluded.includes(name) && VALID_PRIMITIVE_TYPES.includes(ftype))
+          );
+        })
+        .map(({ name }) => [parentPath, name].join("."));
+    },
+});
+
+const EXCLUDED = {
+  [withPath(LABELS_PATH, DETECTION)]: ["bounding_box"],
+  [withPath(LABELS_PATH, DETECTIONS)]: ["bounding_box"],
+};

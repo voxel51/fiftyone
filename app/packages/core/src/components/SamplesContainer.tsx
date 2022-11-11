@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { Suspense, useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
@@ -7,6 +7,8 @@ import Grid from "./Grid";
 import ContainerHeader from "./ImageContainerHeader";
 import Sidebar, { Entries } from "./Sidebar";
 import * as fos from "@fiftyone/state";
+import { Loading } from "@fiftyone/components";
+import { activeFields } from "@fiftyone/state";
 
 const ContentColumn = styled.div`
   flex-grow: 1;
@@ -20,11 +22,11 @@ const Container = styled.div`
   justify-content: space-between;
   flex-grow: 1;
   overflow: hidden;
-  background: ${({ theme }) => theme.backgroundDark};
+  background: ${({ theme }) => theme.background.mediaSpace};
+  border-top: 1px ${({ theme }) => theme.primary.plainBorder} solid;
 `;
 
 const SamplesContainer = React.memo(() => {
-  const tagText = fos.useTagText(false);
   const showSidebar = useRecoilValue(fos.sidebarVisible(false));
   const disabled = useRecoilValue(fos.disabledPaths);
 
@@ -122,12 +124,14 @@ const SamplesContainer = React.memo(() => {
           return {
             children: (
               <Entries.Empty
-                text={
+                useText={
                   group === "tags"
-                    ? tagText.sample
+                    ? () => fos.useTagText(false)
                     : group === "label tags"
-                    ? tagText.label
-                    : "No fields"
+                    ? () => fos.useLabelTagText(false)
+                    : () => ({
+                        text: "No fields",
+                      })
                 }
                 key={key}
               />
@@ -138,7 +142,7 @@ const SamplesContainer = React.memo(() => {
           throw new Error("invalid entry");
       }
     },
-    [tagText]
+    []
   );
 
   return (

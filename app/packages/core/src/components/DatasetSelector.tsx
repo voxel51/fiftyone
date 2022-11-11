@@ -1,6 +1,11 @@
 import { Link, Selector } from "@fiftyone/components";
-import { datasetName, useSetDataset } from "@fiftyone/state";
-import React from "react";
+import {
+  datasetName,
+  getDatasetName,
+  RouterContext,
+  useSetDataset,
+} from "@fiftyone/state";
+import React, { useContext } from "react";
 import { useRecoilValue } from "recoil";
 
 const DatasetLink: React.FC<{ value: string; className: string }> = ({
@@ -19,6 +24,7 @@ const DatasetSelector: React.FC<{
 }> = ({ useSearch }) => {
   const setDataset = useSetDataset();
   const dataset = useRecoilValue(datasetName);
+  const context = useContext(RouterContext);
   return (
     <Selector<string>
       component={DatasetLink}
@@ -30,7 +36,7 @@ const DatasetSelector: React.FC<{
       }}
       overflow={true}
       useSearch={useSearch}
-      value={dataset || ""}
+      value={getDatasetName(context) || ""}
     />
   );
 };

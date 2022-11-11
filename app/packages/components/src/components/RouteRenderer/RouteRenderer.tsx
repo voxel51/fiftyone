@@ -1,3 +1,4 @@
+import { Entry, Route, RouteData, RoutingContext } from "@fiftyone/state";
 import { Resource } from "@fiftyone/utilities";
 import React, {
   PropsWithChildren,
@@ -8,9 +9,7 @@ import React, {
 } from "react";
 import { PreloadedQuery } from "react-relay";
 import { OperationType } from "relay-runtime";
-
-import { Route } from "..";
-import { RoutingContext, RouteData } from "../../routing";
+import Loading from "../Loading";
 
 const RouteHandler = <T extends OperationType | undefined = OperationType>(
   props: PropsWithChildren<{
@@ -24,26 +23,55 @@ const RouteHandler = <T extends OperationType | undefined = OperationType>(
   const Component = props.component.read();
   const { routeData, prepared } = props;
   return (
-    <Suspense fallback={null}>
-      <Component
-        routeData={routeData}
-        prepared={prepared && prepared.read()}
-        children={props.children}
-      />
-    </Suspense>
+    <Component
+      routeData={routeData}
+      prepared={prepared && prepared.read()}
+      children={props.children}
+    />
   );
 };
 
 const RouterRenderer: React.FC<{ router: RoutingContext }> = ({ router }) => {
   const [routeEntry, setRouteEntry] = useState(router.get());
+  const routeEntryRef = useRef(routeEntry);
+  routeEntryRef.current = routeEntry;
+  const [loadingEntry, setLoadingEntry] = useState<Entry<OperationType>>();
   useEffect(() => {
     const dispose = router.subscribe((nextEntry) => {
       setRouteEntry(nextEntry);
+      setLoadingEntry(routeEntryRef.current);
     });
+
     return () => dispose();
   }, [router]);
 
-  const reversedItems = [...routeEntry.entries].reverse();
+  return (
+    <Suspense
+      fallback={
+        loadingEntry ? (
+          <Routes routes={loadingEntry.entries} />
+        ) : (
+          <Loading>Pixelating...</Loading>
+        )
+      }
+    >
+      <Routes routes={routeEntry.entries} />
+    </Suspense>
+  );
+};
+
+const Routes = <T extends OperationType | undefined = OperationType>({
+  routes,
+}: {
+  routes: {
+    component: Resource<Route<T>>;
+    prepared?:
+      | Resource<PreloadedQuery<T extends undefined ? never : T>>
+      | undefined;
+    routeData?: RouteData<T>;
+  }[];
+}) => {
+  const reversedItems = [...routes].reverse();
 
   const firstItem = reversedItems[0];
   let routeComponent = (
@@ -65,7 +93,6 @@ const RouterRenderer: React.FC<{ router: RoutingContext }> = ({ router }) => {
       </RouteHandler>
     );
   }
-
   return <>{routeComponent}</>;
 };
 

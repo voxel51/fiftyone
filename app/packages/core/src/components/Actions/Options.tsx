@@ -1,6 +1,11 @@
 import React from "react";
-import { Autorenew, Check } from "@material-ui/icons";
-import { constSelector, useRecoilState, useRecoilValue } from "recoil";
+import { Autorenew, Check } from "@mui/icons-material";
+import {
+  constSelector,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 
 import Checkbox from "../Common/Checkbox";
 import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
@@ -10,7 +15,13 @@ import Popout from "./Popout";
 import { Slider } from "../Common/RangeSlider";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { groupStatistics, isGroup } from "@fiftyone/state";
+import {
+  configuredSidebarModeDefault,
+  groupStatistics,
+  isGroup,
+  sidebarMode,
+} from "@fiftyone/state";
+import RadioGroup from "../Common/RadioGroup";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
@@ -112,7 +123,7 @@ const Opacity = ({ modal }) => {
       <Slider
         valueAtom={fos.alpha(modal)}
         boundsAtom={constSelector([0, 1])}
-        color={theme.brand}
+        color={theme.primary.plainColor}
         showBounds={false}
         persistValue={false}
         showValue={false}
@@ -188,18 +199,10 @@ const MediaFields = ({ modal }) => {
   return (
     <>
       <PopoutSectionTitle>Media Field</PopoutSectionTitle>
-
-      <TabOption
-        active={selectedMediaField}
-        options={mediaFields.map((value) => {
-          return {
-            text: value,
-            title: `View Media with "${selectedMediaField}"`,
-            onClick: () => {
-              selectedMediaField !== value && setSelectedMediaField(value);
-            },
-          };
-        })}
+      <RadioGroup
+        choices={mediaFields}
+        value={selectedMediaField}
+        setValue={(v) => v !== selectedMediaField && setSelectedMediaField(v)}
       />
     </>
   );
@@ -223,6 +226,25 @@ const GroupStatistics = ({ modal }) => {
   );
 };
 
+const SidebarMode = ({ modal }) => {
+  const mode = useRecoilValue(configuredSidebarModeDefault(modal));
+  const setMode = useSetRecoilState(sidebarMode(modal));
+
+  return (
+    <>
+      <PopoutSectionTitle>Sidebar mode</PopoutSectionTitle>
+      <TabOption
+        active={mode}
+        options={["all", "best", "fast"].map((value) => ({
+          text: value,
+          title: value,
+          onClick: () => setMode(value as "all" | "best" | "fast"),
+        }))}
+      />
+    </>
+  );
+};
+
 type OptionsProps = {
   modal: boolean;
   bounds: [number, number];
@@ -232,14 +254,15 @@ const Options = ({ modal, bounds }: OptionsProps) => {
   const group = useRecoilValue(isGroup);
   return (
     <Popout modal={modal} bounds={bounds}>
-      {group && <GroupStatistics modal={modal} />}
-      <MediaFields modal={modal} />
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
       <Opacity modal={modal} />
-      <SortFilterResults modal={modal} />
+      {group && <GroupStatistics modal={modal} />}
       <Keypoints modal={modal} />
+      <MediaFields modal={modal} />
       <Patches modal={modal} />
+      {!modal && <SidebarMode modal={modal} />}
+      <SortFilterResults modal={modal} />
     </Popout>
   );
 };

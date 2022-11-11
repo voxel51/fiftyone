@@ -5,11 +5,11 @@ import {
   selectorFamily,
   useRecoilStateLoadable,
   useRecoilValue,
+  useRecoilValueLoadable,
 } from "recoil";
 import {
   DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
-  getFetchFunction,
   LABELS_PATH,
   LABEL_DOC_TYPES,
   LIST_FIELD,
@@ -23,14 +23,20 @@ import {
 import * as aggregationAtoms from "./aggregations";
 import {
   buildSchema,
+  field,
   fieldPaths,
   fields,
   filterPaths,
   pathIsShown,
 } from "./schema";
+
 import { State } from "./types";
 import * as viewAtoms from "./view";
-import { datasetName } from "./selectors";
+import { datasetName, isVideoDataset } from "./selectors";
+import { isLargeVideo, resolvedSidebarMode } from "./options";
+import { commitMutation, VariablesOf } from "react-relay";
+import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
+import { getCurrentEnvironment } from "../hooks/useRouter";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -63,28 +69,58 @@ export interface PathEntry {
 
 export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | InputEntry;
 
+export const readableTags = selectorFamily<
+  string[],
+  { group: "tags" | "label tags"; modal: boolean }
+>({
+  key: "readableTags",
+  get:
+    ({ modal, group }) =>
+    ({ get }) => {
+      if (!modal && !get(groupShown({ group, modal, loading: false }))) {
+        return [];
+      }
+
+      return get(
+        group === "label tags"
+          ? aggregationAtoms.cumulativeValues({
+              extended: false,
+              modal,
+              ...MATCH_LABEL_TAGS,
+            })
+          : aggregationAtoms.values({ extended: false, modal, path: "tags" })
+      );
+    },
+});
+
+export const useLabelTagText = (modal: boolean) => {
+  const loading =
+    useRecoilValueLoadable(readableTags({ modal, group: "label tags" }))
+      .state === "loading";
+
+  return { text: loading ? "Loading label tags" : "No label tags", loading };
+};
+
 export const useTagText = (modal: boolean) => {
   const { singular } = useRecoilValue(viewAtoms.elementNames);
-  const loadingTags = aggregationAtoms.useLoading({ extended: false, modal });
+  const loading =
+    useRecoilValueLoadable(readableTags({ modal, group: "tags" })).state ===
+    "loading";
 
-  if (loadingTags) {
-    return {
-      sample: `Loading ${singular} tags...`,
-      label: "Loading label tags...",
-    };
-  }
-
-  return { sample: `No ${singular} tags`, label: "No label tags" };
+  return {
+    text: loading ? `Loading ${singular} tags` : `No ${singular} tags`,
+    loading,
+  };
 };
 
 export const useEntries = (
   modal: boolean
 ): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const [entries, setEntries] = useRecoilStateLoadable(
-    sidebarEntries({ modal, loadingTags: false, filtered: true })
+    sidebarEntries({ modal, loading: false, filtered: true })
   );
   const loadingEntries = useRecoilValue(
-    sidebarEntries({ modal, loadingTags: true, filtered: true })
+    sidebarEntries({ modal, loading: true, filtered: true })
   );
 
   return [
@@ -127,13 +163,6 @@ export const RESERVED_GROUPS = new Set([
   "clips tags",
   "tags",
 ]);
-
-export const groupShown = atomFamily<boolean, { name: string; modal: boolean }>(
-  {
-    key: "sidebarGroupShown",
-    default: true,
-  }
-);
 
 const fieldsReducer =
   (ftypes: string[], docTypes: string[] = []) =>
@@ -183,20 +212,33 @@ const DEFAULT_VIDEO_GROUPS = [
   { name: "other", paths: [] },
 ];
 
-export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
-  let source = dataset?.appConfig?.sidebarGroups;
+export const resolveGroups = (
+  dataset: State.Dataset,
+  current?: State.SidebarGroup[]
+): State.SidebarGroup[] => {
+  let groups = JSON.parse(JSON.stringify(dataset?.appConfig?.sidebarGroups));
 
-  if (!source) {
-    source = dataset.frameFields.length
-      ? DEFAULT_VIDEO_GROUPS
-      : DEFAULT_IMAGE_GROUPS;
+  const expanded = current
+    ? current.reduce((map, { name, expanded }) => {
+        map[name] = expanded;
+        return map;
+      }, {})
+    : {};
+  if (!groups) {
+    groups = JSON.parse(
+      JSON.stringify(
+        dataset.frameFields.length ? DEFAULT_VIDEO_GROUPS : DEFAULT_IMAGE_GROUPS
+      )
+    );
   }
 
-  const groups = source.map(({ name, paths }) => [
-    name,
-    paths,
-  ]) as State.SidebarGroups;
-  const present = new Set(groups.map(([_, paths]) => paths).flat());
+  groups = groups.map((group) => {
+    return expanded[group.name] !== undefined
+      ? { ...group, expanded: expanded[group.name] }
+      : group;
+  });
+
+  const present = new Set(groups.map(({ paths }) => paths).flat());
 
   const updater = groupUpdater(groups, buildSchema(dataset));
 
@@ -221,7 +263,10 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
     dataset.sampleFields.map(({ name, ...rest }) => [name, rest])
   );
 
-  let other = dataset.sampleFields.reduce(fieldsReducer([DICT_FIELD]), []);
+  let other = dataset.sampleFields.reduce(
+    fieldsReducer([DICT_FIELD, null, undefined]),
+    []
+  );
 
   dataset.sampleFields
     .filter(({ embeddedDocType }) => !LABELS.includes(embeddedDocType))
@@ -235,7 +280,7 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
       other = [
         ...other,
         ...(fields[name].fields || [])
-          .reduce(fieldsReducer([DICT_FIELD]), [])
+          .reduce(fieldsReducer([DICT_FIELD, null, undefined]), [])
           .map((subfield) => `${name}.${subfield}`),
       ];
 
@@ -257,11 +302,11 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
   return groups;
 };
 
-const groupUpdater = (groups: State.SidebarGroups, schema: Schema) => {
-  const groupNames = groups.map(([name]) => name);
+const groupUpdater = (groups: State.SidebarGroup[], schema: Schema) => {
+  const groupNames = groups.map(({ name }) => name);
 
   for (let i = 0; i < groups.length; i++) {
-    groups[i][1] = filterPaths(groups[i][1], schema);
+    groups[i].paths = filterPaths(groups[i].paths, schema);
   }
 
   return (name: string, paths: string[]) => {
@@ -269,92 +314,120 @@ const groupUpdater = (groups: State.SidebarGroups, schema: Schema) => {
 
     const index = groupNames.indexOf(name);
     if (index < 0) {
-      groups.push([name, paths]);
+      groups.push({ name, paths, expanded: true });
       return;
     }
 
-    const group = groups[index][1];
-    groups[index][1] = [...group, ...paths];
+    const group = groups[index].paths;
+    groups[index].paths = [...group, ...paths];
   };
 };
 
-export const sidebarGroupsDefinition = atomFamily<State.SidebarGroups, boolean>(
-  {
-    key: "sidebarGroupsDefinition",
-    default: [],
-  }
-);
-
-export const persistGroups = (
-  dataset: string,
-  view: State.Stage[],
-  groups: State.SidebarGroups
-) => {
-  getFetchFunction()("POST", "/sidebar", {
-    dataset,
-    groups: groups.map(([name, paths]) => ({ name, paths })),
-    view,
-  });
-};
+export const sidebarGroupsDefinition = atomFamily<
+  State.SidebarGroup[],
+  boolean
+>({
+  key: "sidebarGroupsDefinition",
+  default: [],
+});
 
 export const sidebarGroups = selectorFamily<
-  State.SidebarGroups,
-  { modal: boolean; loadingTags: boolean; filtered?: boolean }
+  State.SidebarGroup[],
+  { modal: boolean; loading: boolean; filtered?: boolean; persist?: boolean }
 >({
   key: "sidebarGroups",
   get:
-    ({ modal, loadingTags, filtered = true }) =>
+    ({ modal, loading, filtered = true, persist = true }) =>
     ({ get }) => {
       const f = get(textFilter(modal));
       let groups = get(sidebarGroupsDefinition(modal))
-        .map(([name, paths]) => [
-          name,
-          filtered
+        .map(({ paths, ...rest }) => ({
+          ...rest,
+
+          paths: filtered
             ? paths.filter((path) => get(pathIsShown(path)) && path.includes(f))
             : paths,
-        ])
+        }))
         .filter(
-          ([name, entries]) => entries.length || name !== "other"
-        ) as State.SidebarGroups;
+          ({ name, paths }) => paths.length || name !== "other"
+        ) as State.SidebarGroup[];
 
       if (!groups.length) return [];
 
-      const groupNames = groups.map(([name]) => name);
+      const groupNames = groups.map(({ name }) => name);
 
       const tagsIndex = groupNames.indexOf("tags");
       const labelTagsIndex = groupNames.indexOf("label tags");
+      const framesIndex = groupNames.indexOf("frame labels");
+      const video = get(isVideoDataset);
 
-      if (!loadingTags) {
-        groups[tagsIndex][1] = get(
-          aggregationAtoms.values({ extended: false, modal, path: "tags" })
-        )
-          .filter((tag) => !filtered || tag.includes(f))
-          .map((tag) => `tags.${tag}`);
-        groups[labelTagsIndex][1] = get(
-          aggregationAtoms.cumulativeValues({
-            extended: false,
-            modal: false,
-            path: "tags",
-            ftype: EMBEDDED_DOCUMENT_FIELD,
-            embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
-          })
-        )
-          .filter((tag) => !filtered || tag.includes(f))
-          .map((tag) => `_label_tags.${tag}`);
+      if (!loading) {
+        const largeVideo = get(isLargeVideo);
+        if (
+          video &&
+          groups[framesIndex] &&
+          groups[framesIndex].expanded === undefined
+        ) {
+          groups[framesIndex].expanded = !largeVideo;
+        }
+
+        if (groups[tagsIndex].expanded === undefined) {
+          groups[tagsIndex].expanded =
+            get(resolvedSidebarMode(false)) === "all";
+        }
+        if (groups[labelTagsIndex].expanded === undefined) {
+          groups[labelTagsIndex].expanded =
+            get(resolvedSidebarMode(false)) === "all" ? !largeVideo : false;
+        }
+        groups[tagsIndex].expanded &&
+          (groups[tagsIndex].paths = get(
+            aggregationAtoms.values({ extended: false, modal, path: "tags" })
+          )
+            .filter((tag) => !filtered || tag.includes(f))
+            .map((tag) => `tags.${tag}`));
+
+        groups[labelTagsIndex].expanded &&
+          (groups[labelTagsIndex].paths = get(
+            aggregationAtoms.cumulativeValues({
+              extended: false,
+              modal: false,
+              path: "tags",
+              ftype: EMBEDDED_DOCUMENT_FIELD,
+              embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
+            })
+          )
+            .filter((tag) => !filtered || tag.includes(f))
+            .map((tag) => `_label_tags.${tag}`));
+      } else {
+        if (groups[labelTagsIndex].expanded === undefined) {
+          groups[labelTagsIndex].expanded = false;
+        }
+
+        if (
+          video &&
+          groups[framesIndex] &&
+          groups[framesIndex].expanded === undefined
+        ) {
+          groups[framesIndex].expanded = false;
+        }
+
+        if (groups[tagsIndex].expanded === undefined) {
+          groups[tagsIndex].expanded = false;
+        }
       }
 
       return groups;
     },
   set:
-    ({ modal }) =>
+    ({ modal, persist = true }) =>
     ({ set, get }, groups) => {
       if (groups instanceof DefaultValue) return;
 
-      const allPaths = new Set(groups.map(([_, paths]) => paths).flat());
+      const allPaths = new Set(groups.map(({ paths }) => paths).flat());
 
-      groups = groups.map(([name, paths]) => {
+      groups = groups.map(({ name, paths, expanded }) => {
         if (["tags", "label tags"].includes(name)) {
-          return [name, []];
+          return { name, paths: [], expanded };
         }
 
         const result = [];
@@ -363,7 +436,7 @@ export const sidebarGroups = selectorFamily<
             sidebarGroup({
               modal,
               group: name,
-              loadingTags: false,
+              loading: false,
               filtered: false,
             })
           ),
@@ -394,20 +467,40 @@ export const sidebarGroups = selectorFamily<
 
         fill();
 
-        return [name, result];
+        return { name, paths: result, expanded };
       });
 
       set(sidebarGroupsDefinition(modal), groups);
-      !modal && persistGroups(get(datasetName), get(viewAtoms.view), groups);
+
+      if (groups instanceof DefaultValue) {
+        return;
+      }
+
+      !modal &&
+        persist &&
+        persistSidebarGroups({
+          dataset: get(datasetName),
+          stages: get(viewAtoms.view),
+          sidebarGroups: groups,
+        });
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
 });
 
+export const persistSidebarGroups = (
+  variables: VariablesOf<setSidebarGroupsMutation>
+) => {
+  commitMutation<setSidebarGroupsMutation>(getCurrentEnvironment(), {
+    mutation: setSidebarGroups,
+    variables,
+  });
+};
+
 export const sidebarEntries = selectorFamily<
   SidebarEntry[],
-  { modal: boolean; loadingTags: boolean; filtered?: boolean }
+  { modal: boolean; loading: boolean; filtered?: boolean }
 >({
   key: "sidebarEntries",
   get:
@@ -416,13 +509,17 @@ export const sidebarEntries = selectorFamily<
       const entries = [
         { type: "filter", kind: EntryKind.INPUT } as InputEntry,
         ...get(sidebarGroups(params))
-          .map(([groupName, paths]) => {
+          .map(({ name, paths }) => {
             const group: GroupEntry = {
-              name: groupName,
+              name: name,
               kind: EntryKind.GROUP,
             };
             const shown = get(
-              groupShown({ name: groupName, modal: params.modal })
+              groupShown({
+                group: name,
+                modal: params.modal,
+                loading: params.loading,
+              })
             );
 
             return [
@@ -430,7 +527,7 @@ export const sidebarEntries = selectorFamily<
               {
                 kind: EntryKind.EMPTY,
                 shown: paths.length === 0 && shown,
-                group: groupName,
+                group: name,
               } as EmptyEntry,
               ...paths.map<PathEntry>((path) => ({
                 path,
@@ -450,14 +547,27 @@ export const sidebarEntries = selectorFamily<
     },
   set:
     (params) =>
-    ({ set }, value) => {
+    ({ set, get }, value) => {
       if (value instanceof DefaultValue) return;
 
       set(
         sidebarGroups(params),
         value.reduce((result, entry) => {
           if (entry.kind === EntryKind.GROUP) {
-            return [...result, [entry.name, []]];
+            return [
+              ...result,
+              {
+                name: entry.name,
+                expanded: get(
+                  groupShown({
+                    modal: params.modal,
+                    group: entry.name,
+                    loading: params.loading,
+                  })
+                ),
+                paths: [],
+              },
+            ];
           }
 
           if (entry.kind !== EntryKind.PATH) {
@@ -471,9 +581,9 @@ export const sidebarEntries = selectorFamily<
             return result;
           }
 
-          result[result.length - 1][1].push(entry.path);
+          result[result.length - 1].paths.push(entry.path);
           return result;
-        }, [])
+        }, [] as State.SidebarGroup[])
       );
     },
   cachePolicy_UNSTABLE: {
@@ -484,7 +594,13 @@ export const sidebarEntries = selectorFamily<
 export const disabledPaths = selector<Set<string>>({
   key: "disabledPaths",
   get: ({ get }) => {
-    const paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
+    let paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
+    paths = [
+      ...paths,
+      ...get(fieldPaths({ ftype: LIST_FIELD })).filter(
+        (path) => !get(field(path)).subfield
+      ),
+    ];
 
     get(
       fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE })
@@ -492,7 +608,9 @@ export const disabledPaths = selector<Set<string>>({
       Object.values(fields)
         .filter(
           ({ ftype, subfield }) =>
-            ftype === DICT_FIELD || subfield === DICT_FIELD
+            ftype === DICT_FIELD ||
+            subfield === DICT_FIELD ||
+            (ftype === LIST_FIELD && !subfield)
         )
         .forEach(({ name }) => paths.push(`${prefix}.${name}`));
     });
@@ -514,19 +632,34 @@ export const disabledPaths = selector<Set<string>>({
   },
 });
 
+export const sidebarGroupMapping = selectorFamily<
+  { [name: string]: Omit<State.SidebarGroup, "name"> },
+  { modal: boolean; loading: boolean; filtered?: boolean }
+>({
+  key: "sidebarGroupMapping",
+  get:
+    (params) =>
+    ({ get }) => {
+      const groups = get(sidebarGroups(params));
+      return Object.fromEntries(
+        groups.map(({ name, ...rest }) => [name, rest])
+      );
+    },
+});
+
 export const sidebarGroup = selectorFamily<
   string[],
-  { modal: boolean; group: string; loadingTags: boolean; filtered?: boolean }
+  { modal: boolean; group: string; loading: boolean; filtered?: boolean }
 >({
   key: "sidebarGroup",
   get:
     ({ group, ...params }) =>
     ({ get }) => {
       const match = get(sidebarGroups(params)).filter(
-        ([name]) => name === group
+        ({ name }) => name === group
       );
 
-      return match.length ? match[0][1] : [];
+      return match.length ? match[0].paths : [];
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -538,8 +671,8 @@ export const sidebarGroupNames = selectorFamily<string[], boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      return get(sidebarGroups({ modal, loadingTags: true })).map(
-        ([name]) => name
+      return get(sidebarGroups({ modal, loading: true })).map(
+        ({ name }) => name
       );
     },
   cachePolicy_UNSTABLE: {
@@ -556,13 +689,53 @@ export const groupIsEmpty = selectorFamily<
     (params) =>
     ({ get }) => {
       return Boolean(
-        get(sidebarGroup({ ...params, loadingTags: true, filtered: false }))
+        get(sidebarGroup({ ...params, loading: true, filtered: false }))
           .length == 0
       );
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
+});
+
+export const groupShown = selectorFamily<
+  boolean,
+  { modal: boolean; group: string; loading: boolean }
+>({
+  key: "groupShown",
+  get:
+    ({ group, modal, loading }) =>
+    ({ get }) => {
+      const data = get(sidebarGroupMapping({ modal, loading }))[group];
+
+      return data.expanded === undefined
+        ? !["tags", "label tags"].includes(group)
+          ? !data.paths.length ||
+            !data.paths.every((path) => get(disabledPaths).has(path))
+          : true
+        : data.expanded;
+    },
+  set:
+    ({ modal, group }) =>
+    ({ get, set }, expanded) => {
+      const current = get(sidebarGroups({ modal, loading: false }));
+
+      const def = get(sidebarGroupsDefinition(modal));
+      const tags = def.filter((e) => e.name === "tags")[0];
+      const labelTags = def.filter((e) => e.name === "label tags")[0];
+      set(
+        sidebarGroups({ modal, loading: true, persist: false }),
+        current.map(({ name, ...data }) =>
+          name === group
+            ? { name, ...data, expanded: Boolean(expanded) }
+            : name === "tags"
+            ? { name, ...data, expanded: tags.expanded }
+            : name === "label tags"
+            ? { name, ...data, expanded: labelTags.expanded }
+            : { name, ...data }
+        )
+      );
+    },
 });
 
 export const textFilter = atomFamily<string, boolean>({

@@ -64,6 +64,7 @@ export const setFetchFunction = (
     result = "json"
   ) => {
     let url: string;
+
     if (fetchPathPrefix) {
       path = `${fetchPathPrefix}${path}`;
     }

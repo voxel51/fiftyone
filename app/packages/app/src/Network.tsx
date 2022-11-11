@@ -36,8 +36,7 @@ const Network: React.FC<{
 };
 
 export const NetworkRenderer = ({ makeRoutes }) => {
-  const refreshRouter = useRecoilValue(fos.refresher);
-  const { context, environment } = fos.useRouter(makeRoutes, [refreshRouter]);
+  const { context, environment } = fos.useRouter(makeRoutes, []);
 
   const isModalActive = Boolean(useRecoilValue(fos.modal));
 

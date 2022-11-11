@@ -5,7 +5,6 @@ import { isElectron } from "./electron";
 export { isElectron } from "./electron";
 export { GraphQLError, NotFoundError, ServerError } from "./errors";
 export * from "./fetch";
-export * from "./theme";
 export * from "./Resource";
 export * from "./color";
 
@@ -216,6 +215,7 @@ export const VALID_LABEL_TYPES = [
   ...VALID_CLASS_TYPES,
   ...VALID_OBJECT_TYPES,
   ...VALID_MASK_TYPES,
+  "Regression",
 ];
 
 export const LABEL_LISTS = [
@@ -270,6 +270,17 @@ export const VALID_PRIMITIVE_TYPES = [
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
   OBJECT_ID_FIELD,
+  STRING_FIELD,
+];
+
+export const VALID_DISTRIBUTION_TYPES = [
+  BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
+  INT_FIELD,
   STRING_FIELD,
 ];
 
@@ -343,6 +354,14 @@ const isURL = (() => {
   const nonLocalhostDomainRE = /^[^\s\.]+\.\S{2,}$/;
 
   return (string) => {
+    if (string.startsWith("gs://")) {
+      return false;
+    }
+
+    if (string.startsWith("s3://")) {
+      return false;
+    }
+
     if (typeof string !== "string") {
       return false;
     }
@@ -401,7 +420,10 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
   const H = 24 * M;
 
   const options: Intl.DateTimeFormatOptions = {
-    timeZone,
+    timeZone:
+      timeZone === "local"
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : timeZone,
     year: "numeric",
     day: twoDigit,
     month: twoDigit,
