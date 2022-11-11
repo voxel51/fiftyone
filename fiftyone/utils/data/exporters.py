@@ -1657,7 +1657,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
-        self._metadata["name"] = sample_collection.name
+        self._metadata["name"] = sample_collection._dataset.name
         self._metadata["media_type"] = sample_collection.media_type
 
         schema = sample_collection._serialize_field_schema()

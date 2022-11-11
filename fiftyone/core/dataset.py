@@ -123,6 +123,9 @@ def make_unique_dataset_name(root):
     Returns:
         the dataset name
     """
+    if not root:
+        return get_default_dataset_name()
+
     name = root
     dataset_names = _list_datasets(include_private=True)
 
@@ -3094,6 +3097,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.views.append(view_doc)
         self._doc.save()
 
+        view._set_name(name)
+
     def get_view_info(self, name):
         """Loads the editable information about the saved view with the given
         name.
@@ -3178,6 +3183,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
         view = fov.DatasetView._build(self, stage_dicts)
+        view._set_name(name)
 
         view_doc.last_loaded_at = datetime.utcnow()
         self._doc.save()
@@ -5358,8 +5364,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             d: a JSON dictionary
-            name (None): a name for the new dataset. By default, ``d["name"]``
-                is used
+            name (None): a name for the new dataset
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
@@ -5374,7 +5379,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset`
         """
         if name is None:
-            name = d["name"]
+            name = d.get("name", None)
 
         if rel_dir is not None:
             rel_dir = fou.normalize_path(rel_dir)
@@ -5471,8 +5476,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             path_or_str: the path to a JSON file on disk or a JSON string
-            name (None): a name for the new dataset. By default, ``d["name"]``
-                is used
+            name (None): a name for the new dataset
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample, if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
