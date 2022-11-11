@@ -3039,6 +3039,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         view_doc = self._get_saved_view_doc(name, pop=True)
         view_doc.delete()
         self._doc.save()
+        return view_doc
 
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""

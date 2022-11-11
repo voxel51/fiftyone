@@ -34,10 +34,12 @@ class Sort(HTTPEndpoint):
             dataset.add_sample_field(dist_field, fof.FloatField)
             changed = True
 
-        fosv.get_view(dataset_name, stages, filters, extended_stages=None)
+        fosv.get_view(
+            dataset_name, stages=stages, filters=filters, extended_stages=None
+        )
 
         state = fose.get_state().copy()
-        view = fosv.get_view(dataset_name, stages, filters)
+        view = fosv.get_view(dataset_name, stages=stages, filters=filters)
         state.dataset = view._dataset
 
         if isinstance(view, fov.DatasetView):

@@ -5,6 +5,7 @@ export default graphql`
     $subscription: String!
     $session: String
     $view: BSONArray!
+    $viewName: String
     $datasetName: String!
     $form: StateForm!
   ) {
@@ -12,6 +13,7 @@ export default graphql`
       subscription: $subscription
       session: $session
       view: $view
+      viewName: $viewName
       datasetName: $datasetName
       form: $form
     ) {
@@ -101,6 +103,7 @@ export default graphql`
         }
       }
       view
+      viewName
     }
   }
 `;
