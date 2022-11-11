@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import styled from "styled-components";
 
@@ -110,19 +110,23 @@ export const viewDialogContent = atom({
 export default function ViewDialog(props: Props) {
   const theme = useTheme();
   const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
+  const viewContent = useRecoilValue(viewDialogContent);
   const {
     name: initialName,
     description: initialDescription,
     color: initialColor,
     isCreating,
-  } = useRecoilValue(viewDialogContent);
+  } = viewContent;
 
   const [nameValue, setNameValue] = useState<string>(initialName);
   const [descriptionValue, setDescriptionValue] =
     useState<string>(initialDescription);
 
+  console.log("nameValue", initialName, nameValue);
+
   const theColorOption =
-    COLOR_OPTIONS.filter((color) => color.label)?.[0] || COLOR_OPTIONS[0];
+    COLOR_OPTIONS.filter((color) => color.label === initialColor)?.[0] ||
+    COLOR_OPTIONS[0];
   const [colorOption, setColorOption] = useState<DatasetViewOption>({
     label: theColorOption?.id,
     description: "",
@@ -131,7 +135,24 @@ export default function ViewDialog(props: Props) {
   });
 
   const title = isCreating ? "Create view" : "Edit view";
-  console.log("colorOption", colorOption);
+
+  useEffect(() => {
+    if (viewContent.name) {
+      setNameValue(viewContent.name);
+      setDescriptionValue(viewContent.description);
+      const theColorOption =
+        COLOR_OPTIONS.filter(
+          (color) => color.label === viewContent.color
+        )?.[0] || COLOR_OPTIONS[0];
+
+      setColorOption({
+        label: theColorOption?.id,
+        description: "",
+        color: theColorOption?.color,
+        id: theColorOption?.id,
+      });
+    }
+  }, [viewContent]);
 
   return (
     <Dialog open={isOpen} onClose={() => setIsOpen(false)}>
@@ -160,9 +181,6 @@ export default function ViewDialog(props: Props) {
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ paddingLeft: 3, paddingRight: 3, width: "100%" }}>
-          <SecondaryContainer>
-            Everyone with edit access to this database can edit this view.
-          </SecondaryContainer>
           <InputContainer>
             <Label>Name</Label>
             <NameInput

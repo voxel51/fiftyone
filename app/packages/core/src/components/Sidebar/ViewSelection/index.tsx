@@ -7,7 +7,7 @@ import { Selection } from "@fiftyone/components";
 import { filter } from "lodash";
 import { atom, useRecoilState, useSetRecoilState } from "recoil";
 
-import ViewDialog from "./ViewDialog";
+import ViewDialog, { viewDialogContent } from "./ViewDialog";
 
 const Box = styled.div`
   display: flex;
@@ -71,23 +71,23 @@ interface Props {
 
 export default function ViewSelection(props: Props) {
   const { items = [] } = props;
-  console.log("items", items);
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
 
   const viewOptions: DatasetViewOption[] = [
     DEFAULT_SELECTED,
     ...items.map((item: DatasetView) => {
       const { name, urlName, color, description, createdAt } = item;
-      const createdAtText = `created ${new Date(createdAt).toDateString()}`;
 
       return {
         id: urlName,
         label: name,
         color: color,
-        description: description || createdAtText,
+        description: description || "no description...",
       };
     }),
   ] as DatasetViewOption[];
+
+  const setEditView = useSetRecoilState(viewDialogContent);
 
   // TODO: get saved views here from state and pass as items instead
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
@@ -103,7 +103,6 @@ export default function ViewSelection(props: Props) {
       );
     }
   ) as DatasetViewOption[];
-  console.log("searchedData", searchedData);
 
   return (
     <Box style={{ width: "100%" }}>
@@ -112,6 +111,15 @@ export default function ViewSelection(props: Props) {
         selected={selected}
         setSelected={setSelected}
         items={searchedData}
+        onEdit={(item) => {
+          setEditView({
+            color: item.color || "",
+            description: item.description || "",
+            isCreating: false,
+            name: item.label,
+          });
+          setIsOpen(true);
+        }}
         search={{
           value: viewSearch,
           placeholder: "Search views...",
