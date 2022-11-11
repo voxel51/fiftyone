@@ -129,8 +129,8 @@ your dataset under a name of your choice:
     dataset.save_view("cats-view", cats_view)
 
 Then you can conveniently use
-:meth:`load_saved_view() <fiftyone.core.dataset.Dataset.load_saved_view>` to load the view
-in a future session:
+:meth:`load_saved_view() <fiftyone.core.dataset.Dataset.load_saved_view>`
+to load the view in a future session:
 
 .. code-block:: python
     :linenos:
@@ -147,8 +147,8 @@ in a future session:
     dataset.delete()
 
 You can also use :meth:`has_saved_view() <fiftyone.core.dataset.Dataset.has_saved_view>`
-and :meth:`delete_saved_view() <fiftyone.core.dataset.Dataset.delete_saved_view>` to manage
-your saved views.
+and :meth:`delete_saved_view() <fiftyone.core.dataset.Dataset.delete_saved_view>`
+to manage your saved views.
 
 .. note::
 

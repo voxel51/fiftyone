@@ -278,12 +278,12 @@ class ClipsView(fov.DatasetView):
         #
         # Regenerate the clips dataset
         #
-        # This assumes that calling `load_saved_view()` when the current clips
+        # This assumes that calling `load_view()` when the current clips
         # dataset has been deleted will cause a new one to be generated
         #
 
         self._clips_dataset.delete()
-        _view = self._clips_stage.load_saved_view(self._source_collection)
+        _view = self._clips_stage.load_view(self._source_collection)
         self._clips_dataset = _view._clips_dataset
 
     def _sync_source_sample(self, sample):

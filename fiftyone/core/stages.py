@@ -79,7 +79,7 @@ class ViewStage(object):
     @property
     def has_view(self):
         """Whether this stage's output view should be loaded via
-        :meth:`load_saved_view` rather than appending stages to an aggregation
+        :meth:`load_view` rather than appending stages to an aggregation
         pipeline via :meth:`to_mongo`.
         """
         return False
@@ -163,7 +163,7 @@ class ViewStage(object):
         """Loads the :class:`fiftyone.core.view.DatasetView` containing the
         output of the stage.
 
-        Only usable if :meth:`has_saved_view` is ``True``.
+        Only usable if :meth:`has_view` is ``True``.
 
         Args:
             sample_collection: the
@@ -175,18 +175,15 @@ class ViewStage(object):
         """
         if not self.has_view:
             raise ValueError(
-                "%s stages use `to_mongo()`, not `load_saved_view()`"
-                % type(self)
+                "%s stages use `to_mongo()`, not `load_view()`" % type(self)
             )
 
-        raise NotImplementedError(
-            "subclasses must implement `load_saved_view()`"
-        )
+        raise NotImplementedError("subclasses must implement `load_view()`")
 
     def to_mongo(self, sample_collection):
         """Returns the MongoDB aggregation pipeline for the stage.
 
-        Only usable if :meth:`has_saved_view` is ``False``.
+        Only usable if :meth:`has_view` is ``False``.
 
         Args:
             sample_collection: the
@@ -198,8 +195,7 @@ class ViewStage(object):
         """
         if not self.has_view:
             raise ValueError(
-                "%s stages use `load_saved_view()`, not `to_mongo()`"
-                % type(self)
+                "%s stages use `load_view()`, not `to_mongo()`" % type(self)
             )
 
         raise NotImplementedError("subclasses must implement `to_mongo()`")

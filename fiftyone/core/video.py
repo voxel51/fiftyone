@@ -262,12 +262,12 @@ class FramesView(fov.DatasetView):
         #
         # Regenerate the frames dataset
         #
-        # This assumes that calling `load_saved_view()` when the current patches
+        # This assumes that calling `load_view()` when the current patches
         # dataset has been deleted will cause a new one to be generated
         #
 
         self._frames_dataset.delete()
-        _view = self._frames_stage.load_saved_view(self._source_collection)
+        _view = self._frames_stage.load_view(self._source_collection)
         self._frames_dataset = _view._frames_dataset
 
     def _set_labels(self, field_name, sample_ids, label_docs):

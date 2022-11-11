@@ -1870,7 +1870,7 @@ def _import_views(dataset, views):
         d.pop("_id", None)
         view_doc = foo.ViewDocument.from_dict(d)
 
-        dataset._doc.views.append(view_doc)
+        dataset._doc.saved_views.append(view_doc)
 
     dataset._doc.save()
 

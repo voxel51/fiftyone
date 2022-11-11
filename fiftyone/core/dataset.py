@@ -3109,7 +3109,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a dict of editable info
         """
-        view_doc = self._get_view_doc(name)
+        view_doc = self._get_saved_view_doc(name)
         return {f: view_doc[f] for f in view_doc._EDITABLE_FIELDS}
 
     def update_saved_view_info(self, name, info):
@@ -3136,7 +3136,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             info: a dict whose keys are a subset of the keys returned by
                 :meth:`get_saved_view_info`
         """
-        view_doc = self._get_view_doc(name)
+        view_doc = self._get_saved_view_doc(name)
 
         invalid_fields = set(info.keys()) - set(view_doc._EDITABLE_FIELDS)
         if invalid_fields:
@@ -3179,7 +3179,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        view_doc = self._get_view_doc(name)
+        view_doc = self._get_saved_view_doc(name)
 
         stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
         view = fov.DatasetView._build(self, stage_dicts)
@@ -3196,16 +3196,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             name: the name of a saved view
         """
-        view_doc = self._get_view_doc(name, pop=True)
+        view_doc = self._get_saved_view_doc(name, pop=True)
         self._doc.save()
 
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
-        print("Deleting saved views: ", self.list_saved_views())
         self._doc.saved_views = []
         self._doc.save()
 
-    def _get_view_doc(self, name, pop=False):
+    def _get_saved_view_doc(self, name, pop=False):
         idx = None
         for i, view_doc in enumerate(self._doc.saved_views):
             if name == view_doc.name:
@@ -3220,17 +3219,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self._doc.saved_views[idx]
 
-    def _views(self):
+    def _saved_views(self):
         return self._doc.saved_views
 
-    def _reorder_views(self, new_order):
+    def _reorder_saved_views(self, new_order):
         if sorted(new_order) != list(range(len(self._doc.saved_views))):
             raise ValueError("Invalid ordering %s" % list(new_order))
 
         self._doc.saved_views = [self._doc.saved_views[i] for i in new_order]
         self._doc.save()
 
-    def _validate_view_name(self, name, skip=None, overwrite=False):
+    def _validate_saved_view_name(self, name, skip=None, overwrite=False):
         url_name = fou.to_url_name(name)
 
         for view_doc in self._doc.saved_views:
