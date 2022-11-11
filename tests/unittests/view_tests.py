@@ -274,7 +274,8 @@ class DatasetViewTests(unittest.TestCase):
     @drop_datasets
     def test_view_name_readonly(self):
         dataset = fo.Dataset()
-        view = dataset.view
+        view = dataset.view()
+
         with self.assertRaises(AttributeError):
             view.name = "new_name"
 
