@@ -6,7 +6,7 @@ import styled from "styled-components";
 import { useOutsideClick } from "@fiftyone/state";
 import SelectionOption from "./Option";
 import { useTheme } from "@fiftyone/components";
-import { SelectionItemProps } from "./Option";
+import { DatasetViewOption } from "./Option";
 import { debounce } from "lodash";
 import { SearchBox } from "./SearchBox";
 
@@ -38,36 +38,38 @@ const ColoredDot = styled(Box)`
 `;
 
 type SelectionProps = {
-  items: Array<SelectionItemProps>;
+  items: Array<DatasetViewOption>;
   headerComponent?: React.ReactNode;
   search?: {
     placeholder: string;
     onSearch: (term: string) => void;
     value: string;
   };
-  selected: SelectionItemProps;
-  setSelected: (item: SelectionItemProps) => void;
+  selected: DatasetViewOption;
+  setSelected: (item: DatasetViewOption) => void;
   lastFixedOption?: React.ReactNode;
   onChange?: (item: string) => void;
   value?: string;
   disabled?: boolean; // TODO: MANI - add permissions
-  compact?: boolean; // compact form rows
-  readonly?: boolean; // no edits
+  compact?: boolean; // compact UI
+  readonly?: boolean; // no edits available
 };
 
 const VIEW_LIST_MAX_HEIGHT = "300px";
+const VIEW_LIST_MAX_COMPACT_HEIGHT = "200px";
 
-const VIEW_COLORS = {
-  Blue: "#2970FF",
-  Cyan: "#06AED4",
-  Green: "#16B364",
-  Yellow: "#FAC515",
-  Orange: "#EF6820",
-  Red: "#F04438",
-  Pink: "#EE46BC",
-  Purple: "#7A5AF8",
-  Gray: "#667085",
-};
+export const COLOR_OPTIONS = [
+  { id: "blue", label: "Blue", color: "#2970FF" },
+  { id: "cyan", label: "Cyan", color: "#06AED4" },
+  { id: "green", label: "Green", color: "#16B364" },
+  { id: "yellow", label: "Yellow", color: "#FAC515" },
+  { id: "orange", label: "Orange", color: "#EF6820" },
+  { id: "red", label: "Red", color: "#F04438" },
+  { id: "pink", label: "Pink", color: "#EE46BC" },
+  { id: "purple", label: "Purple", color: "#7A5AF8" },
+  { id: "gray", label: "Gray", color: "#667085" },
+];
+const DEFAULT_COLOR_OPTION = COLOR_OPTIONS[0];
 
 export default function Selection(props: SelectionProps) {
   const {
@@ -118,11 +120,18 @@ export default function Selection(props: SelectionProps) {
         value={selectedId}
         listboxOpen={isOpen}
         componentsProps={{
+          startDecorator: {
+            sx: {
+              margin: 0,
+            },
+          },
           listbox: {
             sx: {
               "--List-decorator-size": "24px",
               padding: "0px",
-              maxHeight: VIEW_LIST_MAX_HEIGHT,
+              maxHeight: compact
+                ? VIEW_LIST_MAX_COMPACT_HEIGHT
+                : VIEW_LIST_MAX_HEIGHT,
               overflow: "scroll",
               background: theme.background.level1,
               "&:hover": {
@@ -153,7 +162,9 @@ export default function Selection(props: SelectionProps) {
             },
           },
         }}
-        startDecorator={<ColoredDot color={selectedColor} />}
+        startDecorator={
+          <ColoredDot color={selectedColor || DEFAULT_COLOR_OPTION.color} />
+        }
         onClick={() => {
           setIsOpen(!isOpen);
         }}
@@ -208,11 +219,11 @@ export default function Selection(props: SelectionProps) {
                         display: "inline-block",
                       }}
                     >
-                      <ColoredDot color={color || VIEW_COLORS.Orange} />
+                      <ColoredDot color={color || DEFAULT_COLOR_OPTION.color} />
                     </Box>
                   }
-                  compact
-                  readonly
+                  compact={compact}
+                  readonly={readonly}
                 />
               </Option>
             );
