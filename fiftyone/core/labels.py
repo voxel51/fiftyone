@@ -920,7 +920,8 @@ class Segmentation(_HasID, Label):
         if self.mask is not None:
             return self.mask
 
-        return etai.read(self.mask_path)
+        # pylint: disable=no-member
+        return etai.read(self.mask_path, flag=cv2.IMREAD_UNCHANGED)
 
     def to_detections(self, mask_targets=None, mask_types="stuff"):
         """Returns a :class:`Detections` representation of this instance with
@@ -1019,7 +1020,8 @@ class Heatmap(_HasID, Label):
         if self.map is not None:
             return self.map
 
-        return etai.read(self.map_path)
+        # pylint: disable=no-member
+        return etai.read(self.map_path, flag=cv2.IMREAD_UNCHANGED)
 
 
 class TemporalDetection(_HasID, Label):

@@ -3079,7 +3079,7 @@ class ImageSegmentationDirectoryImporter(
 
 def _read_mask(mask_path, force_grayscale=False):
     # pylint: disable=no-member
-    mask = etai.read(mask_path, cv2.IMREAD_UNCHANGED)
+    mask = etai.read(mask_path, flag=cv2.IMREAD_UNCHANGED)
     if force_grayscale and mask.ndim > 1:
         mask = mask[:, :, 0]
 
