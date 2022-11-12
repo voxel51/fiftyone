@@ -900,9 +900,27 @@ class Segmentation(_HasID, Label):
     Args:
         mask (None): a 2D numpy array with integer values encoding the semantic
             labels
+        mask_path (None): the path to the segmentation image on disk
     """
 
     mask = fof.ArrayField()
+    mask_path = fof.StringField()
+
+    @property
+    def has_mask(self):
+        """Whether this instance has a mask."""
+        return self.mask is not None or self.mask_path is not None
+
+    def get_mask(self):
+        """Returns the segmentation mask for this instance.
+
+        Returns:
+            a numpy array
+        """
+        if self.mask is not None:
+            return self.mask
+
+        return etai.read(self.mask_path)
 
     def to_detections(self, mask_targets=None, mask_types="stuff"):
         """Returns a :class:`Detections` representation of this instance with
@@ -976,6 +994,7 @@ class Heatmap(_HasID, Label):
 
     Args:
         map (None): a 2D numpy array
+        map_path (None): the path to the heatmap image on disk
         range (None): an optional ``[min, max]`` range of the map's values. If
             None is provided, ``[0, 1]`` will be assumed if ``map`` contains
             floating point values, and ``[0, 255]`` will be assumed if ``map``
@@ -983,7 +1002,24 @@ class Heatmap(_HasID, Label):
     """
 
     map = fof.ArrayField()
+    map_path = fof.StringField()
     range = fof.HeatmapRangeField()
+
+    @property
+    def has_map(self):
+        """Whether this instance has a map."""
+        return self.map is not None or self.map_path is not None
+
+    def get_map(self):
+        """Returns the map array for this instance.
+
+        Returns:
+            a numpy array
+        """
+        if self.map is not None:
+            return self.map
+
+        return etai.read(self.map_path)
 
 
 class TemporalDetection(_HasID, Label):
@@ -1252,7 +1288,7 @@ def _segmentation_to_detections(segmentation, mask_targets, mask_types):
         default = mask_types
         mask_types = {}
 
-    mask = segmentation.mask
+    mask = segmentation.get_mask()
 
     detections = []
     for target in np.unique(mask):
@@ -1302,7 +1338,7 @@ def _segmentation_to_polylines(
         default = mask_types
         mask_types = {}
 
-    mask = segmentation.mask
+    mask = segmentation.get_mask()
 
     polylines = []
     for target in np.unique(mask):
