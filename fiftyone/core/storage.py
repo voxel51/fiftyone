@@ -315,9 +315,7 @@ def get_client(fs=None, path=None):
             return _get_client(fs=fs, path=path)
         except Exception as e:
             if path is not None:
-                raise ValueError(
-                    "Failed to retrieve credentials for '%s'" % path
-                ) from e
+                raise ValueError("Failed to get client for '%s'" % path) from e
 
 
 def get_url(path, **kwargs):
