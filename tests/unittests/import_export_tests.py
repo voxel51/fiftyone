@@ -1782,6 +1782,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
             label_field="segmentations",
         )
 
+        # Default: masks stay on disk
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.ImageSegmentationDirectory,
@@ -1791,7 +1792,21 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
         self.assertEqual(len(view), len(dataset2))
         self.assertEqual(
             view.count("segmentations.mask"),
-            dataset2.count("segmentations.mask"),
+            dataset2.count("segmentations.mask_path"),
+        )
+
+        # Load masks into memory
+        dataset3 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.ImageSegmentationDirectory,
+            label_field="segmentations",
+            load_masks=True,
+        )
+
+        self.assertEqual(len(view), len(dataset3))
+        self.assertEqual(
+            view.count("segmentations.mask"),
+            dataset3.count("segmentations.mask"),
         )
 
         # Detections
@@ -1851,6 +1866,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
             label_field="segmentations",
         )
 
+        # Default: masks stay on disk
         dataset2 = fo.Dataset.from_dir(
             dataset_type=fo.types.ImageSegmentationDirectory,
             data_path=data_path,
@@ -1866,7 +1882,27 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
         )
         self.assertEqual(
             dataset.count("segmentations.mask"),
-            dataset2.count("segmentations.mask"),
+            dataset2.count("segmentations.mask_path"),
+        )
+
+        # Load masks into memory
+        dataset3 = fo.Dataset.from_dir(
+            dataset_type=fo.types.ImageSegmentationDirectory,
+            data_path=data_path,
+            labels_path=labels_path,
+            label_field="segmentations",
+            load_masks=True,
+            include_all_data=True,
+        )
+
+        self.assertEqual(len(dataset), len(dataset3))
+        self.assertSetEqual(
+            set(dataset.values("filepath")),
+            set(dataset3.values("filepath")),
+        )
+        self.assertEqual(
+            dataset.count("segmentations.mask"),
+            dataset3.count("segmentations.mask"),
         )
 
         # Segmentations (with rel dir)
@@ -1885,6 +1921,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
             dataset_dir=export_dir,
             dataset_type=fo.types.ImageSegmentationDirectory,
             label_field="segmentations",
+            load_masks=True,
             include_all_data=True,
         )
 
