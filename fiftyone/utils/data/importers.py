@@ -2937,6 +2937,8 @@ class ImageSegmentationDirectoryImporter(
                 ``dataset_dir`` has no effect on the location of the labels
 
             If None, the parameter will default to ``labels/``
+        load_masks (False): whether to load the masks into the database (True)
+            or simply record the paths to the masks (False)
         force_grayscale (False): whether to load RGB masks as grayscale by
             storing only the first channel
         compute_metadata (False): whether to produce
@@ -2957,8 +2959,9 @@ class ImageSegmentationDirectoryImporter(
         dataset_dir=None,
         data_path=None,
         labels_path=None,
-        compute_metadata=False,
+        load_masks=False,
         force_grayscale=False,
+        compute_metadata=False,
         include_all_data=False,
         shuffle=False,
         seed=None,
@@ -2991,6 +2994,7 @@ class ImageSegmentationDirectoryImporter(
 
         self.data_path = data_path
         self.labels_path = labels_path
+        self.load_masks = load_masks
         self.force_grayscale = force_grayscale
         self.compute_metadata = compute_metadata
         self.include_all_data = include_all_data
@@ -3020,8 +3024,13 @@ class ImageSegmentationDirectoryImporter(
             image_metadata = None
 
         if mask_path is not None:
-            mask = _read_mask(mask_path, force_grayscale=self.force_grayscale)
-            label = fol.Segmentation(mask=mask)
+            if self.load_masks:
+                mask = _read_mask(
+                    mask_path, force_grayscale=self.force_grayscale
+                )
+                label = fol.Segmentation(mask=mask)
+            else:
+                label = fol.Segmentation(mask_path=mask_path)
         else:
             label = None
 

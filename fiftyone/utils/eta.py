@@ -874,7 +874,7 @@ def _add_frame_labels(frame_labels, labels, warn_unsupported=True):
                 kp = to_keypoints(keypoint, name=name)
                 frame_labels.add_keypoints(kp)
         elif isinstance(label, fol.Segmentation):
-            frame_labels.mask = label.mask
+            frame_labels.mask = label.get_mask()
             frame_labels.tags.extend(label.tags)
         elif warn_unsupported and label is not None:
             msg = "Ignoring unsupported label type '%s'" % label.__class__

@@ -5,7 +5,10 @@ Label utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import eta.core.image as etai
+
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 
@@ -16,6 +19,8 @@ def objects_to_segmentations(
     mask_size=None,
     mask_targets=None,
     thickness=1,
+    output_dir=None,
+    rel_dir=None,
 ):
     """Converts the instance segmentations or polylines in the specified field
     of the collection into semantic segmentation masks.
@@ -40,6 +45,16 @@ def objects_to_segmentations(
             all objects are rendered with pixel value 255
         thickness (1): the thickness, in pixels, at which to render
             (non-filled) polylines
+        output_dir (None): an optional output directory in which to write the
+            segmentation images. If none is provided, the segmentations are
+            stored in the database
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each segmentation
+            image. This argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
     """
     fov.validate_collection_label_fields(
         sample_collection,
@@ -54,7 +69,12 @@ def objects_to_segmentations(
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
 
-    for sample in samples.iter_samples(progress=True):
+    if output_dir is not None:
+        filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+        )
+
+    for sample in samples.iter_samples(autosave=True, progress=True):
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -96,9 +116,15 @@ def objects_to_segmentations(
                     mask_targets=mask_targets,
                 )
 
-            image[out_field] = segmentation
+            if output_dir is not None:
+                mask_path = filename_maker.get_output_path(
+                    image.filepath, output_ext=".png"
+                )
+                etai.write(segmentation.mask, mask_path)
+                segmentation.mask = None
+                segmentation.mask_path = mask_path
 
-        sample.save()
+            image[out_field] = segmentation
 
     if mask_targets is not None:
         if not sample_collection.default_mask_targets:
@@ -157,7 +183,7 @@ def segmentations_to_detections(
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
 
-    for sample in samples.iter_samples(progress=True):
+    for sample in samples.iter_samples(autosave=True, progress=True):
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -171,8 +197,6 @@ def segmentations_to_detections(
             image[out_field] = label.to_detections(
                 mask_targets=mask_targets, mask_types=mask_types
             )
-
-        sample.save()
 
 
 def instances_to_polylines(
@@ -206,7 +230,7 @@ def instances_to_polylines(
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
 
-    for sample in samples.iter_samples(progress=True):
+    for sample in samples.iter_samples(autosave=True, progress=True):
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -220,8 +244,6 @@ def instances_to_polylines(
             image[out_field] = label.to_polylines(
                 tolerance=tolerance, filled=filled
             )
-
-        sample.save()
 
 
 def segmentations_to_polylines(
@@ -276,7 +298,7 @@ def segmentations_to_polylines(
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
 
-    for sample in samples.iter_samples(progress=True):
+    for sample in samples.iter_samples(autosave=True, progress=True):
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -292,8 +314,6 @@ def segmentations_to_polylines(
                 mask_types=mask_types,
                 tolerance=tolerance,
             )
-
-        sample.save()
 
 
 def classification_to_detections(sample_collection, in_field, out_field):
@@ -317,7 +337,7 @@ def classification_to_detections(sample_collection, in_field, out_field):
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
 
-    for sample in samples.iter_samples(progress=True):
+    for sample in samples.iter_samples(autosave=True, progress=True):
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -334,8 +354,6 @@ def classification_to_detections(sample_collection, in_field, out_field):
                 confidence=label.confidence,
             )
             image[out_field] = fol.Detections(detections=[detection])
-
-        sample.save()
 
 
 def classifications_to_detections(sample_collection, in_field, out_field):
@@ -360,7 +378,7 @@ def classifications_to_detections(sample_collection, in_field, out_field):
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
 
-    for sample in samples.iter_samples(progress=True):
+    for sample in samples.iter_samples(autosave=True, progress=True):
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -384,5 +402,3 @@ def classifications_to_detections(sample_collection, in_field, out_field):
                 detections.append(detection)
 
             image[out_field] = fol.Detections(detections=detections)
-
-        sample.save()

@@ -3032,9 +3032,7 @@ class ImageSegmentationDirectoryExporter(
         if label is None:
             return  # unlabeled
 
-        if isinstance(label, fol.Segmentation):
-            mask = label.mask
-        elif isinstance(label, (fol.Detections, fol.Polylines)):
+        if isinstance(label, (fol.Detections, fol.Polylines)):
             if self.mask_size is not None:
                 frame_size = self.mask_size
             else:
@@ -3044,28 +3042,32 @@ class ImageSegmentationDirectoryExporter(
                 frame_size = (metadata.width, metadata.height)
 
             if isinstance(label, fol.Detections):
-                segmentation = label.to_segmentation(
+                label = label.to_segmentation(
                     frame_size=frame_size, mask_targets=self.mask_targets
                 )
             else:
-                segmentation = label.to_segmentation(
+                label = label.to_segmentation(
                     frame_size=frame_size,
                     mask_targets=self.mask_targets,
                     thickness=self.thickness,
                 )
-
-            mask = segmentation.mask
-        else:
+        elif not isinstance(label, fol.Segmentation):
             raise ValueError("Unsupported label type '%s'" % type(label))
 
         out_mask_path = os.path.join(self.labels_path, uuid + self.mask_format)
-        _write_mask(mask, out_mask_path)
+        _write_mask(label, out_mask_path)
 
     def close(self, *args):
         self._media_exporter.close()
 
 
-def _write_mask(mask, mask_path):
+def _write_mask(segmentation, mask_path):
+    if segmentation.mask_path is not None:
+        etau.copy_file(segmentation.mask_path, mask_path)
+        return
+
+    mask = segmentation.mask
+
     if mask.dtype not in (np.uint8, np.uint16):
         if mask.max() <= 255:
             mask = mask.astype(np.uint8)
