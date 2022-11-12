@@ -23,6 +23,7 @@ import fiftyone.constants as foc
 import fiftyone.core.utils as fou
 
 fop = fou.lazy_import("fiftyone.core.plots.plotly")
+fos = fou.lazy_import("fiftyone.core.storage")
 
 
 logger = logging.getLogger(__name__)
@@ -672,6 +673,11 @@ class BucketCredentials(Config):
         self.prefix = self.parse_string(d, "prefix")
         self.config_file = self.parse_string(d, "config_file")
         self.profile = self.parse_string(d, "profile", default=None)
+
+        self._parse_values()
+
+    def _parse_values(self):
+        self.prefix = fos.split_prefix(self.prefix)[1]
 
 
 def locate_config():
