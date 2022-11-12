@@ -311,71 +311,13 @@ def get_client(fs=None, path=None):
     # Client creation may not be thread-safe, so we lock for safety
     # https://stackoverflow.com/a/61943955/16823653
     with client_lock:
-        return _get_client(fs=fs, path=path)
-
-
-def _get_client(fs=None, path=None):
-    if path is not None:
-        fs = get_file_system(path)
-    elif fs is None:
-        raise ValueError("You must provide either a file system or a path")
-
-    # Return bucket credentials, if possible
-    if path is not None and fs in _FILE_SYSTEMS_WITH_BUCKETS:
-        global bucket_clients
-
-        if fs not in bucket_clients:
-            bucket_clients[fs] = {}
-
-        _path = split_prefix(path)[1]
-        _bucket_clients = bucket_clients[fs]
-
-        for prefix, bucket_client in _bucket_clients.items():
-            if _path.startswith(prefix):
-                return bucket_client
-
-        bucket_credentials = _get_bucket_credentials(fs, _path)
-
-        if bucket_credentials is not None:
-            prefix = bucket_credentials.prefix
-            bucket_client = _make_bucket_client(bucket_credentials)
-            _bucket_clients[prefix] = bucket_client
-            return bucket_client
-
-    # Otherwise fallback to file system credentials
-    if fs == FileSystem.S3:
-        global s3_client
-
-        if s3_client is None:
-            s3_client = _make_client(fs)
-
-        return s3_client
-
-    if fs == FileSystem.GCS:
-        global gcs_client
-
-        if gcs_client is None:
-            gcs_client = _make_client(fs)
-
-        return gcs_client
-
-    if fs == FileSystem.MINIO:
-        global minio_client
-
-        if minio_client is None:
-            minio_client = _make_client(fs)
-
-        return minio_client
-
-    if fs == FileSystem.HTTP:
-        global http_client
-
-        if http_client is None:
-            http_client = _make_client(fs)
-
-        return http_client
-
-    raise ValueError("Unsupported file system '%s'" % fs)
+        try:
+            return _get_client(fs=fs, path=path)
+        except Exception as e:
+            if path is not None:
+                raise ValueError(
+                    "Failed to retrieve credentials for '%s'" % path
+                ) from e
 
 
 def get_url(path, **kwargs):
@@ -1821,6 +1763,70 @@ def run(fcn, tasks, num_workers=None, progress=False):
                 results = list(pb(pool.imap(fcn, tasks)))
 
     return results
+
+
+def _get_client(fs=None, path=None):
+    if path is not None:
+        fs = get_file_system(path)
+    elif fs is None:
+        raise ValueError("You must provide either a file system or a path")
+
+    # Return bucket credentials, if possible
+    if path is not None and fs in _FILE_SYSTEMS_WITH_BUCKETS:
+        global bucket_clients
+
+        if fs not in bucket_clients:
+            bucket_clients[fs] = {}
+
+        _path = split_prefix(path)[1]
+        _bucket_clients = bucket_clients[fs]
+
+        for prefix, bucket_client in _bucket_clients.items():
+            if _path.startswith(prefix):
+                return bucket_client
+
+        bucket_credentials = _get_bucket_credentials(fs, _path)
+
+        if bucket_credentials is not None:
+            prefix = bucket_credentials.prefix
+            bucket_client = _make_bucket_client(bucket_credentials)
+            _bucket_clients[prefix] = bucket_client
+            return bucket_client
+
+    # Otherwise fallback to file system credentials
+    if fs == FileSystem.S3:
+        global s3_client
+
+        if s3_client is None:
+            s3_client = _make_client(fs)
+
+        return s3_client
+
+    if fs == FileSystem.GCS:
+        global gcs_client
+
+        if gcs_client is None:
+            gcs_client = _make_client(fs)
+
+        return gcs_client
+
+    if fs == FileSystem.MINIO:
+        global minio_client
+
+        if minio_client is None:
+            minio_client = _make_client(fs)
+
+        return minio_client
+
+    if fs == FileSystem.HTTP:
+        global http_client
+
+        if http_client is None:
+            http_client = _make_client(fs)
+
+        return http_client
+
+    raise ValueError("Unsupported file system '%s'" % fs)
 
 
 def _make_client(fs, num_workers=None):
