@@ -672,9 +672,7 @@ Here's how a typical PCD file is structured:
 As usual, point cloud samples may contain any type and number of custom fields,
 including certain visualizable |Label| types as described below.
 
-.. _3d-detections:
-
-3D Detections
+3D detections
 -------------
 
 The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D object
@@ -706,9 +704,7 @@ detections represented as |Detection| instances with their `label`, `location`,
         rotation=rotation,
     )
 
-.. _3d-polylines:
-
-3D Polylines
+3D polylines
 ------------
 
 The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D polylines

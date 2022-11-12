@@ -2129,6 +2129,147 @@ dynamically adding new fields to each |Polyline| instance:
     Did you know? You can view custom attributes in the
     :ref:`App tooltip <app-sample-view>` by hovering over the objects.
 
+
+
+
+
+
+
+
+.. _cuboids:
+
+Cuboids
+-------
+
+You can store and visualize cuboids in FiftyOne using the
+:meth:`Polyline.from_cuboid() <fiftyone.core.labels.Polyline.from_cuboid>`
+method.
+
+The method accepts a list of 8 ``(x, y)`` points describing the vertices of the
+cuboid in the format depicted below:
+
+.. code-block:: text
+
+       7--------6
+      /|       /|
+     / |      / |
+    3--------2  |
+    |  4-----|--5
+    | /      | /
+    |/       |/
+    0--------1
+
+.. note::
+    FiftyOne stores vertex coordinates as floats in `[0, 1]` relative to the
+    dimensions of the image.
+
+.. code-block:: python
+    :linenos:
+
+    import cv2
+    import numpy as np
+    import fiftyone as fo
+
+    def random_cuboid():
+        x0, y0 = [0, 0.2] + 0.8 * np.random.rand(2)
+        dx, dy = (min(0.8 - x0, y0 - 0.2)) * np.random.rand(2)
+        x1, y1 = x0 + dx, y0 - dy
+        w, h = (min(1 - x1, y1)) * np.random.rand(2)
+        front = [(x0, y0), (x0 + w, y0), (x0 + w, y0 - h), (x0, y0 - h)]
+        back = [(x1, y1), (x1 + w, y1), (x1 + w, y1 - h), (x1, y1 - h)]
+        return fo.Polyline.from_cuboid(front + back, label="cuboid")
+
+    filepath = "/tmp/image.png"
+    cv2.imwrite(filepath, np.full((16, 16, 3), 255, dtype=np.uint8))
+
+    dataset = fo.Dataset("cuboids")
+    dataset.add_samples(
+        [fo.Sample(filepath=filepath, cuboid=random_cuboid()) for _ in range(51)]
+    )
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/datasets/cuboids.png
+   :alt: cuboids
+   :align: center
+
+Like all |Label| types, you can also add custom attributes to your cuboids by
+dynamically adding new fields to each |Polyline| instance:
+
+.. code-block:: python
+    :linenos:
+
+    polyline = fo.Polyline.from_cuboid(
+        vertics,
+        label="vehicle",
+        filled=True,
+        type="sedan",  # custom attribute
+    )
+
+.. note::
+
+    Did you know? You can view custom attributes in the
+    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
+
+.. _rotated-bounding-boxes:
+
+Rotated bounding boxes
+----------------------
+
+You can store and visualize rotated bounding boxes in FiftyOne using the
+:meth:`Polyline.from_rotated_box() <fiftyone.core.labels.Polyline.from_rotated_box>`
+method, which accepts rotated boxes described by their center coordinates,
+width/height, and counter-clockwise rotation, in radians.
+
+.. note::
+
+    FiftyOne stores all coordinates and dimensions as floats in `[0, 1]`
+    relative to the dimensions of the image.
+
+.. code-block:: python
+    :linenos:
+
+    import cv2
+    import numpy as np
+    import fiftyone as fo
+
+    def random_rotated_box():
+        xc, yc = 0.2 + 0.6 * np.random.rand(2)
+        w, h = 1.5 * (min(xc, yc, 1 - xc, 1 - yc)) * np.random.rand(2)
+        theta = 2 * np.pi * np.random.rand()
+        return fo.Polyline.from_rotated_box(xc, yc, w, h, theta, label="box")
+
+    filepath = "/tmp/image.png"
+    cv2.imwrite(filepath, np.full((16, 16, 3), 255, dtype=np.uint8))
+
+    dataset = fo.Dataset("rotated-boxes")
+    dataset.add_samples(
+        [fo.Sample(filepath=filepath, box=random_rotated_box()) for _ in range(51)]
+    )
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/datasets/rotated-bounding-boxes.png
+   :alt: rotated-bounding-boxes
+   :align: center
+
+Like all |Label| types, you can also add custom attributes to your rotated
+bounding boxes by dynamically adding new fields to each |Polyline| instance:
+
+.. code-block:: python
+    :linenos:
+
+    polyline = fo.Polyline.from_rotated_box(
+        xc, yc, width, height, theta,
+        label="cat",
+        mood="surly",  # custom attribute
+    )
+
+.. note::
+
+    Did you know? You can view custom attributes in the
+    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
+
 .. _keypoints:
 
 Keypoints
@@ -2662,6 +2803,87 @@ sample:
 
     Did you know? You can :ref:`store class lists <storing-classes>` for your
     models on your datasets.
+
+.. _3d-detections:
+
+3D detections
+-------------
+
+The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D object
+detections represented as |Detection| instances with their `label`, `location`,
+`dimensions`, and `rotation` attributes populated as shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Object label
+    label = "vehicle"
+
+    # Object center location ``(x, y, z)`` in camera coordinates
+    location = [0.47, 1.49, 69.44]
+
+    # Object dimensions ``[height, width, length]`` in object coordinates
+    dimensions = [2.85, 2.63, 12.34]
+
+    # Object rotation around ``[x, y, z]`` camera axes, in ``[-pi, pi]``
+    rotation = [0, -1.56, 0]
+
+    # A 3D object detection
+    detection = fo.Detection(
+        label=label,
+        location=location,
+        dimensions=dimensions,
+        rotation=rotation,
+    )
+
+.. note::
+
+    Did you know? You can view custom attributes in the
+    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
+
+.. _3d-polylines:
+
+3D polylines
+------------
+
+The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D polylines
+represented as |Polyline| instances with their `label`, `points3d`, `closed`,
+and `filled` attributes populated as shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Object label
+    label = "lane"
+
+    # A list of lists of ``(x, y, z)`` points in camera coordinates describing
+    # the vertices of each shape in the polyline
+    points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
+
+    # Whether the shapes are closed, i.e., and edge should be drawn from the
+    # last vertex to the first vertex of each shape
+    closed = False
+
+    # Whether the polyline represents polygons, i.e., shapes that should be
+    # filled when rendering them
+    filled = False
+
+    # A set of semantically related 3D polylines or polygons.
+    polyline = fo.Polyline(
+        label=label,
+        points3d=points3d,
+        closed=closed,
+        filled=filled,
+    )
+
+.. note::
+
+    Did you know? You can view custom attributes in the
+    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
 
 .. _geolocation:
 
