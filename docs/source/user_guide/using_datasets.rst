@@ -2087,13 +2087,6 @@ dynamically adding new fields to each |Polyline| instance:
     Did you know? You can view custom attributes in the
     :ref:`App tooltip <app-sample-view>` by hovering over the objects.
 
-
-
-
-
-
-
-
 .. _cuboids:
 
 Cuboids
