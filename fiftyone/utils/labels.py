@@ -6,6 +6,7 @@ Label utilities.
 |
 """
 import eta.core.image as etai
+import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
@@ -131,6 +132,67 @@ def objects_to_segmentations(
             sample_collection.default_mask_targets = mask_targets
         else:
             sample_collection.mask_targets[out_field] = mask_targets
+
+
+def export_segmentations(
+    sample_collection,
+    segmentation_field,
+    output_dir,
+    rel_dir=None,
+    overwrite=False,
+):
+    """Converts the segmentations stored as in-database masks in the specified
+    field to images on disk.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        segmentation_field: the name of the
+            :class:`fiftyone.core.labels.Segmentation` field
+        output_dir: the directory in which to write the segmentation images
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each segmentation
+            image. This argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
+        overwrite (False): whether to delete ``output_dir`` prior to exporting
+            if it exists
+    """
+    fov.validate_collection_label_fields(
+        sample_collection, segmentation_field, fol.Segmentation
+    )
+
+    samples = sample_collection.select_fields(segmentation_field)
+    segmentation_field, processing_frames = samples._handle_frame_field(
+        segmentation_field
+    )
+
+    if overwrite:
+        etau.delete_dir(output_dir)
+
+    filename_maker = fou.UniqueFilenameMaker(
+        output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+    )
+
+    for sample in samples.iter_samples(autosave=True, progress=True):
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
+
+        for image in images:
+            label = image[segmentation_field]
+            if label is None:
+                continue
+
+            mask_path = filename_maker.get_output_path(
+                image.filepath, output_ext=".png"
+            )
+            etai.write(label.mask, mask_path)
+            label.mask = None
+            label.mask_path = mask_path
 
 
 def segmentations_to_detections(
