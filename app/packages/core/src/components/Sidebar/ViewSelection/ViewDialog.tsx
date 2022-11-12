@@ -1,9 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import styled from "styled-components";
 
 import { Selection } from "@fiftyone/components";
-import { atom, atomFamily, useRecoilState, useRecoilValue } from "recoil";
+import {
+  atom,
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+} from "recoil";
 
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
@@ -12,15 +17,25 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { useTheme } from "@fiftyone/components";
 import { viewDialogOpen } from ".";
 import { DatasetViewOption } from "@fiftyone/components/src/components/Selection/Option";
+import { useMutation } from "react-relay";
+import * as foq from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
+import { stateSubscription, useSendEvent } from "@fiftyone/state";
+import { useErrorHandler } from "react-error-boundary";
 
 const Box = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
+`;
+
+const ErrorText = styled(Box)`
+  color: ${({ theme }) => theme.error.main};
 `;
 
 const TextContainer = styled.div`
@@ -84,18 +99,21 @@ const NameInput = styled.input`
 
 // TODO: consolidate
 export const COLOR_OPTIONS = [
-  { id: "blue", label: "Blue", color: "#2970FF" },
-  { id: "cyan", label: "Cyan", color: "#06AED4" },
-  { id: "green", label: "Green", color: "#16B364" },
-  { id: "yellow", label: "Yellow", color: "#FAC515" },
-  { id: "orange", label: "Orange", color: "#EF6820" },
-  { id: "red", label: "Red", color: "#F04438" },
-  { id: "pink", label: "Pink", color: "#EE46BC" },
-  { id: "purple", label: "Purple", color: "#7A5AF8" },
-  { id: "gray", label: "Gray", color: "#667085" },
+  { id: "blue", label: "Blue", color: "#2970FF", description: "" },
+  { id: "cyan", label: "Cyan", color: "#06AED4", description: "" },
+  { id: "green", label: "Green", color: "#16B364", description: "" },
+  { id: "yellow", label: "Yellow", color: "#FAC515", description: "" },
+  { id: "orange", label: "Orange", color: "#EF6820", description: "" },
+  { id: "red", label: "Red", color: "#F04438", description: "" },
+  { id: "pink", label: "Pink", color: "#EE46BC", description: "" },
+  { id: "purple", label: "Purple", color: "#7A5AF8", description: "" },
+  { id: "gray", label: "Gray", color: "#667085", description: "" },
 ];
 
-interface Props {}
+interface Props {
+  onEditSuccess: () => void;
+  onDeleteSuccess: () => void;
+}
 
 export const viewDialogContent = atom({
   key: "viewDialogContent",
@@ -108,9 +126,11 @@ export const viewDialogContent = atom({
 });
 
 export default function ViewDialog(props: Props) {
+  const { onEditSuccess, onDeleteSuccess } = props;
   const theme = useTheme();
   const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
   const viewContent = useRecoilValue(viewDialogContent);
+  const resetViewContent = useResetRecoilState(viewDialogContent);
   const {
     name: initialName,
     description: initialDescription,
@@ -123,13 +143,14 @@ export default function ViewDialog(props: Props) {
     useState<string>(initialDescription);
 
   const theColorOption =
-    COLOR_OPTIONS.filter((color) => color.label === initialColor)?.[0] ||
+    COLOR_OPTIONS.filter((color) => color.color === initialColor)?.[0] ||
     COLOR_OPTIONS[0];
+
   const [colorOption, setColorOption] = useState<DatasetViewOption>({
-    label: theColorOption?.id,
+    label: theColorOption.id,
+    color: theColorOption.color,
+    id: theColorOption.id,
     description: "",
-    color: theColorOption?.color,
-    id: theColorOption?.id,
   });
 
   const title = isCreating ? "Create view" : "Edit view";
@@ -140,20 +161,109 @@ export default function ViewDialog(props: Props) {
       setDescriptionValue(viewContent.description);
       const theColorOption =
         COLOR_OPTIONS.filter(
-          (color) => color.label === viewContent.color
+          (color) => color.color === viewContent.color
         )?.[0] || COLOR_OPTIONS[0];
 
       setColorOption({
         label: theColorOption?.id,
-        description: "",
         color: theColorOption?.color,
         id: theColorOption?.id,
+        description: "",
       });
     }
   }, [viewContent]);
 
+  // TODO: move to custom hooks
+  const view = useRecoilValue(fos.view);
+  const subscription = useRecoilValue(stateSubscription);
+  const onError = useErrorHandler();
+  const send = useSendEvent();
+  const [saveView, savingView] = useMutation<foq.saveViewMutation>(
+    foq.saveView
+  );
+  const [updateView] = useMutation<foq.updateSavedViewMutation>(
+    foq.updateSavedView
+  );
+  const [deleteView] = useMutation<foq.deleteSavedViewMutation>(
+    foq.deleteSavedView
+  );
+
+  const handleDeleteView = useCallback(() => {
+    if (nameValue) {
+      send((session) =>
+        deleteView({
+          onError,
+          variables: {
+            viewName: nameValue,
+            subscription,
+            session,
+          },
+          onCompleted: () => {
+            onDeleteSuccess();
+          },
+        })
+      );
+      setIsOpen(false);
+    }
+  }, [nameValue]);
+
+  const handleSaveView = useCallback(() => {
+    if (nameValue) {
+      if (isCreating && view?.length) {
+        send((session) =>
+          saveView({
+            onError,
+            variables: {
+              viewName: nameValue,
+              description: descriptionValue,
+              color: colorOption?.color,
+              subscription,
+              session,
+            },
+            onCompleted: () => {
+              onEditSuccess();
+            },
+          })
+        );
+      } else {
+        send((session) =>
+          updateView({
+            onError,
+            variables: {
+              viewName: initialName,
+              subscription,
+              session,
+              updatedInfo: {
+                description: descriptionValue,
+                color: colorOption?.color,
+                name: nameValue,
+              },
+            },
+            onCompleted: () => {
+              onEditSuccess();
+            },
+          })
+        );
+      }
+      setIsOpen(false);
+    }
+  }, [view, nameValue, descriptionValue, colorOption?.color, subscription]);
+
+  const resetValues = useCallback(() => {
+    resetViewContent();
+    setNameValue("");
+    setDescriptionValue("");
+    setColorOption(COLOR_OPTIONS[0]);
+  }, []);
+
   return (
-    <Dialog open={isOpen} onClose={() => setIsOpen(false)}>
+    <Dialog
+      open={isOpen}
+      onClose={() => {
+        setIsOpen(false);
+        resetValues();
+      }}
+    >
       <DialogBody
         style={{
           background: theme.background.level1,
@@ -213,39 +323,76 @@ export default function ViewDialog(props: Props) {
             padding: "2rem",
           }}
         >
-          <Button
-            onClick={() => setIsOpen(false)}
-            sx={{
-              background: theme.background.level1,
-              color: theme.text.primary,
-              textTransform: "inherit",
-              padding: "0.5rem 1.25rem",
-              border: `1px solid ${theme.text.secondary}`,
-
-              "&:hover": {
-                background: theme.background.body,
-              },
+          <Box
+            style={{
+              justifyContent: "start",
             }}
           >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => console.log("subscribe")}
-            sx={{
-              background: theme.text.secondary,
-              color: theme.background.level1,
-              textTransform: "inherit",
-              padding: "0.5rem 1.25rem",
-              border: `1px solid ${theme.text.secondary}`,
-
-              "&:hover": {
-                background: theme.text.primary,
-                border: `1px solid ${theme.text.secondary}`,
-              },
+            {!isCreating && (
+              <Button
+                onClick={handleDeleteView}
+                sx={{
+                  background: theme.background.level1,
+                  color: theme.text.primary,
+                  textTransform: "inherit",
+                  padding: "0.5rem 1.25rem",
+                  width: "100px",
+                  paddingLeft: "12px",
+                }}
+              >
+                <DeleteIcon fontSize="small" color="error" />
+                <ErrorText> Delete</ErrorText>
+              </Button>
+            )}
+          </Box>
+          <Box
+            style={{
+              justifyContent: "end",
             }}
           >
-            Save view
-          </Button>
+            <Button
+              onClick={() => setIsOpen(false)}
+              sx={{
+                background: theme.background.level1,
+                color: theme.text.primary,
+                textTransform: "inherit",
+                padding: "0.5rem 1.25rem",
+                border: `1px solid ${theme.primary.plainBorder}`,
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveView}
+              disabled={
+                !nameValue ||
+                (isCreating && !view?.length) ||
+                (initialName === nameValue &&
+                  descriptionValue === initialDescription &&
+                  colorOption?.color === initialColor)
+              }
+              sx={{
+                background: theme.common.black,
+                color: theme.common.white,
+                textTransform: "inherit",
+                padding: "0.5rem 1.25rem",
+                border: `1px solid ${theme.primary.plainBorder}`,
+                marginLeft: "1rem",
+
+                "&:hover": {
+                  background: theme.common.black,
+                  color: theme.common.white,
+                },
+
+                "&:disabled": {
+                  background: theme.text.tertiary,
+                  color: theme.background.body,
+                },
+              }}
+            >
+              Save view
+            </Button>
+          </Box>
         </DialogActions>
       </DialogBody>
     </Dialog>

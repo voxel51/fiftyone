@@ -46,7 +46,8 @@ export const SearchBox = ({
         position: "sticky",
         top: 0,
         zIndex: 9999,
-        background: theme.background.level3,
+        background: theme.background.level1,
+        borderBottom: `1px solid ${theme.primary.plainBorder}`,
       }}
     >
       <SearchInput

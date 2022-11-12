@@ -9,8 +9,6 @@ import { useTheme } from "@fiftyone/components";
 import { DatasetViewOption } from "./Option";
 import { debounce } from "lodash";
 import { SearchBox } from "./SearchBox";
-import { useMutation } from "react-relay";
-import * as foq from "@fiftyone/relay";
 
 const Box = styled.div`
   display: flex;
@@ -22,12 +20,12 @@ const LastOption = styled(Option)`
   position: sticky !important;
   bottom: 0;
   width: 100%;
-  background: ${({ theme }) => theme.background.level2} !important;
+  background: ${({ theme }) => theme.background.level1} !important;
   z-index: 999;
   display: flex;
 
-  &:hover: {
-    background: ${({ theme }) => theme.background.level3};
+  &:hover {
+    background: ${({ theme }) => theme.background.body} !important;
   }
 `;
 const ColoredDot = styled(Box)`
@@ -56,6 +54,7 @@ type SelectionProps = {
   compact?: boolean; // compact UI
   readonly?: boolean; // no edits available
   onEdit?: (item: DatasetViewOption) => void;
+  customBanner?: React.ReactNode;
 };
 
 const VIEW_LIST_MAX_HEIGHT = "300px";
@@ -85,15 +84,12 @@ export default function Selection(props: SelectionProps) {
     compact,
     readonly,
     onEdit,
+    customBanner,
   } = props;
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const ref = useRef();
   useOutsideClick(ref, () => setIsOpen(false));
-
-  const [saveViewByName] = useMutation<foq.setGroupSliceMutation>(
-    foq.setGroupSlice
-  );
 
   const {
     placeholder: searchPlaceholder,
@@ -126,6 +122,7 @@ export default function Selection(props: SelectionProps) {
     <div ref={ref} style={{ width: "100%" }}>
       <Select
         value={selectedId}
+        defaultValue={selectedId}
         listboxOpen={isOpen}
         componentsProps={{
           startDecorator: {
@@ -203,7 +200,6 @@ export default function Selection(props: SelectionProps) {
                 onClick={() => {
                   setSelected(itemProps);
                   setIsOpen(false);
-                  console.log("itemProps", itemProps);
                 }}
                 sx={{
                   display: "flex",

@@ -2882,6 +2882,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return [view_doc.name for view_doc in self._doc.saved_views]
 
+    @property
+    def all_views(self):
+        """Returns the saved views on this dataset.
+
+        Returns:
+            a list of saved views
+        """
+        return [view_doc for view_doc in self._doc.saved_views]
+
     def save_view(
         self,
         name,

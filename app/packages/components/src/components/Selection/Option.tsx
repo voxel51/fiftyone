@@ -30,19 +30,11 @@ const TextContainer = styled.div`
   color: ${({ theme }) => theme.text.primary};
 `;
 
-const TertiaryTextContainer = styled(TextContainer)`
-  display: inline-block;
-  overflow: hidden;
-  white-space: nowrap;
-  width: 100%;
-  text-overflow: ellipsis;
-  color: ${({ theme }) => theme.text.tertiary};
-`;
-
 export interface DatasetViewOption {
   id: string;
   label: string;
-  color?: string | null;
+  color: string | null;
+  description: string | null;
 }
 
 interface Props {
@@ -85,9 +77,9 @@ export default function SelectionOption(props: Props) {
             <Box>
               {isHovered && item.id !== "1" && (
                 <Edit
-                  color="disabled"
                   fontSize="small"
                   sx={{
+                    color: theme.neutral[400],
                     zIndex: "9999",
                     marginRight: isSelected ? "0.5rem" : "0",
 
@@ -98,7 +90,7 @@ export default function SelectionOption(props: Props) {
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    console.log("click", item);
+
                     if (onEdit) {
                       onEdit(item);
                     }

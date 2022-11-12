@@ -43,9 +43,13 @@ const useSetView = (
         viewOrUpdater:
           | State.Stage[]
           | ((current: State.Stage[]) => State.Stage[]),
-        addStages?: State.Stage[]
+        addStages?: State.Stage[],
+        viewName?: string
       ) => {
         const dataset = snapshot.getLoadable(fos.dataset).contents;
+        console.log("setting view", viewName, dataset);
+        const savedViews = dataset.savedViews || [];
+
         send((session) => {
           const value =
             viewOrUpdater instanceof Function
@@ -53,6 +57,7 @@ const useSetView = (
               : viewOrUpdater;
           commit({
             variables: {
+              viewName,
               subscription,
               session,
               view: value,
@@ -79,9 +84,11 @@ const useSetView = (
                 router.history.location.state.state = {
                   ...router.history.location.state,
                   view: value,
+                  viewName,
                   viewCls: dataset.viewCls,
                   selected: [],
                   selectedLabels: [],
+                  savedViews,
                 };
               }
 
@@ -91,11 +98,30 @@ const useSetView = (
                   view: value,
                   viewName: viewName,
                   viewCls: dataset.viewCls,
+                  viewName,
                   selected: [],
                   selectedLabels: [],
+                  savedViews,
                 },
               });
               onComplete && onComplete();
+
+              // if (viewName) {
+              //   router.history.push(`${location.pathname}?view=${viewName}`, {
+              //     state: {
+              //       ...newState,
+              //       dataset: transformDataset(dataset),
+              //       state: {
+              //         view: value,
+              //         viewCls: dataset.viewCls,
+              //         viewName,
+              //         selected: [],
+              //         selectedLabels: [],
+              //         savedViews,
+              //       },
+              //     },
+              //   });
+              // }
             },
           });
         });
