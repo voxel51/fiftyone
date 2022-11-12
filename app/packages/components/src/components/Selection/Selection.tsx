@@ -9,8 +9,7 @@ import { useTheme } from "@fiftyone/components";
 import { DatasetViewOption } from "./Option";
 import { debounce } from "lodash";
 import { SearchBox } from "./SearchBox";
-import { useMutation } from "react-relay";
-import * as foq from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
 
 const Box = styled.div`
   display: flex;
@@ -91,9 +90,7 @@ export default function Selection(props: SelectionProps) {
   const ref = useRef();
   useOutsideClick(ref, () => setIsOpen(false));
 
-  const [saveViewByName] = useMutation<foq.setGroupSliceMutation>(
-    foq.setGroupSlice
-  );
+  const setView = fos.useSetView();
 
   const {
     placeholder: searchPlaceholder,
@@ -204,6 +201,7 @@ export default function Selection(props: SelectionProps) {
                   setSelected(itemProps);
                   setIsOpen(false);
                   console.log("itemProps", itemProps);
+                  setView([], false, itemProps.id);
                 }}
                 sx={{
                   display: "flex",

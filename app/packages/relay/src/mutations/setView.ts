@@ -8,6 +8,7 @@ export default graphql`
     $viewName: String
     $datasetName: String!
     $form: StateForm!
+    $viewName: String
   ) {
     setView(
       subscription: $subscription
@@ -16,6 +17,7 @@ export default graphql`
       viewName: $viewName
       datasetName: $datasetName
       form: $form
+      viewName: $viewName
     ) {
       dataset {
         id

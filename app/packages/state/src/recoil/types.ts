@@ -180,5 +180,6 @@ export namespace State {
     view: Stage[];
     viewCls: string | null;
     viewName: string | null;
+    savedViews: SavedView[];
   }
 }

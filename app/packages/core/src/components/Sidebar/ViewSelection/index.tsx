@@ -35,7 +35,7 @@ export const viewSearchTerm = atom({
 });
 export const viewDialogOpen = atom({
   key: "viewDialogOpen",
-  default: true,
+  default: false,
 });
 
 const DEFAULT_SELECTED = {
