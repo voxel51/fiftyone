@@ -669,7 +669,7 @@ class BucketCredentials(Config):
     """Per-bucket cloud credentials."""
 
     def __init__(self, d):
-        self.file_system = self.parse_string(d, "file_system")
+        self.file_system = self.parse_string(d, "file_system", default=None)
         self.prefix = self.parse_string(d, "prefix")
         self.config_file = self.parse_string(d, "config_file")
         self.profile = self.parse_string(d, "profile", default=None)
@@ -677,7 +677,11 @@ class BucketCredentials(Config):
         self._parse_values()
 
     def _parse_values(self):
-        self.prefix = fos.split_prefix(self.prefix)[1]
+        fs, prefix = fos.split_prefix(self.prefix)
+        if fs:
+            self.file_system = fos.get_file_system(self.prefix)
+
+        self.prefix = prefix
 
 
 def locate_config():
