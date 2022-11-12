@@ -2357,16 +2357,11 @@ class DatasetExtrasTests(unittest.TestCase):
         self.assertListEqual([v.name for v in view_docs], names)
         self.assertListEqual([v.url_name for v in view_docs], url_names)
 
-        self.assertListEqual(
-                [v.name for v in dataset._saved_views()],
-                list(reversed(names)),
-        )
-
         dataset.delete_saved_view("my_view2")
 
         self.assertListEqual(
-                [v.name for v in dataset._saved_views()],
-                [names[2], names[0]],
+            [v.name for v in dataset._saved_views()],
+            [names[0], names[2]],
         )
 
         dataset.delete_saved_views()
