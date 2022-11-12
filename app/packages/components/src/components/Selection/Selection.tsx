@@ -90,6 +90,7 @@ export default function Selection(props: SelectionProps) {
   const ref = useRef();
   useOutsideClick(ref, () => setIsOpen(false));
 
+  // TODO: move this one level up - selection meant to be generic-ish
   const setView = fos.useSetView();
 
   const {
@@ -200,8 +201,7 @@ export default function Selection(props: SelectionProps) {
                 onClick={() => {
                   setSelected(itemProps);
                   setIsOpen(false);
-                  console.log("itemProps", itemProps);
-                  setView([], false, itemProps.id);
+                  setView([], [], itemProps.id);
                 }}
                 sx={{
                   display: "flex",

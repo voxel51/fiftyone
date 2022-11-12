@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
 
@@ -9,7 +9,7 @@ import { scrollbarStyles } from "../utils";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { replace } from "./Entries/GroupEntries";
-import { useTheme, Selection } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Box } from "@material-ui/core";
 import ViewSelection from "./ViewSelection";
@@ -435,6 +435,21 @@ const InteractiveSidebar = ({
   );
 
   const { savedViews } = useSavedViews();
+  const setView = fos.useSetView();
+
+  // TODO: there has to be a better way
+  const paramsList = location?.search?.substring(1)?.split("=");
+  let viewName = "";
+  for (let i = 0; i < paramsList?.length; i++) {
+    if (paramsList[i] === "view" && i + 1 <= paramsList?.length) {
+      viewName = paramsList[i + 1];
+      break;
+    }
+  }
+
+  useEffect(() => {
+    setView([], [], viewName);
+  }, [viewName]);
 
   if (entries instanceof Error) {
     throw entries;
