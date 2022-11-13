@@ -5,7 +5,6 @@ Label utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
@@ -127,7 +126,7 @@ def objects_to_segmentations(
                 mask_path = filename_maker.get_output_path(
                     image.filepath, output_ext=".png"
                 )
-                etai.write(segmentation.mask, mask_path)
+                segmentation.export_mask(mask_path)
                 segmentation.mask = None
                 segmentation.mask_path = mask_path
 
