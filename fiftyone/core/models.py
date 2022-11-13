@@ -535,6 +535,14 @@ def _apply_video_model(
 
 
 def _export_arrays(label, input_path, filename_maker):
+    if isinstance(label, dict):
+        for _label in label.values():
+            _do_export_array(_label, input_path, filename_maker)
+    else:
+        _do_export_array(label, input_path, filename_maker)
+
+
+def _do_export_array(label, input_path, filename_maker):
     if isinstance(label, fol.Segmentation):
         mask_path = filename_maker.get_output_path(
             input_path, output_ext=".png"
