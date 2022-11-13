@@ -20,6 +20,7 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.utils.coco as fouc
+import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
 from fiftyone.core.expressions import ViewField as F
 
@@ -1935,6 +1936,93 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
 
         # data/_images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
+
+    @drop_datasets
+    def test_image_segmentation_fiftyone_dataset(self):
+        dataset = self._make_dataset()
+
+        # In-database segmentations
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(dataset.count("segmentations.mask_path"), 0)
+        self.assertEqual(dataset2.count("segmentations.mask_path"), 0)
+        self.assertEqual(
+            dataset.count("segmentations.mask"),
+            dataset2.count("segmentations.mask"),
+        )
+
+        # Convert to on-disk segmentations
+
+        segmentations_dir = self._new_dir()
+
+        foul.export_segmentations(dataset, "segmentations", segmentations_dir)
+        self.assertEqual(dataset.count("segmentations.mask"), 0)
+        for mask_path in dataset.values("segmentations.mask_path"):
+            if mask_path is not None:
+                self.assertTrue(mask_path.startswith(segmentations_dir))
+
+        # On-disk segmentations
+
+        export_dir = self._new_dir()
+        field_dir = os.path.join(export_dir, "fields", "segmentations")
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(dataset2.count("segmentations.mask"), 0)
+        self.assertEqual(
+            dataset.count("segmentations.mask_path"),
+            dataset2.count("segmentations.mask_path"),
+        )
+
+        for mask_path in dataset2.values("segmentations.mask_path"):
+            if mask_path is not None:
+                self.assertTrue(mask_path.startswith(field_dir))
+
+        # On-disk segmentations (don't export media)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            export_media=False,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertListEqual(
+            dataset.values("filepath"),
+            dataset2.values("filepath"),
+        )
+        self.assertListEqual(
+            dataset.values("segmentations.mask_path"),
+            dataset2.values("segmentations.mask_path"),
+        )
 
 
 class DICOMDatasetTests(ImageDatasetTests):
