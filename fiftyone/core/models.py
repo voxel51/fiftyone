@@ -110,6 +110,8 @@ def apply_model(
             store_logits=store_logits,
             batch_size=batch_size,
             num_workers=num_workers,
+            output_dir=output_dir,
+            rel_dir=rel_dir,
             **kwargs,
         )
 
