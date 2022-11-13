@@ -22,6 +22,7 @@ def objects_to_segmentations(
     thickness=1,
     output_dir=None,
     rel_dir=None,
+    overwrite=False,
 ):
     """Converts the instance segmentations or polylines in the specified field
     of the collection into semantic segmentation masks.
@@ -56,6 +57,8 @@ def objects_to_segmentations(
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.utils.normalize_path`
+        overwrite (False): whether to delete ``output_dir`` prior to exporting
+            if it exists
     """
     fov.validate_collection_label_fields(
         sample_collection,
@@ -69,6 +72,9 @@ def objects_to_segmentations(
     samples = sample_collection.select_fields(in_field)
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
+
+    if overwrite and output_dir is not None:
+        etau.delete_dir(output_dir)
 
     if output_dir is not None:
         filename_maker = fou.UniqueFilenameMaker(
@@ -136,38 +142,41 @@ def objects_to_segmentations(
 
 def export_segmentations(
     sample_collection,
-    segmentation_field,
+    in_field,
     output_dir,
     rel_dir=None,
+    clear_arrays=True,
     overwrite=False,
 ):
-    """Converts the segmentations stored as in-database masks in the specified
-    field to images on disk.
+    """Exports the segmentations (or heatmaps) stored as in-database arrays in
+    the specified field to images on disk.
+
+    Any labels without in-memory arrays are skipped.
 
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        segmentation_field: the name of the
-            :class:`fiftyone.core.labels.Segmentation` field
-        output_dir: the directory in which to write the segmentation images
+        in_field: the name of the
+            :class:`fiftyone.core.labels.Segmentation` or
+            :class:`fiftyone.core.labels.Heatmap` field
+        output_dir: the directory in which to write the images
         rel_dir (None): an optional relative directory to strip from each input
             filepath to generate a unique identifier that is joined with
-            ``output_dir`` to generate an output path for each segmentation
-            image. This argument allows for populating nested subdirectories in
+            ``output_dir`` to generate an output path for each image. This
+            argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.utils.normalize_path`
+        clear_arrays (True): whether to delete the arrays from the database
         overwrite (False): whether to delete ``output_dir`` prior to exporting
             if it exists
     """
     fov.validate_collection_label_fields(
-        sample_collection, segmentation_field, fol.Segmentation
+        sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
     )
 
-    samples = sample_collection.select_fields(segmentation_field)
-    segmentation_field, processing_frames = samples._handle_frame_field(
-        segmentation_field
-    )
+    samples = sample_collection.select_fields(in_field)
+    in_field, processing_frames = samples._handle_frame_field(in_field)
 
     if overwrite:
         etau.delete_dir(output_dir)
@@ -183,16 +192,81 @@ def export_segmentations(
             images = [sample]
 
         for image in images:
-            label = image[segmentation_field]
+            label = image[in_field]
             if label is None:
                 continue
 
-            mask_path = filename_maker.get_output_path(
+            outpath = filename_maker.get_output_path(
                 image.filepath, output_ext=".png"
             )
-            etai.write(label.mask, mask_path)
-            label.mask = None
-            label.mask_path = mask_path
+
+            if isinstance(label, fol.Heatmap):
+                if label.map is not None:
+                    label.export_map(outpath)
+                    label.map_path = outpath
+                    if clear_arrays:
+                        label.map = None
+            else:
+                if label.mask is not None:
+                    label.export_mask(outpath)
+                    label.mask_path = outpath
+                    if clear_arrays:
+                        label.mask = None
+
+
+def import_segmentations(
+    sample_collection, in_field, clear_paths=True, delete_images=False
+):
+    """Imports the segmentations (or heatmaps) stored on disk in the specified
+    field to in-database arrays.
+
+    Any labels without images on disk are skipped.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        in_field: the name of the
+            :class:`fiftyone.core.labels.Segmentation` or
+            :class:`fiftyone.core.labels.Heatmap` field
+        clear_paths (True): whether to clear the paths from the imported labels
+        delete_images (False): whether to delete any imported images from disk
+    """
+    fov.validate_collection_label_fields(
+        sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
+    )
+
+    samples = sample_collection.select_fields(in_field)
+    in_field, processing_frames = samples._handle_frame_field(in_field)
+
+    for sample in samples.iter_samples(autosave=True, progress=True):
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
+
+        for image in images:
+            label = image[in_field]
+            if label is None:
+                continue
+
+            if isinstance(label, fol.Heatmap):
+                if label.map_path is not None:
+                    del_path = label.map_path if delete_images else None
+                    label.import_map()
+                    if clear_paths:
+                        label.map_path = None
+
+                    if del_path:
+                        etau.delete_file(del_path)
+            else:
+                if label.mask_path is not None:
+                    del_path = label.mask_path if delete_images else None
+                    label.import_mask()
+                    if clear_paths:
+                        label.mask_path = None
+
+                    if del_path:
+                        etau.delete_file(del_path)
 
 
 def segmentations_to_detections(
