@@ -30,7 +30,6 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
-import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
@@ -8698,6 +8697,29 @@ class SampleCollection(object):
         # @todo handle "groups.<slice>.field.name", if it becomes necessary
         db_fields_map = self._get_db_fields_map(frames=frames)
         return [db_fields_map.get(p, p) for p in paths]
+
+    def _get_media_fields(self, include_filepath=True, frames=False):
+        media_fields = {}
+
+        if frames:
+            schema = self.get_frame_field_schema()
+            app_media_fields = set()
+        else:
+            schema = self.get_field_schema()
+            app_media_fields = set(self._dataset.app_config.media_fields)
+
+        if not include_filepath:
+            app_media_fields.discard("filepath")
+
+        for field_name, field in schema.items():
+            if field_name in app_media_fields:
+                media_fields[field_name] = None
+            elif isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+                field.document_type, (fol.Segmentation, fol.Heatmap)
+            ):
+                media_fields[field_name] = field.document_type
+
+        return media_fields
 
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()

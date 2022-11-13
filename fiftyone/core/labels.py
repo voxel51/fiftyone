@@ -14,6 +14,7 @@ import numpy as np
 
 import eta.core.frameutils as etaf
 import eta.core.image as etai
+import eta.core.utils as etau
 
 from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
@@ -920,8 +921,23 @@ class Segmentation(_HasID, Label):
         if self.mask is not None:
             return self.mask
 
-        # pylint: disable=no-member
-        return etai.read(self.mask_path, flag=cv2.IMREAD_UNCHANGED)
+        return _read_mask(self.mask_path)
+
+    def import_mask(self):
+        """Imports this instance's mask to its :attr:`mask` attribute."""
+        if self.mask_path is not None:
+            self.mask = _read_mask(self.mask_path)
+
+    def export_mask(self, outpath):
+        """Exports this instance's mask to the given path.
+
+        Args:
+            outpath: the path to write the mask
+        """
+        if self.mask_path is not None:
+            etau.copy_file(self.mask_path, outpath)
+        else:
+            _write_mask(self.mask, outpath)
 
     def to_detections(self, mask_targets=None, mask_types="stuff"):
         """Returns a :class:`Detections` representation of this instance with
@@ -1022,6 +1038,22 @@ class Heatmap(_HasID, Label):
 
         # pylint: disable=no-member
         return etai.read(self.map_path, flag=cv2.IMREAD_UNCHANGED)
+
+    def import_map(self):
+        """Imports this instance's map to its :attr:`map` attribute."""
+        if self.map_path is not None:
+            self.map = _read_heatmap(self.map_path)
+
+    def export_map(self, outpath):
+        """Exports this instance's map to the given path.
+
+        Args:
+            outpath: the path to write the map
+        """
+        if self.map_path is not None:
+            etau.copy_file(self.map_path, outpath)
+        else:
+            _write_heatmap(self.map, outpath, range=self.range)
 
 
 class TemporalDetection(_HasID, Label):
@@ -1231,6 +1263,57 @@ _LABEL_LIST_TO_SINGLE_MAP = {
     Polylines: Polyline,
     TemporalDetections: TemporalDetection,
 }
+
+
+def _read_mask(mask_path):
+    # pylint: disable=no-member
+    return etai.read(mask_path, flag=cv2.IMREAD_UNCHANGED)
+
+
+def _write_mask(mask, mask_path):
+    mask = _mask_to_image(mask)
+    etai.write(mask, mask_path)
+
+
+def _mask_to_image(mask):
+    if mask.dtype in (np.uint8, np.uint16):
+        return mask
+
+    # Masks are supposed to contain integer values, so cast to the closest
+    # suitable unsigned type
+    if mask.max() <= 255:
+        return mask.astype(np.uint8)
+
+    return mask.astype(np.uint16)
+
+
+def _read_heatmap(map_path):
+    # pylint: disable=no-member
+    return etai.read(map_path, flag=cv2.IMREAD_UNCHANGED)
+
+
+def _write_heatmap(map, map_path, range):
+    map = _heatmap_to_image(map, range)
+    etai.write(map, map_path)
+
+
+def _heatmap_to_image(map, range):
+    if range is None:
+        if map.dtype in (np.uint8, np.uint16):
+            return map
+
+        range = (map.min(), map.max())
+    else:
+        range = tuple(range)
+
+    if map.dtype == np.uint8 and range == (0, 255):
+        return map
+
+    if map.dtype == np.uint16 and range == (0, 65535):
+        return map
+
+    map = (255.0 / (range[1] - range[0])) * ((map - range[0]))
+    return map.astype(np.uint8)
 
 
 def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
