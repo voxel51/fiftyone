@@ -2252,6 +2252,8 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        output_dir=None,
+        rel_dir=None,
         **kwargs,
     ):
         """Applies the :class:`FiftyOne model <fiftyone.core.models.Model>` or
@@ -2289,6 +2291,17 @@ class SampleCollection(object):
                 raising an error if predictions cannot be generated for a
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
+            output_dir (None): an optional output directory in which to write
+                segmentation images. Only applicable if the model generates
+                segmentations. If none is provided, the segmentations are
+                stored in the database
+            rel_dir (None): an optional relative directory to strip from each
+                input filepath to generate a unique identifier that is joined
+                with ``output_dir`` to generate an output path for each
+                segmentation image. This argument allows for populating nested
+                subdirectories in ``output_dir`` that match the shape of the
+                input paths. The path is converted to an absolute path (if
+                necessary) via :func:`fiftyone.core.utils.normalize_path`
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
         """
@@ -2301,6 +2314,8 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            output_dir=output_dir,
+            rel_dir=rel_dir,
             **kwargs,
         )
 
