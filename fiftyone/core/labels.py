@@ -690,7 +690,7 @@ class Polyline(_HasAttributesDict, _HasID, Label):
         _render_polyline(mask, self, target, thickness)
         return Segmentation(mask=mask)
 
-    def to_shapely(self, frame_size=None):
+    def to_shapely(self, frame_size=None, filled=None):
         """Returns a Shapely representation of this instance.
 
         The type of geometry returned depends on the number of shapes
@@ -700,6 +700,8 @@ class Polyline(_HasAttributesDict, _HasID, Label):
         Args:
             frame_size (None): the ``(width, height)`` of the image. If
                 provided, the returned geometry will use absolute coordinates
+            filled (None): whether to treat the shape as filled (True) or
+                hollow (False) regardless of its :attr:`filled` attribute
 
         Returns:
             one of the following:
@@ -715,6 +717,11 @@ class Polyline(_HasAttributesDict, _HasID, Label):
                 :attr:`filled` is False and :attr:`points` contains multiple
                 shapes
         """
+        if filled is not None:
+            _filled = filled
+        else:
+            _filled = self.filled
+
         if self.closed:
             points = []
             for shape in self.points:  # pylint: disable=not-an-iterable
@@ -730,12 +737,12 @@ class Polyline(_HasAttributesDict, _HasID, Label):
             points = [[(x * w, y * h) for x, y in shape] for shape in points]
 
         if len(points) == 1:
-            if self.filled:
+            if _filled:
                 return sg.Polygon(points[0])
 
             return sg.LineString(points[0])
 
-        if self.filled:
+        if _filled:
             return sg.MultiPolygon(list(zip(points, itertools.repeat(None))))
 
         return sg.MultiLineString(points)
