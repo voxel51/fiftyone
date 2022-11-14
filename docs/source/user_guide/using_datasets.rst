@@ -2210,13 +2210,11 @@ with integer values encoding the semantic labels for each pixel in the image.
 The mask can either be stored on disk and referenced via the
 :attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>` attribute or
 stored directly in the database via the
-:attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute.
-
-When using the :attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>`
-attribute, segmentations must be 8-bit or 16-bit grayscale images.
-
-When using the :attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute,
-masks should be 2D numpy arrays with integer values.
+:attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute. When using the
+:attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>` attribute,
+segmentations must be 8-bit or 16-bit grayscale images. When using the
+:attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute, masks should
+be 2D numpy arrays with integer values.
 
 Segmentations can have any size; they are stretched as necessary to fit the
 image's extent when visualizing in the App.
@@ -2299,25 +2297,23 @@ The |Heatmap| class represents a continuous-valued heatmap for an image.
 The map can either be stored on disk and referenced via the
 :attr:`map_path <fiftyone.core.labels.Heatmap.map_path>` attribute or stored
 directly in the database via the :attr:`map <fiftyone.core.labels.Heatmap.map>`
-attribute.
+attribute. When using the
+:attr:`map_path <fiftyone.core.labels.Heatmap.map_path>` attribute, heatmaps
+may be 8-bit or 16-bit grayscale images. When using the
+:attr:`map <fiftyone.core.labels.Heatmap.map>` attribute, heatmaps should be 2D
+numpy arrays. By default, the map values are assumed to be in `[0, 1]` for
+floating point arrays and `[0, 255]` for integer-valued arrays, but you can
+specify a custom `[min, max]` range for a map by setting its optional
+:attr:`range <fiftyone.core.labels.Heatmap.range>` attribute.
 
-When using the :attr:`map_path <fiftyone.core.labels.Heatmap.map_path>`
-attribute, segmentations may be 8-bit or 16-bit grayscale images.
-
-When using the :attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute,
-masks should be 2D numpy arrays. By default, the map values are assumed to be
-in `[0, 1]` for floating point arrays and `[0, 255]` for integer-valued arrays,
-but you can specify a custom `[min, max]` range for a map by setting its
-optional :attr:`range <fiftyone.core.labels.Heatmap.range>` attribute.
+Heatmaps can have any size; they are stretched as necessary to fit the
+image's extent when visualizing in the App.
 
 .. note::
 
     It is recommended to store heatmaps on disk and reference them via the
     :attr:`map_path <fiftyone.core.labels.Heatmap.map_path>` attribute, for
     efficiency.
-
-Heatmaps can have any size; they are stretched as necessary to fit the
-image's extent when visualizing in the App.
 
 .. code-block:: python
     :linenos:
