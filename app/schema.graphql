@@ -305,6 +305,11 @@ type Mutation {
     description: String = null
     color: String = null
   ): Boolean!
+  deleteView(
+    subscription: String!
+    session: String
+    viewName: String!
+  ): Boolean!
 }
 
 type NamedKeypointSkeleton {
