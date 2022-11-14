@@ -127,16 +127,12 @@ def _do_export_array(label, input_path, filename_maker):
         mask_path = filename_maker.get_output_path(
             input_path, output_ext=".png"
         )
-        label.export_mask(mask_path)
-        label.mask = None
-        label.mask_path = mask_path
+        label.export_mask(mask_path, update=True)
     elif isinstance(label, fol.Heatmap):
         map_path = filename_maker.get_output_path(
             input_path, output_ext=".png"
         )
-        label.export_map(map_path)
-        label.map = None
-        label.map_path = map_path
+        label.export_map(map_path, update=True)
 
 
 def compute_flash_embeddings(

@@ -2426,9 +2426,7 @@ dataset and configuring the App's colorscale in various ways on-the-fly:
 
         # optional: convert to on-disk
         map_path = os.path.join("/tmp/heatmaps", os.path.basename(sample.filepath))
-        heatmap.export_map(map_path)
-        heatmap.map = None
-        heatmap.range = None
+        heatmap.export_map(map_path, update=True)
 
         sample["heatmap"] = heatmap
         sample.save()

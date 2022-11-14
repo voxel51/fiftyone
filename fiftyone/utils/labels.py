@@ -126,9 +126,7 @@ def objects_to_segmentations(
                 mask_path = filename_maker.get_output_path(
                     image.filepath, output_ext=".png"
                 )
-                segmentation.export_mask(mask_path)
-                segmentation.mask = None
-                segmentation.mask_path = mask_path
+                segmentation.export_mask(mask_path, update=True)
 
             image[out_field] = segmentation
 
@@ -144,7 +142,7 @@ def export_segmentations(
     in_field,
     output_dir,
     rel_dir=None,
-    clear_arrays=True,
+    update=True,
     overwrite=False,
 ):
     """Exports the segmentations (or heatmaps) stored as in-database arrays in
@@ -166,7 +164,7 @@ def export_segmentations(
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.utils.normalize_path`
-        clear_arrays (True): whether to delete the arrays from the database
+        update (True): whether to delete the arrays from the database
         overwrite (False): whether to delete ``output_dir`` prior to exporting
             if it exists
     """
@@ -201,20 +199,14 @@ def export_segmentations(
 
             if isinstance(label, fol.Heatmap):
                 if label.map is not None:
-                    label.export_map(outpath)
-                    label.map_path = outpath
-                    if clear_arrays:
-                        label.map = None
+                    label.export_map(outpath, update=update)
             else:
                 if label.mask is not None:
-                    label.export_mask(outpath)
-                    label.mask_path = outpath
-                    if clear_arrays:
-                        label.mask = None
+                    label.export_mask(outpath, update=update)
 
 
 def import_segmentations(
-    sample_collection, in_field, clear_paths=True, delete_images=False
+    sample_collection, in_field, update=True, delete_images=False
 ):
     """Imports the segmentations (or heatmaps) stored on disk in the specified
     field to in-database arrays.
@@ -227,7 +219,7 @@ def import_segmentations(
         in_field: the name of the
             :class:`fiftyone.core.labels.Segmentation` or
             :class:`fiftyone.core.labels.Heatmap` field
-        clear_paths (True): whether to clear the paths from the imported labels
+        update (True): whether to delete the image paths from the labels
         delete_images (False): whether to delete any imported images from disk
     """
     fov.validate_collection_label_fields(
@@ -251,19 +243,13 @@ def import_segmentations(
             if isinstance(label, fol.Heatmap):
                 if label.map_path is not None:
                     del_path = label.map_path if delete_images else None
-                    label.import_map()
-                    if clear_paths:
-                        label.map_path = None
-
+                    label.import_map(update=update)
                     if del_path:
                         etau.delete_file(del_path)
             else:
                 if label.mask_path is not None:
                     del_path = label.mask_path if delete_images else None
-                    label.import_mask()
-                    if clear_paths:
-                        label.mask_path = None
-
+                    label.import_mask(update=update)
                     if del_path:
                         etau.delete_file(del_path)
 
