@@ -191,8 +191,10 @@ const MediaFields = ({ modal }) => {
   const [selectedMediaField, setSelectedMediaField] = useRecoilState(
     fos.selectedMediaField(modal)
   );
-
-  const mediaFields = useRecoilValue(fos.mediaFields);
+  
+  const schema = useRecoilValue(fos.fieldSchema({}))
+  const fieldSchema = Object.keys(schema)
+  const mediaFields = useRecoilValue(fos.mediaFields).filter(field => fieldSchema.includes(field))
 
   if (mediaFields.length <= 1) return null;
 
