@@ -280,7 +280,6 @@ const Hidden = () => {
 
 const SaveFilters = () => {
   const hasFiltersValue = useRecoilValue(fos.hasFilters(false));
-  const extended = Object.keys(useRecoilValue(fos.extendedStages)).length > 0;
   const loading = useRecoilValue(fos.savingFilters);
   const onComplete = useRecoilCallback(({ set, reset }) => () => {
     set(fos.savingFilters, false);
@@ -302,7 +301,7 @@ const SaveFilters = () => {
     []
   );
 
-  return hasFiltersValue || extended ? (
+  return hasFiltersValue ? (
     <ActionDiv>
       <PillButton
         open={false}
