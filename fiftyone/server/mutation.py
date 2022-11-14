@@ -147,9 +147,9 @@ class Mutation:
             state.view = state.dataset.load_view(view_name)
         elif form:
             view = get_view(
-                    dataset_name,
-                    stages=view,
-                    filters=form.filters,
+                dataset_name,
+                stages=view,
+                filters=form.filters,
             )
             if form.slice:
                 view = view.select_group_slices([form.slice])
@@ -220,24 +220,30 @@ class Mutation:
         state = get_state()
         dataset = state.dataset
         dataset.save_view(
-                view_name, state.view, description=description, color=color
+            view_name, state.view, description=description, color=color
         )
         dataset.reload()
         state.view = dataset.load_view(view_name)
         state.name = view_name
-        await dispatch_event(subscription, StateUpdate(state=state))
+        # TODO: confirm StateUpdate is unnecessary
+        # await dispatch_event(subscription, StateUpdate(state=state))
 
         return state.view
 
-
-@gql.mutation
-async def delete_view(
+    @gql.mutation
+    async def delete_view(
         self, subscription: str, session: t.Optional[str], view_name: str
-) -> bool:
-    state = get_state()
-    deleted_view = state.dataset.delete_view(view_name)
-    if state.view_name == view_name:
-        state.view = None
-        state.view_name = None
-    await dispatch_event(subscription, StateUpdate(state=state))
-    return state.dataset.saved_views
+    ) -> bool:
+        state = get_state()
+        dataset = state.dataset
+        if dataset.has_views and dataset.has_view(view_name):
+            deleted_view_name = state.dataset.delete_view(view_name)
+        else:
+            print("Attempting to delete non-existent view: %s", view_name)
+        if state.view_name == deleted_view_name:
+            state.view = dataset.view()
+            state.view_name = None
+        # TODO: confirm StateUpdate is unnecessary
+        # await dispatch_event(subscription, StateUpdate(state=state))
+
+        return state.dataset.saved_views
