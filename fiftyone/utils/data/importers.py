@@ -1396,6 +1396,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
+        self._fields_dir = None
         self._frame_labels_dir = None
         self._samples = None
         self._iter_samples = None
@@ -1463,14 +1464,14 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         else:
             self._rel_dir = self.dataset_dir
 
-        fields_dir = os.path.join(self.dataset_dir, "fields")
-        if os.path.isdir(fields_dir):
-            self._media_fields = etau.list_subdirs(fields_dir)
-
         self._anno_dir = os.path.join(self.dataset_dir, "annotations")
         self._brain_dir = os.path.join(self.dataset_dir, "brain")
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
+        self._fields_dir = os.path.join(self.dataset_dir, "fields")
         self._frame_labels_dir = os.path.join(self.dataset_dir, "frames")
+
+        if os.path.isdir(self._fields_dir):
+            self._media_fields = etau.list_subdirs(self._fields_dir)
 
         samples_path = os.path.join(self.dataset_dir, "samples.json")
         samples = etas.read_json(samples_path).get("samples", [])
@@ -1637,6 +1638,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
+        self._fields_dir = None
         self._metadata_path = None
         self._samples_path = None
         self._frames_path = None
@@ -1648,6 +1650,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._anno_dir = os.path.join(self.dataset_dir, "annotations")
         self._brain_dir = os.path.join(self.dataset_dir, "brain")
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
+        self._fields_dir = os.path.join(self.dataset_dir, "fields")
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
 
         self._samples_path = os.path.join(self.dataset_dir, "samples.json")
@@ -1664,9 +1667,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             else:
                 self._has_frames = False
 
-        fields_dir = os.path.join(self.dataset_dir, "fields")
-        if os.path.isdir(fields_dir):
-            self._media_fields = etau.list_subdirs(fields_dir)
+        if os.path.isdir(self._fields_dir):
+            self._media_fields = etau.list_subdirs(self._fields_dir)
 
     def import_samples(self, dataset, tags=None):
         dataset_dict = foo.import_document(self._metadata_path)
@@ -3062,13 +3064,11 @@ class ImageSegmentationDirectoryImporter(
             image_metadata = None
 
         if mask_path is not None:
+            label = fol.Segmentation(mask_path=mask_path)
             if self.load_masks:
-                mask = _read_mask(
-                    mask_path, force_grayscale=self.force_grayscale
-                )
-                label = fol.Segmentation(mask=mask)
-            else:
-                label = fol.Segmentation(mask_path=mask_path)
+                label.import_mask(update=True)
+                if self.force_grayscale and label.mask.ndim > 1:
+                    label.mask = label.mask[:, :, 0]
         else:
             label = None
 
@@ -3113,15 +3113,6 @@ class ImageSegmentationDirectoryImporter(
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
         return len(etau.list_files(os.path.join(dataset_dir, "data")))
-
-
-def _read_mask(mask_path, force_grayscale=False):
-    # pylint: disable=no-member
-    mask = etai.read(mask_path, flag=cv2.IMREAD_UNCHANGED)
-    if force_grayscale and mask.ndim > 1:
-        mask = mask[:, :, 0]
-
-    return mask
 
 
 class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
