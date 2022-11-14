@@ -1939,6 +1939,17 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
 
     @drop_datasets
     def test_image_segmentation_fiftyone_dataset(self):
+        self._test_image_segmentation_fiftyone_dataset(
+            fo.types.FiftyOneDataset
+        )
+
+    @drop_datasets
+    def test_image_segmentation_legacy_fiftyone_dataset(self):
+        self._test_image_segmentation_fiftyone_dataset(
+            fo.types.LegacyFiftyOneDataset
+        )
+
+    def _test_image_segmentation_fiftyone_dataset(self, dataset_type):
         dataset = self._make_dataset()
 
         # In-database segmentations
@@ -1947,12 +1958,12 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
 
         dataset.export(
             export_dir=export_dir,
-            dataset_type=fo.types.FiftyOneDataset,
+            dataset_type=dataset_type,
         )
 
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
-            dataset_type=fo.types.FiftyOneDataset,
+            dataset_type=dataset_type,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
@@ -1980,12 +1991,12 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
 
         dataset.export(
             export_dir=export_dir,
-            dataset_type=fo.types.FiftyOneDataset,
+            dataset_type=dataset_type,
         )
 
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
-            dataset_type=fo.types.FiftyOneDataset,
+            dataset_type=dataset_type,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
@@ -2005,13 +2016,13 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
 
         dataset.export(
             export_dir=export_dir,
-            dataset_type=fo.types.FiftyOneDataset,
+            dataset_type=dataset_type,
             export_media=False,
         )
 
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
-            dataset_type=fo.types.FiftyOneDataset,
+            dataset_type=dataset_type,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
