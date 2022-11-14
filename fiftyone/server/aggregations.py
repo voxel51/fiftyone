@@ -120,6 +120,7 @@ async def aggregate_resolver(
 ) -> t.List[AggregateResult]:
     view = fosv.get_view(
         form.dataset,
+        view_name=None,
         stages=form.view,
         filters=form.filters,
         extended_stages=form.extended_stages,

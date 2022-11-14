@@ -1,19 +1,17 @@
 import { graphql } from "react-relay";
 
 export default graphql`
-  mutation saveViewMutation(
+  mutation updateSavedViewMutation(
     $subscription: String!
     $session: String
     $viewName: String!
-    $description: String = null
-    $color: String = null
+    $updatedInfo: SavedViewInfo!
   ) {
-    saveView(
+    updateSavedView(
       subscription: $subscription
       session: $session
       viewName: $viewName
-      description: $description
-      color: $color
+      updatedInfo: $updatedInfo
     ) {
       id
       name

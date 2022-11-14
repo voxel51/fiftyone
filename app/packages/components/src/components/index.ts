@@ -13,3 +13,4 @@ export { default as Selector } from "./Selector";
 export { default as TabOption } from "./TabOption";
 export { default as Tooltip } from "./Tooltip";
 export { default as ThemeProvider, useTheme } from "./ThemeProvider";
+export { default as Selection } from "./Selection";

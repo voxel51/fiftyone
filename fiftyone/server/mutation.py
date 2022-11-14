@@ -21,7 +21,7 @@ import fiftyone.core.view as fov
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
-from fiftyone.server.query import Dataset, SidebarGroup
+from fiftyone.server.query import Dataset, SidebarGroup, SavedView
 from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view, extend_view
 
@@ -56,6 +56,13 @@ class StateForm:
     slice: t.Optional[str] = None
 
 
+@gql.input
+class SavedViewInfo:
+    name: t.Optional[str] = None
+    description: t.Optional[str] = None
+    color: t.Optional[str] = None
+
+
 @gql.type
 class Mutation:
     @gql.mutation
@@ -64,6 +71,7 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         name: t.Optional[str],
+        view_name: t.Optional[str],
         info: Info,
     ) -> bool:
         state = get_state()
@@ -71,6 +79,7 @@ class Mutation:
         state.selected = []
         state.selected_labels = []
         state.view = None
+        state.view_name = view_name if view_name is not None else None
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 
@@ -134,42 +143,70 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
-        view: BSONArray,
-        view_name: t.Optional[str],
         dataset_name: str,
+        view: t.Optional[BSONArray],
+        view_name: t.Optional[str],
         form: t.Optional[StateForm],
         info: Info,
     ) -> ViewResponse:
         state = get_state()
         state.selected = []
         state.selected_labels = []
-        if view_name and state.dataset.has_view(view_name):
+
+        if view_name is not None and state.dataset.has_view(view_name):
+            # Load a saved view by name
             state.view = state.dataset.load_view(view_name)
+
         elif form:
+            # Update current view with form parameters
             view = get_view(
-                    dataset_name,
-                    stages=view,
-                    filters=form.filters,
+                dataset_name,
+                stages=view,
+                filters=form.filters,
             )
             if form.slice:
                 view = view.select_group_slices([form.slice])
-
             if form.sample_ids:
                 view = fov.make_optimized_select_view(view, form.sample_ids)
-
             if form.add_stages:
                 for d in form.add_stages:
                     stage = fos.ViewStage._from_dict(d)
                     view = view.add_stage(stage)
-
             if form.extended:
                 view = extend_view(view, form.extended, True)
-
             state.view = view
             view = view._serialize()
 
         else:
-            state.view = fov.DatasetView._build(state.dataset, view)
+            # Apply a list of view stages to dataset if provided
+            state.view = fov.DatasetView._build(state.dataset, view | [])
+
+        await dispatch_event(subscription, StateUpdate(state=state))
+        dataset = await Dataset.resolver(
+            name=dataset_name,
+            view=view,
+            view_name=view_name if view_name else state.view.name,
+            info=info,
+        )
+        return ViewResponse(
+            view=state.view._serialize(),
+            dataset=dataset,
+            view_name=state.view.name,
+        )
+
+    @gql.mutation
+    async def set_view_by_name(
+        self,
+        subscription: str,
+        view_name: str,
+        dataset_name: str,
+        session: t.Optional[str],
+        info: Info,
+    ) -> ViewResponse:
+        state = get_state()
+        state.selected = []
+        state.selected_labels = []
+        state.view = state.dataset.load_view(view_name)
         await dispatch_event(subscription, StateUpdate(state=state))
         dataset = await Dataset.resolver(
             name=dataset_name,
@@ -209,35 +246,97 @@ class Mutation:
         )
 
     @gql.mutation
-    async def save_view(
+    def save_view(
         self,
         subscription: str,
         session: t.Optional[str],
         view_name: str,
         description: t.Optional[str] = None,
         color: t.Optional[str] = None,
-    ) -> bool:
+    ) -> t.Optional[SavedView]:
         state = get_state()
         dataset = state.dataset
+
+        # view arg required to be an instance of
+        # `fiftyone.core.view.DatasetView`
         dataset.save_view(
-                view_name, state.view, description=description, color=color
+            view_name, state.view, description=description, color=color
         )
         dataset.reload()
         state.view = dataset.load_view(view_name)
-        state.name = view_name
-        await dispatch_event(subscription, StateUpdate(state=state))
+        state.view_name = view_name
+        return next(
+            (
+                saved_view
+                for saved_view in dataset._doc.saved_views
+                if saved_view.name == view_name
+            ),
+            None,
+        )
 
-        return state.view
-
-
-@gql.mutation
-async def delete_view(
+    @gql.mutation
+    def delete_saved_view(
         self, subscription: str, session: t.Optional[str], view_name: str
-) -> bool:
-    state = get_state()
-    deleted_view = state.dataset.delete_view(view_name)
-    if state.view_name == view_name:
-        state.view = None
-        state.view_name = None
-    await dispatch_event(subscription, StateUpdate(state=state))
-    return state.dataset.saved_views
+    ) -> bool:
+        state = get_state()
+        dataset = state.dataset
+        if dataset.has_views and dataset.has_view(view_name):
+            deleted_view_name = state.dataset.delete_view(view_name)
+        else:
+            raise ValueError(
+                "Attempting to delete non-existent saved view: " "%s",
+                view_name,
+            )
+
+        # If the current view is deleted, set the view state to the full
+        # dataset view
+        if state.view_name == deleted_view_name:
+            state.view = dataset.view()
+            state.view_name = None
+        return True
+
+    @gql.mutation
+    def update_saved_view(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        view_name: str,
+        updated_info: SavedViewInfo,
+    ) -> t.Optional[SavedView]:
+        """Updates the editable fields of a saved view
+
+        Args:
+            subscription: str identifier used for syncing App state
+            session: str identifier use for syncing App state
+            view_name: name of the existing saved view
+            updated_info: input type with values only for fields requiring
+            update
+
+        """
+
+        state = get_state()
+        dataset = state.dataset
+        if dataset.has_views and dataset.has_view(view_name):
+            dataset.update_view_info(view_name, asdict(updated_info))
+        else:
+            raise ValueError(
+                "Attempting to update fields on non-existent saved view: "
+                "%s",
+                view_name,
+            )
+        dataset.reload()
+        name = (
+            updated_info.name
+            if updated_info.get("name", None) is not None
+            else view_name
+        )
+        # Return updated saved_view, which may not be the currently loaded
+        # view in state.view
+        return next(
+            (
+                saved_view
+                for saved_view in dataset._doc.saved_views
+                if saved_view.name == name
+            ),
+            None,
+        )

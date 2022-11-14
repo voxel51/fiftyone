@@ -2921,7 +2921,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         now = datetime.utcnow()
 
-        view_doc = foo.SavedViewDocument(
+        view_doc = foo.ViewDocument(
+            # id=ObjectId(),
             dataset_id=self._doc.id,
             name=name,
             slug=slug,
@@ -3039,7 +3040,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         view_doc = self._get_saved_view_doc(name, pop=True)
         view_doc.delete()
         self._doc.save()
-        return view_doc
+        return view_doc.name
 
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""

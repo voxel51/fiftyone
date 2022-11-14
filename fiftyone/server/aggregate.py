@@ -157,12 +157,15 @@ class AggregateQuery:
 
 
 async def load_view(
-    name: str, serialized_view: BSONArray
+    name: str, serialized_view: BSONArray, view_name: t.Optional[str] = None
 ) -> foc.SampleCollection:
     def run() -> foc.SampleCollection:
         dataset = fo.load_dataset(name)
         dataset.reload()
-        return fo.DatasetView._build(dataset, serialized_view or [])
+        if view_name:
+            return dataset.load_view(view_name)
+        else:
+            return fo.DatasetView._build(dataset, serialized_view or [])
 
     loop = asyncio.get_running_loop()
 

@@ -1,16 +1,14 @@
 import { graphql } from "react-relay";
 
 export default graphql`
-  mutation setDatasetMutation(
+  mutation deleteSavedViewMutation(
     $subscription: String!
     $session: String
-    $name: String
-    $viewName: String
+    $viewName: String!
   ) {
-    setDataset(
+    deleteSavedView(
       subscription: $subscription
       session: $session
-      name: $name
       viewName: $viewName
     )
   }

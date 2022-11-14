@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c4da9d1d5065beed0bb70ba1cdaed080>>
+ * @generated SignedSource<<4d88d3aed3fe32e6091073b5feb40b76>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,15 +9,19 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
-export type saveViewMutation$variables = {
+export type SavedViewInfo = {
   color?: string | null;
   description?: string | null;
+  name?: string | null;
+};
+export type updateSavedViewMutation$variables = {
   session?: string | null;
   subscription: string;
+  updatedInfo: SavedViewInfo;
   viewName: string;
 };
-export type saveViewMutation$data = {
-  readonly saveView: {
+export type updateSavedViewMutation$data = {
+  readonly updateSavedView: {
     readonly color: string | null;
     readonly createdAt: any;
     readonly description: string | null;
@@ -29,51 +33,36 @@ export type saveViewMutation$data = {
     readonly viewStages: ReadonlyArray<string>;
   } | null;
 };
-export type saveViewMutation = {
-  response: saveViewMutation$data;
-  variables: saveViewMutation$variables;
+export type updateSavedViewMutation = {
+  response: updateSavedViewMutation$data;
+  variables: updateSavedViewMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
 var v0 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "color"
+  "name": "session"
 },
 v1 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "description"
+  "name": "subscription"
 },
 v2 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "session"
+  "name": "updatedInfo"
 },
 v3 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "subscription"
-},
-v4 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
   "name": "viewName"
 },
-v5 = [
+v4 = [
   {
     "alias": null,
     "args": [
-      {
-        "kind": "Variable",
-        "name": "color",
-        "variableName": "color"
-      },
-      {
-        "kind": "Variable",
-        "name": "description",
-        "variableName": "description"
-      },
       {
         "kind": "Variable",
         "name": "session",
@@ -86,13 +75,18 @@ v5 = [
       },
       {
         "kind": "Variable",
+        "name": "updatedInfo",
+        "variableName": "updatedInfo"
+      },
+      {
+        "kind": "Variable",
         "name": "viewName",
         "variableName": "viewName"
       }
     ],
     "concreteType": "SavedView",
     "kind": "LinkedField",
-    "name": "saveView",
+    "name": "updateSavedView",
     "plural": false,
     "selections": [
       {
@@ -168,40 +162,38 @@ return {
       (v0/*: any*/),
       (v1/*: any*/),
       (v2/*: any*/),
-      (v3/*: any*/),
-      (v4/*: any*/)
+      (v3/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
-    "name": "saveViewMutation",
-    "selections": (v5/*: any*/),
+    "name": "updateSavedViewMutation",
+    "selections": (v4/*: any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v3/*: any*/),
-      (v2/*: any*/),
-      (v4/*: any*/),
       (v1/*: any*/),
-      (v0/*: any*/)
+      (v0/*: any*/),
+      (v3/*: any*/),
+      (v2/*: any*/)
     ],
     "kind": "Operation",
-    "name": "saveViewMutation",
-    "selections": (v5/*: any*/)
+    "name": "updateSavedViewMutation",
+    "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "f78677dd00613b31ca2fd4b9d877b076",
+    "cacheID": "ad2d7096302b27f93587349155aba277",
     "id": null,
     "metadata": {},
-    "name": "saveViewMutation",
+    "name": "updateSavedViewMutation",
     "operationKind": "mutation",
-    "text": "mutation saveViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $description: String = null\n  $color: String = null\n) {\n  saveView(subscription: $subscription, session: $session, viewName: $viewName, description: $description, color: $color) {\n    id\n    name\n    urlName\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
+    "text": "mutation updateSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $updatedInfo: SavedViewInfo!\n) {\n  updateSavedView(subscription: $subscription, session: $session, viewName: $viewName, updatedInfo: $updatedInfo) {\n    id\n    name\n    urlName\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "356086cfd829f72b0005b52ca41c1e0d";
+(node as any).hash = "bb1eca18548c272a33cc58d31d27f629";
 
 export default node;

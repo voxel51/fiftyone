@@ -118,6 +118,10 @@ class SavedView:
     created_at: datetime
     last_modified_at: t.Optional[datetime]
     last_loaded_at: t.Optional[datetime]
+    # TODO: temporarily make id optional since previous
+    # saved_views didn't have this field, but make it required for actual
+    # release
+    id: t.Optional[str]
 
     @gql.field
     def view_name(self) -> str:
@@ -180,6 +184,7 @@ class Dataset:
     saved_views: t.Optional[t.List[SavedView]]
     version: t.Optional[str]
     view_cls: t.Optional[str]
+    view_name: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
@@ -199,7 +204,7 @@ class Dataset:
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
-        doc["saved_views"] = doc.get("saved_views", [])
+        doc["saved_views"] = doc.get("saved_views", doc.get("views", []))
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -210,6 +215,16 @@ class Dataset:
         ]
         doc["default_skeletons"] = doc.get("default_skeletons", None)
         return doc
+
+    @gql.field
+    def saved_view(
+        self, view_name: t.Optional[str] = None
+    ) -> t.Optional[SavedView]:
+        if view_name:
+            return SavedView(name=view_name)
+        elif self.view_name:
+            return SavedView(name=self.view_name)
+        return
 
     @classmethod
     async def resolver(
@@ -225,13 +240,6 @@ class Dataset:
 dataset_dataloader = get_dataloader_resolver(
     Dataset, "datasets", "name", DATASET_FILTER
 )
-
-
-# @gql.type
-# class CurrentView:
-#     name = t.Optional[str] = None
-#     stages = t.Optional[t.List[str]] = None
-#
 
 
 @gql.enum
@@ -352,8 +360,11 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def saved_view(
-        self, dataset_name: str, view_name: str
+        self, dataset_name: str, view_name: t.Optional[str]
     ) -> t.Optional[SavedView]:
+        if not view_name:
+            return
+
         ds = fo.load_dataset(dataset_name)
         if ds.has_views & ds.has_view(view_name):
             for view in ds._doc.saved_views:
@@ -388,8 +399,9 @@ async def serialize_dataset(
 ) -> Dataset:
     def run():
         dataset = fo.load_dataset(name)
+
         dataset.reload()
-        if view_name:
+        if view_name is not None:
             view = dataset.load_view(view_name)
         else:
             view = fov.DatasetView._build(dataset, serialized_view or [])
