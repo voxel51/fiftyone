@@ -1036,8 +1036,9 @@ class Heatmap(_HasID, Label):
         map_path (None): the path to the heatmap image on disk
         range (None): an optional ``[min, max]`` range of the map's values. If
             None is provided, ``[0, 1]`` will be assumed if ``map`` contains
-            floating point values, and ``[0, 255]`` will be assumed if ``map``
-            contains integer values
+            floating point values, ``[0, 255]`` will be assumed if ``map``
+            contains integer values, and the dtype of the image will be assumed
+            if ``map_path`` is used
     """
 
     map = fof.ArrayField()
