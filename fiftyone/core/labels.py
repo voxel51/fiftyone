@@ -1059,8 +1059,7 @@ class Heatmap(_HasID, Label):
         if self.map is not None:
             return self.map
 
-        # pylint: disable=no-member
-        return etai.read(self.map_path, flag=cv2.IMREAD_UNCHANGED)
+        return _read_heatmap(self.map_path)
 
     def import_map(self, update=False):
         """Imports this instance's map from disk to its :attr:`map` attribute.
@@ -1319,8 +1318,8 @@ def _mask_to_image(mask):
     if mask.dtype in (np.uint8, np.uint16):
         return mask
 
-    # Masks are supposed to contain integer values, so cast to the closest
-    # suitable unsigned type
+    # Masks should contain integer values, so cast to the closest suitable
+    # unsigned type
     if mask.max() <= 255:
         return mask.astype(np.uint8)
 
