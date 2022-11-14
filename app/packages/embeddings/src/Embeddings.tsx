@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useEffect, useState, useRef, useLayoutEffect } from "react";
+import { useRecoilState, useRecoilValue, useRecoilCallback } from "recoil";
 import * as fos from "@fiftyone/state";
-import { getFetchFunction } from "@fiftyone/utilities";
+import { getColor, getFetchFunction } from "@fiftyone/utilities";
 import Plot from "react-plotly.js";
 import { Loading, Selector } from "@fiftyone/components";
 import styled from "styled-components";
@@ -66,6 +66,7 @@ function useLabelSelector() {
 
 const EmbeddingsContainer = styled.div`
   margin: 0 2rem;
+  height: 100%;
 `;
 
 const Selectors = styled.div`
@@ -74,17 +75,17 @@ const Selectors = styled.div`
   gap: 1rem;
 `;
 
-export default function Embeddings() {
+export default function Embeddings({ containerHeight }) {
+  const el = useRef();
   const brainResultSelector = useBrainResultsSelector();
   const labelSelector = useLabelSelector();
-  console.log({ brainResultSelector, labelSelector });
   const canSelect = brainResultSelector.canSelect && labelSelector.canSelect;
   const showPlot =
     brainResultSelector.hasSelection && labelSelector.hasSelection;
 
   if (canSelect)
     return (
-      <EmbeddingsContainer>
+      <EmbeddingsContainer ref={el}>
         <Selectors>
           <Selector
             {...brainResultSelector.handlers}
@@ -103,8 +104,10 @@ export default function Embeddings() {
         </Selectors>
         {showPlot && (
           <EmbeddingsPlot
+            el={el}
             brainKey={brainResultSelector.brainKey}
             labelField={labelSelector.label}
+            containerHeight={containerHeight}
           />
         )}
       </EmbeddingsContainer>
@@ -113,72 +116,106 @@ export default function Embeddings() {
   return <Loading>No Brain Results Available</Loading>;
 }
 
-function EmbeddingsPlot({ brainKey, labelField }) {
+function tracesToData(traces, getColor) {
+  return Object.entries(traces).map(([key, trace]) => {
+    return {
+      x: trace.map((d) => d.points[0]),
+      y: trace.map((d) => d.points[1]),
+      type: "scattergl",
+      mode: "markers",
+      marker: {
+        color: getColor(key),
+      },
+      name: key,
+    };
+  });
+}
+
+function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
   const getColor = useRecoilValue(fos.colorMap(true));
-  const { results, isLoading, datasetName, handleSelected } = useEmbeddings(
+  const [bounds, setBounds] = useState({});
+
+  useLayoutEffect(() => {
+    if (el.current) {
+      setBounds(el.current.getBoundingClientRect());
+    }
+  }, [el.current]);
+  const { traces, isLoading, datasetName, handleSelected } = useEmbeddings(
     brainKey,
     labelField
   );
   if (isLoading) return <h3>Pixelating...</h3>;
+  const data = tracesToData(traces, getColor);
 
   return (
     <div>
-      <h1>Found {results.length} embeddings!</h1>
-      <Plot
-        data={[
-          {
-            x: results.map((d) => d[1][0]),
-            y: results.map((d) => d[1][1]),
-            type: "scattergl",
-            mode: "markers",
-            marker: {
-              color: results.map((d) => {
-                return getColor(d[2]);
-              }),
+      {bounds && (
+        <Plot
+          data={data}
+          onSelected={(selected) => {
+            const selectedResults = selected.points.map(
+              (p) => results[p.pointIndex]
+            );
+            handleSelected(selectedResults);
+          }}
+          config={{ scrollZoom: true, displaylogo: false, responsive: true }}
+          layout={{
+            showlegend: true,
+            width: bounds ? bounds.width : 800,
+            height: containerHeight,
+            hovermode: false,
+            xaxis: {
+              showgrid: false,
+              zeroline: false,
+              visible: false,
             },
-          },
-        ]}
-        onSelected={(selected) => {
-          const selectedResults = selected.points.map(
-            (p) => results[p.pointIndex]
-          );
-          handleSelected(selectedResults);
-        }}
-        layout={{
-          width: 1500,
-          height: 1000,
-          title: `${datasetName} "${brainKey}" Embeddings`,
-          hovermode: false,
-          xaxis: {
-            showgrid: false,
-            zeroline: false,
-            visible: false,
-          },
-          yaxis: {
-            showgrid: false,
-            zeroline: false,
-            visible: false,
-          },
-        }}
-      />
+            yaxis: {
+              showgrid: false,
+              zeroline: false,
+              visible: false,
+              scaleanchor: "x",
+              scaleratio: 1,
+            },
+            autosize: true,
+            margins: {
+              t: 0,
+              l: 0,
+              b: 0,
+              r: 0,
+              pad: 0,
+            },
+            paper_bgcolor: "rgba(0,0,0,0)",
+            plot_bgcolor: "rgba(0,0,0,0)",
+          }}
+        />
+      )}
     </div>
   );
 }
 
 function useEmbeddings(brainKey, labelField) {
+  const view = useRecoilValue(fos.view);
+  const filters = useRecoilValue(fos.filters);
+  const extended = useRecoilValue(fos.extendedStagesUnsorted);
   const datasetName = useRecoilValue(fos.datasetName);
   const [extendedSelection, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
   const [state, setState] = useState({ isLoading: true });
-  function onLoaded(results) {
-    setState({ results, isLoading: false });
+  function onLoaded(traces) {
+    setState({ traces, isLoading: false });
   }
   useEffect(() => {
-    fetchEmbeddings(datasetName, brainKey, `${labelField}.label`).then(
-      onLoaded
-    );
-  }, [datasetName, brainKey, labelField]);
+    setState({ isLoading: true });
+    fetchEmbeddings({
+      dataset: datasetName,
+      brainKey,
+      labelsField: `${labelField}.label`,
+      view,
+      filters,
+      extended,
+    }).then(onLoaded);
+  }, [datasetName, brainKey, labelField, view, filters, extended]);
 
   function handleSelected(selectedResults) {
     if (selectedResults.length === 0) return;
@@ -189,10 +226,21 @@ function useEmbeddings(brainKey, labelField) {
   return { ...state, datasetName, brainKey, handleSelected };
 }
 
-async function fetchEmbeddings(dataset, brainKey, labelsField) {
-  const res = await getFetchFunction()(
-    "GET",
-    `/embeddings?dataset=${dataset}&brain_key=${brainKey}&labels_field=${labelsField}`
-  );
-  return res.results;
-}
+const fetchEmbeddings = async ({
+  dataset,
+  brainKey,
+  labelsField,
+  view,
+  filters,
+  extended,
+}) => {
+  const res = await getFetchFunction()("POST", "/embeddings", {
+    brainKey,
+    labelsField,
+    filters,
+    dataset,
+    view,
+    extended,
+  });
+  return res.traces;
+};
