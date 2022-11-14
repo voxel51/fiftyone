@@ -898,6 +898,9 @@ class Keypoints(_HasLabelList, Label):
 class Segmentation(_HasID, Label):
     """A semantic segmentation for an image.
 
+    Provide either the ``mask`` or ``mask_path`` argument to define the
+    segmentation.
+
     Args:
         mask (None): a 2D numpy array with integer values encoding the semantic
             labels
@@ -1008,6 +1011,8 @@ class Segmentation(_HasID, Label):
 
 class Heatmap(_HasID, Label):
     """A heatmap for an image.
+
+    Provide either the ``map`` or ``map_path`` argument to define the heatmap.
 
     Args:
         map (None): a 2D numpy array
