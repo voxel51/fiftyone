@@ -926,21 +926,38 @@ class Segmentation(_HasID, Label):
 
         return _read_mask(self.mask_path)
 
-    def import_mask(self):
-        """Imports this instance's mask to its :attr:`mask` attribute."""
+    def import_mask(self, update=False):
+        """Imports this instance's mask from disk to its :attr:`mask`
+        attribute.
+
+        Args:
+            outpath: the path to write the map
+            update (False): whether to clear this instance's :attr:`mask_path`
+                attribute after importing
+        """
         if self.mask_path is not None:
             self.mask = _read_mask(self.mask_path)
 
-    def export_mask(self, outpath):
+            if update:
+                self.mask_path = None
+
+    def export_mask(self, outpath, update=False):
         """Exports this instance's mask to the given path.
 
         Args:
             outpath: the path to write the mask
+            update (False): whether to clear this instance's :attr:`mask`
+                attribute and set its :attr:`mask_path` attribute when
+                exporting in-database segmentations
         """
         if self.mask_path is not None:
             etau.copy_file(self.mask_path, outpath)
         else:
             _write_mask(self.mask, outpath)
+
+            if update:
+                self.mask = None
+                self.mask_path = outpath
 
     def to_detections(self, mask_targets=None, mask_types="stuff"):
         """Returns a :class:`Detections` representation of this instance with
@@ -1044,21 +1061,38 @@ class Heatmap(_HasID, Label):
         # pylint: disable=no-member
         return etai.read(self.map_path, flag=cv2.IMREAD_UNCHANGED)
 
-    def import_map(self):
-        """Imports this instance's map to its :attr:`map` attribute."""
+    def import_map(self, update=False):
+        """Imports this instance's map from disk to its :attr:`map` attribute.
+
+        Args:
+            outpath: the path to write the map
+            update (False): whether to clear this instance's :attr:`map_path`
+                attribute after importing
+        """
         if self.map_path is not None:
             self.map = _read_heatmap(self.map_path)
 
-    def export_map(self, outpath):
+            if update:
+                self.map_path = None
+
+    def export_map(self, outpath, update=False):
         """Exports this instance's map to the given path.
 
         Args:
             outpath: the path to write the map
+            update (False): whether to clear this instance's :attr:`map` and
+                :attr:`range` attributes and set its :attr:`map_path` attribute
+                when exporting in-database heatmaps
         """
         if self.map_path is not None:
             etau.copy_file(self.map_path, outpath)
         else:
             _write_heatmap(self.map, outpath, range=self.range)
+
+            if update:
+                self.map = None
+                self.map_path = outpath
+                self.range = None
 
 
 class TemporalDetection(_HasID, Label):
