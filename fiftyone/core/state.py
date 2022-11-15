@@ -118,6 +118,8 @@ class StateDescription(etas.Serializable):
         else:
             view = None
 
+        # view_name = d.get("view_name", None)
+
         group_slice = d.get("group_slice", None)
         if group_slice:
             if dataset is not None:
