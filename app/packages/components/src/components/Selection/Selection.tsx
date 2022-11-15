@@ -201,7 +201,9 @@ export default function Selection(props: SelectionProps) {
                 onClick={() => {
                   setSelected(itemProps);
                   setIsOpen(false);
-                  setView([], [], itemProps.id);
+                  // TODO: MANI - do this in a CB
+                  // TODO: MANI - populate stages with selected view
+                  // setView([], [], itemProps.id);
                 }}
                 sx={{
                   display: "flex",
