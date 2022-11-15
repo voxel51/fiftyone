@@ -1,13 +1,21 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { Add } from "@mui/icons-material";
 import styled from "styled-components";
 
 import { Selection } from "@fiftyone/components";
 import { filter } from "lodash";
-import { atom, useRecoilState, useSetRecoilState } from "recoil";
+import {
+  atom,
+  useRecoilRefresher_UNSTABLE,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
+import * as fos from "@fiftyone/state";
 
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
+import { useQueryState, useSavedViews } from "@fiftyone/state";
 
 const Box = styled.div`
   display: flex;
@@ -35,7 +43,7 @@ export const viewSearchTerm = atom({
 });
 export const viewDialogOpen = atom({
   key: "viewDialogOpen",
-  default: true,
+  default: false,
 });
 
 const DEFAULT_SELECTED = {
@@ -65,13 +73,16 @@ export interface DatasetView {
   lastModifiedAt: number | null;
 }
 
-interface Props {
-  items: [DatasetView];
-}
+interface Props {}
 
 export default function ViewSelection(props: Props) {
-  const { items = [] } = props;
+  const { savedViews: items, refresh } = useSavedViews();
+
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
+  const [savedViewParam, setSavedViewParam] = useQueryState("view");
+  const loadedView = useRecoilValue(fos.view);
+  const setEditView = useSetRecoilState(viewDialogContent);
+  const setView = fos.useSetView();
 
   const viewOptions: DatasetViewOption[] = [
     DEFAULT_SELECTED,
@@ -82,16 +93,24 @@ export default function ViewSelection(props: Props) {
         id: urlName,
         label: name,
         color: color,
-        description: description || "no description...",
+        description: description || "",
       };
     }),
   ] as DatasetViewOption[];
 
-  const setEditView = useSetRecoilState(viewDialogContent);
-
   // TODO: get saved views here from state and pass as items instead
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
-  const [selected, setSelected] = useState<DatasetViewOption>(viewOptions[0]);
+
+  let selectedView = viewOptions[0];
+  if (savedViewParam) {
+    const potentialView = viewOptions.filter(
+      (v) => v.id === savedViewParam
+    )?.[0];
+    if (potentialView) {
+      selectedView = potentialView;
+    }
+  }
+  const [selected, setSelected] = useState<DatasetViewOption>(selectedView);
 
   const searchedData: DatasetViewOption[] = filter(
     viewOptions,
@@ -104,12 +123,35 @@ export default function ViewSelection(props: Props) {
     }
   ) as DatasetViewOption[];
 
+  useEffect(() => {
+    if (!loadedView?.length) {
+      setSelected(viewOptions[0]);
+      setSavedViewParam(null);
+    }
+  }, [loadedView]);
+
   return (
-    <Box style={{ width: "100%" }}>
-      <ViewDialog />
+    <Box>
+      <ViewDialog
+        onEditSuccess={() => {
+          console.log("refreshing");
+          refresh();
+        }}
+      />
       <Selection
         selected={selected}
-        setSelected={setSelected}
+        setSelected={(item: DatasetViewOption) => {
+          const allSelected = item.id === "1";
+          setSelected(item);
+          const selectedSavedView = allSelected ? "" : item.label;
+
+          setView([], [], selectedSavedView);
+          // if (selectedSavedView) {
+          //   setSavedViewParam(selectedSavedView);
+          // } else {
+          //   setSavedViewParam(null);
+          // }
+        }}
         items={searchedData}
         onEdit={(item) => {
           setEditView({

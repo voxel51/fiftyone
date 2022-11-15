@@ -9,7 +9,6 @@ import { useTheme } from "@fiftyone/components";
 import { DatasetViewOption } from "./Option";
 import { debounce } from "lodash";
 import { SearchBox } from "./SearchBox";
-import * as fos from "@fiftyone/state";
 
 const Box = styled.div`
   display: flex;
@@ -21,12 +20,12 @@ const LastOption = styled(Option)`
   position: sticky !important;
   bottom: 0;
   width: 100%;
-  background: ${({ theme }) => theme.background.level2} !important;
+  background: ${({ theme }) => theme.background.level1} !important;
   z-index: 999;
   display: flex;
 
-  &:hover: {
-    background: ${({ theme }) => theme.background.level3};
+  &:hover {
+    background: ${({ theme }) => theme.background.body} !important;
   }
 `;
 const ColoredDot = styled(Box)`
@@ -90,9 +89,6 @@ export default function Selection(props: SelectionProps) {
   const ref = useRef();
   useOutsideClick(ref, () => setIsOpen(false));
 
-  // TODO: move this one level up - selection meant to be generic-ish
-  const setView = fos.useSetView();
-
   const {
     placeholder: searchPlaceholder,
     onSearch,
@@ -124,6 +120,7 @@ export default function Selection(props: SelectionProps) {
     <div ref={ref} style={{ width: "100%" }}>
       <Select
         value={selectedId}
+        defaultValue={selectedId}
         listboxOpen={isOpen}
         componentsProps={{
           startDecorator: {
@@ -201,9 +198,6 @@ export default function Selection(props: SelectionProps) {
                 onClick={() => {
                   setSelected(itemProps);
                   setIsOpen(false);
-                  // TODO: MANI - do this in a CB
-                  // TODO: MANI - populate stages with selected view
-                  // setView([], [], itemProps.id);
                 }}
                 sx={{
                   display: "flex",

@@ -105,6 +105,23 @@ const useSetView = (
                 },
               });
               onComplete && onComplete();
+
+              // if (viewName) {
+              //   router.history.push(`${location.pathname}?view=${viewName}`, {
+              //     state: {
+              //       ...newState,
+              //       dataset: transformDataset(dataset),
+              //       state: {
+              //         view: value,
+              //         viewCls: dataset.viewCls,
+              //         viewName,
+              //         selected: [],
+              //         selectedLabels: [],
+              //         savedViews,
+              //       },
+              //     },
+              //   });
+              // }
             },
           });
         });
