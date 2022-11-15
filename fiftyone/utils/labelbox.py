@@ -1971,7 +1971,7 @@ def _get_nested_classifications(label):
 
 # https://labelbox.com/docs/automation/model-assisted-labeling#mask_annotations
 def _to_mask(name, label, data_row_id):
-    mask = np.asarray(label.mask)
+    mask = np.asarray(label.get_mask())
     if mask.ndim < 3 or mask.dtype != np.uint8:
         raise ValueError(
             "Segmentation masks must be stored as RGB color uint8 images"

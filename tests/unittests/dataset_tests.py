@@ -20,6 +20,7 @@ import fiftyone as fo
 from fiftyone import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+import fiftyone.utils.data as foud
 
 from decorators import drop_datasets, skip_windows
 
@@ -3781,6 +3782,121 @@ class _LabelMetadata(foo.DynamicEmbeddedDocument):
     created_at = fof.DateTimeField(default=datetime.utcnow)
 
     model_name = fof.StringField()
+
+
+class DatasetFactoryTests(unittest.TestCase):
+    @drop_datasets
+    def test_from_images(self):
+        filepaths = ["image.jpg"]
+        dataset = fo.Dataset.from_images(filepaths)
+
+        self.assertEqual(len(dataset), 1)
+
+        samples = [{"filepath": "image.jpg"}]
+        sample_parser = _ImageSampleParser()
+        dataset = fo.Dataset.from_images(samples, sample_parser=sample_parser)
+
+        self.assertEqual(len(dataset), 1)
+
+    @drop_datasets
+    def test_from_videos(self):
+        filepaths = ["image.jpg"]
+        dataset = fo.Dataset.from_videos(filepaths)
+
+        self.assertEqual(len(dataset), 1)
+
+        samples = [{"filepath": "video.mp4"}]
+        sample_parser = _VideoSampleParser()
+        dataset = fo.Dataset.from_videos(samples, sample_parser=sample_parser)
+
+        self.assertEqual(len(dataset), 1)
+
+    @drop_datasets
+    def test_from_labeled_images(self):
+        samples = [{"filepath": "image.jpg", "label": "label"}]
+        sample_parser = _LabeledImageSampleParser()
+        dataset = fo.Dataset.from_labeled_images(
+            samples, sample_parser, label_field="ground_truth"
+        )
+
+        self.assertEqual(dataset.values("ground_truth.label"), ["label"])
+
+    @drop_datasets
+    def test_from_labeled_videos(self):
+        samples = [{"filepath": "video.mp4", "label": "label"}]
+        sample_parser = _LabeledVideoSampleParser()
+        dataset = fo.Dataset.from_labeled_videos(
+            samples, sample_parser, label_field="ground_truth"
+        )
+
+        self.assertEqual(dataset.values("ground_truth.label"), ["label"])
+
+
+class _ImageSampleParser(foud.ImageSampleParser):
+    @property
+    def has_image_path(self):
+        return True
+
+    @property
+    def has_image_metadata(self):
+        return False
+
+    def get_image_path(self):
+        return self.current_sample["filepath"]
+
+
+class _VideoSampleParser(foud.VideoSampleParser):
+    @property
+    def has_video_metadata(self):
+        return False
+
+    def get_video_path(self):
+        return self.current_sample["filepath"]
+
+
+class _LabeledImageSampleParser(foud.LabeledImageSampleParser):
+    @property
+    def has_image_path(self):
+        return True
+
+    @property
+    def has_image_metadata(self):
+        return False
+
+    def get_image_path(self):
+        return self.current_sample["filepath"]
+
+    @property
+    def label_cls(self):
+        return fo.Classification
+
+    def get_label(self):
+        label = self.current_sample["label"]
+        return fo.Classification(label=label)
+
+
+class _LabeledVideoSampleParser(foud.LabeledVideoSampleParser):
+    @property
+    def has_video_metadata(self):
+        return False
+
+    def get_video_path(self):
+        return self.current_sample["filepath"]
+
+    @property
+    def label_cls(self):
+        return fo.Classification
+
+    @property
+    def frame_label_cls(self):
+        return None
+
+    def get_label(self):
+        label = self.current_sample["label"]
+        return fo.Classification(label=label)
+
+    def get_frame_labels(self):
+        return None
 
 
 if __name__ == "__main__":

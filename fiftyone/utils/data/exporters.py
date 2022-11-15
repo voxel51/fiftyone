@@ -1712,6 +1712,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self.pretty_print = pretty_print
 
         self._data_dir = None
+        self._fields_dir = None
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
@@ -1721,16 +1722,20 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._metadata = None
         self._samples = None
         self._media_exporter = None
+        self._media_fields = {}
+        self._media_field_exporters = {}
         self._labels_exporter = None
 
     def setup(self):
         self._data_dir = fos.join(self.export_dir, "data")
+        self._fields_dir = fos.join(self.export_dir, "fields")
         self._anno_dir = fos.join(self.export_dir, "annotations")
         self._brain_dir = fos.join(self.export_dir, "brain")
         self._eval_dir = fos.join(self.export_dir, "evaluations")
         self._frame_labels_dir = fos.join(self.export_dir, "frames")
         self._metadata_path = fos.join(self.export_dir, "metadata.json")
         self._samples_path = fos.join(self.export_dir, "samples.json")
+
         self._metadata = {}
         self._samples = []
 
@@ -1755,6 +1760,10 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         if sample_collection._contains_videos(any_slice=True):
             schema = sample_collection._serialize_frame_field_schema()
             self._metadata["frame_fields"] = schema
+
+        self._media_fields = sample_collection._get_media_fields(
+            include_filepath=False
+        )
 
         info = dict(sample_collection.info)
 
@@ -1828,6 +1837,9 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
                 out_filepath, self.export_dir, default=out_filepath
             )
 
+        if self._media_fields:
+            self._export_media_fields(sd)
+
         if sample.media_type == fomm.VIDEO:
             # Serialize frame labels separately
             uuid = os.path.splitext(os.path.basename(out_filepath))[0]
@@ -1837,17 +1849,23 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._samples.append(sd)
 
     def close(self, *args):
-        samples = {"samples": self._samples}
         fos.write_json(
             self._metadata, self._metadata_path, pretty_print=self.pretty_print
         )
         fos.write_json(
-            samples, self._samples_path, pretty_print=self.pretty_print
+            {"samples": self._samples},
+            self._samples_path,
+            pretty_print=self.pretty_print,
         )
+
         self._media_exporter.close()
+        for media_exporter in self._media_field_exporters.values():
+            media_exporter.close()
+
         self._labels_exporter.close()
 
     def _export_frame_labels(self, sample, uuid):
+        # @todo export segmentation/heatmap masks stored as paths
         frames_dict = {"frames": sample.frames._to_frames_dict()}
 
         outpath = fos.join(self._frame_labels_dir, uuid + ".json")
@@ -1856,6 +1874,56 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         fos.write_json(frames_dict, local_path, pretty_print=self.pretty_print)
 
         return outpath
+
+    def _export_media_fields(self, sd):
+        for field_name, label_type in self._media_fields.items():
+            value = sd.get(field_name, None)
+            if value is None:
+                continue
+
+            if label_type is None:
+                self._export_media_field(sd, field_name)
+            elif issubclass(label_type, fol.Segmentation):
+                self._export_media_field(value, field_name, key="mask_path")
+            elif issubclass(label_type, fol.Heatmap):
+                self._export_media_field(value, field_name, key="map_path")
+
+    def _export_media_field(self, d, field_name, key=None):
+        if key is not None:
+            value = d.get(key, None)
+        else:
+            key = field_name
+            value = d.get(field_name, None)
+
+        if value is None:
+            return
+
+        media_exporter = self._get_media_field_exporter(field_name)
+        outpath, _ = media_exporter.export(value)
+
+        if self.abs_paths:
+            d[key] = outpath
+        else:
+            d[key] = fou.safe_relpath(
+                outpath, self.export_dir, default=outpath
+            )
+
+    def _get_media_field_exporter(self, field_name):
+        media_exporter = self._media_field_exporters.get(field_name, None)
+        if media_exporter is not None:
+            return media_exporter
+
+        field_dir = os.path.join(self._fields_dir, field_name)
+        media_exporter = MediaExporter(
+            self.export_media,
+            export_path=field_dir,
+            rel_dir=self.rel_dir,
+            supported_modes=(True, False, "move", "symlink"),
+        )
+        media_exporter.setup()
+        self._media_field_exporters[field_name] = media_exporter
+
+        return media_exporter
 
 
 class FiftyOneDatasetExporter(BatchDatasetExporter):
@@ -1914,6 +1982,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self.ordered = ordered
 
         self._data_dir = None
+        self._fields_dir = None
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
@@ -1921,9 +1990,12 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._samples_path = None
         self._frames_path = None
         self._media_exporter = None
+        self._media_fields = {}
+        self._media_field_exporters = {}
 
     def setup(self):
         self._data_dir = fos.join(self.export_dir, "data")
+        self._fields_dir = fos.join(self.export_dir, "fields")
         self._anno_dir = fos.join(self.export_dir, "annotations")
         self._brain_dir = fos.join(self.export_dir, "brain")
         self._eval_dir = fos.join(self.export_dir, "evaluations")
@@ -1954,21 +2026,9 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         else:
             _sample_collection = sample_collection
 
-        inpaths = _sample_collection.values("filepath")
-
-        if self.export_media != False:
-            _outpaths = []
-            for inpath in inpaths:
-                _, uuid = self._media_exporter.export(inpath)
-                _outpaths.append(fos.join("data", uuid))
-        elif self.rel_dir is not None:
-            # Remove `rel_dir` prefix from filepaths
-            _outpaths = [
-                fou.safe_relpath(p, self.rel_dir, default=p) for p in inpaths
-            ]
-        else:
-            # Export raw filepaths
-            _outpaths = inpaths
+        self._media_fields = sample_collection._get_media_fields(
+            include_filepath=False
+        )
 
         logger.info("Exporting samples...")
 
@@ -1976,9 +2036,22 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         num_samples = foo.count_documents(coll, pipeline)
         _samples = foo.aggregate(coll, pipeline)
 
-        def _prep_sample(sample, outpath):
-            sample["filepath"] = outpath
-            return sample
+        def _prep_sample(sd):
+            filepath = sd["filepath"]
+            if self.export_media != False:
+                # Store relative path
+                _, uuid = self._media_exporter.export(filepath)
+                sd["filepath"] = fos.join("data", uuid)
+            elif self.rel_dir is not None:
+                # Remove `rel_dir` prefix from filepath
+                sd["filepath"] = fou.safe_relpath(
+                    filepath, self.rel_dir, default=filepath
+                )
+
+            if self._media_fields:
+                self._export_media_fields(sd)
+
+            return sd
 
         if self.use_dirs:
             if self.ordered:
@@ -1989,7 +2062,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             patt = None
 
         foo.export_collection(
-            map(_prep_sample, _samples, _outpaths),
+            map(_prep_sample, _samples),
             self._samples_path,
             key="samples",
             patt=patt,
@@ -2012,6 +2085,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             coll, pipeline = fod._get_frames_pipeline(_video_collection)
             num_frames = foo.count_documents(coll, pipeline)
             frames = foo.aggregate(coll, pipeline)
+
+            # @todo export segmentation/heatmap masks stored as paths
             foo.export_collection(
                 frames,
                 self._frames_path,
@@ -2049,6 +2124,57 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             _export_evaluation_results(sample_collection, self._eval_dir)
 
         self._media_exporter.close()
+        for media_exporter in self._media_field_exporters.values():
+            media_exporter.close()
+
+    def _export_media_fields(self, sd):
+        for field_name, label_type in self._media_fields.items():
+            value = sd.get(field_name, None)
+            if value is None:
+                continue
+
+            if label_type is None:
+                self._export_media_field(sd, field_name)
+            elif issubclass(label_type, fol.Segmentation):
+                self._export_media_field(value, field_name, key="mask_path")
+            elif issubclass(label_type, fol.Heatmap):
+                self._export_media_field(value, field_name, key="map_path")
+
+    def _export_media_field(self, d, field_name, key=None):
+        if key is not None:
+            value = d.get(key, None)
+        else:
+            key = field_name
+            value = d.get(field_name, None)
+
+        if value is None:
+            return
+
+        if self.export_media != False:
+            # Store relative path
+            media_exporter = self._get_media_field_exporter(field_name)
+            _, uuid = media_exporter.export(value)
+            d[key] = os.path.join("fields", field_name, uuid)
+        elif self.rel_dir is not None:
+            # Remove `rel_dir` prefix from path
+            d[key] = fou.safe_relpath(value, self.rel_dir, default=value)
+
+    def _get_media_field_exporter(self, field_name):
+        media_exporter = self._media_field_exporters.get(field_name, None)
+        if media_exporter is not None:
+            return media_exporter
+
+        field_dir = os.path.join(self._fields_dir, field_name)
+        media_exporter = MediaExporter(
+            self.export_media,
+            export_path=field_dir,
+            rel_dir=self.rel_dir,
+            supported_modes=(True, False, "move", "symlink"),
+        )
+        media_exporter.setup()
+        self._media_field_exporters[field_name] = media_exporter
+
+        return media_exporter
 
 
 def _export_annotation_results(sample_collection, anno_dir):
@@ -3128,9 +3254,7 @@ class ImageSegmentationDirectoryExporter(
         if label is None:
             return  # unlabeled
 
-        if isinstance(label, fol.Segmentation):
-            mask = label.mask
-        elif isinstance(label, (fol.Detections, fol.Polylines)):
+        if isinstance(label, (fol.Detections, fol.Polylines)):
             if self.mask_size is not None:
                 frame_size = self.mask_size
             else:
@@ -3140,38 +3264,25 @@ class ImageSegmentationDirectoryExporter(
                 frame_size = (metadata.width, metadata.height)
 
             if isinstance(label, fol.Detections):
-                segmentation = label.to_segmentation(
+                label = label.to_segmentation(
                     frame_size=frame_size, mask_targets=self.mask_targets
                 )
             else:
-                segmentation = label.to_segmentation(
+                label = label.to_segmentation(
                     frame_size=frame_size,
                     mask_targets=self.mask_targets,
                     thickness=self.thickness,
                 )
-
-            mask = segmentation.mask
-        else:
+        elif not isinstance(label, fol.Segmentation):
             raise ValueError("Unsupported label type '%s'" % type(label))
 
         out_mask_path = fos.join(self.labels_path, uuid + self.mask_format)
         local_mask_path = self._labels_exporter.get_local_path(out_mask_path)
-
-        _write_mask(mask, local_mask_path)
+        label.export_mask(local_mask_path)
 
     def close(self, *args):
         self._media_exporter.close()
         self._labels_exporter.close()
-
-
-def _write_mask(mask, mask_path):
-    if mask.dtype not in (np.uint8, np.uint16):
-        if mask.max() <= 255:
-            mask = mask.astype(np.uint8)
-        else:
-            mask = mask.astype(np.uint16)
-
-    etai.write(mask, mask_path)
 
 
 class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):

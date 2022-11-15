@@ -331,9 +331,6 @@ class _SampleMixin(object):
                 dynamic=dynamic,
             )
 
-        if self._in_db:
-            self.save()
-
     def merge(
         self,
         sample,

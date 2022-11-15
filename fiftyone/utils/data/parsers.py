@@ -95,6 +95,7 @@ def add_labeled_images(
     label_field=None,
     tags=None,
     expand_schema=True,
+    dynamic=False,
 ):
     """Adds the given labeled images to the dataset.
 
@@ -125,6 +126,8 @@ def add_labeled_images(
         expand_schema (True): whether to dynamically add new sample fields
             encountered to the dataset schema. If False, an error is raised
             if a sample's schema is not a subset of the dataset schema
+        dynamic (False): whether to declare dynamic attributes of embedded
+            document fields that are encountered
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -196,7 +199,10 @@ def add_labeled_images(
 
     _samples = map(parse_sample, samples)
     return dataset.add_samples(
-        _samples, expand_schema=expand_schema, num_samples=num_samples
+        _samples,
+        expand_schema=expand_schema,
+        dynamic=dynamic,
+        num_samples=num_samples,
     )
 
 
@@ -266,6 +272,7 @@ def add_labeled_videos(
     label_field=None,
     tags=None,
     expand_schema=True,
+    dynamic=False,
 ):
     """Adds the given labeled videos to the dataset.
 
@@ -295,6 +302,8 @@ def add_labeled_videos(
         expand_schema (True): whether to dynamically add new sample fields
             encountered to the dataset schema. If False, an error is raised
             if a sample's schema is not a subset of the dataset schema
+        dynamic (False): whether to declare dynamic attributes of embedded
+            document fields that are encountered
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -364,7 +373,10 @@ def add_labeled_videos(
 
     _samples = map(parse_sample, samples)
     return dataset.add_samples(
-        _samples, expand_schema=expand_schema, num_samples=num_samples
+        _samples,
+        expand_schema=expand_schema,
+        dynamic=dynamic,
+        num_samples=num_samples,
     )
 
 
