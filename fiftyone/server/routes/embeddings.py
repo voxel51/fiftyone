@@ -19,6 +19,9 @@ from fiftyone.server.decorators import route
 import fiftyone.server.view as fosv
 
 
+MAX_CATEGORIES = 25
+
+
 class Embeddings(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
@@ -70,19 +73,26 @@ class Embeddings(HTTPEndpoint):
         else:
             # No filter is applied, everything can be selected
             selected_ids = None
-
+        distinct_values = set(label_values)
+        style = (
+            "categorical"
+            if len(distinct_values) <= MAX_CATEGORIES
+            else "continuous"
+        )
         zipped = zip(curr_sample_ids, curr_points, label_values)
         traces = {}
         for (id, points, label) in zipped:
-            add_to_trace(traces, selected_ids, id, points, label)
+            add_to_trace(traces, selected_ids, id, points, label, style)
 
-        return {"traces": traces}
+        return {"traces": traces, "style": style}
 
 
-def add_to_trace(traces, selected_ids, id, points, label):
-    if not label in traces:
-        traces[label] = []
-    traces[label].append(
+def add_to_trace(traces, selected_ids, id, points, label, style):
+    key = label if style == "categorical" else "points"
+    if not key in traces:
+        traces[key] = []
+
+    traces[key].append(
         {
             "id": id,
             "points": points,
