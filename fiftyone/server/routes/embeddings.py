@@ -43,7 +43,7 @@ class Embeddings(HTTPEndpoint):
         ###############################################################################
 
         # This is the view loaded in the view bar
-        view = fosv.get_view(dataset, stages=stages)
+        view = fosv.get_view(datasetName, stages=stages)
 
         # One option is to let the `results` object do the math for us
         results.use_view(view, allow_missing=True)
@@ -59,7 +59,7 @@ class Embeddings(HTTPEndpoint):
             # There's an extended view, so select points in the extended view and
             # deselect all others
             extended_view = fosv.get_view(
-                dataset,
+                datasetName,
                 stages=stages,
                 filters=filters,
                 extended_stages=extended_stages,
@@ -87,6 +87,6 @@ def add_to_trace(traces, selected_ids, id, points, label):
             "id": id,
             "points": points,
             "label": label,
-            "selected": selected_ids.contains(id) if selected_ids else True,
+            "selected": id in selected_ids if selected_ids else True,
         }
     )
