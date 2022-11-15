@@ -1,12 +1,12 @@
 import { graphql } from "react-relay";
 
 export default graphql`
-  mutation deleteViewMutation(
+  mutation deleteSavedViewMutation(
     $subscription: String!
     $session: String
     $viewName: String!
   ) {
-    deleteView(
+    deleteSavedView(
       subscription: $subscription
       session: $session
       viewName: $viewName
