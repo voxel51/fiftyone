@@ -157,7 +157,7 @@ export const fieldPaths = selectorFamily<
 >({
   key: "fieldPaths",
   get:
-    ({ path, space, ftype, embeddedDocType }) =>
+    ({ path, space, ftype, embeddedDocType } = {}) =>
     ({ get }) => {
       if (path && space) {
         throw new Error("path and space provided");
@@ -218,7 +218,7 @@ export const fields = selectorFamily<
 >({
   key: "fields",
   get:
-    (params) =>
+    (params = {}) =>
     ({ get }) => {
       if (!params.path && !params.space) {
         throw new Error("invalid parameters");
