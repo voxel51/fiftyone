@@ -434,7 +434,6 @@ const InteractiveSidebar = ({
     () => new Controller({ minHeight: 0 })
   );
 
-  const { savedViews } = useSavedViews();
   const setView = fos.useSetView();
 
   // TODO: there has to be a better way
@@ -728,7 +727,7 @@ const InteractiveSidebar = ({
     >
       {!modal && (
         <Box style={{ padding: 8, paddingLeft: 16, paddingRight: 16 }}>
-          <ViewSelection items={savedViews} />
+          <ViewSelection />
         </Box>
       )}
       <SidebarColumn

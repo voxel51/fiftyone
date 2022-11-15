@@ -43,7 +43,7 @@ export const mediaType = selector({
 export const savedViewsSelector = selector({
   key: "datasetViews",
   get: ({ get }) => {
-    console.log("dataset", get(atoms.dataset));
+    console.log("dataset-views", get(atoms.dataset));
     const savedViews = get(atoms.dataset)?.savedViews;
 
     return savedViews;

@@ -99,18 +99,20 @@ const NameInput = styled.input`
 
 // TODO: consolidate
 export const COLOR_OPTIONS = [
-  { id: "blue", label: "Blue", color: "#2970FF" },
-  { id: "cyan", label: "Cyan", color: "#06AED4" },
-  { id: "green", label: "Green", color: "#16B364" },
-  { id: "yellow", label: "Yellow", color: "#FAC515" },
-  { id: "orange", label: "Orange", color: "#EF6820" },
-  { id: "red", label: "Red", color: "#F04438" },
-  { id: "pink", label: "Pink", color: "#EE46BC" },
-  { id: "purple", label: "Purple", color: "#7A5AF8" },
-  { id: "gray", label: "Gray", color: "#667085" },
+  { id: "blue", label: "Blue", color: "#2970FF", description: "" },
+  { id: "cyan", label: "Cyan", color: "#06AED4", description: "" },
+  { id: "green", label: "Green", color: "#16B364", description: "" },
+  { id: "yellow", label: "Yellow", color: "#FAC515", description: "" },
+  { id: "orange", label: "Orange", color: "#EF6820", description: "" },
+  { id: "red", label: "Red", color: "#F04438", description: "" },
+  { id: "pink", label: "Pink", color: "#EE46BC", description: "" },
+  { id: "purple", label: "Purple", color: "#7A5AF8", description: "" },
+  { id: "gray", label: "Gray", color: "#667085", description: "" },
 ];
 
-interface Props {}
+interface Props {
+  onEditSuccess: any;
+}
 
 export const viewDialogContent = atom({
   key: "viewDialogContent",
@@ -123,6 +125,7 @@ export const viewDialogContent = atom({
 });
 
 export default function ViewDialog(props: Props) {
+  const { onEditSuccess } = props;
   const theme = useTheme();
   const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
   const viewContent = useRecoilValue(viewDialogContent);
@@ -139,12 +142,14 @@ export default function ViewDialog(props: Props) {
     useState<string>(initialDescription);
 
   const theColorOption =
-    COLOR_OPTIONS.filter((color) => color.label === initialColor)?.[0] ||
+    COLOR_OPTIONS.filter((color) => color.color === initialColor)?.[0] ||
     COLOR_OPTIONS[0];
+
   const [colorOption, setColorOption] = useState<DatasetViewOption>({
-    label: theColorOption?.id,
-    color: theColorOption?.color,
-    id: theColorOption?.id,
+    label: theColorOption.id,
+    color: theColorOption.color,
+    id: theColorOption.id,
+    description: "",
   });
 
   const title = isCreating ? "Create view" : "Edit view";
@@ -155,13 +160,14 @@ export default function ViewDialog(props: Props) {
       setDescriptionValue(viewContent.description);
       const theColorOption =
         COLOR_OPTIONS.filter(
-          (color) => color.label === viewContent.color
+          (color) => color.color === viewContent.color
         )?.[0] || COLOR_OPTIONS[0];
 
       setColorOption({
         label: theColorOption?.id,
         color: theColorOption?.color,
         id: theColorOption?.id,
+        description: "",
       });
     }
   }, [viewContent]);
@@ -197,10 +203,8 @@ export default function ViewDialog(props: Props) {
   }, [nameValue]);
 
   const handleSaveView = useCallback(() => {
-    console.log("view", view);
     if (nameValue && view?.length) {
       if (isCreating) {
-        console.log("creating", nameValue, descriptionValue, colorOption.color);
         send((session) =>
           saveView({
             onError,
@@ -210,6 +214,9 @@ export default function ViewDialog(props: Props) {
               color: colorOption?.color,
               subscription,
               session,
+            },
+            onCompleted: () => {
+              onEditSuccess();
             },
           })
         );
@@ -230,6 +237,7 @@ export default function ViewDialog(props: Props) {
           })
         );
       }
+      setIsOpen(false);
     }
   }, [view, nameValue, descriptionValue, colorOption?.color, subscription]);
 
@@ -348,14 +356,30 @@ export default function ViewDialog(props: Props) {
             </Button>
             <Button
               onClick={handleSaveView}
-              disabled={!nameValue || savingView || !view?.length}
+              disabled={
+                !nameValue ||
+                (isCreating && !view?.length) ||
+                (initialName === nameValue &&
+                  descriptionValue === initialDescription &&
+                  colorOption?.color === initialColor)
+              }
               sx={{
-                background: theme.background.level1,
-                color: theme.text.primary,
+                background: theme.common.black,
+                color: theme.common.white,
                 textTransform: "inherit",
                 padding: "0.5rem 1.25rem",
                 border: `1px solid ${theme.primary.plainBorder}`,
                 marginLeft: "1rem",
+
+                "&:hover": {
+                  background: theme.common.black,
+                  color: theme.common.white,
+                },
+
+                "&:disabled": {
+                  background: theme.text.tertiary,
+                  color: theme.background.body,
+                },
               }}
             >
               Save view

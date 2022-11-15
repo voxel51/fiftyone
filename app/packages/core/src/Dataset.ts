@@ -129,6 +129,7 @@ export function usePrepareDataset(dataset, setReady) {
 
   useLayoutEffect(() => {
     const { colorscale, config, state } = router.state;
+
     if (dataset) {
       update(() => {
         return {

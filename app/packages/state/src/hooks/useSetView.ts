@@ -80,9 +80,8 @@ const useSetView = (
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
-              console.log("view complete", dataset, value);
-              router.history.location.state.state = {
-                ...router.history.location.state,
+              const newState = {
+                ...router.history.location.state.state,
                 view: value,
                 viewName,
                 viewCls: dataset.viewCls,
@@ -90,6 +89,9 @@ const useSetView = (
                 selectedLabels: [],
                 savedViews,
               };
+              console.log("viewName", viewName, savedViews);
+              router.history.location.state.state = newState;
+
               updateState({
                 dataset: transformDataset(dataset),
                 state: {
@@ -103,6 +105,23 @@ const useSetView = (
                 },
               });
               onComplete && onComplete();
+
+              // if (viewName) {
+              //   router.history.push(`${location.pathname}?view=${viewName}`, {
+              //     state: {
+              //       ...newState,
+              //       dataset: transformDataset(dataset),
+              //       state: {
+              //         view: value,
+              //         viewCls: dataset.viewCls,
+              //         viewName,
+              //         selected: [],
+              //         selectedLabels: [],
+              //         savedViews,
+              //       },
+              //     },
+              //   });
+              // }
             },
           });
         });
