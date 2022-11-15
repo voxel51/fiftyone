@@ -32,11 +32,13 @@ def get_view(
     sample_filter=None,
     sort=False,
 ):
-    """Get the view from request paramters
+    """Construct a new view using the request paramters or load a previously
+    saved view by name.
 
     Args:
         dataset_names: the dataset name
-        view_name (None): the name of the saved view
+        view_name (None): an optional str used for loading a previously saved
+        view by name
         stages (None): an optional list of serialized
             :class:`fiftyone.core.stages.ViewStage` instances
         filters (None): an optional ``dict`` of App defined filters
@@ -52,12 +54,14 @@ def get_view(
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
-    view = None
     dataset = fod.load_dataset(dataset_name)
-    if dataset.has_views and dataset.has_view(view_name):
-        view = dataset.load_view(view_name)
-    else:
-        view = dataset.view()
+
+    # Load a previously saved view
+    if view_name and dataset.has_views and dataset.has_view(view_name):
+        return dataset.load_view(view_name)
+
+    # Construct a new view
+    view = dataset.view()
     view.reload()
 
     if stages:
