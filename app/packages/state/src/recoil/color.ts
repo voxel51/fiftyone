@@ -1,7 +1,7 @@
 import { selectorFamily } from "recoil";
 
 import { Coloring, createColorGenerator } from "@fiftyone/looker";
-import { getColor } from "@fiftyone/utilities";
+import { getColor, hexToRgb, RGB } from "@fiftyone/utilities";
 
 import * as atoms from "./atoms";
 import * as schemaAtoms from "./schema";
@@ -51,6 +51,16 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
+});
+
+export const colorMapRGB = selectorFamily<(val) => RGB, boolean>({
+  key: "colorMapRGB",
+  get:
+    (modal) =>
+    ({ get }) => {
+      const hex = get(colorMap(modal));
+      return (val) => hexToRgb(hex(val));
+    },
 });
 
 export const pathColor = selectorFamily<

@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { useRecoilState, useRecoilValue, useRecoilCallback } from "recoil";
 import * as fos from "@fiftyone/state";
-import { getColor, getFetchFunction } from "@fiftyone/utilities";
+import { getFetchFunction } from "@fiftyone/utilities";
 import Plot from "react-plotly.js";
-import { Loading, Selector } from "@fiftyone/components";
+import { Button, Loading, Selector } from "@fiftyone/components";
 import styled from "styled-components";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
@@ -116,23 +116,51 @@ export default function Embeddings({ containerHeight }) {
   return <Loading>No Brain Results Available</Loading>;
 }
 
+// a function that sorts strings alphabetically
+// but puts numbers at the end
+function sortStringsAlphabetically(a, b) {
+  return a.localeCompare(b);
+}
+
 function tracesToData(traces, getColor) {
-  return Object.entries(traces).map(([key, trace]) => {
-    return {
-      x: trace.map((d) => d.points[0]),
-      y: trace.map((d) => d.points[1]),
-      type: "scattergl",
-      mode: "markers",
-      marker: {
-        color: getColor(key),
-      },
-      name: key,
-    };
-  });
+  return Object.entries(traces)
+    .sort((a, b) => sortStringsAlphabetically(a[0], b[0]))
+    .map(([key, trace]) => {
+      const selectedpoints = trace
+        .map((d, idx) => (d.selected ? idx : null))
+        .filter((d) => d !== null);
+
+      return {
+        x: trace.map((d) => d.points[0]),
+        y: trace.map((d) => d.points[1]),
+        type: "scattergl",
+        mode: "markers",
+        marker: {
+          color: trace.map((d) => {
+            const [r, g, b] = getColor(key);
+            return `rgba(${r},${g},${b}, 1)`; // ${d.selected ? 1 : 0.1}
+          }),
+          size: 6,
+        },
+        name: key,
+        selectedpoints,
+        selected: {
+          marker: {
+            opacity: 1,
+          },
+        },
+        unselected: {
+          marker: {
+            opacity: 0.2,
+            size: 4,
+          },
+        },
+      };
+    });
 }
 
 function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
-  const getColor = useRecoilValue(fos.colorMap(true));
+  const getColor = useRecoilValue(fos.colorMapRGB(true));
   const [bounds, setBounds] = useState({});
 
   useLayoutEffect(() => {
@@ -140,26 +168,37 @@ function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
       setBounds(el.current.getBoundingClientRect());
     }
   }, [el.current]);
-  const { traces, isLoading, datasetName, handleSelected } = useEmbeddings(
-    brainKey,
-    labelField
-  );
+  const {
+    traces,
+    isLoading,
+    datasetName,
+    handleSelected,
+    hasExtendedSelection,
+    clearSelection,
+  } = useEmbeddings(brainKey, labelField);
   if (isLoading) return <h3>Pixelating...</h3>;
   const data = tracesToData(traces, getColor);
 
   return (
     <div>
+      {hasExtendedSelection && (
+        <Button onClick={() => clearSelection()}>Clear Selection</Button>
+      )}
       {bounds && (
         <Plot
           data={data}
           onSelected={(selected) => {
-            const selectedResults = selected.points.map(
-              (p) => results[p.pointIndex]
-            );
+            const selectedResults = selected.points.map((p) => {
+              return traces[p.fullData.name][p.pointIndex];
+            });
             handleSelected(selectedResults);
           }}
           config={{ scrollZoom: true, displaylogo: false, responsive: true }}
           layout={{
+            font: {
+              family: "var(--joy-fontFamily-body)",
+              size: 14,
+            },
             showlegend: true,
             width: bounds ? bounds.width : 800,
             height: containerHeight,
@@ -177,7 +216,7 @@ function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
               scaleratio: 1,
             },
             autosize: true,
-            margins: {
+            margin: {
               t: 0,
               l: 0,
               b: 0,
@@ -186,6 +225,14 @@ function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
             },
             paper_bgcolor: "rgba(0,0,0,0)",
             plot_bgcolor: "rgba(0,0,0,0)",
+            legend: {
+              x: 0.9,
+              y: 0.9,
+              bgcolor: "rgba(51,51,51, 1)",
+              font: {
+                color: "rgb(179, 179, 179)",
+              },
+            },
           }}
         />
       )}
@@ -201,9 +248,14 @@ function useEmbeddings(brainKey, labelField) {
   const [extendedSelection, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
+  const hasExtendedSelection =
+    extendedSelection && extendedSelection.length > 0;
   const [state, setState] = useState({ isLoading: true });
   function onLoaded(traces) {
     setState({ traces, isLoading: false });
+  }
+  function clearSelection() {
+    setExtendedSelection([]);
   }
   useEffect(() => {
     setState({ isLoading: true });
@@ -219,11 +271,17 @@ function useEmbeddings(brainKey, labelField) {
 
   function handleSelected(selectedResults) {
     if (selectedResults.length === 0) return;
-    console.log(selectedResults.map((d) => d[0]));
-    setExtendedSelection(selectedResults.map((d) => d[0]));
+    setExtendedSelection(selectedResults.map((d) => d.id));
   }
 
-  return { ...state, datasetName, brainKey, handleSelected };
+  return {
+    ...state,
+    datasetName,
+    brainKey,
+    handleSelected,
+    hasExtendedSelection,
+    clearSelection,
+  };
 }
 
 const fetchEmbeddings = async ({
