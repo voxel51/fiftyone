@@ -56,6 +56,14 @@ class StateForm:
     slice: t.Optional[str] = None
 
 
+@gql.input
+class SavedViewInfo:
+    name: t.Optional[str] = None
+    description: t.Optional[str] = None
+    color: t.Optional[str] = None
+    view_stages: t.Optional[BSONArray] = None
+
+
 @gql.type
 class Mutation:
     @gql.mutation
@@ -209,7 +217,7 @@ class Mutation:
         )
 
     @gql.mutation
-    async def save_view(
+    def save_view(
         self,
         subscription: str,
         session: t.Optional[str],
@@ -231,7 +239,7 @@ class Mutation:
         return state.view
 
     @gql.mutation
-    async def delete_view(
+    def delete_saved_view(
         self, subscription: str, session: t.Optional[str], view_name: str
     ) -> bool:
         state = get_state()
@@ -245,5 +253,24 @@ class Mutation:
             state.view_name = None
         # TODO: confirm StateUpdate is unnecessary
         # await dispatch_event(subscription, StateUpdate(state=state))
+
+        return state.dataset.saved_views
+
+    @gql.mutation
+    def update_saved_view(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        view_name: str,
+        updated_info: SavedViewInfo,
+    ) -> bool:
+        state = get_state()
+        dataset = state.dataset
+        print(dataset.saved_views)
+
+        if dataset.has_views and dataset.has_view(view_name):
+            dataset.update_view_info(view_name, asdict(updated_info))
+            print(dataset.saved_views)
+        dataset.reload()
 
         return state.dataset.saved_views

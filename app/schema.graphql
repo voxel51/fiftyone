@@ -305,10 +305,16 @@ type Mutation {
     description: String = null
     color: String = null
   ): Boolean!
-  deleteView(
+  deleteSavedView(
     subscription: String!
     session: String
     viewName: String!
+  ): Boolean!
+  updateSavedView(
+    subscription: String!
+    session: String
+    viewName: String!
+    updatedInfo: SavedViewInfo!
   ): Boolean!
 }
 
@@ -434,6 +440,13 @@ type SavedView {
   lastModifiedAt: datetime
   lastLoadedAt: datetime
   viewName: String!
+}
+
+input SavedViewInfo {
+  name: String = null
+  description: String = null
+  color: String = null
+  viewStages: BSONArray = null
 }
 
 input SelectedLabel {

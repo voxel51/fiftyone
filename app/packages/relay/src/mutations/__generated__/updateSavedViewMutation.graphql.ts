@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c59301926efa11a68b66295988946cdb>>
+ * @generated SignedSource<<869e63143419612e962aaa0c1381d24d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,17 +9,24 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
-export type deleteViewMutation$variables = {
+export type SavedViewInfo = {
+  color?: string | null;
+  description?: string | null;
+  name?: string | null;
+  viewStages?: Array | null;
+};
+export type updateSavedViewMutation$variables = {
   session?: string | null;
   subscription: string;
+  updatedInfo: SavedViewInfo;
   viewName: string;
 };
-export type deleteViewMutation$data = {
-  readonly deleteView: boolean;
+export type updateSavedViewMutation$data = {
+  readonly updateSavedView: boolean;
 };
-export type deleteViewMutation = {
-  response: deleteViewMutation$data;
-  variables: deleteViewMutation$variables;
+export type updateSavedViewMutation = {
+  response: updateSavedViewMutation$data;
+  variables: updateSavedViewMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -36,9 +43,14 @@ v1 = {
 v2 = {
   "defaultValue": null,
   "kind": "LocalArgument",
+  "name": "updatedInfo"
+},
+v3 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
   "name": "viewName"
 },
-v3 = [
+v4 = [
   {
     "alias": null,
     "args": [
@@ -54,12 +66,17 @@ v3 = [
       },
       {
         "kind": "Variable",
+        "name": "updatedInfo",
+        "variableName": "updatedInfo"
+      },
+      {
+        "kind": "Variable",
         "name": "viewName",
         "variableName": "viewName"
       }
     ],
     "kind": "ScalarField",
-    "name": "deleteView",
+    "name": "updateSavedView",
     "storageKey": null
   }
 ];
@@ -68,12 +85,13 @@ return {
     "argumentDefinitions": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v2/*: any*/)
+      (v2/*: any*/),
+      (v3/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
-    "name": "deleteViewMutation",
-    "selections": (v3/*: any*/),
+    "name": "updateSavedViewMutation",
+    "selections": (v4/*: any*/),
     "type": "Mutation",
     "abstractKey": null
   },
@@ -82,23 +100,24 @@ return {
     "argumentDefinitions": [
       (v1/*: any*/),
       (v0/*: any*/),
+      (v3/*: any*/),
       (v2/*: any*/)
     ],
     "kind": "Operation",
-    "name": "deleteViewMutation",
-    "selections": (v3/*: any*/)
+    "name": "updateSavedViewMutation",
+    "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "8a2899c244390ad157763ee6fe2eb314",
+    "cacheID": "ce97c06ede5c2066bc269bafd7a7c179",
     "id": null,
     "metadata": {},
-    "name": "deleteViewMutation",
+    "name": "updateSavedViewMutation",
     "operationKind": "mutation",
-    "text": "mutation deleteViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n) {\n  deleteView(subscription: $subscription, session: $session, viewName: $viewName)\n}\n"
+    "text": "mutation updateSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $updatedInfo: SavedViewInfo!\n) {\n  updateSavedView(subscription: $subscription, session: $session, viewName: $viewName, updatedInfo: $updatedInfo)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c51af0579dceaef577b61e4277003314";
+(node as any).hash = "4dc49eb8f8af7fc013025a65bdf9bf75";
 
 export default node;
