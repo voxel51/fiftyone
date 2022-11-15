@@ -5,6 +5,7 @@ import { getFetchFunction } from "@fiftyone/utilities";
 import Plot from "react-plotly.js";
 import { Button, Loading, Selector } from "@fiftyone/components";
 import styled from "styled-components";
+import { State } from "@fiftyone/state";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -36,11 +37,50 @@ function useBrainResultsSelector() {
   };
 }
 
+// const TYPES_NOT_VISUALIZABLE = ["EmbeddedDocument", "Array", "List", "Dict", "Set", "Tuple"];
+const ALLOWED_TYPES = ["Int", "String", "Float", "Boolean"];
+const LIST_TYPES = [
+  "List",
+  "Dict",
+  "Set",
+  "Tuple",
+  "Detections",
+  "Classifications",
+];
+
+function getFieldTypeName(field) {
+  let type = field.ftype.split(".").pop();
+  return type.replace("Field", "");
+}
+function isVisualizableField(field) {
+  if (field.name === "filepath") return false;
+  const type = getFieldTypeName(field);
+  return ALLOWED_TYPES.includes(type);
+}
+function isListField(field) {
+  const type = getFieldTypeName(field);
+  return LIST_TYPES.includes(type);
+}
+
+function getAvailableFieldsFromDataset(fieldOrDataset, results = []) {
+  const fields = fieldOrDataset.sampleFields || fieldOrDataset.fields;
+  for (const field of fields) {
+    if (isListField(field)) continue;
+    if (isVisualizableField(field)) {
+      results.push(field.path);
+    }
+    if (field.fields) {
+      getAvailableFieldsFromDataset(field, results);
+    }
+  }
+  return results;
+}
+
 // a react hook that allows for selecting a label
 // based on the available labels in the given sample
 function useLabelSelector() {
   const dataset = useRecoilValue(fos.dataset);
-  const labels = useRecoilValue(fos.labelPaths({ expanded: false }));
+  const availableFields = getAvailableFieldsFromDataset(dataset);
   const [label, setLabel] = useState(null);
 
   const handlers = {
@@ -48,9 +88,9 @@ function useLabelSelector() {
       setLabel(selected);
     },
     value: label,
-    toKey: (item) => item.key,
+    toKey: (item) => item,
     useSearch: (search) => ({
-      values: labels.filter((item) =>
+      values: availableFields.filter((item) =>
         item.toLowerCase().includes(search.toLowerCase())
       ),
     }),
@@ -59,7 +99,7 @@ function useLabelSelector() {
   return {
     label,
     handlers,
-    canSelect: labels.length > 0,
+    canSelect: availableFields.length > 0,
     hasSelection: label !== null,
   };
 }
@@ -122,7 +162,8 @@ function sortStringsAlphabetically(a, b) {
   return a.localeCompare(b);
 }
 
-function tracesToData(traces, getColor) {
+function tracesToData(traces, style, getColor) {
+  const isCategorical = style === "categorical";
   return Object.entries(traces)
     .sort((a, b) => sortStringsAlphabetically(a[0], b[0]))
     .map(([key, trace]) => {
@@ -136,11 +177,18 @@ function tracesToData(traces, getColor) {
         type: "scattergl",
         mode: "markers",
         marker: {
-          color: trace.map((d) => {
-            const [r, g, b] = getColor(key);
-            return `rgba(${r},${g},${b}, 1)`; // ${d.selected ? 1 : 0.1}
-          }),
+          color: isCategorical
+            ? trace.map((d) => {
+                const [r, g, b] = getColor(key);
+                return `rgba(${r},${g},${b}, 1)`; // ${d.selected ? 1 : 0.1}
+              })
+            : trace.map((d) => d.label),
           size: 6,
+          colorbar: !isCategorical
+            ? {
+                lenmode: "fraction",
+              }
+            : undefined,
         },
         name: key,
         selectedpoints,
@@ -170,6 +218,7 @@ function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
   }, [el.current]);
   const {
     traces,
+    style,
     isLoading,
     datasetName,
     handleSelected,
@@ -177,7 +226,8 @@ function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
     clearSelection,
   } = useEmbeddings(brainKey, labelField);
   if (isLoading) return <h3>Pixelating...</h3>;
-  const data = tracesToData(traces, getColor);
+  const data = tracesToData(traces, style, getColor);
+  const isCategorical = style === "categorical";
 
   return (
     <div>
@@ -199,7 +249,7 @@ function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
               family: "var(--joy-fontFamily-body)",
               size: 14,
             },
-            showlegend: true,
+            showlegend: isCategorical,
             width: bounds ? bounds.width : 800,
             height: containerHeight,
             hovermode: false,
@@ -233,6 +283,10 @@ function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
                 color: "rgb(179, 179, 179)",
               },
             },
+            colorbar: {
+              x: 0.9,
+              y: 0.9,
+            },
           }}
         />
       )}
@@ -251,8 +305,8 @@ function useEmbeddings(brainKey, labelField) {
   const hasExtendedSelection =
     extendedSelection && extendedSelection.length > 0;
   const [state, setState] = useState({ isLoading: true });
-  function onLoaded(traces) {
-    setState({ traces, isLoading: false });
+  function onLoaded({ traces, style }) {
+    setState({ traces, style, isLoading: false });
   }
   function clearSelection() {
     setExtendedSelection([]);
@@ -262,7 +316,7 @@ function useEmbeddings(brainKey, labelField) {
     fetchEmbeddings({
       dataset: datasetName,
       brainKey,
-      labelsField: `${labelField}.label`,
+      labelsField: labelField,
       view,
       filters,
       extended,
@@ -300,5 +354,5 @@ const fetchEmbeddings = async ({
     view,
     extended,
   });
-  return res.traces;
+  return res;
 };
