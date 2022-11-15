@@ -6,6 +6,7 @@ import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as atoms from "./atoms";
 import { State } from "./types";
 import { toSnakeCase } from "@fiftyone/utilities";
+import { fieldSchema } from "./schema";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -344,7 +345,9 @@ export const extendedStages = selector({
 export const mediaFields = selector<string[]>({
   key: "string",
   get: ({ get }) => {
-    return get(atoms.dataset)?.appConfig?.mediaFields || [];
+    const selectedFields = Object.keys(get(fieldSchema({})));
+    return (get(atoms.dataset)?.appConfig?.mediaFields || [])
+                .filter( field => selectedFields.includes(field));
   },
 });
 
