@@ -952,21 +952,23 @@ class SampleCollection(object):
         does not exist.
 
         Args:
-            path: a field path
-            ftype (None): an optional field type to enforce. Must be a subclass
-                of :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                enforce. Must be a subclass of
+            path: a field name or ``embedded.field.name``
+            ftype (None): an optional field type or iterable of types to
+                enforce. Must be subclass(es) of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to enforce. Must be a subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             leaf (False): whether to return the subfield of list fields
 
         Returns:
-            a :class:`fiftyone.core.fields.Field` instance or ``None``
+            a :class:`fiftyone.core.fields.Field` instance, or ``None``
 
         Raises:
-            ValueError: if the field does not match provided type constraints
+            ValueError: if type constraints are provided and the field does not
+            exist or does not match the constraints
         """
         fof.validate_type_constraints(
             ftype=ftype, embedded_doc_type=embedded_doc_type
@@ -1048,11 +1050,12 @@ class SampleCollection(object):
         the collection.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -1077,11 +1080,12 @@ class SampleCollection(object):
         Only applicable for collections that contain videos.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -1262,71 +1266,31 @@ class SampleCollection(object):
                         "Frame field '%s' does not exist" % field_name
                     )
 
-    def validate_field_type(
-        self, field_name, ftype, embedded_doc_type=None, subfield=None
-    ):
+    def validate_field_type(self, path, ftype=None, embedded_doc_type=None):
         """Validates that the collection has a field of the given type.
 
         Args:
-            field_name: the field name
-            ftype: the expected field type. Must be a subclass of
-                :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): the
-                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
-                field. Used only when ``ftype`` is an embedded
-                :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            subfield (None): the type of the contained field. Used only when
-                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
-                :class:`fiftyone.core.fields.DictField`
+            path: a field name or ``embedded.field.name``
+            ftype (None): an optional field type to enforce. Must be a subclass
+                of :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to enforce. Must be a subclass(es) of
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
 
         Raises:
             ValueError: if the field does not exist or does not have the
                 expected type
         """
-        field_name, _ = self._handle_group_field(field_name)
-        field_name, is_frame_field = self._handle_frame_field(field_name)
-        if is_frame_field:
-            schema = self.get_frame_field_schema()
-        else:
-            schema = self.get_field_schema()
+        field = self.get_field(
+            path, ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
 
-        if field_name not in schema:
-            ftype = "Frame field" if is_frame_field else "Field"
+        if field is None:
+            _path, is_frame_field = self._handle_frame_field(path)
+            ftype = "frame field" if is_frame_field else "field"
             raise ValueError(
-                "%s '%s' does not exist on collection '%s'"
-                % (ftype, field_name, self.name)
+                "%s has no %s '%s'" % (self.__class__.__name__, ftype, _path)
             )
-
-        field = schema[field_name]
-
-        if embedded_doc_type is not None:
-            if not isinstance(field, fof.EmbeddedDocumentField) or (
-                field.document_type is not embedded_doc_type
-            ):
-                raise ValueError(
-                    "Field '%s' must be an instance of %s; found %s"
-                    % (field_name, ftype(embedded_doc_type), field)
-                )
-        elif subfield is not None:
-            if not isinstance(field, (fof.ListField, fof.DictField)):
-                raise ValueError(
-                    "Field type %s must be an instance of %s when a subfield "
-                    "is provided" % (ftype, (fof.ListField, fof.DictField))
-                )
-
-            if not isinstance(field, ftype) or not isinstance(
-                field.field, subfield
-            ):
-                raise ValueError(
-                    "Field '%s' must be an instance of %s; found %s"
-                    % (field_name, ftype(field=subfield()), field)
-                )
-        else:
-            if not isinstance(field, ftype):
-                raise ValueError(
-                    "Field '%s' must be an instance of %s; found %s"
-                    % (field_name, ftype, field)
-                )
 
     def tag_samples(self, tags):
         """Adds the tag(s) to all samples in this collection, if necessary.
