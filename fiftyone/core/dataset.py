@@ -3138,6 +3138,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             info: a dict whose keys are a subset of the keys returned by
                 :meth:`get_view_info`
         """
+        print("\n THERE \n", name)
         view_doc = self._get_view_doc(name)
 
         invalid_fields = set(info.keys()) - set(view_doc._EDITABLE_FIELDS)

@@ -448,7 +448,9 @@ const InteractiveSidebar = ({
   }
 
   useEffect(() => {
-    setView([], [], viewName);
+    if (viewName) {
+      setView([], [], viewName);
+    }
   }, [viewName]);
 
   if (entries instanceof Error) {

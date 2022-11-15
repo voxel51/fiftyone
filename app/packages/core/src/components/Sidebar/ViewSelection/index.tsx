@@ -35,7 +35,7 @@ export const viewSearchTerm = atom({
 });
 export const viewDialogOpen = atom({
   key: "viewDialogOpen",
-  default: false,
+  default: true,
 });
 
 const DEFAULT_SELECTED = {
@@ -76,7 +76,7 @@ export default function ViewSelection(props: Props) {
   const viewOptions: DatasetViewOption[] = [
     DEFAULT_SELECTED,
     ...items.map((item: DatasetView) => {
-      const { name, urlName, color, description, createdAt } = item;
+      const { name, urlName, color, description } = item;
 
       return {
         id: urlName,
