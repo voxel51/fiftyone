@@ -61,7 +61,6 @@ class SavedViewInfo:
     name: t.Optional[str] = None
     description: t.Optional[str] = None
     color: t.Optional[str] = None
-    view_stages: t.Optional[BSONArray] = None
 
 
 @gql.type
@@ -266,11 +265,7 @@ class Mutation:
     ) -> bool:
         state = get_state()
         dataset = state.dataset
-        print(dataset.saved_views)
-
         if dataset.has_views and dataset.has_view(view_name):
             dataset.update_view_info(view_name, asdict(updated_info))
-            print(dataset.saved_views)
         dataset.reload()
-
         return state.dataset.saved_views
