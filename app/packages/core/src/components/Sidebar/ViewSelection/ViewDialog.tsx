@@ -1,9 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import styled from "styled-components";
 
 import { Selection } from "@fiftyone/components";
-import { atom, atomFamily, useRecoilState, useRecoilValue } from "recoil";
+import {
+  atom,
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+} from "recoil";
 
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
@@ -12,15 +17,24 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { useTheme } from "@fiftyone/components";
 import { viewDialogOpen } from ".";
 import { DatasetViewOption } from "@fiftyone/components/src/components/Selection/Option";
+import { useMutation } from "react-relay";
+import * as foq from "@fiftyone/relay";
+import { stateSubscription, useSendEvent } from "@fiftyone/state";
+import { useErrorHandler } from "react-error-boundary";
 
 const Box = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
+`;
+
+const ErrorText = styled(Box)`
+  color: ${({ theme }) => theme.error.main};
 `;
 
 const TextContainer = styled.div`
@@ -110,7 +124,8 @@ export const viewDialogContent = atom({
 export default function ViewDialog(props: Props) {
   const theme = useTheme();
   const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
-  const viewContent = useRecoilValue(viewDialogContent);
+  const [viewContent, setViewConent] = useRecoilState(viewDialogContent);
+  const resetViewContent = useResetRecoilState(viewDialogContent);
   const {
     name: initialName,
     description: initialDescription,
@@ -127,7 +142,6 @@ export default function ViewDialog(props: Props) {
     COLOR_OPTIONS[0];
   const [colorOption, setColorOption] = useState<DatasetViewOption>({
     label: theColorOption?.id,
-    description: "",
     color: theColorOption?.color,
     id: theColorOption?.id,
   });
@@ -145,15 +159,54 @@ export default function ViewDialog(props: Props) {
 
       setColorOption({
         label: theColorOption?.id,
-        description: "",
         color: theColorOption?.color,
         id: theColorOption?.id,
       });
     }
   }, [viewContent]);
 
+  // TODO: move to custom hooks
+  const subscription = useRecoilValue(stateSubscription);
+  const onError = useErrorHandler();
+  const send = useSendEvent();
+  const [saveView] = useMutation<foq.saveViewMutation>(foq.saveView);
+
+  const handleSaveView = useCallback(() => {
+    if (nameValue) {
+      send((session) =>
+        saveView({
+          onError,
+          variables: {
+            viewName: nameValue,
+            description: descriptionValue,
+            color: colorOption?.color,
+            subscription,
+            session,
+          },
+        })
+      );
+    }
+  }, [nameValue, descriptionValue, colorOption?.color, subscription]);
+
+  const handleDeleteView = useCallback(() => {
+    console.log("deleting");
+  }, []);
+
+  const resetValues = useCallback(() => {
+    resetViewContent();
+    setNameValue("");
+    setDescriptionValue("");
+    setColorOption(COLOR_OPTIONS[0]);
+  }, []);
+
   return (
-    <Dialog open={isOpen} onClose={() => setIsOpen(false)}>
+    <Dialog
+      open={isOpen}
+      onClose={() => {
+        setIsOpen(false);
+        resetValues();
+      }}
+    >
       <DialogBody
         style={{
           background: theme.background.level1,
@@ -213,39 +266,60 @@ export default function ViewDialog(props: Props) {
             padding: "2rem",
           }}
         >
-          <Button
-            onClick={() => setIsOpen(false)}
-            sx={{
-              background: theme.background.level1,
-              color: theme.text.primary,
-              textTransform: "inherit",
-              padding: "0.5rem 1.25rem",
-              border: `1px solid ${theme.text.secondary}`,
-
-              "&:hover": {
-                background: theme.background.body,
-              },
+          <Box
+            style={{
+              justifyContent: "start",
             }}
           >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => console.log("subscribe")}
-            sx={{
-              background: theme.text.secondary,
-              color: theme.background.level1,
-              textTransform: "inherit",
-              padding: "0.5rem 1.25rem",
-              border: `1px solid ${theme.text.secondary}`,
-
-              "&:hover": {
-                background: theme.text.primary,
-                border: `1px solid ${theme.text.secondary}`,
-              },
+            {!isCreating && (
+              <Button
+                onClick={handleDeleteView}
+                sx={{
+                  background: theme.background.level1,
+                  color: theme.text.primary,
+                  textTransform: "inherit",
+                  padding: "0.5rem 1.25rem",
+                  width: "100px",
+                  paddingLeft: "12px",
+                }}
+              >
+                <DeleteIcon fontSize="small" color="error" />
+                <ErrorText> Delete</ErrorText>
+              </Button>
+            )}
+          </Box>
+          <Box
+            style={{
+              justifyContent: "end",
             }}
           >
-            Save view
-          </Button>
+            <Button
+              onClick={() => setIsOpen(false)}
+              sx={{
+                background: theme.background.level1,
+                color: theme.text.primary,
+                textTransform: "inherit",
+                padding: "0.5rem 1.25rem",
+                border: `1px solid ${theme.primary.plainBorder}`,
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveView}
+              disabled={!nameValue}
+              sx={{
+                background: theme.background.level1,
+                color: theme.text.primary,
+                textTransform: "inherit",
+                padding: "0.5rem 1.25rem",
+                border: `1px solid ${theme.primary.plainBorder}`,
+                marginLeft: "1rem",
+              }}
+            >
+              Save view
+            </Button>
+          </Box>
         </DialogActions>
       </DialogBody>
     </Dialog>

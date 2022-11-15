@@ -22,8 +22,6 @@ _LABEL_TAGS = "_label_tags"
 
 def get_view(
     dataset_name,
-    *,
-    view_name=None,
     stages=None,
     filters=None,
     count_label_tags=False,
@@ -31,6 +29,7 @@ def get_view(
     extended_stages=None,
     sample_filter=None,
     sort=False,
+    view_name=None,
 ):
     """Construct a new view using the request paramters or load a previously
     saved view by name.
