@@ -71,6 +71,7 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         name: t.Optional[str],
+        view_name: t.Optional[str],
         info: Info,
     ) -> bool:
         state = get_state()
@@ -78,6 +79,7 @@ class Mutation:
         state.selected = []
         state.selected_labels = []
         state.view = None
+        state.view_name = view_name if view_name is not None else None
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 
@@ -141,18 +143,22 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
-        view: BSONArray,
-        view_name: t.Optional[str],
         dataset_name: str,
+        view: t.Optional[BSONArray],
+        view_name: t.Optional[str],
         form: t.Optional[StateForm],
         info: Info,
     ) -> ViewResponse:
         state = get_state()
         state.selected = []
         state.selected_labels = []
-        if view_name and state.dataset.has_view(view_name):
+
+        if view_name is not None and state.dataset.has_view(view_name):
+            # Load a saved view by name
             state.view = state.dataset.load_view(view_name)
+
         elif form:
+            # Update current view with form parameters
             view = get_view(
                 dataset_name,
                 stages=view,
@@ -160,23 +166,21 @@ class Mutation:
             )
             if form.slice:
                 view = view.select_group_slices([form.slice])
-
             if form.sample_ids:
                 view = fov.make_optimized_select_view(view, form.sample_ids)
-
             if form.add_stages:
                 for d in form.add_stages:
                     stage = fos.ViewStage._from_dict(d)
                     view = view.add_stage(stage)
-
             if form.extended:
                 view = extend_view(view, form.extended, True)
-
             state.view = view
             view = view._serialize()
 
         else:
-            state.view = fov.DatasetView._build(state.dataset, view)
+            # Apply a list of view stages to dataset if provided
+            state.view = fov.DatasetView._build(state.dataset, view | [])
+
         await dispatch_event(subscription, StateUpdate(state=state))
         dataset = await Dataset.resolver(
             name=dataset_name,
@@ -187,7 +191,7 @@ class Mutation:
         return ViewResponse(
             view=state.view._serialize(),
             dataset=dataset,
-            view_name=view_name if view_name else state.view.name,
+            view_name=state.view.name,
         )
 
     @gql.mutation
@@ -226,6 +230,9 @@ class Mutation:
     ) -> bool:
         state = get_state()
         dataset = state.dataset
+
+        # view arg required to be an instance of
+        # `fiftyone.core.view.DatasetView`
         dataset.save_view(
             view_name, state.view, description=description, color=color
         )
@@ -243,7 +250,13 @@ class Mutation:
         if dataset.has_views and dataset.has_view(view_name):
             deleted_view_name = state.dataset.delete_view(view_name)
         else:
-            print("Attempting to delete non-existent view: %s", view_name)
+            raise ValueError(
+                "Attempting to delete non-existent saved view: " "%s",
+                view_name,
+            )
+
+        # If the current view is deleted, set the view state to the full
+        # dataset view
         if state.view_name == deleted_view_name:
             state.view = dataset.view()
             state.view_name = None
@@ -257,6 +270,17 @@ class Mutation:
         view_name: str,
         updated_info: SavedViewInfo,
     ) -> bool:
+        """Updates the editable fields of a saved view
+
+        Args:
+            subscription: str identifier used for syncing App state
+            session: str identifier use for syncing App state
+            view_name: name of the existing saved view
+            updated_info: input type with values only for fields requiring
+            update
+
+        """
+
         state = get_state()
         dataset = state.dataset
         if dataset.has_views and dataset.has_view(view_name):

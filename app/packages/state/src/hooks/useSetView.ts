@@ -18,7 +18,7 @@ import {
   view,
 } from "../recoil";
 import { RouterContext } from "../routing";
-import { transformDataset } from "../utils";
+import { getSavedViewName, transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
 import useStateUpdate from "./useStateUpdate";
 import * as fos from "../";
@@ -32,6 +32,7 @@ const useSetView = (
   const updateState = useStateUpdate();
   const subscription = useRecoilValue(stateSubscription);
   const router = useContext(RouterContext);
+  const viewName = getSavedViewName(router);
   const [commit] = useMutation<setViewMutation>(setView);
 
   const onError = useErrorHandler();
@@ -55,6 +56,7 @@ const useSetView = (
               subscription,
               session,
               view: value,
+              viewName: viewName,
               datasetName: dataset.name,
               form: patch
                 ? {
@@ -84,6 +86,7 @@ const useSetView = (
                 dataset: transformDataset(dataset),
                 state: {
                   view: value,
+                  viewName: viewName,
                   viewCls: dataset.viewCls,
                   selected: [],
                   selectedLabels: [],

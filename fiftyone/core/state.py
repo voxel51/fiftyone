@@ -37,6 +37,8 @@ class StateDescription(etas.Serializable):
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
         view (None): the current :class:`fiftyone.core.view.DatasetView`
+        view_name (None): the name of the view if the current view is a
+        saved view
     """
 
     def __init__(
@@ -46,12 +48,14 @@ class StateDescription(etas.Serializable):
         selected=None,
         selected_labels=None,
         view=None,
+        view_name=None,
     ):
         self.config = config or fo.app_config.copy()
         self.dataset = dataset
         self.selected = selected or []
         self.selected_labels = selected_labels or []
         self.view = view
+        self.view_name = view_name
 
     def serialize(self, reflective=False):
         with fou.disable_progress_bars():
@@ -118,7 +122,7 @@ class StateDescription(etas.Serializable):
         else:
             view = None
 
-        # view_name = d.get("view_name", None)
+        view_name = d.get("view_name", None)
 
         group_slice = d.get("group_slice", None)
         if group_slice:
@@ -140,6 +144,7 @@ class StateDescription(etas.Serializable):
             selected=d.get("selected", []),
             selected_labels=d.get("selected_labels", []),
             view=view,
+            view_name=view_name,
         )
 
 
