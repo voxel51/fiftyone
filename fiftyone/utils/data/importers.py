@@ -1393,10 +1393,10 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         self._metadata = None
         self._rel_dir = None
+        self._fields_dir = None
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
-        self._fields_dir = None
         self._frame_labels_dir = None
         self._samples = None
         self._iter_samples = None
@@ -1464,10 +1464,10 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         else:
             self._rel_dir = self.dataset_dir
 
+        self._fields_dir = os.path.join(self.dataset_dir, "fields")
         self._anno_dir = os.path.join(self.dataset_dir, "annotations")
         self._brain_dir = os.path.join(self.dataset_dir, "brain")
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
-        self._fields_dir = os.path.join(self.dataset_dir, "fields")
         self._frame_labels_dir = os.path.join(self.dataset_dir, "frames")
 
         if os.path.isdir(self._fields_dir):
@@ -1635,10 +1635,10 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self.ordered = ordered
 
         self._data_dir = None
+        self._fields_dir = None
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
-        self._fields_dir = None
         self._metadata_path = None
         self._samples_path = None
         self._frames_path = None
@@ -1647,11 +1647,14 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
     def setup(self):
         self._data_dir = os.path.join(self.dataset_dir, "data")
+        self._fields_dir = os.path.join(self.dataset_dir, "fields")
         self._anno_dir = os.path.join(self.dataset_dir, "annotations")
         self._brain_dir = os.path.join(self.dataset_dir, "brain")
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
-        self._fields_dir = os.path.join(self.dataset_dir, "fields")
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
+
+        if os.path.isdir(self._fields_dir):
+            self._media_fields = etau.list_subdirs(self._fields_dir)
 
         self._samples_path = os.path.join(self.dataset_dir, "samples.json")
         if not os.path.isfile(self._samples_path):
@@ -1666,9 +1669,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 self._has_frames = True
             else:
                 self._has_frames = False
-
-        if os.path.isdir(self._fields_dir):
-            self._media_fields = etau.list_subdirs(self._fields_dir)
 
     def import_samples(self, dataset, tags=None):
         dataset_dict = foo.import_document(self._metadata_path)

@@ -1627,6 +1627,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self.pretty_print = pretty_print
 
         self._data_dir = None
+        self._fields_dir = None
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
@@ -1886,6 +1887,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self.ordered = ordered
 
         self._data_dir = None
+        self._fields_dir = None
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
