@@ -95,7 +95,8 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
   React.useLayoutEffect(() => {
     setCompactLayout(compactLayout);
   }, [compactLayout]);
-  React.useLayoutEffect(() => {
+  React.useEffect(() => {
+    console.log(dataset);
     loadQuery({ name: dataset });
   }, [dataset]);
   React.useLayoutEffect(() => {
