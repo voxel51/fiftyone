@@ -30,7 +30,6 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
-import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
@@ -2253,6 +2252,8 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        output_dir=None,
+        rel_dir=None,
         **kwargs,
     ):
         """Applies the :class:`FiftyOne model <fiftyone.core.models.Model>` or
@@ -2290,6 +2291,17 @@ class SampleCollection(object):
                 raising an error if predictions cannot be generated for a
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
+            output_dir (None): an optional output directory in which to write
+                segmentation images. Only applicable if the model generates
+                segmentations. If none is provided, the segmentations are
+                stored in the database
+            rel_dir (None): an optional relative directory to strip from each
+                input filepath to generate a unique identifier that is joined
+                with ``output_dir`` to generate an output path for each
+                segmentation image. This argument allows for populating nested
+                subdirectories in ``output_dir`` that match the shape of the
+                input paths. The path is converted to an absolute path (if
+                necessary) via :func:`fiftyone.core.utils.normalize_path`
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
         """
@@ -2302,6 +2314,8 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            output_dir=output_dir,
+            rel_dir=rel_dir,
             **kwargs,
         )
 
@@ -8698,6 +8712,29 @@ class SampleCollection(object):
         # @todo handle "groups.<slice>.field.name", if it becomes necessary
         db_fields_map = self._get_db_fields_map(frames=frames)
         return [db_fields_map.get(p, p) for p in paths]
+
+    def _get_media_fields(self, include_filepath=True, frames=False):
+        media_fields = {}
+
+        if frames:
+            schema = self.get_frame_field_schema()
+            app_media_fields = set()
+        else:
+            schema = self.get_field_schema()
+            app_media_fields = set(self._dataset.app_config.media_fields)
+
+        if not include_filepath:
+            app_media_fields.discard("filepath")
+
+        for field_name, field in schema.items():
+            if field_name in app_media_fields:
+                media_fields[field_name] = None
+            elif isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+                field.document_type, (fol.Segmentation, fol.Heatmap)
+            ):
+                media_fields[field_name] = field.document_type
+
+        return media_fields
 
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
