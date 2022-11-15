@@ -80,13 +80,15 @@ def validate_type_constraints(ftype=None, embedded_doc_type=None):
                     "Field type %s is not a subclass of %s" % (_ftype, Field)
                 )
 
-    if embedded_doc_type is not None:
-        if ftype is not None and not issubclass(ftype, EmbeddedDocumentField):
-            raise ValueError(
-                "embedded_doc_type can only be specified if ftype is a "
-                "subclass of %s" % EmbeddedDocumentField
-            )
+            if embedded_doc_type is not None and not issubclass(
+                _ftype, EmbeddedDocumentField
+            ):
+                raise ValueError(
+                    "embedded_doc_type can only be specified if ftype is a "
+                    "subclass of %s" % EmbeddedDocumentField
+                )
 
+    if embedded_doc_type is not None:
         if etau.is_container(embedded_doc_type):
             embedded_doc_type = tuple(embedded_doc_type)
         else:
