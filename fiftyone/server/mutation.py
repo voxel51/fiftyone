@@ -232,9 +232,6 @@ class Mutation:
         dataset.reload()
         state.view = dataset.load_view(view_name)
         state.name = view_name
-        # TODO: confirm StateUpdate is unnecessary
-        # await dispatch_event(subscription, StateUpdate(state=state))
-
         return state.view
 
     @gql.mutation
@@ -250,9 +247,6 @@ class Mutation:
         if state.view_name == deleted_view_name:
             state.view = dataset.view()
             state.view_name = None
-        # TODO: confirm StateUpdate is unnecessary
-        # await dispatch_event(subscription, StateUpdate(state=state))
-
         return state.dataset.saved_views
 
     @gql.mutation
