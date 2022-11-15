@@ -23,6 +23,7 @@ import { viewDialogOpen } from ".";
 import { DatasetViewOption } from "@fiftyone/components/src/components/Selection/Option";
 import { useMutation } from "react-relay";
 import * as foq from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
 import { stateSubscription, useSendEvent } from "@fiftyone/state";
 import { useErrorHandler } from "react-error-boundary";
 
@@ -124,7 +125,7 @@ export const viewDialogContent = atom({
 export default function ViewDialog(props: Props) {
   const theme = useTheme();
   const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
-  const [viewContent, setViewConent] = useRecoilState(viewDialogContent);
+  const viewContent = useRecoilValue(viewDialogContent);
   const resetViewContent = useResetRecoilState(viewDialogContent);
   const {
     name: initialName,
@@ -166,31 +167,71 @@ export default function ViewDialog(props: Props) {
   }, [viewContent]);
 
   // TODO: move to custom hooks
+  const view = useRecoilValue(fos.view);
   const subscription = useRecoilValue(stateSubscription);
   const onError = useErrorHandler();
   const send = useSendEvent();
-  const [saveView] = useMutation<foq.saveViewMutation>(foq.saveView);
+  const [saveView, savingView] = useMutation<foq.saveViewMutation>(
+    foq.saveView
+  );
+  const [updateView] = useMutation<foq.updateSavedViewMutation>(
+    foq.updateSavedView
+  );
+  const [deleteView] = useMutation<foq.deleteSavedViewMutation>(
+    foq.deleteSavedView
+  );
 
-  const handleSaveView = useCallback(() => {
+  const handleDeleteView = useCallback(() => {
     if (nameValue) {
       send((session) =>
-        saveView({
+        deleteView({
           onError,
           variables: {
             viewName: nameValue,
-            description: descriptionValue,
-            color: colorOption?.color,
             subscription,
             session,
           },
         })
       );
     }
-  }, [nameValue, descriptionValue, colorOption?.color, subscription]);
+  }, [nameValue]);
 
-  const handleDeleteView = useCallback(() => {
-    console.log("deleting");
-  }, []);
+  const handleSaveView = useCallback(() => {
+    console.log("view", view);
+    if (nameValue && view?.length) {
+      if (isCreating) {
+        console.log("creating", nameValue, descriptionValue, colorOption.color);
+        send((session) =>
+          saveView({
+            onError,
+            variables: {
+              viewName: nameValue,
+              description: descriptionValue,
+              color: colorOption?.color,
+              subscription,
+              session,
+            },
+          })
+        );
+      } else {
+        send((session) =>
+          updateView({
+            onError,
+            variables: {
+              viewName: initialName,
+              subscription,
+              session,
+              updatedInfo: {
+                description: descriptionValue,
+                color: colorOption?.color,
+                name: nameValue,
+              },
+            },
+          })
+        );
+      }
+    }
+  }, [view, nameValue, descriptionValue, colorOption?.color, subscription]);
 
   const resetValues = useCallback(() => {
     resetViewContent();
@@ -307,7 +348,7 @@ export default function ViewDialog(props: Props) {
             </Button>
             <Button
               onClick={handleSaveView}
-              disabled={!nameValue}
+              disabled={!nameValue || savingView || !view?.length}
               sx={{
                 background: theme.background.level1,
                 color: theme.text.primary,
