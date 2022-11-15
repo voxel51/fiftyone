@@ -36,6 +36,13 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
+    :header: pandas and FiftyOne Comparison Guide
+    :description: pandas and FiftyOne are each essential to a variety of data science and machine learning workflows. In this tutorial, we give a side-by-side comparison of the two.
+    :link: pandas_comparison.html
+    :image: ../_static/images/tutorials/evaluate_detections.png
+    :tags: Dataset-Evaluation
+
+.. customcarditem::
     :header: Evaluating object detections
     :description: Aggregate statistics aren't sufficient for object detection. This tutorial shows how to use FiftyOne to perform powerful evaluation workflows on your detector.
     :link: evaluate_detections.html
