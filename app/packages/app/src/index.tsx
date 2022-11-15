@@ -1,6 +1,6 @@
 import { ThemeProvider } from "@fiftyone/components";
 import { Loading, Setup, makeRoutes } from "@fiftyone/core";
-import { useRefresh, useScreenshot } from "@fiftyone/state";
+import { getSavedViewName, useRefresh, useScreenshot } from "@fiftyone/state";
 import { ThemeProvider } from "@fiftyone/components";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
@@ -90,14 +90,13 @@ const App: React.FC = ({}) => {
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
+                viewName: getSavedViewName(contextRef.current),
               } as State.Description;
-
               let dataset = getDatasetName(contextRef.current);
               if (readyStateRef.current !== AppReadyState.OPEN) {
                 if (dataset !== state.dataset) {
                   dataset = state.dataset;
                 }
-
                 setReadyState(AppReadyState.OPEN);
               } else {
                 dataset = state.dataset;

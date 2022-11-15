@@ -227,13 +227,6 @@ dataset_dataloader = get_dataloader_resolver(
 )
 
 
-# @gql.type
-# class CurrentView:
-#     name = t.Optional[str] = None
-#     stages = t.Optional[t.List[str]] = None
-#
-
-
 @gql.enum
 class ColorBy(Enum):
     field = "field"
@@ -352,8 +345,11 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def saved_view(
-        self, dataset_name: str, view_name: str
+        self, dataset_name: str, view_name: t.Optional[str]
     ) -> t.Optional[SavedView]:
+        if not view_name:
+            return
+
         ds = fo.load_dataset(dataset_name)
         if ds.has_views & ds.has_view(view_name):
             for view in ds._doc.saved_views:
@@ -389,7 +385,7 @@ async def serialize_dataset(
     def run():
         dataset = fo.load_dataset(name)
         dataset.reload()
-        if view_name:
+        if view_name is not None:
             view = dataset.load_view(view_name)
         else:
             view = fov.DatasetView._build(dataset, serialized_view or [])

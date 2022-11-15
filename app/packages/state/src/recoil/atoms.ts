@@ -122,6 +122,11 @@ export const dataset = atom<State.Dataset>({
   default: null,
 });
 
+// export const savedView = atom<State.SavedView>({
+//   key: "savedView",
+//   default: null,
+// });
+
 export const selectedLabels = atom<State.SelectedLabelMap>({
   key: "selectedLabels",
   default: {},

@@ -36,7 +36,7 @@ def get_view(
     saved view by name.
 
     Args:
-        dataset_names: the dataset name
+        dataset_name: the dataset name
         view_name (None): an optional str used for loading a previously saved
         view by name
         stages (None): an optional list of serialized

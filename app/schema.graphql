@@ -266,7 +266,12 @@ type MediaURL {
 }
 
 type Mutation {
-  setDataset(subscription: String!, session: String, name: String): Boolean!
+  setDataset(
+    subscription: String!
+    session: String
+    name: String
+    viewName: String
+  ): Boolean!
   setSidebarGroups(
     dataset: String!
     stages: BSONArray!
@@ -285,9 +290,9 @@ type Mutation {
   setView(
     subscription: String!
     session: String
-    view: BSONArray!
-    viewName: String
     datasetName: String!
+    view: BSONArray
+    viewName: String
     form: StateForm
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
@@ -364,7 +369,7 @@ type Query {
   teamsSubmission: Boolean!
   uid: String!
   version: String!
-  savedView(datasetName: String!, viewName: String!): SavedView
+  savedView(datasetName: String!, viewName: String): SavedView
 }
 
 type RootAggregation implements Aggregation {
@@ -446,7 +451,6 @@ input SavedViewInfo {
   name: String = null
   description: String = null
   color: String = null
-  viewStages: BSONArray = null
 }
 
 input SelectedLabel {

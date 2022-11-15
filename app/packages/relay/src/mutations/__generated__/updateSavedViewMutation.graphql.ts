@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<869e63143419612e962aaa0c1381d24d>>
+ * @generated SignedSource<<0db6fe10939d397a88b8b49f94796573>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,7 +13,6 @@ export type SavedViewInfo = {
   color?: string | null;
   description?: string | null;
   name?: string | null;
-  viewStages?: Array | null;
 };
 export type updateSavedViewMutation$variables = {
   session?: string | null;
