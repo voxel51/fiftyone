@@ -346,8 +346,9 @@ export const mediaFields = selector<string[]>({
   key: "string",
   get: ({ get }) => {
     const selectedFields = Object.keys(get(fieldSchema({})));
-    return (get(atoms.dataset)?.appConfig?.mediaFields || [])
-                .filter( field => selectedFields.includes(field));
+    return (get(atoms.dataset)?.appConfig?.mediaFields || []).filter((field) =>
+      selectedFields.includes(field)
+    );
   },
 });
 
