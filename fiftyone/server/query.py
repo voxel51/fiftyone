@@ -109,6 +109,7 @@ class EvaluationRun(Run):
 
 @gql.type
 class SavedView:
+    id: ObjectId
     dataset_id: str
     name: str
     url_name: str
@@ -180,6 +181,7 @@ class Dataset:
     saved_views: t.Optional[t.List[SavedView]]
     version: t.Optional[str]
     view_cls: t.Optional[str]
+    view_name: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
