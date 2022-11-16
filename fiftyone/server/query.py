@@ -109,7 +109,6 @@ class EvaluationRun(Run):
 
 @gql.type
 class SavedView:
-    id: gql.ID
     dataset_id: str
     name: str
     url_name: str
@@ -119,6 +118,10 @@ class SavedView:
     created_at: datetime
     last_modified_at: t.Optional[datetime]
     last_loaded_at: t.Optional[datetime]
+    # TODO: temporarily make id optional since previous
+    # saved_views didn't have this field, but make it required for actual
+    # release
+    id: t.Optional[str]
 
     @gql.field
     def view_name(self) -> str:
