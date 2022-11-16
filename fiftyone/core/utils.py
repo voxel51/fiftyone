@@ -1174,8 +1174,9 @@ class UniqueFilenameMaker(object):
         Returns:
             the corresponding alternate path
         """
-        root = alt_dir or self.alt_dir or self.output_dir
-        return fos.join(root, os.path.relpath(output_path, self.output_dir))
+        root_dir = alt_dir or self.alt_dir or self.output_dir
+        rel_path = os.path.relpath(output_path, self.output_dir)
+        return fos.join(root_dir, rel_path)
 
 
 def safe_relpath(path, start=None, default=None):
