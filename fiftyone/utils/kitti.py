@@ -983,13 +983,21 @@ def _roty(t):
     return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
 
 
+def _get_corners3d(h, w, l, R, t):
+    # Construct (x, y, z) coordinates of 3d box corners
+    corners3d = np.array(
+        [
+            [l / 2, l / 2, -l / 2, -l / 2, l / 2, l / 2, -l / 2, -l / 2],
+            [0, 0, 0, 0, -h, -h, -h, -h],
+            [w / 2, -w / 2, -w / 2, w / 2, w / 2, -w / 2, -w / 2, w / 2],
+        ]
+    )
+    corners3d = R @ corners3d + t[:, np.newaxis]
+
+    return corners3d
+
+
 def _proj_3d_to_right_camera(detections3d, calib, frame_size):
-    # Velodyne -> right camera
-    # P = calib["P3"] @ calib["R0_rect"] @ calib["Tr_velo_to_cam"]
-
-    # Reference 3D coordinates -> right camera
-    # P = calib["P3"] @ calib["R0_rect"]
-
     # Rectified 3D coordinates -> right camera
     P = calib["P3"]
 
@@ -1001,15 +1009,7 @@ def _proj_3d_to_right_camera(detections3d, calib, frame_size):
         t = np.array(detection["location"])
         R = _roty(detection["rotation"][1])
 
-        # Construct (x, y, z) coordinates of 3d box corners
-        corners3d = np.array(
-            [
-                [l / 2, l / 2, -l / 2, -l / 2, l / 2, l / 2, -l / 2, -l / 2],
-                [0, 0, 0, 0, -h, -h, -h, -h],
-                [w / 2, -w / 2, -w / 2, w / 2, w / 2, -w / 2, -w / 2, w / 2],
-            ]
-        )
-        corners3d = R @ corners3d + t[:, np.newaxis]
+        corners3d = _get_corners3d(h, w, l, R, t)
 
         # Project to image coordinates
         corners2d = P @ np.vstack((corners3d, np.ones((1, 8))))
@@ -1031,6 +1031,28 @@ def _proj_3d_to_right_camera(detections3d, calib, frame_size):
         del detection["rotation"]
 
     return detections2d
+
+
+def _convert_point_lidar_to_camera(xyz, V2C, R0):
+    x, y, z = xyz
+    p = np.array([x, y, z, 1])
+    return tuple((R0 @ V2C @ p)[0:3])
+
+
+def convert_box_lidar_to_camera(boxes, V2C, R0):
+    # (N, 7) -> (N, 7) x,y,z,h,w,l,r
+    ret = []
+    for box in boxes:
+        x, y, z, h, w, l, rz = box
+        (x, y, z), h, w, l, ry = (
+            _convert_point_lidar_to_camera((x, y, z), V2C, R0),
+            h,
+            w,
+            l,
+            -rz - np.pi / 2,
+        )
+        ret.append([x, y, z, h, w, l, ry])
+    return np.array(ret).reshape(-1, 7)
 
 
 def _convert_velodyne_dir_to_pcd_dir(velodyne_dir, pcd_dir, overwrite=False):
