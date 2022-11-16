@@ -1913,7 +1913,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         if media_exporter is not None:
             return media_exporter
 
-        field_dir = os.path.join(self._fields_dir, field_name)
+        field_dir = fos.join(self._fields_dir, field_name)
         media_exporter = MediaExporter(
             self.export_media,
             export_path=field_dir,
@@ -2154,7 +2154,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             # Store relative path
             media_exporter = self._get_media_field_exporter(field_name)
             _, uuid = media_exporter.export(value)
-            d[key] = os.path.join("fields", field_name, uuid)
+            d[key] = fos.join("fields", field_name, uuid)
         elif self.rel_dir is not None:
             # Remove `rel_dir` prefix from path
             d[key] = fou.safe_relpath(value, self.rel_dir, default=value)
@@ -2164,7 +2164,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         if media_exporter is not None:
             return media_exporter
 
-        field_dir = os.path.join(self._fields_dir, field_name)
+        field_dir = fos.join(self._fields_dir, field_name)
         media_exporter = MediaExporter(
             self.export_media,
             export_path=field_dir,

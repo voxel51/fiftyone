@@ -783,6 +783,78 @@ class LocalFiles(object):
             etau.delete_dir(self._tmpdir)
 
 
+class DeleteFiles(object):
+    """Context manager for efficiently deleting local or remote files.
+
+    When local filepaths are provided to this context manager, they are
+    immediately deleted.
+
+    When remote filepaths are provided, they are efficiently deleted in a batch
+    when the context exits.
+
+    Example usage::
+
+        import fiftyone.core.storage as fos
+
+        remote_paths = [
+            "s3://bucket/file1.txt",
+            "s3://bucket/file2.txt",
+        ]
+
+        with fos.DeleteFiles() as df:
+            for remote_path in remote_paths:
+                df.delete(remote_path)
+
+    Args:
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote deletion fails
+        type_str ("files"): the type of file being deleted. Used only for log
+            messages. If None/empty, nothing will be logged
+        quiet (None): whether to display (False) or not display (True) a
+            progress bar tracking the status of any uploads. By default,
+            ``fiftyone.config.show_progress_bars`` is used to set this
+    """
+
+    def __init__(self, skip_failures=False, type_str="files", quiet=None):
+        self._skip_failures = skip_failures
+        self._type_str = type_str
+        self._quiet = quiet
+        self._delpaths = None
+
+    @property
+    def quiet(self):
+        """Whether this instance will log the status of any deletions."""
+        return _parse_quiet(self._quiet)
+
+    def delete(self, path):
+        """Deletes the given file.
+
+        Args:
+            path: the filepath
+        """
+        if is_local(path):
+            etau.delete_file(path)
+        else:
+            self._delpaths.append(path)
+
+    def __enter__(self):
+        self._delpaths = []
+        return self
+
+    def __exit__(self, *args):
+        if self._delpaths:
+            progress = not self.quiet
+
+            if progress and self._type_str:
+                logger.info("Uploading %s...", self._type_str)
+
+            delete_files(
+                self._delpaths,
+                skip_failures=self._skip_failures,
+                progress=progress,
+            )
+
+
 class FileWriter(object):
     """Context manager that allows writing remote files to disk locally first
     so that they can be efficiently uploaded to the remote destination in a

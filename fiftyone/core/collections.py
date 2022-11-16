@@ -2246,28 +2246,26 @@ class SampleCollection(object):
         )
 
     def download_media(
-        self,
-        media_field="filepath",
-        update=False,
-        skip_failures=True,
+        self, media_fields=None, update=False, skip_failures=True
     ):
         """Downloads the source media files for all samples in the collection.
 
-        This method is only useful for collections that contain at least one
-        remote media file.
+        This method is only useful for collections that contain remote media.
 
         Any existing files are not re-downloaded, unless ``update == True`` and
         their checksums no longer match.
 
         Args:
-            media_field ("filepath"): the field containing the media paths to
-                download
+            media_fields (None): a field or iterable of fields containing media
+                to download. By default, all media fields in the collection's
+                :meth:`app_config` are used
             update (False): whether to re-download media whose checksums no
                 longer match
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
         """
-        filepaths = self.values(media_field)
+        filepaths = self._get_media_paths(media_fields=media_fields)
+
         if update:
             foc.media_cache.update(
                 filepaths=filepaths, skip_failures=skip_failures
@@ -2278,15 +2276,11 @@ class SampleCollection(object):
             )
 
     def get_local_paths(
-        self,
-        media_field="filepath",
-        download=True,
-        skip_failures=True,
+        self, media_field="filepath", download=True, skip_failures=True
     ):
         """Returns a list of local paths to the media files in this collection.
 
-        This method is only useful for collections that contain at least one
-        remote media file.
+        This method is only useful for collections that contain remote media.
 
         Args:
             media_field ("filepath"): the field containing the media paths
@@ -2297,7 +2291,7 @@ class SampleCollection(object):
         Returns:
             a list of local filepaths
         """
-        filepaths = self.values(media_field)
+        filepaths = self._get_media_paths(media_fields=[media_field])
         return foc.media_cache.get_local_paths(
             filepaths, download=download, skip_failures=skip_failures
         )
@@ -2306,29 +2300,21 @@ class SampleCollection(object):
         """Deletes any local copies of media files in this collection from the
         media cache.
 
-        This method is only useful for collections that contain at least one
-        remote media file.
+        This method is only useful for collections that contain remote media.
 
         Args:
             media_fields (None): a field or iterable of fields containing media
                 paths to clear from the cache. By default, all media fields
                 in the collection's :meth:`app_config` are cleared
         """
-        if media_fields is None:
-            media_fields = self.app_config.media_fields
-
-        if not etau.is_container(media_fields):
-            media_fields = [media_fields]
-
-        filepaths = itertools.chain.from_iterable(self.values(media_fields))
+        filepaths = self._get_media_paths(media_fields=media_fields)
         foc.media_cache.clear(filepaths=filepaths)
 
     def cache_stats(self, media_fields=None):
         """Returns a dictionary of stats about the cached media files in this
         collection.
 
-        This method is only useful for collections that contain at least one
-        remote media file.
+        This method is only useful for collections that contain remote media.
 
         Args:
             media_fields (None): a field or iterable of fields containing media
@@ -2338,14 +2324,30 @@ class SampleCollection(object):
         Returns:
             a stats dict
         """
-        if media_fields is None:
-            media_fields = self.app_config.media_fields
+        filepaths = self._get_media_paths(media_fields=media_fields)
+        return foc.media_cache.stats(filepaths=filepaths)
 
-        if not etau.is_container(media_fields):
+    def _get_media_paths(self, media_fields=None):
+        if media_fields is None:
+            media_fields = list(self._get_media_paths().keys())
+        elif etau.is_container(media_fields):
+            media_fields = list(media_fields)
+        else:
             media_fields = [media_fields]
 
-        filepaths = itertools.chain.from_iterable(self.values(media_fields))
-        return foc.media_cache.stats(filepaths=filepaths)
+        _media_fields = []
+        for media_field in media_fields:
+            field = self.get_field(media_field)
+            if isinstance(field, fof.EmbeddedDocumentField):
+                if issubclass(field.document_type, fol._HasMedia):
+                    media_field += "." + field.document_type._MEDIA_FIELD
+
+            _media_fields.append(media_field)
+
+        if len(_media_fields) > 1:
+            return itertools.chain.from_iterable(self.values(_media_fields))
+
+        return self.values(_media_fields[0])
 
     def apply_model(
         self,
@@ -2405,7 +2407,7 @@ class SampleCollection(object):
                 segmentation image. This argument allows for populating nested
                 subdirectories in ``output_dir`` that match the shape of the
                 input paths. The path is converted to an absolute path (if
-                necessary) via :func:`fiftyone.core.utils.normalize_path`
+                necessary) via :func:`fiftyone.core.storage.normalize_path`
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
         """

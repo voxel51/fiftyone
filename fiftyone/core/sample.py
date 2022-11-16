@@ -133,8 +133,15 @@ class _SampleMixin(object):
         Returns:
             the local filepath
         """
+        value = self[media_field]
+
+        if hasattr(value, "get_local_path"):
+            return value.get_local_path(
+                download=download, skip_failures=skip_failures
+            )
+
         return foc.media_cache.get_local_path(
-            self[media_field], download=download, skip_failures=skip_failures
+            value, download=download, skip_failures=skip_failures
         )
 
     def get_field(self, field_name):

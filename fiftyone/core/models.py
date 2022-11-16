@@ -22,6 +22,7 @@ import eta.core.web as etaw
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
@@ -97,7 +98,7 @@ def apply_model(
             image. This argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
     """
@@ -156,16 +157,20 @@ def apply_model(
             "Ignoring `num_workers` parameter; only supported for Torch models"
         )
 
-    if output_dir is not None:
-        filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
-        )
-    else:
-        filename_maker = None
-
     samples.download_media(skip_failures=skip_failures)
 
     with contextlib.ExitStack() as context:
+        if output_dir is not None:
+            local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
+            filename_maker = fou.UniqueFilenameMaker(
+                output_dir=output_dir,
+                rel_dir=rel_dir,
+                alt_dir=local_dir,
+                idempotent=False,
+            )
+        else:
+            filename_maker = None
+
         try:
             if confidence_thresh is not None:
                 cthresh = confidence_thresh
@@ -553,12 +558,16 @@ def _do_export_array(label, input_path, filename_maker):
         mask_path = filename_maker.get_output_path(
             input_path, output_ext=".png"
         )
-        label.export_mask(mask_path, update=True)
+        local_path = filename_maker.get_alt_path(mask_path)
+        label.export_mask(local_path, update=True)
+        label.mask_path = mask_path
     elif isinstance(label, fol.Heatmap):
         map_path = filename_maker.get_output_path(
             input_path, output_ext=".png"
         )
-        label.export_map(map_path, update=True)
+        local_path = filename_maker.get_alt_path(map_path)
+        label.export_map(local_path, update=True)
+        label.map_path = map_path
 
 
 def _get_frame_counts(samples):

@@ -3221,8 +3221,13 @@ class ImageSegmentationDirectoryImporter(
                 if uuid in _uuids
             }
 
-        local_files = fos.LocalFiles(labels_paths_map, "r", type_str="masks")
-        labels_paths_map = local_files.__enter__()
+        if self.load_masks:
+            local_files = fos.LocalFiles(
+                labels_paths_map, "r", type_str="masks"
+            )
+            labels_paths_map = local_files.__enter__()
+        else:
+            local_files = None
 
         self._image_paths_map = image_paths_map
         self._metadata_map = metadata_map
@@ -3232,7 +3237,8 @@ class ImageSegmentationDirectoryImporter(
         self._num_samples = len(uuids)
 
     def close(self, *args):
-        self._local_files.__exit__(*args)
+        if self._local_files is not None:
+            self._local_files.__exit__(*args)
 
     @staticmethod
     def _get_num_samples(dataset_dir):

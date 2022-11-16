@@ -5,9 +5,8 @@ Label utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import eta.core.utils as etau
-
 import fiftyone.core.labels as fol
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
@@ -55,7 +54,7 @@ def objects_to_segmentations(
             image. This argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         overwrite (False): whether to delete ``output_dir`` prior to exporting
             if it exists
     """
@@ -73,7 +72,7 @@ def objects_to_segmentations(
     out_field, _ = samples._handle_frame_field(out_field)
 
     if overwrite and output_dir is not None:
-        etau.delete_dir(output_dir)
+        fos.delete_dir(output_dir)
 
     if output_dir is not None:
         filename_maker = fou.UniqueFilenameMaker(
@@ -163,7 +162,7 @@ def export_segmentations(
             argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         update (True): whether to delete the arrays from the database
         overwrite (False): whether to delete ``output_dir`` prior to exporting
             if it exists
@@ -176,33 +175,38 @@ def export_segmentations(
     in_field, processing_frames = samples._handle_frame_field(in_field)
 
     if overwrite:
-        etau.delete_dir(output_dir)
+        fos.delete_dir(output_dir)
 
-    filename_maker = fou.UniqueFilenameMaker(
-        output_dir=output_dir, rel_dir=rel_dir, idempotent=False
-    )
+    with fos.LocalDir(output_dir, "w") as local_dir:
+        filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            alt_dir=local_dir,
+            idempotent=False,
+        )
 
-    for sample in samples.iter_samples(autosave=True, progress=True):
-        if processing_frames:
-            images = sample.frames.values()
-        else:
-            images = [sample]
-
-        for image in images:
-            label = image[in_field]
-            if label is None:
-                continue
-
-            outpath = filename_maker.get_output_path(
-                image.filepath, output_ext=".png"
-            )
-
-            if isinstance(label, fol.Heatmap):
-                if label.map is not None:
-                    label.export_map(outpath, update=update)
+        for sample in samples.iter_samples(autosave=True, progress=True):
+            if processing_frames:
+                images = sample.frames.values()
             else:
-                if label.mask is not None:
-                    label.export_mask(outpath, update=update)
+                images = [sample]
+
+            for image in images:
+                label = image[in_field]
+                if label is None:
+                    continue
+
+                outpath = filename_maker.get_output_path(
+                    image.filepath, output_ext=".png"
+                )
+                local_path = filename_maker.get_alt_path(outpath)
+
+                if isinstance(label, fol.Heatmap):
+                    if label.map is not None:
+                        label.export_map(local_path, update=update)
+                else:
+                    if label.mask is not None:
+                        label.export_mask(local_path, update=update)
 
 
 def import_segmentations(
@@ -227,31 +231,34 @@ def import_segmentations(
     )
 
     samples = sample_collection.select_fields(in_field)
+    samples.download_media(in_field)
+
     in_field, processing_frames = samples._handle_frame_field(in_field)
 
-    for sample in samples.iter_samples(autosave=True, progress=True):
-        if processing_frames:
-            images = sample.frames.values()
-        else:
-            images = [sample]
-
-        for image in images:
-            label = image[in_field]
-            if label is None:
-                continue
-
-            if isinstance(label, fol.Heatmap):
-                if label.map_path is not None:
-                    del_path = label.map_path if delete_images else None
-                    label.import_map(update=update)
-                    if del_path:
-                        etau.delete_file(del_path)
+    with fos.DeleteFiles() as df:
+        for sample in samples.iter_samples(autosave=True, progress=True):
+            if processing_frames:
+                images = sample.frames.values()
             else:
-                if label.mask_path is not None:
-                    del_path = label.mask_path if delete_images else None
-                    label.import_mask(update=update)
-                    if del_path:
-                        etau.delete_file(del_path)
+                images = [sample]
+
+            for image in images:
+                label = image[in_field]
+                if label is None:
+                    continue
+
+                if isinstance(label, fol.Heatmap):
+                    if label.map_path is not None:
+                        del_path = label.map_path if delete_images else None
+                        label.import_map(update=update)
+                        if del_path:
+                            df.delete(del_path)
+                else:
+                    if label.mask_path is not None:
+                        del_path = label.mask_path if delete_images else None
+                        label.import_mask(update=update)
+                        if del_path:
+                            df.delete(del_path)
 
 
 def segmentations_to_detections(
@@ -301,6 +308,8 @@ def segmentations_to_detections(
     )
 
     samples = sample_collection.select_fields(in_field)
+    samples.download_media(in_field)
+
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
 
@@ -416,6 +425,8 @@ def segmentations_to_polylines(
     )
 
     samples = sample_collection.select_fields(in_field)
+    samples.download_media(in_field)
+
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
 
