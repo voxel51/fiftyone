@@ -296,6 +296,11 @@ class Mutation:
             state.view = dataset.view()
             state.view_name = None
 
+        # TODO: confirm StateUpdate is unnecessary
+        # await dispatch_event(subscription, StateUpdate(state=state))
+
+        # TODO: MANI
+        # return state.dataset.saved_view
         return True
 
     @gql.mutation
