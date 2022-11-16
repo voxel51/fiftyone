@@ -437,7 +437,6 @@ type SampleItemStrPageInfo {
 }
 
 type SavedView {
-  id: ID!
   datasetId: String!
   name: String!
   urlName: String!
@@ -447,6 +446,7 @@ type SavedView {
   createdAt: datetime!
   lastModifiedAt: datetime
   lastLoadedAt: datetime
+  id: String
   viewName: String!
 }
 

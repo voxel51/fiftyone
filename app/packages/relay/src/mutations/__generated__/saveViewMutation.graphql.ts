@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b79b7da8301c0016c568698cb1d2162b>>
+ * @generated SignedSource<<c4da9d1d5065beed0bb70ba1cdaed080>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,7 +21,7 @@ export type saveViewMutation$data = {
     readonly color: string | null;
     readonly createdAt: any;
     readonly description: string | null;
-    readonly id: string;
+    readonly id: string | null;
     readonly lastLoadedAt: any | null;
     readonly lastModifiedAt: any | null;
     readonly name: string;
