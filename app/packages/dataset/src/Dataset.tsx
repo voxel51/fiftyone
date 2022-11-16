@@ -12,6 +12,7 @@ import {
   Dataset as CoreDataset,
   DatasetNodeQuery,
   usePreLoadedDataset,
+  useSavedViewLoader,
   ViewBar,
 } from "@fiftyone/core";
 import { usePlugins } from "@fiftyone/plugins";
@@ -95,10 +96,11 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
   }, [dataset]);
   React.useLayoutEffect(() => {
     setReadOnly(readOnly);
-  }, [readOnly]);
-  React.useLayoutEffect(() => {
-    setTheme(theme);
-  }, [theme]);
+    loadDataset(datasetName);
+    loadSavedViews(datasetName);
+    if (themeMode) setThemeMode(themeMode);
+    if (compactLayout) setCompactLayout(themeMode);
+  }, [datasetName, themeMode, compactLayout, readOnly]);
 
   const plugins = usePlugins();
   const loadingElement = <Loading>Pixelating...</Loading>;
