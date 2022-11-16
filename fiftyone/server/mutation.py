@@ -21,7 +21,7 @@ import fiftyone.core.view as fov
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
-from fiftyone.server.query import Dataset, SidebarGroup
+from fiftyone.server.query import Dataset, SidebarGroup, SavedView
 from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view, extend_view
 
@@ -227,7 +227,7 @@ class Mutation:
         view_name: str,
         description: t.Optional[str] = None,
         color: t.Optional[str] = None,
-    ) -> bool:
+    ) -> SavedView:
         state = get_state()
         dataset = state.dataset
 
@@ -238,8 +238,12 @@ class Mutation:
         )
         dataset.reload()
         state.view = dataset.load_view(view_name)
-        state.name = view_name
-        return state.view
+        state.view_name = view_name
+        return next(
+            saved_view
+            for saved_view in dataset._doc.saved_views
+            if saved_view.name == view_name
+        )
 
     @gql.mutation
     def delete_saved_view(
@@ -260,7 +264,7 @@ class Mutation:
         if state.view_name == deleted_view_name:
             state.view = dataset.view()
             state.view_name = None
-        return state.dataset.saved_views
+        return True
 
     @gql.mutation
     def update_saved_view(
@@ -269,7 +273,7 @@ class Mutation:
         session: t.Optional[str],
         view_name: str,
         updated_info: SavedViewInfo,
-    ) -> bool:
+    ) -> SavedView:
         """Updates the editable fields of a saved view
 
         Args:
@@ -285,5 +289,22 @@ class Mutation:
         dataset = state.dataset
         if dataset.has_views and dataset.has_view(view_name):
             dataset.update_view_info(view_name, asdict(updated_info))
+        else:
+            raise ValueError(
+                "Attempting to update fields on non-existent saved view: "
+                "%s",
+                view_name,
+            )
         dataset.reload()
-        return state.dataset.saved_views
+        name = (
+            updated_info.name
+            if updated_info.get("name", None) is not None
+            else view_name
+        )
+        # Return updated saved_view, which may not be the currently loaded
+        # view in state.view
+        return next(
+            saved_view
+            for saved_view in dataset._doc.saved_views
+            if saved_view.name == name
+        )

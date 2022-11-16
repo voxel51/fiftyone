@@ -24,6 +24,7 @@ class ViewDocument(Document):
 
     _EDITABLE_FIELDS = ("name", "color", "description")
 
+    id = ObjectIdField()
     dataset_id = ObjectIdField()
     name = StringField()
     url_name = StringField()

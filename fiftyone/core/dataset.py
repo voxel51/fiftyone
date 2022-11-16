@@ -3081,6 +3081,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         now = datetime.utcnow()
 
         view_doc = foo.ViewDocument(
+            id=ObjectId(),
             dataset_id=self._doc.id,
             name=name,
             url_name=url_name,
