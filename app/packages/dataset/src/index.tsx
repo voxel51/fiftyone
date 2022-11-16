@@ -1,24 +1,18 @@
-import React, { useRef } from "react";
+import * as fos from "@fiftyone/state";
+import React, { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot, useRecoilState } from "recoil";
 import { RecoilRelayEnvironmentProvider } from "recoil-relay";
-import { Dataset, getEnvProps, fos } from "./";
+import { DatasetRenderer } from "./Dataset";
 
-// import "./index.css";
-
-//
-// NOTE: this represents a "mock" environment that the Dataset
-// component is embedded in. It is also used as a reference
-// for the contract the embedding application must adhere to
-//
-const DatasetWrapper = () => {
-  // @ts-ignore
-  const props = getEnvProps();
-
-  // @ts-ignore
+export const Dataset = () => {
+  const [environment] = useState(fos.getEnvironment);
   return (
     <RecoilRoot>
-      <RecoilRelayEnvironmentProvider {...props}>
+      <RecoilRelayEnvironmentProvider
+        environment={environment}
+        environmentKey={fos.RelayEnvironmentKey}
+      >
         <LoadableDataset />
       </RecoilRelayEnvironmentProvider>
     </RecoilRoot>
@@ -59,15 +53,18 @@ function LoadableDataset() {
       <button onClick={() => changeView()}>Set View</button>
       <button onClick={() => clearView()}>Clear View</button>
       <div style={{ height: "100vh", overflow: "hidden" }}>
-        <Dataset datasetName={settings.dataset} readOnly={settings.readOnly} />
+        <DatasetRenderer
+          dataset={settings.dataset}
+          readOnly={settings.readOnly}
+        />
       </div>
     </>
   );
 }
 
 function DatasetSettings({ current, onChange }) {
-  const datasetInputRef = useRef();
-  const readOnlyInputRef = useRef();
+  const datasetInputRef = useRef<HTMLInputElement>();
+  const readOnlyInputRef = useRef<HTMLInputElement>();
   function load(e) {
     e.preventDefault();
     const dataset = datasetInputRef.current
@@ -93,5 +90,5 @@ function DatasetSettings({ current, onChange }) {
 }
 
 createRoot(document.getElementById("root") as HTMLDivElement).render(
-  <DatasetWrapper />
+  <Dataset />
 );

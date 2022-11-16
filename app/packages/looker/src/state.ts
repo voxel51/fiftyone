@@ -11,7 +11,7 @@ export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 export interface Coloring {
   by: "field" | "instance" | "label";
-  pool: string[];
+  pool: readonly string[];
   scale: RGB[];
   seed: number;
   defaultMaskTargets?: MaskTargets;
