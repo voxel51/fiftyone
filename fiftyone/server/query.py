@@ -213,6 +213,16 @@ class Dataset:
         doc["default_skeletons"] = doc.get("default_skeletons", None)
         return doc
 
+    @gql.field
+    def saved_view(
+        self, view_name: t.Optional[str] = None
+    ) -> t.Optional[SavedView]:
+        if view_name:
+            return SavedView(name=view_name)
+        elif self.view_name:
+            return SavedView(name=self.view_name)
+        return
+
     @classmethod
     async def resolver(
         cls,
