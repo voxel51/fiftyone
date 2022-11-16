@@ -109,7 +109,7 @@ class EvaluationRun(Run):
 
 @gql.type
 class SavedView:
-    id: ObjectId
+    id: gql.ID
     dataset_id: str
     name: str
     url_name: str

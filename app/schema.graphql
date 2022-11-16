@@ -131,10 +131,12 @@ type Dataset {
   savedViews: [SavedView!]
   version: String
   viewCls: String
+  viewName: String
   defaultSkeleton: KeypointSkeleton
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
+  savedView(viewName: String = null): SavedView
 }
 
 type DatasetAppConfig {
@@ -309,7 +311,7 @@ type Mutation {
     viewName: String!
     description: String = null
     color: String = null
-  ): Boolean!
+  ): SavedView
   deleteSavedView(
     subscription: String!
     session: String
@@ -320,7 +322,7 @@ type Mutation {
     session: String
     viewName: String!
     updatedInfo: SavedViewInfo!
-  ): Boolean!
+  ): SavedView
 }
 
 type NamedKeypointSkeleton {
@@ -435,6 +437,7 @@ type SampleItemStrPageInfo {
 }
 
 type SavedView {
+  id: ID!
   datasetId: String!
   name: String!
   urlName: String!

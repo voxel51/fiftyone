@@ -227,7 +227,7 @@ class Mutation:
         view_name: str,
         description: t.Optional[str] = None,
         color: t.Optional[str] = None,
-    ) -> SavedView:
+    ) -> t.Optional[SavedView]:
         state = get_state()
         dataset = state.dataset
 
@@ -240,9 +240,12 @@ class Mutation:
         state.view = dataset.load_view(view_name)
         state.view_name = view_name
         return next(
-            saved_view
-            for saved_view in dataset._doc.saved_views
-            if saved_view.name == view_name
+            (
+                saved_view
+                for saved_view in dataset._doc.saved_views
+                if saved_view.name == view_name
+            ),
+            None,
         )
 
     @gql.mutation
@@ -273,7 +276,7 @@ class Mutation:
         session: t.Optional[str],
         view_name: str,
         updated_info: SavedViewInfo,
-    ) -> SavedView:
+    ) -> t.Optional[SavedView]:
         """Updates the editable fields of a saved view
 
         Args:
@@ -304,7 +307,10 @@ class Mutation:
         # Return updated saved_view, which may not be the currently loaded
         # view in state.view
         return next(
-            saved_view
-            for saved_view in dataset._doc.saved_views
-            if saved_view.name == name
+            (
+                saved_view
+                for saved_view in dataset._doc.saved_views
+                if saved_view.name == name
+            ),
+            None,
         )

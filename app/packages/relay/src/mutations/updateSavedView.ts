@@ -12,6 +12,16 @@ export default graphql`
       session: $session
       viewName: $viewName
       updatedInfo: $updatedInfo
-    )
+    ) {
+      id
+      name
+      urlName
+      description
+      color
+      viewStages
+      createdAt
+      lastModifiedAt
+      lastLoadedAt
+    }
   }
 `;
