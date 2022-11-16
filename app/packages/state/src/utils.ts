@@ -92,7 +92,6 @@ export const transformDataset = (dataset: any): Readonly<State.Dataset> => {
     evaluations: [...dataset.evaluations],
     maskTargets: targets,
     mediaType: dataset.mediaType,
-    // savedViews: dataset.savedViews,
   };
 };
 

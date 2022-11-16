@@ -182,7 +182,6 @@ async def _count_values(
 
     def resolve(data: t.List):
         _, data = data
-        print("resolve data", data)
         values = [ValueCount(key=value, value=count) for value, count in data]
 
         if isinstance(field, fo.StringField):
