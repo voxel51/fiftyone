@@ -14,6 +14,16 @@ export default graphql`
       viewName: $viewName
       description: $description
       color: $color
-    )
+    ) {
+      id
+      name
+      urlName
+      description
+      color
+      viewStages
+      createdAt
+      lastModifiedAt
+      lastLoadedAt
+    }
   }
 `;

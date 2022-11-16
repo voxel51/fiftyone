@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<401c3f42348e308264de958a4ee4abeb>>
+ * @generated SignedSource<<b79b7da8301c0016c568698cb1d2162b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,7 +17,17 @@ export type saveViewMutation$variables = {
   viewName: string;
 };
 export type saveViewMutation$data = {
-  readonly saveView: boolean;
+  readonly saveView: {
+    readonly color: string | null;
+    readonly createdAt: any;
+    readonly description: string | null;
+    readonly id: string;
+    readonly lastLoadedAt: any | null;
+    readonly lastModifiedAt: any | null;
+    readonly name: string;
+    readonly urlName: string;
+    readonly viewStages: ReadonlyArray<string>;
+  } | null;
 };
 export type saveViewMutation = {
   response: saveViewMutation$data;
@@ -80,8 +90,75 @@ v5 = [
         "variableName": "viewName"
       }
     ],
-    "kind": "ScalarField",
+    "concreteType": "SavedView",
+    "kind": "LinkedField",
     "name": "saveView",
+    "plural": false,
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "id",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "name",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "urlName",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "description",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "color",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "viewStages",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "createdAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastModifiedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastLoadedAt",
+        "storageKey": null
+      }
+    ],
     "storageKey": null
   }
 ];
@@ -115,16 +192,16 @@ return {
     "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "3331977169fb00bb591681a9d23ff919",
+    "cacheID": "f78677dd00613b31ca2fd4b9d877b076",
     "id": null,
     "metadata": {},
     "name": "saveViewMutation",
     "operationKind": "mutation",
-    "text": "mutation saveViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $description: String = null\n  $color: String = null\n) {\n  saveView(subscription: $subscription, session: $session, viewName: $viewName, description: $description, color: $color)\n}\n"
+    "text": "mutation saveViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $description: String = null\n  $color: String = null\n) {\n  saveView(subscription: $subscription, session: $session, viewName: $viewName, description: $description, color: $color) {\n    id\n    name\n    urlName\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c192b13195154a528b4a80292f44374a";
+(node as any).hash = "356086cfd829f72b0005b52ca41c1e0d";
 
 export default node;
