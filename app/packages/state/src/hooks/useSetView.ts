@@ -44,10 +44,10 @@ const useSetView = (
           | State.Stage[]
           | ((current: State.Stage[]) => State.Stage[]),
         addStages?: State.Stage[],
-        viewName?: string
+        viewName?: string,
+        changingSavedView?: boolean
       ) => {
         const dataset = snapshot.getLoadable(fos.dataset).contents;
-        console.log("setting view", viewName, dataset);
         const savedViews = dataset.savedViews || [];
 
         send((session) => {
@@ -89,39 +89,30 @@ const useSetView = (
                 selectedLabels: [],
                 savedViews,
               };
-              console.log("viewName", viewName, savedViews);
               router.history.location.state.state = newState;
 
-              updateState({
-                dataset: transformDataset(dataset),
-                state: {
-                  view: value,
-                  viewName: viewName,
-                  viewCls: dataset.viewCls,
-                  viewName,
-                  selected: [],
-                  selectedLabels: [],
-                  savedViews,
-                },
-              });
-              onComplete && onComplete();
+              if (changingSavedView) {
+                router.history.push(
+                  `${location.pathname}${viewName ? `?view=${viewName}` : ""}`,
+                  {
+                    state: newState,
+                  }
+                );
+              } else {
+                updateState({
+                  dataset: transformDataset(dataset),
+                  state: {
+                    view: value,
+                    viewName,
+                    viewCls: dataset.viewCls,
+                    selected: [],
+                    selectedLabels: [],
+                    savedViews,
+                  },
+                });
+              }
 
-              // if (viewName) {
-              //   router.history.push(`${location.pathname}?view=${viewName}`, {
-              //     state: {
-              //       ...newState,
-              //       dataset: transformDataset(dataset),
-              //       state: {
-              //         view: value,
-              //         viewCls: dataset.viewCls,
-              //         viewName,
-              //         selected: [],
-              //         selectedLabels: [],
-              //         savedViews,
-              //       },
-              //     },
-              //   });
-              // }
+              onComplete && onComplete();
             },
           });
         });

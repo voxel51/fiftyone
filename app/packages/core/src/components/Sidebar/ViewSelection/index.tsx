@@ -166,10 +166,12 @@ export default function ViewSelection(props: Props) {
         onEditSuccess={() => {
           // TODO: MANI - redirect if name changes
           refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
+          // setView([], [], datasetName, true);
         }}
         onDeleteSuccess={() => {
           // TODO: MANI - redirect if loaded view is deleted
           refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
+          // setView([], [], "", true);
         }}
       />
       <Selection
@@ -179,7 +181,7 @@ export default function ViewSelection(props: Props) {
           setSelected(item);
           const selectedSavedView = allSelected ? "" : item.label;
 
-          setView([], [], selectedSavedView);
+          setView([], [], selectedSavedView, true);
           // if (selectedSavedView) {
           //   setSavedViewParam(selectedSavedView);
           // } else {

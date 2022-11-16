@@ -40,14 +40,9 @@ export const mediaType = selector({
   },
 });
 
-export const savedViewsSelector = selector({
+export const savedViewsSelector = selector<State.SavedView[]>({
   key: "datasetViews",
-  get: ({ get }) => {
-    console.log("dataset-views", get(atoms.dataset));
-    const savedViews = get(atoms.dataset)?.savedViews;
-
-    return savedViews;
-  },
+  get: ({ get }) => get(atoms.dataset)?.savedViews || [],
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
