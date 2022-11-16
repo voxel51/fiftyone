@@ -895,7 +895,13 @@ class Keypoints(_HasLabelList, Label):
     keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint))
 
 
-class Segmentation(_HasID, Label):
+class _HasMedia(object):
+    """Mixin for :class:`Label` classes that contain a media field."""
+
+    _MEDIA_FIELD = None
+
+
+class Segmentation(_HasID, _HasMedia, Label):
     """A semantic segmentation for an image.
 
     Provide either the ``mask`` or ``mask_path`` argument to define the
@@ -906,6 +912,8 @@ class Segmentation(_HasID, Label):
             labels
         mask_path (None): the path to the segmentation image on disk
     """
+
+    _MEDIA_FIELD = "mask_path"
 
     mask = fof.ArrayField()
     mask_path = fof.StringField()
@@ -1026,7 +1034,7 @@ class Segmentation(_HasID, Label):
         return Polylines(polylines=polylines)
 
 
-class Heatmap(_HasID, Label):
+class Heatmap(_HasID, _HasMedia, Label):
     """A heatmap for an image.
 
     Provide either the ``map`` or ``map_path`` argument to define the heatmap.
@@ -1040,6 +1048,8 @@ class Heatmap(_HasID, Label):
             contains integer values, and the dtype of the image will be assumed
             if ``map_path`` is used
     """
+
+    _MEDIA_FIELD = "map_path"
 
     map = fof.ArrayField()
     map_path = fof.StringField()
