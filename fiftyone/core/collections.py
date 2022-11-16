@@ -8838,7 +8838,9 @@ class SampleCollection(object):
         db_fields_map = self._get_db_fields_map(frames=frames)
         return [db_fields_map.get(p, p) for p in paths]
 
-    def _get_media_fields(self, include_filepath=True, frames=False):
+    def _get_media_fields(
+        self, include_filepath=True, whitelist=None, frames=False
+    ):
         media_fields = {}
 
         if frames:
@@ -8855,9 +8857,19 @@ class SampleCollection(object):
             if field_name in app_media_fields:
                 media_fields[field_name] = None
             elif isinstance(field, fof.EmbeddedDocumentField) and issubclass(
-                field.document_type, (fol.Segmentation, fol.Heatmap)
+                field.document_type, fol._HasMedia
             ):
                 media_fields[field_name] = field.document_type
+
+        if whitelist is not None:
+            if etau.is_container(whitelist):
+                whitelist = set(whitelist)
+            else:
+                whitelist = {whitelist}
+
+            media_fields = {
+                k: v for k, v in media_fields.items() if k in whitelist
+            }
 
         return media_fields
 
