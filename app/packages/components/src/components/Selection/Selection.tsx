@@ -15,21 +15,25 @@ const Box = styled.div`
   align-items: center;
   justify-content: center;
 `;
+
 const LastOption = styled(Option)`
   border-top: 1px solid ${({ theme }) => theme.primary.plainBorder} !important;
   position: sticky !important;
   bottom: 0;
   width: 100%;
-  background: ${({ theme }) => theme.background.level1} !important;
+  background: ${({ disabled, theme }) =>
+    disabled ? theme.background.body : theme.background.level1} !important;
   z-index: 999;
   display: flex;
 
   &:hover {
-    background: ${({ theme }) => theme.background.body} !important;
+    background: ${({ disabled, theme }) =>
+      disabled ? theme.background.body : theme.background.level2} !important;
   }
 `;
-const ColoredDot = styled(Box)`
-  background: ${(props) => props.color};
+
+const ColoredDot = styled(Box)<{ color: string }>`
+  background: ${({ color }) => color};
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -54,7 +58,6 @@ type SelectionProps = {
   compact?: boolean; // compact UI
   readonly?: boolean; // no edits available
   onEdit?: (item: DatasetViewOption) => void;
-  customBanner?: React.ReactNode;
 };
 
 const VIEW_LIST_MAX_HEIGHT = "300px";
@@ -84,10 +87,9 @@ export default function Selection(props: SelectionProps) {
     compact,
     readonly,
     onEdit,
-    customBanner,
   } = props;
   const theme = useTheme();
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(true);
   const ref = useRef();
   useOutsideClick(ref, () => setIsOpen(false));
 

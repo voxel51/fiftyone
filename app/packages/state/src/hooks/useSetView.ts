@@ -2,14 +2,9 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import {
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
   filters,
-  groupSlice,
   resolvedGroupSlice,
   selectedLabelList,
   selectedSamples,
@@ -18,7 +13,7 @@ import {
   view,
 } from "../recoil";
 import { RouterContext } from "../routing";
-import { getSavedViewName, transformDataset } from "../utils";
+import { transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
 import useStateUpdate from "./useStateUpdate";
 import * as fos from "../";
@@ -32,7 +27,7 @@ const useSetView = (
   const updateState = useStateUpdate();
   const subscription = useRecoilValue(stateSubscription);
   const router = useContext(RouterContext);
-  const viewName = getSavedViewName(router);
+  // const viewName = getSavedViewName(router);
   const [commit] = useMutation<setViewMutation>(setView);
 
   const onError = useErrorHandler();
@@ -44,10 +39,10 @@ const useSetView = (
           | State.Stage[]
           | ((current: State.Stage[]) => State.Stage[]),
         addStages?: State.Stage[],
-        viewName?: string
+        viewName?: string,
+        changingSavedView?: boolean
       ) => {
         const dataset = snapshot.getLoadable(fos.dataset).contents;
-        console.log("setting view", viewName, dataset);
         const savedViews = dataset.savedViews || [];
 
         send((session) => {
@@ -61,7 +56,6 @@ const useSetView = (
               subscription,
               session,
               view: value,
-              viewName: viewName,
               datasetName: dataset.name,
               form: patch
                 ? {
@@ -80,48 +74,40 @@ const useSetView = (
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
-              if (router.history.location.state) {
-                router.history.location.state.state = {
-                  ...router.history.location.state,
-                  view: value,
-                  viewName,
-                  viewCls: dataset.viewCls,
-                  selected: [],
-                  selectedLabels: [],
-                  savedViews,
-                };
+              const newState = {
+                ...router.history.location.state.state,
+                view: value,
+                viewName,
+                viewCls: dataset.viewCls,
+                selected: [],
+                selectedLabels: [],
+                savedViews,
+              };
+              router.history.location.state.state = newState;
+
+              if (changingSavedView) {
+                router.history.push(
+                  `${location.pathname}${viewName ? `?view=${viewName}` : ""}`,
+                  {
+                    state: newState,
+                    variables: { view: value },
+                  }
+                );
+              } else {
+                updateState({
+                  dataset: transformDataset(dataset),
+                  state: {
+                    view: value,
+                    viewCls: dataset.viewCls,
+                    selected: [],
+                    selectedLabels: [],
+                    viewName,
+                    savedViews,
+                  },
+                });
               }
 
-              updateState({
-                dataset: transformDataset(dataset),
-                state: {
-                  view: value,
-                  viewName: viewName,
-                  viewCls: dataset.viewCls,
-                  viewName,
-                  selected: [],
-                  selectedLabels: [],
-                  savedViews,
-                },
-              });
               onComplete && onComplete();
-
-              // if (viewName) {
-              //   router.history.push(`${location.pathname}?view=${viewName}`, {
-              //     state: {
-              //       ...newState,
-              //       dataset: transformDataset(dataset),
-              //       state: {
-              //         view: value,
-              //         viewCls: dataset.viewCls,
-              //         viewName,
-              //         selected: [],
-              //         selectedLabels: [],
-              //         savedViews,
-              //       },
-              //     },
-              //   });
-              // }
             },
           });
         });
