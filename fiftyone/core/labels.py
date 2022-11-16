@@ -927,12 +927,15 @@ class Segmentation(_HasID, _HasMedia, Label):
         """Returns the segmentation mask for this instance.
 
         Returns:
-            a numpy array
+            a numpy array, or ``None``
         """
         if self.mask is not None:
             return self.mask
 
-        return _read_mask(self.mask_path)
+        if self.mask_path is not None:
+            return _read_mask(self.mask_path)
+
+        return None
 
     def import_mask(self, update=False):
         """Imports this instance's mask from disk to its :attr:`mask`
@@ -1064,12 +1067,15 @@ class Heatmap(_HasID, _HasMedia, Label):
         """Returns the map array for this instance.
 
         Returns:
-            a numpy array
+            a numpy array, or ``None``
         """
         if self.map is not None:
             return self.map
 
-        return _read_heatmap(self.map_path)
+        if self.map_path is not None:
+            return _read_heatmap(self.map_path)
+
+        return None
 
     def import_map(self, update=False):
         """Imports this instance's map from disk to its :attr:`map` attribute.
