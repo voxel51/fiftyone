@@ -12,6 +12,7 @@ import {
   Dataset as CoreDataset,
   useDatasetLoader,
   usePreLoadedDataset,
+  useSavedViewLoader,
   ViewBar,
 } from "@fiftyone/core";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -74,9 +75,13 @@ export function Dataset({
   const setCompactLayout = useSetRecoilState(fos.compactLayout);
   const setReadOnly = useSetRecoilState(fos.readOnly);
 
+  // const [datasetSavedViewsRef, loadSavedViews] =
+  //   useSavedViewLoader(environment);
+
   useEffect(() => {
     setReadOnly(readOnly);
     loadDataset(datasetName);
+    loadSavedViews(datasetName);
     if (themeMode) setThemeMode(themeMode);
     if (compactLayout) setCompactLayout(themeMode);
   }, [datasetName, themeMode, compactLayout, readOnly]);

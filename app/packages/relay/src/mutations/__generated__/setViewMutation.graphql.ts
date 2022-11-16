@@ -667,8 +667,7 @@ return {
       (v4/*: any*/),
       (v5/*: any*/),
       (v0/*: any*/),
-      (v1/*: any*/),
-      (v5/*: any*/)
+      (v1/*: any*/)
     ],
     "kind": "Operation",
     "name": "setViewMutation",

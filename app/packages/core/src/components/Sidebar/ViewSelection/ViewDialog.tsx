@@ -111,7 +111,8 @@ export const COLOR_OPTIONS = [
 ];
 
 interface Props {
-  onEditSuccess: any;
+  onEditSuccess: () => void;
+  onDeleteSuccess: () => void;
 }
 
 export const viewDialogContent = atom({
@@ -125,7 +126,7 @@ export const viewDialogContent = atom({
 });
 
 export default function ViewDialog(props: Props) {
-  const { onEditSuccess } = props;
+  const { onEditSuccess, onDeleteSuccess } = props;
   const theme = useTheme();
   const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
   const viewContent = useRecoilValue(viewDialogContent);
@@ -197,14 +198,18 @@ export default function ViewDialog(props: Props) {
             subscription,
             session,
           },
+          onCompleted: () => {
+            onDeleteSuccess();
+          },
         })
       );
+      setIsOpen(false);
     }
   }, [nameValue]);
 
   const handleSaveView = useCallback(() => {
-    if (nameValue && view?.length) {
-      if (isCreating) {
+    if (nameValue) {
+      if (isCreating && view?.length) {
         send((session) =>
           saveView({
             onError,
@@ -233,6 +238,9 @@ export default function ViewDialog(props: Props) {
                 color: colorOption?.color,
                 name: nameValue,
               },
+            },
+            onCompleted: () => {
+              onEditSuccess();
             },
           })
         );

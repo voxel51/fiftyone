@@ -1,10 +1,21 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
 
 import { move } from "@fiftyone/utilities";
 
-import { useEventHandler, useSavedViews } from "@fiftyone/state";
+import {
+  dataset,
+  datasetName,
+  useEventHandler,
+  useSavedViews,
+} from "@fiftyone/state";
 import { scrollbarStyles } from "../utils";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -13,6 +24,8 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Box } from "@material-ui/core";
 import ViewSelection from "./ViewSelection";
+import { DatasetSavedViewsQuery } from "../../Root/Root";
+import { useQueryLoader } from "react-relay";
 const MARGIN = 3;
 
 const fn = (
@@ -433,6 +446,7 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
+  const loadedDatasetName = useRecoilValue(datasetName);
 
   const setView = fos.useSetView();
 
@@ -698,6 +712,17 @@ const InteractiveSidebar = ({
   );
   const theme = useTheme();
 
+  const [savedViewsQueryRef, loadSavedViewsQuery] = useQueryLoader(
+    DatasetSavedViewsQuery
+  );
+
+  useEffect(() => {
+    console.log("loadedDatasetName", loadedDatasetName);
+    loadSavedViewsQuery({ name: loadedDatasetName });
+  }, [loadSavedViewsQuery]);
+
+  console.log("result", savedViewsQueryRef);
+
   return shown ? (
     <Resizable
       size={{ height: "100%", width }}
@@ -726,9 +751,16 @@ const InteractiveSidebar = ({
       }}
     >
       {!modal && (
-        <Box style={{ padding: 8, paddingLeft: 16, paddingRight: 16 }}>
-          <ViewSelection />
-        </Box>
+        <Suspense fallback="loading...">
+          <Box style={{ padding: 8, paddingLeft: 16, paddingRight: 16 }}>
+            {savedViewsQueryRef !== null && (
+              <ViewSelection
+                datasetName={loadedDatasetName}
+                queryRef={savedViewsQueryRef}
+              />
+            )}
+          </Box>
+        </Suspense>
       )}
       <SidebarColumn
         ref={container}

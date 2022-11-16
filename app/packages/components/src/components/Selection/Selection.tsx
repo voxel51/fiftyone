@@ -54,6 +54,7 @@ type SelectionProps = {
   compact?: boolean; // compact UI
   readonly?: boolean; // no edits available
   onEdit?: (item: DatasetViewOption) => void;
+  customBanner?: React.ReactNode;
 };
 
 const VIEW_LIST_MAX_HEIGHT = "300px";
@@ -83,6 +84,7 @@ export default function Selection(props: SelectionProps) {
     compact,
     readonly,
     onEdit,
+    customBanner,
   } = props;
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState<boolean>(false);

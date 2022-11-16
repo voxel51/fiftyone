@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { Add } from "@mui/icons-material";
 import styled from "styled-components";
@@ -13,9 +13,21 @@ import {
   useSetRecoilState,
 } from "recoil";
 import * as fos from "@fiftyone/state";
+import {
+  PreloadedQuery,
+  useLazyLoadQuery,
+  usePreloadedQuery,
+  useQueryLoader,
+  useRefetchableFragment,
+} from "react-relay";
 
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
 import { useQueryState, useSavedViews } from "@fiftyone/state";
+import {
+  DatasetSavedViewsQuery,
+  DatasetSavedViewsFragment,
+} from "../../../Root/Root";
+import { OperationType } from "relay-runtime";
 
 const Box = styled.div`
   display: flex;
@@ -46,6 +58,12 @@ export const viewDialogOpen = atom({
   default: false,
 });
 
+const UNSAVED_SELECTED = {
+  id: "0",
+  label: "Unsaved view",
+  color: "#818165",
+  description: "Unsaved view",
+};
 const DEFAULT_SELECTED = {
   id: "1",
   label: "All samples",
@@ -73,16 +91,28 @@ export interface DatasetView {
   lastModifiedAt: number | null;
 }
 
-interface Props {}
+interface Props {
+  datasetName: string;
+  queryRef: any;
+}
 
 export default function ViewSelection(props: Props) {
-  const { savedViews: items, refresh } = useSavedViews();
+  const { datasetName, queryRef } = props;
 
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
   const [savedViewParam, setSavedViewParam] = useQueryState("view");
   const loadedView = useRecoilValue(fos.view);
   const setEditView = useSetRecoilState(viewDialogContent);
   const setView = fos.useSetView();
+
+  const fragments = usePreloadedQuery(DatasetSavedViewsQuery, queryRef);
+  const [data, refetch] = useRefetchableFragment(
+    DatasetSavedViewsFragment,
+    fragments
+  );
+
+  const items = data?.savedViews || [];
+  console.log("items", items);
 
   const viewOptions: DatasetViewOption[] = [
     DEFAULT_SELECTED,
@@ -134,8 +164,12 @@ export default function ViewSelection(props: Props) {
     <Box>
       <ViewDialog
         onEditSuccess={() => {
-          console.log("refreshing");
-          refresh();
+          // TODO: MANI - redirect if name changes
+          refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
+        }}
+        onDeleteSuccess={() => {
+          // TODO: MANI - redirect if loaded view is deleted
+          refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
         }}
       />
       <Selection
