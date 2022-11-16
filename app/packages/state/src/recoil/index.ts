@@ -1,6 +1,7 @@
 export * from "./aggregations";
 export * from "./atoms";
 export * from "./color";
+export * from "./config";
 export * from "./distributions";
 export * from "./filters";
 export * from "./groups";
