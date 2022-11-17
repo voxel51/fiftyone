@@ -26,7 +26,6 @@ const useSetDataset = () => {
   const onError = useErrorHandler();
   const router = useContext(RouterContext);
   const viewName = getSavedViewName(router);
-  // console.log("useSetDataset viewName", viewName);
   return (name?: string) => {
     to(name ? `/datasets/${encodeURI(name)}` : "/");
 

@@ -85,15 +85,13 @@ const DatasetQuery = graphql`
         }
       }
       savedViews {
+        id
         datasetId
         name
         urlName
         description
         color
         viewStages
-        createdAt
-        lastModifiedAt
-        lastLoadedAt
       }
       lastLoadedAt
       createdAt

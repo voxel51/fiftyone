@@ -1,6 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-
-import styled from "styled-components";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { Selection } from "@fiftyone/components";
 import {
@@ -24,80 +22,20 @@ import { DatasetViewOption } from "@fiftyone/components/src/components/Selection
 import { useMutation } from "react-relay";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { stateSubscription, useSendEvent } from "@fiftyone/state";
+import { stateSubscription, trueAtom, useSendEvent } from "@fiftyone/state";
 import { useErrorHandler } from "react-error-boundary";
+import {
+  Box,
+  NameInput,
+  DescriptionInput,
+  Label,
+  InputContainer,
+  DialogBody,
+  ErrorText,
+  ErrorBox,
+} from "./styledComponents";
+import { SavedView } from "@fiftyone/state";
 
-const Box = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-`;
-
-const ErrorText = styled(Box)`
-  color: ${({ theme }) => theme.error.main};
-`;
-
-const TextContainer = styled.div`
-  display: inline-block;
-  overflow: hidden;
-  white-space: nowrap;
-  width: 100%;
-  text-overflow: ellipsis;
-  color: ${({ theme }) => theme.text.primary};
-`;
-const SecondaryContainer = styled(TextContainer)`
-  color: ${({ theme }) => theme.text.secondary};
-`;
-
-const DialogBody = styled(Box)`
-  flex-direction: column;
-  width: 500px;
-`;
-
-const InputContainer = styled(Box)`
-  flex-direction: column;
-  padding: 0.5rem 0;
-`;
-
-const Label = styled(SecondaryContainer)`
-  font-size: 1rem;
-`;
-
-const DescriptionInput = styled.textarea`
-  resize: none;
-  width: 100%;
-  margin: 0.5rem 0.75rem;
-  border-radius: 4px;
-  padding: 0.5rem;
-  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-  color: ${({ theme }) => theme.text.primary};
-  background: ${({ theme }) => theme.background.level1};
-  font-family: "Palanquin", sans-serif;
-
-  &:focus {
-    border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-    outline: none;
-  }
-`;
-
-const NameInput = styled.input`
-  width: 100%;
-  margin: 0.5rem 0.75rem;
-  border-radius: 4px;
-  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-  padding: 0.5rem;
-  color: ${({ theme }) => theme.text.primary};
-  background: ${({ theme }) => theme.background.level1};
-  font-family: "Palanquin", sans-serif;
-
-  &:focus {
-    border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-    outline: none;
-  }
-`;
-
-// TODO: consolidate
 export const COLOR_OPTIONS = [
   { id: "blue", label: "Blue", color: "#2970FF", description: "" },
   { id: "cyan", label: "Cyan", color: "#06AED4", description: "" },
@@ -111,7 +49,8 @@ export const COLOR_OPTIONS = [
 ];
 
 interface Props {
-  onEditSuccess: () => void;
+  savedViews: fos.State.SavedView[];
+  onEditSuccess: (saveView?: SavedView, reload?: boolean) => void;
   onDeleteSuccess: () => void;
 }
 
@@ -126,7 +65,7 @@ export const viewDialogContent = atom({
 });
 
 export default function ViewDialog(props: Props) {
-  const { onEditSuccess, onDeleteSuccess } = props;
+  const { onEditSuccess, onDeleteSuccess, savedViews = [] } = props;
   const theme = useTheme();
   const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
   const viewContent = useRecoilValue(viewDialogContent);
@@ -152,6 +91,13 @@ export default function ViewDialog(props: Props) {
     id: theColorOption.id,
     description: "",
   });
+
+  const savedViewNames = new Set(
+    savedViews.map((sv: fos.State.SavedView) => sv.name.toLowerCase())
+  );
+  const nameExists =
+    nameValue && nameValue !== initialName && savedViewNames.has(nameValue);
+  const nameError = nameExists ? "Name already exists" : "";
 
   const title = isCreating ? "Create view" : "Edit view";
 
@@ -187,6 +133,12 @@ export default function ViewDialog(props: Props) {
   const [deleteView] = useMutation<foq.deleteSavedViewMutation>(
     foq.deleteSavedView
   );
+  const resetValues = useCallback(() => {
+    resetViewContent();
+    setNameValue("");
+    setDescriptionValue("");
+    setColorOption(COLOR_OPTIONS[0]);
+  }, []);
 
   const handleDeleteView = useCallback(() => {
     if (nameValue) {
@@ -199,6 +151,7 @@ export default function ViewDialog(props: Props) {
             session,
           },
           onCompleted: () => {
+            resetValues();
             onDeleteSuccess();
           },
         })
@@ -220,8 +173,9 @@ export default function ViewDialog(props: Props) {
               subscription,
               session,
             },
-            onCompleted: () => {
-              onEditSuccess();
+            onCompleted: ({ saveView }) => {
+              resetValues();
+              onEditSuccess(saveView, true);
             },
           })
         );
@@ -239,8 +193,9 @@ export default function ViewDialog(props: Props) {
                 name: nameValue,
               },
             },
-            onCompleted: () => {
-              onEditSuccess();
+            onCompleted: ({ updateSavedView }) => {
+              resetValues();
+              onEditSuccess(updateSavedView, initialName !== nameValue);
             },
           })
         );
@@ -248,13 +203,6 @@ export default function ViewDialog(props: Props) {
       setIsOpen(false);
     }
   }, [view, nameValue, descriptionValue, colorOption?.color, subscription]);
-
-  const resetValues = useCallback(() => {
-    resetViewContent();
-    setNameValue("");
-    setDescriptionValue("");
-    setColorOption(COLOR_OPTIONS[0]);
-  }, []);
 
   return (
     <Dialog
@@ -298,7 +246,9 @@ export default function ViewDialog(props: Props) {
               placeholder="Your view name"
               value={nameValue}
               onChange={(e) => setNameValue(e.target.value)}
+              error={nameError}
             />
+            {nameError && <ErrorBox>{nameError}</ErrorBox>}
           </InputContainer>
           <InputContainer>
             <Label>Description</Label>
@@ -368,6 +318,7 @@ export default function ViewDialog(props: Props) {
             <Button
               onClick={handleSaveView}
               disabled={
+                !!nameError ||
                 !nameValue ||
                 (isCreating && !view?.length) ||
                 (initialName === nameValue &&

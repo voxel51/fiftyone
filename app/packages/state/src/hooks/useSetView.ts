@@ -27,9 +27,7 @@ const useSetView = (
   const updateState = useStateUpdate();
   const subscription = useRecoilValue(stateSubscription);
   const router = useContext(RouterContext);
-  // const viewName = getSavedViewName(router);
   const [commit] = useMutation<setViewMutation>(setView);
-
   const onError = useErrorHandler();
 
   return useRecoilCallback(
@@ -40,7 +38,8 @@ const useSetView = (
           | ((current: State.Stage[]) => State.Stage[]),
         addStages?: State.Stage[],
         viewName?: string,
-        changingSavedView?: boolean
+        changingSavedView?: boolean,
+        viewUrlName?: string
       ) => {
         const dataset = snapshot.getLoadable(fos.dataset).contents;
         const savedViews = dataset.savedViews || [];
@@ -87,7 +86,9 @@ const useSetView = (
 
               if (changingSavedView) {
                 router.history.push(
-                  `${location.pathname}${viewName ? `?view=${viewName}` : ""}`,
+                  `${location.pathname}${
+                    viewUrlName ? `?view=${viewUrlName}` : ""
+                  }`,
                   {
                     state: newState,
                     variables: { view: value },

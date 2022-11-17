@@ -10,14 +10,14 @@ import styled from "styled-components";
 
 import { move } from "@fiftyone/utilities";
 
-import { datasetName, useEventHandler } from "@fiftyone/state";
+import { useEventHandler } from "@fiftyone/state";
 import { scrollbarStyles } from "../utils";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Box } from "@material-ui/core";
+import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
 import { DatasetSavedViewsQuery } from "../../Root/Root";
 import { useQueryLoader } from "react-relay";
@@ -441,25 +441,27 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
-  const loadedDatasetName = useRecoilValue(datasetName);
+  const { savedViews = [] } = fos.useSavedViews();
+  const loadedDatasetName = useRecoilValue<string>(fos.datasetName);
 
   const setView = fos.useSetView();
 
-  // TODO: there has to be a better way
-  const paramsList = location?.search?.substring(1)?.split("=");
-  let viewName = "";
-  for (let i = 0; i < paramsList?.length; i++) {
-    if (paramsList[i] === "view" && i + 1 <= paramsList?.length) {
-      viewName = paramsList[i + 1];
-      break;
-    }
-  }
+  const queryParams = new URLSearchParams(location.search);
+  const viewName = queryParams.get("view");
+  const hasSavedViews = savedViews?.length;
 
+  // TODO: MANI - load view by url_name instead of name
   useEffect(() => {
-    if (viewName && !modal) {
-      setView([], [], viewName);
+    if (hasSavedViews && viewName && !modal) {
+      const theLoadedDataset = savedViews.filter(
+        (ds: fos.SavedView) => ds.name === viewName
+      )?.[0];
+      if (theLoadedDataset) {
+        const { urlName } = theLoadedDataset;
+        setView([], [], viewName, true, urlName);
+      }
     }
-  }, [viewName]);
+  }, [hasSavedViews, viewName, modal]);
 
   if (entries instanceof Error) {
     throw entries;
@@ -743,7 +745,7 @@ const InteractiveSidebar = ({
       }}
     >
       {!modal && (
-        <Suspense fallback="loading...">
+        <Suspense>
           <Box style={{ padding: 8, paddingLeft: 16, paddingRight: 16 }}>
             {savedViewsQueryRef !== null && (
               <ViewSelection

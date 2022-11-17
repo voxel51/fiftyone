@@ -295,8 +295,10 @@ class Mutation:
         """
         state = get_state()
         dataset = state.dataset
+        updated_info = asdict(updated_info)
+
         if dataset.has_views and dataset.has_view(view_name):
-            dataset.update_view_info(view_name, asdict(updated_info))
+            dataset.update_view_info(view_name, updated_info)
         else:
             raise ValueError(
                 "Attempting to update fields on non-existent saved view: "
@@ -305,8 +307,8 @@ class Mutation:
             )
         dataset.reload()
         name = (
-            updated_info.name
-            if updated_info.get("name", None) is not None
+            updated_info["name"]
+            if "name" in updated_info and updated_info["name"] is not None
             else view_name
         )
         # Return updated saved_view, which may not be the currently loaded
