@@ -88,14 +88,6 @@ _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS = {FileSystem.S3}
 class S3StorageClient(etast.S3StorageClient):
     """.. autoclass:: eta.core.storage.S3StorageClient"""
 
-    def __init__(self, _prefix=None, **kwargs):
-        super().__init__(**kwargs)
-        self._prefix = _prefix
-
-    @property
-    def prefix(self):
-        return self._prefix
-
     def get_local_path(self, remote_path):
         return self._strip_prefix(remote_path)
 
@@ -103,28 +95,12 @@ class S3StorageClient(etast.S3StorageClient):
 class GoogleCloudStorageClient(etast.GoogleCloudStorageClient):
     """.. autoclass:: eta.core.storage.GoogleCloudStorageClient"""
 
-    def __init__(self, _prefix=None, **kwargs):
-        super().__init__(**kwargs)
-        self._prefix = _prefix
-
-    @property
-    def prefix(self):
-        return self._prefix
-
     def get_local_path(self, remote_path):
         return self._strip_prefix(remote_path)
 
 
 class MinIOStorageClient(etast.MinIOStorageClient):
     """.. autoclass:: eta.core.storage.MinIOStorageClient"""
-
-    def __init__(self, _prefix=None, **kwargs):
-        super().__init__(**kwargs)
-        self._prefix = _prefix
-
-    @property
-    def prefix(self):
-        return self._prefix
 
     def get_local_path(self, remote_path):
         return self._strip_prefix(remote_path)
