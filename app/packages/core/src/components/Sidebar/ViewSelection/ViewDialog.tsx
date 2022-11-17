@@ -277,7 +277,10 @@ export default function ViewDialog(props: Props) {
           {title}
           <IconButton
             aria-label="close"
-            onClick={() => setIsOpen(false)}
+            onClick={() => {
+              setIsOpen(false);
+              resetValues();
+            }}
             sx={{
               position: "absolute",
               right: 20,
