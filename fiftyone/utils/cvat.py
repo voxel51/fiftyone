@@ -4178,7 +4178,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._parse_cloud_files(paths, data, cloud_manifest)
             files = {}
             open_files = []
-
         else:
             files, open_files = self._parse_local_files(paths, data)
 
@@ -4239,10 +4238,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         cloud_manifest = config.cloud_manifest
         config.job_reviewers = self._parse_reviewers(config.job_reviewers)
 
-        if cloud_manifest == False:
-            # Media will be uploaded to CVAT from local cache
-            samples.download_media()
-
         project_name, project_id = self._parse_project_details(
             config.project_name, config.project_id
         )
@@ -4295,6 +4290,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         num_samples = len(samples)
         batch_size = self._get_batch_size(samples, task_size)
+
+        if cloud_manifest == False:
+            # Media will be uploaded to CVAT from local cache
+            samples.download_media(media_fields=media_field)
+
+        media_fields = samples._get_media_fields(whitelist=label_schema)
+        if media_fields:
+            samples.download_media(media_fields=media_fields)
 
         samples.compute_metadata()
 

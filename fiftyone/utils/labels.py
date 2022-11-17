@@ -231,7 +231,7 @@ def import_segmentations(
     )
 
     samples = sample_collection.select_fields(in_field)
-    samples.download_media(in_field)
+    samples.download_media(media_fields=in_field)
 
     in_field, processing_frames = samples._handle_frame_field(in_field)
 
@@ -308,7 +308,7 @@ def segmentations_to_detections(
     )
 
     samples = sample_collection.select_fields(in_field)
-    samples.download_media(in_field)
+    samples.download_media(media_fields=in_field)
 
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
@@ -425,7 +425,7 @@ def segmentations_to_polylines(
     )
 
     samples = sample_collection.select_fields(in_field)
-    samples.download_media(in_field)
+    samples.download_media(media_fields=in_field)
 
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)

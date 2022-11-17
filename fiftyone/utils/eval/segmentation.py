@@ -264,7 +264,7 @@ class SimpleEvaluation(SegmentationEvaluation):
             classes = [str(v) for v in values]
 
         _samples = samples.select_fields([gt_field, pred_field])
-        _samples.download_media([gt_field, pred_field])
+        _samples.download_media(media_fields=[gt_field, pred_field])
 
         pred_field, processing_frames = samples._handle_frame_field(pred_field)
         gt_field, _ = samples._handle_frame_field(gt_field)

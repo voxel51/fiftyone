@@ -157,7 +157,9 @@ def apply_model(
             "Ignoring `num_workers` parameter; only supported for Torch models"
         )
 
-    samples.download_media(skip_failures=skip_failures)
+    samples.download_media(
+        media_fields="filepath", skip_failures=skip_failures
+    )
 
     with contextlib.ExitStack() as context:
         if output_dir is not None:
@@ -792,7 +794,9 @@ def compute_embeddings(
             "Ignoring `num_workers` parameter; only supported for Torch models"
         )
 
-    samples.download_media(skip_failures=skip_failures)
+    samples.download_media(
+        media_fields="filepath", skip_failures=skip_failures
+    )
 
     with contextlib.ExitStack() as context:
         if use_data_loader:
@@ -1282,7 +1286,9 @@ def compute_patch_embeddings(
 
     batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
-    samples.download_media(skip_failures=skip_failures)
+    samples.download_media(
+        media_fields="filepath", skip_failures=skip_failures
+    )
 
     with contextlib.ExitStack() as context:
         if use_data_loader:

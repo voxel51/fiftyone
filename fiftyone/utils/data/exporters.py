@@ -236,7 +236,12 @@ def export_samples(
     ) in {True, "move", "symlink"}
 
     if _export_media:
-        samples.download_media()
+        samples.download_media(media_fields="filepath")
+
+    if label_field is not None:
+        media_fields = samples._get_media_fields(whitelist=label_field)
+        if media_fields:
+            samples.download_media(media_fields=media_fields)
 
     sample_collection = samples
 
