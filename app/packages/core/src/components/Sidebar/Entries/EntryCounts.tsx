@@ -6,6 +6,7 @@ import * as fos from "@fiftyone/state";
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 
 import { pathIsExpanded } from "./utils";
+import LoadingDots from "../../Common/LoadingDots";
 
 const showEntryCounts = selectorFamily<
   boolean,
@@ -54,7 +55,7 @@ export const PathEntryCounts = ({
   }
 
   return shown.state === "loading" ? (
-    <>...</>
+    <LoadingDots text="" />
   ) : shown.contents ? (
     <SuspenseEntryCounts
       countAtom={getAtom(false)}
