@@ -1,6 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-
-import styled from "styled-components";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { Selection } from "@fiftyone/components";
 import {
@@ -26,76 +24,14 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { stateSubscription, useSendEvent } from "@fiftyone/state";
 import { useErrorHandler } from "react-error-boundary";
-
-const Box = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-`;
-
-const ErrorText = styled(Box)`
-  color: ${({ theme }) => theme.error.main};
-`;
-
-const TextContainer = styled.div`
-  display: inline-block;
-  overflow: hidden;
-  white-space: nowrap;
-  width: 100%;
-  text-overflow: ellipsis;
-  color: ${({ theme }) => theme.text.primary};
-`;
-const SecondaryContainer = styled(TextContainer)`
-  color: ${({ theme }) => theme.text.secondary};
-`;
-
-const DialogBody = styled(Box)`
-  flex-direction: column;
-  width: 500px;
-`;
-
-const InputContainer = styled(Box)`
-  flex-direction: column;
-  padding: 0.5rem 0;
-`;
-
-const Label = styled(SecondaryContainer)`
-  font-size: 1rem;
-`;
-
-const DescriptionInput = styled.textarea`
-  resize: none;
-  width: 100%;
-  margin: 0.5rem 0.75rem;
-  border-radius: 4px;
-  padding: 0.5rem;
-  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-  color: ${({ theme }) => theme.text.primary};
-  background: ${({ theme }) => theme.background.level1};
-  font-family: "Palanquin", sans-serif;
-
-  &:focus {
-    border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-    outline: none;
-  }
-`;
-
-const NameInput = styled.input`
-  width: 100%;
-  margin: 0.5rem 0.75rem;
-  border-radius: 4px;
-  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-  padding: 0.5rem;
-  color: ${({ theme }) => theme.text.primary};
-  background: ${({ theme }) => theme.background.level1};
-  font-family: "Palanquin", sans-serif;
-
-  &:focus {
-    border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-    outline: none;
-  }
-`;
+import {
+  Box,
+  NameInput,
+  DescriptionInput,
+  Label,
+  InputContainer,
+  DialogBody,
+} from "./styledComponents";
 
 // TODO: consolidate
 export const COLOR_OPTIONS = [
@@ -111,7 +47,7 @@ export const COLOR_OPTIONS = [
 ];
 
 interface Props {
-  onEditSuccess: () => void;
+  onEditSuccess: (viewName?: string, isNewView?: boolean) => void;
   onDeleteSuccess: () => void;
 }
 
@@ -221,7 +157,7 @@ export default function ViewDialog(props: Props) {
               session,
             },
             onCompleted: () => {
-              onEditSuccess();
+              onEditSuccess(nameValue, true);
             },
           })
         );
