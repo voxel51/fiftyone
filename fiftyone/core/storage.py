@@ -39,7 +39,8 @@ s3_client = None
 gcs_client = None
 minio_client = None
 http_client = None
-bucket_clients = {}
+bucket_regions = {}
+region_clients = {}
 client_lock = threading.Lock()
 
 minio_alias_prefix = None
@@ -81,6 +82,7 @@ class FileSystem(object):
 
 
 _FILE_SYSTEMS_WITH_BUCKETS = {FileSystem.S3, FileSystem.GCS, FileSystem.MINIO}
+_FILE_SYSTEMS_WITH_REGIONAL_CLIENTS = {FileSystem.S3}
 
 
 class S3StorageClient(etast.S3StorageClient):
@@ -1769,29 +1771,41 @@ def _get_client(fs=None, path=None):
     elif fs is None:
         raise ValueError("You must provide either a file system or a path")
 
-    # Return bucket credentials, if possible
-    if path is not None and fs in _FILE_SYSTEMS_WITH_BUCKETS:
-        global bucket_clients
+    if path is not None and fs in _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS:
+        bucket = get_bucket_name(path)
+        return _get_regional_client(fs, bucket)
 
-        if fs not in bucket_clients:
-            bucket_clients[fs] = {}
+    return _get_default_client(fs)
 
-        _path = split_prefix(path)[1]
-        _bucket_clients = bucket_clients[fs]
 
-        for prefix, bucket_client in _bucket_clients.items():
-            if _path.startswith(prefix):
-                return bucket_client
+def _get_regional_client(fs, bucket):
+    global bucket_regions
+    global region_clients
 
-        bucket_credentials = _get_bucket_credentials(fs, _path)
+    if fs not in bucket_regions:
+        bucket_regions[fs] = {}
 
-        if bucket_credentials is not None:
-            prefix = bucket_credentials.prefix
-            bucket_client = _make_bucket_client(bucket_credentials)
-            _bucket_clients[prefix] = bucket_client
-            return bucket_client
+    if fs not in region_clients:
+        region_clients[fs] = {}
 
-    # Otherwise fallback to file system credentials
+    _bucket_regions = bucket_regions[fs]
+    _region_clients = region_clients[fs]
+
+    region = _bucket_regions.get(bucket, None)
+    if region is None:
+        region = _get_region(fs, bucket)
+        _bucket_regions[bucket] = region
+
+    client = _region_clients.get(region, None)
+    if client is not None:
+        return client
+
+    client = _make_regional_client(fs, region)
+    _region_clients[region] = client
+    return client
+
+
+def _get_default_client(fs):
     if fs == FileSystem.S3:
         global s3_client
 
@@ -1827,6 +1841,12 @@ def _get_client(fs=None, path=None):
     raise ValueError("Unsupported file system '%s'" % fs)
 
 
+def _get_region(fs, bucket):
+    client = _get_default_client(fs)
+    resp = client._client.get_bucket_location(Bucket=bucket)
+    return resp["LocationConstraint"] or "us-east-1"
+
+
 def _make_client(fs, num_workers=None):
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
@@ -1854,7 +1874,7 @@ def _make_client(fs, num_workers=None):
     raise ValueError("Unsupported file system '%s'" % fs)
 
 
-def _make_bucket_client(bucket_credentials, num_workers=None):
+def _make_regional_client(fs, region, num_workers=None):
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
 
@@ -1863,61 +1883,17 @@ def _make_bucket_client(bucket_credentials, num_workers=None):
     if num_workers is not None and num_workers > 10:
         kwargs["max_pool_connections"] = num_workers
 
-    fs = bucket_credentials.file_system
-    prefix = bucket_credentials.prefix
-
     if fs == FileSystem.S3:
-        credentials = _load_s3_bucket_credentials(bucket_credentials)
-        return S3StorageClient(
-            credentials=credentials, _prefix=prefix, **kwargs
-        )
-
-    if fs == FileSystem.GCS:
-        credentials = _load_gcs_bucket_credentials(bucket_credentials)
-        return GoogleCloudStorageClient(
-            credentials=credentials, _prefix=prefix, **kwargs
-        )
+        credentials = _load_s3_credentials() or {}
+        credentials["region_name"] = region
+        return S3StorageClient(credentials=credentials, **kwargs)
 
     if fs == FileSystem.MINIO:
-        credentials = _load_minio_bucket_credentials(bucket_credentials)
-        return MinIOStorageClient(
-            credentials=credentials, _prefix=prefix, **kwargs
-        )
+        credentials = _load_minio_credentials() or {}
+        credentials["region_name"] = region
+        return MinIOStorageClient(credentials=credentials, **kwargs)
 
-    raise ValueError(
-        "Unsupported file system '%s'" % bucket_credentials.file_system
-    )
-
-
-def _get_bucket_credentials(fs, path):
-    for bc in fo.media_cache_config.bucket_credentials:
-        if bc.file_system == fs and path.startswith(bc.prefix):
-            return bc
-
-    return None
-
-
-def _load_s3_bucket_credentials(bucket_credentials):
-    credentials, _ = S3StorageClient.load_credentials(
-        credentials_path=bucket_credentials.config_file,
-        profile=bucket_credentials.profile,
-    )
-    return credentials
-
-
-def _load_gcs_bucket_credentials(bucket_credentials):
-    credentials, _ = GoogleCloudStorageClient.load_credentials(
-        credentials_path=bucket_credentials.config_file
-    )
-    return credentials
-
-
-def _load_minio_bucket_credentials(bucket_credentials):
-    credentials, _ = MinIOStorageClient.load_credentials(
-        credentials_path=bucket_credentials.config_file,
-        profile=bucket_credentials.profile,
-    )
-    return credentials
+    raise ValueError("Unsupported file system '%s'" % fs)
 
 
 def _load_s3_credentials():
