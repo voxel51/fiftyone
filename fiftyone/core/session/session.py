@@ -287,6 +287,7 @@ class Session(object):
         self,
         dataset: t.Union[fod.Dataset, fov.DatasetView] = None,
         view: fov.DatasetView = None,
+        view_name: str = None,
         plots: fop.PlotManager = None,
         port: int = None,
         address: str = None,
@@ -339,6 +340,7 @@ class Session(object):
             config=config,
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
+            view_name=view.name,
         )
         self._client = fosc.Client(
             address=address,
