@@ -273,8 +273,8 @@ def normalize_path(path):
 def get_client(fs=None, path=None):
     """Returns the storage client for the given file system or path.
 
-    If a ``path`` is provided, a bucket-specific client is returned, if one is
-    available. Otherwise, the client for the given file system is returned.
+    If a ``path`` is provided, a region-specific client is returned, if
+    applicable. Otherwise, the client for the given file system is returned.
 
     Args:
         fs (None): a :class:`FileSystem` value
@@ -294,6 +294,8 @@ def get_client(fs=None, path=None):
         except Exception as e:
             if path is not None:
                 raise ValueError("Failed to get client for '%s'" % path) from e
+
+            raise
 
 
 def get_url(path, **kwargs):
@@ -1861,12 +1863,12 @@ def _make_regional_client(fs, region, num_workers=None):
 
     if fs == FileSystem.S3:
         credentials = _load_s3_credentials() or {}
-        credentials["region_name"] = region
+        credentials["region"] = region
         return S3StorageClient(credentials=credentials, **kwargs)
 
     if fs == FileSystem.MINIO:
         credentials = _load_minio_credentials() or {}
-        credentials["region_name"] = region
+        credentials["region"] = region
         return MinIOStorageClient(credentials=credentials, **kwargs)
 
     raise ValueError("Unsupported file system '%s'" % fs)
