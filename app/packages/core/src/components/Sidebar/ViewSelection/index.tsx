@@ -127,13 +127,11 @@ export default function ViewSelection(props: Props) {
   return (
     <Box>
       <ViewDialog
-        onEditSuccess={(isNewView?: boolean) => {
+        onEditSuccess={(viewName?: string, isNewView?: boolean) => {
           refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
           if (isNewView) {
-            console.log("creating a new view", datasetName);
-            // setView([], [], datasetName, true);
+            setView([], [], viewName, true);
           }
-          // setView([], [], datasetName, true);
         }}
         onDeleteSuccess={() => {
           // TODO: MANI - redirect if loaded view is deleted
@@ -147,7 +145,6 @@ export default function ViewSelection(props: Props) {
           const allSelected = item.id === "1";
           setSelected(item);
           const selectedSavedView = allSelected ? "" : item.label;
-
           setView([], [], selectedSavedView, true);
           // if (selectedSavedView) {
           //   setSavedViewParam(selectedSavedView);
@@ -172,7 +169,6 @@ export default function ViewSelection(props: Props) {
             setViewSearch(term);
           },
         }}
-        lastFixedOptionDisabled={isEmptyView}
         lastFixedOption={
           <LastOption
             onClick={() => !isEmptyView && setIsOpen(true)}

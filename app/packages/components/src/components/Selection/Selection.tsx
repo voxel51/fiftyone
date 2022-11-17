@@ -28,7 +28,7 @@ const LastOption = styled(Option)`
 
   &:hover {
     background: ${({ disabled, theme }) =>
-      disabled ? theme.background.body : theme.background.level2} !important;
+      disabled ? "none" : theme.background.level2} !important;
   }
 `;
 
@@ -89,7 +89,7 @@ export default function Selection(props: SelectionProps) {
     onEdit,
   } = props;
   const theme = useTheme();
-  const [isOpen, setIsOpen] = useState<boolean>(true);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
   const ref = useRef();
   useOutsideClick(ref, () => setIsOpen(false));
 
