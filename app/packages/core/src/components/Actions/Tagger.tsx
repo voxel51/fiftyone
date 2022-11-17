@@ -42,6 +42,7 @@ import {
   Lookers,
   refresher,
 } from "@fiftyone/state";
+import LoadingDots from "../Common/LoadingDots";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -164,60 +165,64 @@ const Section = ({
   const hasChanges = Object.keys(changes).length > 0;
 
   const hasCreate = value.length > 0 && !(value in changes || value in items);
+  const isLoading = Boolean(tagging || typeof count !== "number");
 
   return (
     <>
       <TaggingContainerInput>
-        <TaggingInput
-          placeholder={
-            count == 0
-              ? `No ${labels ? "labels" : elementNames.plural}`
-              : disabled
-              ? count === null
-                ? "loading..."
-                : "saving..."
-              : placeholder
-          }
-          value={value}
-          onChange={(e) => {
-            setValue(e.target.value);
-            if (e.target.value.length) {
-              const results = Array.from(
-                new Set(Object.keys({ ...items, ...changes }))
-              )
-                .sort()
-                .filter((v) =>
-                  v.toLocaleLowerCase().includes(e.target.value.toLowerCase())
-                );
-              results.length && setActive(results[0]);
+        {isLoading ? (
+          <LoadingDots text="Loading" />
+        ) : (
+          <TaggingInput
+            placeholder={
+              count == 0
+                ? `No ${labels ? "labels" : elementNames.plural}`
+                : disabled
+                ? count === null
+                  ? "loading..."
+                  : "saving..."
+                : placeholder
             }
-          }}
-          title={
-            hasCreate
-              ? `Enter to add "${value}" tag to ${count} ${
-                  labels && count > 1
-                    ? "labels"
-                    : labels
-                    ? "label"
-                    : count > 1
-                    ? elementNames.plural
-                    : elementNames.singular
-                }`
-              : null
-          }
-          onKeyPress={(e) => {
-            if (e.key === "Enter" && hasCreate) {
-              setValue("");
-              setChanges({ ...changes, [value]: CheckState.ADD });
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value);
+              if (e.target.value.length) {
+                const results = Array.from(
+                  new Set(Object.keys({ ...items, ...changes }))
+                )
+                  .sort()
+                  .filter((v) =>
+                    v.toLocaleLowerCase().includes(e.target.value.toLowerCase())
+                  );
+                results.length && setActive(results[0]);
+              }
+            }}
+            title={
+              hasCreate
+                ? `Enter to add "${value}" tag to ${count} ${
+                    labels && count > 1
+                      ? "labels"
+                      : labels
+                      ? "label"
+                      : count > 1
+                      ? elementNames.plural
+                      : elementNames.singular
+                  }`
+                : null
             }
-          }}
-          focused={!disabled}
-          disabled={disabled || count === 0}
-          autoFocus
-          onBlur={({ target }) => target.focus()}
-          type={"text"}
-        />
-        <Loading loading={Boolean(tagging || typeof count !== "number")} />
+            onKeyPress={(e) => {
+              if (e.key === "Enter" && hasCreate) {
+                setValue("");
+                setChanges({ ...changes, [value]: CheckState.ADD });
+              }
+            }}
+            focused={!disabled}
+            disabled={disabled || count === 0}
+            autoFocus
+            onBlur={({ target }) => target.focus()}
+            type={"text"}
+          />
+        )}
       </TaggingContainerInput>
       {count > 0 && (
         <Checker
