@@ -112,7 +112,6 @@ export default function ViewSelection(props: Props) {
   );
 
   const items = data?.savedViews || [];
-  console.log("items", items);
 
   const viewOptions: DatasetViewOption[] = [
     DEFAULT_SELECTED,
