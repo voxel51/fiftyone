@@ -62,26 +62,27 @@ function isListField(field) {
   return LIST_TYPES.includes(type);
 }
 
-function getAvailableFieldsFromDataset(fieldOrDataset, results = []) {
-  const fields = fieldOrDataset.sampleFields || fieldOrDataset.fields;
-  for (const field of fields) {
+function getAvailableFieldsFromSchema({ fields }, results = []) {
+  for (const field of Object.values(fields)) {
     if (isListField(field)) continue;
     if (isVisualizableField(field)) {
       results.push(field.path);
     }
     if (field.fields) {
-      getAvailableFieldsFromDataset(field, results);
+      getAvailableFieldsFromSchema(field, results);
     }
   }
-  return results;
+  return results.sort((a, b) => a.localeCompare(b));
 }
 
 // a react hook that allows for selecting a label
 // based on the available labels in the given sample
 function useLabelSelector() {
   const dataset = useRecoilValue(fos.dataset);
-  const availableFields = getAvailableFieldsFromDataset(dataset);
+  const fullSchema = useRecoilValue(fos.fullSchema);
+  const availableFields = getAvailableFieldsFromSchema({ fields: fullSchema });
   const [label, setLabel] = useState(null);
+  const isPatchesView = useRecoilValue(fos.isPatchesView);
 
   const handlers = {
     onSelect(selected) {
@@ -129,14 +130,14 @@ export default function Embeddings({ containerHeight }) {
         <Selectors>
           <Selector
             {...brainResultSelector.handlers}
-            placeholder={"Choose Brain Result"}
+            placeholder={"Brain Result"}
             overflow={true}
             component={Value}
           />
           {brainResultSelector.hasSelection && (
             <Selector
               {...labelSelector.handlers}
-              placeholder={"Choose Label"}
+              placeholder={"Color By"}
               overflow={true}
               component={Value}
             />
@@ -162,14 +163,28 @@ function sortStringsAlphabetically(a, b) {
   return a.localeCompare(b);
 }
 
-function tracesToData(traces, style, getColor) {
+// a function that returns the index of an object in an array
+// that has a given value for a given key
+function findIndexByKeyValue(array, key, value) {
+  for (var i = 0; i < array.length; i++) {
+    if (array[i][key] === value) {
+      return i;
+    }
+  }
+  return null;
+}
+
+function tracesToData(traces, style, getColor, plotSelection) {
   const isCategorical = style === "categorical";
   return Object.entries(traces)
     .sort((a, b) => sortStringsAlphabetically(a[0], b[0]))
     .map(([key, trace]) => {
-      const selectedpoints = trace
-        .map((d, idx) => (d.selected ? idx : null))
-        .filter((d) => d !== null);
+      // const selectedpoints = trace
+      //   .map((d, idx) => (d.selected ? idx : null))
+      //   .filter((d) => d !== null);
+      const selectedpoints = plotSelection.length
+        ? plotSelection.map((id) => findIndexByKeyValue(trace, "id", id))
+        : null;
 
       return {
         x: trace.map((d) => d.points[0]),
@@ -187,6 +202,8 @@ function tracesToData(traces, style, getColor) {
           colorbar: !isCategorical
             ? {
                 lenmode: "fraction",
+                x: 1,
+                y: 0.5,
               }
             : undefined,
         },
@@ -210,6 +227,7 @@ function tracesToData(traces, style, getColor) {
 function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
   const getColor = useRecoilValue(fos.colorMapRGB(true));
   const [bounds, setBounds] = useState({});
+  const isPatchesView = useRecoilValue(fos.isPatchesView);
 
   useLayoutEffect(() => {
     if (el.current) {
@@ -219,14 +237,16 @@ function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
   const {
     traces,
     style,
+    valuesCount,
     isLoading,
     datasetName,
     handleSelected,
     hasExtendedSelection,
     clearSelection,
+    plotSelection,
   } = useEmbeddings(brainKey, labelField);
   if (isLoading) return <h3>Pixelating...</h3>;
-  const data = tracesToData(traces, style, getColor);
+  const data = tracesToData(traces, style, getColor, plotSelection);
   const isCategorical = style === "categorical";
 
   return (
@@ -245,13 +265,14 @@ function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
           }}
           config={{ scrollZoom: true, displaylogo: false, responsive: true }}
           layout={{
+            uirevision: true,
             font: {
               family: "var(--joy-fontFamily-body)",
               size: 14,
             },
-            showlegend: isCategorical,
+            showlegend: isCategorical && valuesCount > 0,
             width: bounds ? bounds.width : 800,
-            height: containerHeight,
+            height: containerHeight - 50,
             hovermode: false,
             xaxis: {
               showgrid: false,
@@ -283,10 +304,6 @@ function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
                 color: "rgb(179, 179, 179)",
               },
             },
-            colorbar: {
-              x: 0.9,
-              y: 0.9,
-            },
           }}
         />
       )}
@@ -302,15 +319,21 @@ function useEmbeddings(brainKey, labelField) {
   const [extendedSelection, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
+  const [selectedSamples, setSelectedSamples] = useRecoilState(
+    fos.selectedSamples
+  );
   const hasExtendedSelection =
     extendedSelection && extendedSelection.length > 0;
   const [state, setState] = useState({ isLoading: true });
-  function onLoaded({ traces, style }) {
-    setState({ traces, style, isLoading: false });
+  const [plotSelection, setPlotSelection] = useState([]);
+  function onLoaded({ traces, style, values_count }) {
+    setState({ traces, style, isLoading: false, valuesCount: values_count });
   }
   function clearSelection() {
     setExtendedSelection([]);
+    setPlotSelection([]);
   }
+
   useEffect(() => {
     setState({ isLoading: true });
     fetchEmbeddings({
@@ -320,11 +343,29 @@ function useEmbeddings(brainKey, labelField) {
       view,
       filters,
       extended,
+      extendedSelection:
+        selectedSamples && selectedSamples.size > 0
+          ? Array.from(selectedSamples)
+          : null,
     }).then(onLoaded);
-  }, [datasetName, brainKey, labelField, view, filters, extended]);
+  }, [datasetName, brainKey, labelField, view, filters]); // extended, selectedSamples
+
+  useEffect(() => {
+    console.log(selectedSamples);
+    const selected = Array.from(selectedSamples);
+
+    if (selected && selected.length) {
+      setPlotSelection(selected);
+    } else if (extendedSelection && extendedSelection.length) {
+      setPlotSelection(extendedSelection);
+    } else {
+      setPlotSelection([]);
+    }
+  }, [selectedSamples, extendedSelection]);
 
   function handleSelected(selectedResults) {
     if (selectedResults.length === 0) return;
+    setPlotSelection(selectedResults.map((d) => d.id));
     setExtendedSelection(selectedResults.map((d) => d.id));
   }
 
@@ -335,6 +376,7 @@ function useEmbeddings(brainKey, labelField) {
     handleSelected,
     hasExtendedSelection,
     clearSelection,
+    plotSelection,
   };
 }
 
@@ -345,6 +387,7 @@ const fetchEmbeddings = async ({
   view,
   filters,
   extended,
+  extendedSelection,
 }) => {
   const res = await getFetchFunction()("POST", "/embeddings", {
     brainKey,
@@ -353,6 +396,7 @@ const fetchEmbeddings = async ({
     dataset,
     view,
     extended,
+    extendedSelection,
   });
   return res;
 };
