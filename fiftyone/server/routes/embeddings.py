@@ -19,7 +19,7 @@ from fiftyone.server.decorators import route
 import fiftyone.server.view as fosv
 
 
-MAX_CATEGORIES = 25
+MAX_CATEGORIES = 100
 
 
 class Embeddings(HTTPEndpoint):
@@ -31,6 +31,7 @@ class Embeddings(HTTPEndpoint):
         labels_field = data["labelsField"]
         filters = data["filters"]
         extended_stages = data["extended"]
+        extended_selection = data["extendedSelection"]
         stages = data["view"]
         dataset = fo.load_dataset(datasetName)
 
@@ -54,6 +55,9 @@ class Embeddings(HTTPEndpoint):
         curr_sample_ids = results._curr_sample_ids
         label_values = results.view.values(labels_field)
 
+        # TODO optimize count
+        values_count = len(set(label_values))
+
         ###############################################################################
         # Now we need to decide whether to render any points as selected/deselected
         ###############################################################################
@@ -69,22 +73,30 @@ class Embeddings(HTTPEndpoint):
             )
             extended_ids = extended_view.values("id")
             selected_ids = set(curr_sample_ids) & set(extended_ids)
-
         else:
             # No filter is applied, everything can be selected
             selected_ids = None
+
+        if selected_ids and extended_selection:
+            selected_ids = selected_ids & set(extended_selection)
+        elif extended_selection:
+            selected_ids = set(extended_selection)
+
         distinct_values = set(label_values)
         style = (
             "categorical"
             if len(distinct_values) <= MAX_CATEGORIES
             else "continuous"
         )
+
         zipped = zip(curr_sample_ids, curr_points, label_values)
         traces = {}
         for (id, points, label) in zipped:
             add_to_trace(traces, selected_ids, id, points, label, style)
 
-        return {"traces": traces, "style": style}
+        print(traces)
+
+        return {"traces": traces, "style": style, "values_count": values_count}
 
 
 def add_to_trace(traces, selected_ids, id, points, label, style):
