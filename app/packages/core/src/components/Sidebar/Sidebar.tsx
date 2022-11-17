@@ -10,12 +10,7 @@ import styled from "styled-components";
 
 import { move } from "@fiftyone/utilities";
 
-import {
-  dataset,
-  datasetName,
-  useEventHandler,
-  useSavedViews,
-} from "@fiftyone/state";
+import { datasetName, useEventHandler } from "@fiftyone/state";
 import { scrollbarStyles } from "../utils";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue } from "recoil";

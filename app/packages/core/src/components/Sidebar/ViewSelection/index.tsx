@@ -1,53 +1,23 @@
-import React, { useCallback, useEffect, useState } from "react";
-
-import { Add } from "@mui/icons-material";
-import styled from "styled-components";
+import React, { useEffect, useState } from "react";
 
 import { Selection } from "@fiftyone/components";
 import { filter } from "lodash";
 import {
   atom,
-  useRecoilRefresher_UNSTABLE,
   useRecoilState,
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
 import * as fos from "@fiftyone/state";
-import {
-  PreloadedQuery,
-  useLazyLoadQuery,
-  usePreloadedQuery,
-  useQueryLoader,
-  useRefetchableFragment,
-} from "react-relay";
+import { usePreloadedQuery, useRefetchableFragment } from "react-relay";
 
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
-import { useQueryState, useSavedViews } from "@fiftyone/state";
+import { useQueryState } from "@fiftyone/state";
 import {
   DatasetSavedViewsQuery,
   DatasetSavedViewsFragment,
 } from "../../../Root/Root";
-import { OperationType } from "relay-runtime";
-
-const Box = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-`;
-
-const TextContainer = styled.div`
-  display: inline-block;
-  overflow: hidden;
-  white-space: nowrap;
-  width: 100%;
-  text-overflow: ellipsis;
-  color: ${({ theme }) => theme.text.primary};
-`;
-
-const AddIcon = styled(Add)`
-  color: ${({ theme }) => theme.text.primary};
-`;
+import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 
 export const viewSearchTerm = atom({
   key: "viewSearchTerm",
@@ -58,12 +28,6 @@ export const viewDialogOpen = atom({
   default: false,
 });
 
-const UNSAVED_SELECTED = {
-  id: "0",
-  label: "Unsaved view",
-  color: "#818165",
-  description: "Unsaved view",
-};
 const DEFAULT_SELECTED = {
   id: "1",
   label: "All samples",
@@ -112,6 +76,7 @@ export default function ViewSelection(props: Props) {
   );
 
   const items = data?.savedViews || [];
+  const isEmptyView = !loadedView?.length;
 
   const viewOptions: DatasetViewOption[] = [
     DEFAULT_SELECTED,
@@ -153,7 +118,7 @@ export default function ViewSelection(props: Props) {
   ) as DatasetViewOption[];
 
   useEffect(() => {
-    if (!loadedView?.length) {
+    if (isEmptyView) {
       setSelected(viewOptions[0]);
       setSavedViewParam(null);
     }
@@ -162,9 +127,12 @@ export default function ViewSelection(props: Props) {
   return (
     <Box>
       <ViewDialog
-        onEditSuccess={() => {
-          // TODO: MANI - redirect if name changes
+        onEditSuccess={(isNewView?: boolean) => {
           refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
+          if (isNewView) {
+            console.log("creating a new view", datasetName);
+            // setView([], [], datasetName, true);
+          }
           // setView([], [], datasetName, true);
         }}
         onDeleteSuccess={() => {
@@ -204,13 +172,19 @@ export default function ViewSelection(props: Props) {
             setViewSearch(term);
           },
         }}
+        lastFixedOptionDisabled={isEmptyView}
         lastFixedOption={
-          <Box onClick={() => setIsOpen(true)}>
+          <LastOption
+            onClick={() => !isEmptyView && setIsOpen(true)}
+            disabled={isEmptyView}
+          >
             <Box style={{ width: "12%" }}>
-              <AddIcon fontSize="small" />
+              <AddIcon fontSize="small" disabled={isEmptyView} />
             </Box>
-            <TextContainer>Save current filters as view</TextContainer>
-          </Box>
+            <TextContainer disabled={isEmptyView}>
+              Save current filters as view
+            </TextContainer>
+          </LastOption>
         }
       />
     </Box>
