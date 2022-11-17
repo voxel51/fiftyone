@@ -5,7 +5,6 @@ import React, {
   useState,
 } from "react";
 import numeral from "numeral";
-import { CircularProgress } from "@mui/material";
 import {
   RecoilState,
   RecoilValue,
@@ -57,24 +56,6 @@ const IconDiv = styled.div`
     color: ${({ theme }) => theme.text.primary};
   }
 `;
-
-const Loading = React.memo(({ loading }: { loading: boolean }) => {
-  const theme = useTheme();
-  return (
-    <IconDiv>
-      {loading && (
-        <CircularProgress
-          style={{
-            color: theme.text.secondary,
-            height: 16,
-            width: 16,
-            marginTop: "0.25rem",
-          }}
-        />
-      )}
-    </IconDiv>
-  );
-});
 
 const TaggingContainerInput = styled.div`
   font-size: 14px;
@@ -159,7 +140,7 @@ const Section = ({
   };
 
   if (!items) {
-    return <Loader />;
+    return <LoadingDots text="" />;
   }
 
   const hasChanges = Object.keys(changes).length > 0;
@@ -419,17 +400,6 @@ const useTagCallback = (
   );
 };
 
-const Loader = () => {
-  const theme = useTheme();
-  return (
-    <div style={{ display: "flex", justifyContent: "center" }}>
-      <CircularProgress
-        style={{ color: theme.text.secondary, margin: "1rem 0" }}
-      />
-    </div>
-  );
-};
-
 const usePlaceHolder = (
   modal: boolean,
   labels: boolean,
@@ -476,14 +446,7 @@ const usePlaceHolder = (
 const SuspenseLoading = () => {
   return (
     <TaggingContainerInput>
-      <TaggingInput
-        placeholder={"Loading..."}
-        title={"Loading..."}
-        focused={false}
-        disabled={true}
-        type={"text"}
-      />
-      <Loading loading={true} />
+      <LoadingDots text="Loading" />
     </TaggingContainerInput>
   );
 };

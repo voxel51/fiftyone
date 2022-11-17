@@ -4,7 +4,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { CircularProgress } from "@mui/material";
 import {
   Bookmark,
   Check,
@@ -36,14 +35,11 @@ import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import Similar from "./Similar";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import LoadingDots from "../Common/LoadingDots";
 
 const Loading = () => {
   const theme = useTheme();
-  return (
-    <CircularProgress
-      style={{ padding: 2, height: 22, width: 22, color: theme.text.primary }}
-    />
-  );
+  return <LoadingDots text="" color={theme.text.primary} />;
 };
 
 const ActionDiv = styled.div`

@@ -2,8 +2,12 @@ import React from "react";
 
 import { loading } from "./LoadingDots.module.css";
 
-const LoadingDots = ({ text }: { text: string }) => {
-  return <span className={loading}>{text}</span>;
+const LoadingDots = ({ text, color }: { text: string; color?: string }) => {
+  return (
+    <span className={loading} style={{ color }}>
+      {text}
+    </span>
+  );
 };
 
 export default LoadingDots;
