@@ -1629,6 +1629,8 @@ def export_to_labelbox(
                 "for video datasets"
             )
 
+    sample_collection.compute_metadata()
+
     etau.ensure_empty_file(ndjson_path)
 
     # Export the labels
@@ -1642,16 +1644,6 @@ def export_to_labelbox(
                     labelbox_id_field,
                 )
                 continue
-
-            # Compute metadata if necessary
-            if sample.metadata is None:
-                if is_video:
-                    metadata = fom.VideoMetadata.build_for(sample.filepath)
-                else:
-                    metadata = fom.ImageMetadata.build_for(sample.filepath)
-
-                sample.metadata = metadata
-                sample.save()
 
             # Get frame size
             if is_video:
