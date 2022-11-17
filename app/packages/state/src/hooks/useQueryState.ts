@@ -19,18 +19,6 @@ const useQueryState = (query) => {
         { ...existingQueries, [query]: value },
         { skipNulls: true }
       );
-      console.log("queryString", existingQueries);
-
-      // const loadedView = savedViews.filter((sv) => {
-      //   sv.urlName ===
-      // })
-
-      // if (queryString) {
-      //   location.replace(location.pathname + `?${queryString}`);
-      // }
-
-      console.log("----", router.history.location.state);
-      console.log(">>>>", dataset);
 
       router.history.push(`${location.pathname}?${queryString}`, {
         state: {

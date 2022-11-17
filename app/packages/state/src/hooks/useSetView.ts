@@ -2,14 +2,9 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import {
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
   filters,
-  groupSlice,
   resolvedGroupSlice,
   selectedLabelList,
   selectedSamples,
@@ -18,7 +13,7 @@ import {
   view,
 } from "../recoil";
 import { RouterContext } from "../routing";
-import { getSavedViewName, transformDataset } from "../utils";
+import { transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
 import useStateUpdate from "./useStateUpdate";
 import * as fos from "../";
@@ -32,7 +27,7 @@ const useSetView = (
   const updateState = useStateUpdate();
   const subscription = useRecoilValue(stateSubscription);
   const router = useContext(RouterContext);
-  const viewName = getSavedViewName(router);
+  // const viewName = getSavedViewName(router);
   const [commit] = useMutation<setViewMutation>(setView);
 
   const onError = useErrorHandler();
@@ -61,7 +56,6 @@ const useSetView = (
               subscription,
               session,
               view: value,
-              viewName: viewName,
               datasetName: dataset.name,
               form: patch
                 ? {
@@ -96,6 +90,7 @@ const useSetView = (
                   `${location.pathname}${viewName ? `?view=${viewName}` : ""}`,
                   {
                     state: newState,
+                    variables: { view: value },
                   }
                 );
               } else {
@@ -103,10 +98,10 @@ const useSetView = (
                   dataset: transformDataset(dataset),
                   state: {
                     view: value,
-                    viewName,
                     viewCls: dataset.viewCls,
                     selected: [],
                     selectedLabels: [],
+                    viewName,
                     savedViews,
                   },
                 });
