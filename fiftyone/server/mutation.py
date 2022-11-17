@@ -195,32 +195,6 @@ class Mutation:
         )
 
     @gql.mutation
-    async def set_view_by_name(
-        self,
-        subscription: str,
-        view_name: str,
-        dataset_name: str,
-        session: t.Optional[str],
-        info: Info,
-    ) -> ViewResponse:
-        state = get_state()
-        state.selected = []
-        state.selected_labels = []
-        state.view = state.dataset.load_view(view_name)
-        await dispatch_event(subscription, StateUpdate(state=state))
-        dataset = await Dataset.resolver(
-            name=dataset_name,
-            view=view,
-            view_name=view_name if view_name else state.view.name,
-            info=info,
-        )
-        return ViewResponse(
-            view=state.view._serialize(),
-            dataset=dataset,
-            view_name=view_name if view_name else state.view.name,
-        )
-
-    @gql.mutation
     async def store_teams_submission(self) -> bool:
         etas.write_json({"submitted": True}, foc.TEAMS_PATH)
         return True
@@ -299,8 +273,6 @@ class Mutation:
         # TODO: confirm StateUpdate is unnecessary
         # await dispatch_event(subscription, StateUpdate(state=state))
 
-        # TODO: MANI
-        # return state.dataset.saved_view
         return True
 
     @gql.mutation
@@ -321,7 +293,6 @@ class Mutation:
             update
 
         """
-
         state = get_state()
         dataset = state.dataset
         if dataset.has_views and dataset.has_view(view_name):
@@ -333,7 +304,6 @@ class Mutation:
                 view_name,
             )
         dataset.reload()
-
         name = (
             updated_info.name
             if updated_info.get("name", None) is not None
