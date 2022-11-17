@@ -108,23 +108,6 @@ class EvaluationRun(Run):
 
 
 @gql.type
-class SavedView:
-    dataset_id: str
-    name: str
-    url_name: str
-    description: t.Optional[str]
-    color: t.Optional[str]
-    view_stages: t.List[str]
-    created_at: datetime
-    last_modified_at: t.Optional[datetime]
-    last_loaded_at: t.Optional[datetime]
-
-    @gql.field
-    def view_name(self) -> str:
-        return self.name
-
-
-@gql.type
 class SidebarGroup:
     name: str
     paths: t.Optional[t.List[str]]
@@ -177,10 +160,8 @@ class Dataset:
     frame_fields: t.Optional[t.List[SampleField]]
     brain_methods: t.List[BrainRun]
     evaluations: t.List[EvaluationRun]
-    saved_views: t.Optional[t.List[SavedView]]
     version: t.Optional[str]
     view_cls: t.Optional[str]
-    # view_stages: t.Optional[t.List[str]]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
@@ -200,7 +181,7 @@ class Dataset:
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
-        doc["saved_views"] = doc.get("saved_views", [])
+        doc["saved_views"] = list(doc.get("saved_views", {}).values())
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -214,13 +195,9 @@ class Dataset:
 
     @classmethod
     async def resolver(
-        cls,
-        name: str,
-        view: t.Optional[BSONArray],
-        view_name: t.Optional[str],
-        info: Info,
+        cls, name: str, view: t.Optional[BSONArray], info: Info
     ) -> t.Optional["Dataset"]:
-        return await serialize_dataset(name, view, view_name)
+        return await serialize_dataset(name, view)
 
 
 dataset_dataloader = get_dataloader_resolver(
@@ -344,17 +321,6 @@ class Query(fosa.AggregateQuery):
     def version(self) -> str:
         return foc.VERSION
 
-    @gql.field
-    def saved_view(
-        self, dataset_name: str, view_name: str
-    ) -> t.Optional[SavedView]:
-        ds = fo.load_dataset(dataset_name)
-        if ds.has_saved_view(view_name):
-            for view in ds._doc.saved_views:
-                if view.name == view_name:
-                    return view
-        return
-
 
 def _flatten_fields(
     path: t.List[str], fields: t.List[t.Dict]
@@ -377,9 +343,7 @@ def _convert_targets(targets: t.Dict[str, str]) -> Target:
     return [Target(target=int(k), value=v) for k, v in targets.items()]
 
 
-async def serialize_dataset(
-    name: str, serialized_view: BSONArray, view_name: t.Optional[str] = None
-) -> Dataset:
+async def serialize_dataset(name: str, serialized_view: BSONArray) -> Dataset:
     def run():
         dataset = fo.load_dataset(name)
         dataset.reload()
@@ -415,6 +379,7 @@ async def serialize_dataset(
 
         if dataset.media_type == fom.GROUP:
             data.group_slice = collection.group_slice
+
         return data
 
     loop = asyncio.get_running_loop()

@@ -1,9 +1,6 @@
-import { atom, selector, useRecoilValue } from "recoil";
+import { atom, selector } from "recoil";
 
 import { State } from "./types";
-import { getFetchFunction } from "@fiftyone/utilities";
-import { dataset } from "./atoms";
-import { datasetName } from "./selectors";
 
 export const view = atom<State.Stage[]>({
   key: "view",
@@ -12,11 +9,6 @@ export const view = atom<State.Stage[]>({
 
 export const viewCls = atom<string>({
   key: "viewCls",
-  default: null,
-});
-
-export const viewName = atom<string>({
-  key: "viewName",
   default: null,
 });
 
@@ -131,20 +123,3 @@ export const isFramesView = selector<boolean>({
     eviction: "most-recent",
   },
 });
-
-export const persistSavedView = (name: String, description?: String) => {
-  getFetchFunction()("POST", "/view", {
-    dataset,
-    view,
-    name: name,
-    description: description,
-  });
-};
-
-export const loadSavedView = (name: String) => {
-  getFetchFunction()("GET", "/view", {
-    dataset: useRecoilValue(datasetName),
-    view,
-    name: name,
-  });
-};

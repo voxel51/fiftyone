@@ -60,7 +60,6 @@ const useStateUpdate = () => {
 
         if (!viewsAreEqual(view || [], state.view || [])) {
           set(viewAtoms.view, state.view || []);
-          set(viewAtoms.viewName, state.viewName);
           reset(extendedSelection);
           reset(similarityParameters);
           reset(filters);
@@ -71,7 +70,6 @@ const useStateUpdate = () => {
 
       config !== undefined && set(appConfig, config);
       state?.viewCls !== undefined && set(viewAtoms.viewCls, state.viewCls);
-      state?.viewName !== undefined && set(viewAtoms.viewName, state.viewName);
 
       state?.selected && set(selectedSamples, new Set(state.selected));
       state?.selectedLabels &&

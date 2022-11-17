@@ -5,14 +5,14 @@ export default graphql`
     $subscription: String!
     $session: String
     $view: BSONArray!
-    $datasetName: String!
+    $dataset: String!
     $form: StateForm!
   ) {
     setView(
       subscription: $subscription
       session: $session
       view: $view
-      datasetName: $datasetName
+      dataset: $dataset
       form: $form
     ) {
       dataset {

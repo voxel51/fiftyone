@@ -9,12 +9,8 @@ import {
 } from "./__generated__/DatasetQuery.graphql";
 
 const DatasetQuery = graphql`
-  query DatasetQuery(
-    $name: String!
-    $view: BSONArray = null
-    $viewName: String = null
-  ) {
-    dataset(name: $name, view: $view, viewName: $viewName) {
+  query DatasetQuery($name: String!, $view: BSONArray = null) {
+    dataset(name: $name, view: $view) {
       id
       name
       mediaType
@@ -83,17 +79,6 @@ const DatasetQuery = graphql`
           method
           patchesField
         }
-      }
-      savedViews {
-        datasetId
-        name
-        urlName
-        description
-        color
-        viewStages
-        createdAt
-        lastModifiedAt
-        lastLoadedAt
       }
       lastLoadedAt
       createdAt

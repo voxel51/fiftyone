@@ -38,7 +38,6 @@ class SelectedLabel:
 class ViewResponse:
     view: BSONArray
     dataset: Dataset
-    view_name: t.Optional[str] = None
 
 
 @gql.input
@@ -135,23 +134,18 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         view: BSONArray,
-        view_name: t.Optional[str],
-        dataset_name: str,
+        dataset: str,
         form: t.Optional[StateForm],
         info: Info,
     ) -> ViewResponse:
         state = get_state()
         state.selected = []
         state.selected_labels = []
-
-        if view_name and state.dataset.has_saved_view(view_name):
-            state.view = state.dataset.load_saved_view(view_name)
-
-        elif form:
+        if form:
             view = get_view(
-                    dataset_name,
-                    view,
-                    form.filters,
+                dataset,
+                view,
+                form.filters,
             )
             if form.slice:
                 view = view.select_group_slices([form.slice])
@@ -172,18 +166,10 @@ class Mutation:
 
         else:
             state.view = fov.DatasetView._build(state.dataset, view)
+
         await dispatch_event(subscription, StateUpdate(state=state))
-        dataset = await Dataset.resolver(
-            name=dataset_name,
-            view=view,
-            view_name=view_name if view_name else state.view.name,
-            info=info,
-        )
-        return ViewResponse(
-            view=state.view._serialize(),
-            dataset=dataset,
-            view_name=view_name if view_name else state.view.name,
-        )
+        dataset = await Dataset.resolver(state.dataset.name, view, info)
+        return ViewResponse(view=state.view._serialize(), dataset=dataset)
 
     @gql.mutation
     async def store_teams_submission(self) -> bool:
@@ -196,33 +182,10 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         view: BSONArray,
-        view_name: t.Optional[str],
         slice: str,
         info: Info,
     ) -> Dataset:
         state = get_state()
         state.dataset.group_slice = slice
         await dispatch_event(subscription, StateUpdate(state=state))
-        return await Dataset.resolver(
-            name=state.dataset.name,
-            view=view,
-            view_name=view_name if view_name else state.view.name,
-            info=info,
-        )
-
-    @gql.mutation
-    async def save_view(
-        self,
-        subscription: str,
-        session: t.Optional[str],
-        view_name: str,
-        description: t.Optional[str] = None,
-        color: t.Optional[str] = None,
-    ) -> bool:
-        state = get_state()
-        state.dataset.save_view(
-            view_name, state.view, description=description, color=color
-        )
-        state.view = state.dataset.load_view(view_name)
-        await dispatch_event(subscription, StateUpdate(state=state))
-        return True
+        return await Dataset.resolver(state.dataset.name, view, info)

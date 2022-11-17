@@ -61,15 +61,11 @@ class StateDescription(etas.Serializable):
                 d["dataset"] = self.dataset.name
                 collection = self.dataset
                 if self.view is not None:
-                    # HEAD?
                     collection = self.view
                     d["view"] = json.loads(
                         json_util.dumps(self.view._serialize())
                     )
                     d["view_cls"] = etau.get_class_name(self.view)
-                    d["view_name"] = self.view.name
-                # TODO: Check if we need to serialize saved_views specifically
-                #  d["saved_views"] = self.dataset._doc.saved_views
 
                 d["sample_fields"] = serialize_fields(
                     collection.get_field_schema(flat=True), dicts=True
@@ -86,6 +82,7 @@ class StateDescription(etas.Serializable):
 
             if self.config.colorscale:
                 d["colorscale"] = self.config.get_colormap()
+
             return d
 
     def attributes(self):

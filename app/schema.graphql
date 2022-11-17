@@ -127,7 +127,6 @@ type Dataset {
   frameFields: [SampleField!]
   brainMethods: [BrainRun!]!
   evaluations: [EvaluationRun!]!
-  savedViews: [SavedView!]
   version: String
   viewCls: String
   defaultSkeleton: KeypointSkeleton
@@ -285,8 +284,7 @@ type Mutation {
     subscription: String!
     session: String
     view: BSONArray!
-    viewName: String
-    datasetName: String!
+    dataset: String!
     form: StateForm
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
@@ -294,16 +292,8 @@ type Mutation {
     subscription: String!
     session: String
     view: BSONArray!
-    viewName: String
     slice: String!
   ): Dataset!
-  saveView(
-    subscription: String!
-    session: String
-    viewName: String!
-    description: String = null
-    color: String = null
-  ): Boolean!
 }
 
 type NamedKeypointSkeleton {
@@ -340,7 +330,7 @@ type Query {
   context: String!
   dev: Boolean!
   doNotTrack: Boolean!
-  dataset(name: String!, view: BSONArray, viewName: String): Dataset
+  dataset(name: String!, view: BSONArray): Dataset
   samples(
     dataset: String!
     view: BSONArray!
@@ -352,7 +342,6 @@ type Query {
   teamsSubmission: Boolean!
   uid: String!
   version: String!
-  savedView(datasetName: String!, viewName: String!): SavedView
 }
 
 type RootAggregation implements Aggregation {
@@ -415,19 +404,6 @@ type SampleItemStrPageInfo {
   hasPreviousPage: Boolean!
   startCursor: String
   endCursor: String
-}
-
-type SavedView {
-  datasetId: String!
-  name: String!
-  urlName: String!
-  description: String
-  color: String
-  viewStages: [String!]!
-  createdAt: datetime!
-  lastModifiedAt: datetime
-  lastLoadedAt: datetime
-  viewName: String!
 }
 
 input SelectedLabel {
@@ -507,7 +483,6 @@ type VideoSample implements Sample {
 type ViewResponse {
   view: BSONArray!
   dataset: Dataset!
-  viewName: String
 }
 
 scalar date

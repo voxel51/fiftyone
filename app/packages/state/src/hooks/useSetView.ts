@@ -55,7 +55,7 @@ const useSetView = (
               subscription,
               session,
               view: value,
-              datasetName: dataset.name,
+              dataset: dataset.name,
               form: patch
                 ? {
                     filters: snapshot.getLoadable(filters).contents,

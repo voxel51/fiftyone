@@ -1481,9 +1481,9 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         dataset = sample_collection._dataset
 
         # Import saved views
-        views = self._metadata.get("saved_views", None)
-        if views:
-            _import_saved_views(dataset, views)
+        saved_views = self._metadata.get("saved_views", None)
+        if saved_views:
+            _import_saved_views(dataset, saved_views)
 
         # Import annotation runs
         annotation_runs = self._metadata.get("annotation_runs", None)
