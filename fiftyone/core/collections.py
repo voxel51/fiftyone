@@ -123,7 +123,7 @@ class DownloadContext(object):
         view.download_media(**self.kwargs)
 
     def _clear_media(self):
-        media_fields = self.kwargs.get("media_field", None)
+        media_fields = self.kwargs.get("media_fields", None)
         self.sample_collection.clear_media(media_fields=media_fields)
 
 
