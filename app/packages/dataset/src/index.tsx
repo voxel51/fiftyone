@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { RecoilRoot, useRecoilState } from "recoil";
 import { RecoilRelayEnvironmentProvider } from "recoil-relay";
 import { DatasetRenderer } from "./Dataset";
-import { getEnvProps, fos } from "./";
+import { fos } from "./";
 
 export const Dataset = () => {
   const [environment] = useState(fos.getEnvironment);
