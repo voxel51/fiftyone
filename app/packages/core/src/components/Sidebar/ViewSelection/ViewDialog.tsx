@@ -49,7 +49,7 @@ export const COLOR_OPTIONS = [
 ];
 
 interface Props {
-  onEditSuccess: (saveView?: SavedView, isNewView?: boolean) => void;
+  onEditSuccess: (saveView?: SavedView, reload?: boolean) => void;
   onDeleteSuccess: () => void;
 }
 
@@ -177,8 +177,8 @@ export default function ViewDialog(props: Props) {
                 name: nameValue,
               },
             },
-            onCompleted: () => {
-              onEditSuccess();
+            onCompleted: ({ updateSavedView }) => {
+              onEditSuccess(updateSavedView, initialName !== nameValue);
             },
           })
         );
