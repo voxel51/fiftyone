@@ -18,6 +18,7 @@ import {
   DatasetSavedViewsFragment,
 } from "../../../Root/Root";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
+import { SavedView } from "@fiftyone/state";
 
 export const viewSearchTerm = atom({
   key: "viewSearchTerm",
@@ -124,13 +125,25 @@ export default function ViewSelection(props: Props) {
     }
   }, [loadedView]);
 
+  useEffect(() => {
+    if (viewOptions?.length && savedViewParam) {
+      const potentialView = viewOptions.filter(
+        (v) => v.id === savedViewParam
+      )?.[0];
+
+      if (selected?.id !== savedViewParam) {
+        setSelected(potentialView);
+      }
+    }
+  }, [viewOptions, savedViewParam]);
+
   return (
     <Box>
       <ViewDialog
-        onEditSuccess={(viewName?: string, isNewView?: boolean) => {
-          refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
-          if (isNewView) {
-            setView([], [], viewName, true);
+        onEditSuccess={(savedView?: SavedView, isNewView?: boolean) => {
+          refetch({ name: datasetName }, { fetchPolicy: "network-only" });
+          if (savedView && isNewView) {
+            setView([], [], savedView?.name, true, savedView?.urlName);
           }
         }}
         onDeleteSuccess={() => {
@@ -145,12 +158,8 @@ export default function ViewSelection(props: Props) {
           const allSelected = item.id === "1";
           setSelected(item);
           const selectedSavedView = allSelected ? "" : item.label;
-          setView([], [], selectedSavedView, true);
-          // if (selectedSavedView) {
-          //   setSavedViewParam(selectedSavedView);
-          // } else {
-          //   setSavedViewParam(null);
-          // }
+          const selectedSavedViewUrlName = allSelected ? "" : item.id;
+          setView([], [], selectedSavedView, true, selectedSavedViewUrlName);
         }}
         items={searchedData}
         onEdit={(item) => {

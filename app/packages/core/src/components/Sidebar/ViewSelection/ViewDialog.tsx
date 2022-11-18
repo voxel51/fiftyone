@@ -22,7 +22,7 @@ import { DatasetViewOption } from "@fiftyone/components/src/components/Selection
 import { useMutation } from "react-relay";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { stateSubscription, useSendEvent } from "@fiftyone/state";
+import { stateSubscription, trueAtom, useSendEvent } from "@fiftyone/state";
 import { useErrorHandler } from "react-error-boundary";
 import {
   Box,
@@ -31,7 +31,9 @@ import {
   Label,
   InputContainer,
   DialogBody,
+  ErrorText,
 } from "./styledComponents";
+import { SavedView } from "@fiftyone/state";
 
 // TODO: consolidate
 export const COLOR_OPTIONS = [
@@ -47,7 +49,7 @@ export const COLOR_OPTIONS = [
 ];
 
 interface Props {
-  onEditSuccess: (viewName?: string, isNewView?: boolean) => void;
+  onEditSuccess: (saveView?: SavedView, isNewView?: boolean) => void;
   onDeleteSuccess: () => void;
 }
 
@@ -156,8 +158,8 @@ export default function ViewDialog(props: Props) {
               subscription,
               session,
             },
-            onCompleted: () => {
-              onEditSuccess(nameValue, true);
+            onCompleted: ({ saveView }) => {
+              onEditSuccess(saveView, true);
             },
           })
         );

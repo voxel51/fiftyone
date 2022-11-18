@@ -441,6 +441,7 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
+  const { savedViews = [] } = fos.useSavedViews();
   const loadedDatasetName = useRecoilValue(datasetName);
 
   const setView = fos.useSetView();
@@ -456,8 +457,14 @@ const InteractiveSidebar = ({
   }
 
   useEffect(() => {
-    if (viewName && !modal) {
-      setView([], [], viewName);
+    if (savedViews?.length && viewName && !modal) {
+      // TODO: MANI - load view by url_name instead of name
+      const thisDataset = savedViews?.filter((ds) => ds.name === viewName)?.[0];
+      console.log("the dataset is", thisDataset);
+      if (thisDataset) {
+        const { urlName } = thisDataset;
+        setView([], [], viewName, true, urlName);
+      }
     }
   }, [viewName]);
 
