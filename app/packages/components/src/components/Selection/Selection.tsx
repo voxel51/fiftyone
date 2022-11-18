@@ -204,7 +204,7 @@ export default function Selection(props: SelectionProps) {
                   setIsOpen(false);
                 }}
                 sx={{
-                  display: "flex",
+                  display: id === "1" ? "none" : "flex",
                   width: "100%",
 
                   ["&.JoyOption-highlighted"]: {
