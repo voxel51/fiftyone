@@ -4,7 +4,7 @@ import { loading } from "./LoadingDots.module.css";
 
 const LoadingDots = ({ text, color }: { text: string; color?: string }) => {
   return (
-    <span className={loading} style={{ color }}>
+    <span className={loading} style={color ? { color } : {}}>
       {text}
     </span>
   );
