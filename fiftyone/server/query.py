@@ -367,9 +367,14 @@ class Query(fosa.AggregateQuery):
 
         ds = fo.load_dataset(dataset_name)
         if ds.has_views & ds.has_view(view_name):
-            for the_view_name in ds.list_views:
-                if the_view_name == view_name:
-                    return view
+            return next(
+                (
+                    view_doc
+                    for view_doc in ds._doc.saved_views
+                    if view_doc.name == view_name
+                ),
+                None,
+            )
         return
 
     @gql.field

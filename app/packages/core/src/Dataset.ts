@@ -85,6 +85,7 @@ const DatasetQuery = graphql`
         }
       }
       savedViews {
+        id
         datasetId
         name
         urlName

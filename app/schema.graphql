@@ -318,9 +318,9 @@ type Mutation {
     viewName: String!
   ): Boolean!
   updateSavedView(
-    subscription: String!
-    session: String
     viewName: String!
+    subscription: String
+    session: String
     updatedInfo: SavedViewInfo!
   ): SavedView
 }
@@ -371,8 +371,8 @@ type Query {
   teamsSubmission: Boolean!
   uid: String!
   version: String!
-  savedView(datasetName: String!, viewName: String!): SavedView
-  savedViews(datasetName: String!): [SavedView!]
+  savedView(datasetName: String!, viewName: String): SavedView
+  savedViews(datasetName: String!): [SavedView!]!
 }
 
 type RootAggregation implements Aggregation {

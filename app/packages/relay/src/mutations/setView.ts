@@ -76,6 +76,18 @@ export default graphql`
             patchesField
           }
         }
+        savedViews {
+          id
+          datasetId
+          name
+          urlName
+          description
+          color
+          viewStages
+          createdAt
+          lastModifiedAt
+          lastLoadedAt
+        }
         lastLoadedAt
         createdAt
         version
