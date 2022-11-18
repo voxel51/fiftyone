@@ -366,7 +366,7 @@ class Query(fosa.AggregateQuery):
             return
 
         ds = fo.load_dataset(dataset_name)
-        if ds.has_views & ds.has_view(view_name):
+        if ds.has_views and ds.has_view(view_name):
             return next(
                 (
                     view_doc
@@ -380,10 +380,7 @@ class Query(fosa.AggregateQuery):
     @gql.field
     def saved_views(self, dataset_name: str) -> t.List[SavedView]:
         ds = fo.load_dataset(dataset_name)
-
-        if ds.all_views:
-            return ds.all_views
-        return []
+        return ds._doc.saved_views or []
 
 
 def _flatten_fields(

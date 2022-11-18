@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<016d79a1d27e3a64e1e2fe1dfc8fbb76>>
+ * @generated SignedSource<<094cdb749ca72248c0d764a1279889c1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,7 +22,7 @@ export type RootDatasetSavedViewsFragment$data = {
     readonly name: string;
     readonly urlName: string;
     readonly viewStages: ReadonlyArray<string>;
-  }> | null;
+  }>;
   readonly " $fragmentType": "RootDatasetSavedViewsFragment";
 };
 export type RootDatasetSavedViewsFragment$key = {
