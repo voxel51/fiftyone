@@ -7,7 +7,6 @@ import * as fos from "@fiftyone/state";
 const useQueryState = (query) => {
   const router = useContext(RouterContext);
   const dataset = useRecoilValue(fos.dataset);
-  const { savedViews = [] } = fos.useSavedViews();
 
   const setQuery = useCallback(
     (value) => {
