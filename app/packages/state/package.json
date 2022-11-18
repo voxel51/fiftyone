@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "vite",
     "test": "vitest --run",
-    "coverage": "vitest run --coverage"
+    "test-with-coverage": "vitest run --coverage"
   },
   "private": true,
   "files": [

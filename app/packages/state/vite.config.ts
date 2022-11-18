@@ -6,15 +6,10 @@ import relay from "vite-plugin-relay";
 export default <UserConfig>{
   test: {
     environment: "jsdom",
-    exclude: [
-      "packages/plugins",
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/cypress/**",
-      "**/.{idea,git,cache,output,temp}/**",
-      "**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress}.config.*",
-    ],
-    deps: {},
+    coverage: {
+      reporter: ["json"],
+      reportsDirectory: "../../coverage",
+    },
   },
   plugins: [
     reactRefresh({

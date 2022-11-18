@@ -2,14 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("recoil");
 vi.mock("recoil-relay");
-import * as options from "./options";
+import * as options from "../../src/recoil/options";
 
 import {
   setMockAtoms,
   TestSelector,
   TestSelectorFamily,
 } from "../../__mocks__/recoil";
-import { aggregationQuery } from "./aggregations";
+import { aggregationQuery } from "../../src/recoil/aggregations";
 
 describe("Resolves configured sidebar mode priority", () => {
   const test = <

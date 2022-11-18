@@ -19,6 +19,7 @@
     "postinstall": "patch-package",
     "start": "yarn workspace @fiftyone/app start",
     "start-desktop": "yarn workspace FiftyOne start-desktop",
+    "test": "yarn workspace @fiftyone/state test-with-coverage",
     "gen:schema": "strawberry export-schema fiftyone.server.app:schema > schema.graphql"
   },
   "devDependencies": {

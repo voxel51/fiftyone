@@ -1,0 +1,30 @@
+name: Test App
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - develop
+  push:
+    branches:
+      - develop
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v2
+      - name: Fetch app dependency cache
+        uses: actions/cache@v2
+        with:
+          path: app/node_modules
+          key: npm-${{ hashFiles('app/package.json') }}
+          restore-keys: |
+            npm-${{ hashFiles('app/package.json') }}
+            npm-
+      - name: Install app
+        run: cd app && yarn install
+      - name: Install app
+        run: cd app && yarn test --coverage
