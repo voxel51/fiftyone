@@ -125,6 +125,12 @@ export default function ViewDialog(props: Props) {
   const [deleteView] = useMutation<foq.deleteSavedViewMutation>(
     foq.deleteSavedView
   );
+  const resetValues = useCallback(() => {
+    resetViewContent();
+    setNameValue("");
+    setDescriptionValue("");
+    setColorOption(COLOR_OPTIONS[0]);
+  }, []);
 
   const handleDeleteView = useCallback(() => {
     if (nameValue) {
@@ -137,6 +143,7 @@ export default function ViewDialog(props: Props) {
             session,
           },
           onCompleted: () => {
+            resetValues();
             onDeleteSuccess();
           },
         })
@@ -159,6 +166,7 @@ export default function ViewDialog(props: Props) {
               session,
             },
             onCompleted: ({ saveView }) => {
+              resetValues();
               onEditSuccess(saveView, true);
             },
           })
@@ -178,6 +186,7 @@ export default function ViewDialog(props: Props) {
               },
             },
             onCompleted: ({ updateSavedView }) => {
+              resetValues();
               onEditSuccess(updateSavedView, initialName !== nameValue);
             },
           })
@@ -186,13 +195,6 @@ export default function ViewDialog(props: Props) {
       setIsOpen(false);
     }
   }, [view, nameValue, descriptionValue, colorOption?.color, subscription]);
-
-  const resetValues = useCallback(() => {
-    resetViewContent();
-    setNameValue("");
-    setDescriptionValue("");
-    setColorOption(COLOR_OPTIONS[0]);
-  }, []);
 
   return (
     <Dialog

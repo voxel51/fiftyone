@@ -147,9 +147,8 @@ export default function ViewSelection(props: Props) {
           }
         }}
         onDeleteSuccess={() => {
-          // TODO: MANI - redirect if loaded view is deleted
           refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
-          // setView([], [], "", true);
+          setView([], [], "", true, "");
         }}
       />
       <Selection
