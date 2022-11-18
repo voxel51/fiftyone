@@ -71,6 +71,62 @@ view_stage = _make_registrar()
 aggregation = _make_registrar()
 
 
+class DownloadContext(object):
+    """Context that can be used to pre-download media while iterating over a
+    collection.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        batch_size: the sample batch size to use
+        clear (None): whether to force clear the media from the cache when the
+            context exits
+        **kwargs: valid keyword arguments for
+            :meth:`fiftyone.core.collections.SampleCollection.download_media`
+    """
+
+    def __init__(self, sample_collection, batch_size, clear=False, **kwargs):
+        sample_collection._download_context = self
+
+        self.sample_collection = sample_collection
+        self.batch_size = batch_size
+        self.clear = clear
+        self.kwargs = kwargs
+
+        self._curr_batch_size = None
+        self._total = None
+
+    def __enter__(self):
+        self._curr_batch_size = self.batch_size
+        self._total = 0
+        return self
+
+    def __exit__(self, *args):
+        try:
+            delattr(self.sample_collection, "_download_context")
+        except:
+            pass
+
+        if self.clear:
+            self._clear_media()
+
+    def next(self):
+        if self._curr_batch_size >= self.batch_size:
+            self._download_batch()
+            self._curr_batch_size = 0
+
+        self._curr_batch_size += 1
+        self._total += 1
+
+    def _download_batch(self):
+        view = self.sample_collection.skip(self._total).limit(self.batch_size)
+        view.download_media(**self.kwargs)
+
+    def _clear_media(self):
+        media_fields = self.kwargs.get("media_field", None)
+        self.sample_collection.clear_media(media_fields=media_fields)
+
+
 class SaveContext(object):
     """Context that saves samples from a collection according to a configurable
     batching strategy.
@@ -825,6 +881,33 @@ class SampleCollection(object):
             KeyError: if the group ID is not found
         """
         raise NotImplementedError("Subclass must implement get_group()")
+
+    def download_context(self, batch_size=100, clear=False, **kwargs):
+        """Returns a context that can be used to automatically pre-download
+        media when iterating over samples in this collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.core.cache as foc
+
+            dataset = fo.load_dataset("a-cloud-backed-dataset")
+
+            with dataset.download_context(batch_size=100):
+                for sample in dataset.iter_samples(progress=True):
+                    assert foc.media_cache.is_local_or_cached(sample.filepath)
+
+        Args:
+            batch_size (100): the sample batch size to use when downloading
+                media
+            clear (False): whether to clear the media from the cache when the
+                context exits
+            **kwargs: valid keyword arguments for :meth:`download_media`
+
+        Returns:
+            a :class:`DownloadContext`
+        """
+        return DownloadContext(self, batch_size, clear=clear, **kwargs)
 
     def save_context(self, batch_size=None):
         """Returns a context that can be used to save samples from this
