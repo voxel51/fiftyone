@@ -28,12 +28,23 @@ export const viewDialogOpen = atom({
   key: "viewDialogOpen",
   default: false,
 });
+export const lastLoadedSavedViewState = atom<SaveView | null>({
+  key: "lastLoadedSavedViewState",
+  default: null,
+});
+
+const UNSAVED_OPTION = {
+  id: "0",
+  label: "Unsaved view",
+  color: "#9e9e9e",
+  description: "Unsaved view",
+};
 
 const DEFAULT_SELECTED = {
   id: "1",
-  label: "All samples",
+  label: "Unsaved view",
   color: "#9e9e9e",
-  description: "All samples",
+  description: "Unsaved view",
 };
 
 // TODO: remove
@@ -42,6 +53,7 @@ export interface DatasetViewOption {
   label: string;
   color: string | null;
   description: string | null;
+  viewStages?: readonly string[];
 }
 
 export interface DatasetView {
@@ -69,6 +81,9 @@ export default function ViewSelection(props: Props) {
   const loadedView = useRecoilValue(fos.view);
   const setEditView = useSetRecoilState(viewDialogContent);
   const setView = fos.useSetView();
+  const [isUnsavedView, setIsUnsavedView] = useState<boolean>(false);
+  const [lastLoadedSavedView, setLastLoadedSavedView] =
+    useRecoilState<SavedView | null>(lastLoadedSavedViewState);
 
   const fragments = usePreloadedQuery(DatasetSavedViewsQuery, queryRef);
   const [data, refetch] = useRefetchableFragment(
@@ -77,35 +92,26 @@ export default function ViewSelection(props: Props) {
   );
 
   const items = data?.savedViews || [];
+
   const isEmptyView = !loadedView?.length;
 
   const viewOptions: DatasetViewOption[] = [
     DEFAULT_SELECTED,
     ...items.map((item: DatasetView) => {
-      const { name, urlName, color, description } = item;
+      const { name, urlName, color, description, viewStages } = item;
 
       return {
         id: urlName,
         label: name,
         color: color,
         description: description || "",
+        viewStages,
       };
     }),
   ] as DatasetViewOption[];
 
   // TODO: get saved views here from state and pass as items instead
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
-
-  let selectedView = viewOptions[0];
-  if (savedViewParam) {
-    const potentialView = viewOptions.filter(
-      (v) => v.id === savedViewParam
-    )?.[0];
-    if (potentialView) {
-      selectedView = potentialView;
-    }
-  }
-  const [selected, setSelected] = useState<DatasetViewOption>(selectedView);
 
   const searchedData: DatasetViewOption[] = filter(
     viewOptions,
@@ -136,6 +142,43 @@ export default function ViewSelection(props: Props) {
       }
     }
   }, [viewOptions, savedViewParam]);
+
+  let selectedView = viewOptions[0];
+  if (savedViewParam) {
+    const potentialView = viewOptions.filter(
+      (v) => v.id === savedViewParam
+    )?.[0];
+    if (potentialView) {
+      selectedView = potentialView;
+    }
+  }
+  const [selected, setSelected] = useState<DatasetViewOption>(selectedView);
+
+  // to detect unsaved views - can be improved by comparing inner properties
+  // useEffect(() => {
+  //   if (selected && loadedView) {
+  //     setLastLoadedSavedView(selected);
+
+  //     if (selected.viewStages?.length !== loadedView?.length) {
+  //       setIsUnsavedView(true);
+  //     } else {
+  //       setIsUnsavedView(false);
+  //     }
+  //   }
+  // }, [selected, loadedView]);
+
+  // to detect unsaved views - can be improved by comparing inner properties
+  useEffect(() => {
+    if (selected && loadedView) {
+      if (
+        selected.viewStages?.length !== loadedView?.length &&
+        selected.id !== "1"
+      ) {
+        setSavedViewParam(null);
+        setSelected(viewOptions[0]);
+      }
+    }
+  }, [selected, loadedView]);
 
   return (
     <Box>
