@@ -204,9 +204,7 @@ const Selector = <T extends unknown>({
                 minWidth: triggerBounds?.width,
               }}
             >
-              <Suspense
-                fallback={<div className={style.loadingFooter}>Loading...</div>}
-              >
+              <Suspense fallback={<div className={style.loadingFooter} />}>
                 <SelectorResults
                   active={active}
                   search={search}
