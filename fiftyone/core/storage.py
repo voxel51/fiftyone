@@ -82,7 +82,7 @@ class FileSystem(object):
 
 
 _FILE_SYSTEMS_WITH_BUCKETS = {FileSystem.S3, FileSystem.GCS, FileSystem.MINIO}
-_FILE_SYSTEMS_WITH_REGIONAL_CLIENTS = {FileSystem.S3}
+_FILE_SYSTEMS_WITH_REGIONAL_CLIENTS = {FileSystem.S3, FileSystem.MINIO}
 
 
 class S3StorageClient(etast.S3StorageClient):
