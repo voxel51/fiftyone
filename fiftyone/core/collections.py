@@ -2329,7 +2329,7 @@ class SampleCollection(object):
 
     def _get_media_paths(self, media_fields=None):
         if media_fields is None:
-            media_fields = list(self._get_media_paths().keys())
+            media_fields = list(self._get_media_fields().keys())
         elif etau.is_container(media_fields):
             media_fields = list(media_fields)
         else:
@@ -2345,9 +2345,11 @@ class SampleCollection(object):
             _media_fields.append(media_field)
 
         if len(_media_fields) > 1:
-            return itertools.chain.from_iterable(self.values(_media_fields))
+            return itertools.chain.from_iterable(
+                self.values(_media_fields, unwind=True)
+            )
 
-        return self.values(_media_fields[0])
+        return self.values(_media_fields[0], unwind=True)
 
     def apply_model(
         self,
