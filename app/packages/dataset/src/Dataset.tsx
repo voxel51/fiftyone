@@ -16,23 +16,18 @@ import {
 } from "@fiftyone/core";
 import { usePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { getEventSource, toCamelCase } from "@fiftyone/utilities";
-import { getEnvironment, RelayEnvironmentKey, State } from "@fiftyone/state";
-import React, { useEffect, useState, Suspense } from "react";
-import { PreloadedQuery, useQueryLoader, usePreloadedQuery } from "react-relay";
+import { getEnvironment, RelayEnvironmentKey } from "@fiftyone/state";
+import React, { useState, Suspense } from "react";
+import { PreloadedQuery, useQueryLoader } from "react-relay";
 import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 import { RecoilRelayEnvironmentProvider } from "recoil-relay";
 import styled from "styled-components";
 
-import { DatasetQuery, DatasetQuery$data } from "@fiftyone/core";
+import { DatasetQuery } from "@fiftyone/core";
 
 // built-in plugins
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
-
-enum Events {
-  STATE_UPDATE = "state_update",
-}
 
 const Container = styled.div`
   width: 100%;
@@ -96,7 +91,6 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
     setCompactLayout(compactLayout);
   }, [compactLayout]);
   React.useEffect(() => {
-    console.log(dataset);
     loadQuery({ name: dataset });
   }, [dataset]);
   React.useLayoutEffect(() => {
