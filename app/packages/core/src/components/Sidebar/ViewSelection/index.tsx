@@ -140,9 +140,9 @@ export default function ViewSelection(props: Props) {
   return (
     <Box>
       <ViewDialog
-        onEditSuccess={(savedView?: SavedView, isNewView?: boolean) => {
-          refetch({ name: datasetName }, { fetchPolicy: "network-only" });
-          if (savedView && isNewView) {
+        onEditSuccess={(savedView?: SavedView, reload?: boolean) => {
+          refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
+          if (savedView && reload) {
             setView([], [], savedView?.name, true, savedView?.urlName);
           }
         }}
