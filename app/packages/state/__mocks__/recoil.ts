@@ -4,7 +4,7 @@ export * from "recoil";
 export let mockValues = {};
 export let mockValuesStore = {};
 export let mockDefaults = {};
-export function __setMockValues(newMockValues: { [key: string]: any }) {
+export function setMockAtoms(newMockValues: { [key: string]: any }) {
   mockValues = {
     ...mockValues,
     ...newMockValues,

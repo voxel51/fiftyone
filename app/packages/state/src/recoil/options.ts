@@ -96,6 +96,6 @@ export const isLargeVideo = selector<boolean>({
       })
     );
 
-    return data.aggregations[0].count > 1000;
+    return data.aggregations[0].count >= 1000;
   },
 });

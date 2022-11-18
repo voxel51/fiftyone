@@ -1,54 +1,147 @@
-import { expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("recoil");
 vi.mock("recoil-relay");
 import * as options from "./options";
 
 import {
-  __setMockValues,
+  setMockAtoms,
   TestSelector,
   TestSelectorFamily,
 } from "../../__mocks__/recoil";
+import { aggregationQuery } from "./aggregations";
 
-it("Correctly resolves configured sidebar mode priority", () => {
+describe("Resolves configured sidebar mode priority", () => {
   const test = <
     TestSelectorFamily<typeof options.configuredSidebarModeDefault>
   >(<unknown>options.configuredSidebarModeDefault(false));
 
-  __setMockValues({
-    datasetAppConfig: { sidebarMode: "best" },
-    sidebarMode: (modal: boolean) => "all",
+  it("resolves to all", () => {
+    setMockAtoms({
+      appConfigDefault: (params) => null,
+      datasetAppConfig: { sidebarMode: "best" },
+      sidebarMode: (modal) => "all",
+    });
+    expect(test()).toBe("all");
+  });
+  it("resolves to fast", () => {
+    setMockAtoms({
+      appConfigDefault: (params) => "best",
+      datasetAppConfig: { sidebarMode: "fast" },
+      sidebarMode: (modal) => null,
+    });
+    expect(test()).toBe("fast");
   });
 
-  expect(test()).toBe("all");
-
-  __setMockValues({
-    datasetAppConfig: { sidebarMode: "fast" },
-    sidebarMode: (modal: boolean) => null,
-    appConfigDefault: (params) => "best",
+  it("resolves to all", () => {
+    setMockAtoms({
+      appConfigDefault: (params) => "best",
+      datasetAppConfig: { sidebarMode: null },
+      sidebarMode: (modal) => null,
+    });
+    expect(test()).toBe("best");
   });
-
-  expect(test()).toBe("fast");
 });
 
-it("Correctly resolves the large video datasets threshold", () => {
+describe("Resolves to resolved sidebar bar and translates best correctly", () => {
+  const test = <TestSelectorFamily<typeof options.resolvedSidebarMode>>(
+    (<unknown>options.resolvedSidebarMode(false))
+  );
+
+  it("resolves to fast", () => {
+    setMockAtoms({
+      configuredSidebarModeDefault: (modal) => "best",
+      aggregationQuery: {
+        aggregations: [
+          {
+            __typename: "RootAggregation",
+            count: 1,
+            expandedFieldCount: 15,
+            frameLabelFieldCount: 1,
+          },
+        ],
+      },
+    });
+    expect(test()).toBe("fast");
+  });
+
+  it("resolves to fast", () => {
+    setMockAtoms({
+      configuredSidebarModeDefault: (modal) => "best",
+      aggregationQuery: {
+        aggregations: [
+          {
+            __typename: "RootAggregation",
+            count: 1,
+            expandedFieldCount: 14,
+            frameLabelFieldCount: 1,
+          },
+        ],
+      },
+    });
+    expect(test()).toBe("fast");
+  });
+
+  it("resolves to fast", () => {
+    setMockAtoms({
+      configuredSidebarModeDefault: (modal) => "best",
+      aggregationQuery: {
+        aggregations: [
+          {
+            __typename: "RootAggregation",
+            count: 10000,
+            expandedFieldCount: 14,
+            frameLabelFieldCount: 0,
+          },
+        ],
+      },
+    });
+    expect(test()).toBe("fast");
+  });
+
+  it("resolves to fast", () => {
+    setMockAtoms({
+      configuredSidebarModeDefault: (modal) => "best",
+      aggregationQuery: {
+        aggregations: [
+          {
+            __typename: "RootAggregation",
+            count: 9999,
+            expandedFieldCount: 14,
+            frameLabelFieldCount: 0,
+          },
+        ],
+      },
+    });
+    expect(test()).toBe("all");
+  });
+});
+
+describe("Resolves the large video datasets threshold", () => {
   const test = <TestSelector<typeof options.isLargeVideo>>(
     (<unknown>options.isLargeVideo)
   );
-  __setMockValues({
-    aggregationQuery: { aggregations: [{ count: 1001 }] },
-    isVideoDataset: true,
-  });
-  expect(test.call()).toBe(true);
 
-  __setMockValues({
-    aggregationQuery: { aggregations: [{ count: 1000 }] },
+  it("resolves to true", () => {
+    setMockAtoms({
+      aggregationQuery: { aggregations: [{ count: 1000 }] },
+      isVideoDataset: true,
+    });
+    expect(test.call()).toBe(true);
   });
-  expect(test.call()).toBe(false);
 
-  __setMockValues({
-    aggregationQuery: { aggregations: [{ count: 1001 }] },
-    isVideoDataset: false,
+  it("resolves to false", () => {
+    setMockAtoms({
+      aggregationQuery: { aggregations: [{ count: 999 }] },
+    });
+    expect(test.call()).toBe(false);
   });
-  expect(test.call()).toBe(false);
+
+  it("resolves to false", () => {
+    setMockAtoms({
+      aggregationQuery: { aggregations: [{ count: 1000 }] },
+      isVideoDataset: false,
+    });
+    expect(test.call()).toBe(false);
+  });
 });
