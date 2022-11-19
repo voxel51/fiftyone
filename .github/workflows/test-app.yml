@@ -30,8 +30,7 @@ jobs:
         run: cd app && yarn test --coverage
       - name: Upload coverage
         uses: codecov/codecov-action@v3
-        working-directory: coverage
         with:
-          files: ./lcov.info
+          files: ./coverage/lcov.info
           flags: state-unit-tests
           fail_ci_if_error: true
