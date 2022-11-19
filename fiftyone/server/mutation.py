@@ -220,7 +220,7 @@ class Mutation:
         )
 
     @gql.mutation
-    def save_view(
+    async def save_view(
         self,
         subscription: str,
         session: t.Optional[str],
@@ -239,6 +239,8 @@ class Mutation:
         dataset.reload()
         state.view = dataset.load_view(view_name)
         state.view_name = view_name
+        await dispatch_event(subscription, StateUpdate(state=state))
+
         return next(
             (
                 saved_view
@@ -251,7 +253,7 @@ class Mutation:
     # TODO: return an id or the object that was deleted?
     # https://stackoverflow.com/questions/58889341/what-should-be-the-graphql-mutation-return-type-when-there-is-no-data-to-return#:~:text=For%20deletions%2C%20it's%20common%20to,to%20better%20encapsulate%20client%20errors.
     @gql.mutation
-    def delete_saved_view(
+    async def delete_saved_view(
         self, subscription: str, session: t.Optional[str], view_name: str
     ) -> bool:
         state = get_state()
@@ -271,16 +273,16 @@ class Mutation:
             state.view_name = None
 
         # TODO: confirm StateUpdate is unnecessary
-        # await dispatch_event(subscription, StateUpdate(state=state))
+        await dispatch_event(subscription, StateUpdate(state=state))
 
         return True
 
     @gql.mutation
     def update_saved_view(
         self,
-        view_name: str,
         subscription: t.Optional[str],
         session: t.Optional[str],
+        view_name: str,
         updated_info: SavedViewInfo,
     ) -> t.Optional[SavedView]:
         """Updates the editable fields of a saved view

@@ -6,6 +6,7 @@ import * as fos from "@fiftyone/state";
 
 const Home: Route = ({}) => {
   const setDataset = useSetRecoilState(fos.dataset);
+  // const setView = useSetRecoilState();
   useLayoutEffect(() => {
     setDataset(null);
   }, []);

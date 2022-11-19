@@ -446,15 +446,8 @@ const InteractiveSidebar = ({
 
   const setView = fos.useSetView();
 
-  // TODO: there has to be a better way
-  const paramsList = location?.search?.substring(1)?.split("=");
-  let viewName = "";
-  for (let i = 0; i < paramsList?.length; i++) {
-    if (paramsList[i] === "view" && i + 1 <= paramsList?.length) {
-      viewName = paramsList[i + 1];
-      break;
-    }
-  }
+  const queryParams = new URLSearchParams(location.search);
+  const viewName = queryParams.get("view");
 
   useEffect(() => {
     if (savedViews?.length && viewName && !modal) {

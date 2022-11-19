@@ -318,9 +318,9 @@ type Mutation {
     viewName: String!
   ): Boolean!
   updateSavedView(
-    viewName: String!
     subscription: String
     session: String
+    viewName: String!
     updatedInfo: SavedViewInfo!
   ): SavedView
 }
