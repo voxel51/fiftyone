@@ -39,7 +39,7 @@ your datasets and turn your good models into *great models*.
     :header: pandas and FiftyOne Comparison Guide
     :description: pandas and FiftyOne are each essential to a variety of data science and machine learning workflows. In this tutorial, we give a side-by-side comparison of the two.
     :link: pandas_comparison.html
-    :image: ../_static/images/tutorials/evaluate_detections.png
+    :image: ../_static/images/tutorials/pandas_tutorial.png
     :tags: Dataset-Evaluation
 
 .. customcarditem::
