@@ -26,10 +26,10 @@ jobs:
             npm-
       - name: Install app
         run: cd app && yarn install
-      - name: Install app
+      - name: Run tests
         run: cd app && yarn test --coverage
       - name: Upload coverage
         uses: codecov/codecov-action@v3
         with:
-          flags: state unit tests
+          flags: state-unit-tests
           fail_ci_if_error: true
