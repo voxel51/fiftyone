@@ -7,7 +7,7 @@ export default <UserConfig>{
   test: {
     environment: "jsdom",
     coverage: {
-      reporter: ["json"],
+      reporter: ["lcov"],
       reportsDirectory: "../../coverage",
     },
   },

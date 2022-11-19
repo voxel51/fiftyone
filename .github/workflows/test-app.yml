@@ -31,6 +31,6 @@ jobs:
       - name: Upload coverage
         uses: codecov/codecov-action@v3
         with:
-          files: ./coverage/coverage-final.json
+          files: ./coverage/lcov.info
           flags: state-unit-tests
           fail_ci_if_error: true
