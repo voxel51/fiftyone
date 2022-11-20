@@ -31,6 +31,7 @@ from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
+import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
@@ -1844,7 +1845,11 @@ class SampleCollection(object):
             )
 
         if expand_schema and self.get_field(field_name) is None:
-            self._expand_schema_from_values(field_name, values)
+            is_group_field = self._expand_schema_from_values(
+                field_name, values
+            )
+        else:
+            is_group_field = False
 
         _field_name, _, list_fields, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
@@ -1902,30 +1907,43 @@ class SampleCollection(object):
         ):
             list_fields = sorted(set(list_fields + [_field_name]))
 
-        if is_frame_field:
-            self._set_frame_values(
-                _field_name,
-                values,
-                list_fields,
-                sample_ids=_sample_ids,
-                frame_ids=_frame_ids,
-                to_mongo=to_mongo,
-                skip_none=skip_none,
-            )
-        else:
-            self._set_sample_values(
-                _field_name,
-                values,
-                list_fields,
-                sample_ids=_sample_ids,
-                to_mongo=to_mongo,
-                skip_none=skip_none,
-            )
+        try:
+            if is_frame_field:
+                self._set_frame_values(
+                    _field_name,
+                    values,
+                    list_fields,
+                    sample_ids=_sample_ids,
+                    frame_ids=_frame_ids,
+                    to_mongo=to_mongo,
+                    skip_none=skip_none,
+                )
+            else:
+                self._set_sample_values(
+                    _field_name,
+                    values,
+                    list_fields,
+                    sample_ids=_sample_ids,
+                    to_mongo=to_mongo,
+                    skip_none=skip_none,
+                )
+        except:
+            if is_group_field:
+                self._dataset.delete_sample_fields(field_name)
+                is_group_field = False
+
+            raise
+        finally:
+            if is_group_field:
+                self._dataset._doc.media_type = fom.GROUP
+                self._dataset._doc.save()
 
     def _expand_schema_from_values(self, field_name, values):
         field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
         root = field_name.split(".", 1)[0]
+
+        is_group_field = False
 
         if is_frame_field:
             schema = self._dataset.get_frame_field_schema(include_private=True)
@@ -1984,7 +2002,36 @@ class SampleCollection(object):
                         "field '%s' from empty values" % field_name
                     )
 
-            self._dataset._add_implied_sample_field(field_name, value)
+            if isinstance(value, fog.Group):
+                if not isinstance(self, fod.Dataset):
+                    raise ValueError(
+                        "Group fields can only be added to entire datasets"
+                    )
+
+                media_type = self.media_type
+                slice_names = set()
+                for _value in values:
+                    if isinstance(_value, fog.Group):
+                        slice_names.add(_value.name)
+                    else:
+                        raise ValueError(
+                            "All values must be `Group` instances when "
+                            "declaring group fields; found %s" % type(_value)
+                        )
+
+                self._dataset._add_group_field(field_name)
+                for slice_name in slice_names:
+                    self._dataset._expand_group_schema(
+                        field_name, slice_name, media_type
+                    )
+
+                # Temporarily lie about media type until after values are added
+                self._dataset._doc.media_type = media_type
+                is_group_field = True
+            else:
+                self._dataset._add_implied_sample_field(field_name, value)
+
+        return is_group_field
 
     def _set_sample_values(
         self,

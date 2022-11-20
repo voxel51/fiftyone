@@ -651,14 +651,22 @@ class DatasetMixin(object):
                 and not is_frame_field
                 and path == dataset.group_field
             ):
-                fou.handle_error(
-                    ValueError(
-                        "Cannot delete group field '%s' of a grouped dataset"
-                        % path
-                    ),
-                    error_level,
-                )
-                continue
+                media_types = list(set(dataset_doc.group_media_types.values()))
+                if len(media_types) > 1:
+                    fou.handle_error(
+                        ValueError(
+                            "Cannot delete group field '%s' of a grouped "
+                            "dataset that contains multiple media types" % path
+                        ),
+                        error_level,
+                    )
+                    continue
+
+                dataset._group_slice = None
+                dataset_doc.group_field = None
+                dataset_doc.default_group_slice = None
+                dataset_doc.group_media_types = {}
+                dataset_doc.media_type = media_types[0]
 
             del_paths.append(path)
             del_schema_paths.append(path)
