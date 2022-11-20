@@ -1928,8 +1928,10 @@ class SampleCollection(object):
                     skip_none=skip_none,
                 )
         except:
+            # Add a group field converts the dataset's type, so if it fails we
+            # must clean up after ourselves to avoid an inconsistent state
             if is_group_field:
-                self._dataset.delete_sample_fields(field_name)
+                self._dataset.delete_sample_field(field_name)
                 is_group_field = False
 
             raise
