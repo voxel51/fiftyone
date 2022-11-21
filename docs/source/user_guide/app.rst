@@ -302,8 +302,7 @@ samples or fields, this may involve substantial computation.
 
 Therefore, the App supports three sidebar modes that you can choose between:
 
--   `all`: always compute counts for all fields and stats for all fields whose
-    filter tray is expanded
+-   `all`: always compute counts for all fields and stats
 -   `fast`: only compute counts and stats for fields whose filter tray is
     expanded
 -   `best` (*default*): automatically choose between `all` and `fast` mode
@@ -408,7 +407,7 @@ You can conveniently reset the sidebar groups to their default state by setting
 
     If a dataset has fields that do not appear in the dataset's
     :class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>`
-    property, these fields will be dyanmically assigned to default groups in
+    property, these fields will be dynamically assigned to default groups in
     the App at runtime.
 
 .. _app-filtering:
