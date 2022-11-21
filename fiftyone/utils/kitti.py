@@ -984,7 +984,6 @@ def _roty(t):
 
 
 def _get_corners3d(h, w, l, R, t):
-    # Construct (x, y, z) coordinates of 3d box corners
     corners3d = np.array(
         [
             [l / 2, l / 2, -l / 2, -l / 2, l / 2, l / 2, -l / 2, -l / 2],
@@ -992,12 +991,16 @@ def _get_corners3d(h, w, l, R, t):
             [w / 2, -w / 2, -w / 2, w / 2, w / 2, -w / 2, -w / 2, w / 2],
         ]
     )
-    corners3d = R @ corners3d + t[:, np.newaxis]
-
-    return corners3d
+    return R @ corners3d + t[:, np.newaxis]
 
 
 def _proj_3d_to_right_camera(detections3d, calib, frame_size):
+    # Velodyne -> right camera
+    # P = calib["P3"] @ calib["R0_rect"] @ calib["Tr_velo_to_cam"]
+
+    # Reference 3D coordinates -> right camera
+    # P = calib["P3"] @ calib["R0_rect"]
+
     # Rectified 3D coordinates -> right camera
     P = calib["P3"]
 
@@ -1009,6 +1012,7 @@ def _proj_3d_to_right_camera(detections3d, calib, frame_size):
         t = np.array(detection["location"])
         R = _roty(detection["rotation"][1])
 
+        # Construct (x, y, z) coordinates of 3d box corners
         corners3d = _get_corners3d(h, w, l, R, t)
 
         # Project to image coordinates
@@ -1052,6 +1056,7 @@ def convert_box_lidar_to_camera(boxes, V2C, R0):
             -rz - np.pi / 2,
         )
         ret.append([x, y, z, h, w, l, ry])
+
     return np.array(ret).reshape(-1, 7)
 
 
