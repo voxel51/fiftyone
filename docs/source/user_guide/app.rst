@@ -302,9 +302,8 @@ samples or fields, this may involve substantial computation.
 
 Therefore, the App supports three sidebar modes that you can choose between:
 
--   `all`: always compute counts for all fields and stats
--   `fast`: only compute counts and stats for fields whose filter tray is
-    expanded
+-   `all`: always compute counts for all fields
+-   `fast`: only compute counts for fields whose filter tray is expanded
 -   `best` (*default*): automatically choose between `all` and `fast` mode
     based on the size of the dataset
 
