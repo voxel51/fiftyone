@@ -28,7 +28,6 @@ const useSetView = (
   const subscription = useRecoilValue(stateSubscription);
   const router = useContext(RouterContext);
   const [commit] = useMutation<setViewMutation>(setView);
-
   const onError = useErrorHandler();
 
   return useRecoilCallback(

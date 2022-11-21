@@ -18,7 +18,7 @@ import {
   DatasetSavedViewsFragment,
 } from "../../../Root/Root";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
-import { SavedView } from "@fiftyone/state";
+import { SavedViewInfo } from "@fiftyone/relay";
 
 export const viewSearchTerm = atom({
   key: "viewSearchTerm",
@@ -28,17 +28,10 @@ export const viewDialogOpen = atom({
   key: "viewDialogOpen",
   default: false,
 });
-export const lastLoadedSavedViewState = atom<SaveView | null>({
+export const lastLoadedSavedViewState = atom<fos.State.SavedView | null>({
   key: "lastLoadedSavedViewState",
   default: null,
 });
-
-const UNSAVED_OPTION = {
-  id: "0",
-  label: "Unsaved view",
-  color: "#9e9e9e",
-  description: "Unsaved view",
-};
 
 const DEFAULT_SELECTED = {
   id: "1",
@@ -81,23 +74,21 @@ export default function ViewSelection(props: Props) {
   const loadedView = useRecoilValue(fos.view);
   const setEditView = useSetRecoilState(viewDialogContent);
   const setView = fos.useSetView();
-  const [isUnsavedView, setIsUnsavedView] = useState<boolean>(false);
-  const [lastLoadedSavedView, setLastLoadedSavedView] =
-    useRecoilState<SavedView | null>(lastLoadedSavedViewState);
 
   const fragments = usePreloadedQuery(DatasetSavedViewsQuery, queryRef);
   const [data, refetch] = useRefetchableFragment(
     DatasetSavedViewsFragment,
     fragments
   );
+  console.log("data", data);
 
-  const items = data?.savedViews || [];
-
+  const items =
+    (data as { savedViews: [fos.State.SavedView] })?.savedViews || [];
   const isEmptyView = !loadedView?.length;
 
   const viewOptions: DatasetViewOption[] = [
     DEFAULT_SELECTED,
-    ...items.map((item: DatasetView) => {
+    ...items.map((item: fos.State.SavedView) => {
       const { name, urlName, color, description, viewStages } = item;
 
       return {
@@ -154,20 +145,7 @@ export default function ViewSelection(props: Props) {
   }
   const [selected, setSelected] = useState<DatasetViewOption>(selectedView);
 
-  // to detect unsaved views - can be improved by comparing inner properties
-  // useEffect(() => {
-  //   if (selected && loadedView) {
-  //     setLastLoadedSavedView(selected);
-
-  //     if (selected.viewStages?.length !== loadedView?.length) {
-  //       setIsUnsavedView(true);
-  //     } else {
-  //       setIsUnsavedView(false);
-  //     }
-  //   }
-  // }, [selected, loadedView]);
-
-  // to detect unsaved views - can be improved by comparing inner properties
+  // to detect unsaved views
   useEffect(() => {
     if (selected && loadedView) {
       if (
@@ -183,7 +161,8 @@ export default function ViewSelection(props: Props) {
   return (
     <Box>
       <ViewDialog
-        onEditSuccess={(savedView?: SavedView, reload?: boolean) => {
+        savedViews={items}
+        onEditSuccess={(savedView?: fos.State.SavedView, reload?: boolean) => {
           refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
           if (savedView && reload) {
             setView([], [], savedView?.name, true, savedView?.urlName);
