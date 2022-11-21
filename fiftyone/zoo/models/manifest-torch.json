@@ -1742,7 +1742,7 @@
         },
         {
             "base_name": "complex-yolo-v3-torch",
-            "base_filename": "yolov3_ckpt_epoch-298.pth",
+            "base_filename": "complex_yolov3",
             "version": null,
             "description": "Complex extension of YOLO object detection model <https://arxiv.org/abs/1803.06199>`_ ",
             "source": "https://github.com/ghimiredhikura/Complex-YOLOv3",

@@ -439,7 +439,6 @@ class ComplexYOLOv3(nn.Module):
 
 def build_model(config, img_size=608):
     device = config.device
-    config.weights_path = "tmp.pth"
     model = ComplexYOLOv3(config.config_path, img_size=img_size)
     model.load_state_dict(
         torch.load(config.weights_path, map_location=torch.device(device))
