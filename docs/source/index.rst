@@ -337,7 +337,6 @@ or reach out to us at support@voxel51.com.
    Environments <environments/index>
    Tutorials <tutorials/index>
    Recipes <recipes/index>
-   Cheat Sheets <cheat_sheets/index>
    User Guide <user_guide/index>
    Integrations <integrations/index>
    Release Notes <release-notes>
