@@ -8,6 +8,11 @@ export const Box = styled.div`
   width: 100%;
 `;
 
+export const ErrorBox = styled(Box)`
+  color: ${({ theme }) => theme.error.main};
+  justify-content: flex-start;
+`;
+
 export const LastOption = styled(Box)<{ disabled?: boolean }>`
   color: ${({ disabled, theme }) =>
     disabled ? theme.text.tertiary : theme.text.primary} !important;
@@ -77,11 +82,13 @@ export const DescriptionInput = styled.textarea`
   }
 `;
 
-export const NameInput = styled.input`
+export const NameInput = styled.input<{ error?: string }>`
   width: 100%;
-  margin: 0.5rem 0.75rem;
+  margin: ${({ error }) => (error ? "0.25rem 0.75rem" : "0.5rem 0.75rem")};
   border-radius: 4px;
-  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
+  border: 1px solid
+    ${({ theme, error }) =>
+      error ? theme.error.main : theme.primary.plainBorder};
   padding: 0.5rem;
   color: ${({ theme }) => theme.text.primary};
   background: ${({ theme }) => theme.background.level1};

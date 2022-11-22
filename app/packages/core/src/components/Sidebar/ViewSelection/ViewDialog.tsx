@@ -32,6 +32,7 @@ import {
   InputContainer,
   DialogBody,
   ErrorText,
+  ErrorBox,
 } from "./styledComponents";
 import { SavedView } from "@fiftyone/state";
 
@@ -49,6 +50,7 @@ export const COLOR_OPTIONS = [
 ];
 
 interface Props {
+  savedViews: fos.State.SavedView[];
   onEditSuccess: (saveView?: SavedView, reload?: boolean) => void;
   onDeleteSuccess: () => void;
 }
@@ -64,7 +66,7 @@ export const viewDialogContent = atom({
 });
 
 export default function ViewDialog(props: Props) {
-  const { onEditSuccess, onDeleteSuccess } = props;
+  const { onEditSuccess, onDeleteSuccess, savedViews = [] } = props;
   const theme = useTheme();
   const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
   const viewContent = useRecoilValue(viewDialogContent);
@@ -90,6 +92,13 @@ export default function ViewDialog(props: Props) {
     id: theColorOption.id,
     description: "",
   });
+
+  const savedViewNames = new Set(
+    savedViews.map((sv: fos.State.SavedView) => sv.name.toLowerCase())
+  );
+  const nameExists =
+    nameValue && nameValue !== initialName && savedViewNames.has(nameValue);
+  const nameError = nameExists ? "Name already exists" : "";
 
   const title = isCreating ? "Create view" : "Edit view";
 
@@ -238,7 +247,9 @@ export default function ViewDialog(props: Props) {
               placeholder="Your view name"
               value={nameValue}
               onChange={(e) => setNameValue(e.target.value)}
+              error={nameError}
             />
+            {nameError && <ErrorBox>{nameError}</ErrorBox>}
           </InputContainer>
           <InputContainer>
             <Label>Description</Label>
@@ -308,6 +319,7 @@ export default function ViewDialog(props: Props) {
             <Button
               onClick={handleSaveView}
               disabled={
+                !!nameError ||
                 !nameValue ||
                 (isCreating && !view?.length) ||
                 (initialName === nameValue &&

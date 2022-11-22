@@ -453,7 +453,6 @@ const InteractiveSidebar = ({
     if (savedViews?.length && viewName && !modal) {
       // TODO: MANI - load view by url_name instead of name
       const thisDataset = savedViews?.filter((ds) => ds.name === viewName)?.[0];
-      console.log("the dataset is", thisDataset);
       if (thisDataset) {
         const { urlName } = thisDataset;
         setView([], [], viewName, true, urlName);

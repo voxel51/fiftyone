@@ -15,8 +15,10 @@ import ViewDialog, { viewDialogContent } from "./ViewDialog";
 import { useQueryState } from "@fiftyone/state";
 
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
+
 import { SavedView } from "@fiftyone/state";
 import DatasetSavedViewsFragment from "../../../Root/Root";
+import { SavedViewInfo } from "@fiftyone/relay";
 
 export const viewSearchTerm = atom({
   key: "viewSearchTerm",
@@ -26,12 +28,16 @@ export const viewDialogOpen = atom({
   key: "viewDialogOpen",
   default: false,
 });
+export const lastLoadedSavedViewState = atom<fos.State.SavedView | null>({
+  key: "lastLoadedSavedViewState",
+  default: null,
+});
 
 const DEFAULT_SELECTED = {
   id: "1",
-  label: "All samples",
+  label: "Unsaved view",
   color: "#9e9e9e",
-  description: "All samples",
+  description: "Unsaved view",
 };
 
 // TODO: remove
@@ -40,6 +46,7 @@ export interface DatasetViewOption {
   label: string;
   color: string | null;
   description: string | null;
+  viewStages?: readonly string[];
 }
 
 export interface DatasetView {
@@ -79,36 +86,27 @@ export default function ViewSelection(props: Props) {
     fragments
   );
 
-  const items = data?.savedViews || [];
+  const items =
+    (data as { savedViews: [fos.State.SavedView] })?.savedViews || [];
   const isEmptyView = !loadedView?.length;
 
   const viewOptions: DatasetViewOption[] = [
     DEFAULT_SELECTED,
-    ...items.map((item: DatasetView) => {
-      const { name, urlName, color, description } = item;
+    ...items.map((item: fos.State.SavedView) => {
+      const { name, urlName, color, description, viewStages } = item;
 
       return {
         id: urlName,
         label: name,
         color: color,
         description: description || "",
+        viewStages,
       };
     }),
   ] as DatasetViewOption[];
 
   // TODO: get saved views here from state and pass as items instead
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
-
-  let selectedView = viewOptions[0];
-  if (savedViewParam) {
-    const potentialView = viewOptions.filter(
-      (v) => v.id === savedViewParam
-    )?.[0];
-    if (potentialView) {
-      selectedView = potentialView;
-    }
-  }
-  const [selected, setSelected] = useState<DatasetViewOption>(selectedView);
 
   const searchedData: DatasetViewOption[] = filter(
     viewOptions,
@@ -134,16 +132,43 @@ export default function ViewSelection(props: Props) {
         (v) => v.id === savedViewParam
       )?.[0];
 
-      if (selected?.id !== savedViewParam) {
+      if (!potentialView) {
+        setSavedViewParam(null);
+      } else if (selected?.id !== savedViewParam) {
         setSelected(potentialView);
       }
     }
   }, [viewOptions, savedViewParam]);
 
+  let selectedView = viewOptions[0];
+  if (savedViewParam) {
+    const potentialView = viewOptions.filter(
+      (v) => v.id === savedViewParam
+    )?.[0];
+    if (potentialView) {
+      selectedView = potentialView;
+    }
+  }
+  const [selected, setSelected] = useState<DatasetViewOption>(selectedView);
+
+  // to detect unsaved views
+  useEffect(() => {
+    if (selected && loadedView) {
+      if (
+        selected.viewStages?.length !== loadedView?.length &&
+        selected.id !== "1"
+      ) {
+        setSavedViewParam(null);
+        setSelected(viewOptions[0]);
+      }
+    }
+  }, [selected, loadedView]);
+
   return (
     <Box>
       <ViewDialog
-        onEditSuccess={(savedView?: SavedView, reload?: boolean) => {
+        savedViews={items}
+        onEditSuccess={(savedView?: fos.State.SavedView, reload?: boolean) => {
           refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
           if (savedView && reload) {
             setView([], [], savedView?.name, true, savedView?.urlName);
