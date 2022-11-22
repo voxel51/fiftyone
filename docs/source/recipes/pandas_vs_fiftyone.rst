@@ -1,9 +1,11 @@
 pandas vs FiftyOne
 ==================
 
+A cheat sheet showing how to translate common pandas operations into FiftyOne!
+
 .. default-role:: code
 
-Data representation
+Terminology
 ___________________
 
 .. list-table::
@@ -12,14 +14,17 @@ ___________________
 
    * - pandas
      - FiftyOne
-   * - DataFrame
-     - Dataset
+   * - DataFrame (``df``)
+     - Dataset (``ds``)
    * - Row
      - Sample
    * - Column
      - Field
 
-.. list-table:: Getting Started
+Getting Started
+_______________
+
+.. list-table::
    :widths: 30 60 60
    :header-rows: 1
    :stub-columns: 1
@@ -38,11 +43,6 @@ ___________________
    * - Create empty dataset
      - ``empty_df = pd.DataFrame()``
      - ``empty_dataset = fo.Dataset()``
-
-.. note::
-
-    ``*`` dentoes column or row for pandas DataFrame and field or sample for
-    FiftyOne Dataset.
 
 Basics
 ______
@@ -67,7 +67,7 @@ ______
    * - First row/sample
      - ``df.iloc[-1]`` or ``df.tail(1)``
      - ``ds.last()`` or ``ds.tail()[0]``
-   * - Get :math:`j^{th}` row/sample
+   * - Get ``jth`` row/sample
      - ``row = df.loc[j]``
      - ``sample = ds.skip(j).first()``
    * - Number of rows/samples
@@ -97,7 +97,7 @@ ___________
    * - Slice between indices *start* and *end*
      - ``df[start:end]``
      - ``ds[start:end]`` 
-   * - Get :math:`n` random samples
+   * - Get ``n`` random samples
      - ``df.sample(n=n)``
      - ``ds.take(k, seed = random_seed_value)``
    * - Shuffle data
@@ -135,7 +135,7 @@ ____________
    * - Unique values
      - ``df[*].unique()``
      - ``ds.distinct(*)``
-   * - Bounds :math:`=` (Min, Max)
+   * - Bounds
      - | ``_min = df[*].min()``
        | ``_max = df[*].max()``
      - ``_min, _max = ds.bounds(*)``
@@ -147,11 +147,14 @@ ____________
      - ``ds.std(*)``
    * - Quantile
      - ``df[*].quantile(percentiles_list)``
-     - | ``import numpy as np``
-       | ``np.median(ds.values(*, unwind =True))``
+     - ``np.median(ds.values(*, unwind =True))``
 
-Structural change operations
-____________________________
+.. note::
+
+  The table above assumes you have imported ``import numpy as np``.
+
+Structural changes
+__________________
 
 .. list-table::
    :widths: 20 40 40
@@ -200,11 +203,6 @@ ____________________________
      - ``df.rename(columns = {"old_name": "new_name"})``
      - ``ds.rename_sample_field("old_name", "new_name")``
 
-.. note::
-
-    In the following table, ``F`` is the FiftyOne ``ViewField``, which can be
-    imported via ``from fiftyone import ViewField as F``.
-
 Expressions
 ___________
 
@@ -248,3 +246,8 @@ ___________
    * - Check for null entries
      - ``df.isna().any()``
      - ``ds.match(F(*).is_null()).count() > 0``
+
+.. note::
+
+    The table above assumes you have imported
+    ``from fiftyone import ViewField as F``.
