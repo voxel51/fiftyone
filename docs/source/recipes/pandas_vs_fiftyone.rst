@@ -148,14 +148,6 @@ ____________
      - ``df[*].quantile(values)``
      - ``ds.quantiles(*, values))``
 
-.. note::
-
-    The table above assumes you have imported:
-
-    .. code-block:: python
-
-        import numpy as np
-
 Structural changes
 __________________
 
