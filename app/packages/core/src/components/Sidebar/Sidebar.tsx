@@ -19,7 +19,7 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
-import { DatasetSavedViewsQuery } from "../../Root/Root";
+import { DatasetSavedViewsFragment } from "../../Root/Root";
 import { useQueryLoader } from "react-relay";
 const MARGIN = 3;
 
@@ -708,7 +708,7 @@ const InteractiveSidebar = ({
   const theme = useTheme();
 
   const [savedViewsQueryRef, loadSavedViewsQuery] = useQueryLoader(
-    DatasetSavedViewsQuery
+    DatasetSavedViewsFragment
   );
 
   useEffect(() => {

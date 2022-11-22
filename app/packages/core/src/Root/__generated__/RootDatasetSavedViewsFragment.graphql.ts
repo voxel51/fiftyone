@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<094cdb749ca72248c0d764a1279889c1>>
+ * @generated SignedSource<<bddead56b451af6e8610a51d889e7ac7>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,11 +12,11 @@ import { ReaderFragment, RefetchableFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type RootDatasetSavedViewsFragment$data = {
   readonly savedViews: ReadonlyArray<{
-    readonly __id: string;
     readonly color: string | null;
     readonly createdAt: any;
     readonly datasetId: string;
     readonly description: string | null;
+    readonly id: string | null;
     readonly lastLoadedAt: any | null;
     readonly lastModifiedAt: any | null;
     readonly name: string;
@@ -30,7 +30,7 @@ export type RootDatasetSavedViewsFragment$key = {
   readonly " $fragmentSpreads": FragmentRefs<"RootDatasetSavedViewsFragment">;
 };
 
-import EootDatasetSavedViewsQuery_graphql from './EootDatasetSavedViewsQuery.graphql';
+import RootDatasetSavedViewsQuery_graphql from './RootDatasetSavedViewsQuery.graphql';
 
 const node: ReaderFragment = {
   "argumentDefinitions": [
@@ -44,7 +44,7 @@ const node: ReaderFragment = {
     "refetch": {
       "connection": null,
       "fragmentPathInResult": [],
-      "operation": EootDatasetSavedViewsQuery_graphql
+      "operation": RootDatasetSavedViewsQuery_graphql
     }
   },
   "name": "RootDatasetSavedViewsFragment",
@@ -63,6 +63,13 @@ const node: ReaderFragment = {
       "name": "savedViews",
       "plural": true,
       "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "id",
+          "storageKey": null
+        },
         {
           "alias": null,
           "args": null,
@@ -125,18 +132,6 @@ const node: ReaderFragment = {
           "kind": "ScalarField",
           "name": "lastLoadedAt",
           "storageKey": null
-        },
-        {
-          "kind": "ClientExtension",
-          "selections": [
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "__id",
-              "storageKey": null
-            }
-          ]
         }
       ],
       "storageKey": null
@@ -146,6 +141,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "344afacf7a63f7a5404675f520589758";
+(node as any).hash = "10dc3d7121ccd0e12f97abb9f3528513";
 
 export default node;

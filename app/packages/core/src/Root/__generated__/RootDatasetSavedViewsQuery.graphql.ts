@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c10897fe86c431c7ac39b74c05758cfe>>
+ * @generated SignedSource<<bd30760fb0baac3e724854520019166d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -69,6 +69,13 @@ return {
             "alias": null,
             "args": null,
             "kind": "ScalarField",
+            "name": "id",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
             "name": "datasetId",
             "storageKey": null
           },
@@ -127,18 +134,6 @@ return {
             "kind": "ScalarField",
             "name": "lastLoadedAt",
             "storageKey": null
-          },
-          {
-            "kind": "ClientExtension",
-            "selections": [
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "__id",
-                "storageKey": null
-              }
-            ]
           }
         ],
         "storageKey": null
@@ -146,16 +141,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "e9719674f8109fca2ac2d825bb3b0daf",
+    "cacheID": "25d47784f4ed90e546e8341c22f51d55",
     "id": null,
     "metadata": {},
     "name": "RootDatasetSavedViewsQuery",
     "operationKind": "query",
-    "text": "query RootDatasetSavedViewsQuery(\n  $name: String!\n) {\n  ...RootDatasetSavedViewsFragment\n}\n\nfragment RootDatasetSavedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    datasetId\n    name\n    urlName\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
+    "text": "query RootDatasetSavedViewsQuery(\n  $name: String!\n) {\n  ...RootDatasetSavedViewsFragment\n}\n\nfragment RootDatasetSavedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    urlName\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "55e54b114aea4c699208057466d0a434";
+(node as any).hash = "10dc3d7121ccd0e12f97abb9f3528513";
 
 export default node;

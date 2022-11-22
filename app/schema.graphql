@@ -345,9 +345,11 @@ type PointCloudSample implements Sample {
 type Query {
   aggregate(
     datasetName: String!
-    view: BSONArray!
+    view: BSONArray
     aggregations: [Aggregate!]!
+    viewName: String
   ): [AggregationResponses!]!
+  dataset(name: String!, view: BSONArray, viewName: String): Dataset
   datasets(
     search: String
     first: Int = 200
@@ -359,7 +361,6 @@ type Query {
   context: String!
   dev: Boolean!
   doNotTrack: Boolean!
-  dataset(name: String!, view: BSONArray, viewName: String): Dataset
   samples(
     dataset: String!
     view: BSONArray!

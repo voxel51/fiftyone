@@ -13,12 +13,10 @@ import { usePreloadedQuery, useRefetchableFragment } from "react-relay";
 
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
 import { useQueryState } from "@fiftyone/state";
-import {
-  DatasetSavedViewsQuery,
-  DatasetSavedViewsFragment,
-} from "../../../Root/Root";
+
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 import { SavedView } from "@fiftyone/state";
+import DatasetSavedViewsFragment from "../../../Root/Root";
 
 export const viewSearchTerm = atom({
   key: "viewSearchTerm",
@@ -66,11 +64,16 @@ export default function ViewSelection(props: Props) {
 
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
   const [savedViewParam, setSavedViewParam] = useQueryState("view");
+  console.log(
+    "savedViewParam, setSavedViewParam",
+    savedViewParam,
+    setSavedViewParam
+  );
   const loadedView = useRecoilValue(fos.view);
   const setEditView = useSetRecoilState(viewDialogContent);
   const setView = fos.useSetView();
 
-  const fragments = usePreloadedQuery(DatasetSavedViewsQuery, queryRef);
+  const fragments = usePreloadedQuery(DatasetSavedViewsFragment, queryRef);
   const [data, refetch] = useRefetchableFragment(
     DatasetSavedViewsFragment,
     fragments

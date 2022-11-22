@@ -119,7 +119,7 @@ class AggregateQuery:
         self,
         *,
         dataset_name: str,
-        serialized_view: t.Optional[BSONArray],
+        view: t.Optional[BSONArray],
         aggregations: t.List[Aggregate],
         view_name: t.Optional[str],
     ) -> t.List[
@@ -137,7 +137,7 @@ class AggregateQuery:
     ]:
         view = await load_view(
             dataset_name=dataset_name,
-            serialized_view=serialized_view,
+            serialized_view=view,
             view_name=view_name,
         )
 

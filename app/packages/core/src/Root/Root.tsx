@@ -58,17 +58,17 @@ const rootQuery = graphql`
   }
 `;
 
-export const DatasetSavedViewsQuery = graphql`
-  query RootDatasetSavedViewsQuery($name: String!) {
-    ...RootDatasetSavedViewsFragment
-  }
-`;
+// export const DatasetSavedViewsQuery = graphql`
+//   query RootDatasetSavedViewsQuery($name: String!) {
+//     ...RootDatasetSavedViewsFragment
+//   }
+// `;
 
 export const DatasetSavedViewsFragment = graphql`
   fragment RootDatasetSavedViewsFragment on Query
-  @refetchable(queryName: "EootDatasetSavedViewsQuery") {
+  @refetchable(queryName: "RootDatasetSavedViewsQuery") {
     savedViews(datasetName: $name) {
-      __id
+      id
       datasetId
       name
       urlName
