@@ -1,12 +1,13 @@
-.. _fiftyone-brain:
-
 pandas vs FiftyOne
-==============
+==================
 
 .. default-role:: code
 
-.. list-table:: Data Representation
-   :widths: 25 25
+Data representation
+___________________
+
+.. list-table::
+   :widths: 50 50
    :header-rows: 1
 
    * - pandas
@@ -38,13 +39,16 @@ pandas vs FiftyOne
      - ``empty_df = pd.DataFrame()``
      - ``empty_dataset = fo.Dataset()``
 
-
 .. note::
 
-    ``*`` dentoes column or row for pandas DataFrame and field or sample for FiftyOne Dataset.
+    ``*`` dentoes column or row for pandas DataFrame and field or sample for
+    FiftyOne Dataset.
 
-.. list-table:: Basics
-   :widths: 30 60 60
+Basics
+______
+
+.. list-table::
+   :widths: 20 40 40
    :header-rows: 1
    :stub-columns: 1
 
@@ -76,9 +80,11 @@ pandas vs FiftyOne
      - ``df[*].tolist()``
      - ``ds.values(*)``
 
+View stages
+___________
 
-.. list-table:: View Stages
-   :widths: 30 60 60
+.. list-table::
+   :widths: 20 40 40
    :header-rows: 1
    :stub-columns: 1
 
@@ -109,9 +115,11 @@ pandas vs FiftyOne
        | ``gc.collect()``
      - ``ds.delete()``
 
+Aggregations
+____________
 
-.. list-table:: Aggregations
-   :widths: 30 60 60
+.. list-table::
+   :widths: 20 40 40
    :header-rows: 1
    :stub-columns: 1
 
@@ -142,9 +150,11 @@ pandas vs FiftyOne
      - | ``import numpy as np``
        | ``np.median(ds.values(*, unwind =True))``
 
+Structural change operations
+____________________________
 
-.. list-table:: Structural Change Operations
-   :widths: 30 60 60
+.. list-table::
+   :widths: 20 40 40
    :header-rows: 1
    :stub-columns: 1
 
@@ -190,14 +200,16 @@ pandas vs FiftyOne
      - ``df.rename(columns = {"old_name": "new_name"})``
      - ``ds.rename_sample_field("old_name", "new_name")``
 
-
 .. note::
 
-    In the following table, ``F`` is the FiftyOne ``ViewField``, which can be imported via 
-    ``from fiftyone import ViewField as F``.
+    In the following table, ``F`` is the FiftyOne ``ViewField``, which can be
+    imported via ``from fiftyone import ViewField as F``.
 
-.. list-table:: Expressions
-   :widths: 30 60 60
+Expressions
+___________
+
+.. list-table::
+   :widths: 20 40 40
    :header-rows: 1
    :stub-columns: 1
 
@@ -236,19 +248,3 @@ pandas vs FiftyOne
    * - Check for null entries
      - ``df.isna().any()``
      - ``ds.match(F(*).is_null()).count() > 0``
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
