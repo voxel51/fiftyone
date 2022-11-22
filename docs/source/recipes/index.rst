@@ -38,6 +38,13 @@ workflows.
 .. Add recipe cards below
 
 .. customcarditem::
+    :header: pandas vs FiftyOne
+    :description: Perform pandas-style queries on your computer vision datasets in FiftyOne.
+    :link: pandas_vs_fiftyone.html
+    :image: ../_static/images/recipes/pandas_vs_fiftyone.png
+    :tags: Cheat-Sheets,Dataset-Curation
+
+.. customcarditem::
     :header: Creating views and using view expressions
     :description: Create views to easily query and explore your datasets in FiftyOne.
     :link: creating_views.html
@@ -138,6 +145,7 @@ workflows.
    :maxdepth: 1
    :hidden:
 
+   pandas vs FiftyOne <pandas_vs_fiftyone.html>
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
    Removing duplicate objects <remove_duplicate_annos.ipynb>
