@@ -231,8 +231,8 @@ class Dataset:
         cls,
         name: str,
         view: t.Optional[BSONArray],
-        view_name: t.Optional[str],
         info: Info,
+        view_name: t.Optional[str] = gql.UNSET,
     ) -> t.Optional["Dataset"]:
         return await serialize_dataset(name, view, view_name)
 
@@ -307,7 +307,7 @@ class Query(fosa.AggregateQuery):
     def do_not_track(self) -> bool:
         return fo.config.do_not_track
 
-    dataset = gql.field(resolver=Dataset.resolver)
+    dataset: Dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset, str] = gql.field(
         resolver=get_paginator_resolver(
             Dataset, "created_at", DATASET_FILTER_STAGE, "datasets"
@@ -359,10 +359,10 @@ class Query(fosa.AggregateQuery):
         return foc.VERSION
 
     @gql.field
-    def saved_view(
+    async def saved_view(
         self, dataset_name: str, view_name: t.Optional[str]
     ) -> t.Optional[SavedView]:
-        if not view_name:
+        if not view_name and dataset_name:
             return
 
         ds = fo.load_dataset(dataset_name)
@@ -400,7 +400,7 @@ def _flatten_fields(
     return result
 
 
-def _convert_targets(targets: t.Dict[str, str]) -> Target:
+def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
     return [Target(target=int(k), value=v) for k, v in targets.items()]
 
 
@@ -446,6 +446,7 @@ async def serialize_dataset(
 
         if dataset.media_type == fom.GROUP:
             data.group_slice = collection.group_slice
+
         return data
 
     loop = asyncio.get_running_loop()

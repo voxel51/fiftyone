@@ -14,6 +14,7 @@ import strawberry as gql
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
+import fiftyone.core.fields as fof
 
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import T
@@ -53,7 +54,7 @@ CountValuesResponses = gql.union(
     "CountValuesResponses",
     (BoolCountValuesResponse, IntCountValuesResponse, StrCountValuesResponse),
 )
-COUNT_VALUES_TYPES = {fo.BooleanField, fo.IntField, fo.StringField}
+COUNT_VALUES_TYPES = {fof.BooleanField, fof.IntField, fof.StringField}
 
 
 @gql.type
@@ -104,10 +105,10 @@ HistogramValuesResponses = gql.union(
 )
 
 HISTOGRAM_VALUES_TYPES = {
-    fo.DateField,
-    fo.DateTimeField,
-    fo.IntField,
-    fo.FloatField,
+    fof.DateField,
+    fof.DateTimeField,
+    fof.IntField,
+    fof.FloatField,
 }
 
 
@@ -116,9 +117,11 @@ class AggregateQuery:
     @gql.field
     async def aggregate(
         self,
+        *,
         dataset_name: str,
-        view: BSONArray,
+        serialized_view: t.Optional[BSONArray],
         aggregations: t.List[Aggregate],
+        view_name: t.Optional[str],
     ) -> t.List[
         gql.union(
             "AggregationResponses",
@@ -132,7 +135,11 @@ class AggregateQuery:
             ),
         )
     ]:
-        view = await load_view(dataset_name, view)
+        view = await load_view(
+            dataset_name=dataset_name,
+            serialized_view=serialized_view,
+            view_name=view_name,
+        )
 
         resolvers = []
         aggs = []
@@ -157,10 +164,13 @@ class AggregateQuery:
 
 
 async def load_view(
-    name: str, serialized_view: BSONArray, view_name: t.Optional[str] = None
+    *,
+    dataset_name: str,
+    serialized_view: BSONArray,
+    view_name: t.Optional[str] = None,
 ) -> foc.SampleCollection:
     def run() -> foc.SampleCollection:
-        dataset = fo.load_dataset(name)
+        dataset = fo.load_dataset(dataset_name)
         dataset.reload()
         if view_name:
             return dataset.load_view(view_name)

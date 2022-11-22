@@ -41,6 +41,7 @@ def get_dataloader(
             {"$and": [{config.key: {"$in": keys}}] + config.filters}
         ):
             results[doc[config.key]] = doc
+        print("=" * 80, "results ", results)
 
         def build(doc: dict = None) -> t.Optional[T]:
             if not doc:

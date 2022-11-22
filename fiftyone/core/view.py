@@ -1127,6 +1127,16 @@ class DatasetView(foc.SampleCollection):
         d["samples"] = samples
         return d
 
+    def is_saved_view(self):
+        """Whether the current view is a saved view by comparing the view
+        stages"""
+        if self._dataset.has_views:
+            saved_stages = [
+                saved_view.view_stages
+                for saved_view in self._dataset._doc.saved_views
+            ]
+            self._stages
+
     def _needs_frames(self):
         dataset = self._dataset
 

@@ -17,7 +17,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Box } from "@material-ui/core";
+import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
 import { DatasetSavedViewsQuery } from "../../Root/Root";
 import { useQueryLoader } from "react-relay";
