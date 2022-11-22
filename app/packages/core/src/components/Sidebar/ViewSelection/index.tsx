@@ -80,7 +80,6 @@ export default function ViewSelection(props: Props) {
     DatasetSavedViewsFragment,
     fragments
   );
-  console.log("data", data);
 
   const items =
     (data as { savedViews: [fos.State.SavedView] })?.savedViews || [];
@@ -128,7 +127,9 @@ export default function ViewSelection(props: Props) {
         (v) => v.id === savedViewParam
       )?.[0];
 
-      if (selected?.id !== savedViewParam) {
+      if (!potentialView) {
+        setSavedViewParam(null);
+      } else if (selected?.id !== savedViewParam) {
         setSelected(potentialView);
       }
     }
