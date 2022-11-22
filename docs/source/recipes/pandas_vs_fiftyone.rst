@@ -176,7 +176,7 @@ __________________
      - ``ds.set_values("field", data)``
    * - New column/field from existing columns/fields
      - ``df["col"] = df.apply(fcn, axis=1)``
-     - | ``ds.add_sample_field("field", fo.FloatField)`` or
+     - | ``ds.add_sample_field("field", fo.FloatField)``
        | ``ds.set_field("field", expression).save()``
    * - Remove a column/field
      - ``df = df.drop(["col"], axis=1)``
