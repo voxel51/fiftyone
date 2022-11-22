@@ -39,7 +39,7 @@ workflows.
 
 .. customcarditem::
     :header: pandas vs FiftyOne
-    :description: Perform pandas-style queries on your computer vision datasets in FiftyOne.
+    :description: See how to translate common pandas queries into FiftyOne's query syntax for computer vision.
     :link: pandas_vs_fiftyone.html
     :image: ../_static/images/recipes/pandas_vs_fiftyone.png
     :tags: Cheat-Sheets,Dataset-Curation
