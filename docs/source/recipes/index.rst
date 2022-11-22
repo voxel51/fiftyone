@@ -145,7 +145,7 @@ workflows.
    :maxdepth: 1
    :hidden:
 
-   pandas vs FiftyOne <pandas_vs_fiftyone.html>
+   pandas vs FiftyOne <pandas_vs_fiftyone>
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
    Removing duplicate objects <remove_duplicate_annos.ipynb>
