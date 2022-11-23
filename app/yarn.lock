@@ -2809,7 +2809,6 @@ __metadata:
     vite: ^3.0.0
     vite-plugin-externals: ^0.5.0
   peerDependencies:
-    "@material-ui/icons": "*"
     react-error-boundary: "*"
     recoil: "*"
   languageName: unknown
