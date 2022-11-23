@@ -141,6 +141,7 @@ type PluginActivator = (props: any) => boolean;
 interface PluginComponentRegistration<T extends {} = {}> {
   name: string;
   label?: string;
+  icon?: string;
   component: FunctionComponent<T>;
   type: PluginComponentType;
   activator: PluginActivator;
