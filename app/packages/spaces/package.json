@@ -1,0 +1,16 @@
+{
+  "name": "@fiftyone/spaces",
+  "author": "Voxel51, Inc.",
+  "version": "0.0.0",
+  "description": "FiftyOne App Spaces",
+  "homepage": "https://github.com/voxel51/fiftyone/app/packages/spaces",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/voxel51/fiftyone/"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "vite"
+  },
+  "private": true
+}
