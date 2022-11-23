@@ -88,16 +88,17 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
   const setCompactLayout = useSetRecoilState(fos.compactLayout);
   const setReadOnly = useSetRecoilState(fos.readOnly);
 
-  React.useLayoutEffect(() => {
-    setCompactLayout(compactLayout);
-  }, [compactLayout]);
-  React.useEffect(() => {
-    loadQuery({ name: dataset });
-  }, [dataset]);
-  React.useLayoutEffect(() => {
+  // Rebase conflict?
+  // React.useLayoutEffect(() => {
+  //   setCompactLayout(compactLayout);
+  // }, [compactLayout]);
+  // React.useEffect(() => {
+  //   loadQuery({ name: dataset });
+  // }, [dataset]);
+  // React.useLayoutEffect(() => {
+    useEffect(() => {
     setReadOnly(readOnly);
     loadDataset(datasetName);
-    loadSavedViews(datasetName);
     if (themeMode) setThemeMode(themeMode);
     if (compactLayout) setCompactLayout(themeMode);
   }, [datasetName, themeMode, compactLayout, readOnly]);

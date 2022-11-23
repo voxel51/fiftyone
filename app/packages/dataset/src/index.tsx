@@ -1,15 +1,8 @@
 import React, { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { RecoilRoot, useRecoilState, useRecoilValue } from "recoil";
+import { RecoilRoot, useRecoilState } from "recoil";
 import { RecoilRelayEnvironmentProvider } from "recoil-relay";
 import { Dataset, getEnvProps, fos } from "./";
-import {
-  dataset,
-  datasetName,
-  persistSavedView,
-  stateSubscription,
-  view,
-} from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 
 export const Dataset = () => {
@@ -40,7 +33,6 @@ function LoadableDataset() {
     readOnly: false,
   });
   const [view, setView] = useRecoilState(fos.view);
-  const subscription = useRecoilValue(stateSubscription);
   function printView() {
     console.log(JSON.stringify(view, null, 2));
   }

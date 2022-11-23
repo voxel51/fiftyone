@@ -36,7 +36,6 @@ import {
 } from "./styledComponents";
 import { SavedView } from "@fiftyone/state";
 
-// TODO: consolidate
 export const COLOR_OPTIONS = [
   { id: "blue", label: "Blue", color: "#2970FF", description: "" },
   { id: "cyan", label: "Cyan", color: "#06AED4", description: "" },

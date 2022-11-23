@@ -18,7 +18,6 @@ import {
   DatasetSavedViewsFragment,
 } from "../../../Root/Root";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
-import { SavedViewInfo } from "@fiftyone/relay";
 
 export const viewSearchTerm = atom({
   key: "viewSearchTerm",
