@@ -7,6 +7,7 @@ export interface GQLError {
 }
 
 export class AppError extends Error {
+  readonly cls: string;
   readonly name: string;
 
   constructor({ name }: { name: string }, message?: string) {
@@ -22,6 +23,7 @@ export class AppError extends Error {
 }
 
 export class GraphQLError extends AppError {
+  readonly cls = "GraphQLError";
   readonly errors: GQLError[] = [];
   readonly variables?: object;
   constructor({
@@ -46,6 +48,7 @@ export class GraphQLError extends AppError {
 }
 
 export class NetworkError extends AppError {
+  readonly cls = "NetworkError";
   readonly code: number;
   readonly statusText: string;
   readonly bodyResponse: string;
@@ -97,6 +100,7 @@ export class NetworkError extends AppError {
 }
 
 export class NotFoundError extends AppError {
+  readonly cls = "NotFoundError";
   readonly path: string;
 
   constructor({ path }: { path: string }) {
@@ -113,6 +117,7 @@ export class NotFoundError extends AppError {
 }
 
 export class ServerError extends NetworkError {
+  readonly cls = "ServerError";
   readonly stack?: string;
 
   constructor(

@@ -280,7 +280,7 @@ const createReader = ({
           } catch (error) {
             postMessage({
               error: {
-                cls: error.constructor.name,
+                cls: error.cls,
                 data: error.data,
                 message: error.message,
               },

@@ -5,6 +5,7 @@ import LRU from "lru-cache";
 import { v4 as uuid } from "uuid";
 
 import {
+  AppError,
   DATE_FIELD,
   DATE_TIME_FIELD,
   LABELS,
@@ -341,7 +342,11 @@ export abstract class Looker<
         }
         ctx.globalAlpha = 1;
       } catch (error) {
-        this.updater({ error });
+        if (error instanceof AppError || error instanceof MediaError) {
+          this.updater({ error });
+        } else {
+          this.eventTarget.dispatchEvent(new ErrorEvent("error", { error }));
+        }
       }
     };
   }

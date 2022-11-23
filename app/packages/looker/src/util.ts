@@ -407,6 +407,9 @@ export const mergeUpdates = <State extends BaseState>(
     if (n instanceof Function) {
       return n;
     }
+    if (n instanceof Error) {
+      return n;
+    }
     if (typeof n !== "object") {
       return n === undefined ? o : n;
     }
