@@ -210,6 +210,10 @@ export abstract class Looker<
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
+    if (detail instanceof ErrorEvent) {
+      this.updater({ error: detail.error });
+      return;
+    }
     if (detail instanceof Event) {
       this.eventTarget.dispatchEvent(
         // @ts-ignore
@@ -337,14 +341,7 @@ export abstract class Looker<
         }
         ctx.globalAlpha = 1;
       } catch (error) {
-        if (error instanceof MediaError) {
-          this.updater({ error });
-        } else {
-          this.dispatchEvent(
-            "error",
-            new ErrorEvent("looker error", { error })
-          );
-        }
+        this.updater({ error });
       }
     };
   }

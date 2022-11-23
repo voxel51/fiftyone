@@ -40,7 +40,7 @@ const Grid: React.FC<{}> = () => {
         store.lookers.has(id) && store.lookers.get(id)?.resize(dimensions),
       get: pager,
       render: (id, element, dimensions, soft, hide) => {
-        const result = store.samples.get(id);
+        let result = store.samples.get(id);
 
         if (store.lookers.has(id)) {
           const looker = store.lookers.get(id);
@@ -53,17 +53,28 @@ const Grid: React.FC<{}> = () => {
           throw new Error("bad data");
         }
 
-        if (!soft) {
-          const looker = createLooker.current(result);
-          looker.addEventListener(
-            "selectthumbnail",
-            ({ detail }: CustomEvent) => {
-              selectSample.current(flashlight, detail);
-            }
-          );
+        const init = (l) => {
+          l.addEventListener("selectthumbnail", ({ detail }: CustomEvent) => {
+            selectSample.current(flashlight, detail);
+          });
 
-          store.lookers.set(id, looker);
-          looker.attach(element, dimensions);
+          l.addEventListener("reset", () => {
+            l.detach();
+            l.destroy();
+            result = store.samples.get(id);
+            if (!result) {
+              throw new Error("unexpected value");
+            }
+            l = createLooker.current(result);
+            init(l);
+          });
+
+          store.lookers.set(id, l);
+          l.attach(element, dimensions);
+        };
+
+        if (!soft) {
+          init(createLooker.current(result));
         }
       },
     });

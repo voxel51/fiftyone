@@ -2,11 +2,12 @@ import _ from "lodash";
 import mime from "mime";
 import { isElectron } from "./electron";
 
-export { isElectron } from "./electron";
-export { GraphQLError, NotFoundError, ServerError } from "./errors";
-export * from "./fetch";
-export * from "./Resource";
 export * from "./color";
+export * from "./electron";
+export * from "./errors";
+export * from "./fetch";
+export * from "./retry";
+export * from "./Resource";
 
 interface O {
   [key: string]: O | any;
