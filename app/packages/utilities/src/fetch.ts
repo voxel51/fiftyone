@@ -4,7 +4,7 @@ import {
 } from "@microsoft/fetch-event-source";
 import { isElectron } from "./electron";
 
-import { ServerError } from "./errors";
+import { NetworkError, ServerError } from "./errors";
 
 let fetchOrigin: string;
 let fetchFunctionSingleton: FetchFunction;
@@ -76,20 +76,55 @@ export const setFetchFunction = (
       url = `${origin}${path}`;
     }
 
+    headers = {
+      "Content-Type": "application/json",
+      ...headers,
+    };
+
     const response = await fetch(url, {
       method: method,
       cache: "no-cache",
-      headers: {
-        "Content-Type": "application/json",
-        ...headers,
-      },
+      headers,
       mode: "cors",
       body: body ? JSON.stringify(body) : null,
     });
 
     if (response.status >= 400) {
-      const error = await response.json();
-      throw new ServerError((error as unknown as { stack: string }).stack);
+      try {
+        const error = await response.json();
+
+        throw new ServerError(
+          {
+            code: response.status,
+            statusText: response.statusText,
+            bodyResponse: error,
+            route: response.url,
+            payload: body as object,
+            stack: (error as unknown as { stack: string }).stack,
+            requestHeaders: headers,
+            responseHeaders: response.headers,
+          },
+          error.message
+        );
+      } catch {
+        let bodyResponse = "";
+
+        try {
+          bodyResponse = await response.text();
+        } catch {}
+        throw new NetworkError(
+          {
+            code: response.status,
+            statusText: response.statusText,
+            bodyResponse,
+            route: response.url,
+            payload: body as object,
+            requestHeaders: headers,
+            responseHeaders: response.headers,
+          },
+          response.statusText
+        );
+      }
     }
 
     return await response[result]();
@@ -195,7 +230,10 @@ export const getEventSource = (
               throw new Error(`${response.status} ${response.url}`);
             }
 
-            throw new ServerError((err as unknown as { stack: string }).stack);
+            throw new ServerError(
+              {},
+              (err as unknown as { stack: string }).stack
+            );
           }
 
           return response;

@@ -1,17 +1,26 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
+import copy from "copy-to-clipboard";
 
-import { BaseState } from "../../state";
+import { BaseState, StateUpdate } from "../../state";
 import { BaseElement } from "../base";
 
 import { lookerErrorPage } from "./error.module.css";
 import errorIcon from "../../icons/error.svg";
+import { AppError } from "@fiftyone/utilities";
 
 export class ErrorElement<State extends BaseState> extends BaseElement<State> {
   private errorElement: HTMLDivElement = null;
+  private reset: () => void;
 
-  createHTMLElement() {
+  createHTMLElement(
+    _: StateUpdate<State>,
+    dispatchEvent: (eventType: string, details?: any) => void
+  ) {
+    this.reset = () => {
+      dispatchEvent("reset");
+    };
     return null;
   }
 
@@ -25,6 +34,12 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
       this.errorElement.classList.add(lookerErrorPage);
       const errorImg = document.createElement("img");
       errorImg.src = errorIcon;
+      errorImg.title = "Click to reload";
+      errorImg.style.cursor = "pointer";
+      errorImg.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.reset();
+      });
       this.errorElement.appendChild(errorImg);
 
       if (!thumbnail) {
@@ -67,7 +82,26 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
       } else {
         this.errorElement.style.cursor = "pointer";
       }
+
+      if (error instanceof AppError) {
+        const a = document.createElement("a");
+        a.innerText = "copy error info";
+        a.style.textDecoration = "underline";
+
+        a.onclick = (e) => {
+          e.stopPropagation();
+          copy(JSON.stringify(error.data, undefined, 2));
+          a.innerText = "copied!";
+          setTimeout(() => {
+            a.innerText = "copy error info";
+          }, 3000);
+        };
+        a.style.cursor = "pointer";
+        a.title = "copy error info";
+        this.errorElement.appendChild(a);
+      }
     }
+
     return this.errorElement;
   }
 }

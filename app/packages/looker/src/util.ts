@@ -17,7 +17,13 @@ import {
 } from "./state";
 
 import LookerWorker from "./worker.ts?worker&inline";
-import { getFetchParameters } from "@fiftyone/utilities";
+import {
+  AppError,
+  getFetchParameters,
+  GraphQLError,
+  NetworkError,
+  ServerError,
+} from "@fiftyone/utilities";
 
 /**
  * Shallow data-object comparison for equality
@@ -412,6 +418,13 @@ export const mergeUpdates = <State extends BaseState>(
   return mergeWith(merger, state, updates);
 };
 
+const ERRORS = {
+  AppError: AppError,
+  GraphQLError: GraphQLError,
+  NetworkError: NetworkError,
+  ServerError: ServerError,
+};
+
 export const createWorker = (
   listeners?: {
     [key: string]: ((worker: Worker, args: any) => void)[];
@@ -425,7 +438,10 @@ export const createWorker = (
   };
   worker.addEventListener("message", ({ data }) => {
     if (data.error) {
-      dispatchEvent("error", new ErrorEvent("error", { error: data.error }));
+      const error = !ERRORS[data.error.cls]
+        ? new Error(data.error.message)
+        : new ERRORS[data.error.cls](data.error.data, data.error.message);
+      dispatchEvent("error", new ErrorEvent("error", { error }));
     }
   });
 

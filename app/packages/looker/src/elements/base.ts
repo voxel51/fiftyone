@@ -38,7 +38,7 @@ export abstract class BaseElement<
       return;
     }
 
-    this.element = this.createHTMLElement(update, dispatchEvent);
+    this.element = this.createHTMLElement(update, dispatchEvent, config);
 
     for (const [eventType, handler] of Object.entries(this.getEvents())) {
       this.events[eventType] = (event) =>
@@ -75,7 +75,8 @@ export abstract class BaseElement<
 
   abstract createHTMLElement(
     update: StateUpdate<State>,
-    dispatchEvent: (eventType: string, details?: any) => void
+    dispatchEvent: (eventType: string, details?: any) => void,
+    config: Readonly<State["config"]>
   ): Element | null;
 
   abstract renderSelf(
