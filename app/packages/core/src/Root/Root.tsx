@@ -38,12 +38,7 @@ import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
 import { clone, isElectron } from "@fiftyone/utilities";
 import { RGB } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import {
-  getDatasetName,
-  getSavedViewName,
-  Route,
-  RouterContext,
-} from "@fiftyone/state";
+import { getDatasetName, Route, RouterContext } from "@fiftyone/state";
 
 import DatasetSelector from "../components/DatasetSelector";
 import { useColorScheme, IconButton } from "@mui/material";
@@ -55,6 +50,29 @@ const rootQuery = graphql`
     ...RootDatasets_query
     ...RootGA_query
     ...RootNav_query
+  }
+`;
+
+export const DatasetSavedViewsQuery = graphql`
+  query RootDatasetSavedViewsQuery($name: String!) {
+    ...RootDatasetSavedViewsFragment
+  }
+`;
+
+export const DatasetSavedViewsFragment = graphql`
+  fragment RootDatasetSavedViewsFragment on Query
+  @refetchable(queryName: "EootDatasetSavedViewsQuery") {
+    savedViews(datasetName: $name) {
+      datasetId
+      name
+      urlName
+      description
+      color
+      viewStages
+      createdAt
+      lastModifiedAt
+      lastLoadedAt
+    }
   }
 `;
 

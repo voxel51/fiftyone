@@ -93,8 +93,10 @@ async def add_event_listener(
                     serialized_view=data.state.view._serialize()
                     if data.state.view is not None
                     else [],
-                    view_name=data.state.view.name
-                    if data.state.view
+                    view_name=data.state.view.name if data.state.view
+                    # data.state.dataset.name,
+                    # data.state.view._serialize() if data.state.view is not None
+                    # # else [], event.state.view.name if event.state.view
                     else None,
                 )
 

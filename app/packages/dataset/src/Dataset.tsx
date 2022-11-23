@@ -12,6 +12,7 @@ import {
   Dataset as CoreDataset,
   useDatasetLoader,
   usePreLoadedDataset,
+  useSavedViewLoader,
   ViewBar,
 } from "@fiftyone/core";
 import { useRecoilValue, useSetRecoilState } from "recoil";

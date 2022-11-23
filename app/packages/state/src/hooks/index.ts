@@ -26,3 +26,6 @@ export * from "./useOnSelectLabel";
 export * from "./useStateUpdate";
 export { default as useTo } from "./useTo";
 export { default as useUpdateSample } from "./useUpdateSample";
+export { default as useHover } from "./useHover";
+export { default as useSavedViews } from "./useSavedViews";
+export { default as useQueryState } from "./useQueryState";

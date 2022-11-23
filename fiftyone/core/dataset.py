@@ -3021,7 +3021,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def has_views(self):
         """Whether this dataset has any saved views."""
-        return bool(self.list_views())
+        return bool(self.list_views)
 
     def has_view(self, name):
         """Whether this dataset has a saved view with the given name.
@@ -3032,8 +3032,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             True/False
         """
-        return name in self.list_views()
+        return name in self.list_views
 
+    @property
     def list_views(self):
         """Returns the names of saved views on this dataset.
 
@@ -3041,6 +3042,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a list of saved view names
         """
         return [view_doc.name for view_doc in self._doc.saved_views]
+
+    @property
+    def all_views(self):
+        """Returns the saved views on this dataset.
+
+        Returns:
+            a list of saved views
+        """
+        return [view_doc for view_doc in self._doc.saved_views]
 
     def save_view(
         self,

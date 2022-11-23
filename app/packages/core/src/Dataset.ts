@@ -85,15 +85,13 @@ const DatasetQuery = graphql`
         }
       }
       savedViews {
+        id
         datasetId
         name
         urlName
         description
         color
         viewStages
-        createdAt
-        lastModifiedAt
-        lastLoadedAt
       }
       lastLoadedAt
       createdAt
@@ -129,6 +127,7 @@ export function usePrepareDataset(dataset, setReady) {
 
   useLayoutEffect(() => {
     const { colorscale, config, state } = router.state;
+
     if (dataset) {
       update(() => {
         return {

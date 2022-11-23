@@ -1,16 +1,26 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
 
 import { move } from "@fiftyone/utilities";
 
-import { useEventHandler } from "@fiftyone/state";
+import { datasetName, useEventHandler } from "@fiftyone/state";
 import { scrollbarStyles } from "../utils";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { Box } from "@mui/material";
+import ViewSelection from "./ViewSelection";
+import { DatasetSavedViewsQuery } from "../../Root/Root";
+import { useQueryLoader } from "react-relay";
 const MARGIN = 3;
 
 const fn = (
@@ -431,6 +441,24 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
+  const { savedViews = [] } = fos.useSavedViews();
+  const loadedDatasetName = useRecoilValue(datasetName);
+
+  const setView = fos.useSetView();
+
+  const queryParams = new URLSearchParams(location.search);
+  const viewName = queryParams.get("view");
+
+  useEffect(() => {
+    if (savedViews?.length && viewName && !modal) {
+      // TODO: MANI - load view by url_name instead of name
+      const thisDataset = savedViews?.filter((ds) => ds.name === viewName)?.[0];
+      if (thisDataset) {
+        const { urlName } = thisDataset;
+        setView([], [], viewName, true, urlName);
+      }
+    }
+  }, [viewName]);
 
   if (entries instanceof Error) {
     throw entries;
@@ -678,6 +706,14 @@ const InteractiveSidebar = ({
   );
   const theme = useTheme();
 
+  const [savedViewsQueryRef, loadSavedViewsQuery] = useQueryLoader(
+    DatasetSavedViewsQuery
+  );
+
+  useEffect(() => {
+    loadSavedViewsQuery({ name: loadedDatasetName });
+  }, [loadSavedViewsQuery]);
+
   return shown ? (
     <Resizable
       size={{ height: "100%", width }}
@@ -705,6 +741,18 @@ const InteractiveSidebar = ({
           : undefined,
       }}
     >
+      {!modal && (
+        <Suspense fallback="loading...">
+          <Box style={{ padding: 8, paddingLeft: 16, paddingRight: 16 }}>
+            {savedViewsQueryRef !== null && (
+              <ViewSelection
+                datasetName={loadedDatasetName}
+                queryRef={savedViewsQueryRef}
+              />
+            )}
+          </Box>
+        </Suspense>
+      )}
       <SidebarColumn
         ref={container}
         onScroll={({ target }) => {

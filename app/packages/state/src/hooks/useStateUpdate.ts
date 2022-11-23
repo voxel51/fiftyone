@@ -142,6 +142,11 @@ const useStateUpdate = () => {
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
         }
+
+        if (state.savedViews?.length > 0) {
+          dataset.savedViews = state.savedViews;
+        }
+
         set(datasetAtom, dataset);
       }
 

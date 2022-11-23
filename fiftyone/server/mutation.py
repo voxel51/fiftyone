@@ -248,6 +248,8 @@ class Mutation:
             None,
         )
 
+    # TODO: return an id or the object that was deleted?
+    # https://stackoverflow.com/questions/58889341/what-should-be-the-graphql-mutation-return-type-when-there-is-no-data-to-return#:~:text=For%20deletions%2C%20it's%20common%20to,to%20better%20encapsulate%20client%20errors.
     @gql.mutation
     def delete_saved_view(
         self, subscription: str, session: t.Optional[str], view_name: str
@@ -267,14 +269,18 @@ class Mutation:
         if state.view_name == deleted_view_name:
             state.view = dataset.view()
             state.view_name = None
+
+        # TODO: confirm StateUpdate is unnecessary
+        # await dispatch_event(subscription, StateUpdate(state=state))
+
         return True
 
     @gql.mutation
     def update_saved_view(
         self,
-        subscription: str,
-        session: t.Optional[str],
         view_name: str,
+        subscription: t.Optional[str],
+        session: t.Optional[str],
         updated_info: SavedViewInfo,
     ) -> t.Optional[SavedView]:
         """Updates the editable fields of a saved view
@@ -287,11 +293,12 @@ class Mutation:
             update
 
         """
-
         state = get_state()
         dataset = state.dataset
+        updated_info = asdict(updated_info)
+
         if dataset.has_views and dataset.has_view(view_name):
-            dataset.update_view_info(view_name, asdict(updated_info))
+            dataset.update_view_info(view_name, updated_info)
         else:
             raise ValueError(
                 "Attempting to update fields on non-existent saved view: "
@@ -300,8 +307,8 @@ class Mutation:
             )
         dataset.reload()
         name = (
-            updated_info.name
-            if updated_info.get("name", None) is not None
+            updated_info["name"]
+            if "name" in updated_info and updated_info["name"] is not None
             else view_name
         )
         # Return updated saved_view, which may not be the currently loaded

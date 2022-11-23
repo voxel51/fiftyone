@@ -131,6 +131,7 @@ export namespace State {
     groupField: string;
     appConfig: DatasetAppConfig;
     info: { [key: string]: string };
+    viewCls: String;
   }
 
   export interface Filter {}
@@ -180,5 +181,6 @@ export namespace State {
     view: Stage[];
     viewCls: string | null;
     viewName: string | null;
+    savedViews: SavedView[];
   }
 }
