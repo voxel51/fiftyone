@@ -2,6 +2,7 @@ import {
   EventSourceMessage,
   fetchEventSource,
 } from "@microsoft/fetch-event-source";
+import fetchRetry from "fetch-retry";
 import { isElectron } from "./electron";
 
 import { NetworkError, ServerError } from "./errors";
@@ -16,7 +17,9 @@ export interface FetchFunction {
     method: string,
     path: string,
     body?: A,
-    result?: "json" | "blob"
+    result?: "json" | "blob",
+    retries?: number,
+    retryDelay?: number
   ): Promise<R>;
 }
 
@@ -61,7 +64,9 @@ export const setFetchFunction = (
     method,
     path,
     body = null,
-    result = "json"
+    result = "json",
+    retries = 0,
+    retryDelay = 0
   ) => {
     let url: string;
 
@@ -81,7 +86,22 @@ export const setFetchFunction = (
       ...headers,
     };
 
-    const response = await fetch(url, {
+    const fetchCall = retries
+      ? fetchRetry(fetch, {
+          retries,
+          retryDelay,
+          retryOn: (attempt, error, response) => {
+            if (
+              error !== null ||
+              (response.status >= 400 && attempt < retries)
+            ) {
+              return true;
+            }
+          },
+        })
+      : fetch;
+
+    const response = await fetchCall(url, {
       method: method,
       cache: "no-cache",
       headers,

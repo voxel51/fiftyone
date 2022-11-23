@@ -9,7 +9,6 @@ import {
   setFetchFunction,
   Stage,
   get32BitColor,
-  retry,
 } from "@fiftyone/utilities";
 import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
@@ -257,18 +256,24 @@ const createReader = ({
         }
 
         const call = (): Promise<FrameChunk> =>
-          getFetchFunction()("POST", "/frames", {
-            frameNumber: frameNumber,
-            numFrames: chunkSize,
-            frameCount: frameCount,
-            sampleId,
-            dataset,
-            view,
-          });
+          getFetchFunction()(
+            "POST",
+            "/frames",
+            {
+              frameNumber: frameNumber,
+              numFrames: chunkSize,
+              frameCount: frameCount,
+              sampleId,
+              dataset,
+              view,
+            },
+            "json",
+            2
+          );
 
         return await (async () => {
           try {
-            const { frames, range } = await retry(call, { retries: 2 });
+            const { frames, range } = await call();
 
             controller.enqueue({ frames, range, coloring });
             frameNumber = range[1] + 1;
