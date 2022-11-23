@@ -40,6 +40,7 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
         e.stopPropagation();
         this.reset();
       });
+      console.log(error);
       this.errorElement.appendChild(errorImg);
 
       if (!thumbnail) {
