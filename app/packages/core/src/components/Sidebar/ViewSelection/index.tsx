@@ -122,6 +122,7 @@ export default function ViewSelection(props: Props) {
         selected.viewStages?.length !== loadedView?.length &&
         selected.slug !== DEFAULT_SELECTED.slug
       ) {
+        console.log("here 1", selected, loadedView);
         setSelected(viewOptions[0]);
         setSavedViewParam(null); // don't remove
         setIsExtendingSavedView(true); // don't remove
@@ -129,11 +130,14 @@ export default function ViewSelection(props: Props) {
       }
 
       if (potentialView) {
+        console.log("here 2", potentialView);
         // stages were cleared using x button
         if (!loadedView?.length) {
+          console.log("here 3", potentialView);
           setSelected(viewOptions[0]);
           setView([], [], "", true, "");
         } else {
+          console.log("here 4", potentialView);
           // found a matching view
           setSelected(potentialView);
           setView([], [], potentialView.label, true, potentialView.slug);
@@ -145,6 +149,7 @@ export default function ViewSelection(props: Props) {
       // no potential view found
       if (savedViewParam !== viewOptions[0].slug) {
         setSelected(viewOptions[0]);
+        console.log("here 5", savedViewParam);
         setView([], [], "", true, "");
       }
       setIsExtendingSavedView(false);
@@ -164,12 +169,14 @@ export default function ViewSelection(props: Props) {
         onEditSuccess={(savedView?: fos.State.SavedView, reload?: boolean) => {
           refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
           if (savedView && reload) {
-            setView([], [], savedView?.name, true, savedView?.urlName);
+            setView([], [], savedView.name, true, savedView.urlName);
           }
         }}
-        onDeleteSuccess={() => {
+        onDeleteSuccess={(name: string) => {
           refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
-          setView([], [], "", true, "");
+          if (name !== selected.label) {
+            setView([], [], "", true, "");
+          }
         }}
       />
       <Selection
