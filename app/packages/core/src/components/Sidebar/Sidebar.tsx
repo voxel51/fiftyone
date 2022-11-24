@@ -454,7 +454,7 @@ const InteractiveSidebar = ({
   useEffect(() => {
     if (hasSavedViews && viewName && !modal) {
       const theLoadedDataset = savedViews.filter(
-        (ds: fos.SavedView) => ds.name === viewName
+        (ds: fos.State.SavedView) => ds.name === viewName
       )?.[0];
       if (theLoadedDataset) {
         const { urlName } = theLoadedDataset;

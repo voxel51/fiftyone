@@ -22,7 +22,7 @@ import { DatasetViewOption } from "@fiftyone/components/src/components/Selection
 import { useMutation } from "react-relay";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { stateSubscription, trueAtom, useSendEvent } from "@fiftyone/state";
+import { stateSubscription, useSendEvent } from "@fiftyone/state";
 import { useErrorHandler } from "react-error-boundary";
 import {
   Box,
@@ -34,7 +34,6 @@ import {
   ErrorText,
   ErrorBox,
 } from "./styledComponents";
-import { SavedView } from "@fiftyone/state";
 
 export const COLOR_OPTIONS = [
   { id: "blue", label: "Blue", color: "#2970FF", description: "" },
@@ -50,8 +49,8 @@ export const COLOR_OPTIONS = [
 
 interface Props {
   savedViews: fos.State.SavedView[];
-  onEditSuccess: (saveView?: SavedView, reload?: boolean) => void;
-  onDeleteSuccess: () => void;
+  onEditSuccess: (saveView?: fos.State.SavedView, reload?: boolean) => void;
+  onDeleteSuccess: (slug: string) => void;
 }
 
 export const viewDialogContent = atom({
@@ -130,9 +129,8 @@ export default function ViewDialog(props: Props) {
   const [updateView] = useMutation<foq.updateSavedViewMutation>(
     foq.updateSavedView
   );
-  const [deleteView] = useMutation<foq.deleteSavedViewMutation>(
-    foq.deleteSavedView
-  );
+  const { handleDeleteView, isDeletingSavedView } = fos.useSavedViews();
+
   const resetValues = useCallback(() => {
     resetViewContent();
     setNameValue("");
@@ -140,24 +138,12 @@ export default function ViewDialog(props: Props) {
     setColorOption(COLOR_OPTIONS[0]);
   }, []);
 
-  const handleDeleteView = useCallback(() => {
-    if (nameValue) {
-      send((session) =>
-        deleteView({
-          onError,
-          variables: {
-            viewName: nameValue,
-            subscription,
-            session,
-          },
-          onCompleted: () => {
-            resetValues();
-            onDeleteSuccess();
-          },
-        })
-      );
+  const onDeleteView = useCallback(() => {
+    handleDeleteView(nameValue, () => {
+      resetValues();
       setIsOpen(false);
-    }
+      onDeleteSuccess(nameValue);
+    });
   }, [nameValue]);
 
   const handleSaveView = useCallback(() => {
@@ -194,6 +180,8 @@ export default function ViewDialog(props: Props) {
               },
             },
             onCompleted: ({ updateSavedView }) => {
+              console.log("success", updateSavedView);
+              console.log("asd", initialName, nameValue, updateSavedView);
               resetValues();
               onEditSuccess(updateSavedView, initialName !== nameValue);
             },
@@ -283,7 +271,7 @@ export default function ViewDialog(props: Props) {
           >
             {!isCreating && (
               <Button
-                onClick={handleDeleteView}
+                onClick={onDeleteView}
                 sx={{
                   background: theme.background.level1,
                   color: theme.text.primary,
@@ -318,6 +306,7 @@ export default function ViewDialog(props: Props) {
             <Button
               onClick={handleSaveView}
               disabled={
+                isDeletingSavedView ||
                 !!nameError ||
                 !nameValue ||
                 (isCreating && !view?.length) ||
