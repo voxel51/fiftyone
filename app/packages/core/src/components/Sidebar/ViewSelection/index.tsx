@@ -1,63 +1,54 @@
-import React, { useEffect, useState } from "react";
-
-import { Selection } from "@fiftyone/components";
-import { filter } from "lodash";
+import React, { useEffect, useMemo, useState } from "react";
+import { filter, map, pick } from "lodash";
 import {
   atom,
   useRecoilState,
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import * as fos from "@fiftyone/state";
 import { usePreloadedQuery, useRefetchableFragment } from "react-relay";
 
+import * as fos from "@fiftyone/state";
+import { Selection } from "@fiftyone/components";
+
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
-import { useQueryState } from "@fiftyone/state";
 import {
   DatasetSavedViewsQuery,
   DatasetSavedViewsFragment,
 } from "../../../Root/Root";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 
-export const viewSearchTerm = atom({
+export const viewSearchTerm = atom<string>({
   key: "viewSearchTerm",
   default: "",
 });
-export const viewDialogOpen = atom({
+export const viewDialogOpen = atom<boolean>({
   key: "viewDialogOpen",
   default: false,
 });
-export const lastLoadedSavedViewState = atom<fos.State.SavedView | null>({
-  key: "lastLoadedSavedViewState",
-  default: null,
-});
 
-const DEFAULT_SELECTED = {
+export type DatasetViewOption = Pick<
+  fos.SavedView,
+  "id" | "description" | "color" | "viewStages"
+> & { label: string; slug: string };
+
+const DEFAULT_SELECTED: DatasetViewOption = {
   id: "1",
   label: "Unsaved view",
   color: "#9e9e9e",
   description: "Unsaved view",
+  slug: "unsaved-view",
+  viewStages: [],
 };
 
-// TODO: remove
-export interface DatasetViewOption {
-  id: string;
-  label: string;
-  color: string | null;
-  description: string | null;
-  viewStages?: readonly string[];
-}
-
 export interface DatasetView {
+  id: string;
   name: string;
+  datasetId: string;
   urlName: string;
   color: string | null;
   description: string | null;
-  createdAt: number;
-  datasetId: string;
-  viewStages: any;
-  lastLoadedAt: number | null;
-  lastModifiedAt: number | null;
+  viewStages: readonly string[];
 }
 
 interface Props {
@@ -69,10 +60,10 @@ export default function ViewSelection(props: Props) {
   const { datasetName, queryRef } = props;
 
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
-  const [savedViewParam, setSavedViewParam] = useQueryState("view");
-  const loadedView = useRecoilValue(fos.view);
+  const [savedViewParam, setSavedViewParam] = fos.useQueryState("view");
   const setEditView = useSetRecoilState(viewDialogContent);
   const setView = fos.useSetView();
+  const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
 
   const fragments = usePreloadedQuery(DatasetSavedViewsQuery, queryRef);
   const [data, refetch] = useRefetchableFragment(
@@ -82,81 +73,89 @@ export default function ViewSelection(props: Props) {
 
   const items =
     (data as { savedViews: [fos.State.SavedView] })?.savedViews || [];
-  const isEmptyView = !loadedView?.length;
 
-  const viewOptions: DatasetViewOption[] = [
-    DEFAULT_SELECTED,
-    ...items.map((item: fos.State.SavedView) => {
-      const { name, urlName, color, description, viewStages } = item;
-
-      return {
+  const viewOptions: DatasetViewOption[] = useMemo(
+    () => [
+      DEFAULT_SELECTED,
+      ...map(items, ({ name, color, description, urlName, viewStages }) => ({
         id: urlName,
         label: name,
-        color: color,
-        description: description || "",
+        color,
+        description,
+        slug: urlName,
         viewStages,
-      };
-    }),
-  ] as DatasetViewOption[];
+      })),
+    ],
+    [items]
+  );
 
-  // TODO: get saved views here from state and pass as items instead
-  const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
+  const searchData: DatasetViewOption[] = useMemo(
+    () =>
+      filter(
+        viewOptions,
+        ({ id, label, description, slug }: DatasetViewOption) =>
+          id === "1" ||
+          label.toLowerCase().includes(viewSearch) ||
+          description?.toLowerCase().includes(viewSearch) ||
+          slug?.toLowerCase().includes(viewSearch)
+      ) as DatasetViewOption[],
+    [viewOptions, viewSearch]
+  );
 
-  const searchedData: DatasetViewOption[] = filter(
-    viewOptions,
-    ({ id, label, description }: DatasetViewOption) => {
-      return (
-        id === "1" ||
-        label?.toLowerCase().includes(viewSearch) ||
-        description?.toLowerCase().includes(viewSearch)
-      );
-    }
-  ) as DatasetViewOption[];
+  const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
+  const isEmptyView = !loadedView?.length;
+  const selectedView = viewOptions[0];
+  const [selected, setSelected] = useState<DatasetViewOption>(selectedView);
+  const [isExtendingSavedView, setIsExtendingSavedView] =
+    useState<boolean>(false);
 
   useEffect(() => {
-    if (isEmptyView) {
-      setSelected(viewOptions[0]);
-      setSavedViewParam(null);
-    }
-  }, [loadedView]);
-
-  useEffect(() => {
-    if (viewOptions?.length && savedViewParam) {
+    if (savedViewParam) {
       const potentialView = viewOptions.filter(
         (v) => v.id === savedViewParam
       )?.[0];
 
-      if (!potentialView) {
-        setSavedViewParam(null);
-      } else if (selected?.id !== savedViewParam) {
-        setSelected(potentialView);
-      }
-    }
-  }, [viewOptions, savedViewParam]);
-
-  let selectedView = viewOptions[0];
-  if (savedViewParam) {
-    const potentialView = viewOptions.filter(
-      (v) => v.id === savedViewParam
-    )?.[0];
-    if (potentialView) {
-      selectedView = potentialView;
-    }
-  }
-  const [selected, setSelected] = useState<DatasetViewOption>(selectedView);
-
-  // to detect unsaved views
-  useEffect(() => {
-    if (selected && loadedView) {
+      // detect unsaved when extending loaded view
       if (
+        selected &&
+        loadedView &&
         selected.viewStages?.length !== loadedView?.length &&
-        selected.id !== "1"
+        selected.slug !== DEFAULT_SELECTED.slug
       ) {
-        setSavedViewParam(null);
         setSelected(viewOptions[0]);
+        setSavedViewParam(null); // don't remove
+        setIsExtendingSavedView(true); // don't remove
+        return;
+      }
+
+      if (potentialView) {
+        // stages were cleared using x button
+        if (!loadedView?.length) {
+          setSelected(viewOptions[0]);
+          setView([], [], "", true, "");
+        } else {
+          // found a matching view
+          setSelected(potentialView);
+          setView([], [], potentialView.label, true, potentialView.slug);
+        }
+        setIsExtendingSavedView(false);
+        return;
+      }
+
+      // no potential view found
+      if (savedViewParam !== viewOptions[0].slug) {
+        setSelected(viewOptions[0]);
+        setView([], [], "", true, "");
+      }
+      setIsExtendingSavedView(false);
+    } else {
+      // if not adding stages to the currently loaded view, set back to all samples
+      if (!isExtendingSavedView) {
+        setSelected(viewOptions[0]);
+        setView([], [], "", true, "");
       }
     }
-  }, [selected, loadedView]);
+  }, [loadedView, viewOptions, savedViewParam]);
 
   return (
     <Box>
@@ -176,13 +175,12 @@ export default function ViewSelection(props: Props) {
       <Selection
         selected={selected}
         setSelected={(item: DatasetViewOption) => {
-          const allSelected = item.id === "1";
-          setSelected(item);
+          const allSelected = item.slug === DEFAULT_SELECTED.slug;
           const selectedSavedView = allSelected ? "" : item.label;
           const selectedSavedViewUrlName = allSelected ? "" : item.id;
           setView([], [], selectedSavedView, true, selectedSavedViewUrlName);
         }}
-        items={searchedData}
+        items={searchData}
         onEdit={(item) => {
           setEditView({
             color: item.color || "",
