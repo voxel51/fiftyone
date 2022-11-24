@@ -9,6 +9,7 @@ import { useTheme } from "@fiftyone/components";
 import { DatasetViewOption } from "./Option";
 import { debounce } from "lodash";
 import { SearchBox } from "./SearchBox";
+import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
 
 const Box = styled.div`
   display: flex;
@@ -49,12 +50,12 @@ type SelectionProps = {
     onSearch: (term: string) => void;
     value: string;
   };
-  selected: DatasetViewOption;
+  selected: DatasetViewOption | null;
   setSelected: (item: DatasetViewOption) => void;
   lastFixedOption?: React.ReactNode;
   onChange?: (item: string) => void;
   value?: string;
-  disabled?: boolean; // TODO: MANI - add permissions
+  disabled?: boolean;
   compact?: boolean; // compact UI
   readonly?: boolean; // no edits available
   onEdit?: (item: DatasetViewOption) => void;
@@ -62,19 +63,6 @@ type SelectionProps = {
 
 const VIEW_LIST_MAX_HEIGHT = "300px";
 const VIEW_LIST_MAX_COMPACT_HEIGHT = "200px";
-
-export const COLOR_OPTIONS = [
-  { id: "blue", label: "Blue", color: "#2970FF" },
-  { id: "cyan", label: "Cyan", color: "#06AED4" },
-  { id: "green", label: "Green", color: "#16B364" },
-  { id: "yellow", label: "Yellow", color: "#FAC515" },
-  { id: "orange", label: "Orange", color: "#EF6820" },
-  { id: "red", label: "Red", color: "#F04438" },
-  { id: "pink", label: "Pink", color: "#EE46BC" },
-  { id: "purple", label: "Purple", color: "#7A5AF8" },
-  { id: "gray", label: "Gray", color: "#667085" },
-];
-const DEFAULT_COLOR_OPTION = COLOR_OPTIONS[0];
 
 export default function Selection(props: SelectionProps) {
   const {
@@ -88,6 +76,10 @@ export default function Selection(props: SelectionProps) {
     readonly,
     onEdit,
   } = props;
+  if (!selected) {
+    return null;
+  }
+
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const ref = useRef();

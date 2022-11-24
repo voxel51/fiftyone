@@ -16,14 +16,12 @@ export default graphql`
       color: $color
     ) {
       id
+      datasetId
       name
       urlName
       description
       color
       viewStages
-      createdAt
-      lastModifiedAt
-      lastLoadedAt
     }
   }
 `;
