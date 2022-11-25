@@ -7,14 +7,14 @@ Cloud-backed media Datasets
 
 FiftyOne Teams datasets may contain samples whose filepath refers to cloud object storage paths (e.g., ``s3://bucket/object`` or ``gs://bucket/object``) and/or publicly available URLs.
 
-.. cloud-media-caching:
+.. _cloud-media-caching:
 
 Cloud media caching
 ___________________ 
 
 When you work with cloud-backed datasets in Teams, media files will automatically be downloaded and cached on the machine you’re working from when you execute workflows such as model inference or Brain methods that require access to the pixels of the media files. This design minimizes bandwidth usage and can significantly improve performance in workflows where you access the same media file repeatedly.
 
-By default, viewing image datasets in the App will also cache the images locally, but this can be disabled via the cache_app_images config parameter described below. Viewing video datasets in the App will never cause videos to be cached locally if they are not already cached. When viewing non-cached samples in the App, it is recommended that you populate metadata on your dataset by calling ``dataset.compute_metadata()`` before view cloud-backed datasets in the App to avoid needing to pull the metadata each time you view a sample.
+By default, viewing image datasets in the App will also cache the images locally, but this can be disabled via the ``cache_app_images`` config parameter described below. Viewing video datasets in the App will never cause videos to be cached locally if they are not already cached. When viewing non-cached samples in the App, it is recommended that you populate metadata on your dataset by calling ``dataset.compute_metadata()`` before view cloud-backed datasets in the App to avoid needing to pull the metadata each time you view a sample.
 
 By default, the media cache is located at ``~/fiftyone/__cache__``, has a size of 128GB, and will use a thread pool whose size equals the number of virtual CPU cores on your machine to download media files, but you can customize these parameters if desired (see below). When the cache is full, local files are automatically deleted in reverse order of when they were last accessed (i.e., oldest deleted first).
 
@@ -183,7 +183,7 @@ You can do this in any of the following ways:
 
     |
 
-    .. code-block:: python
+    .. code-block:: shell
     
         filepath = ${endpoint_url}/bucket/path/to/object.ext
 
@@ -195,11 +195,72 @@ You can do this in any of the following ways:
 
     |
 
-    .. code-block:: python
+    .. code-block:: shell
 
         filepath = ${alias}://bucket/path/to/object.ext
 
         # For example
         filepath = voxel51://test-bucket/image.jpg
+
+.. _annotating-cloud-media:
+
+Annotating cloud-backed datasets with CVAT
+____________________________________________
+
+When using FiftyOne to `annotate data with CVAT <https://voxel51.com/docs/fiftyone/integrations/cvat.html>`_, you can optionally follow the instructions below to instruct CVAT to load media directly from S3, GCS, or `MinIO <https://github.com/openvinotoolkit/cvat/pull/4353>`_ buckets rather than the default behavior of uploading copies of the media to the CVAT server.
+
+First, follow `these instructions <https://opencv.github.io/cvat/docs/manual/basics/attach-cloud-storage/>`_ to attach a cloud storage bucket to CVAT. Then, simply provide the ``cloud_manifest`` parameter to FiftyOne’s ``annotate()`` method to specify the URL of the manifest file in your cloud bucket:
+
+.. code-block:: python
+    
+    anno_key = "cloud_annotations"
+    results = dataset.annotate(
+        anno_key,
+        label_field="ground_truth",
+        cloud_manifest="s3://voxel51/manifest.jsonl",
+    )
+
+Alternatively, if your ``cloud_manifest`` file follows the default name ``manifest.jsonl`` and exists in the root of the bucket containing the data in the sample collection being annotated, then you can simply provide ``cloud_manifest=True``:
+
+.. code-block:: python
+    
+    results = dataset.annotate(
+        anno_key,
+        label_field="ground_truth",
+        cloud_manifest=True,
+    )
+
+.. note::
+
+    The cloud manifest file must contain all media files in the sample collection being annotated. For example, the collection may not also contain local filepaths.
+
+.. _cloud-functions:
+
+AWS Lambda and Google Cloud Functions
+____________________________________________
+
+
+FiftyOne Teams can easily be used in AWS Lambda Functions and Google Cloud Functions.
+
+**Requirements**: we recommend including Teams in your  function’s ``requirements.txt`` file by passing your token as a build environment variable, e.g., ``FIFTYONE_TEAMS_TOKEN`` and then using the syntax below to specify the version of the Teams client to use:
+
+.. code-block:: shell
+    
+    https://${FIFTYONE_TEAMS_TOKEN}@pypi.fiftyone.ai/packages/fiftyone-0.6.6-py3-none-any.whl
+
+**Runtime**: Lambda/GCFs cannot use services, so you must disable the media the cache by setting the following runtime environment variable:
+
+
+.. code-block:: shell
+    
+    FIFTYONE_MEDIA_CACHE_SIZE_BYTES=-1  # disable media cache
+
+From there, you can configure your database URI and any necessary cloud storage credentials via runtime environment variables as you normally would, eg:
+
+
+.. code-block:: shell
+    
+    FIFTYONE_DATABASE_URI=mongodb://...
+
 
 
