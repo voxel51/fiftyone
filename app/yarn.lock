@@ -4105,6 +4105,7 @@ __metadata:
     uuid: ^8.3.2
     vite: ^3.0.0
     vite-plugin-relay: ^1.0.7
+    vite-plugin-rewrite-all: ^1.0.0
     xstate: ^4.14.0
   languageName: unknown
   linkType: soft
@@ -4304,6 +4305,7 @@ __metadata:
     "@types/uuid": ^8.3.0
     "@ungap/event-target": ^0.2.2
     copy-to-clipboard: ^3.3.1
+    fast-png: ^6.1.0
     immutable: ^4.0.0-rc.12
     json-format-highlight: ^1.0.4
     lru-cache: ^6.0.0
@@ -7910,6 +7912,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/pako@npm:^1.0.2":
+  version: 1.0.4
+  resolution: "@types/pako@npm:1.0.4"
+  checksum: a7ee316fad8e01b895d97fd6db771624d28d7bab43693db563dba768ca6d563aacf99e6d1045288366fec5cd2cb379bf86ef947848690ea648470b21d9a572c5
+  languageName: node
+  linkType: hard
+
 "@types/parse-json@npm:^4.0.0":
   version: 4.0.0
   resolution: "@types/parse-json@npm:4.0.0"
@@ -11321,6 +11330,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"connect-history-api-fallback@npm:^1.6.0":
+  version: 1.6.0
+  resolution: "connect-history-api-fallback@npm:1.6.0"
+  checksum: 804ca2be28c999032ecd37a9f71405e5d7b7a4b3defcebbe41077bb8c5a0a150d7b59f51dcc33b2de30bc7e217a31d10f8cfad27e8e74c2fc7655eeba82d6e7e
+  languageName: node
+  linkType: hard
+
 "console-browserify@npm:^1.1.0":
   version: 1.2.0
   resolution: "console-browserify@npm:1.2.0"
@@ -13843,6 +13859,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fast-png@npm:^6.1.0":
+  version: 6.1.0
+  resolution: "fast-png@npm:6.1.0"
+  dependencies:
+    "@types/pako": ^1.0.2
+    iobuffer: ^5.0.4
+    pako: ^2.0.4
+  checksum: 05c3b5226f8b317df67041bc7350710e58f2314788c26feec1436410cb94928ee59e3510ba173dd7a5b25e57ad3c151ea18c3f486883415ab59619969cd07091
+  languageName: node
+  linkType: hard
+
 "fast-shallow-equal@npm:^1.0.0":
   version: 1.0.0
   resolution: "fast-shallow-equal@npm:1.0.0"
@@ -15706,6 +15733,13 @@ __metadata:
   dependencies:
     loose-envify: ^1.0.0
   checksum: cc3182d793aad82a8d1f0af697b462939cb46066ec48bbf1707c150ad5fad6406137e91a262022c269702e01621f35ef60269f6c0d7fd178487959809acdfb14
+  languageName: node
+  linkType: hard
+
+"iobuffer@npm:^5.0.4":
+  version: 5.2.1
+  resolution: "iobuffer@npm:5.2.1"
+  checksum: eb7850819e998c26b350632eed6529fff5a7f751d7e38b5f006b125fa257da46f075883a5333f6d793067a9004de3a39eac9d33cfce4968505ec05a71b21aa7d
   languageName: node
   linkType: hard
 
@@ -19307,6 +19341,13 @@ __metadata:
     registry-url: ^5.0.0
     semver: ^6.2.0
   checksum: cc9f890d3667d7610e6184decf543278b87f657d1ace0deb4a9c9155feca738ef88f660c82200763d3348010f4e42e9c7adc91e96ab0f86a770955995b5351e2
+  languageName: node
+  linkType: hard
+
+"pako@npm:^2.0.4":
+  version: 2.1.0
+  resolution: "pako@npm:2.1.0"
+  checksum: 71666548644c9a4d056bcaba849ca6fd7242c6cf1af0646d3346f3079a1c7f4a66ffec6f7369ee0dc88f61926c10d6ab05da3e1fca44b83551839e89edd75a3e
   languageName: node
   linkType: hard
 
@@ -24515,6 +24556,17 @@ __metadata:
     babel-plugin-relay: ^14.1.0
     vite: ">=2.0.0"
   checksum: 123ee9ae0b0da51669a1698f6478e32725971522ccf90b77af678566cb2c23602a687a8caadac6ab25516937d9ff80a77ccae7b8e8a6b4c4f7170b5f5977fc0e
+  languageName: node
+  linkType: hard
+
+"vite-plugin-rewrite-all@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "vite-plugin-rewrite-all@npm:1.0.0"
+  dependencies:
+    connect-history-api-fallback: ^1.6.0
+  peerDependencies:
+    vite: ^2.0.0 || ^3.0.0
+  checksum: 5efb6f0b54452126067619a1a230d2dfc9264d963801159f9050aaf18d9335e600a017b2ce751e98c597535215c4732a79804f0bb664b4aafbaa6283f06b9aee
   languageName: node
   linkType: hard
 

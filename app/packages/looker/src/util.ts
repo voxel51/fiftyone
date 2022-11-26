@@ -541,3 +541,9 @@ export const getMimeType = (sample: any) => {
 
 export const isFloatArray = (arr) =>
   arr instanceof Float32Array || arr instanceof Float64Array;
+
+export const getArrayBufferFromUrl = async (url: string) => {
+  const data = await fetch(url);
+  const arrayBuffer = await data.arrayBuffer();
+  return arrayBuffer;
+};

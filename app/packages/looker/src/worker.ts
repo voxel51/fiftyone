@@ -3,12 +3,12 @@
  */
 
 import {
-  LABEL_LIST,
-  VALID_LABEL_TYPES,
+  get32BitColor,
   getFetchFunction,
+  LABEL_LIST,
   setFetchFunction,
   Stage,
-  get32BitColor,
+  VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
