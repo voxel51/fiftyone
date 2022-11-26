@@ -1685,6 +1685,7 @@ class SampleCollection(object):
         key_field=None,
         skip_none=False,
         expand_schema=True,
+        dynamic=False,
         _allow_missing=False,
         _sample_ids=None,
         _frame_ids=None,
@@ -1821,6 +1822,8 @@ class SampleCollection(object):
             expand_schema (True): whether to dynamically add new sample/frame
                 fields encountered to the dataset schema. If False, an error is
                 raised if the root ``field_name`` does not exist
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
         """
         if self._is_group_field(field_name):
             raise ValueError(
@@ -1844,7 +1847,7 @@ class SampleCollection(object):
             )
 
         if expand_schema and self.get_field(field_name) is None:
-            self._expand_schema_from_values(field_name, values)
+            self._expand_schema_from_values(field_name, values, dynamic)
 
         _field_name, _, list_fields, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
@@ -1922,7 +1925,7 @@ class SampleCollection(object):
                 skip_none=skip_none,
             )
 
-    def _expand_schema_from_values(self, field_name, values):
+    def _expand_schema_from_values(self, field_name, values, dynamic):
         field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
         root = field_name.split(".", 1)[0]
@@ -1955,7 +1958,9 @@ class SampleCollection(object):
                         "field '%s' from empty values" % field_name
                     )
 
-            self._dataset._add_implied_frame_field(field_name, value)
+            self._dataset._add_implied_frame_field(
+                field_name, value, dynamic=dynamic
+            )
         else:
             schema = self._dataset.get_field_schema(include_private=True)
 
@@ -1984,7 +1989,9 @@ class SampleCollection(object):
                         "field '%s' from empty values" % field_name
                     )
 
-            self._dataset._add_implied_sample_field(field_name, value)
+            self._dataset._add_implied_sample_field(
+                field_name, value, dynamic=dynamic
+            )
 
     def _set_sample_values(
         self,
