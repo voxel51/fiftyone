@@ -1,9 +1,6 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import LRU from "lru-cache";
-import { v4 as uuid } from "uuid";
-
 import {
   AppError,
   DATE_FIELD,
@@ -16,16 +13,22 @@ import {
   Schema,
   withPath,
 } from "@fiftyone/utilities";
+import LRU from "lru-cache";
+import { v4 as uuid } from "uuid";
+
+import { decode as decodePng } from "fast-png";
+
+import { getSampleSrc } from "@fiftyone/state";
 
 import {
-  FONT_SIZE,
-  STROKE_WIDTH,
-  PAD,
-  POINT_RADIUS,
-  MAX_FRAME_CACHE_SIZE_BYTES,
+  BASE_ALPHA,
   CHUNK_SIZE,
   DASH_LENGTH,
-  BASE_ALPHA,
+  FONT_SIZE,
+  MAX_FRAME_CACHE_SIZE_BYTES,
+  PAD,
+  POINT_RADIUS,
+  STROKE_WIDTH,
 } from "./constants";
 import {
   getFrameElements,
@@ -37,33 +40,34 @@ import {
   LookerElement,
   VIDEO_SHORTCUTS,
 } from "./elements/common";
-import processOverlays from "./processOverlays";
 import { ClassificationsOverlay, loadOverlays } from "./overlays";
 import { CONTAINS, Overlay } from "./overlays/base";
+import processOverlays from "./processOverlays";
 import {
-  FrameState,
-  ImageState,
-  VideoState,
-  StateUpdate,
   BaseState,
+  BufferRange,
+  Buffers,
+  Coloring,
+  Coordinates,
   DEFAULT_FRAME_OPTIONS,
   DEFAULT_IMAGE_OPTIONS,
   DEFAULT_VIDEO_OPTIONS,
-  Coordinates,
-  Optional,
-  FrameChunkResponse,
-  VideoSample,
-  FrameSample,
-  Buffers,
-  LabelData,
-  BufferRange,
   Dimensions,
+  FrameChunkResponse,
+  FrameSample,
+  FrameState,
+  ImageState,
+  LabelData,
+  Optional,
   Sample,
-  Coloring,
+  StateUpdate,
+  VideoSample,
+  VideoState,
 } from "./state";
 import {
   addToBuffers,
   createWorker,
+  getArrayBufferFromUrl,
   getDPR,
   getElementBBox,
   getFitRect,
@@ -75,9 +79,10 @@ import {
 
 import { zoomToContent } from "./zoom";
 
-import { getFrameNumber } from "./elements/util";
 import { getColor } from "@fiftyone/utilities";
 import { Events } from "./elements/base";
+import { getFrameNumber } from "./elements/util";
+import { NumpyResult } from "./numpy";
 
 export { createColorGenerator, getRGB } from "@fiftyone/utilities";
 export { freeVideos } from "./elements/util";
@@ -91,7 +96,6 @@ export type {
   VideoConfig,
   VideoOptions,
 } from "./state";
-
 export { zoomAspectRatio } from "./zoom";
 
 export type RGB = [number, number, number];
@@ -644,9 +648,49 @@ export abstract class Looker<
     );
   }
 
+  /**
+   * Some label types (example: segmentation, heatmap) can have their mask datas stored in disks,
+   * we want to impute the `mask` property of those labels with what's stored in the disk
+   */
+  private async imputeOverlayMaskFromDisk(sample: Sample) {
+    for (const field in sample) {
+      const label = sample[field];
+      if (
+        !label ||
+        Object.hasOwn(label, "mask") ||
+        !Object.hasOwn(label, "mask_path")
+      ) {
+        continue;
+      }
+
+      // convert absolute file path to a URL that we can "fetch" from
+      const maskPngImageUrl = getSampleSrc(label.mask_path);
+
+      const pngArrayBuffer = await getArrayBufferFromUrl(maskPngImageUrl);
+      const overlayData = decodePng(pngArrayBuffer);
+
+      const width = overlayData.width;
+      const height = overlayData.height;
+
+      // frame what we have as a specialized type `NumpyResult` that's used in downstream while processing overlays
+      const data: NumpyResult = {
+        shape: [height, width],
+        buffer: overlayData.data,
+        arrayType: overlayData.data.constructor
+          .name as NumpyResult["arrayType"],
+      };
+
+      // set the `mask` property for this label
+      label.mask = {
+        data,
+        image: new ArrayBuffer(width * height * 4),
+      };
+    }
+  }
+
   private loadSample(sample: Sample) {
     const messageUUID = uuid();
-    const worker = getLabelsWorker((event, detail) =>
+    const labelsWorker = getLabelsWorker((event, detail) =>
       this.dispatchEvent(event, detail)
     );
     const listener = ({ data: { sample, uuid } }) => {
@@ -658,16 +702,19 @@ export abstract class Looker<
           disabled: false,
           reloading: false,
         });
-        worker.removeEventListener("message", listener);
+        labelsWorker.removeEventListener("message", listener);
       }
     };
-    worker.addEventListener("message", listener);
+    labelsWorker.addEventListener("message", listener);
 
-    worker.postMessage({
-      method: "processSample",
-      coloring: this.state.options.coloring,
-      sample,
-      uuid: messageUUID,
+    // todo: don't process overlays here: https://github.com/voxel51/fiftyone/issues/1344
+    this.imputeOverlayMaskFromDisk(sample).finally(() => {
+      labelsWorker.postMessage({
+        method: "processSample",
+        coloring: this.state.options.coloring,
+        sample,
+        uuid: messageUUID,
+      });
     });
   }
 }
