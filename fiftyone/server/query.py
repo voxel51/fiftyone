@@ -134,7 +134,7 @@ class SidebarMode(Enum):
 
 @gql.type
 class DatasetAppConfig:
-    media_fields: t.List[str]
+    media_fields: t.Optional[t.List[str]]
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
     sidebar_mode: t.Optional[SidebarMode]
