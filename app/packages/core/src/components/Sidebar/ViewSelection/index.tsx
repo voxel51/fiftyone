@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { filter, map, pick } from "lodash";
+import { filter, map } from "lodash";
 import {
   atom,
   useRecoilState,
@@ -28,8 +28,8 @@ export const viewDialogOpen = atom<boolean>({
 });
 
 export type DatasetViewOption = Pick<
-  fos.SavedView,
-  "id" | "description" | "color" | "viewStages"
+  fos.State.SavedView,
+  "id" | "description" | "color"
 > & { label: string; slug: string };
 
 const DEFAULT_SELECTED: DatasetViewOption = {
@@ -38,7 +38,6 @@ const DEFAULT_SELECTED: DatasetViewOption = {
   color: "#9e9e9e",
   description: "Unsaved view",
   slug: "unsaved-view",
-  viewStages: [],
 };
 
 export interface DatasetView {
@@ -105,76 +104,65 @@ export default function ViewSelection(props: Props) {
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
   const isEmptyView = !loadedView?.length;
   const selectedView = viewOptions[0];
-  const [selected, setSelected] = useState<DatasetViewOption>(selectedView);
+  const [selected, setSelected] = useState<DatasetViewOption | null>(
+    selectedView
+  );
   const [isExtendingSavedView, setIsExtendingSavedView] =
     useState<boolean>(false);
 
   useEffect(() => {
-    if (savedViewParam) {
+    if (!loadedView?.length && selected?.id !== DEFAULT_SELECTED.id) {
+      setSelected(null);
+    } else if (savedViewParam) {
       const potentialView = viewOptions.filter(
-        (v) => v.id === savedViewParam
+        (v) => v.slug === savedViewParam
       )?.[0];
-
-      // detect unsaved when extending loaded view
-      if (
-        selected &&
-        loadedView &&
-        selected.viewStages?.length !== loadedView?.length &&
-        selected.slug !== DEFAULT_SELECTED.slug
-      ) {
-        console.log("here 1", selected, loadedView);
-        setSelected(viewOptions[0]);
-        setSavedViewParam(null); // don't remove
-        setIsExtendingSavedView(true); // don't remove
-        return;
-      }
-
       if (potentialView) {
-        console.log("here 2", potentialView);
-        // stages were cleared using x button
-        if (!loadedView?.length) {
-          console.log("here 3", potentialView);
-          setSelected(viewOptions[0]);
-          setView([], [], "", true, "");
-        } else {
-          console.log("here 4", potentialView);
-          // found a matching view
-          setSelected(potentialView);
-          setView([], [], potentialView.label, true, potentialView.slug);
-        }
-        setIsExtendingSavedView(false);
-        return;
-      }
-
-      // no potential view found
-      if (savedViewParam !== viewOptions[0].slug) {
-        setSelected(viewOptions[0]);
-        console.log("here 5", savedViewParam);
-        setView([], [], "", true, "");
-      }
-      setIsExtendingSavedView(false);
-    } else {
-      // if not adding stages to the currently loaded view, set back to all samples
-      if (!isExtendingSavedView) {
-        setSelected(viewOptions[0]);
-        setView([], [], "", true, "");
+        setSelected(potentialView);
+      } else {
+        setSelected(null);
       }
     }
-  }, [loadedView, viewOptions, savedViewParam]);
+  }, [viewOptions, savedViewParam, loadedView]);
+
+  useEffect(() => {
+    if (selected) {
+      if (selected.id === DEFAULT_SELECTED.id) {
+        return;
+      } else if (
+        (savedViewParam && selected.id !== DEFAULT_SELECTED.id) ||
+        savedViewParam !== selected.slug
+      ) {
+        setView([], [], selected.label, true, selected.slug);
+      }
+    } else {
+      if (selected === null && savedViewParam) {
+        setView([], [], "", true, "");
+        setSelected(DEFAULT_SELECTED);
+      }
+    }
+  }, [selected]);
 
   return (
     <Box>
       <ViewDialog
         savedViews={items}
-        onEditSuccess={(savedView?: fos.State.SavedView, reload?: boolean) => {
-          refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
-          if (savedView && reload) {
-            setView([], [], savedView.name, true, savedView.urlName);
-          }
+        onEditSuccess={(savedView: fos.State.SavedView, reload?: boolean) => {
+          refetch(
+            { name: datasetName },
+            {
+              fetchPolicy: "network-only",
+              onComplete: () => {
+                if (savedView && reload) {
+                  setSavedViewParam(savedView.urlName);
+                }
+              },
+            }
+          );
         }}
         onDeleteSuccess={(name: string) => {
-          refetch({ name: datasetName }, { fetchPolicy: "store-and-network" });
-          if (name !== selected.label) {
+          refetch({ name: datasetName }, { fetchPolicy: "network-only" });
+          if (selected && name !== selected.label) {
             setView([], [], "", true, "");
           }
         }}
@@ -182,10 +170,7 @@ export default function ViewSelection(props: Props) {
       <Selection
         selected={selected}
         setSelected={(item: DatasetViewOption) => {
-          const allSelected = item.slug === DEFAULT_SELECTED.slug;
-          const selectedSavedView = allSelected ? "" : item.label;
-          const selectedSavedViewUrlName = allSelected ? "" : item.id;
-          setView([], [], selectedSavedView, true, selectedSavedViewUrlName);
+          setSelected(item);
         }}
         items={searchData}
         onEdit={(item) => {

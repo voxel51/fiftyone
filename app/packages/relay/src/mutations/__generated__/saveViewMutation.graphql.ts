@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c4da9d1d5065beed0bb70ba1cdaed080>>
+ * @generated SignedSource<<8c91c12f89c28bf83bb75a7b3bca9d9e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,6 +20,7 @@ export type saveViewMutation$data = {
   readonly saveView: {
     readonly color: string | null;
     readonly createdAt: any;
+    readonly datasetId: string;
     readonly description: string | null;
     readonly id: string | null;
     readonly lastLoadedAt: any | null;
@@ -100,6 +101,13 @@ v5 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "datasetId",
         "storageKey": null
       },
       {
@@ -192,16 +200,16 @@ return {
     "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "f78677dd00613b31ca2fd4b9d877b076",
+    "cacheID": "ea1225c53b771090e9ecac8b4cdc63b6",
     "id": null,
     "metadata": {},
     "name": "saveViewMutation",
     "operationKind": "mutation",
-    "text": "mutation saveViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $description: String = null\n  $color: String = null\n) {\n  saveView(subscription: $subscription, session: $session, viewName: $viewName, description: $description, color: $color) {\n    id\n    name\n    urlName\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
+    "text": "mutation saveViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $description: String = null\n  $color: String = null\n) {\n  saveView(subscription: $subscription, session: $session, viewName: $viewName, description: $description, color: $color) {\n    id\n    datasetId\n    name\n    urlName\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "356086cfd829f72b0005b52ca41c1e0d";
+(node as any).hash = "ce57702dfcc79c5c8ab14eb3face2ec1";
 
 export default node;

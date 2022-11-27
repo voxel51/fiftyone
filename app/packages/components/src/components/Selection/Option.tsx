@@ -4,8 +4,7 @@ import styled from "styled-components";
 import { useHover } from "@fiftyone/state";
 import { Edit, Check } from "@mui/icons-material";
 import { useTheme } from "@fiftyone/components";
-
-import Tooltip from "@mui/joy/Tooltip";
+import * as fos from "@fiftyone/state";
 
 const Box = styled.div`
   display: flex;
@@ -28,13 +27,15 @@ const TextContainer = styled.div`
   width: 100%;
   text-overflow: ellipsis;
   color: ${({ theme }) => theme.text.primary};
+  padding-bottom: 2px;
 `;
 
 export interface DatasetViewOption {
   id: string;
   label: string;
-  color: string | null;
-  description: string | null;
+  color?: string;
+  description?: string;
+  slug?: string;
 }
 
 interface Props {

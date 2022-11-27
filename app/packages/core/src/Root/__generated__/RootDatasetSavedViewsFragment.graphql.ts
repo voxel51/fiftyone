@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<016d79a1d27e3a64e1e2fe1dfc8fbb76>>
+ * @generated SignedSource<<beffd854a141fda797286a839959bb70>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,7 +12,6 @@ import { ReaderFragment, RefetchableFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type RootDatasetSavedViewsFragment$data = {
   readonly savedViews: ReadonlyArray<{
-    readonly __id: string;
     readonly color: string | null;
     readonly createdAt: any;
     readonly datasetId: string;
@@ -125,18 +124,6 @@ const node: ReaderFragment = {
           "kind": "ScalarField",
           "name": "lastLoadedAt",
           "storageKey": null
-        },
-        {
-          "kind": "ClientExtension",
-          "selections": [
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "__id",
-              "storageKey": null
-            }
-          ]
         }
       ],
       "storageKey": null
@@ -146,6 +133,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "344afacf7a63f7a5404675f520589758";
+(node as any).hash = "236a2e9feb6bd418ebdbe106921b90e7";
 
 export default node;
