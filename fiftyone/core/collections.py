@@ -1197,6 +1197,17 @@ class SampleCollection(object):
 
         return field_name
 
+    def has_field(self, path):
+        """Determines whether the collection has a field with the given name.
+
+        Args:
+            path: the field name or ``embedded.field.name``
+
+        Returns:
+            True/False
+        """
+        return self.get_field(path) is not None
+
     def has_sample_field(self, path):
         """Determines whether the collection has a sample field with the given
         name.
