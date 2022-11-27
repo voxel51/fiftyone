@@ -1823,12 +1823,12 @@ class SampleCollection(object):
             )
 
         if expand_schema and (dynamic or not self.has_field(field_name)):
-            to_mongo, is_group_field = self._expand_schema_from_values(
+            to_mongo, new_group_field = self._expand_schema_from_values(
                 field_name, values, dynamic=dynamic
             )
         else:
             to_mongo = None
-            is_group_field = False
+            new_group_field = False
 
         _field_name, _, list_fields, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
@@ -1907,13 +1907,13 @@ class SampleCollection(object):
         except:
             # Add a group field converts the dataset's type, so if it fails we
             # must clean up after ourselves to avoid an inconsistent state
-            if is_group_field:
+            if new_group_field:
                 self._dataset.delete_sample_field(field_name)
-                is_group_field = False
+                new_group_field = False
 
             raise
         finally:
-            if is_group_field:
+            if new_group_field:
                 self._dataset._doc.media_type = fom.GROUP
                 self._dataset._doc.save()
 
@@ -1923,7 +1923,7 @@ class SampleCollection(object):
         root = field_name.split(".", 1)[0]
 
         to_mongo = None
-        is_group_field = False
+        new_group_field = False
 
         if is_frame_field:
             root_field = self.get_field(
@@ -2002,12 +2002,16 @@ class SampleCollection(object):
                         "field '%s' from empty values" % field_name
                     )
             elif isinstance(value, fog.Group):
-                # @todo need to handle changing slice names of existing groups
-
-                if not isinstance(self, fod.Dataset):
+                if new_root_field and not isinstance(self, fod.Dataset):
                     raise ValueError(
                         "Group fields can only be added to entire datasets"
                     )
+
+                self._dataset._add_group_field(field_name)
+
+                # @todo handle changing slice names of existing groups
+                if not new_root_field:
+                    return None, False
 
                 media_type = self.media_type
                 slice_names = set()
@@ -2020,7 +2024,6 @@ class SampleCollection(object):
                             "declaring group fields; found %s" % type(_value)
                         )
 
-                self._dataset._add_group_field(field_name)
                 for slice_name in slice_names:
                     self._dataset._expand_group_schema(
                         field_name, slice_name, media_type
@@ -2028,7 +2031,7 @@ class SampleCollection(object):
 
                 # Temporarily lie about media type until after values are added
                 self._dataset._doc.media_type = media_type
-                is_group_field = True
+                new_group_field = True
             elif dynamic:
                 for _value in values:
                     if _value is not None:
@@ -2047,7 +2050,7 @@ class SampleCollection(object):
                 )
                 to_mongo = field.to_mongo
 
-        return to_mongo, is_group_field
+        return to_mongo, new_group_field
 
     def _set_sample_values(
         self,
