@@ -19,11 +19,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { useTheme } from "@fiftyone/components";
 import { viewDialogOpen } from ".";
 import { DatasetViewOption } from "@fiftyone/components/src/components/Selection/Option";
-import { useMutation } from "react-relay";
-import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { stateSubscription, useSendEvent } from "@fiftyone/state";
-import { useErrorHandler } from "react-error-boundary";
 import {
   Box,
   NameInput,
@@ -34,22 +30,16 @@ import {
   ErrorText,
   ErrorBox,
 } from "./styledComponents";
-
-export const COLOR_OPTIONS = [
-  { id: "blue", label: "Blue", color: "#2970FF", description: "" },
-  { id: "cyan", label: "Cyan", color: "#06AED4", description: "" },
-  { id: "green", label: "Green", color: "#16B364", description: "" },
-  { id: "yellow", label: "Yellow", color: "#FAC515", description: "" },
-  { id: "orange", label: "Orange", color: "#EF6820", description: "" },
-  { id: "red", label: "Red", color: "#F04438", description: "" },
-  { id: "pink", label: "Pink", color: "#EE46BC", description: "" },
-  { id: "purple", label: "Purple", color: "#7A5AF8", description: "" },
-  { id: "gray", label: "Gray", color: "#667085", description: "" },
-];
+import {
+  COLOR_OPTIONS,
+  DEFAULT_COLOR,
+  COLOR_OPTIONS_MAP,
+  DEFAULT_COLOR_OPTION,
+} from "@fiftyone/components/src/components/Selection/Colors";
 
 interface Props {
   savedViews: fos.State.SavedView[];
-  onEditSuccess: (saveView?: fos.State.SavedView, reload?: boolean) => void;
+  onEditSuccess: (saveView: fos.State.SavedView, reload?: boolean) => void;
   onDeleteSuccess: (slug: string) => void;
 }
 
@@ -58,7 +48,7 @@ export const viewDialogContent = atom({
   default: {
     name: "",
     description: "",
-    color: COLOR_OPTIONS[0].id,
+    color: DEFAULT_COLOR,
     isCreating: true, // vs. editing
   },
 });
@@ -81,8 +71,7 @@ export default function ViewDialog(props: Props) {
     useState<string>(initialDescription);
 
   const theColorOption =
-    COLOR_OPTIONS.filter((color) => color.color === initialColor)?.[0] ||
-    COLOR_OPTIONS[0];
+    COLOR_OPTIONS_MAP[initialColor] || DEFAULT_COLOR_OPTION;
 
   const [colorOption, setColorOption] = useState<DatasetViewOption>({
     label: theColorOption.id,
@@ -104,10 +93,9 @@ export default function ViewDialog(props: Props) {
     if (viewContent.name) {
       setNameValue(viewContent.name);
       setDescriptionValue(viewContent.description);
+
       const theColorOption =
-        COLOR_OPTIONS.filter(
-          (color) => color.color === viewContent.color
-        )?.[0] || COLOR_OPTIONS[0];
+        COLOR_OPTIONS_MAP[viewContent.color] || DEFAULT_COLOR_OPTION;
 
       setColorOption({
         label: theColorOption?.id,
@@ -118,24 +106,21 @@ export default function ViewDialog(props: Props) {
     }
   }, [viewContent]);
 
-  // TODO: move to custom hooks
   const view = useRecoilValue(fos.view);
-  const subscription = useRecoilValue(stateSubscription);
-  const onError = useErrorHandler();
-  const send = useSendEvent();
-  const [saveView, savingView] = useMutation<foq.saveViewMutation>(
-    foq.saveView
-  );
-  const [updateView] = useMutation<foq.updateSavedViewMutation>(
-    foq.updateSavedView
-  );
-  const { handleDeleteView, isDeletingSavedView } = fos.useSavedViews();
+  const {
+    handleDeleteView,
+    isDeletingSavedView,
+    handleCreateSavedView,
+    isCreatingSavedView,
+    handleUpdateSavedView,
+    isUpdatingSavedView,
+  } = fos.useSavedViews();
 
   const resetValues = useCallback(() => {
     resetViewContent();
     setNameValue("");
     setDescriptionValue("");
-    setColorOption(COLOR_OPTIONS[0]);
+    setColorOption(DEFAULT_COLOR_OPTION);
   }, []);
 
   const onDeleteView = useCallback(() => {
@@ -147,50 +132,32 @@ export default function ViewDialog(props: Props) {
   }, [nameValue]);
 
   const handleSaveView = useCallback(() => {
-    if (nameValue) {
-      if (isCreating && view?.length) {
-        send((session) =>
-          saveView({
-            onError,
-            variables: {
-              viewName: nameValue,
-              description: descriptionValue,
-              color: colorOption?.color,
-              subscription,
-              session,
-            },
-            onCompleted: ({ saveView }) => {
-              resetValues();
-              onEditSuccess(saveView, true);
-            },
-          })
-        );
-      } else {
-        send((session) =>
-          updateView({
-            onError,
-            variables: {
-              viewName: initialName,
-              subscription,
-              session,
-              updatedInfo: {
-                description: descriptionValue,
-                color: colorOption?.color,
-                name: nameValue,
-              },
-            },
-            onCompleted: ({ updateSavedView }) => {
-              console.log("success", updateSavedView);
-              console.log("asd", initialName, nameValue, updateSavedView);
-              resetValues();
-              onEditSuccess(updateSavedView, initialName !== nameValue);
-            },
-          })
-        );
-      }
-      setIsOpen(false);
+    if (isCreating && view?.length) {
+      handleCreateSavedView(
+        nameValue,
+        descriptionValue,
+        colorOption.color || DEFAULT_COLOR,
+        view,
+        (saveView: fos.State.SavedView) => {
+          resetValues();
+          onEditSuccess(saveView, true);
+          setIsOpen(false);
+        }
+      );
+    } else {
+      handleUpdateSavedView(
+        initialName,
+        nameValue,
+        descriptionValue,
+        colorOption.color || DEFAULT_COLOR,
+        (saveView: fos.State.SavedView) => {
+          resetValues();
+          onEditSuccess(saveView, initialName !== nameValue);
+          setIsOpen(false);
+        }
+      );
     }
-  }, [view, nameValue, descriptionValue, colorOption?.color, subscription]);
+  }, [view, nameValue, descriptionValue, colorOption?.color]);
 
   return (
     <Dialog
@@ -306,6 +273,8 @@ export default function ViewDialog(props: Props) {
             <Button
               onClick={handleSaveView}
               disabled={
+                isUpdatingSavedView ||
+                isCreatingSavedView ||
                 isDeletingSavedView ||
                 !!nameError ||
                 !nameValue ||

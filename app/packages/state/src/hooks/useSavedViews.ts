@@ -15,6 +15,11 @@ export default function useSavedViews() {
 
   const [deleteView, isDeletingSavedView] =
     useMutation<foq.deleteSavedViewMutation>(foq.deleteSavedView);
+  const [saveView, isCreatingSavedView] = useMutation<foq.saveViewMutation>(
+    foq.saveView
+  );
+  const [updateView, isUpdatingSavedView] =
+    useMutation<foq.updateSavedViewMutation>(foq.updateSavedView);
 
   const handleDeleteView = useCallback(
     (nameValue: string, onDeleteSuccess: () => void) => {
@@ -37,10 +42,75 @@ export default function useSavedViews() {
     []
   );
 
+  const handleCreateSavedView = useCallback(
+    (
+      name: string,
+      description: string,
+      color: string,
+      view: fos.State.Stage[],
+      onSuccess: (saveView) => void
+    ) => {
+      if (name && view.length) {
+        send((session) =>
+          saveView({
+            onError,
+            variables: {
+              viewName: name,
+              description,
+              color,
+              subscription,
+              session,
+            },
+            onCompleted: ({ saveView }) => {
+              onSuccess(saveView);
+            },
+          })
+        );
+      }
+    },
+    []
+  );
+
+  const handleUpdateSavedView = useCallback(
+    (
+      initialName: string,
+      name: string,
+      description: string,
+      color: string,
+      onSuccess: (saveView) => void
+    ) => {
+      if (initialName) {
+        send((session) =>
+          updateView({
+            onError,
+            variables: {
+              viewName: initialName,
+              subscription,
+              session,
+              updatedInfo: {
+                name,
+                color,
+                description,
+              },
+            },
+            onCompleted: ({ updateSavedView }) => {
+              onSuccess(updateSavedView);
+            },
+          })
+        );
+      }
+    },
+    []
+  );
+
   return {
     savedViews,
-    isDeletingSavedView,
     refresh,
+    isDeletingSavedView,
     handleDeleteView,
+    isCreatingSavedView,
+    handleCreateSavedView,
+    handleUpdateSavedView,
+    isUpdatingSavedView,
   };
 }
