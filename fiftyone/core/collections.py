@@ -1822,33 +1822,32 @@ class SampleCollection(object):
                 self, _sample_ids, values
             )
 
-        if expand_schema and self.get_field(field_name) is None:
-            is_group_field = self._expand_schema_from_values(
-                field_name, values, dynamic
+        if expand_schema and (dynamic or not self.has_field(field_name)):
+            to_mongo, is_group_field = self._expand_schema_from_values(
+                field_name, values, dynamic=dynamic
             )
         else:
+            to_mongo = None
             is_group_field = False
 
         _field_name, _, list_fields, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
         )
+        field = self.get_field(field_name)
 
-        to_mongo = None
         if id_to_str:
             to_mongo = lambda _id: ObjectId(_id)
-        else:
-            field_type = self.get_field(field_name)
-            if field_type is not None:
-                to_mongo = field_type.to_mongo
+        elif to_mongo is None and field is not None:
+            to_mongo = field.to_mongo
 
         # Setting an entire label list document whose label elements have been
         # filtered is not allowed because this would delete the filtered labels
         if (
-            isinstance(field_type, fof.EmbeddedDocumentField)
-            and issubclass(field_type.document_type, fol._LABEL_LIST_FIELDS)
+            isinstance(field, fof.EmbeddedDocumentField)
+            and issubclass(field.document_type, fol._LABEL_LIST_FIELDS)
             and isinstance(self, fov.DatasetView)
         ):
-            label_type = field_type.document_type
+            label_type = field.document_type
             list_field = label_type._LABEL_LIST_FIELD
             path = field_name + "." + list_field
 
@@ -1879,8 +1878,8 @@ class SampleCollection(object):
         # If we're directly updating a document list field of a dataset view,
         # then update list elements by ID in case the field has been filtered
         if (
-            isinstance(field_type, fof.ListField)
-            and isinstance(field_type.field, fof.EmbeddedDocumentField)
+            isinstance(field, fof.ListField)
+            and isinstance(field.field, fof.EmbeddedDocumentField)
             and isinstance(self, fov.DatasetView)
         ):
             list_fields = sorted(set(list_fields + [_field_name]))
@@ -1918,27 +1917,32 @@ class SampleCollection(object):
                 self._dataset._doc.media_type = fom.GROUP
                 self._dataset._doc.save()
 
-    def _expand_schema_from_values(self, field_name, values, dynamic):
+    def _expand_schema_from_values(self, field_name, values, dynamic=False):
         field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
         root = field_name.split(".", 1)[0]
 
+        to_mongo = None
         is_group_field = False
 
         if is_frame_field:
-            schema = self._dataset.get_frame_field_schema(include_private=True)
+            root_field = self.get_field(
+                self._FRAMES_PREFIX + root, include_private=True
+            )
+            new_root_field = root_field is None
 
-            if root in schema:
-                return
+            if new_root_field:
+                if root != field_name:
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new frame "
+                        "field '%s' when setting embedded field '%s'"
+                        % (root, field_name)
+                    )
+            elif not dynamic:
+                return None, False
 
-            if root != field_name:
-                raise ValueError(
-                    "Cannot infer an appropriate type for new frame "
-                    "field '%s' when setting embedded field '%s'"
-                    % (root, field_name)
-                )
-
-            value = _get_non_none_value(itertools.chain.from_iterable(values))
+            values = itertools.chain.from_iterable(values)
+            value = _get_non_none_value(values)
 
             if value is None:
                 if list(values):
@@ -1952,22 +1956,36 @@ class SampleCollection(object):
                         "Cannot infer an appropriate type for new frame "
                         "field '%s' from empty values" % field_name
                     )
-
-            self._dataset._add_implied_frame_field(
-                field_name, value, dynamic=dynamic
-            )
-        else:
-            schema = self._dataset.get_field_schema(include_private=True)
-
-            if root in schema:
-                return
-
-            if root != field_name:
-                raise ValueError(
-                    "Cannot infer an appropriate type for new sample "
-                    "field '%s' when setting embedded field '%s'"
-                    % (root, field_name)
+            elif dynamic:
+                for _value in values:
+                    if _value is not None:
+                        self._dataset._add_implied_frame_field(
+                            field_name, _value, dynamic=dynamic
+                        )
+            elif new_root_field:
+                self._dataset._add_implied_frame_field(
+                    field_name, value, dynamic=dynamic
                 )
+            else:
+                # User didn't request new dynamic attributes to be declared,
+                # but we still need to serialize the provided values
+                field = foo.create_implied_field(
+                    field_name, value, dynamic=dynamic
+                )
+                to_mongo = field.to_mongo
+        else:
+            root_field = self.get_field(root, include_private=True)
+            new_root_field = root_field is None
+
+            if new_root_field:
+                if root != field_name:
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new sample "
+                        "field '%s' when setting embedded field '%s'"
+                        % (root, field_name)
+                    )
+            elif not dynamic:
+                return None, False
 
             value = _get_non_none_value(values)
 
@@ -1983,8 +2001,9 @@ class SampleCollection(object):
                         "Cannot infer an appropriate type for new sample "
                         "field '%s' from empty values" % field_name
                     )
+            elif isinstance(value, fog.Group):
+                # @todo need to handle changing slice names of existing groups
 
-            if isinstance(value, fog.Group):
                 if not isinstance(self, fod.Dataset):
                     raise ValueError(
                         "Group fields can only be added to entire datasets"
@@ -2010,12 +2029,25 @@ class SampleCollection(object):
                 # Temporarily lie about media type until after values are added
                 self._dataset._doc.media_type = media_type
                 is_group_field = True
-            else:
+            elif dynamic:
+                for _value in values:
+                    if _value is not None:
+                        self._dataset._add_implied_sample_field(
+                            field_name, _value, dynamic=dynamic
+                        )
+            elif new_root_field:
                 self._dataset._add_implied_sample_field(
                     field_name, value, dynamic=dynamic
                 )
+            else:
+                # User didn't request new dynamic attributes to be declared,
+                # but we still need to serialize the provided values
+                field = foo.create_implied_field(
+                    field_name, value, dynamic=dynamic
+                )
+                to_mongo = field.to_mongo
 
-        return is_group_field
+        return to_mongo, is_group_field
 
     def _set_sample_values(
         self,
