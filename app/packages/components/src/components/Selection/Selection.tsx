@@ -9,7 +9,7 @@ import { useTheme } from "@fiftyone/components";
 import { DatasetViewOption } from "./Option";
 import { debounce } from "lodash";
 import { SearchBox } from "./SearchBox";
-import { DEFAULT_COLOR_OPTION } from "./colors";
+import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
 
 const Box = styled.div`
   display: flex;

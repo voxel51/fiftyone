@@ -35,7 +35,7 @@ import {
   DEFAULT_COLOR,
   COLOR_OPTIONS_MAP,
   DEFAULT_COLOR_OPTION,
-} from "@fiftyone/components/src/components/Selection/Colors";
+} from "@fiftyone/components/src/components/Selection/SelectionColors";
 
 interface Props {
   savedViews: fos.State.SavedView[];
