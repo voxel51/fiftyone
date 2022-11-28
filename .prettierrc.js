@@ -1,8 +1,10 @@
-/**
- * This is a prettier config at the root of the monorepo,
- * there's yet another prettier config inside `app` directory that extends this config for the webapp.
- */
 module.exports = {
+  trailingComma: "es5",
+  tabWidth: 2,
+  semi: true,
+  useTabs: false,
+  singleQuote: false,
+  printWidth: 80,
   overrides: [
     {
       files: "*.md",
