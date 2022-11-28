@@ -722,6 +722,28 @@ def _init_frames(
     else:
         view = src_collection.select_fields()
 
+    # If we're sampling frames on a view, we must consult the full dataset to
+    # see which frames already have docs/filepaths
+    has_docs_map = None
+    has_filepaths_map = None
+    if (
+        sample_frames == True
+        and not sparse
+        and not isinstance(src_collection, fod.Dataset)
+    ):
+        id_field = "sample_id" if is_clips else "id"
+        _view = src_dataset.select(src_collection.values(id_field))
+        ids, fns = _view.values(["_id", "frames.frame_number"])
+
+        has_docs_map = {_id: set(_fns) for _id, _fns in zip(ids, fns)}
+
+        if src_dataset.has_frame_field("filepath"):
+            ids, fns = _view.match_frames(
+                fo.ViewField("filepath") is not None,
+                omit_empty=False,
+            ).values(["_id", "frames.frame_number"])
+            has_filepaths_map = {_id: set(_fns) for _id, _fns in zip(ids, fns)}
+
     for sample in view._aggregate(attach_frames=True):
         video_path = sample["filepath"]
         tags = sample.get("tags", [])
@@ -782,18 +804,27 @@ def _init_frames(
             elif sample_map[video_path] is not None:
                 sample_map[video_path].update(sample_frame_numbers)
 
-        # Record any already-sampled frames whose `filepath` need to be stored
-        # on the source dataset
+        # Record any already-sampled frames whose doc/filepath need to be
+        # stored on the source dataset
         if sample_frames == True and sample_frame_numbers is not None:
-            missing_fns = (
-                set(doc_frame_numbers)
-                - set(sample_frame_numbers)
-                - frames_with_filepaths
-            )
-        else:
-            missing_fns = set()
+            if has_filepaths_map is not None:
+                frames_with_filepaths = has_filepaths_map[_sample_id]
 
-        for fn in missing_fns:
+            if has_docs_map is not None:
+                frames_with_docs = has_docs_map[_sample_id]
+            else:
+                frames_with_docs = frames_with_filepaths
+
+            already_sampled_fns = set(doc_frame_numbers) - set(
+                sample_frame_numbers
+            )
+            missing_docs = already_sampled_fns - frames_with_docs
+            missing_fps = already_sampled_fns - frames_with_filepaths
+        else:
+            missing_docs = set()
+            missing_fps = set()
+
+        for fn in missing_fps:
             missing_filepaths.append((_sample_id, fn, images_patt % fn))
 
         # Create necessary frame documents
@@ -824,7 +855,7 @@ def _init_frames(
 
             if _id is not None:
                 doc["_id"] = _id
-            elif fn in missing_fns:
+            elif fn in missing_docs:
                 # Found a frame whose image is already sampled but for which
                 # there is no frame in the source collection. We now need to
                 # create a frame so that the missing filepath can be added and
