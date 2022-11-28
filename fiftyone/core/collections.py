@@ -1821,7 +1821,7 @@ class SampleCollection(object):
                 self, _sample_ids, values
             )
 
-        if expand_schema and (dynamic or not self.has_field(field_name)):
+        if expand_schema:
             to_mongo, new_group_field = self._expand_schema_from_values(
                 field_name,
                 values,
@@ -1926,16 +1926,14 @@ class SampleCollection(object):
         dynamic=False,
         skip_none=False,
     ):
-        """Sets the embedded fields of the specified labels in the collection
-        to the given values.
+        """Sets the fields of the specified labels in the collection to the
+        given values.
 
         .. note::
 
-            This method is appropriate when you already have the IDs of the
-            labels you wish to modify.
-
-            See :meth`set_values` and :meth:`set_field` if your updates are not
-            keyed by label ID.
+            This method is appropriate when you have the IDs of the labels you
+            wish to modify. See :meth`set_values` and :meth:`set_field` if your
+            updates are not keyed by label ID.
 
         Examples::
 
@@ -1968,14 +1966,9 @@ class SampleCollection(object):
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
         """
-        if dynamic or not self.has_field(field_name):
-            to_mongo, _ = self._expand_schema_from_values(
-                field_name,
-                values.values(),
-                dynamic=dynamic,
-            )
-        else:
-            to_mongo = None
+        to_mongo, _ = self._expand_schema_from_values(
+            field_name, values.values(), dynamic=dynamic
+        )
 
         field = self.get_field(field_name)
 
@@ -2056,6 +2049,15 @@ class SampleCollection(object):
         self, field_name, values, dynamic=False, allow_missing=False
     ):
         field_name, _ = self._handle_group_field(field_name)
+        new_field = not self.has_field(field_name)
+
+        if not new_field and not dynamic:
+            return None, False
+
+        _, _, list_fields, _, _ = self._parse_field_name(
+            field_name, allow_missing=True
+        )
+
         field_name, is_frame_field = self._handle_frame_field(field_name)
         root = field_name.split(".", 1)[0]
 
@@ -2065,42 +2067,32 @@ class SampleCollection(object):
         if is_frame_field:
             new_root_field = not self.has_field(self._FRAMES_PREFIX + root)
 
-            if new_root_field:
-                if root != field_name:
-                    if allow_missing:
-                        return None, False
-
-                    raise ValueError(
-                        "Cannot infer an appropriate type for new frame "
-                        "field '%s' when setting embedded field '%s'"
-                        % (root, field_name)
-                    )
-            elif not dynamic:
-                return None, False
-
-            values = itertools.chain.from_iterable(values)
-            value = _get_non_none_value(values)
-
-            if value is None:
+            if new_root_field and root != field_name:
                 if allow_missing:
                     return None, False
 
-                if list(values):
-                    raise ValueError(
-                        "Cannot infer an appropriate type for new frame "
-                        "field '%s' because all provided values are None"
-                        % field_name
-                    )
-                else:
-                    raise ValueError(
-                        "Cannot infer an appropriate type for new frame "
-                        "field '%s' from empty values" % field_name
-                    )
+                raise ValueError(
+                    "Cannot infer an appropriate type for new frame field "
+                    "'%s' when setting embedded field '%s'"
+                    % (root, field_name)
+                )
+
+            value = _get_non_none_value(values, level=2 + len(list_fields))
+
+            if value is None:
+                if allow_missing or not new_field:
+                    return None, False
+
+                raise ValueError(
+                    "Cannot infer an appropriate type for new frame field "
+                    "'%s' from empty/all-None values" % field_name
+                )
             elif dynamic:
-                for _value in values:
+                _values = _unwind_values(values, level=1 + len(list_fields))
+                for _value in _values:
                     if _value is not None:
                         self._dataset._add_implied_frame_field(
-                            field_name, _value, dynamic=dynamic
+                            field_name, _value, dynamic=dynamic, validate=False
                         )
             elif new_root_field:
                 self._dataset._add_implied_frame_field(
@@ -2116,36 +2108,26 @@ class SampleCollection(object):
         else:
             new_root_field = not self.has_field(root)
 
-            if new_root_field:
-                if root != field_name:
-                    if allow_missing:
-                        return None, False
-
-                    raise ValueError(
-                        "Cannot infer an appropriate type for new sample "
-                        "field '%s' when setting embedded field '%s'"
-                        % (root, field_name)
-                    )
-            elif not dynamic:
-                return None, False
-
-            value = _get_non_none_value(values)
-
-            if value is None:
+            if new_root_field and root != field_name:
                 if allow_missing:
                     return None, False
 
-                if list(values):
-                    raise ValueError(
-                        "Cannot infer an appropriate type for new sample "
-                        "field '%s' because all provided values are None"
-                        % field_name
-                    )
-                else:
-                    raise ValueError(
-                        "Cannot infer an appropriate type for new sample "
-                        "field '%s' from empty values" % field_name
-                    )
+                raise ValueError(
+                    "Cannot infer an appropriate type for new sample field "
+                    "'%s' when setting embedded field '%s'"
+                    % (root, field_name)
+                )
+
+            value = _get_non_none_value(values, level=1 + len(list_fields))
+
+            if value is None:
+                if allow_missing or not new_field:
+                    return None, False
+
+                raise ValueError(
+                    "Cannot infer an appropriate type for new sample field "
+                    "'%s' from empty/all-None values" % field_name
+                )
             elif isinstance(value, fog.Group):
                 if new_root_field and not isinstance(self, fod.Dataset):
                     raise ValueError(
@@ -2177,10 +2159,11 @@ class SampleCollection(object):
                 self._dataset._doc.media_type = media_type
                 new_group_field = True
             elif dynamic:
-                for _value in values:
+                _values = _unwind_values(values, level=len(list_fields))
+                for _value in _values:
                     if _value is not None:
                         self._dataset._add_implied_sample_field(
-                            field_name, _value, dynamic=dynamic
+                            field_name, _value, dynamic=dynamic, validate=False
                         )
             elif new_root_field:
                 self._dataset._add_implied_sample_field(

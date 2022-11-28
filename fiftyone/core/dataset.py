@@ -1196,12 +1196,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def _add_implied_sample_field(self, field_name, value, dynamic=False):
+    def _add_implied_sample_field(
+        self, field_name, value, dynamic=False, validate=True
+    ):
         if isinstance(value, fog.Group):
             expanded = self._add_group_field(field_name, default=value.name)
         else:
             expanded = self._sample_doc_cls.add_implied_field(
-                field_name, value, dynamic=dynamic
+                field_name, value, dynamic=dynamic, validate=validate
             )
 
         if expanded:
@@ -1299,14 +1301,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def _add_implied_frame_field(self, field_name, value, dynamic=False):
+    def _add_implied_frame_field(
+        self, field_name, value, dynamic=False, validate=True
+    ):
         if not self._has_frame_fields():
             raise ValueError(
                 "Only datasets that contain videos may have frame fields"
             )
 
         expanded = self._frame_doc_cls.add_implied_field(
-            field_name, value, dynamic=dynamic
+            field_name, value, dynamic=dynamic, validate=validate
         )
 
         if expanded:
