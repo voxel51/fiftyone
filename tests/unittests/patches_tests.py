@@ -185,6 +185,23 @@ class PatchesTests(unittest.TestCase):
             1,
         )
 
+        values = {
+            _id: v
+            for _id, v in zip(
+                *view2.values(["ground_truth.id", "ground_truth.label"])
+            )
+        }
+        view.set_label_values("ground_truth.also_label", values)
+
+        self.assertEqual(view.count("ground_truth.also_label"), 2)
+        self.assertEqual(
+            dataset.count("ground_truth.detections.also_label"), 2
+        )
+        self.assertDictEqual(
+            view.count_values("ground_truth.also_label"),
+            dataset.count_values("ground_truth.detections.also_label"),
+        )
+
         view3 = view.skip(4).set_field(
             "ground_truth.label", F("label").upper()
         )
@@ -443,6 +460,27 @@ class PatchesTests(unittest.TestCase):
         self.assertEqual(
             dataset.count_values("predictions.detections.label_upper")["CAT"],
             2,
+        )
+
+        values = {
+            _id: v
+            for _id, v in zip(
+                *view2.values(
+                    [
+                        "predictions.detections.id",
+                        "predictions.detections.label",
+                    ],
+                    unwind=True,
+                )
+            )
+        }
+        view.set_label_values("predictions.detections.also_label", values)
+
+        self.assertEqual(view.count("predictions.detections.also_label"), 3)
+        self.assertEqual(dataset.count("predictions.detections.also_label"), 3)
+        self.assertDictEqual(
+            view.count_values("predictions.detections.also_label"),
+            dataset.count_values("predictions.detections.also_label"),
         )
 
         view3 = view.match(F("crowd") == True).set_field(
