@@ -1544,6 +1544,19 @@ class VideoTests(unittest.TestCase):
             {"meeting": 2, "party": 2},
         )
 
+        values = {
+            _id: v
+            for _id, v in zip(*view2.values(["events.id", "events.label"]))
+        }
+        view.set_label_values("events.also_label", values)
+
+        self.assertEqual(view.count("events.also_label"), 2)
+        self.assertEqual(dataset.count("events.detections.also_label"), 2)
+        self.assertDictEqual(
+            view.count_values("events.also_label"),
+            dataset.count_values("events.detections.also_label"),
+        )
+
         view2.save()
 
         self.assertEqual(len(view), 4)

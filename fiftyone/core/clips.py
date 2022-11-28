@@ -217,8 +217,12 @@ class ClipsView(fov.DatasetView):
         super().set_label_values(field_name, *args, **kwargs)
 
         if must_sync:
+            _, root = self._get_label_field_path(field)
+            _, src_root = self._source_collection._get_label_field_path(field)
+            _field_name = src_root + field_name[len(root) :]
+
             self._source_collection.set_label_values(
-                field_name, *args, **kwargs
+                _field_name, *args, **kwargs
             )
 
     def save(self, fields=None):
