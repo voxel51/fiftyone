@@ -162,7 +162,7 @@ const Plot: React.FC<{}> = () => {
     return (
       <foc.Loading>
         No Mapbox token provided:
-        <a href="https://docs.mapbox.com/help/getting-started/access-tokens/">
+        <a href="https://voxel51.com/docs/fiftyone/user_guide/app.html#map-tab">
           learn more
         </a>
       </foc.Loading>
