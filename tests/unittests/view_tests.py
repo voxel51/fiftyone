@@ -1346,6 +1346,253 @@ class SetValuesTests(unittest.TestCase):
         )
 
 
+class SetLabelValuesTests(unittest.TestCase):
+    @drop_datasets
+    def test_set_label_values(self):
+        dataset = _make_classification_dataset()
+
+        view = dataset.match(F("label.label") == "cat")
+        cat_ids = set(view.values("label.id"))
+
+        values = {_id: True for _id in cat_ids}
+
+        dataset.set_label_values("label.is_cat1", values)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertNotIn("label.is_cat1", schema)
+        self.assertDictEqual(
+            dataset.count_values("label.is_cat1"), {True: 1, None: 4}
+        )
+
+        dataset.set_label_values("label.is_cat2", values, dynamic=True)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("label.is_cat2", schema)
+        self.assertDictEqual(
+            dataset.count_values("label.is_cat2"), {True: 1, None: 4}
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_label_values("wrong_field.id", values)
+
+        all_ids = dataset.exists("label").values("label.id", unwind=True)
+        values = {_id: _id in cat_ids for _id in all_ids}
+        dataset.set_label_values("label.is_cat3", values)
+
+        self.assertDictEqual(
+            dataset.count_values("label.is_cat3"),
+            {True: 1, False: 2, None: 2},
+        )
+
+        cats_view = dataset.filter_labels("label", F("is_cat3") == True)
+        self.assertListEqual(cats_view.distinct("label.label"), ["cat"])
+
+    @drop_datasets
+    def test_set_label_list_values(self):
+        dataset = _make_labels_dataset()
+
+        view = dataset.filter_labels("labels", F("label") == "cat")
+        cat_ids = set(view.values("labels.classifications.id", unwind=True))
+
+        values = {_id: True for _id in cat_ids}
+
+        dataset.set_label_values("labels.classifications.is_cat1", values)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertNotIn("labels.classifications.is_cat1", schema)
+        self.assertDictEqual(
+            dataset.count_values("labels.classifications.is_cat1"),
+            {True: 2, None: 4},
+        )
+
+        dataset.set_label_values(
+            "labels.classifications.is_cat2", values, dynamic=True
+        )
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("labels.classifications.is_cat2", schema)
+        self.assertDictEqual(
+            dataset.count_values("labels.classifications.is_cat2"),
+            {True: 2, None: 4},
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_label_values("wrong_field.classifications.id", values)
+
+        all_ids = dataset.values("labels.classifications.id", unwind=True)
+        values = {_id: _id in cat_ids for _id in all_ids}
+        dataset.set_label_values(
+            "labels.classifications.is_cat3",
+            values,
+        )
+
+        self.assertDictEqual(
+            dataset.count_values("labels.classifications.is_cat3"),
+            {True: 2, False: 4},
+        )
+
+        cats_view = dataset.filter_labels("labels", F("is_cat3") == True)
+        self.assertListEqual(
+            cats_view.distinct("labels.classifications.label"),
+            ["cat"],
+        )
+
+    @drop_datasets
+    def test_set_frame_label_values(self):
+        dataset = _make_frame_classification_dataset()
+
+        view = dataset.match_frames(F("label.label") == "cat")
+        cat_ids = set(view.values("frames.label.id", unwind=True))
+
+        values = {_id: True for _id in cat_ids}
+
+        dataset.set_label_values("frames.label.is_cat1", values)
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertNotIn("label.is_cat1", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.label.is_cat1"), {True: 1, None: 3}
+        )
+
+        dataset.set_label_values("frames.label.is_cat2", values, dynamic=True)
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertIn("label.is_cat2", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.label.is_cat2"), {True: 1, None: 3}
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_label_values("frames.wrong_field.id", values)
+
+        all_ids = dataset.match_frames(F("label") != None).values(
+            "frames.label.id", unwind=True
+        )
+        values = {_id: _id in cat_ids for _id in all_ids}
+        dataset.set_label_values("frames.label.is_cat3", values)
+
+        self.assertDictEqual(
+            dataset.count_values("frames.label.is_cat3"),
+            {True: 1, False: 2, None: 1},
+        )
+
+        cats_view = dataset.filter_labels("frames.label", F("is_cat3") == True)
+        self.assertListEqual(cats_view.distinct("frames.label.label"), ["cat"])
+
+    @drop_datasets
+    def test_set_frame_label_list_values(self):
+        dataset = _make_frame_labels_dataset()
+
+        view = dataset.filter_labels("frames.labels", F("label") == "cat")
+        cat_ids = set(
+            view.values("frames.labels.classifications.id", unwind=True)
+        )
+
+        values = {_id: True for _id in cat_ids}
+
+        dataset.set_label_values(
+            "frames.labels.classifications.is_cat1", values
+        )
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertNotIn("labels.classifications.is_cat1", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.labels.classifications.is_cat1"),
+            {True: 2, None: 4},
+        )
+
+        dataset.set_label_values(
+            "frames.labels.classifications.is_cat2", values, dynamic=True
+        )
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertIn("labels.classifications.is_cat2", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.labels.classifications.is_cat2"),
+            {True: 2, None: 4},
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_label_values(
+                "frames.wrong_field.classifications.id", values
+            )
+
+        all_ids = dataset.values(
+            "frames.labels.classifications.id", unwind=True
+        )
+        values = {_id: _id in cat_ids for _id in all_ids}
+        dataset.set_label_values(
+            "frames.labels.classifications.is_cat3",
+            values,
+        )
+
+        self.assertDictEqual(
+            dataset.count_values("frames.labels.classifications.is_cat3"),
+            {True: 2, False: 4},
+        )
+
+        cats_view = dataset.filter_labels(
+            "frames.labels", F("is_cat3") == True
+        )
+        self.assertListEqual(
+            cats_view.distinct("frames.labels.classifications.label"),
+            ["cat"],
+        )
+
+
+def _make_classification_dataset():
+    sample1 = fo.Sample(
+        filepath="image1.jpg",
+        label=fo.Classification(label="cat", mood="surly"),
+    )
+
+    sample2 = fo.Sample(filepath="image2.jpg")
+
+    sample3 = fo.Sample(
+        filepath="image3.jpg",
+        label=fo.Classification(label="dog", age=51),
+    )
+
+    sample4 = fo.Sample(
+        filepath="image4.jpg",
+        label=fo.Classification(label="squirrel", fluffy=True),
+    )
+
+    sample5 = fo.Sample(filepath="image5.jpg")
+
+    dataset = fo.Dataset()
+    dataset.add_samples([sample1, sample2, sample3, sample4, sample5])
+
+    return dataset
+
+
+def _make_frame_classification_dataset():
+    sample1 = fo.Sample("video1.mp4")
+    sample1.frames[1] = fo.Frame(
+        label=fo.Classification(label="cat", mood="surly"),
+    )
+
+    sample2 = fo.Sample("video2.mp4")
+    sample2.frames[2] = fo.Frame()
+
+    sample3 = fo.Sample("video3.mp4")
+    sample3.frames[3] = fo.Frame(
+        label=fo.Classification(label="dog", age=51),
+    )
+
+    sample4 = fo.Sample("video4.mp4")
+    sample4.frames[4] = fo.Frame(
+        label=fo.Classification(label="squirrel", fluffy=True)
+    )
+
+    sample5 = fo.Sample("video5.mp4")
+
+    dataset = fo.Dataset()
+    dataset.add_samples([sample1, sample2, sample3, sample4, sample5])
+
+    return dataset
+
+
 def _make_labels_dataset():
     sample1 = fo.Sample(
         filepath="image1.jpg",
@@ -1394,6 +1641,7 @@ def _make_frame_labels_dataset():
     )
 
     sample2 = fo.Sample(filepath="video2.mp4")
+    sample2.frames[2] = fo.Frame()
 
     sample3 = fo.Sample(filepath="video3.mp4")
     sample3.frames[3] = fo.Frame(
@@ -1424,7 +1672,7 @@ def _make_frame_labels_dataset():
     return dataset
 
 
-class ViewSaveTest(unittest.TestCase):
+class ViewSaveTests(unittest.TestCase):
     @drop_datasets
     def setUp(self):
         self.dataset = fo.Dataset()
