@@ -1967,7 +1967,7 @@ class SampleCollection(object):
                 document fields that are encountered
         """
         to_mongo, _ = self._expand_schema_from_values(
-            field_name, values.values(), dynamic=dynamic
+            field_name, values.values(), dynamic=dynamic, flat=True
         )
 
         field = self.get_field(field_name)
@@ -2046,7 +2046,12 @@ class SampleCollection(object):
             )
 
     def _expand_schema_from_values(
-        self, field_name, values, dynamic=False, allow_missing=False
+        self,
+        field_name,
+        values,
+        dynamic=False,
+        allow_missing=False,
+        flat=False,
     ):
         field_name, _ = self._handle_group_field(field_name)
         new_field = not self.has_field(field_name)
@@ -2054,9 +2059,13 @@ class SampleCollection(object):
         if not new_field and not dynamic:
             return None, False
 
-        _, _, list_fields, _, _ = self._parse_field_name(
-            field_name, allow_missing=True
-        )
+        if not flat:
+            _, _is_frame_field, _list_fields, _, _ = self._parse_field_name(
+                field_name, allow_missing=True
+            )
+            level = int(_is_frame_field) + len(_list_fields)
+        else:
+            level = 0
 
         field_name, is_frame_field = self._handle_frame_field(field_name)
         root = field_name.split(".", 1)[0]
@@ -2077,7 +2086,7 @@ class SampleCollection(object):
                     % (root, field_name)
                 )
 
-            value = _get_non_none_value(values, level=2 + len(list_fields))
+            value = _get_non_none_value(values, level=level)
 
             if value is None:
                 if allow_missing or not new_field:
@@ -2088,7 +2097,7 @@ class SampleCollection(object):
                     "'%s' from empty/all-None values" % field_name
                 )
             elif dynamic:
-                _values = _unwind_values(values, level=1 + len(list_fields))
+                _values = _unwind_values(values, level=level)
                 for _value in _values:
                     if _value is not None:
                         self._dataset._add_implied_frame_field(
@@ -2118,7 +2127,7 @@ class SampleCollection(object):
                     % (root, field_name)
                 )
 
-            value = _get_non_none_value(values, level=1 + len(list_fields))
+            value = _get_non_none_value(values, level=level)
 
             if value is None:
                 if allow_missing or not new_field:
@@ -2159,7 +2168,7 @@ class SampleCollection(object):
                 self._dataset._doc.media_type = media_type
                 new_group_field = True
             elif dynamic:
-                _values = _unwind_values(values, level=len(list_fields))
+                _values = _unwind_values(values, level=level)
                 for _value in _values:
                     if _value is not None:
                         self._dataset._add_implied_sample_field(
@@ -9093,9 +9102,9 @@ class SampleCollection(object):
         level = len(list_fields)
 
         if keep_top_level:
-            return [_unwind_values(v, level - 1) for v in values]
+            return [_unwind_values(v, level=level - 1) for v in values]
 
-        return _unwind_values(values, level)
+        return _unwind_values(values, level=level)
 
     def _make_set_field_pipeline(
         self,
@@ -9115,7 +9124,7 @@ class SampleCollection(object):
         )
 
 
-def _unwind_values(values, level):
+def _unwind_values(values, level=0):
     if not values:
         return values
 
@@ -9800,12 +9809,12 @@ def _get_random_characters(n):
     )
 
 
-def _get_non_none_value(values, level=1):
+def _get_non_none_value(values, level=0):
     for value in values:
         if value is None:
             continue
-        elif level > 1:
-            result = _get_non_none_value(value, level - 1)
+        elif level > 0:
+            result = _get_non_none_value(value, level=level - 1)
             if result is not None:
                 return result
         else:
