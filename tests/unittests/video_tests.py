@@ -1892,6 +1892,29 @@ class VideoTests(unittest.TestCase):
             {"cat": 1, "dog": 2, "rabbit": 1},
         )
 
+        values = {
+            _id: v
+            for _id, v in zip(
+                *view2.values(
+                    [
+                        "ground_truth.detections.id",
+                        "ground_truth.detections.label",
+                    ],
+                    unwind=True,
+                )
+            )
+        }
+        view.set_label_values("ground_truth.detections.also_label", values)
+
+        self.assertEqual(view.count("ground_truth.detections.also_label"), 2)
+        self.assertEqual(
+            dataset.count("frames.ground_truth.detections.also_label"), 2
+        )
+        self.assertDictEqual(
+            view.count_values("ground_truth.detections.also_label"),
+            dataset.count_values("frames.ground_truth.detections.also_label"),
+        )
+
         view2.save()
 
         self.assertEqual(len(view), 6)
@@ -2520,6 +2543,28 @@ class VideoTests(unittest.TestCase):
         )
         self.assertEqual(patches.count("ground_truth.label_upper"), 2)
         self.assertEqual(view2.count("ground_truth.label_upper"), 2)
+
+        values = {
+            _id: v
+            for _id, v in zip(
+                *view2.values(["ground_truth.id", "ground_truth.label"])
+            )
+        }
+        patches.set_label_values("ground_truth.also_label", values)
+
+        self.assertEqual(patches.count("ground_truth.also_label"), 2)
+        self.assertEqual(frames.count("ground_truth.detections.also_label"), 2)
+        self.assertEqual(
+            dataset.count("frames.ground_truth.detections.also_label"), 2
+        )
+        self.assertDictEqual(
+            patches.count_values("ground_truth.also_label"),
+            dataset.count_values("frames.ground_truth.detections.also_label"),
+        )
+        self.assertDictEqual(
+            frames.count_values("ground_truth.detections.also_label"),
+            dataset.count_values("frames.ground_truth.detections.also_label"),
+        )
 
         view3 = patches.skip(2).set_field(
             "ground_truth.label", F("label").upper()
