@@ -159,7 +159,14 @@ const Plot: React.FC<{}> = () => {
   }, [data]);
 
   if (!settings.mapboxAccessToken) {
-    return <foc.Loading>No Mapbox token provided</foc.Loading>;
+    return (
+      <foc.Loading>
+        No Mapbox token provided:
+        <a href="https://docs.mapbox.com/help/getting-started/access-tokens/">
+          learn more
+        </a>
+      </foc.Loading>
+    );
   }
 
   if (!Object.keys(samples).length && !loading) {
