@@ -417,6 +417,7 @@ class CVATTests(unittest.TestCase):
 
         anno_key = "anno_key"
         bug_tracker = "test_tracker"
+        task_name = "test_task"
         results = dataset.annotate(
             anno_key,
             backend="cvat",
@@ -427,6 +428,7 @@ class CVATTests(unittest.TestCase):
             job_assignees=users,
             job_reviewers=users,
             issue_tracker=bug_tracker,
+            task_name=task_name,
         )
         task_ids = results.task_ids
         with results:
@@ -436,6 +438,7 @@ class CVATTests(unittest.TestCase):
                 task_json = api.get(api.task_url(task_id)).json()
                 self.assertEqual(task_json["bug_tracker"], bug_tracker)
                 self.assertEqual(task_json["segment_size"], 1)
+                self.assertEqual(task_json["name"], task_name)
                 if user is not None:
                     self.assertEqual(task_json["assignee"]["username"], user)
                 for job in api.get(api.jobs_url(task_id)).json():
