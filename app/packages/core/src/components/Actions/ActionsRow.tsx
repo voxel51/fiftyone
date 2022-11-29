@@ -1,9 +1,3 @@
-import React, {
-  MutableRefObject,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
 import {
   Bookmark,
   Check,
@@ -15,8 +9,15 @@ import {
   VisibilityOff,
   Wallpaper,
 } from "@mui/icons-material";
+import React, {
+  MutableRefObject,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import useMeasure from "react-use-measure";
 import {
+  selector,
   selectorFamily,
   useRecoilCallback,
   useRecoilState,
@@ -25,17 +26,32 @@ import {
 import styled from "styled-components";
 
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-
+import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
+import { PillButton } from "../utils";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
-import Tagger from "./Tagger";
-import { PillButton } from "../utils";
-import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import Similar from "./Similar";
+import Tagger from "./Tagger";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+
+const shouldToggleBookMarkIconOnSelector = selector<boolean>({
+  key: "shouldToggleBookMarkIconOn",
+  get: ({ get }) => {
+    const hasFiltersValue = get(fos.hasFilters(false));
+    const extendedSelectionList = get(fos.extendedSelection);
+    const selectedSampleSet = get(fos.selectedSamples);
+
+    const isExtendedSelectionOn =
+      extendedSelectionList && extendedSelectionList.length > 0;
+
+    return (
+      isExtendedSelectionOn || hasFiltersValue || selectedSampleSet.size > 0
+    );
+  },
+});
 
 const Loading = () => {
   const theme = useTheme();
@@ -275,7 +291,6 @@ const Hidden = () => {
 };
 
 const SaveFilters = () => {
-  const hasFiltersValue = useRecoilValue(fos.hasFilters(false));
   const loading = useRecoilValue(fos.savingFilters);
   const onComplete = useRecoilCallback(({ set, reset }) => () => {
     set(fos.savingFilters, false);
@@ -297,7 +312,11 @@ const SaveFilters = () => {
     []
   );
 
-  return hasFiltersValue ? (
+  const shouldToggleBookMarkIconOn = useRecoilValue(
+    shouldToggleBookMarkIconOnSelector
+  );
+
+  return shouldToggleBookMarkIconOn ? (
     <ActionDiv>
       <PillButton
         open={false}
