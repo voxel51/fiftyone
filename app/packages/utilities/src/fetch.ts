@@ -16,7 +16,7 @@ export interface FetchFunction {
     method: string,
     path: string,
     body?: A,
-    result?: "json" | "blob"
+    result?: "json" | "blob" | "arrayBuffer"
   ): Promise<R>;
 }
 

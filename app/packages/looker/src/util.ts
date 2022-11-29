@@ -17,7 +17,7 @@ import {
 } from "./state";
 
 import LookerWorker from "./worker.ts?worker&inline";
-import { getFetchParameters } from "@fiftyone/utilities";
+import { getFetchFunction, getFetchParameters } from "@fiftyone/utilities";
 
 /**
  * Shallow data-object comparison for equality
@@ -521,7 +521,6 @@ export const isFloatArray = (arr) =>
   arr instanceof Float32Array || arr instanceof Float64Array;
 
 export const getArrayBufferFromUrl = async (url: string) => {
-  const data = await fetch(url);
-  const arrayBuffer = await data.arrayBuffer();
-  return arrayBuffer;
+  const data = await getFetchFunction()("GET", url, null, "arrayBuffer");
+  return data;
 };
