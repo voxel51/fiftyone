@@ -1,8 +1,8 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import mime from "mime";
 import { mergeWith } from "immutable";
+import mime from "mime";
 
 import { MIN_PIXELS } from "./constants";
 import {
@@ -13,17 +13,15 @@ import {
   Coordinates,
   Dimensions,
   DispatchEvent,
-  Optional,
+  Optional
 } from "./state";
 
-import LookerWorker from "./worker.ts?worker&inline";
 import {
-  AppError,
-  getFetchParameters,
+  AppError, getFetchFunction, getFetchParameters,
   GraphQLError,
-  NetworkError,
-  ServerError,
+  NetworkError, ServerError
 } from "@fiftyone/utilities";
+import LookerWorker from "./worker.ts?worker&inline";
 
 /**
  * Shallow data-object comparison for equality
@@ -543,7 +541,6 @@ export const isFloatArray = (arr) =>
   arr instanceof Float32Array || arr instanceof Float64Array;
 
 export const getArrayBufferFromUrl = async (url: string) => {
-  const data = await fetch(url);
-  const arrayBuffer = await data.arrayBuffer();
-  return arrayBuffer;
+  const data = await getFetchFunction()("GET", url, null, "arrayBuffer");
+  return data;
 };
