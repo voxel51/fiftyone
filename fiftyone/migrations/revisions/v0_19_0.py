@@ -67,7 +67,7 @@ def _down_runs(db, dataset_dict, runs_field):
     _runs = {}
     for key, _id in runs.items():
         try:
-            run_doc = db.runs.find_one({"_id", _id})
+            run_doc = db.runs.find_one({"_id": _id})
         except:
             continue
 
