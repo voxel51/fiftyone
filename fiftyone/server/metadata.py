@@ -483,6 +483,7 @@ async def _create_media_urls(
         if collection.app_config
         else ["filepath"]
     )
+
     media_urls = []
 
     for field in media_fields:

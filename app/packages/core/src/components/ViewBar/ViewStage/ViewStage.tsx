@@ -50,11 +50,7 @@ const ViewStageInput = styled(AuosizeInput)`
   }
 
   & ::placeholder {
-<<<<<<< HEAD
-    color: ${({ theme }) => theme.text.primary};
-=======
     color: ${({ theme }) => theme.text.secondary};
->>>>>>> develop
     font-weight: bold;
   }
 `;
@@ -89,7 +85,7 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   const themeMode = useRecoilValue(themeState);
   const [hovering, setHovering] = useState(false);
   const [props, set] = useSpring(() => ({
-    background: theme.background,
+    background: theme.background.level2,
     color: active ? theme.text.primary : theme.text.tertiary,
     borderColor: active ? theme.primary.plainColor : theme.text.tertiary,
     top: active ? -3 : 0,

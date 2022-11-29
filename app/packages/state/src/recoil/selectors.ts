@@ -6,6 +6,8 @@ import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as atoms from "./atoms";
 import { State } from "./types";
 import { toSnakeCase } from "@fiftyone/utilities";
+import { config } from "./config";
+import { fieldSchema } from "./schema";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -70,7 +72,7 @@ export const appConfigDefault = selectorFamily<
         return get(appConfigDefault({ modal: false, key }));
       }
 
-      return get(atoms.appConfig)[key];
+      return get(config)[key];
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -344,7 +346,10 @@ export const extendedStages = selector({
 export const mediaFields = selector<string[]>({
   key: "string",
   get: ({ get }) => {
-    return get(atoms.dataset)?.appConfig?.mediaFields || [];
+    const selectedFields = Object.keys(get(fieldSchema({})));
+    return (get(atoms.dataset)?.appConfig?.mediaFields || []).filter((field) =>
+      selectedFields.includes(field)
+    );
   },
 });
 

@@ -8737,12 +8737,10 @@ class SampleCollection(object):
         except:
             return False
 
-        try:
-            iter(label_type_or_types)
-        except:
-            label_type_or_types = (label_type_or_types,)
+        if etau.is_container(label_type_or_types):
+            label_type_or_types = tuple(label_type_or_types)
 
-        return any(issubclass(label_type, t) for t in label_type_or_types)
+        return issubclass(label_type, label_type_or_types)
 
     def _parse_label_field(
         self,
@@ -9284,6 +9282,9 @@ def _get_field_with_type(
 
 
 def _get_matching_label_field(label_schema, label_type_or_types):
+    if etau.is_container(label_type_or_types):
+        label_type_or_types = tuple(label_type_or_types)
+
     valid_fields = []
     for field, field_type in label_schema.items():
         if issubclass(field_type.document_type, label_type_or_types):
