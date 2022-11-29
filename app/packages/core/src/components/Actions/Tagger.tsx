@@ -425,45 +425,58 @@ const Loader = () => {
   );
 };
 
-const usePlaceHolder = (
+const useLabelPlaceHolder = (
   modal: boolean,
-  labels: boolean,
   elementNames: { plural: string; singular: string }
 ) => {
   return (): [number, string] => {
     const selectedSamples = useRecoilValue(fos.selectedSamples).size;
-    const selectedLabels = useRecoilValue(fos.selectedLabelIds).size;
     const totalSamples = useRecoilValue(
       fos.count({ path: "", extended: false, modal })
     );
     const filteredSamples = useRecoilValue(
       fos.count({ path: "", extended: true, modal })
     );
-
     const count = filteredSamples ?? totalSamples;
-    const itemCount = useRecoilValue(selectedSamplesCount(modal));
+    const selectedLabels = useRecoilValue(fos.selectedLabelIds).size;
     const selectedLabelCount = useRecoilValue(numItemsInSelection(true));
     const totalLabelCount = useRecoilValue(
       fos.labelCount({ modal, extended: true })
     );
-    if (modal && labels && (!selectedSamples || selectedLabels)) {
+    if (modal && (!selectedSamples || selectedLabels)) {
       const labelCount = selectedLabels > 0 ? selectedLabels : totalLabelCount;
       return [labelCount, labelsModalPlaceholder(selectedLabels, labelCount)];
-    } else if (modal && !selectedSamples) {
-      return [itemCount, samplesPlaceholder(count, elementNames)];
     } else {
       const labelCount = selectedSamples ? selectedLabelCount : totalLabelCount;
-      if (labels) {
-        return [
-          labelCount,
-          labelsPlaceholder(selectedSamples, labelCount, count, elementNames),
-        ];
-      } else {
-        return [
-          itemCount,
-          samplesPlaceholder(itemCount, elementNames, Boolean(selectedSamples)),
-        ];
-      }
+      return [
+        labelCount,
+        labelsPlaceholder(selectedSamples, labelCount, count, elementNames),
+      ];
+    }
+  };
+};
+
+const useNonLabelPlaceHolder = (
+  modal: boolean,
+  elementNames: { plural: string; singular: string }
+) => {
+  return (): [number, string] => {
+    const selectedSamples = useRecoilValue(fos.selectedSamples).size;
+    const totalSamples = useRecoilValue(
+      fos.count({ path: "", extended: false, modal })
+    );
+    const filteredSamples = useRecoilValue(
+      fos.count({ path: "", extended: true, modal })
+    );
+    const count = filteredSamples ?? totalSamples;
+    const itemCount = useRecoilValue(selectedSamplesCount(modal));
+    if (modal && !selectedSamples) {
+      return [itemCount, samplesPlaceholder(count, elementNames)];
+    } else {
+      return [
+        itemCount,
+        samplesPlaceholder(itemCount, elementNames, Boolean(selectedSamples)),
+      ];
     }
   };
 };
@@ -511,7 +524,8 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
   });
 
   const submit = useTagCallback(modal, labels, lookerRef);
-  const placeholder = usePlaceHolder(modal, labels, elementNames);
+  const labelPlaceholder = useLabelPlaceHolder(modal, elementNames);
+  const nonLabelPlaceholder = useNonLabelPlaceHolder(modal, elementNames);
   return (
     <Popout style={{ width: "12rem" }} modal={modal} bounds={bounds}>
       <SwitcherDiv>
@@ -531,7 +545,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
       {labels && (
         <Suspense fallback={<SuspenseLoading />} key={"labels"}>
           <Section
-            countAndPlaceholder={placeholder}
+            countAndPlaceholder={labelPlaceholder}
             submit={submit}
             taggingAtom={fos.tagging({ modal, labels })}
             itemsAtom={tagStats({ modal, labels })}
@@ -543,7 +557,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
       {!labels && (
         <Suspense fallback={<SuspenseLoading />} key={elementNames.plural}>
           <Section
-            countAndPlaceholder={placeholder}
+            countAndPlaceholder={nonLabelPlaceholder}
             submit={submit}
             taggingAtom={fos.tagging({ modal, labels })}
             itemsAtom={tagStats({ modal, labels })}
