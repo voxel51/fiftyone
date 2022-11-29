@@ -3021,7 +3021,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def has_views(self):
         """Whether this dataset has any saved views."""
-        return bool(self.list_views)
+        return bool(self.list_views())
 
     def has_view(self, name):
         """Whether this dataset has a saved view with the given name.
@@ -3032,9 +3032,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             True/False
         """
-        return name in self.list_views
+        return name in self.list_views()
 
-    @property
     def list_views(self):
         """Returns the names of saved views on this dataset.
 
@@ -3045,8 +3044,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def save_view(
         self,
-        name,
-        view,
+        name=name,
+        view=view,
         description=None,
         color=None,
         overwrite=False,
@@ -3202,18 +3201,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         view_doc = self._get_view_doc(name, pop=True)
         view_doc.delete()
         self._doc.save()
-        return view_doc.name
+        return name
 
     def delete_views(self):
         """Deletes all saved views from this dataset."""
-<<<<<<< HEAD
-        for view_doc in self._doc.views:
+        for view_doc in self._doc.saved_views:
             view_doc.delete()
 
-        self._doc.views = []
-=======
         self._doc.saved_views = []
->>>>>>> 98c0c6fcc (rename views to saved_views on data model)
         self._doc.save()
 
     def _get_view_doc(self, name, pop=False):
@@ -3243,7 +3238,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _validate_view_name(self, name, skip=None, overwrite=False):
         url_name = fou.to_url_name(name)
-
+        print(self._doc)
         for view_doc in self._doc.saved_views:
             if view_doc is skip:
                 continue
@@ -6762,13 +6757,9 @@ def _clone_extras(dst_dataset, src_doc):
     # Clone saved views
     for _view_doc in src_doc.saved_views:
         view_doc = _clone_view_doc(_view_doc)
-<<<<<<< HEAD
         view_doc.save()
 
-        dst_doc.views.append(view_doc)
-=======
         dst_doc.saved_views.append(view_doc)
->>>>>>> 98c0c6fcc (rename views to saved_views on data model)
 
     # Clone annotation runs
     for anno_key, _run_doc in src_doc.annotation_runs.items():

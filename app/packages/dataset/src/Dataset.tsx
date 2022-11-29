@@ -12,15 +12,28 @@ import {
   Dataset as CoreDataset,
   DatasetNodeQuery,
   usePreLoadedDataset,
+  useSavedViewLoader,
   ViewBar,
 } from "@fiftyone/core";
+//Removed
+// import { useRecoilValue, useSetRecoilState } from "recoil";
+// import * as fos from "@fiftyone/state";
+// import { getEventSource, toCamelCase } from "@fiftyone/utilities";
+// import { useEffect, useState, Suspense } from "react";
+// import { State } from "@fiftyone/state";
+
 import { usePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
+// import { State } from "@fiftyone/state";
+// import { getEventSource, toCamelCase } from "@fiftyone/utilities";
+// import { Suspense, useEffect, useState } from "react";
+// import { useRecoilValue, useSetRecoilState } from "recoil";
 import { getEnvironment, RelayEnvironmentKey } from "@fiftyone/state";
 import React, { useState, Suspense } from "react";
 import { PreloadedQuery, useQueryLoader } from "react-relay";
 import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 import { RecoilRelayEnvironmentProvider } from "recoil-relay";
+
 import styled from "styled-components";
 
 import { DatasetQuery } from "@fiftyone/core";
@@ -28,6 +41,10 @@ import { DatasetQuery } from "@fiftyone/core";
 // built-in plugins
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
+
+// enum Events {
+//   STATE_UPDATE = "state_update",
+// }
 
 const Container = styled.div`
   width: 100%;
@@ -51,6 +68,12 @@ const CoreDatasetContainer = styled.div`
   height: calc(100% - 84px);
 `;
 
+// export function Dataset({
+//   datasetName,
+//   environment,
+//   theme,
+//   themeMode,
+//   compactLayout,
 export interface DatasetProps {
   dataset: string;
   compactLayout?: boolean;
@@ -82,36 +105,55 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
   theme = "dark",
   toggleHeaders,
 }) => {
+  // hideHeaders,
+  // readOnly,
+  // })
+  // {
+  // const [initialState, setInitialState] = useState();
+  // const [datasetQueryRef, loadDataset] = useDatasetLoader(environment);
   const [queryRef, loadQuery] = useQueryLoader<DatasetQuery>(DatasetNodeQuery);
   const setTheme = useSetRecoilState(fos.theme);
   const setCompactLayout = useSetRecoilState(fos.compactLayout);
   const setReadOnly = useSetRecoilState(fos.readOnly);
 
   // Rebase conflict?
-  // React.useLayoutEffect(() => {
-  //   setCompactLayout(compactLayout);
-  // }, [compactLayout]);
-  // React.useEffect(() => {
-  //   loadQuery({ name: dataset });
-  // }, [dataset]);
-  // React.useLayoutEffect(() => {
-    useEffect(() => {
+  React.useLayoutEffect(() => {
+    setCompactLayout(compactLayout);
+  }, [compactLayout]);
+  React.useEffect(() => {
+    loadQuery({ name: dataset });
+  }, [dataset]);
+  React.useLayoutEffect(() => {
     setReadOnly(readOnly);
-    loadDataset(datasetName);
-    if (themeMode) setThemeMode(themeMode);
-    if (compactLayout) setCompactLayout(themeMode);
-  }, [datasetName, themeMode, compactLayout, readOnly]);
+    //   loadDataset(datasetName);
+    //   loadSavedViews(datasetName);
+    //   if (themeMode) setThemeMode(themeMode);
+    //   if (compactLayout) setCompactLayout(themeMode);
+    // }, [datasetName, themeMode, compactLayout, readOnly]);
+    //
+    // const subscription = useRecoilValue(fos.stateSubscription);
+    // useEventSource(datasetName, subscription, setInitialState);
+  }, [readOnly]);
+  React.useLayoutEffect(() => {
+    setTheme(theme);
+  }, [theme]);
 
   const plugins = usePlugins();
   const loadingElement = <Loading>Pixelating...</Loading>;
 
+  // if (plugins.isLoading || !initialState) return loadingElement;
+  // if (plugins.error) return <div>Plugin error...</div>;
+  //
+  // const themeProviderProps = theme ? { customTheme: theme } : {};
   if (plugins.isLoading || !queryRef) return loadingElement;
   if (plugins.hasError) return <div>Plugin error...</div>;
 
   return (
+    // <ThemeProvider {...themeProviderProps}>
     <ThemeProvider>
       <Container>
         <Suspense fallback={loadingElement}>
+          {/*<DatasetLoader datasetQueryRef={datasetQueryRef} initialState={initialState}>*/}
           <DatasetLoader dataset={dataset} queryRef={queryRef}>
             <ViewBarWrapper>
               <ViewBar />
@@ -131,6 +173,7 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
       </Container>
     </ThemeProvider>
   );
+  // }
 };
 
 const HeadersToggle: React.FC<{
@@ -171,53 +214,55 @@ const DatasetLoader: React.FC<
 
   if (!ready) return null;
 
-  return children;
-}
-
-function useEventSource(datasetName, subscription, setState) {
-  const clearModal = fos.useClearModal();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    getEventSource(
-      "/events",
-      {
-        onopen: async () => {},
-        onmessage: (msg) => {
-          if (controller.signal.aborted) {
-            return;
-          }
-
-          switch (msg.event) {
-            case Events.STATE_UPDATE: {
-              const { colorscale, config, ...data } = JSON.parse(
-                msg.data
-              ).state;
-
-              const state = {
-                ...toCamelCase(data),
-                view: data.view,
-                viewName: data.viewName,
-              } as State.Description;
-
-              setState((s) => ({ colorscale, config, state }));
-
-              break;
-            }
-          }
-        },
-        onclose: () => {
-          clearModal();
-        },
-      },
-      controller.signal,
-      {
-        initializer: datasetName,
-        subscription,
-        events: [Events.STATE_UPDATE],
-      }
-    );
-
-    return () => controller.abort();
-  }, []);
-}
+  return <>{children}</>;
+};
+//   return children;
+// }
+//
+// function useEventSource(datasetName, subscription, setState) {
+//   const clearModal = fos.useClearModal();
+//
+//   useEffect(() => {
+//     const controller = new AbortController();
+//     getEventSource(
+//       "/events",
+//       {
+//         onopen: async () => {},
+//         onmessage: (msg) => {
+//           if (controller.signal.aborted) {
+//             return;
+//           }
+//
+//           switch (msg.event) {
+//             case Events.STATE_UPDATE: {
+//               const { colorscale, config, ...data } = JSON.parse(
+//                 msg.data
+//               ).state;
+//
+//               const state = {
+//                 ...toCamelCase(data),
+//                 view: data.view,
+//                 viewName: data.viewName,
+//               } as State.Description;
+//
+//               setState((s) => ({ colorscale, config, state }));
+//
+//               break;
+//             }
+//           }
+//         },
+//         onclose: () => {
+//           clearModal();
+//         },
+//       },
+//       controller.signal,
+//       {
+//         initializer: datasetName,
+//         subscription,
+//         events: [Events.STATE_UPDATE],
+//       }
+//     );
+//
+//     return () => controller.abort();
+//   }, []);
+// }

@@ -2,8 +2,8 @@ import React, { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot, useRecoilState } from "recoil";
 import { RecoilRelayEnvironmentProvider } from "recoil-relay";
-import { Dataset, getEnvProps, fos } from "./";
-import { getFetchFunction } from "@fiftyone/utilities";
+import { DatasetRenderer } from "./Dataset";
+import { fos } from "./";
 
 export const Dataset = () => {
   const [environment] = useState(fos.getEnvironment);
@@ -33,6 +33,7 @@ function LoadableDataset() {
     readOnly: false,
   });
   const [view, setView] = useRecoilState(fos.view);
+
   function printView() {
     console.log(JSON.stringify(view, null, 2));
   }
@@ -45,22 +46,12 @@ function LoadableDataset() {
     setView([]);
   }
 
-  function saveView() {
-    getFetchFunction()("POST", "/view", {
-      dataset: "quickstart",
-      view,
-      name: "demo",
-      description: "save with button",
-    });
-  }
-
   return (
     <>
       <DatasetSettings current={settings} onChange={setSettings} />
       <button onClick={() => printView()}>Print View</button>
       <button onClick={() => changeView()}>Set View</button>
       <button onClick={() => clearView()}>Clear View</button>
-      <button onClick={() => saveView()}>Save View</button>
       <div style={{ height: "100vh", overflow: "hidden" }}>
         <DatasetRenderer
           dataset={settings.dataset}
