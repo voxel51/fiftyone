@@ -116,9 +116,11 @@ class AggregateQuery:
     @gql.field
     async def aggregate(
         self,
+        *,
         dataset_name: str,
-        view: BSONArray,
+        view: t.Optional[BSONArray],
         aggregations: t.List[Aggregate],
+        view_name: t.Optional[str],
     ) -> t.List[
         gql.union(
             "AggregationResponses",
@@ -132,7 +134,11 @@ class AggregateQuery:
             ),
         )
     ]:
-        view = await load_view(dataset_name, view)
+        view = await load_view(
+            dataset_name=dataset_name,
+            serialized_view=view,
+            view_name=view_name,
+        )
 
         resolvers = []
         aggs = []
@@ -157,10 +163,13 @@ class AggregateQuery:
 
 
 async def load_view(
-    name: str, serialized_view: BSONArray, view_name: t.Optional[str] = None
+    *,
+    dataset_name: str,
+    serialized_view: BSONArray,
+    view_name: t.Optional[str] = None,
 ) -> foc.SampleCollection:
     def run() -> foc.SampleCollection:
-        dataset = fo.load_dataset(name)
+        dataset = fo.load_dataset(dataset_name)
         dataset.reload()
         if view_name:
             return dataset.load_view(view_name)
