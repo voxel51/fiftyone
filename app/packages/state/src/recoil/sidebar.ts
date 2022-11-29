@@ -23,6 +23,7 @@ import {
 import * as aggregationAtoms from "./aggregations";
 import {
   buildSchema,
+  field,
   fieldPaths,
   fields,
   filterPaths,
@@ -93,11 +94,11 @@ export const readableTags = selectorFamily<
 });
 
 export const useLabelTagText = (modal: boolean) => {
-  const loadingLabelTags =
+  const loading =
     useRecoilValueLoadable(readableTags({ modal, group: "label tags" }))
       .state === "loading";
 
-  return loadingLabelTags ? "Loading label tags..." : "No label tags";
+  return { text: loading ? "Loading label tags" : "No label tags", loading };
 };
 
 export const useTagText = (modal: boolean) => {
@@ -106,7 +107,10 @@ export const useTagText = (modal: boolean) => {
     useRecoilValueLoadable(readableTags({ modal, group: "tags" })).state ===
     "loading";
 
-  return loading ? `Loading ${singular} tags...` : `No ${singular} tags`;
+  return {
+    text: loading ? `Loading ${singular} tags` : `No ${singular} tags`,
+    loading,
+  };
 };
 
 export const useEntries = (
@@ -212,17 +216,20 @@ export const resolveGroups = (
   dataset: State.Dataset,
   current?: State.SidebarGroup[]
 ): State.SidebarGroup[] => {
-  let groups = dataset?.appConfig?.sidebarGroups;
+  let groups = JSON.parse(JSON.stringify(dataset?.appConfig?.sidebarGroups));
 
-  const expanded = current.reduce((map, { name, expanded }) => {
-    map[name] = expanded;
-    return map;
-  }, {});
-
+  const expanded = current
+    ? current.reduce((map, { name, expanded }) => {
+        map[name] = expanded;
+        return map;
+      }, {})
+    : {};
   if (!groups) {
-    groups = dataset.frameFields.length
-      ? DEFAULT_VIDEO_GROUPS
-      : DEFAULT_IMAGE_GROUPS;
+    groups = JSON.parse(
+      JSON.stringify(
+        dataset.frameFields.length ? DEFAULT_VIDEO_GROUPS : DEFAULT_IMAGE_GROUPS
+      )
+    );
   }
 
   groups = groups.map((group) => {
@@ -256,7 +263,10 @@ export const resolveGroups = (
     dataset.sampleFields.map(({ name, ...rest }) => [name, rest])
   );
 
-  let other = dataset.sampleFields.reduce(fieldsReducer([DICT_FIELD]), []);
+  let other = dataset.sampleFields.reduce(
+    fieldsReducer([DICT_FIELD, null, undefined]),
+    []
+  );
 
   dataset.sampleFields
     .filter(({ embeddedDocType }) => !LABELS.includes(embeddedDocType))
@@ -270,7 +280,7 @@ export const resolveGroups = (
       other = [
         ...other,
         ...(fields[name].fields || [])
-          .reduce(fieldsReducer([DICT_FIELD]), [])
+          .reduce(fieldsReducer([DICT_FIELD, null, undefined]), [])
           .map((subfield) => `${name}.${subfield}`),
       ];
 
@@ -584,7 +594,13 @@ export const sidebarEntries = selectorFamily<
 export const disabledPaths = selector<Set<string>>({
   key: "disabledPaths",
   get: ({ get }) => {
-    const paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
+    let paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
+    paths = [
+      ...paths,
+      ...get(fieldPaths({ ftype: LIST_FIELD })).filter(
+        (path) => !get(field(path)).subfield
+      ),
+    ];
 
     get(
       fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE })
@@ -592,7 +608,9 @@ export const disabledPaths = selector<Set<string>>({
       Object.values(fields)
         .filter(
           ({ ftype, subfield }) =>
-            ftype === DICT_FIELD || subfield === DICT_FIELD
+            ftype === DICT_FIELD ||
+            subfield === DICT_FIELD ||
+            (ftype === LIST_FIELD && !subfield)
         )
         .forEach(({ name }) => paths.push(`${prefix}.${name}`));
     });
@@ -688,14 +706,19 @@ export const groupShown = selectorFamily<
   get:
     ({ group, modal, loading }) =>
     ({ get }) => {
-      const expanded = get(sidebarGroupMapping({ modal, loading }))[group]
-        .expanded;
-      return expanded === undefined ? true : expanded;
+      const data = get(sidebarGroupMapping({ modal, loading }))[group];
+
+      return data.expanded === undefined
+        ? !["tags", "label tags"].includes(group)
+          ? !data.paths.length ||
+            !data.paths.every((path) => get(disabledPaths).has(path))
+          : true
+        : data.expanded;
     },
   set:
     ({ modal, group }) =>
     ({ get, set }, expanded) => {
-      const current = get(sidebarGroups({ modal, loading: true }));
+      const current = get(sidebarGroups({ modal, loading: false }));
 
       const def = get(sidebarGroupsDefinition(modal));
       const tags = def.filter((e) => e.name === "tags")[0];

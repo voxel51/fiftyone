@@ -198,7 +198,7 @@ const MediaFields = ({ modal }) => {
 
   return (
     <>
-      <PopoutSectionTitle>Media Field</PopoutSectionTitle>
+      <PopoutSectionTitle>Media field</PopoutSectionTitle>
       <RadioGroup
         choices={mediaFields}
         value={selectedMediaField}

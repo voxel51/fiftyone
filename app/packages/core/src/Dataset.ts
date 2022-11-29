@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { toCamelCase } from "@fiftyone/utilities";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useContext, useLayoutEffect, useState } from "react";
 import { graphql, usePreloadedQuery, useQueryLoader } from "react-relay";
 
 import {
@@ -108,14 +108,12 @@ const DatasetQuery = graphql`
   }
 `;
 
-export function usePrepareDataset(
-  dataset,
-  { colorscale, config, state },
-  setReady
-) {
+export function usePrepareDataset(dataset, setReady) {
   const update = fos.useStateUpdate();
+  const router = useContext(fos.RouterContext);
 
   useLayoutEffect(() => {
+    const { colorscale, config, state } = router?.state || {};
     if (dataset) {
       update(() => {
         return {
@@ -129,16 +127,15 @@ export function usePrepareDataset(
       });
       setReady(true);
     }
-  }, [dataset, colorscale, config, state]);
+  }, [dataset, router]);
 }
 export function usePreLoadedDataset(
-  queryRef,
-  { colorscale, config, state } = {}
+  queryRef
 ): [DatasetQuery$data["dataset"], boolean] {
   const [ready, setReady] = useState(false);
 
   const { dataset } = usePreloadedQuery<DatasetQuery>(DatasetQuery, queryRef);
-  usePrepareDataset(dataset, { colorscale, config, state }, setReady);
+  usePrepareDataset(dataset, setReady);
   return [dataset, ready];
 }
 export function useDatasetLoader() {

@@ -7,7 +7,7 @@ export const isFloat = (n: number): boolean => {
 };
 
 const Link = styled.a`
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.text.primary};
 `;
 
 export const ExternalLink = ({ href, ...props }) => {
