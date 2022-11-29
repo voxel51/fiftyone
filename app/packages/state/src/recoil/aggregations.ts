@@ -342,11 +342,9 @@ export const values = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const aggregations = {
-        values: [],
-        ...get(aggregation(params)),
-      };
-      return aggregations.values.map(({ value }) => value).sort();
+      return get(aggregation(params))
+        .values.map(({ value }) => value)
+        .sort();
     },
 
   cachePolicy_UNSTABLE: {

@@ -2884,8 +2884,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def save_view(
         self,
-        name,
-        view,
+        name=name,
+        view=view,
         description=None,
         color=None,
         overwrite=False,
@@ -3040,7 +3040,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         view_doc = self._get_saved_view_doc(name, pop=True)
         view_doc.delete()
         self._doc.save()
-        return view_doc.name
+        return name
 
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
@@ -3077,7 +3077,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _validate_view_name(self, name, skip=None, overwrite=False):
         url_name = fou.to_url_name(name)
-
+        print(self._doc)
         for view_doc in self._doc.saved_views:
             if view_doc is skip:
                 continue

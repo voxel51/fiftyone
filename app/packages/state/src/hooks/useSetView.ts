@@ -2,9 +2,14 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
 import {
   filters,
+  groupSlice,
   resolvedGroupSlice,
   selectedLabelList,
   selectedSamples,
@@ -28,6 +33,7 @@ const useSetView = (
   const subscription = useRecoilValue(stateSubscription);
   const router = useContext(RouterContext);
   const [commit] = useMutation<setViewMutation>(setView);
+
   const onError = useErrorHandler();
 
   return useRecoilCallback(

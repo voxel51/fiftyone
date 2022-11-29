@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4cf9fa421526aa6eca4987b327b6c657>>
+ * @generated SignedSource<<4819dbd04598c8eff638392604337dff>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -144,6 +144,45 @@ return {
                   {
                     "alias": null,
                     "args": null,
+                    "concreteType": "SavedView",
+                    "kind": "LinkedField",
+                    "name": "savedViews",
+                    "plural": true,
+                    "selections": [
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "viewName",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "urlName",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "color",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "description",
+                        "storageKey": null
+                      }
+                    ],
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
                     "kind": "ScalarField",
                     "name": "id",
                     "storageKey": null
@@ -245,12 +284,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "fdc459a58a769462216652fec0f50846",
+    "cacheID": "be304e2725616f665229295674b7ea82",
     "id": null,
     "metadata": {},
     "name": "RootQuery",
     "operationKind": "query",
-    "text": "query RootQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n) {\n  ...RootDatasets_query\n  ...RootGA_query\n  ...RootNav_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment RootGA_query on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment RootNav_query on Query {\n  teamsSubmission\n}\n"
+    "text": "query RootQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n) {\n  ...RootDatasets_query\n  ...RootGA_query\n  ...RootNav_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        savedViews {\n          viewName\n          urlName\n          color\n          description\n        }\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment RootGA_query on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment RootNav_query on Query {\n  teamsSubmission\n}\n"
   }
 };
 })();

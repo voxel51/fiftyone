@@ -140,7 +140,7 @@ type Dataset {
 }
 
 type DatasetAppConfig {
-  mediaFields: [String!]!
+  mediaFields: [String!]
   plugins: JSON
   sidebarGroups: [SidebarGroup!]
   sidebarMode: SidebarMode
@@ -318,9 +318,9 @@ type Mutation {
     viewName: String!
   ): Boolean!
   updateSavedView(
-    subscription: String!
-    session: String
     viewName: String!
+    subscription: String
+    session: String
     updatedInfo: SavedViewInfo!
   ): SavedView
 }
@@ -345,8 +345,9 @@ type PointCloudSample implements Sample {
 type Query {
   aggregate(
     datasetName: String!
-    view: BSONArray!
+    view: BSONArray
     aggregations: [Aggregate!]!
+    viewName: String
   ): [AggregationResponses!]!
   datasets(
     search: String
@@ -371,8 +372,8 @@ type Query {
   teamsSubmission: Boolean!
   uid: String!
   version: String!
-  savedView(datasetName: String!, viewName: String!): SavedView
-  savedViews(datasetName: String!): [SavedView!]
+  savedView(datasetName: String!, viewName: String): SavedView
+  savedViews(datasetName: String!): [SavedView!]!
 }
 
 type RootAggregation implements Aggregation {

@@ -8,7 +8,7 @@ import {
   DatasetQuery$data,
 } from "./__generated__/DatasetQuery.graphql";
 
-const DatasetQuery = graphql`
+const DatasetNodeQuery = graphql`
   query DatasetQuery(
     $name: String!
     $view: BSONArray = null

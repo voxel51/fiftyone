@@ -2,7 +2,6 @@ html {
   position: relative;
   min-height: 100%;
   font-size: 12px;
-  height: "100%";
 
   @include desktop {
     font-size: 16px;
@@ -24,8 +23,7 @@ a:hover {
   color: $orange;
 }
 
-a,
-.btn {
+a, .btn {
   &.with-right-arrow {
     padding-right: rem(22px);
     position: relative;

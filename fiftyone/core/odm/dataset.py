@@ -561,7 +561,7 @@ class DatasetDocument(Document):
     default_skeleton = EmbeddedDocumentField(KeypointSkeleton)
     sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
     frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
-    saved_views = ListField(ReferenceField(SavedViewDocument))
     annotation_runs = DictField(ReferenceField(RunDocument))
     brain_methods = DictField(ReferenceField(RunDocument))
     evaluations = DictField(ReferenceField(RunDocument))
+    saved_views = ListField(ReferenceField(ViewDocument))
