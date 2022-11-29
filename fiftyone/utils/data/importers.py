@@ -11,7 +11,7 @@ import logging
 import os
 import random
 
-from bson import json_util
+from bson import json_util, ObjectId
 import cv2
 
 import eta.core.datasets as etad
@@ -1869,6 +1869,7 @@ def _import_saved_views(dataset, views):
 
         d.pop("_id", None)
         view_doc = foo.ViewDocument.from_dict(d)
+        view_doc.save()
 
         dataset._doc.saved_views.append(view_doc)
 
@@ -1884,6 +1885,7 @@ def _import_runs(dataset, runs, results_dir, run_cls):
         d.pop("_id", None)
         run_doc = foo.RunDocument.from_dict(d)
         run_doc.results = None
+        run_doc.save()
 
         runs = getattr(dataset._doc, run_cls._runs_field())
         runs[key] = run_doc

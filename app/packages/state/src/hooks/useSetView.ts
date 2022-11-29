@@ -73,13 +73,16 @@ const useSetView = (
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
-              router.history.location.state.state = {
-                ...router.history.location.state,
-                view: value,
-                viewCls: dataset.viewCls,
-                selected: [],
-                selectedLabels: [],
-              };
+              if (router.history.location.state) {
+                router.history.location.state.state = {
+                  ...router.history.location.state,
+                  view: value,
+                  viewCls: dataset.viewCls,
+                  selected: [],
+                  selectedLabels: [],
+                };
+              }
+
               updateState({
                 dataset: transformDataset(dataset),
                 state: {

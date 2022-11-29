@@ -3095,6 +3095,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             created_at=now,
             last_modified_at=now,
         )
+        view_doc.save()
 
         self._doc.saved_views.append(view_doc)
         self._doc.save()
@@ -3156,7 +3157,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if edited:
             view_doc.last_modified_at = datetime.utcnow()
-            self._doc.save()
+            view_doc.save()
 
     def load_saved_view(self, name):
         """Loads the saved view with the given name.
@@ -3188,7 +3189,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         view._set_name(name)
 
         view_doc.last_loaded_at = datetime.utcnow()
-        self._doc.save()
+        view_doc.save()
 
         return view
 
@@ -3199,10 +3200,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name: the name of a saved view
         """
         view_doc = self._get_saved_view_doc(name, pop=True)
+        view_doc.delete()
         self._doc.save()
 
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
+        for view_doc in self._doc.saved_views:
+            view_doc.delete()
+
         self._doc.saved_views = []
         self._doc.save()
 
@@ -6300,17 +6305,26 @@ def _do_load_dataset(obj, name, virtual=False):
 
 
 def _delete_dataset_doc(dataset_doc):
+    for view_doc in dataset_doc.views:
+        view_doc.delete()
+
     for run_doc in dataset_doc.annotation_runs.values():
         if run_doc.results is not None:
             run_doc.results.delete()
+
+        run_doc.delete()
 
     for run_doc in dataset_doc.brain_methods.values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
+        run_doc.delete()
+
     for run_doc in dataset_doc.evaluations.values():
         if run_doc.results is not None:
             run_doc.results.delete()
+
+        run_doc.delete()
 
     dataset_doc.delete()
 
@@ -6736,21 +6750,28 @@ def _clone_extras(dst_dataset, src_doc):
     # Clone saved views
     for _view_doc in src_doc.saved_views:
         view_doc = _clone_view_doc(_view_doc)
+        view_doc.save()
         dst_doc.saved_views.append(view_doc)
 
     # Clone annotation runs
     for anno_key, _run_doc in src_doc.annotation_runs.items():
         run_doc = _clone_run(_run_doc)
+        run_doc.save()
+
         dst_doc.annotation_runs[anno_key] = run_doc
 
     # Clone brain method runs
     for brain_key, _run_doc in src_doc.brain_methods.items():
         run_doc = _clone_run(_run_doc)
+        run_doc.save()
+
         dst_doc.brain_methods[brain_key] = run_doc
 
     # Clone evaluation runs
     for eval_key, _run_doc in src_doc.evaluations.items():
         run_doc = _clone_run(_run_doc)
+        run_doc.save()
+
         dst_doc.evaluations[eval_key] = run_doc
 
     dst_doc.save()

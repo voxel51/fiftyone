@@ -8,7 +8,7 @@ Dataset Views
 FiftyOne provides methods that allow you to sort, slice, and search your
 |Dataset| using any information that you have added to the |Dataset|.
 Performing these actions returns a |DatasetView| into your |Dataset| that will
-that will show only the samples and labels therein that match your criteria.
+show only the samples and labels therein that match your criteria.
 
 .. note::
 
