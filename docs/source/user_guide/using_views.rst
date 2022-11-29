@@ -146,8 +146,10 @@ to load the view in a future session:
     # Cleanup
     dataset.delete()
 
-You can also use :meth:`has_saved_view() <fiftyone.core.dataset.Dataset.has_saved_view>`
-and :meth:`delete_saved_view() <fiftyone.core.dataset.Dataset.delete_saved_view>`
+You can also use
+:meth:`has_saved_view() <fiftyone.core.dataset.Dataset.has_saved_view>`
+and
+:meth:`delete_saved_view() <fiftyone.core.dataset.Dataset.delete_saved_view>`
 to manage your saved views.
 
 .. note::
