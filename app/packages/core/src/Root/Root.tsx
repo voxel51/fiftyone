@@ -92,6 +92,13 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
               cursor
               node {
                 name
+                # TODO: @mani, can the view selector rely on this fragment instead of creating a new db call?
+                savedViews {
+                  viewName
+                  urlName
+                  color
+                  description
+                }
               }
             }
           }
