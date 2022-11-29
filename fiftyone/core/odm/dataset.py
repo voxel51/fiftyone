@@ -21,6 +21,7 @@ from fiftyone.core.fields import (
     IntField,
     ListField,
     ObjectIdField,
+    ReferenceField,
     StringField,
     TargetsField,
 )
@@ -558,7 +559,7 @@ class DatasetDocument(Document):
     default_skeleton = EmbeddedDocumentField(KeypointSkeleton)
     sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
     frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
-    annotation_runs = DictField(EmbeddedDocumentField(RunDocument))
-    brain_methods = DictField(EmbeddedDocumentField(RunDocument))
-    evaluations = DictField(EmbeddedDocumentField(RunDocument))
-    views = ListField(EmbeddedDocumentField(ViewDocument))
+    annotation_runs = DictField(ReferenceField(RunDocument))
+    brain_methods = DictField(ReferenceField(RunDocument))
+    evaluations = DictField(ReferenceField(RunDocument))
+    views = ListField(ReferenceField(ViewDocument))
