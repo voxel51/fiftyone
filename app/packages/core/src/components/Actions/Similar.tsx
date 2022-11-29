@@ -240,7 +240,7 @@ const SortBySimilarity = React.memo(
             title={"About sorting by similarity"}
             style={{
               background: "unset",
-              color: theme.font,
+              color: theme.text.primary,
               paddingTop: 0,
               paddingBottom: 0,
             }}

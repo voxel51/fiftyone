@@ -3,6 +3,140 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.18.0:
+
+FiftyOne 0.18.0
+---------------
+*Released November 8, 2022*
+
+App
+
+- Significantly optimized the performance of the sidebar by lazily computing
+  statistics only for currently visible fields
+  `#2191 <https://github.com/voxel51/fiftyone/pull/2191>`_
+
+- Added new :ref:`sidebar modes <app-sidebar-mode>` with updated default
+  behavior that further optimizes the performance of the App for large datasets
+  `#2191 <https://github.com/voxel51/fiftyone/pull/2191>`_
+
+- Added support for configuring the :ref:`sidebar mode <app-sidebar-mode>`
+  dynamically in the App and programmatically on a per-dataset basis
+  `#2191 <https://github.com/voxel51/fiftyone/pull/2191>`_
+
+- Added support for programmatically configuring
+  :ref:`sidebar groups <app-sidebar-groups>` and default expansion states on a
+  per-dataset basis `#2190 <https://github.com/voxel51/fiftyone/pull/2190>`_
+
+- Added support for viewing field-level descriptions via a new
+  :ref:`field tooltip <app-fields-sidebar>`
+  `#2216 <https://github.com/voxel51/fiftyone/pull/2216>`_
+
+- Added support for filtering by and viewing stats for custom embedded document
+  attributes `#1825 <https://github.com/voxel51/fiftyone/pull/1825>`_
+
+- Added a new light mode option!
+  `#2156 <https://github.com/voxel51/fiftyone/pull/2156>`_
+
+- Improved responsiveness of the sidebar when toggling fields on and off
+  `#2247 <https://github.com/voxel51/fiftyone/pull/2247>`_
+
+- Improved responsiveness and state management of the view bar
+  `#2230 <https://github.com/voxel51/fiftyone/pull/2230>`_
+
+- Restored the ability to shift-select multiple samples in the grid view
+  `#2110 <https://github.com/voxel51/fiftyone/issues/2110>`_
+
+- Fixed an issue that could cause unselected label fields to be inadvertently
+  tagged when using the label tagging UI
+  `#2121 <https://github.com/voxel51/fiftyone/issues/2121>`_
+
+- Fixed an issue that would prevent label tags applied on patch views in the
+  tagging UI from persisting to the underlying dataset
+  `#2113 <https://github.com/voxel51/fiftyone/issues/2113>`_
+
+- Fixed an issue that could arise when loading a group dataset with sparse
+  alternate media fields
+  `#2164 <https://github.com/voxel51/fiftyone/issues/2164>`_
+
+- Fixed some issues with datetime rendering and timezone handling
+  `#2111 <https://github.com/voxel51/fiftyone/issues/2111>`_,
+  `#2112 <https://github.com/voxel51/fiftyone/issues/2112>`_
+
+Core
+
+- Added support for declaring
+  :ref:`custom dynamic attributes <dynamic-attributes>` on datasets!
+  `#1825 <https://github.com/voxel51/fiftyone/pull/1825>`_
+
+- Added support for storing
+  :ref:`field-level metadata <storing-field-metadata>` on datasets
+  `#2216 <https://github.com/voxel51/fiftyone/pull/2216>`_
+
+- Added native support for installing on Apple Silicon with MongoDB 6
+  `#2165 <https://github.com/voxel51/fiftyone/pull/2165>`_
+
+- Dataset creation using default naming is now multiprocess-safe
+  `#2097 <https://github.com/voxel51/fiftyone/pull/2097>`_
+
+- Optimized the implementation of tagging samples and labels
+  `#2203 <https://github.com/voxel51/fiftyone/pull/2203>`_,
+  `#2208 <https://github.com/voxel51/fiftyone/pull/2208>`_
+
+- Optimized the implementation of
+  :meth:`select() <fiftyone.core.collections.SampleCollection.select>`,
+  :meth:`select_by() <fiftyone.core.collections.SampleCollection.select_by>`,
+  and
+  :meth:`select_groups() <fiftyone.core.collections.SampleCollection.select_groups>`
+  when performing ordered selections
+  `#2227 <https://github.com/voxel51/fiftyone/pull/2227>`_
+
+- Updated the logic of
+  :meth:`exists() <fiftyone.core.collections.SampleCollection.exists>` to be
+  more intuitive for frame fields
+  `#2209 <https://github.com/voxel51/fiftyone/pull/2209>`_
+
+- Upgraded server and MongoDB requirements to `pymongo>=3.11`, `motor>=2.3` and
+  newer pinned versions of `mongoengine`, `starlette`, and `strawberry-graphql`
+  `#2215 <https://github.com/voxel51/fiftyone/pull/2215>`_
+
+- Added support for modifying the filepaths of a frame view
+  `#2193 <https://github.com/voxel51/fiftyone/pull/2193>`_
+
+- Improved the implementation of
+  :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` and
+  related methods to safely cleanup in case of failed merges
+  `#2135 <https://github.com/voxel51/fiftyone/pull/2135>`_
+
+- Fixed some bugs that could occur when creating frame views into grouped
+  collections `#2144 <https://github.com/voxel51/fiftyone/pull/2144>`_
+
+- Fixed a bug when using
+  :meth:`select_by() <fiftyone.core.collections.SampleCollection.select_by>`
+  with `ObjectId` fields
+  `#2140 <https://github.com/voxel51/fiftyone/pull/2140>`_
+
+- Added an option to import annotation IDs when loading data stored in
+  :ref:`COCO format <COCODetectionDataset-import>`
+  `#2122 <https://github.com/voxel51/fiftyone/pull/2122>`_
+
+- Added support for including the export directory in the `dataset.yaml` file
+  generated by :ref:`YOLOv5 exports <YOLOv5Dataset-export>`
+  `#2114 <https://github.com/voxel51/fiftyone/pull/2114>`_
+
+Annotation
+
+- Updated the default CVAT endpoint to https://app.cvat.ai
+  `#2228 <https://github.com/voxel51/fiftyone/pull/2228>`_
+- Fixed a bug that would cause annotation runs involving unlabeled samples to
+  crash when using the Label Studio backend
+  `#2145 <https://github.com/voxel51/fiftyone/pull/2145>`_
+
+Zoo
+
+- Added support for using CUDA devices when running the
+  :ref:`CLIP model <model-zoo-clip-vit-base32-torch>` from the zoo
+  `#2201 <https://github.com/voxel51/fiftyone/pull/2201>`_
+
 .. _release-notes-v0.17.2:
 
 FiftyOne 0.17.2

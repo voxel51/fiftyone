@@ -21,7 +21,7 @@ class GroupElementFilter:
     slice: t.Optional[str] = None
 
 
-@gql.input(directives=[OneOf])  # oneof not working
+@gql.input  # oneof not working
 class SampleFilter:
     id: t.Optional[str] = None
     group: t.Optional[GroupElementFilter] = None

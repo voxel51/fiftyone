@@ -29,6 +29,7 @@ import React, {
   useRef,
   useState,
   useEffect,
+  useMemo,
 } from "react";
 
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
@@ -38,7 +39,6 @@ import classNames from "classnames";
 import { GroupBar, GroupSampleBar } from "./Bars";
 import { VideoLooker } from "@fiftyone/looker";
 import Looker from "./Looker";
-import { paginateGroupPinnedSample_query$key } from "@fiftyone/relay";
 import { Resizable } from "re-resizable";
 import { Loading, useTheme } from "@fiftyone/components";
 
@@ -148,23 +148,26 @@ const MainSample: React.FC<{
   );
 };
 
-const withVisualizerPlugin = <
-  T extends { fragmentRef: paginateGroupPinnedSample_query$key }
->(
-  Component: React.FC<T>
-) => {
+const withVisualizerPlugin = <T extends {}>(Component: React.FC<T>) => {
   return (props: T) => {
     const { sample, urls } = useRecoilValue(pinnedSliceSample);
     const [plugin] = usePlugin(PluginComponentType.Visualizer);
     const mediaField = useRecoilValue(selectedMediaField(true));
     const onSelectLabel = useOnSelectLabel();
+
+    const urlMap = useMemo(() => {
+      return Object.fromEntries(urls.map(({ field, url }) => [field, url]));
+    }, [urls]);
+
     const pluginAPI = {
       dataset: useRecoilValue(fos.dataset),
       sample: sample,
       onSelectLabel,
       useState: useRecoilValue,
       state: fos,
-      src: getSampleSrc(urls[mediaField]),
+      mediaFieldValue: urlMap[mediaField],
+      mediaField,
+      src: getSampleSrc(urlMap[mediaField]),
     };
 
     const pluginIsActive = plugin && plugin.activator(pluginAPI);
@@ -178,9 +181,7 @@ const withVisualizerPlugin = <
   };
 };
 
-const PluggableSample: React.FC<{
-  fragmentRef: paginateGroupPinnedSample_query$key;
-}> = withVisualizerPlugin(() => {
+const PluggableSample: React.FC<{}> = withVisualizerPlugin(() => {
   return <Loading>No visualizer was found</Loading>;
 });
 
@@ -209,8 +210,7 @@ const PinnedSample: React.FC = () => {
 const DualView: React.FC = () => {
   const lookerRef = useRef<VideoLooker>();
   const theme = useTheme();
-
-  const [width, setWidth] = React.useState(1000);
+  const [width, setWidth] = React.useState("70%");
   const key = useRecoilValue(groupId);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
@@ -220,8 +220,8 @@ const DualView: React.FC = () => {
       <div className={mainGroup}>
         <Resizable
           size={{ height: "100% !important", width }}
-          minWidth={"30%"}
-          maxWidth={"70%"}
+          minWidth={300}
+          maxWidth={"90%"}
           enable={{
             top: false,
             right: true,
@@ -237,7 +237,7 @@ const DualView: React.FC = () => {
           }}
           style={{
             position: "relative",
-            borderRight: `1px solid ${theme.backgroundDarkBorder}`,
+            borderRight: `1px solid ${theme.primary.plainBorder}`,
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",

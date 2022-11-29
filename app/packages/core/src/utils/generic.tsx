@@ -1,14 +1,13 @@
 import React from "react";
 import styled from "styled-components";
 import { useExternalLink, prettify as pretty } from "@fiftyone/utilities";
-import { matchPath, RoutingContext } from "@fiftyone/components";
 
 export const isFloat = (n: number): boolean => {
   return Number(n) === n && n % 1 !== 0;
 };
 
 const Link = styled.a`
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.text.primary};
 `;
 
 export const ExternalLink = ({ href, ...props }) => {
@@ -61,7 +60,7 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
   const H = 24 * M;
 
   const options: Intl.DateTimeFormatOptions = {
-    timeZone,
+    timeZone: resolveTimeZone(timeZone),
     year: "numeric",
     day: twoDigit,
     month: twoDigit,
@@ -106,6 +105,8 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
     d2: number
   ): [Intl.DateTimeFormat | null, Intl.DateTimeFormat] => {
     const delta = Math.abs(d1 - d2);
+    timeZone = resolveTimeZone(timeZone);
+
     let common: Intl.DateTimeFormatOptions = { timeZone, hour12: false };
     let diff: Intl.DateTimeFormatOptions = {
       timeZone,
@@ -118,6 +119,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         year: "numeric",
         month: twoDigit,
         day: twoDigit,
+        ...diff,
       };
       locale = "en-CA";
     } else if (delta < MS) {
@@ -125,6 +127,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         year: "numeric",
         day: twoDigit,
         month: twoDigit,
+        ...common,
       };
       diff = {
         hour: twoDigit,
@@ -132,6 +135,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         second: twoDigit,
         // @ts-ignore
         fractionalSecondDigits: 3,
+        ...diff,
       };
       locale = "en-ZA";
     } else if (delta < S) {
@@ -141,11 +145,13 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         month: twoDigit,
         hour: twoDigit,
         minute: twoDigit,
+        ...common,
       };
       diff = {
         second: twoDigit,
         // @ts-ignore
         fractionalSecondDigits: 3,
+        ...diff,
       };
       locale = "en-ZA";
     } else if (delta < M) {
@@ -153,11 +159,13 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         year: "numeric",
         day: twoDigit,
         month: twoDigit,
+        ...common,
       };
       diff = {
         hour: twoDigit,
         minute: twoDigit,
         second: twoDigit,
+        ...diff,
       };
       locale = "en-ZA";
     } else {
@@ -169,6 +177,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         hour: twoDigit,
         minute: twoDigit,
         second: twoDigit,
+        ...diff,
       };
       locale = "en-ZA";
     }
@@ -179,3 +188,10 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
     ];
   };
 })();
+
+const resolveTimeZone = (tz: string) =>
+  tz === "local"
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone
+    : !tz
+    ? "UTC"
+    : tz;

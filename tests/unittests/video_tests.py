@@ -5,6 +5,7 @@ FiftyOne video-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
 from datetime import date, datetime
 
 from bson import ObjectId
@@ -1619,6 +1620,25 @@ class VideoTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             sample["events"]
 
+        # Test saving a clips view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
+
     @drop_datasets
     def test_to_clips_expr(self):
         dataset = fo.Dataset()
@@ -1962,6 +1982,25 @@ class VideoTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             frame["ground_truth"]
 
+        # Test saving a frame view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
+
     @drop_datasets
     def test_to_frames_schema(self):
         sample = fo.Sample(filepath="video.mp4")
@@ -2031,6 +2070,33 @@ class VideoTests(unittest.TestCase):
         frames = view.to_frames(sample_frames="dynamic", sparse=True)
 
         self.assertEqual(len(frames), 2)
+
+    @drop_datasets
+    def test_to_frames_filepaths(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(filepath="image.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        frames = dataset.to_frames()
+
+        sample = frames.first()
+        sample.filepath = "foo.jpg"
+        sample.save()
+
+        self.assertEqual(frames.first().filepath, "foo.jpg")
+        self.assertEqual(dataset.first().frames.first().filepath, "foo.jpg")
+
+        frames.set_values("filepath", ["bar.jpg"])
+
+        self.assertEqual(frames.first().filepath, "bar.jpg")
+        self.assertEqual(dataset.first().frames.first().filepath, "bar.jpg")
+
+        frames.set_field("filepath", F("filepath").upper()).save()
+
+        self.assertEqual(frames.first().filepath, "BAR.JPG")
+        self.assertEqual(dataset.first().frames.first().filepath, "BAR.JPG")
 
     @drop_datasets
     def test_to_clip_frames(self):
@@ -2796,6 +2862,121 @@ class VideoTests(unittest.TestCase):
         frame = dataset.first().frames.first()
         with self.assertRaises(KeyError):
             frame["ground_truth"]
+
+    @drop_datasets
+    def test_detection_frames(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+        )
+        sample1.frames[1] = fo.Frame(
+            filepath="frame11.jpg", detection=fo.Detection(label="cat")
+        )
+        sample1.frames[2] = fo.Frame(filepath="frame12.jpg")
+        sample1.frames[3] = fo.Frame(
+            filepath="frame13.jpg", detection=fo.Detection(label="dog")
+        )
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+        )
+        sample2.frames[1] = fo.Frame(
+            filepath="frame21.jpg", detection=fo.Detection(label="dog")
+        )
+        sample2.frames[3] = fo.Frame(filepath="frame23.jpg")
+        sample2.frames[5] = fo.Frame(
+            filepath="frame25.jpg", detection=fo.Detection(label="rabbit")
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        frames = dataset.to_frames()
+        view = frames.filter_labels("detection", F("label") == "dog")
+
+        view.tag_samples("test")
+
+        self.assertEqual(view.count_sample_tags(), {"test": 2})
+        self.assertEqual(dataset.count_sample_tags(), {})
+
+        view.untag_samples("test")
+
+        self.assertEqual(frames.count_sample_tags(), {})
+        self.assertEqual(dataset.count_sample_tags(), {})
+
+        view.tag_labels("test")
+
+        self.assertEqual(view.count_label_tags(), {"test": 2})
+        self.assertEqual(dataset.count_label_tags(), {"test": 2})
+
+        view.untag_labels("test")
+
+        self.assertEqual(view.count_label_tags(), {})
+        self.assertEqual(dataset.count_label_tags(), {})
+
+        view.tag_labels("test")
+
+        self.assertEqual(view.count_label_tags(), {"test": 2})
+        self.assertEqual(dataset.count_label_tags(), {"test": 2})
+
+        view.select_labels(tags="test").untag_labels("test")
+
+        self.assertEqual(view.count_label_tags(), {})
+        self.assertEqual(dataset.count_label_tags(), {})
+
+    @drop_datasets
+    def test_temporal_detection_clips(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+            event=fo.TemporalDetection(label="meeting", support=[1, 3]),
+        )
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample3 = fo.Sample(
+            filepath="video3.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+            event=fo.TemporalDetection(label="party", support=[3, 5]),
+        )
+
+        dataset.add_samples([sample1, sample2, sample3])
+
+        clips = dataset.to_clips("event")
+
+        self.assertEqual(len(clips), 2)
+
+        clips.tag_samples("test")
+
+        self.assertEqual(clips.count_sample_tags(), {"test": 2})
+        self.assertEqual(dataset.count_sample_tags(), {})
+
+        clips.untag_samples("test")
+
+        self.assertEqual(clips.count_sample_tags(), {})
+        self.assertEqual(dataset.count_sample_tags(), {})
+
+        clips.tag_labels("test")
+
+        self.assertEqual(clips.count_label_tags(), {"test": 2})
+        self.assertEqual(dataset.count_label_tags(), {"test": 2})
+
+        clips.untag_labels("test")
+
+        self.assertEqual(clips.count_label_tags(), {})
+        self.assertEqual(dataset.count_label_tags(), {})
+
+        clips.tag_labels("test")
+
+        self.assertEqual(clips.count_label_tags(), {"test": 2})
+        self.assertEqual(dataset.count_label_tags(), {"test": 2})
+
+        clips.select_labels(tags="test").untag_labels("test")
+
+        self.assertEqual(clips.count_label_tags(), {})
+        self.assertEqual(dataset.count_label_tags(), {})
 
 
 if __name__ == "__main__":

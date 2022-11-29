@@ -4,7 +4,7 @@ import styled from "styled-components";
 
 const StyledInputContainer = styled.div`
   font-size: 14px;
-  border-bottom: 1px ${({ theme }) => theme.brand} solid;
+  border-bottom: 1px ${({ theme }) => theme.primary.plainColor} solid;
   position: relative;
   margin: 0.5rem 0;
 `;
@@ -12,7 +12,7 @@ const StyledInputContainer = styled.div`
 const StyledInput = styled.input`
   background-color: transparent;
   border: none;
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.primary.plainColor};
   height: 2rem;
   font-size: 14px;
   border: none;
@@ -27,7 +27,7 @@ const StyledInput = styled.input`
   }
 
   &::placeholder {
-    color: ${({ theme }) => theme.fontDark};
+    color: ${({ theme }) => theme.text.secondary};
     font-weight: bold;
   }
 `;
@@ -63,7 +63,7 @@ const Input = React.memo(
       ref
     ) => {
       const theme = useTheme();
-      color = color ?? theme.brand;
+      color = color ?? theme.primary.plainColor;
 
       return (
         <StyledInputContainer style={{ borderBottom: `1px solid ${color}` }}>
@@ -83,7 +83,7 @@ const Input = React.memo(
               e.key === "Escape" && e.currentTarget.blur();
               onKeyDown && onKeyDown(e);
             }}
-            style={disabled ? { color: theme.fontDark } : {}}
+            style={disabled ? { color: theme.text.secondary } : {}}
             disabled={disabled}
             onFocus={(e: React.FocusEvent<HTMLInputElement>) => {
               onFocus && onFocus();

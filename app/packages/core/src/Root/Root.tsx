@@ -41,10 +41,11 @@ import * as fos from "@fiftyone/state";
 import { getDatasetName, Route, RouterContext } from "@fiftyone/state";
 
 import DatasetSelector from "../components/DatasetSelector";
+import { useColorScheme, IconButton } from "@mui/material";
+import { DarkMode, LightMode } from "@mui/icons-material";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int, $cursor: String) {
-    ...RootConfig_query
     ...RootDatasets_query
     ...RootGA_query
     ...RootNav_query
@@ -155,6 +156,8 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   const refresh = fos.useRefresh();
   const context = useContext(RouterContext);
   const dataset = getDatasetName(context);
+  const { mode, setMode } = useColorScheme();
+  const [_, setTheme] = useRecoilState(fos.theme);
 
   return (
     <>
@@ -175,6 +178,21 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
               Have a Team?
             </Button>
           )}
+          <IconButton
+            title={mode === "dark" ? "Light mode" : "Dark mode"}
+            disableRipple
+            onClick={() => {
+              const nextMode = mode === "dark" ? "light" : "dark";
+              setMode(nextMode);
+              setTheme(nextMode);
+            }}
+            sx={{
+              color: (theme) => theme.palette.text.secondary,
+              pr: 0,
+            }}
+          >
+            {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
+          </IconButton>
           <SlackLink />
           <GitHubLink />
           <DocsLink />
@@ -204,40 +222,6 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
 };
 
 const Root: Route<RootQuery> = ({ children, prepared }) => {
-  const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);
-  const data = useFragment(
-    graphql`
-      fragment RootConfig_query on Query {
-        config {
-          colorBy
-          colorPool
-          colorscale
-          gridZoom
-          loopVideos
-          notebookHeight
-          plugins
-          showConfidence
-          showIndex
-          showLabel
-          showSkeletons
-          showTooltip
-          timezone
-          useFrameNumber
-        }
-        colorscale
-      }
-    `,
-    query as RootConfig_query$key
-  );
-
-  const update = fos.useStateUpdate();
-  useEffect(() => {
-    update({
-      colorscale: clone(data.colorscale) as RGB[],
-      config: clone(data.config),
-    });
-  }, [data]);
-
   return (
     <>
       <Nav prepared={prepared} />

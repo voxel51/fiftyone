@@ -280,6 +280,77 @@ Datasets can also store more specific types of ancillary information such as
     the dataset's :meth:`info <fiftyone.core.dataset.Dataset.info>` property
     in-place to save the changes to the database.
 
+.. _storing-field-metadata:
+
+Storing field metadata
+----------------------
+
+You can store metadata such as descriptions and other info on the
+:ref:`fields <using-fields>` of your dataset.
+
+One approach is to manually declare the field with
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`
+with the appropriate metadata provided:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+    dataset.add_sample_field(
+        "int_field", fo.IntField, description="An integer field"
+    )
+
+    field = dataset.get_field("int_field")
+    print(field.description)  # An integer field
+
+You can also use
+:meth:`get_field() <fiftyone.core.collections.SampleCollection.get_field>` to
+retrieve a field and update it's metadata at any time:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.add_dynamic_sample_fields()
+
+    field = dataset.get_field("ground_truth")
+    field.description = "Ground truth annotations"
+    field.info = {"url": "https://fiftyone.ai"}
+    field.save()  # must save after edits
+
+    field = dataset.get_field("ground_truth.detections.area")
+    field.description = "Area of the box, in pixels^2"
+    field.info = {"url": "https://fiftyone.ai"}
+    field.save()  # must save after edits
+
+    dataset.reload()
+
+    field = dataset.get_field("ground_truth")
+    print(field.description)  # Ground truth annotations
+    print(field.info)  # {'url': 'https://fiftyone.ai'}
+
+    field = dataset.get_field("ground_truth.detections.area")
+    print(field.description)  # Area of the box, in pixels^2
+    print(field.info)  # {'url': 'https://fiftyone.ai'}
+
+.. note::
+
+    You must call
+    :meth:`field.save() <fiftyone.core.fields.Field.save>` after updating
+    the fields's :attr:`description <fiftyone.core.fields.Field.description>`
+    and :meth:`info <fiftyone.core.fields.Field.info>` attributes in-place to
+    save the changes to the database.
+
+.. note::
+
+    Did you know? You can view field metadata directly in the App by hovering
+    over fields or attributes :ref:`in the sidebar <app-fields-sidebar>`!
+
 .. _custom-app-config:
 
 Custom App config
@@ -287,9 +358,13 @@ Custom App config
 
 All |Dataset| instances have an
 :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property that
-contains a |DatasetAppConfig| you can use to store dataset-specific settings
-that customize how the dataset is visualized in the
+contains a |DatasetAppConfig| that you can use to store dataset-specific
+settings that customize how the dataset is visualized in the
 :ref:`FiftyOne App <fiftyone-app>`.
+
+For example, you can declare
+:ref:`multiple media fields <app-multiple-media-fields>` on a dataset and
+configure which field is used by various components of the App by default:
 
 .. code-block:: python
     :linenos:
@@ -318,15 +393,54 @@ that customize how the dataset is visualized in the
 
     session = fo.launch_app(dataset)
 
-Check out :ref:`this section <app-config>` for more information about
-customizing the behavior of the App.
+You can also configure the default loading behavior of the
+:ref:`filters sidebar <app-sidebar-mode>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Set the default sidebar mode to "fast"
+    dataset.app_config.sidebar_mode = "fast"
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+or even configure the organization and default expansion state of the
+:ref:`sidebar's field groups <app-sidebar-groups>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Get the default sidebar groups for the dataset
+    sidebar_groups = fo.DatasetAppConfig.default_sidebar_groups(dataset)
+
+    # Collapse the `metadata` section by default
+    print(sidebar_groups[2].name)  # metadata
+    sidebar_groups[2].expanded = False
+
+    # Modify the dataset's App config
+    dataset.app_config.sidebar_groups = sidebar_groups
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+You can conveniently reset a dataset's App config by setting the
+:meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property to
+`None`:
+
+.. code-block:: python
+    :linenos:
+
+    # Reset App config
+    dataset.app_config = None
+    print(dataset.app_config)
+
+    session = fo.launch_app(dataset)
 
 .. note::
 
-    Any settings stored in a dataset's
-    :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
-    the corresponding settings from your
-    :ref:`global App config <configuring-fiftyone-app>`.
+    Check out :ref:`this section <app-config>` for more information about
+    customizing the behavior of the App.
 
 .. _storing-classes:
 
@@ -752,8 +866,10 @@ other samples in the dataset.
 If a field exists on a dataset but has not been set on a particular sample, its
 value will be ``None``.
 
-Default fields
---------------
+.. _default-sample-fields:
+
+Default sample fields
+---------------------
 
 By default, all |Sample| instances have the following fields:
 
@@ -768,11 +884,11 @@ By default, all |Sample| instances have the following fields:
     |              |                                    |               | added to a dataset, or `None` if the sample does  |
     |              |                                    |               | not belong to a dataset                           |
     +--------------+------------------------------------+---------------+---------------------------------------------------+
-    | `media_type` | string                             | N/A           | The media type of the sample. Computed            |
-    |              |                                    |               | automatically from the provided `filepath`        |
-    +--------------+------------------------------------+---------------+---------------------------------------------------+
     | `filepath`   | string                             | **REQUIRED**  | The path to the source data on disk. Must be      |
     |              |                                    |               | provided at sample creation time                  |
+    +--------------+------------------------------------+---------------+---------------------------------------------------+
+    | `media_type` | string                             | N/A           | The media type of the sample. Computed            |
+    |              |                                    |               | automatically from the provided `filepath`        |
     +--------------+------------------------------------+---------------+---------------------------------------------------+
     | `tags`       | list                               | `[]`          | A list of string tags for the sample              |
     +--------------+------------------------------------+---------------+---------------------------------------------------+
@@ -799,6 +915,8 @@ By default, all |Sample| instances have the following fields:
         'metadata': None,
     }>
 
+.. _accessing-sample-fields:
+
 Accessing fields of a sample
 ----------------------------
 
@@ -810,8 +928,23 @@ The names of available fields can be checked on any individual |Sample|:
     sample.field_names
     # ('filepath', 'media_type', 'tags', 'metadata')
 
-You can retrieve detailed information about the schema of the samples in a
-|Dataset|:
+The value of a |Field| for a given |Sample| can be accessed either by either
+attribute or item access:
+
+.. code-block:: python
+    :linenos:
+
+    sample.filepath
+    sample["filepath"]  # equivalent
+
+.. _field-schemas:
+
+Field schemas
+-------------
+
+You can use
+:meth:`get_field_schema() <fiftyone.core.dataset.Dataset.get_field_schema>` to
+retrieve detailed information about the schema of the samples in a dataset:
 
 .. code-block:: python
     :linenos:
@@ -830,7 +963,7 @@ You can retrieve detailed information about the schema of the samples in a
         ('metadata', <fiftyone.core.fields.EmbeddedDocumentField at 0x11c7907b8>)
     ])
 
-You can view helpful information about a dataset, including its schema, by
+You can also view helpful information about a dataset, including its schema, by
 printing it:
 
 .. code-block:: python
@@ -851,14 +984,10 @@ printing it:
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
 
-The value of a |Field| for a given |Sample| can be accessed either by either
-attribute or item access:
+.. note::
 
-.. code-block:: python
-    :linenos:
-
-    sample.filepath
-    sample["filepath"]  # equivalent
+    Did you know? You can :ref:`store metadata <storing-field-metadata>` such
+    as descriptions on your dataset's fields!
 
 .. _adding-sample-fields:
 
@@ -1370,8 +1499,9 @@ labels.
         label["bool"] = True
         label["dict"] = {"key": ["list", "of", "values"]}
 
-    You can view custom attributes in the :ref:`App tooltip <app-sample-view>`
-    by hovering over the objects.
+    You can also :ref:`declare dynamic attributes <dynamic-attributes>` on your
+    dataset's schema, which allows you to enforce type constraints, filter by
+    these custom attributes :ref:`in the App <app-filtering>`, and more.
 
 FiftyOne provides a dedicated |Label| subclass for many common tasks. The
 subsections below describe them.
@@ -2746,6 +2876,257 @@ schema of the attributes that you're storing.
 
     Did you know? You can view attribute values in the
     :ref:`App tooltip <app-sample-view>` by hovering over the objects.
+
+.. _dynamic-attributes:
+
+Dynamic attributes
+__________________
+
+Any field(s) of your FiftyOne datasets that contain |DynamicEmbeddedDocument|
+values can have arbitrary custom attributes added to their instances.
+
+For example, all :ref:`Label classes <using-labels>` and
+:ref:`Metadata classes <using-metadata>` are dynamic, so you can add custom
+attributes to them as follows:
+
+.. code-block:: python
+    :linenos:
+
+    # Provide some default attributes
+    label = fo.Classification(label="cat", confidence=0.98)
+
+    # Add custom attributes
+    label["int"] = 5
+    label["float"] = 51.0
+    label["list"] = [1, 2, 3]
+    label["bool"] = True
+    label["dict"] = {"key": ["list", "of", "values"]}
+
+By default, dynamic attributes are not included in a
+:ref:`dataset's schema <field-schemas>`, which means that these attributes may
+contain arbitrary heterogeneous values across the dataset's samples.
+
+However, FiftyOne provides methods that you can use to formally declare custom
+dynamic attributes, which allows you to enforce type constraints, filter by
+these custom attributes :ref:`in the App <app-filtering>`, and more.
+
+You can use
+:meth:`get_dynamic_field_schema() <fiftyone.core.dataset.Dataset.get_dynamic_field_schema>`
+to detect the names and type(s) of any undeclared dynamic embedded document
+attributes on a dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    print(dataset.get_dynamic_field_schema())
+
+.. code-block:: text
+
+    {
+        'ground_truth.detections.iscrowd': <fiftyone.core.fields.FloatField>,
+        'ground_truth.detections.area': <fiftyone.core.fields.FloatField>,
+    }
+
+You can then use
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>` to
+declare a specific dynamic embedded document attribute:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.add_sample_field("ground_truth.detections.iscrowd", fo.FloatField)
+
+or you can use the
+:meth:`add_dynamic_sample_fields() <fiftyone.core.dataset.Dataset.add_dynamic_sample_fields>`
+method to declare all dynamic embedded document attribute(s) that contain
+values of a single type:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.add_dynamic_sample_fields()
+
+.. note::
+
+    Pass the `add_mixed=True` option to
+    :meth:`add_dynamic_sample_fields() <fiftyone.core.dataset.Dataset.add_dynamic_sample_fields>`
+    if you wish to declare all dynamic attributes that contain mixed values
+    using a generic |Field| type.
+
+You can provide the optional `flat=True` option to
+:meth:`get_field_schema() <fiftyone.core.dataset.Dataset.get_field_schema>` to
+retrieve a flattened version of a dataset's schema that includes all embedded
+document attributes as top-level keys:
+
+.. code-block:: python
+    :linenos:
+
+    print(dataset.get_field_schema(flat=True))
+
+.. code-block:: text
+
+    {
+        'id': <fiftyone.core.fields.ObjectIdField>,
+        'filepath': <fiftyone.core.fields.StringField>,
+        'tags': <fiftyone.core.fields.ListField>,
+        'metadata': <fiftyone.core.fields.EmbeddedDocumentField>,
+        'metadata.size_bytes': <fiftyone.core.fields.IntField>,
+        'metadata.mime_type': <fiftyone.core.fields.StringField>,
+        'metadata.width': <fiftyone.core.fields.IntField>,
+        'metadata.height': <fiftyone.core.fields.IntField>,
+        'metadata.num_channels': <fiftyone.core.fields.IntField>,
+        'ground_truth': <fiftyone.core.fields.EmbeddedDocumentField>,
+        'ground_truth.detections': <fiftyone.core.fields.ListField>,
+        'ground_truth.detections.id': <fiftyone.core.fields.ObjectIdField>,
+        'ground_truth.detections.tags': <fiftyone.core.fields.ListField>,
+        ...
+        'ground_truth.detections.iscrowd': <fiftyone.core.fields.FloatField>,
+        'ground_truth.detections.area': <fiftyone.core.fields.FloatField>,
+        ...
+    }
+
+By default, dynamic attributes are not declared on a dataset's schema when
+samples are added to it:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(
+        filepath="/path/to/image.jpg",
+        ground_truth=fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="cat",
+                    bounding_box=[0.1, 0.1, 0.4, 0.4],
+                    mood="surly",
+                ),
+                fo.Detection(
+                    label="dog",
+                    bounding_box=[0.5, 0.5, 0.4, 0.4],
+                    mood="happy",
+                )
+            ]
+        )
+    )
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    schema = dataset.get_field_schema(flat=True)
+
+    assert "ground_truth.detections.mood" not in schema
+
+However, methods such as
+:meth:`add_sample() <fiftyone.core.dataset.Dataset.add_sample>`,
+:meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`,
+:meth:`add_dir() <fiftyone.core.dataset.Dataset.add_dir>`,
+:meth:`from_dir() <fiftyone.core.dataset.Dataset.from_dir>`, and
+:meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+provide an optional `dynamic=True` option that you can provide to automatically
+declare any dynamic embedded document attributes encountered while importing
+data:
+
+.. code-block:: python
+    :linenos:
+
+    dataset = fo.Dataset()
+
+    dataset.add_sample(sample, dynamic=True)
+    schema = dataset.get_field_schema(flat=True)
+
+    assert "ground_truth.detections.mood" in schema
+
+Note that, when declaring dynamic attributes on non-empty datasets, you must
+ensure that the attribute's type is consistent with any existing values in that
+field, e.g., by first running
+:meth:`get_dynamic_field_schema() <fiftyone.core.dataset.Dataset.get_dynamic_field_schema>`
+to check the existing type(s). Methods like
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`
+and
+:meth:`add_samples(..., dynamic=True) <fiftyone.core.dataset.Dataset.add_samples>`
+do not validate newly declared field's types against existing field values:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample1 = fo.Sample(
+        filepath="/path/to/image1.jpg",
+        ground_truth=fo.Classification(
+            label="cat",
+            mood="surly",
+            age="bad-value",
+        ),
+    )
+
+    sample2 = fo.Sample(
+        filepath="/path/to/image2.jpg",
+        ground_truth=fo.Classification(
+            label="dog",
+            mood="happy",
+            age=5,
+        ),
+    )
+
+    dataset = fo.Dataset()
+
+    dataset.add_sample(sample1)
+
+    # Either of these are problematic
+    dataset.add_sample(sample2, dynamic=True)
+    dataset.add_sample_field("ground_truth.age", fo.IntField)
+
+    sample1.reload()  # ValidationError: bad-value could not be converted to int
+
+If you declare a dynamic attribute with a type that is not compatible with
+existing values in that field, you will need to remove that field from the
+dataset's schema using
+:meth:`remove_dynamic_sample_field() <fiftyone.core.dataset.Dataset.remove_dynamic_sample_field>`
+in order for the dataset to be usable again:
+
+.. code-block:: python
+    :linenos:
+
+    # Removes dynamic field from dataset's schema without deleting the values
+    dataset.remove_dynamic_sample_field("ground_truth.age")
+
+You can use
+:meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`
+and
+:meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
+to create :ref:`views <using-views>` that select/exclude specific dynamic
+attributes from your dataset and its schema:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.add_sample_field("ground_truth.age", fo.Field)
+    sample = dataset.first()
+
+    assert "ground_truth.age" in dataset.get_field_schema(flat=True)
+    assert sample.ground_truth.has_field("age")
+
+    # Omits the `age` attribute from the `ground_truth` field
+    view = dataset.exclude_fields("ground_truth.age")
+    sample = view.first()
+
+    assert "ground_truth.age" not in view.get_field_schema(flat=True)
+    assert not sample.ground_truth.has_field("age")
+
+    # Only include `mood` (and default) attributes of the `ground_truth` field
+    view = dataset.select_fields("ground_truth.mood")
+    sample = view.first()
+
+    assert "ground_truth.age" not in view.get_field_schema(flat=True)
+    assert not sample.ground_truth.has_field("age")
 
 .. _custom-embedded-documents:
 

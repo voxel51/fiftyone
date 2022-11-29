@@ -1,9 +1,4 @@
-import {
-  atom,
-  atomFamily,
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-} from "recoil";
+import { atom, atomFamily, useRecoilCallback } from "recoil";
 
 import { Sample, RGB } from "@fiftyone/looker/src/state";
 
@@ -159,11 +154,6 @@ export const alpha = atomFamily<number, boolean>({
   default: DEFAULT_ALPHA,
 });
 
-export const colorPool = atom<string[]>({
-  key: "colorPool",
-  default: [],
-});
-
 export const colorSeed = atomFamily<number, boolean>({
   key: "colorSeed",
   default: 1,
@@ -181,11 +171,6 @@ export const savedLookerOptions = atom({
 
 export const appConfig = atom<State.Config>({
   key: "appConfig",
-  default: null,
-});
-
-export const colorscale = atom<RGB[]>({
-  key: "colorscale",
   default: null,
 });
 
@@ -237,6 +222,27 @@ export const lookerPanels = atom({
     json: { isOpen: false },
     help: { isOpen: false },
   },
+});
+
+export const theme = atom<"dark" | "light">({
+  key: "theme",
+  default: "dark",
+  effects: [
+    ({ setSelf, onSet }) => {
+      const muiModeKey = "mui-mode";
+      const muiMode = localStorage.getItem(muiModeKey) as "light" | "dark";
+      if (muiMode != null) setSelf(muiMode);
+      onSet((newValue, oldValue, isReset) => {
+        if (isReset) localStorage.removeItem(muiModeKey);
+        else localStorage.setItem(muiModeKey, newValue);
+      });
+    },
+  ],
+});
+
+export const compactLayout = atom({
+  key: "compactLayout",
+  default: false,
 });
 
 export const readOnly = atom({

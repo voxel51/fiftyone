@@ -1,3 +1,4 @@
+import { atomFamily } from "recoil";
 import styled from "styled-components";
 
 export const InputDiv = styled.div`
@@ -9,10 +10,8 @@ export const InputDiv = styled.div`
 
   display: flex;
   justify-content: space-between;
-  background: ${({ theme }) => theme.backgroundTransparent};
-
   & > input {
-    color: ${({ theme }) => theme.fontDark};
+    color: ${({ theme }) => theme.text.secondary};
     font-size: 14px !important;
     font-size: 1rem;
     width: 100%;
@@ -20,9 +19,17 @@ export const InputDiv = styled.div`
     box-shadow: none;
     border: none;
     outline: none;
-    border-bottom: 2px solid ${({ theme }) => theme.backgroundLight};
+    border-bottom: 2px solid ${({ theme }) => theme.background.level1};
     text-transform: uppercase;
     font-weight: bold;
     padding: 3px;
   }
 `;
+
+export const pathIsExpanded = atomFamily<
+  boolean,
+  { modal: boolean; path: string }
+>({
+  key: "pathIsExpanded",
+  default: false,
+});

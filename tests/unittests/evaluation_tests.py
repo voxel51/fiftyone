@@ -63,6 +63,8 @@ class RegressionTests(unittest.TestCase):
             method="simple",
         )
 
+        self.assertIn("eval", dataset.get_field_schema())
+
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")
 
@@ -152,6 +154,9 @@ class VideoRegressionTests(unittest.TestCase):
             eval_key="eval",
             method="simple",
         )
+
+        self.assertIn("eval", dataset.get_field_schema())
+        self.assertIn("eval", dataset.get_frame_field_schema())
 
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")
@@ -259,6 +264,8 @@ class ClassificationTests(unittest.TestCase):
             method="simple",
         )
 
+        self.assertIn("eval", dataset.get_field_schema())
+
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")
 
@@ -334,6 +341,8 @@ class ClassificationTests(unittest.TestCase):
             classes=["cat", "dog"],
             method="top-k",
         )
+
+        self.assertIn("eval", dataset.get_field_schema())
 
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")
@@ -449,6 +458,8 @@ class ClassificationTests(unittest.TestCase):
             method="binary",
         )
 
+        self.assertIn("eval", dataset.get_field_schema())
+
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")
 
@@ -559,6 +570,9 @@ class VideoClassificationTests(unittest.TestCase):
             method="simple",
         )
 
+        self.assertIn("eval", dataset.get_field_schema())
+        self.assertIn("eval", dataset.get_frame_field_schema())
+
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")
 
@@ -636,6 +650,9 @@ class VideoClassificationTests(unittest.TestCase):
             classes=["cat", "dog"],
             method="top-k",
         )
+
+        self.assertIn("eval", dataset.get_field_schema())
+        self.assertIn("eval", dataset.get_frame_field_schema())
 
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")
@@ -752,6 +769,9 @@ class VideoClassificationTests(unittest.TestCase):
             classes=["cat", "dog"],
             method="binary",
         )
+
+        self.assertIn("eval", dataset.get_field_schema())
+        self.assertIn("eval", dataset.get_frame_field_schema())
 
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")
@@ -1082,6 +1102,17 @@ class DetectionsTests(unittest.TestCase):
             **kwargs,
         )
 
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("eval_tp", schema)
+        self.assertIn("eval_fp", schema)
+        self.assertIn("eval_fn", schema)
+        self.assertIn(gt_eval_field, schema)
+        self.assertIn(gt_eval_field + "_id", schema)
+        self.assertIn(gt_eval_field + "_iou", schema)
+        self.assertIn(pred_eval_field, schema)
+        self.assertIn(pred_eval_field + "_id", schema)
+        self.assertIn(pred_eval_field + "_iou", schema)
+
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")
 
@@ -1159,9 +1190,17 @@ class DetectionsTests(unittest.TestCase):
             dataset.values(pred_eval_field),
             [None, None, [None], [None], [None]],
         )
-        self.assertNotIn("eval_tp", dataset.get_field_schema())
-        self.assertNotIn("eval_fp", dataset.get_field_schema())
-        self.assertNotIn("eval_fn", dataset.get_field_schema())
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("eval_tp", schema)
+        self.assertNotIn("eval_fp", schema)
+        self.assertNotIn("eval_fn", schema)
+        self.assertNotIn(gt_eval_field, schema)
+        self.assertNotIn(gt_eval_field + "_id", schema)
+        self.assertNotIn(gt_eval_field + "_iou", schema)
+        self.assertNotIn(pred_eval_field, schema)
+        self.assertNotIn(pred_eval_field + "_id", schema)
+        self.assertNotIn(pred_eval_field + "_iou", schema)
 
         #
         # Test non-classwise evaluation (including missing data)
@@ -1225,6 +1264,17 @@ class DetectionsTests(unittest.TestCase):
             **kwargs,
         )
 
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("eval_tp", schema)
+        self.assertIn("eval_fp", schema)
+        self.assertIn("eval_fn", schema)
+        self.assertIn(gt_eval_field, schema)
+        self.assertIn(gt_eval_field + "_id", schema)
+        self.assertIn(gt_eval_field + "_iou", schema)
+        self.assertIn(pred_eval_field, schema)
+        self.assertIn(pred_eval_field + "_id", schema)
+        self.assertIn(pred_eval_field + "_iou", schema)
+
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")
 
@@ -1301,9 +1351,17 @@ class DetectionsTests(unittest.TestCase):
             dataset.values(pred_eval_field),
             [None, None, [None], [None], [None]],
         )
-        self.assertNotIn("eval_tp", dataset.get_field_schema())
-        self.assertNotIn("eval_fp", dataset.get_field_schema())
-        self.assertNotIn("eval_fn", dataset.get_field_schema())
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("eval_tp", schema)
+        self.assertNotIn("eval_fp", schema)
+        self.assertNotIn("eval_fn", schema)
+        self.assertNotIn(gt_eval_field, schema)
+        self.assertNotIn(gt_eval_field + "_id", schema)
+        self.assertNotIn(gt_eval_field + "_iou", schema)
+        self.assertNotIn(pred_eval_field, schema)
+        self.assertNotIn(pred_eval_field + "_id", schema)
+        self.assertNotIn(pred_eval_field + "_iou", schema)
 
         #
         # Test non-classwise evaluation (including missing data)
@@ -1400,16 +1458,34 @@ class DetectionsTests(unittest.TestCase):
 
         view = dataset.load_evaluation_view("eval", select_fields=True)
 
-        schema = view.get_field_schema()
+        schema = view.get_field_schema(flat=True)
+
+        self.assertIn("ground_truth", schema)
+        self.assertIn("ground_truth.detections.eval", schema)
+        self.assertIn("ground_truth.detections.eval_id", schema)
+        self.assertIn("ground_truth.detections.eval_iou", schema)
+
+        self.assertIn("predictions", schema)
+        self.assertIn("predictions.detections.eval", schema)
+        self.assertIn("predictions.detections.eval_id", schema)
+        self.assertIn("predictions.detections.eval_iou", schema)
+
         self.assertNotIn("predictions2", schema)
+        self.assertNotIn("ground_truth.detections.eval2", schema)
+        self.assertNotIn("ground_truth.detections.eval2_id", schema)
+        self.assertNotIn("ground_truth.detections.eval2_iou", schema)
+
         self.assertNotIn("eval2_tp", schema)
         self.assertNotIn("eval2_fp", schema)
         self.assertNotIn("eval2_fn", schema)
+
+        self.assertEqual(view.distinct("ground_truth.detections.eval2"), [])
 
         sample = view.last()
         detection = sample["ground_truth"].detections[0]
 
         self.assertIsNotNone(detection["eval"])
+
         with self.assertRaises(KeyError):
             detection["eval2"]
 
@@ -1507,6 +1583,22 @@ class VideoDetectionsTests(unittest.TestCase):
             compute_mAP=True,
         )
 
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("eval_tp", schema)
+        self.assertIn("eval_fp", schema)
+        self.assertIn("eval_fn", schema)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("eval_tp", schema)
+        self.assertIn("eval_fp", schema)
+        self.assertIn("eval_fn", schema)
+        self.assertIn("ground_truth.detections.eval", schema)
+        self.assertIn("ground_truth.detections.eval_id", schema)
+        self.assertIn("ground_truth.detections.eval_iou", schema)
+        self.assertIn("predictions.detections.eval", schema)
+        self.assertIn("predictions.detections.eval_id", schema)
+        self.assertIn("predictions.detections.eval_iou", schema)
+
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")
 
@@ -1595,12 +1687,22 @@ class VideoDetectionsTests(unittest.TestCase):
             dataset.values("frames.predictions.detections.eval"),
             [[], [None], [None, [None]], [[None], [None]]],
         )
-        self.assertNotIn("eval_tp", dataset.get_field_schema())
-        self.assertNotIn("eval_tp", dataset.get_frame_field_schema())
-        self.assertNotIn("eval_fp", dataset.get_field_schema())
-        self.assertNotIn("eval_fp", dataset.get_frame_field_schema())
-        self.assertNotIn("eval_fn", dataset.get_field_schema())
-        self.assertNotIn("eval_fn", dataset.get_frame_field_schema())
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("eval_tp", schema)
+        self.assertNotIn("eval_fp", schema)
+        self.assertNotIn("eval_fn", schema)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertNotIn("eval_tp", schema)
+        self.assertNotIn("eval_fp", schema)
+        self.assertNotIn("eval_fn", schema)
+        self.assertNotIn("ground_truth.detections.eval", schema)
+        self.assertNotIn("ground_truth.detections.eval_id", schema)
+        self.assertNotIn("ground_truth.detections.eval_iou", schema)
+        self.assertNotIn("predictions.detections.eval", schema)
+        self.assertNotIn("predictions.detections.eval_id", schema)
+        self.assertNotIn("predictions.detections.eval_iou", schema)
 
         #
         # Test non-classwise evaluation (including missing data)
@@ -1666,6 +1768,22 @@ class VideoDetectionsTests(unittest.TestCase):
             method="open-images",
         )
 
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("eval_tp", schema)
+        self.assertIn("eval_fp", schema)
+        self.assertIn("eval_fn", schema)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("eval_tp", schema)
+        self.assertIn("eval_fp", schema)
+        self.assertIn("eval_fn", schema)
+        self.assertIn("ground_truth.detections.eval", schema)
+        self.assertIn("ground_truth.detections.eval_id", schema)
+        self.assertIn("ground_truth.detections.eval_iou", schema)
+        self.assertIn("predictions.detections.eval", schema)
+        self.assertIn("predictions.detections.eval_id", schema)
+        self.assertIn("predictions.detections.eval_iou", schema)
+
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")
 
@@ -1753,12 +1871,22 @@ class VideoDetectionsTests(unittest.TestCase):
             dataset.values("frames.predictions.detections.eval"),
             [[], [None], [None, [None]], [[None], [None]]],
         )
-        self.assertNotIn("eval_tp", dataset.get_field_schema())
-        self.assertNotIn("eval_tp", dataset.get_frame_field_schema())
-        self.assertNotIn("eval_fp", dataset.get_field_schema())
-        self.assertNotIn("eval_fp", dataset.get_frame_field_schema())
-        self.assertNotIn("eval_fn", dataset.get_field_schema())
-        self.assertNotIn("eval_fn", dataset.get_frame_field_schema())
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("eval_tp", schema)
+        self.assertNotIn("eval_fp", schema)
+        self.assertNotIn("eval_fn", schema)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertNotIn("eval_tp", schema)
+        self.assertNotIn("eval_fp", schema)
+        self.assertNotIn("eval_fn", schema)
+        self.assertNotIn("ground_truth.detections.eval", schema)
+        self.assertNotIn("ground_truth.detections.eval_id", schema)
+        self.assertNotIn("ground_truth.detections.eval_iou", schema)
+        self.assertNotIn("predictions.detections.eval", schema)
+        self.assertNotIn("predictions.detections.eval_id", schema)
+        self.assertNotIn("predictions.detections.eval_iou", schema)
 
         #
         # Test non-classwise evaluation (including missing data)
@@ -1854,6 +1982,10 @@ class SegmentationTests(unittest.TestCase):
             eval_key="eval",
             method="simple",
         )
+
+        self.assertIn("eval_accuracy", dataset.get_field_schema())
+        self.assertIn("eval_precision", dataset.get_field_schema())
+        self.assertIn("eval_recall", dataset.get_field_schema())
 
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")
@@ -1958,6 +2090,13 @@ class VideoSegmentationTests(unittest.TestCase):
             eval_key="eval",
             method="simple",
         )
+
+        self.assertIn("eval_accuracy", dataset.get_field_schema())
+        self.assertIn("eval_accuracy", dataset.get_frame_field_schema())
+        self.assertIn("eval_precision", dataset.get_field_schema())
+        self.assertIn("eval_precision", dataset.get_frame_field_schema())
+        self.assertIn("eval_recall", dataset.get_field_schema())
+        self.assertIn("eval_recall", dataset.get_frame_field_schema())
 
         empty_view.load_evaluation_view("eval")
         empty_view.get_evaluation_info("eval")

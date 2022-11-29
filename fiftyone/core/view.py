@@ -5,7 +5,7 @@ Dataset views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import OrderedDict
+from collections import defaultdict, OrderedDict
 import contextlib
 from copy import copy, deepcopy
 import itertools
@@ -19,6 +19,7 @@ import eta.core.utils as etau
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
+import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -57,7 +58,12 @@ class DatasetView(foc.SampleCollection):
     """
 
     def __init__(
-        self, dataset, _stages=None, _media_type=None, _group_slice=None
+        self,
+        dataset,
+        _stages=None,
+        _media_type=None,
+        _group_slice=None,
+        _name=None,
     ):
         if _stages is None:
             _stages = []
@@ -66,6 +72,7 @@ class DatasetView(foc.SampleCollection):
         self.__stages = _stages
         self.__media_type = _media_type
         self.__group_slice = _group_slice
+        self.__name = _name
 
     def __eq__(self, other):
         if type(other) != type(self):
@@ -123,6 +130,7 @@ class DatasetView(foc.SampleCollection):
             _stages=deepcopy(self.__stages),
             _media_type=self.__media_type,
             _group_slice=self.__group_slice,
+            _name=self.__name,
         )
 
     @property
@@ -238,8 +246,13 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def name(self):
-        """The name of the view."""
-        return self.dataset_name + "-view"
+        """The name of the view if it is a saved view; otherwise None."""
+        return self.__name
+
+    @property
+    def is_saved(self):
+        """Whether the view is a saved view or not."""
+        return self.__name is not None
 
     @property
     def dataset_name(self):
@@ -324,6 +337,9 @@ class DatasetView(foc.SampleCollection):
 
         if self.media_type == fom.GROUP:
             elements.insert(2, ("Group slice:", self.group_slice))
+
+        if self.is_saved:
+            elements.insert(1, ("View name: ", self.name))
 
         elements = fou.justify_headings(elements)
         lines = ["%s %s" % tuple(e) for e in elements]
@@ -449,7 +465,9 @@ class DatasetView(foc.SampleCollection):
 
     def _make_sample_fcn(self):
         sample_cls = self._sample_cls
-        selected_fields, excluded_fields = self._get_selected_excluded_fields()
+        selected_fields, excluded_fields = self._get_selected_excluded_fields(
+            roots_only=True
+        )
         filtered_fields = self._get_filtered_fields()
 
         def make_sample(d):
@@ -614,7 +632,11 @@ class DatasetView(foc.SampleCollection):
             )
 
     def get_field_schema(
-        self, ftype=None, embedded_doc_type=None, include_private=False
+        self,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        flat=False,
     ):
         """Returns a schema dictionary describing the fields of the samples in
         the view.
@@ -628,20 +650,36 @@ class DatasetView(foc.SampleCollection):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
 
         Returns:
-             an ``OrderedDict`` mapping field names to field types
+             a dictionary mapping field names to field types
         """
-        field_schema = self._dataset.get_field_schema(
+        schema = self._dataset.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
 
-        return self._get_filtered_schema(field_schema)
+        schema = self._get_filtered_schema(schema)
+
+        if flat:
+            schema = fof.flatten_schema(
+                schema,
+                ftype=ftype,
+                embedded_doc_type=embedded_doc_type,
+                include_private=include_private,
+            )
+
+        return schema
 
     def get_frame_field_schema(
-        self, ftype=None, embedded_doc_type=None, include_private=False
+        self,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        flat=False,
     ):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the view.
@@ -657,6 +695,8 @@ class DatasetView(foc.SampleCollection):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
 
         Returns:
             a dictionary mapping field names to field types, or ``None`` if
@@ -665,13 +705,23 @@ class DatasetView(foc.SampleCollection):
         if not self._has_frame_fields():
             return None
 
-        field_schema = self._dataset.get_frame_field_schema(
+        schema = self._dataset.get_frame_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
 
-        return self._get_filtered_schema(field_schema, frames=True)
+        schema = self._get_filtered_schema(schema, frames=True)
+
+        if flat:
+            schema = fof.flatten_schema(
+                schema,
+                ftype=ftype,
+                embedded_doc_type=embedded_doc_type,
+                include_private=include_private,
+            )
+
+        return schema
 
     def clone_sample_field(self, field_name, new_field_name):
         """Clones the given sample field of the view into a new field of the
@@ -1078,11 +1128,13 @@ class DatasetView(foc.SampleCollection):
         return d
 
     def _needs_frames(self):
-        if not self._dataset._has_frame_fields():
+        dataset = self._dataset
+
+        if not dataset._has_frame_fields():
             return False
 
         for stage in self._stages:
-            if stage._needs_frames(self):
+            if stage._needs_frames(dataset):
                 return True
 
         return False
@@ -1332,6 +1384,8 @@ class DatasetView(foc.SampleCollection):
             if media_type is not None:
                 view._set_media_type(media_type)
 
+        view._set_name(None)
+
         return view
 
     def _set_media_type(self, media_type):
@@ -1340,6 +1394,9 @@ class DatasetView(foc.SampleCollection):
         if media_type != fom.GROUP:
             self.__group_slice = None
 
+    def _set_name(self, name):
+        self.__name = name
+
     def _get_filtered_schema(self, schema, frames=False):
         if schema is None:
             return None
@@ -1347,50 +1404,59 @@ class DatasetView(foc.SampleCollection):
         selected_fields, excluded_fields = self._get_selected_excluded_fields(
             frames=frames
         )
-        if selected_fields is not None:
-            schema = OrderedDict(
-                {fn: f for fn, f in schema.items() if fn in selected_fields}
-            )
 
-        if excluded_fields is not None:
-            schema = OrderedDict(
-                {
-                    fn: f
-                    for fn, f in schema.items()
-                    if fn not in excluded_fields
-                }
-            )
+        if selected_fields is not None or excluded_fields is not None:
+            _filter_schema(schema, selected_fields, excluded_fields)
 
         return schema
 
-    def _get_selected_excluded_fields(self, frames=False):
+    def _get_selected_excluded_fields(self, frames=False, roots_only=False):
         selected_fields = None
-        excluded_fields = set()
+        excluded_fields = None
 
+        dataset = self._dataset
         for stage in self._stages:
-            _selected_fields = stage.get_selected_fields(self, frames=frames)
-            if _selected_fields:
+            sf = stage.get_selected_fields(dataset, frames=frames)
+            if sf:
+                if roots_only:
+                    sf = {f.split(".", 1)[0] for f in sf}
+
                 if selected_fields is None:
-                    selected_fields = set(_selected_fields)
+                    selected_fields = set(sf)
                 else:
-                    selected_fields.intersection_update(_selected_fields)
+                    selected_fields.intersection_update(sf)
 
-            _excluded_fields = stage.get_excluded_fields(self, frames=frames)
-            if _excluded_fields:
-                excluded_fields.update(_excluded_fields)
+            ef = stage.get_excluded_fields(dataset, frames=frames)
+            if ef:
+                if roots_only:
+                    ef = {f for f in ef if "." not in f}
 
-        if selected_fields is not None:
+                if excluded_fields is None:
+                    excluded_fields = set(ef)
+                else:
+                    excluded_fields.update(ef)
+
+        if (
+            roots_only
+            and selected_fields is not None
+            and excluded_fields is not None
+        ):
             selected_fields.difference_update(excluded_fields)
             excluded_fields = None
 
         return selected_fields, excluded_fields
 
     def _get_filtered_fields(self, frames=False):
-        filtered_fields = set()
+        filtered_fields = None
+
+        dataset = self._dataset
         for stage in self._stages:
-            _filtered_fields = stage.get_filtered_fields(self, frames=frames)
-            if _filtered_fields:
-                filtered_fields.update(_filtered_fields)
+            ff = stage.get_filtered_fields(dataset, frames=frames)
+            if ff:
+                if filtered_fields is None:
+                    filtered_fields = set(ff)
+                else:
+                    filtered_fields.update(ff)
 
         return filtered_fields
 
@@ -1484,12 +1550,14 @@ def make_optimized_select_view(
     # that could affect our ability to select the samples of interest first,
     # we'll need to account for that here...
     #
+
+    optimized_view = view._base_view
+
     if groups:
-        optimized_view = view._dataset.select_groups(
+        optimized_view = optimized_view.select_groups(
             sample_ids, ordered=ordered
         )
     else:
-        optimized_view = view._dataset
         if view.media_type == fom.GROUP and not select_groups:
             optimized_view = optimized_view.select_group_slices(
                 _allow_mixed=True
@@ -1506,3 +1574,99 @@ def make_optimized_select_view(
             optimized_view._stages.append(stage)
 
     return optimized_view
+
+
+def _filter_schema(schema, selected_fields, excluded_fields):
+    selected_fields, roots1 = _parse_selected_fields(selected_fields)
+    excluded_fields, roots2 = _parse_excluded_fields(excluded_fields)
+    filtered_roots = roots1 | roots2
+
+    # Explicitly include roots of any embedded fields that have been selected
+    if roots1:
+        selected_fields[""].update(roots1)
+
+    # Copy any top-level fields whose embedded fields will be filtered
+    if filtered_roots:
+        for name in tuple(schema.keys()):
+            if name in filtered_roots:
+                schema[name] = schema[name].copy()
+
+    sf = selected_fields.get("", None)
+    ef = excluded_fields.get("", None)
+
+    if sf is not None:
+        for name in tuple(schema.keys()):
+            if name not in sf:
+                del schema[name]
+
+    if ef is not None:
+        for name in tuple(schema.keys()):
+            if name in ef:
+                del schema[name]
+
+    if filtered_roots:
+        for name, field in schema.items():
+            _filter_embedded_field_schema(
+                field, name, selected_fields, excluded_fields
+            )
+
+
+def _parse_selected_fields(paths):
+    d = defaultdict(set)
+    r = set()
+
+    if paths is not None:
+        for path in paths:
+            if "." in path:
+                chunks = path.split(".")
+                root = chunks[0]
+                r.add(root)
+
+                for i in range(1, len(chunks)):
+                    base = ".".join(chunks[:i])
+                    leaf = chunks[i]
+                    d[base].add(leaf)
+            else:
+                d[""].add(path)
+
+    return d, r
+
+
+def _parse_excluded_fields(paths):
+    d = defaultdict(set)
+    r = set()
+
+    if paths is not None:
+        for path in paths:
+            if "." in path:
+                root = path.split(".", 1)[0]
+                r.add(root)
+
+                base, leaf = path.rsplit(".", 1)
+                d[base].add(leaf)
+            else:
+                d[""].add(path)
+
+    return d, r
+
+
+def _filter_embedded_field_schema(
+    field, path, selected_fields, excluded_fields
+):
+    while isinstance(field, fof.ListField):
+        field = field.field
+
+    if not isinstance(field, fof.EmbeddedDocumentField):
+        return
+
+    sf = selected_fields.get(path, None)
+    ef = excluded_fields.get(path, None)
+
+    if sf is not None or ef is not None:
+        field._use_view(selected_fields=sf, excluded_fields=ef)
+
+    for name, _field in field._fields.items():
+        _path = path + "." + name
+        _filter_embedded_field_schema(
+            _field, _path, selected_fields, excluded_fields
+        )

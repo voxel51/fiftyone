@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { useMachine } from "@xstate/react";
 import { useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
-import { Close, Help } from "@material-ui/icons";
+import { Close, Help } from "@mui/icons-material";
 
 import { useOutsideClick } from "@fiftyone/state";
 import { ExternalLink } from "../../utils/generic";
@@ -12,12 +12,13 @@ import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
 
 import * as fos from "@fiftyone/state";
+import { useTheme } from "@fiftyone/components";
 
 const ViewBarDiv = styled.div`
   position: relative;
-  background-color: ${({ theme }) => theme.backgroundDark};
+  background-color: ${({ theme }) => theme.background.level2};
   border-radius: 3px;
-  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   box-sizing: border-box;
   height: 52px;
   width: 100%;
@@ -44,14 +45,14 @@ const IconsContainer = styled.div`
   z-index: 1;
   height: 100%;
   border-radius: 3px;
-  top 0;
-  height: 52px;
-  right: 0;
+  top 2px;
+  height: 48px;
+  right: 1px;
   background-image: linear-gradient(
     to right,
     rgba(0, 0, 0, 0),
     30%,
-    ${({ theme }) => theme.backgroundDark}
+    ${({ theme }) => theme.background.level2}
   );
   column-gap: 0.5rem;
   padding: 0 0.5rem;
@@ -98,6 +99,7 @@ const ViewBar = React.memo(() => {
     }, []),
   };
 
+  const theme = useTheme();
   useOutsideClick(
     barRef,
     () => state.matches("running.focus.focused") && send("TOGGLE_FOCUS")
@@ -168,13 +170,14 @@ const ViewBar = React.memo(() => {
           onClick={() => send("CLEAR")}
           style={{
             cursor: "pointer",
+            color: theme.text.secondary,
           }}
         />
         <ExternalLink
           href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar"
           style={{ display: "flex" }}
         >
-          <Help />
+          <Help style={{ color: theme.text.secondary }} />
         </ExternalLink>
       </IconsContainer>
     </div>

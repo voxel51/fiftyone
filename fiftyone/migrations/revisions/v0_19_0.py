@@ -12,7 +12,9 @@ def up(db, dataset_name):
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)
 
-    _up_views(db, dataset_dict)
+    if "views" not in dataset_dict:
+        dataset_dict["views"] = []
+
     _up_runs(db, dataset_dict, "annotation_runs")
     _up_runs(db, dataset_dict, "brain_methods")
     _up_runs(db, dataset_dict, "evaluations")
@@ -24,42 +26,12 @@ def down(db, dataset_name):
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)
 
-    _down_views(db, dataset_dict)
+    _delete_views(db, dataset_dict)
     _down_runs(db, dataset_dict, "annotation_runs")
     _down_runs(db, dataset_dict, "brain_methods")
     _down_runs(db, dataset_dict, "evaluations")
 
     db.datasets.replace_one(match_d, dataset_dict)
-
-
-def _up_views(db, dataset_dict):
-    views = dataset_dict.get("views", [])
-
-    _views = []
-    for view_doc in views:
-        _id = ObjectId()
-        view_doc["_id"] = _id
-        _views.append(_id)
-        db.views.insert_one(view_doc)
-
-    dataset_dict["views"] = _views
-
-
-def _down_views(db, dataset_dict):
-    views = dataset_dict.get("views", [])
-
-    _views = []
-    for _id in views:
-        try:
-            view_doc = db.views.find_one({"_id", _id})
-        except:
-            continue
-
-        db.views.delete_one({"_id", _id})
-        view_doc.pop("_id")
-        _views.append(view_doc)
-
-    dataset_dict["views"] = _views
 
 
 def _up_runs(db, dataset_dict, runs_field):
@@ -98,8 +70,8 @@ def _down_runs(db, dataset_dict, runs_field):
     dataset_dict[runs_field] = _runs
 
 
-def _delete_views(db, views):
-    if not views:
-        return
+def _delete_views(db, dataset_dict):
+    views = dataset_dict.pop("views", [])
 
-    db.views.delete_many({"_id": {"$in": views}})
+    if views:
+        db.views.delete_many({"_id": {"$in": views}})
