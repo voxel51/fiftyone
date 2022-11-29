@@ -1,5 +1,5 @@
 """
-Dataset view documents.
+Saved view documents.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -16,16 +16,15 @@ from fiftyone.core.fields import (
 from .document import Document
 
 
-class ViewDocument(Document):
-    """Backing document for dataset views."""
+class SavedViewDocument(Document):
+    """Backing document for saved views."""
 
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"collection": "views", "strict": False}
 
     _EDITABLE_FIELDS = ("name", "color", "description")
 
-    id = ObjectIdField()
-    dataset_id = ObjectIdField()
+    dataset_id = ObjectIdField(db_field="_dataset_id")
     name = StringField()
     url_name = StringField()
     description = StringField()

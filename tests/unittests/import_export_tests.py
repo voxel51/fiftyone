@@ -2518,6 +2518,9 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         self.assertTrue("test" in dataset.list_saved_views())
         self.assertTrue("test" in dataset2.list_saved_views())
 
+        view_doc = dataset2._get_saved_view_doc("test")
+        self.assertEqual(dataset2._doc.id, view_doc.dataset_id)
+
         view2 = dataset2.load_saved_view("test")
         self.assertEqual(len(view), len(view2))
 
@@ -2544,6 +2547,9 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         self.assertTrue("test" in dataset.list_evaluations())
         self.assertTrue("test" in dataset2.list_evaluations())
+
+        run_doc = dataset2._doc.evaluations["test"]
+        self.assertEqual(dataset2._doc.id, run_doc.dataset_id)
 
         view2 = dataset2.load_evaluation_view("test")
         self.assertEqual(len(view), len(view2))
@@ -2708,6 +2714,9 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         self.assertTrue("test" in dataset.list_saved_views())
         self.assertTrue("test" in dataset2.list_saved_views())
 
+        view_doc = dataset2._get_saved_view_doc("test")
+        self.assertEqual(dataset2._doc.id, view_doc.dataset_id)
+
         view2 = dataset2.load_saved_view("test")
         self.assertEqual(len(view), len(view2))
 
@@ -2734,6 +2743,9 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         self.assertTrue("test" in dataset.list_evaluations())
         self.assertTrue("test" in dataset2.list_evaluations())
+
+        run_doc = dataset2._doc.evaluations["test"]
+        self.assertEqual(dataset2._doc.id, run_doc.dataset_id)
 
         view2 = dataset2.load_evaluation_view("test")
         self.assertEqual(len(view), len(view2))

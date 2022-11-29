@@ -2281,7 +2281,6 @@ class DatasetExtrasTests(unittest.TestCase):
         self.assertFalse(not_saved_view.is_saved)
 
         also_view = dataset.load_saved_view(view_name)
-
         last_loaded_at2 = dataset._doc.saved_views[0].last_loaded_at
 
         self.assertEqual(view, also_view)
@@ -2374,9 +2373,9 @@ class DatasetExtrasTests(unittest.TestCase):
 
         dataset.delete_saved_view("my_view2")
 
-        self.assertListEqual(
-            [v.name for v in dataset._saved_views()],
-            [names[0], names[2]],
+        self.assertSetEqual(
+            {v.name for v in dataset._saved_views()},
+            {names[0], names[2]},
         )
 
         dataset.delete_saved_views()

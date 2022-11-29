@@ -3081,8 +3081,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         now = datetime.utcnow()
 
-        view_doc = foo.ViewDocument(
-            id=ObjectId(),
+        view_doc = foo.SavedViewDocument(
             dataset_id=self._doc.id,
             name=name,
             url_name=url_name,
@@ -6305,7 +6304,7 @@ def _do_load_dataset(obj, name, virtual=False):
 
 
 def _delete_dataset_doc(dataset_doc):
-    for view_doc in dataset_doc.views:
+    for view_doc in dataset_doc.saved_views:
         view_doc.delete()
 
     for run_doc in dataset_doc.annotation_runs.values():
@@ -6750,12 +6749,15 @@ def _clone_extras(dst_dataset, src_doc):
     # Clone saved views
     for _view_doc in src_doc.saved_views:
         view_doc = _clone_view_doc(_view_doc)
+        view_doc.dataset_id = dst_doc.id
         view_doc.save()
+
         dst_doc.saved_views.append(view_doc)
 
     # Clone annotation runs
     for anno_key, _run_doc in src_doc.annotation_runs.items():
         run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
         run_doc.save()
 
         dst_doc.annotation_runs[anno_key] = run_doc
@@ -6763,6 +6765,7 @@ def _clone_extras(dst_dataset, src_doc):
     # Clone brain method runs
     for brain_key, _run_doc in src_doc.brain_methods.items():
         run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
         run_doc.save()
 
         dst_doc.brain_methods[brain_key] = run_doc
@@ -6770,6 +6773,7 @@ def _clone_extras(dst_dataset, src_doc):
     # Clone evaluation runs
     for eval_key, _run_doc in src_doc.evaluations.items():
         run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
         run_doc.save()
 
         dst_doc.evaluations[eval_key] = run_doc
@@ -6779,13 +6783,13 @@ def _clone_extras(dst_dataset, src_doc):
 
 def _clone_view_doc(view_doc):
     _view_doc = view_doc.copy()
-    _view_doc.id = ObjectId()  # IDs must be unique across datasets
+    _view_doc.id = ObjectId()
     return _view_doc
 
 
 def _clone_run(run_doc):
     _run_doc = run_doc.copy()
-    _run_doc.id = ObjectId()  # IDs must be unique across datasets
+    _run_doc.id = ObjectId()
 
     # Unfortunately the only way to copy GridFS files is to read-write them...
     # https://jira.mongodb.org/browse/TOOLS-2208

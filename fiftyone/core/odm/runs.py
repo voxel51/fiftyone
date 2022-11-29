@@ -5,12 +5,14 @@ Dataset run documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from mongoengine import (
+from mongoengine import FileField
+
+from fiftyone.core.fields import (
+    DateTimeField,
     DictField,
     ListField,
+    ObjectIdField,
     StringField,
-    DateTimeField,
-    FileField,
 )
 
 from .document import Document
@@ -22,6 +24,7 @@ class RunDocument(Document):
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"collection": "runs", "strict": False}
 
+    dataset_id = ObjectIdField(db_field="_dataset_id")
     key = StringField()
     version = StringField()
     timestamp = DateTimeField()
