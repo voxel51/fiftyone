@@ -34,6 +34,13 @@ def down(db, dataset_name):
     db.datasets.replace_one(match_d, dataset_dict)
 
 
+def _delete_views(db, dataset_dict):
+    views = dataset_dict.pop("views", [])
+
+    if views:
+        db.views.delete_many({"_id": {"$in": views}})
+
+
 def _up_runs(db, dataset_dict, runs_field):
     if runs_field not in dataset_dict:
         return
@@ -68,10 +75,3 @@ def _down_runs(db, dataset_dict, runs_field):
         _runs[key] = run_doc
 
     dataset_dict[runs_field] = _runs
-
-
-def _delete_views(db, dataset_dict):
-    views = dataset_dict.pop("views", [])
-
-    if views:
-        db.views.delete_many({"_id": {"$in": views}})
