@@ -41,7 +41,7 @@ import {
   Lookers,
   refresher,
 } from "@fiftyone/state";
-import LoadingDots from "../Common/LoadingDots";
+import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 
 const IconDiv = styled.div`
   position: absolute;

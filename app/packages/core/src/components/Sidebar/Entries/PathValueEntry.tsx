@@ -22,7 +22,7 @@ import * as fos from "@fiftyone/state";
 
 import RegularEntry from "./RegularEntry";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
-import LoadingDots from "../../Common/LoadingDots";
+import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 
 const ScalarDiv = styled.div`
   & > div {

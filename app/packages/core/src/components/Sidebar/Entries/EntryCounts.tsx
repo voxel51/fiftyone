@@ -1,12 +1,12 @@
 import React, { useCallback } from "react";
-import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { selectorFamily, useRecoilValueLoadable } from "recoil";
 
 import * as fos from "@fiftyone/state";
 
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 
 import { pathIsExpanded } from "./utils";
-import LoadingDots from "../../Common/LoadingDots";
+import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 
 const showEntryCounts = selectorFamily<
   boolean,

@@ -1,6 +1,6 @@
 import React, { Suspense } from "react";
 import { RecoilValue, useRecoilValue } from "recoil";
-import LoadingDots from "./LoadingDots";
+import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 
 const EntryCounts = ({
   countAtom,
@@ -25,7 +25,6 @@ const EntryCounts = ({
   if (typeof subcount !== "number") {
     return (
       <span style={{ whiteSpace: "nowrap" }}>
-        {" "}
         <LoadingDots text="" /> {count.toLocaleString()}
       </span>
     );

@@ -12,7 +12,7 @@ import GroupSliceSelector from "./GroupSliceSelector";
 
 import * as fos from "@fiftyone/state";
 import { groupStatistics, isGroup } from "@fiftyone/state";
-import LoadingDots from "./Common/LoadingDots";
+import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 const SamplesHeader = styled.div`
   position: absolute;

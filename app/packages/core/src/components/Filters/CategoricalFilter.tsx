@@ -23,7 +23,7 @@ import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import withSuspense from "./withSuspense";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
-import LoadingDots from "../Common/LoadingDots";
+import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};

@@ -21,7 +21,7 @@ import {
   noDistributionPathsData,
 } from "@fiftyone/state";
 import { useTheme, Loading } from "@fiftyone/components";
-import LoadingDots from "./Common/LoadingDots";
+import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 const Container = styled.div`
   ${scrollbarStyles}
