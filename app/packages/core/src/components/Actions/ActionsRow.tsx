@@ -18,6 +18,7 @@ import React, {
 } from "react";
 import useMeasure from "react-use-measure";
 import {
+  selector,
   selectorFamily,
   useRecoilCallback,
   useRecoilState,
@@ -36,6 +37,22 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Similar from "./Similar";
 import Tagger from "./Tagger";
+
+const shouldToggleBookMarkIconOnSelector = selector<boolean>({
+  key: "shouldToggleBookMarkIconOn",
+  get: ({ get }) => {
+    const hasFiltersValue = get(fos.hasFilters(false));
+    const extendedSelectionList = get(fos.extendedSelection);
+    const selectedSampleSet = get(fos.selectedSamples);
+
+    const isExtendedSelectionOn =
+      extendedSelectionList && extendedSelectionList.length > 0;
+
+    return (
+      isExtendedSelectionOn || hasFiltersValue || selectedSampleSet.size > 0
+    );
+  },
+});
 
 const Loading = () => {
   const theme = useTheme();
@@ -300,16 +317,9 @@ const SaveFilters = () => {
     []
   );
 
-  const hasFiltersValue = useRecoilValue(fos.hasFilters(false));
-
-  const extendedSelectionList = useRecoilValue(fos.extendedSelection);
-  const isExtendedSelectionOn =
-    extendedSelectionList && extendedSelectionList.length > 0;
-
-  const selectedSampleSet = useRecoilValue(fos.selectedSamples);
-
-  const shouldToggleBookMarkIconOn =
-    hasFiltersValue || isExtendedSelectionOn || selectedSampleSet.size > 0;
+  const shouldToggleBookMarkIconOn = useRecoilValue(
+    shouldToggleBookMarkIconOnSelector
+  );
 
   return shouldToggleBookMarkIconOn ? (
     <ActionDiv>
