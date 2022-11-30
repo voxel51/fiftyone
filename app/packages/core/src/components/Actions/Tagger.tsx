@@ -557,7 +557,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
       {!labels && (
         <Suspense fallback={<SuspenseLoading />} key={elementNames.plural}>
           <Section
-            countAndPlaceholder={nonLabelPlaceholder}
+            countAndPlaceholder={samplePlaceholder}
             submit={submit}
             taggingAtom={fos.tagging({ modal, labels })}
             itemsAtom={tagStats({ modal, labels })}
