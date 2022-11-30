@@ -6,7 +6,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     coverage: {
-      reporter: ["lcov"],
+      reporter: ["json"],
       reportsDirectory: "./coverage",
     },
     exclude: [...configDefaults.exclude, "packages/plugins/**"],
