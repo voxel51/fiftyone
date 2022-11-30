@@ -100,6 +100,11 @@ class DatasetTests(unittest.TestCase):
         self.assertIs(also_dataset, dataset)
         self.assertTrue(last_loaded_at2 > last_loaded_at1)
 
+        dataset.reload()
+        last_loaded_at3 = dataset.last_loaded_at
+
+        self.assertTrue(last_loaded_at3 > last_loaded_at2)
+
     @drop_datasets
     def test_dataset_tags(self):
         dataset_name = self.test_dataset_tags.__name__
