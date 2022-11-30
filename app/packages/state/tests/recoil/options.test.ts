@@ -34,11 +34,11 @@ describe("Resolves configured sidebar mode priority", () => {
 
   it("resolves to all", () => {
     setMockAtoms({
-      appConfigDefault: (params) => "best",
+      appConfigDefault: (params) => "all",
       datasetAppConfig: { sidebarMode: null },
       sidebarMode: (modal) => null,
     });
-    expect(test()).toBe("best");
+    expect(test()).toBe("all");
   });
 });
 
@@ -46,6 +46,13 @@ describe("Resolves to resolved sidebar bar and translates best correctly", () =>
   const test = <TestSelectorFamily<typeof options.resolvedSidebarMode>>(
     (<unknown>options.resolvedSidebarMode(false))
   );
+
+  it("resolves to all", () => {
+    setMockAtoms({
+      configuredSidebarModeDefault: (modal) => "all",
+    });
+    expect(test()).toBe("all");
+  });
 
   it("resolves to fast", () => {
     setMockAtoms({
@@ -98,7 +105,7 @@ describe("Resolves to resolved sidebar bar and translates best correctly", () =>
     expect(test()).toBe("fast");
   });
 
-  it("resolves to fast", () => {
+  it("resolves to all", () => {
     setMockAtoms({
       configuredSidebarModeDefault: (modal) => "best",
       aggregationQuery: {
@@ -113,6 +120,58 @@ describe("Resolves to resolved sidebar bar and translates best correctly", () =>
       },
     });
     expect(test()).toBe("all");
+  });
+
+  it("resolves to fast", () => {
+    setMockAtoms({
+      configuredSidebarModeDefault: (modal) => "best",
+      aggregationQuery: {
+        aggregations: [
+          {
+            __typename: "RootAggregation",
+            count: 1000,
+            expandedFieldCount: 15,
+            frameLabelFieldCount: 0,
+          },
+        ],
+      },
+    });
+    expect(test()).toBe("fast");
+  });
+
+  it("resolves to fast", () => {
+    setMockAtoms({
+      configuredSidebarModeDefault: (modal) => "best",
+      aggregationQuery: {
+        aggregations: [
+          {
+            __typename: "RootAggregation",
+            count: 0,
+            expandedFieldCount: 0,
+            frameLabelFieldCount: 1,
+          },
+        ],
+      },
+    });
+    expect(test()).toBe("fast");
+  });
+
+  it("throws error", () => {
+    setMockAtoms({
+      configuredSidebarModeDefault: (modal) => "best",
+      aggregationQuery: {
+        aggregations: [
+          {
+            __typename: "Aggregation",
+            count: 0,
+            expandedFieldCount: 0,
+            frameLabelFieldCount: 0,
+          },
+        ],
+      },
+    });
+
+    expect(test).toThrow(Error);
   });
 });
 

@@ -1,15 +1,14 @@
 import { defineConfig } from "vite";
-import { configDefaults } from "vitest/config";
+import "vitest/config";
 import relay from "vite-plugin-relay";
 
 export default defineConfig({
   test: {
     environment: "jsdom",
     coverage: {
-      reporter: ["json"],
+      reporter: ["json", "lcov"],
       reportsDirectory: "./coverage",
     },
-    exclude: [...configDefaults.exclude, "packages/plugins/**"],
   },
   plugins: [relay],
 });
