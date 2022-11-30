@@ -283,7 +283,7 @@ export function Looker3d(props) {
 }
 
 function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
-  const settings = fop.usePluginSettings("3d", { useLegacyCoordinates: true });
+  const settings = fop.usePluginSettings("3d", { useLegacyCoordinates: false });
 
   const modal = true;
   // @ts-ignore
