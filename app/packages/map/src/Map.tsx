@@ -1,7 +1,7 @@
 import { container } from "./Map.module.css";
 
 import * as foc from "@fiftyone/components";
-import ExternalLink from "@fiftyone/components/src/components/ExternalLink";
+import { ExternalLink } from "@fiftyone/components";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
