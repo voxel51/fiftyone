@@ -71,7 +71,7 @@ def _down_runs(db, dataset_dict, runs_field):
         except:
             continue
 
-        db.runs.delete_one({"_id", _id})
+        db.runs.delete_one({"_id": _id})
         run_doc.pop("_id", None)
         run_doc.pop("_dataset_id", None)
         _runs[key] = run_doc
