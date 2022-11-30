@@ -525,7 +525,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
 
   const submit = useTagCallback(modal, labels, lookerRef);
   const labelPlaceholder = useLabelPlaceHolder(modal, elementNames);
-  const nonLabelPlaceholder = useNonLabelPlaceHolder(modal, elementNames);
+  const samplePlaceholder = useSamplePlaceHolder(modal, elementNames);
   return (
     <Popout style={{ width: "12rem" }} modal={modal} bounds={bounds}>
       <SwitcherDiv>
