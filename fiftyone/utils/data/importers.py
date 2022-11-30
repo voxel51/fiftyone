@@ -1871,7 +1871,7 @@ def _import_saved_views(dataset, views):
 
         d.pop("_id", None)
         view_doc = foo.SavedViewDocument.from_dict(d)
-        view_doc.dataset_id = dataset_doc.id
+        view_doc.dataset_id = str(dataset_doc.id)
         view_doc.save()
 
         dataset_doc.saved_views.append(view_doc)
@@ -1889,7 +1889,7 @@ def _import_runs(dataset, runs, results_dir, run_cls):
 
         d.pop("_id", None)
         run_doc = foo.RunDocument.from_dict(d)
-        run_doc.dataset_id = dataset_doc.id
+        run_doc.dataset_id = str(dataset_doc.id)
         run_doc.results = None
         run_doc.save()
 
