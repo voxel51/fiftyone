@@ -384,6 +384,9 @@ of the :ref:`dataset's App config <custom-app-config>`:
     print(sidebar_groups[2].name)  # metadata
     sidebar_groups[2].expanded = False
 
+    # Add a new group
+    sidebar_groups.append(fo.SidebarGroupDocument(name="new"))
+
     # Modify the dataset's App config
     dataset.app_config.sidebar_groups = sidebar_groups
     dataset.save()  # must save after edits
