@@ -27,6 +27,8 @@ import {
   sidebarMode,
   groupStatistics,
   theme,
+  schemaReduce,
+  field,
 } from "../recoil";
 import { useColorScheme } from "@mui/material";
 
@@ -109,13 +111,21 @@ const useStateUpdate = () => {
           reset(groupStatistics(false));
 
           reset(similarityParameters);
+
+          const getMediaPathWithOverride = (f: string) =>
+            dataset.sampleFields.map((field) => field.name).includes(f)
+              ? f
+              : "filepath";
+
           set(
             selectedMediaField(false),
-            dataset?.appConfig?.gridMediaField || "filepath"
+            getMediaPathWithOverride(dataset?.appConfig?.gridMediaField) ||
+              "filepath"
           );
           set(
             selectedMediaField(true),
-            dataset?.appConfig?.modalMediaField || "filepath"
+            getMediaPathWithOverride(dataset?.appConfig?.modalMediaField) ||
+              "filepath"
           );
           reset(extendedSelection);
           reset(filters);
