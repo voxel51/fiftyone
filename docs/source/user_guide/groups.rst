@@ -595,6 +595,9 @@ Here's how a typical PCD file is structured:
     encoded in the `r` channel of the `rgb` field of the
     `PCD files <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_.
 
+    When coloring by intensity in the App, the intensity values are
+    automatically scaled to use the full dynamic range of the colorscale.
+
 As usual, point cloud samples may contain any type and number of custom fields,
 including certain visualizable |Label| types as described below.
 
@@ -615,10 +618,11 @@ detections represented as |Detection| instances with their `label`, `location`,
     # Object label
     label = "vehicle"
 
-    # Object center location ``(x, y, z)`` in camera coordinates
+    # The center location ``(x, y, z)`` in camera coordinates of the bottom (y=0)
+    # face of the cuboid
     location = [0.47, 1.49, 69.44]
 
-    # Object dimensions ``[height, width, length]`` in object coordinates
+    # Object dimensions ``[length, height, width]`` in camera coordinates
     dimensions = [2.85, 2.63, 12.34]
 
     # Object rotation around ``[x, y, z]`` camera axes, in ``[-pi, pi]``
