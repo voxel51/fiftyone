@@ -5807,6 +5807,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _serialize(self):
         return self._doc.to_dict(extended=True)
 
+    def _update_last_loaded_at(self):
+        self._doc.last_loaded_at = datetime.utcnow()
+        self._doc.save()
+
 
 def _get_random_characters(n):
     return "".join(
