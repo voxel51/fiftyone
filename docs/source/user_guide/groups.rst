@@ -624,7 +624,7 @@ detections represented as |Detection| instances with their `label`, `location`,
     # Note that, when `useLegacyCoorinates=True` (the default), the y coordinate
     # of location is offset by half of the object's y dimension.
     #
-    # Set `useLegacyCoorinates=False` (recommended) to treat `location` as the
+    # Set `useLegacyCoorinates=False` (recommended) to treat location as the
     # true centroid of the object
     #
     location = [0.47, 1.49, 69.44]
