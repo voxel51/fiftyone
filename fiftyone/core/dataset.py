@@ -259,6 +259,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._deleted = False
 
+        if not _virtual:
+            self._update_last_loaded_at()
+
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
 
@@ -5798,6 +5801,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self._group_slice is None:
             self._group_slice = doc.default_group_slice
 
+        self._update_last_loaded_at()
+
     def _reload_docs(self, hard=False):
         fos.Sample._reload_docs(self._sample_collection_name, hard=hard)
 
@@ -5914,13 +5919,11 @@ def _create_dataset(
         frame_doc_cls = _create_frame_document_cls(obj, frame_collection_name)
         frame_fields = []
 
-    now = datetime.utcnow()
     dataset_doc = foo.DatasetDocument(
         id=_id,
         name=name,
         version=focn.VERSION,
-        created_at=now,
-        last_loaded_at=now,
+        created_at=datetime.utcnow(),
         media_type=None,  # will be inferred when first sample is added
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
@@ -6030,7 +6033,7 @@ def _load_dataset(obj, name, virtual=False):
         fomi.migrate_dataset_if_necessary(name)
 
     try:
-        return _do_load_dataset(obj, name, virtual=virtual)
+        return _do_load_dataset(obj, name)
     except Exception as e:
         try:
             version = fomi.get_dataset_revision(name)
@@ -6047,7 +6050,7 @@ def _load_dataset(obj, name, virtual=False):
         raise e
 
 
-def _do_load_dataset(obj, name, virtual=False):
+def _do_load_dataset(obj, name):
     try:
         # pylint: disable=no-member
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
@@ -6073,10 +6076,6 @@ def _do_load_dataset(obj, name, virtual=False):
         frame_doc_cls = _create_frame_document_cls(
             obj, frame_collection_name, field_docs=dataset_doc.frame_fields
         )
-
-    if not virtual:
-        dataset_doc.last_loaded_at = datetime.utcnow()
-        dataset_doc.save()
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
