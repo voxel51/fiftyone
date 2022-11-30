@@ -6,6 +6,7 @@ Video utilities.
 |
 """
 import itertools
+import json
 import logging
 import os
 
@@ -656,6 +657,33 @@ def concat_videos(input_paths, output_path, verbose=False):
 
         with etav.FFmpeg(in_opts=in_opts, out_opts=out_opts) as ffmpeg:
             ffmpeg.run(input_list_path, output_path, verbose=verbose)
+
+
+def exact_frame_count(input_path):
+    """Returns the exact number of frames in the video.
+
+    This method uses -count_frames argument of ffprobe
+    which decodes the entire video to count the frames
+    and can be very slow.
+
+    Args:
+        input_path: the path to the video
+
+    Returns:
+        the number of frames in the video
+    """
+    opts = [
+        "-count_frames",
+        "-select_streams",
+        "v:0",
+        "-print_format",
+        "json",
+        "-show_streams",
+    ]
+    ffprobe = etav.FFprobe(opts=opts)
+    output = ffprobe.run(input_path)
+    output = json.loads(output.decode())
+    return int(output["streams"][0]["nb_read_frames"])
 
 
 def _transform_videos(
