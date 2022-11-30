@@ -4,13 +4,6 @@ import { UserConfig } from "vite";
 import relay from "vite-plugin-relay";
 
 export default <UserConfig>{
-  test: {
-    environment: "jsdom",
-    coverage: {
-      reporter: ["lcov"],
-      reportsDirectory: "../../coverage",
-    },
-  },
   plugins: [
     reactRefresh({
       parserPlugins: ["classProperties", "classPrivateProperties"],

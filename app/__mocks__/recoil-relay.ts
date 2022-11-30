@@ -7,8 +7,8 @@ import { mockValues } from "./recoil";
 
 export function graphQLSelector<TVariables extends Variables, T>(
   options: Parameters<typeof recoilRelay.graphQLSelector<TVariables, T>>[0]
-): { (): T; variables: () => TVariables; key: string } {
-  function resolver() {
+): { (): T; variables: () => TVariables | null; key: string } {
+  function resolver(): T {
     return mockValues[options.key];
   }
   resolver.key = options.key;
@@ -32,7 +32,7 @@ export function graphQLSelectorFamily<
   options: Parameters<
     typeof recoilRelay.graphQLSelectorFamily<TVariables, P, T>
   >[0]
-): (params: P) => { (): T; variables: () => TVariables; key: string } {
+): (params: P) => { (): T; variables: () => TVariables | null; key: string } {
   return (params) => {
     function resolver() {
       return mockValues[options.key];

@@ -21,6 +21,7 @@ const getValue = (atom) => {
   }
 
   if (atom.params !== undefined) {
+    console.log(atom.key);
     return mockValues[atom.key](atom.params);
   }
   return mockValues[atom.key];
@@ -118,7 +119,7 @@ export type TestSelector<T extends recoil.RecoilValueReadOnly<K>, K = any> = {
 export type TestSelectorFamily<
   T extends (params: P) => recoil.RecoilValueReadOnly<K>,
   K = any,
-  P extends recoil.SerializableParam = {}
+  P = any
 > = {
   (): ReturnType<T>["__tag"][0];
   key: string;

@@ -8,8 +8,7 @@ import {
   setMockAtoms,
   TestSelector,
   TestSelectorFamily,
-} from "../../__mocks__/recoil";
-import { aggregationQuery } from "../../src/recoil/aggregations";
+} from "../../../../__mocks__/recoil";
 
 describe("Resolves configured sidebar mode priority", () => {
   const test = <
