@@ -621,10 +621,10 @@ detections represented as |Detection| instances with their `label`, `location`,
     #
     # Object center `[x, y, z]` in scene coordinates
     #
-    # Note that, when `useLegacyCoorinates=True` (the default), the y coordinate
+    # Note that, when `useLegacyCoordinates=True` (the default), the y coordinate
     # of location is offset by half of the object's y dimension.
     #
-    # Set `useLegacyCoorinates=False` (recommended) to treat location as the
+    # Set `useLegacyCoordinates=False` (recommended) to treat location as the
     # true centroid of the object
     #
     location = [0.47, 1.49, 69.44]
@@ -1098,7 +1098,7 @@ shown below under the `plugins.3d` key of your
                 // Whether to use legacy coordinates, where the y coordinate of
                 // the `location` of 3D detections is offset by half of the
                 // object's y size
-                "useLegacyCoorinates": true,
+                "useLegacyCoordinates": true,
 
                 // The initial camera position in the 3D scene
                 "defaultCameraPosition": {"x": 0, "y": 0, "z": 0},
