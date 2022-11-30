@@ -23,10 +23,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: app/node_modules
-          key: npm-${{ hashFiles('yarn.lock') }}
-          restore-keys: |
-            npm-${{ hashFiles('yarn.lock') }}
-            npm-
+          key: npm-${{ hashFiles('app/yarn.lock') }}
       - name: Install app
         run: cd app && yarn install
       - name: Run tests
