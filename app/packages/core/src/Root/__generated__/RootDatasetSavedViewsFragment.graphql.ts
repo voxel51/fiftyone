@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cd7ebbd9dc14e50f315beae1468cf816>>
+ * @generated SignedSource<<88168057fc128cb6caecafa1333d7a75>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,16 +13,16 @@ import { FragmentRefs } from "relay-runtime";
 export type RootDatasetSavedViewsFragment$data = {
   readonly savedViews: ReadonlyArray<{
     readonly color: string | null;
-    readonly createdAt: any;
-    readonly datasetId: string;
+    readonly createdAt: any | null;
+    readonly datasetId: string | null;
     readonly description: string | null;
     readonly id: string | null;
     readonly lastLoadedAt: any | null;
     readonly lastModifiedAt: any | null;
-    readonly name: string;
-    readonly urlName: string;
-    readonly viewStages: ReadonlyArray<string>;
-  }>;
+    readonly name: string | null;
+    readonly urlName: string | null;
+    readonly viewStages: ReadonlyArray<string> | null;
+  }> | null;
   readonly " $fragmentType": "RootDatasetSavedViewsFragment";
 };
 export type RootDatasetSavedViewsFragment$key = {

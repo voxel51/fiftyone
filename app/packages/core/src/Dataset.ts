@@ -84,15 +84,15 @@ const DatasetNodeQuery = graphql`
           patchesField
         }
       }
-      savedViews {
-        id
-        datasetId
-        name
-        urlName
-        description
-        color
-        viewStages
-      }
+      #      savedViews {
+      #        id
+      #        datasetId
+      #        name
+      #        urlName
+      #        description
+      #        color
+      #        viewStages
+      #      }
       lastLoadedAt
       createdAt
       skeletons {

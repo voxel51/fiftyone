@@ -153,9 +153,9 @@ class Mutation:
         state.selected = []
         state.selected_labels = []
 
-        if view_name is not None and state.dataset.has_view(view_name):
+        if view_name is not None and state.dataset.has_saved_view(view_name):
             # Load a saved view by name
-            state.view = state.dataset.load_view(view_name)
+            state.view = state.dataset.load_saved_view(view_name)
 
         elif form:
             # Update current view with form parameters
@@ -237,7 +237,7 @@ class Mutation:
             view_name, state.view, description=description, color=color
         )
         dataset.reload()
-        state.view = dataset.load_view(view_name)
+        state.view = dataset.load_saved_view(view_name)
         state.view_name = view_name
         await dispatch_event(subscription, StateUpdate(state=state))
 
@@ -258,8 +258,8 @@ class Mutation:
     ) -> bool:
         state = get_state()
         dataset = state.dataset
-        if dataset.has_views and dataset.has_view(view_name):
-            deleted_view_name = state.dataset.delete_view(view_name)
+        if dataset.has_saved_views and dataset.has_saved_view(view_name):
+            deleted_view_id = state.dataset.delete_saved_view(view_name)
         else:
             raise ValueError(
                 "Attempting to delete non-existent saved view: %s",
@@ -268,14 +268,14 @@ class Mutation:
 
         # If the current view is deleted, set the view state to the full
         # dataset view
-        if state.view_name == deleted_view_name:
+        if state.view_name == view_name:
             state.view = dataset.view()
             state.view_name = None
 
         # TODO: confirm StateUpdate is unnecessary
         await dispatch_event(subscription, StateUpdate(state=state))
 
-        return True
+        return deleted_view_id
 
     @gql.mutation
     def update_saved_view(
@@ -299,8 +299,8 @@ class Mutation:
         dataset = state.dataset
         updated_info = asdict(updated_info)
 
-        if dataset.has_views and dataset.has_view(view_name):
-            dataset.update_view_info(view_name, updated_info)
+        if dataset.has_saved_views and dataset.has_saved_view(view_name):
+            dataset.update_saved_view_info(view_name, updated_info)
         else:
             raise ValueError(
                 "Attempting to update fields on non-existent saved view: "

@@ -136,7 +136,7 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
-  savedView(viewName: String = null): SavedView
+  getSavedView(viewName: String): SavedView
 }
 
 type DatasetAppConfig {
@@ -349,6 +349,7 @@ type Query {
     aggregations: [Aggregate!]!
     viewName: String
   ): [AggregationResponses!]!
+  dataset(name: String!, view: BSONArray, viewName: String): Dataset
   datasets(
     search: String
     first: Int = 200
@@ -360,7 +361,6 @@ type Query {
   context: String!
   dev: Boolean!
   doNotTrack: Boolean!
-  dataset(name: String!, view: BSONArray, viewName: String): Dataset
   samples(
     dataset: String!
     view: BSONArray!
@@ -373,7 +373,7 @@ type Query {
   uid: String!
   version: String!
   savedView(datasetName: String!, viewName: String): SavedView
-  savedViews(datasetName: String!): [SavedView!]!
+  savedViews(datasetName: String!): [SavedView!]
 }
 
 type RootAggregation implements Aggregation {
@@ -439,17 +439,17 @@ type SampleItemStrPageInfo {
 }
 
 type SavedView {
-  datasetId: String!
-  name: String!
-  urlName: String!
+  id: ID
+  datasetId: String
+  name: String
+  urlName: String
   description: String
   color: String
-  viewStages: [String!]!
-  createdAt: datetime!
+  viewStages: [String!]
+  createdAt: datetime
   lastModifiedAt: datetime
   lastLoadedAt: datetime
-  id: String
-  viewName: String!
+  viewName: String
 }
 
 input SavedViewInfo {

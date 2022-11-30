@@ -5,6 +5,8 @@ FiftyOne Server view
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from typing import List, Optional
+
 import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
@@ -15,9 +17,47 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
 from fiftyone.server.utils import iter_label_fields
-
+import fiftyone.core.odm as foo
 
 _LABEL_TAGS = "_label_tags"
+
+
+async def get_saved_views(object_ids):
+    if len(object_ids) < 1:
+        return None
+    db = foo.get_db_conn()
+    # TODO: remove view_stages and query separately upon view selection
+    return list(
+        db.views.aggregate(
+            [
+                {"$match": {"_id": {"$in": object_ids}}},
+                {
+                    "$project": {
+                        "name": True,
+                        "color": True,
+                        "description": True,
+                        "url_name": True,
+                        "last_loaded_at": True,
+                        "created_at": True,
+                        "last_modified_at": True,
+                        "view_stages": True,
+                    }
+                },
+            ]
+        )
+    )
+
+
+def get_saved_view_stages(identifier):
+    db = foo.get_db_conn()
+    return list(
+        db.views.aggregate(
+            [
+                {"$match": {"url_name": identifier}},
+                {"$project": {"view_stages": True}},
+            ]
+        )
+    )
 
 
 def get_view(
@@ -31,7 +71,7 @@ def get_view(
     sort=False,
     view_name=None,
 ):
-    """Construct a new view using the request paramters or load a previously
+    """Construct a new view using the request parameters or load a previously
     saved view by name.
 
     Args:
@@ -57,7 +97,7 @@ def get_view(
 
     # Load a previously saved view
     if view_name and dataset.has_views and dataset.has_view(view_name):
-        return dataset.load_view(view_name)
+        return dataset.load_saved_view(view_name)
 
     # Construct a new view
     view = dataset.view()

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ba33a26233b8405344796c85dd1273da>>
+ * @generated SignedSource<<adb7fa002d1d2f24704b51697291bb06>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,12 +16,6 @@ export type RootDatasets_query$data = {
       readonly cursor: string;
       readonly node: {
         readonly name: string;
-        readonly savedViews: ReadonlyArray<{
-          readonly color: string | null;
-          readonly description: string | null;
-          readonly urlName: string;
-          readonly viewName: string;
-        }> | null;
       };
     }>;
     readonly total: number | null;
@@ -133,45 +127,6 @@ return {
                 {
                   "alias": null,
                   "args": null,
-                  "concreteType": "SavedView",
-                  "kind": "LinkedField",
-                  "name": "savedViews",
-                  "plural": true,
-                  "selections": [
-                    {
-                      "alias": null,
-                      "args": null,
-                      "kind": "ScalarField",
-                      "name": "viewName",
-                      "storageKey": null
-                    },
-                    {
-                      "alias": null,
-                      "args": null,
-                      "kind": "ScalarField",
-                      "name": "urlName",
-                      "storageKey": null
-                    },
-                    {
-                      "alias": null,
-                      "args": null,
-                      "kind": "ScalarField",
-                      "name": "color",
-                      "storageKey": null
-                    },
-                    {
-                      "alias": null,
-                      "args": null,
-                      "kind": "ScalarField",
-                      "name": "description",
-                      "storageKey": null
-                    }
-                  ],
-                  "storageKey": null
-                },
-                {
-                  "alias": null,
-                  "args": null,
                   "kind": "ScalarField",
                   "name": "__typename",
                   "storageKey": null
@@ -216,6 +171,6 @@ return {
 };
 })();
 
-(node as any).hash = "b658c281100f2b21662138f3335b9824";
+(node as any).hash = "280afc557752c2245a140c58ccb00248";
 
 export default node;

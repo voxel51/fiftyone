@@ -14,6 +14,8 @@ from strawberry.dataloader import DataLoader
 
 from fiftyone.server.data import Info, T
 
+# from fiftyone.server.query import SavedView
+
 
 @dataclass
 class DataLoaderConfig:
@@ -67,3 +69,29 @@ def get_dataloader_resolver(
     resolver.__annotations__[key] = resolver.__annotations__.pop("name")
 
     return resolver
+
+
+# async def load_saved_views(object_ids) -> t.Optional[t.List[SavedView]]:
+#     if len(object_ids) < 1:
+#         return None
+#     db = foo.get_db_conn()
+#     # TODO: remove view_stages and query separately upon view selection
+#     return list(
+#             db.views.aggregate(
+#                     [
+#                         {"$match": {"_id": {"$in": object_ids}}},
+#                         {
+#                             "$project": {
+#                                 "name": True,
+#                                 "color": True,
+#                                 "description": True,
+#                                 "url_name": True,
+#                                 "last_loaded_at": True,
+#                                 "created_at": True,
+#                                 "last_modified_at": True,
+#                                 "view_stages": True,
+#                             }
+#                         },
+#                     ]
+#             )
+#     )

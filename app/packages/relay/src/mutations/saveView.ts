@@ -15,7 +15,6 @@ export default graphql`
       description: $description
       color: $color
     ) {
-      id
       datasetId
       name
       urlName

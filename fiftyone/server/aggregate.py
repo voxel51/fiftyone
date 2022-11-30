@@ -172,7 +172,7 @@ async def load_view(
         dataset = fo.load_dataset(dataset_name)
         dataset.reload()
         if view_name:
-            return dataset.load_view(view_name)
+            return dataset.load_saved_view(view_name)
         else:
             return fo.DatasetView._build(dataset, serialized_view or [])
 

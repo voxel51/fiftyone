@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4d88d3aed3fe32e6091073b5feb40b76>>
+ * @generated SignedSource<<479db881da8c610020ea77c9921def9c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,14 +23,14 @@ export type updateSavedViewMutation$variables = {
 export type updateSavedViewMutation$data = {
   readonly updateSavedView: {
     readonly color: string | null;
-    readonly createdAt: any;
+    readonly createdAt: any | null;
     readonly description: string | null;
     readonly id: string | null;
     readonly lastLoadedAt: any | null;
     readonly lastModifiedAt: any | null;
-    readonly name: string;
-    readonly urlName: string;
-    readonly viewStages: ReadonlyArray<string>;
+    readonly name: string | null;
+    readonly urlName: string | null;
+    readonly viewStages: ReadonlyArray<string> | null;
   } | null;
 };
 export type updateSavedViewMutation = {
