@@ -80,6 +80,32 @@ def dataset_exists(name):
     return bool(list(conn.datasets.find({"name": name}, {"_id": 1}).limit(1)))
 
 
+def _validate_dataset_name(name, skip=None):
+    """Validates that the given dataset name is available.
+
+    Args:
+        name: a dataset name
+        skip (None): an optional :class:`Dataset` to ignore
+
+    Returns:
+        the URL name
+
+    Raises:
+        ValueError: if the name is not available
+    """
+    url_name = fou.to_url_name(name)
+
+    query = {"$or": [{"name": name}, {"url_name": url_name}]}
+    if skip is not None:
+        query = {"$and": [query, {"_id": {"$ne": skip._doc.id}}]}
+
+    conn = foo.get_db_conn()
+    if bool(list(conn.datasets.find(query, {"_id": 1}).limit(1))):
+        raise ValueError("Dataset name '%s' is not available" % name)
+
+    return url_name
+
+
 def load_dataset(name):
     """Loads the FiftyOne dataset with the given name.
 
@@ -574,10 +600,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if name == _name:
             return
 
-        if name in list_datasets():
-            raise ValueError("A dataset with name '%s' already exists" % name)
+        url_name = _validate_dataset_name(name, skip=self)
 
         self._doc.name = name
+        self._doc.url_name = url_name
         self._doc.save(safe=True)
 
         # Update singleton
@@ -608,7 +634,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def tags(self):
-        """A list of tags given to the dataset.
+        """A list of tags on the dataset.
 
         Examples::
 
@@ -630,6 +656,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def tags(self, value):
         self._doc.tags = value
         self._doc.save(safe=True)
+
+    @property
+    def description(self):
+        """A string description on the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Store a description on the dataset
+            dataset.description = "Your description here"
+        """
+        return self._doc.description
+
+    @description.setter
+    def description(self, description):
+        self._doc.description = description
+        self._doc.save()
 
     @property
     def info(self):
@@ -6100,14 +6146,7 @@ def _create_dataset(
     _clips=False,
     _src_collection=None,
 ):
-    if dataset_exists(name):
-        raise ValueError(
-            (
-                "Dataset '%s' already exists; use `fiftyone.load_dataset()` "
-                "to load an existing dataset"
-            )
-            % name
-        )
+    url_name = _validate_dataset_name(name)
 
     _id = ObjectId()
 
@@ -6140,6 +6179,7 @@ def _create_dataset(
     dataset_doc = foo.DatasetDocument(
         id=_id,
         name=name,
+        url_name=url_name,
         version=focn.VERSION,
         created_at=now,
         last_loaded_at=now,
@@ -6329,8 +6369,7 @@ def _delete_dataset_doc(dataset_doc):
 
 
 def _clone_dataset_or_view(dataset_or_view, name, persistent):
-    if dataset_exists(name):
-        raise ValueError("Dataset '%s' already exists" % name)
+    url_name = _validate_dataset_name(name)
 
     contains_videos = dataset_or_view._contains_videos(any_slice=True)
 
@@ -6356,6 +6395,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     dataset_doc.id = _id
     dataset_doc.name = name
+    dataset_doc.url_name = url_name
     dataset_doc.created_at = datetime.utcnow()
     dataset_doc.last_loaded_at = None
     dataset_doc.persistent = persistent

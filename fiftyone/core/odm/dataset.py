@@ -536,6 +536,7 @@ class DatasetDocument(Document):
     meta = {"collection": "datasets", "strict": False}
 
     name = StringField(unique=True, required=True)
+    url_name = StringField()
     version = StringField(required=True, null=True)
     created_at = DateTimeField()
     last_loaded_at = DateTimeField()
@@ -547,6 +548,7 @@ class DatasetDocument(Document):
     group_media_types = DictField(StringField())
     default_group_slice = StringField()
     tags = ListField(StringField())
+    description = StringField()
     info = DictField()
     app_config = EmbeddedDocumentField(
         DatasetAppConfig, default=DatasetAppConfig
