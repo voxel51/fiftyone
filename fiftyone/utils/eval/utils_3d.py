@@ -76,7 +76,6 @@ def _get_corners3d(detection):
     heading_angle = detection.rotation[1]
     center = np.array(detection.location)
     dimensions = np.array(detection.dimensions)
-    center[1] = center[1] - dimensions[1] / 2
     box_size = dimensions
 
     def roty(t):
