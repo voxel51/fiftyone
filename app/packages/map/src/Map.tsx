@@ -1,9 +1,9 @@
 import { container } from "./Map.module.css";
 
 import * as foc from "@fiftyone/components";
+import ExternalLink from "@fiftyone/components/src/components/ExternalLink";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import ExternalLink from "@fiftyone/components/src/components/ExternalLink";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import contains from "@turf/boolean-contains";
 import { debounce } from "lodash";
