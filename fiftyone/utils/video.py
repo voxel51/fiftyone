@@ -662,9 +662,10 @@ def concat_videos(input_paths, output_path, verbose=False):
 def exact_frame_count(input_path):
     """Returns the exact number of frames in the video.
 
-    This method uses -count_frames argument of ffprobe
-    which decodes the entire video to count the frames
-    and can be very slow.
+    .. warning::
+
+        This method uses the ``-count_frames`` argument of ``ffprobe``, which
+        requires decoding the video and can be very slow.
 
     Args:
         input_path: the path to the video
@@ -681,8 +682,7 @@ def exact_frame_count(input_path):
         "-show_streams",
     ]
     ffprobe = etav.FFprobe(opts=opts)
-    output = ffprobe.run(input_path)
-    output = json.loads(output.decode())
+    output = json.loads(ffprobe.run(input_path).decode())
     return int(output["streams"][0]["nb_read_frames"])
 
 
