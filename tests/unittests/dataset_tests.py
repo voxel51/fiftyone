@@ -20,6 +20,7 @@ import fiftyone as fo
 from fiftyone import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+import fiftyone.utils.data as foud
 
 from decorators import drop_datasets, skip_windows
 
@@ -2297,43 +2298,61 @@ class DatasetExtrasTests(unittest.TestCase):
     def test_saved_views(self):
         dataset = self.dataset
 
-        self.assertFalse(dataset.has_views)
-        self.assertListEqual(dataset.list_views(), [])
+        self.assertFalse(dataset.has_saved_views)
+        self.assertListEqual(dataset.list_saved_views(), [])
 
         view = dataset.match(F("filepath").contains_str("image2"))
 
+        self.assertIsNone(view.name)
+        self.assertFalse(view.is_saved)
         self.assertEqual(len(view), 1)
         self.assertTrue("image2" in view.first().filepath)
 
-        dataset.save_view("test", view)
+        view_name = "test"
+        dataset.save_view(view_name, view)
 
-        last_loaded_at1 = dataset._doc.views[0].last_loaded_at
-        last_modified_at1 = dataset._doc.views[0].last_modified_at
+        last_loaded_at1 = dataset._doc.saved_views[0].last_loaded_at
+        last_modified_at1 = dataset._doc.saved_views[0].last_modified_at
 
-        self.assertTrue(dataset.has_views)
-        self.assertTrue(dataset.has_view("test"))
-        self.assertListEqual(dataset.list_views(), ["test"])
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+        self.assertTrue(dataset.has_saved_views)
+        self.assertTrue(dataset.has_saved_view(view_name))
+        self.assertListEqual(dataset.list_saved_views(), [view_name])
 
         self.assertIsNone(last_loaded_at1)
         self.assertIsNotNone(last_modified_at1)
 
-        also_view = dataset.load_view("test")
-        last_loaded_at2 = dataset._doc.views[0].last_loaded_at
+        still_saved_view = deepcopy(view)
+        self.assertEqual(still_saved_view.name, view_name)
+        self.assertTrue(still_saved_view.is_saved)
+        self.assertEqual(still_saved_view, view)
+
+        not_saved_view = view.limit(1)
+        self.assertIsNone(not_saved_view.name)
+        self.assertFalse(not_saved_view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        last_loaded_at2 = dataset._doc.saved_views[0].last_loaded_at
 
         self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
         self.assertIsNotNone(last_loaded_at2)
 
-        info = dataset.get_view_info("test")
-        info["name"] = "new-name"
+        info = dataset.get_saved_view_info(view_name)
+        new_view_name = "new-name"
+        info["name"] = new_view_name
 
-        dataset.update_view_info("test", info)
-        last_modified_at2 = dataset._doc.views[0].last_modified_at
+        dataset.update_saved_view_info(view_name, info)
+        last_modified_at2 = dataset._doc.saved_views[0].last_modified_at
 
         self.assertTrue(last_modified_at2 > last_modified_at1)
-        self.assertFalse(dataset.has_view("test"))
-        self.assertTrue(dataset.has_view("new-name"))
+        self.assertFalse(dataset.has_saved_view(view_name))
+        self.assertTrue(dataset.has_saved_view(new_view_name))
 
-        dataset.update_view_info("new-name", {"name": "test"})
+        updated_view = dataset.load_saved_view(new_view_name)
+        self.assertEqual(updated_view.name, new_view_name)
+        dataset.update_saved_view_info(new_view_name, {"name": view_name})
 
         #
         # Verify that saved views are included in clones
@@ -2341,24 +2360,38 @@ class DatasetExtrasTests(unittest.TestCase):
 
         dataset2 = dataset.clone()
 
-        self.assertTrue(dataset2.has_views)
-        self.assertTrue(dataset2.has_view("test"))
-        self.assertListEqual(dataset2.list_views(), ["test"])
+        self.assertTrue(dataset2.has_saved_views)
+        self.assertTrue(dataset2.has_saved_view(view_name))
+        self.assertListEqual(dataset2.list_saved_views(), [view_name])
 
-        view2 = dataset2.load_view("test")
+        view2 = dataset2.load_saved_view(view_name)
 
         self.assertEqual(len(view2), 1)
         self.assertTrue("image2" in view2.first().filepath)
 
-        dataset.delete_view("test")
+        dataset.delete_saved_view(view_name)
 
-        self.assertFalse(dataset.has_views)
-        self.assertFalse(dataset.has_view("test"))
-        self.assertListEqual(dataset.list_views(), [])
+        self.assertFalse(dataset.has_saved_views)
+        self.assertFalse(dataset.has_saved_view(view_name))
+        self.assertListEqual(dataset.list_saved_views(), [])
 
         # Verify that cloned data is properly decoupled from source dataset
-        also_view2 = dataset2.load_view("test")
+        also_view2 = dataset2.load_saved_view(view_name)
         self.assertIsNotNone(also_view2)
+
+        #
+        # Verify that saved views are deleted when a dataset is deleted
+        #
+
+        view_id = dataset2._doc.saved_views[0].id
+
+        db = foo.get_db_conn()
+
+        self.assertEqual(len(list(db.views.find({"_id": view_id}))), 1)
+
+        dataset2.delete()
+
+        self.assertEqual(len(list(db.views.find({"_id": view_id}))), 0)
 
     def test_saved_views_for_app(self):
         dataset = self.dataset
@@ -2379,38 +2412,27 @@ class DatasetExtrasTests(unittest.TestCase):
 
         # Can't rename a view to an existing name
         with self.assertRaises(ValueError):
-            dataset.update_view_info("my-view1", {"name": "my_view2"})
+            dataset.update_saved_view_info("my-view1", {"name": "my_view2"})
 
         # Can't rename a view to an existing URL name
         with self.assertRaises(ValueError):
-            dataset.update_view_info("my-view1", {"name": "my_view2!"})
+            dataset.update_saved_view_info("my-view1", {"name": "my_view2!"})
 
-        view_docs = dataset._views()
+        view_docs = dataset._saved_views()
 
         self.assertListEqual([v.name for v in view_docs], names)
         self.assertListEqual([v.url_name for v in view_docs], url_names)
 
-        # Wrong list of indexes
-        with self.assertRaises(ValueError):
-            dataset._reorder_views([3, 2, 1, 0])
+        dataset.delete_saved_view("my_view2")
 
-        dataset._reorder_views([2, 1, 0])
-
-        self.assertListEqual(
-            [v.name for v in dataset._views()],
-            list(reversed(names)),
+        self.assertSetEqual(
+            {v.name for v in dataset._saved_views()},
+            {names[0], names[2]},
         )
 
-        dataset.delete_view("my_view2")
+        dataset.delete_saved_views()
 
-        self.assertListEqual(
-            [v.name for v in dataset._views()],
-            [names[2], names[0]],
-        )
-
-        dataset.delete_views()
-
-        self.assertListEqual(dataset._views(), [])
+        self.assertListEqual(dataset._saved_views(), [])
 
     def test_runs(self):
         dataset = self.dataset
@@ -2468,10 +2490,12 @@ class DatasetExtrasTests(unittest.TestCase):
 
         db = foo.get_db_conn()
 
+        self.assertEqual(len(list(db.runs.find({"_id": run_id}))), 1)
         self.assertEqual(len(list(db.fs.files.find({"_id": result_id}))), 1)
 
         dataset2.delete()
 
+        self.assertEqual(len(list(db.runs.find({"_id": run_id}))), 0)
         self.assertEqual(len(list(db.fs.files.find({"_id": result_id}))), 0)
 
 
@@ -4038,6 +4062,121 @@ class _LabelMetadata(foo.DynamicEmbeddedDocument):
     created_at = fof.DateTimeField(default=datetime.utcnow)
 
     model_name = fof.StringField()
+
+
+class DatasetFactoryTests(unittest.TestCase):
+    @drop_datasets
+    def test_from_images(self):
+        filepaths = ["image.jpg"]
+        dataset = fo.Dataset.from_images(filepaths)
+
+        self.assertEqual(len(dataset), 1)
+
+        samples = [{"filepath": "image.jpg"}]
+        sample_parser = _ImageSampleParser()
+        dataset = fo.Dataset.from_images(samples, sample_parser=sample_parser)
+
+        self.assertEqual(len(dataset), 1)
+
+    @drop_datasets
+    def test_from_videos(self):
+        filepaths = ["image.jpg"]
+        dataset = fo.Dataset.from_videos(filepaths)
+
+        self.assertEqual(len(dataset), 1)
+
+        samples = [{"filepath": "video.mp4"}]
+        sample_parser = _VideoSampleParser()
+        dataset = fo.Dataset.from_videos(samples, sample_parser=sample_parser)
+
+        self.assertEqual(len(dataset), 1)
+
+    @drop_datasets
+    def test_from_labeled_images(self):
+        samples = [{"filepath": "image.jpg", "label": "label"}]
+        sample_parser = _LabeledImageSampleParser()
+        dataset = fo.Dataset.from_labeled_images(
+            samples, sample_parser, label_field="ground_truth"
+        )
+
+        self.assertEqual(dataset.values("ground_truth.label"), ["label"])
+
+    @drop_datasets
+    def test_from_labeled_videos(self):
+        samples = [{"filepath": "video.mp4", "label": "label"}]
+        sample_parser = _LabeledVideoSampleParser()
+        dataset = fo.Dataset.from_labeled_videos(
+            samples, sample_parser, label_field="ground_truth"
+        )
+
+        self.assertEqual(dataset.values("ground_truth.label"), ["label"])
+
+
+class _ImageSampleParser(foud.ImageSampleParser):
+    @property
+    def has_image_path(self):
+        return True
+
+    @property
+    def has_image_metadata(self):
+        return False
+
+    def get_image_path(self):
+        return self.current_sample["filepath"]
+
+
+class _VideoSampleParser(foud.VideoSampleParser):
+    @property
+    def has_video_metadata(self):
+        return False
+
+    def get_video_path(self):
+        return self.current_sample["filepath"]
+
+
+class _LabeledImageSampleParser(foud.LabeledImageSampleParser):
+    @property
+    def has_image_path(self):
+        return True
+
+    @property
+    def has_image_metadata(self):
+        return False
+
+    def get_image_path(self):
+        return self.current_sample["filepath"]
+
+    @property
+    def label_cls(self):
+        return fo.Classification
+
+    def get_label(self):
+        label = self.current_sample["label"]
+        return fo.Classification(label=label)
+
+
+class _LabeledVideoSampleParser(foud.LabeledVideoSampleParser):
+    @property
+    def has_video_metadata(self):
+        return False
+
+    def get_video_path(self):
+        return self.current_sample["filepath"]
+
+    @property
+    def label_cls(self):
+        return fo.Classification
+
+    @property
+    def frame_label_cls(self):
+        return None
+
+    def get_label(self):
+        label = self.current_sample["label"]
+        return fo.Classification(label=label)
+
+    def get_frame_labels(self):
+        return None
 
 
 if __name__ == "__main__":

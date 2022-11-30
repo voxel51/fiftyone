@@ -25,7 +25,8 @@ from .database import (
     delete_brain_runs,
     drop_collection,
     drop_orphan_collections,
-    drop_orphan_run_results,
+    drop_orphan_saved_views,
+    drop_orphan_runs,
     list_collections,
     get_collection_stats,
     stream_collection,
@@ -68,7 +69,7 @@ from .utils import (
     get_implied_field_kwargs,
     validate_fields_match,
 )
-from .views import ViewDocument
+from .views import SavedViewDocument
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [

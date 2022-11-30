@@ -11,7 +11,7 @@ import logging
 import os
 import random
 
-from bson import json_util
+from bson import json_util, ObjectId
 import cv2
 
 import eta.core.datasets as etad
@@ -1495,10 +1495,10 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
     def import_extras(self, sample_collection):
         dataset = sample_collection._dataset
 
-        # Import views
-        views = self._metadata.get("views", None)
-        if views:
-            _import_views(dataset, views)
+        # Import saved views
+        saved_views = self._metadata.get("saved_views", None)
+        if saved_views:
+            _import_saved_views(dataset, saved_views)
 
         # Import annotation runs
         annotation_runs = self._metadata.get("annotation_runs", None)
@@ -1685,7 +1685,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         #   - `dataset` is non-empty but no migration is required
         #
 
-        views = dataset_dict.pop("views", {})
+        views = dataset_dict.pop("saved_views", {})
         annotations = dataset_dict.pop("annotation_runs", {})
         brain_methods = dataset_dict.pop("brain_methods", {})
         evaluations = dataset_dict.pop("evaluations", {})
@@ -1789,11 +1789,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             )
 
         #
-        # Import views
+        # Import saved views
         #
 
         if empty_import:
-            _import_views(dataset, views)
+            _import_saved_views(dataset, views)
 
         #
         # Import runs
@@ -1873,25 +1873,31 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         )
 
 
-def _import_views(dataset, views):
+def _import_saved_views(dataset, views):
+    dataset_doc = dataset._doc
+
     for d in views:
         if etau.is_str(d):
             d = json_util.loads(d)
 
         name = d["name"]
-        if dataset.has_view(name):
+        if dataset.has_saved_view(name):
             logger.warning("Overwriting existing view '%s'", name)
-            dataset.delete_view(name)
+            dataset.delete_saved_view(name)
 
         d.pop("_id", None)
-        view_doc = foo.ViewDocument.from_dict(d)
+        view_doc = foo.SavedViewDocument.from_dict(d)
+        view_doc.dataset_id = str(dataset_doc.id)
+        view_doc.save()
 
-        dataset._doc.views.append(view_doc)
+        dataset_doc.saved_views.append(view_doc)
 
-    dataset._doc.save()
+    dataset_doc.save()
 
 
 def _import_runs(dataset, runs, results_dir, run_cls):
+    dataset_doc = dataset._doc
+
     # Import run documents
     for key, d in runs.items():
         if etau.is_str(d):
@@ -1899,12 +1905,14 @@ def _import_runs(dataset, runs, results_dir, run_cls):
 
         d.pop("_id", None)
         run_doc = foo.RunDocument.from_dict(d)
+        run_doc.dataset_id = str(dataset_doc.id)
         run_doc.results = None
+        run_doc.save()
 
-        runs = getattr(dataset._doc, run_cls._runs_field())
+        runs = getattr(dataset_doc, run_cls._runs_field())
         runs[key] = run_doc
 
-    dataset._doc.save()
+    dataset_doc.save()
 
     # Import run results
     for key in runs.keys():

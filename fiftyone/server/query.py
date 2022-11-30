@@ -134,7 +134,7 @@ class SidebarMode(Enum):
 
 @gql.type
 class DatasetAppConfig:
-    media_fields: t.List[str]
+    media_fields: t.Optional[t.List[str]]
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
     sidebar_mode: t.Optional[SidebarMode]
@@ -181,6 +181,7 @@ class Dataset:
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
+        doc["saved_views"] = list(doc.get("saved_views", {}).values())
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()

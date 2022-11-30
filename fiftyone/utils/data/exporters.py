@@ -1657,7 +1657,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
-        self._metadata["name"] = sample_collection.name
+        self._metadata["name"] = sample_collection._dataset.name
         self._metadata["media_type"] = sample_collection.media_type
 
         schema = sample_collection._serialize_field_schema()
@@ -1714,9 +1714,9 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         # Exporting the information below only makes sense when exporting an
         # entire dataset
 
-        if dataset.has_views:
-            self._metadata["views"] = [
-                json_util.dumps(v.to_dict()) for v in dataset._doc.views
+        if dataset.has_saved_views:
+            self._metadata["saved_views"] = [
+                json_util.dumps(v.to_dict()) for v in dataset._doc.saved_views
             ]
 
         if dataset.has_annotation_runs:
@@ -1802,7 +1802,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.utils.normalize_path`
-        export_views (True): whether to include saved views in the export.
+        export_saved_views (True): whether to include saved views in the export.
             Only applicable when exporting full datasets
         export_runs (True): whether to include annotation/brain/evaluation
             runs in the export. Only applicable when exporting full datasets
@@ -1817,7 +1817,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         export_dir,
         export_media=None,
         rel_dir=None,
-        export_views=True,
+        export_saved_views=True,
         export_runs=True,
         use_dirs=False,
         ordered=True,
@@ -1832,7 +1832,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         self.export_media = export_media
         self.rel_dir = rel_dir
-        self.export_views = export_views
+        self.export_saved_views = export_saved_views
         self.export_runs = export_runs
         self.use_dirs = use_dirs
         self.ordered = ordered
@@ -1946,19 +1946,19 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         dataset = sample_collection._dataset
         dataset_dict = dataset._doc.to_dict()
-        dataset_dict["views"] = {}
+        dataset_dict["saved_views"] = {}
         dataset_dict["annotation_runs"] = {}
         dataset_dict["brain_methods"] = {}
         dataset_dict["evaluations"] = {}
 
         #
-        # Exporting views/runs only makes sense if the entire dataset is being
-        # exported, otherwise the view for the run cannot be reconstructed
-        # based on the information encoded in the run's document
+        # Exporting saved views/runs only makes sense if the entire dataset is
+        # being exported, otherwise the view for the run cannot be
+        # reconstructed based on the information encoded in the run's document
         #
 
-        _export_views = (
-            self.export_views
+        _export_saved_views = (
+            self.export_saved_views
             and sample_collection == sample_collection._root_dataset
         )
 
@@ -1967,8 +1967,10 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             and sample_collection == sample_collection._root_dataset
         )
 
-        if _export_views and dataset.has_views:
-            dataset_dict["views"] = [v.to_dict() for v in dataset._doc.views]
+        if _export_saved_views and dataset.has_saved_views:
+            dataset_dict["saved_views"] = [
+                v.to_dict() for v in dataset._doc.saved_views
+            ]
 
         if _export_runs and dataset.has_annotation_runs:
             dataset_dict["annotation_runs"] = {

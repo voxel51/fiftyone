@@ -136,7 +136,7 @@ type Dataset {
 }
 
 type DatasetAppConfig {
-  mediaFields: [String!]!
+  mediaFields: [String!]
   plugins: JSON
   sidebarGroups: [SidebarGroup!]
   sidebarMode: SidebarMode

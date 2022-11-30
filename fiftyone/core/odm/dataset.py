@@ -21,6 +21,7 @@ from fiftyone.core.fields import (
     IntField,
     ListField,
     ObjectIdField,
+    ReferenceField,
     StringField,
     TargetsField,
 )
@@ -29,7 +30,7 @@ import fiftyone.core.utils as fou
 from .document import Document
 from .embedded_document import EmbeddedDocument, BaseEmbeddedDocument
 from .runs import RunDocument
-from .views import ViewDocument
+from .views import SavedViewDocument
 
 fol = fou.lazy_import("fiftyone.core.labels")
 fom = fou.lazy_import("fiftyone.core.metadata")
@@ -549,7 +550,9 @@ class DatasetDocument(Document):
     tags = ListField(StringField())
     description = StringField()
     info = DictField()
-    app_config = EmbeddedDocumentField(DatasetAppConfig)
+    app_config = EmbeddedDocumentField(
+        DatasetAppConfig, default=DatasetAppConfig
+    )
     classes = DictField(ClassesField())
     default_classes = ClassesField()
     mask_targets = DictField(TargetsField())
@@ -558,7 +561,7 @@ class DatasetDocument(Document):
     default_skeleton = EmbeddedDocumentField(KeypointSkeleton)
     sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
     frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
-    annotation_runs = DictField(EmbeddedDocumentField(RunDocument))
-    brain_methods = DictField(EmbeddedDocumentField(RunDocument))
-    evaluations = DictField(EmbeddedDocumentField(RunDocument))
-    views = ListField(EmbeddedDocumentField(ViewDocument))
+    saved_views = ListField(ReferenceField(SavedViewDocument))
+    annotation_runs = DictField(ReferenceField(RunDocument))
+    brain_methods = DictField(ReferenceField(RunDocument))
+    evaluations = DictField(ReferenceField(RunDocument))
