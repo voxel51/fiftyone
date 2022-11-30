@@ -456,7 +456,7 @@ const useLabelPlaceHolder = (
   };
 };
 
-const useNonLabelPlaceHolder = (
+const useSamplePlaceHolder = (
   modal: boolean,
   elementNames: { plural: string; singular: string }
 ) => {
