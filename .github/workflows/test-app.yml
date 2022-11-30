@@ -27,7 +27,7 @@ jobs:
       - name: Install app
         run: cd app && yarn install
       - name: Run tests
-        run: cd app && yarn test --coverage && mv ./coverage/lcov.info ../
+        run: cd app && yarn test --coverage && mv ./coverage/coverage-final.json ../
       - name: Upload coverage
         uses: codecov/codecov-action@v3
         with:
