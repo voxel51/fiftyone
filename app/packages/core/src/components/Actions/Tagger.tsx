@@ -431,26 +431,19 @@ const useLabelPlaceHolder = (
 ) => {
   return (): [number, string] => {
     const selectedSamples = useRecoilValue(fos.selectedSamples).size;
-    const totalSamples = useRecoilValue(
-      fos.count({ path: "", extended: false, modal })
-    );
-    const filteredSamples = useRecoilValue(
-      fos.count({ path: "", extended: true, modal })
-    );
-    const count = filteredSamples ?? totalSamples;
     const selectedLabels = useRecoilValue(fos.selectedLabelIds).size;
     const selectedLabelCount = useRecoilValue(numItemsInSelection(true));
     const totalLabelCount = useRecoilValue(
       fos.labelCount({ modal, extended: true })
     );
-    if (modal && (!selectedSamples || selectedLabels)) {
+    if (modal && selectedLabels) {
       const labelCount = selectedLabels > 0 ? selectedLabels : totalLabelCount;
       return [labelCount, labelsModalPlaceholder(selectedLabels, labelCount)];
     } else {
       const labelCount = selectedSamples ? selectedLabelCount : totalLabelCount;
       return [
         labelCount,
-        labelsPlaceholder(selectedSamples, labelCount, count, elementNames),
+        labelsPlaceholder(selectedSamples, labelCount, null, elementNames),
       ];
     }
   };
