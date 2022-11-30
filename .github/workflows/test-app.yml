@@ -5,6 +5,9 @@ on:
     types: [opened, synchronize]
     branches:
       - develop
+    paths:
+      - app/**
+      - .github/workflows/test-app.yml
   push:
     branches:
       - develop
