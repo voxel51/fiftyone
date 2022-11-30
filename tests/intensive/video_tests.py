@@ -15,6 +15,7 @@ import unittest
 import fiftyone as fo
 import fiftyone.zoo as foz
 from fiftyone import ViewField as F
+import fiftyone.utils.video as fouv
 
 
 def test_to_clips():
@@ -456,6 +457,15 @@ def test_to_frame_eval_patches():
     print(patches)
     print(patches.first())
     print(patches.count_values("type"))
+
+
+def test_exact_frame_count():
+    dataset = foz.load_zoo_dataset("quickstart-video").clone()
+    dataset.limit(2).save()
+
+    for smp in dataset:
+        frame_count = fouv.exact_frame_count(smp.filepath)
+        assert frame_count == len(smp.frames)
 
 
 if __name__ == "__main__":
