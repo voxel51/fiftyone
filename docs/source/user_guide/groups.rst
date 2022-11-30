@@ -620,8 +620,7 @@ detections represented as |Detection| instances with their `label`, `location`,
 
     # The center location of the object ``(x, y, z)`` in scene coordinates
     # NOTE: the y coordinate will be offset by half the objects y size.
-    #       this will quirk will be removed in a future release and moved
-    #       to a setting for backwards compatibility
+    #       to disable, set ``useLegacyCoorinates=False`` (recommended)
     location = [0.47, 1.49, 69.44]
 
     # Object dimensions ``[sizeX, sizeY, sizeZ]`` in scene units
@@ -1092,6 +1091,10 @@ shown below under the `plugins.3d` key of your
             "3d": {
                 // Whether to show the 3D visualizer
                 "enabled": true,
+
+                // Legacy Detection positioning for backwards compatability
+                // For new datasets set this to True
+                "useLegacyCoorinates": False,
 
                 // The initial camera position in the 3D scene
                 "defaultCameraPosition": {"x": 0, "y": 0, "z": 0},
