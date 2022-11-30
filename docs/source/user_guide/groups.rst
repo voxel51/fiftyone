@@ -618,15 +618,21 @@ detections represented as |Detection| instances with their `label`, `location`,
     # Object label
     label = "vehicle"
 
-    # The center location of the object ``(x, y, z)`` in scene coordinates
-    # NOTE: the y coordinate will be offset by half the objects y size.
-    #       to disable, set ``useLegacyCoorinates=False`` (recommended)
+    #
+    # Object center `[x, y, z]` in scene coordinates
+    #
+    # Note that, when `useLegacyCoorinates=True` (the default), the y coordinate
+    # of location is offset by half of the object's y dimension.
+    #
+    # Set `useLegacyCoorinates=False` (recommended) to treat `location` as the
+    # true centroid of the object
+    #
     location = [0.47, 1.49, 69.44]
 
-    # Object dimensions ``[sizeX, sizeY, sizeZ]`` in scene units
+    # Object dimensions `[x, y, z]` in scene units
     dimensions = [2.85, 2.63, 12.34]
 
-    # Object rotation around ``[x, y, z]`` scene axes, in ``[-pi, pi]``
+    # Object rotation `[x, y, z]` around scene axes, in `[-pi, pi]`
     rotation = [0, -1.56, 0]
 
     # A 3D object detection
@@ -643,8 +649,8 @@ detections represented as |Detection| instances with their `label`, `location`,
 ------------
 
 The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D polylines
-represented as |Polyline| instances with their `label` and `points3d` attributes
-populated as shown below:
+represented as |Polyline| instances with their `label` and `points3d`
+attributes populated as shown below:
 
 .. code-block:: python
     :linenos:
@@ -654,15 +660,12 @@ populated as shown below:
     # Object label
     label = "lane"
 
-    # A list of lists of ``(x, y, z)`` points in scene coordinates describing
+    # A list of lists of `[x, y, z]` points in scene coordinates describing
     # the vertices of each shape in the polyline
     points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
 
-    # A set of semantically related 3D polylines.
-    polyline = fo.Polyline(
-        label=label,
-        points3d=points3d,
-    )
+    # A set of semantically related 3D polylines
+    polyline = fo.Polyline(label=label, points3d=points3d)
 
 .. _groups-views:
 
@@ -1092,25 +1095,24 @@ shown below under the `plugins.3d` key of your
                 // Whether to show the 3D visualizer
                 "enabled": true,
 
-                // Legacy Detection positioning for backwards compatability
-                // For new datasets set this to True
-                "useLegacyCoorinates": False,
+                // Whether to use legacy coordinates, where the y coordinate of
+                // the `location` of 3D detections is offset by half of the
+                // object's y size
+                "useLegacyCoorinates": true,
 
                 // The initial camera position in the 3D scene
                 "defaultCameraPosition": {"x": 0, "y": 0, "z": 0},
 
-                // Transformation from PCD -> reference coordinates
+                // Transformation from PCD -> scene coordinates
                 "pointCloud": {
                     // A rotation to apply to the PCD's coordinate system
                     "rotation": [0, 0, 0],
 
-                    // Define the lower z extent of the "color by height" range
-                    // Defaults to the lowest z value of the point cloud
-                    // Eg. if the lidar was 1 meter above ground, try setting this to -1
+                    // Don't render points below this z value
                     "minZ": null
                 },
 
-                // Transformation from Label -> reference coorindates
+                // Transformation from Label -> scene coorindates
                 "overlay": {
                     // A rotation to apply to the Label's coordinate system
                     "rotation": [0, 0, 0],
