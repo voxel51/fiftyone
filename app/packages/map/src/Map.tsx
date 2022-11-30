@@ -167,7 +167,7 @@ const Plot: React.FC<{}> = () => {
           style={{ color: theme.text.primary }}
           href={"https://voxel51.com/docs/fiftyone/user_guide/app.html#map-tab"}
         >
-          {"Learn more"}
+          Learn more
         </ExternalLink>
       </foc.Loading>
     );
