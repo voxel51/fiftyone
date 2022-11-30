@@ -1,6 +1,6 @@
 {
   "src": "./src",
-  "schema": "./schema.graphql",
+  "schema": "../../schema.graphql",
   "eagerEsModules": true,
   "language": "typescript",
   "customScalars": { "Date": "string", "DateTime": "string" }
