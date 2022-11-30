@@ -1106,7 +1106,6 @@ shown below under the `plugins.3d` key of your
 
                     // Define the lower z extent of the "color by height" range
                     // Defaults to the lowest z value of the point cloud
-                    // Set to another value to cull stray points
                     // Eg. if the lidar was 1 meter above ground, try setting this to -1
                     "minZ": null
                 },
