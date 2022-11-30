@@ -88,6 +88,19 @@ class DatasetTests(unittest.TestCase):
         self.assertIs(dataset1, dataset4)
 
     @drop_datasets
+    def test_last_loaded_at(self):
+        dataset_name = self.test_dataset_info.__name__
+
+        dataset = fo.Dataset(dataset_name)
+        last_loaded_at1 = dataset.last_loaded_at
+
+        also_dataset = fo.load_dataset(dataset_name)
+        last_loaded_at2 = dataset.last_loaded_at
+
+        self.assertIs(also_dataset, dataset)
+        self.assertTrue(last_loaded_at2 > last_loaded_at1)
+
+    @drop_datasets
     def test_dataset_tags(self):
         dataset_name = self.test_dataset_tags.__name__
 
