@@ -369,6 +369,7 @@ class Run(Configurable):
         ]
 
         run_doc = RunDocument(
+            dataset_id=dataset_doc.id,
             key=key,
             version=run_info.version,
             timestamp=run_info.timestamp,
