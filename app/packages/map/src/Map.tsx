@@ -3,6 +3,7 @@ import { container } from "./Map.module.css";
 import * as foc from "@fiftyone/components";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
+import ExternalLink from "@fiftyone/components/src/components/ExternalLink";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import contains from "@turf/boolean-contains";
 import { debounce } from "lodash";
@@ -161,10 +162,13 @@ const Plot: React.FC<{}> = () => {
   if (!settings.mapboxAccessToken) {
     return (
       <foc.Loading>
-        No Mapbox token provided:
-        <a href="https://voxel51.com/docs/fiftyone/user_guide/app.html#map-tab">
-          learn more
-        </a>
+        No Mapbox token provided:&nbsp;
+        <ExternalLink
+          style={{ color: theme.text.primary }}
+          href={"https://voxel51.com/docs/fiftyone/user_guide/app.html#map-tab"}
+        >
+          {"Learn more"}
+        </ExternalLink>
       </foc.Loading>
     );
   }
