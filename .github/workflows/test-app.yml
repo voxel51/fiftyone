@@ -27,10 +27,10 @@ jobs:
       - name: Install app
         run: cd app && yarn install
       - name: Run tests
-        run: cd app && yarn test --coverage
+        run: cd app && yarn test --coverage && mv ../../coverage/lcov.info ../../../
       - name: Upload coverage
         uses: codecov/codecov-action@v3
         with:
-          files: ./coverage/lcov.info
+          files: ./lcov.info
           flags: state-unit-tests
           fail_ci_if_error: true
