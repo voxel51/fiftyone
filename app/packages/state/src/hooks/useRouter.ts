@@ -8,7 +8,7 @@ import {
   getEnvironment,
 } from "../routing";
 
-let currentEnvironment: Environment = null;
+let currentEnvironment: Environment = getEnvironment();
 
 export const getCurrentEnvironment = () => {
   return currentEnvironment;
