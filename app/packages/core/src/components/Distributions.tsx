@@ -279,13 +279,7 @@ const Distributions = ({ group }: { group: string }) => {
   if (noData.state === "hasError") throw noData.contents;
   return noData.state === "hasValue" ? (
     !noData.contents ? (
-      <Suspense
-        fallback={
-          <Loading>
-            <LoadingDots text="Loading" />
-          </Loading>
-        }
-      >
+      <Suspense fallback={<LoadingDots text="Loading" />}>
         <DistributionsContainer>
           {paths.map((path) => {
             return <DistributionRenderer key={path} path={path} />;
@@ -296,9 +290,7 @@ const Distributions = ({ group }: { group: string }) => {
       <Loading>No data</Loading>
     )
   ) : (
-    <Loading>
-      <LoadingDots text="Loading" />
-    </Loading>
+    <LoadingDots text="Loading" />
   );
 };
 

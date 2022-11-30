@@ -6,6 +6,9 @@ const LoadingDots = ({ text, color }: { text: string; color?: string }) => {
   return (
     <span className={loading} style={color ? { color } : {}}>
       {text}
+      <span></span>
+      <span></span>
+      <span></span>
     </span>
   );
 };
