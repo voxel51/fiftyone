@@ -12,6 +12,16 @@ currently contains the public-facing documentation for Teams.
 Release notes for Teams releases are documented
 [in this doc](https://docs.google.com/document/d/1SvoJRXiajm14jXaenD9GottSEoQlOVCNcyMEV8qrF-g).
 
+## Developing with the embedded server
+
+When developing and integrating features for the new
+[Teams](https://github.com/voxel51/fiftyone) embedded dataset page, you will
+have to run the embedded `fiftyone.teams.app` for the stateless version of
+legacy API calls (i.e. the embedded OSS GraphQL API and deprecated rest
+routes). Please refer to the subpackage
+[README](https://github.com/voxel51/fiftyone-teams/tree/develop/package/teams)
+for installation and development instructions.
+
 ## Installing Teams releases
 
 FiftyOne Teams releases are installed via a private FiftyOne PyPI server that

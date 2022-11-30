@@ -1,5 +1,5 @@
 import { SvgIcon, SvgIconProps } from "@mui/material";
-import { Info as InfoIcon } from "@material-ui/icons";
+import { Info as InfoIcon } from "@mui/icons-material";
 import React from "react";
 
 import ExternalLink from "../ExternalLink";

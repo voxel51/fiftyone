@@ -17,6 +17,8 @@ media_cache_config = _foc.load_media_cache_config()
 _foo.establish_db_conn(config)
 _foca.init_media_cache(media_cache_config)
 
+media_cache = _foca.media_cache
+
 from .core.aggregations import (
     Aggregation,
     Bounds,
@@ -130,6 +132,7 @@ from .core.models import (
 from .core.odm import (
     DatasetAppConfig,
     KeypointSkeleton,
+    SidebarGroupDocument,
 )
 from .core.plots import (
     plot_confusion_matrix,

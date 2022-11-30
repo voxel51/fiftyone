@@ -41,7 +41,7 @@ def read(path, include_alpha=False, flag=None):
     if fs == fos.FileSystem.LOCAL:
         return etai.read(path, include_alpha=include_alpha, flag=flag)
 
-    client = fos.get_client(fs)
+    client = fos.get_client(path=path)
     b = client.download_bytes(path)
 
     return etai.decode(b, include_alpha=include_alpha, flag=flag)
@@ -63,7 +63,7 @@ def write(img, path):
     ext = os.path.splitext(path)[1]
     b = etai.encode(img, ext)
 
-    client = fos.get_client(fs)
+    client = fos.get_client(path=path)
     client.upload_bytes(b, path)
 
 
