@@ -66,11 +66,32 @@ session = fo.launch_app(dataset)
 All App code contributed to FiftyOne must follow our
 [style guide](../STYLE_GUIDE.md#app-style-guide).
 
+## Testing
+
+All new feature and bug fix pull requests should contain associated unit tests.
+Each subpackage in the monorepo has a `./test` directory in which each module
+should have a corresponding `<module-name>.test.ts` module. Tests are
+implemented and run with [Vitest](https://vitest.dev), a testing framework very
+similar to Jest, with the `yarn test` script. Coverage is monitored in all pull
+requests that modify App source code via
+[Codecov](https://app.codecov.io/gh/voxel51/fiftyone/).
+
+A recommended approach to local development is to have a running Vitest UI open
+with coverage to watch for failures as you develop. Coverage can be monitored
+for open files in VS Code via the Coverage Gutters extension.
+
+```sh
+yarn test --ui --coverage
+```
+
+Generally speaking, new modules and source code should have 100% coverage. If
+you are refactoring or bug fixing older code without tests, please add them.
+
 ## Best practices
 
 This section will continue to evolve as we learn more about what works best.
 
-It should be noted that this App was began as this
+It should be noted that this App began as this
 [boilerplate](https://github.com/electron-react-boilerplate/electron-react-boilerplate).
 
 Best practices:
