@@ -4,6 +4,8 @@
 
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import {
+  DETECTION,
+  DETECTIONS,
   get32BitColor,
   getFetchFunction,
   HEATMAP,
@@ -130,7 +132,14 @@ const mapId = (obj) => {
   return obj;
 };
 
-const LABELS = new Set(VALID_LABEL_TYPES);
+const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
+
+const LABELS_THAT_CAN_HAVE_OVERLAYS_ON_DISK = new Set([
+  SEGMENTATION,
+  HEATMAP,
+  DETECTION,
+  DETECTIONS,
+]);
 
 /**
  * Some label types (example: segmentation, heatmap) can have their overlay data stored on-disk,
@@ -140,22 +149,23 @@ const imputeOverlayFromPath = async (
   label: Record<string, any>,
   buffers: ArrayBuffer[]
 ) => {
-  // only support loading overlay data for segmentation and heatmap for now
-  if (!label || (label._cls !== SEGMENTATION && label._cls !== HEATMAP)) {
+  // handle all list types here
+  if (label._cls === DETECTIONS) {
+    label.detections.forEach((detection) =>
+      imputeOverlayFromPath(detection, buffers)
+    );
     return;
   }
 
-  // overlay path is in `map_path` property for heatmap, or else, it's in `mask_path` property
+  // overlay path is in `map_path` property for heatmap, or else, it's in `mask_path` property (for segmentation or detection)
   const overlayPathField = label._cls === HEATMAP ? "map_path" : "mask_path";
   const overlayField = overlayPathField === "map_path" ? "map" : "mask";
 
-  // make sure the relevant fields are present
   if (
-    (label._cls === SEGMENTATION &&
-      (Object.hasOwn(label, "mask") || !Object.hasOwn(label, "mask_path"))) ||
-    (label._cls === HEATMAP &&
-      (Object.hasOwn(label, "map") || !Object.hasOwn(label, "map_path")))
+    Object.hasOwn(label, overlayField) ||
+    !Object.hasOwn(label, overlayPathField)
   ) {
+    // nothing to be done
     return;
   }
 
@@ -205,12 +215,15 @@ const processLabels = async (
       continue;
     }
 
-    if (label._cls in DESERIALIZE) {
+    if (LABELS_THAT_CAN_HAVE_OVERLAYS_ON_DISK.has(label._cls)) {
       await imputeOverlayFromPath(label, buffers);
+    }
+
+    if (label._cls in DESERIALIZE) {
       DESERIALIZE[label._cls](label, buffers);
     }
 
-    if (LABELS.has(label._cls)) {
+    if (ALL_VALID_LABELS.has(label._cls)) {
       if (label._cls in LABEL_LIST) {
         const list = label[LABEL_LIST[label._cls]];
         if (Array.isArray(list)) {
