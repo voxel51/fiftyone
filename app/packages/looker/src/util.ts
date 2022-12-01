@@ -545,5 +545,5 @@ export const isFloatArray = (arr) =>
 
 export const getArrayBufferFromUrl = async (url: string) => {
   const data = await getFetchFunction()("GET", url, null, "arrayBuffer");
-  return data;
+  return data as ArrayBuffer;
 };

@@ -16,10 +16,6 @@ import {
 import LRU from "lru-cache";
 import { v4 as uuid } from "uuid";
 
-import { decode as decodePng } from "fast-png";
-
-import { getSampleSrc } from "@fiftyone/state";
-
 import {
   BASE_ALPHA,
   CHUNK_SIZE,
@@ -67,7 +63,6 @@ import {
 import {
   addToBuffers,
   createWorker,
-  getArrayBufferFromUrl,
   getDPR,
   getElementBBox,
   getFitRect,
@@ -82,7 +77,6 @@ import { zoomToContent } from "./zoom";
 import { getColor } from "@fiftyone/utilities";
 import { Events } from "./elements/base";
 import { getFrameNumber } from "./elements/util";
-import { NumpyResult } from "./numpy";
 
 export { createColorGenerator, getRGB } from "@fiftyone/utilities";
 export { freeVideos } from "./elements/util";
@@ -648,46 +642,6 @@ export abstract class Looker<
     );
   }
 
-  /**
-   * Some label types (example: segmentation, heatmap) can have their mask datas stored in disks,
-   * we want to impute the `mask` property of those labels with what's stored in the disk
-   */
-  private async imputeOverlayMaskFromDisk(sample: Sample) {
-    for (const field in sample) {
-      const label = sample[field];
-      if (
-        !label ||
-        Object.hasOwn(label, "mask") ||
-        !Object.hasOwn(label, "mask_path")
-      ) {
-        continue;
-      }
-
-      // convert absolute file path to a URL that we can "fetch" from
-      const maskPngImageUrl = getSampleSrc(label.mask_path);
-
-      const pngArrayBuffer = await getArrayBufferFromUrl(maskPngImageUrl);
-      const overlayData = decodePng(pngArrayBuffer);
-
-      const width = overlayData.width;
-      const height = overlayData.height;
-
-      // frame what we have as a specialized type `NumpyResult` that's used in downstream while processing overlays
-      const data: NumpyResult = {
-        shape: [height, width],
-        buffer: overlayData.data,
-        arrayType: overlayData.data.constructor
-          .name as NumpyResult["arrayType"],
-      };
-
-      // set the `mask` property for this label
-      label.mask = {
-        data,
-        image: new ArrayBuffer(width * height * 4),
-      };
-    }
-  }
-
   private loadSample(sample: Sample) {
     const messageUUID = uuid();
     const labelsWorker = getLabelsWorker((event, detail) =>
@@ -707,14 +661,11 @@ export abstract class Looker<
     };
     labelsWorker.addEventListener("message", listener);
 
-    // todo: don't process overlays here: https://github.com/voxel51/fiftyone/issues/1344
-    this.imputeOverlayMaskFromDisk(sample).finally(() => {
-      labelsWorker.postMessage({
-        method: "processSample",
-        coloring: this.state.options.coloring,
-        sample,
-        uuid: messageUUID,
-      });
+    labelsWorker.postMessage({
+      method: "processSample",
+      coloring: this.state.options.coloring,
+      sample,
+      uuid: messageUUID,
     });
   }
 }
