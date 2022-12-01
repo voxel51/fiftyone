@@ -1,9 +1,7 @@
 import { atomFamily, selector, selectorFamily } from "recoil";
-import { aggregationQuery, count } from "./aggregations";
+import { aggregationQuery } from "./aggregations";
 import { dataset } from "./atoms";
-import { labelFields } from "./schema";
 import { appConfigDefault, isVideoDataset } from "./selectors";
-import { State } from "./types";
 
 export const selectedMediaField = atomFamily<string, boolean>({
   key: "selectedMediaField",
