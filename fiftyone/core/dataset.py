@@ -3096,6 +3096,50 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return [view_doc.name for view_doc in self._doc.saved_views]
 
+    @property
+    def all_views(self):
+        """Returns the saved views on this dataset.
+
+        Returns:
+            a list of saved views
+        """
+        return [view_doc for view_doc in self._doc.saved_views]
+
+    @property
+    def all_views_v2(self):
+        """Returns the saved views on this dataset.
+
+        Returns:
+            a list of saved views
+        """
+        res = [
+            {
+                "id": v.id,
+                "dataset_id": self._doc.id,
+                "name": v.name,
+                "url_name": v.url_name,
+                "description": v.description,
+                "color": v.color,
+                "created_at": v.created_at,
+            }
+            for v in self._doc.saved_views
+        ]
+        # for v in self._doc.saved_views:
+        #     x = {
+        #         'id' : v.id,
+        #         'dataset_id': self._doc.id,
+        #         'name': v.name,
+        #         'url_name': v.url_name,
+        #         'description': v.description,
+        #         'color': v.color,
+        #         'created_at': v.created_at,
+        #     }
+        #     res.append(x)
+        return res
+        # print('v2', x)
+
+        # return [view_doc for view_doc in self._doc.saved_views]
+
     def save_view(
         self,
         name=name,

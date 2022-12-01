@@ -45,7 +45,7 @@ const useSetView = (
         addStages?: State.Stage[],
         viewName?: string,
         changingSavedView?: boolean,
-        viewSlug?: string
+        savedViewSlug?: string
       ) => {
         const dataset = snapshot.getLoadable(fos.dataset).contents;
         const savedViews = dataset.savedViews || [];
@@ -55,12 +55,15 @@ const useSetView = (
             viewOrUpdater instanceof Function
               ? viewOrUpdater(snapshot.getLoadable(view).contents)
               : viewOrUpdater;
+
           commit({
             variables: {
+              changingSavedView,
+              savedViewSlug,
               viewName,
+              view: value,
               subscription,
               session,
-              view: value,
               datasetName: dataset.name,
               form: patch
                 ? {
@@ -79,28 +82,105 @@ const useSetView = (
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
-              if (router.history.location.state) {
-                router.history.location.state.state = {
-                  ...router.history.location.state,
-                  view: value,
-                  viewName: viewName,
-                  viewCls: dataset.viewCls,
-                  selected: [],
-                  selectedLabels: [],
-                  savedViews: savedViews,
-                };
+              const newState = {
+                ...router.history.location.state.state,
+                view: value,
+                viewName,
+                savedViewSlug,
+                viewCls: dataset.viewCls,
+                selected: [],
+                selectedLabels: [],
+                savedViews,
+                changingSavedView,
+              };
+              router.history.location.state.state = newState;
 
-                if (changingSavedView) {
-                  router.history.push(
-                    `${location.pathname}${
-                      viewSlug ? `?view=${viewSlug}` : ""
-                    }`,
-                    {
-                      state: router.history.location.state.state,
-                      variables: { view: value },
-                    }
-                  );
+              const url = new URL(window.location.toString());
+              const currentSlug = url.searchParams.get("view");
+
+              // single tab / clearing stage should remove query param
+              if (!changingSavedView && currentSlug && !value?.length) {
+                url.searchParams.delete("view");
+                let search = url.searchParams.toString();
+                if (search.length) {
+                  search = `?${search}`;
                 }
+
+                const path = `/datasets/${encodeURIComponent(
+                  dataset.name
+                )}${search}`;
+
+                router.history.replace(path, {
+                  state: newState,
+                  variables: { view: value?.length ? value : null },
+                });
+              }
+
+              if (
+                changingSavedView &&
+                (currentSlug || savedViewSlug) &&
+                currentSlug !== savedViewSlug
+              ) {
+                if (!savedViewSlug) {
+                  url.searchParams.delete("view");
+                } else {
+                  url.searchParams.set("view", savedViewSlug);
+                }
+
+                let search = url.searchParams.toString();
+                if (search.length) {
+                  search = `?${search}`;
+                }
+
+                const path = `/datasets/${encodeURIComponent(
+                  dataset.name
+                )}${search}`;
+
+                router.history.push(path, {
+                  state: newState,
+                  variables: { view: value?.length ? value : null },
+                });
+              } else {
+                // single tab - clear saved view if ONLY view stages change - not the saved view
+                if (!changingSavedView && currentSlug) {
+                  url.searchParams.delete("view");
+
+                  let search = url.searchParams.toString();
+                  if (search.length) {
+                    search = `?${search}`;
+                  }
+
+                  const path = `/datasets/${encodeURIComponent(
+                    dataset.name
+                  )}${search}`;
+
+                  router.history.replace(path, {
+                    state: {
+                      view: value,
+                      viewCls: dataset.viewCls,
+                      selected: [],
+                      selectedLabels: [],
+                      viewName,
+                      savedViews,
+                      savedViewSlug,
+                      changingSavedView,
+                    },
+                  });
+                }
+
+                updateState({
+                  dataset: transformDataset(dataset),
+                  state: {
+                    view: value,
+                    viewCls: dataset.viewCls,
+                    selected: [],
+                    selectedLabels: [],
+                    viewName,
+                    savedViews,
+                    savedViewSlug,
+                    changingSavedView,
+                  },
+                });
               }
 
               updateState({

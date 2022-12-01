@@ -188,7 +188,7 @@ export default function Selection(props: SelectionProps) {
             const { id, color, label } = itemProps;
             return (
               <Option
-                key={id}
+                key={id + label}
                 value={id}
                 label={label}
                 onClick={() => {

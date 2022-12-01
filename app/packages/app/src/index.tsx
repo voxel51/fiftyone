@@ -86,11 +86,14 @@ const App: React.FC = ({}) => {
               const payload = JSON.parse(msg.data);
               const { colorscale, config, ...data } = payload.state;
               payload.refresh && refresh();
+              const isAnUpdate = payload.update;
+              const changingSavedView = payload.changing_saved_view;
 
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
                 viewName: getSavedViewName(contextRef.current),
+                changingSavedView,
               } as State.Description;
               let dataset = getDatasetName(contextRef.current);
               if (readyStateRef.current !== AppReadyState.OPEN) {
@@ -102,19 +105,43 @@ const App: React.FC = ({}) => {
                 dataset = state.dataset;
               }
 
-              const path = state.dataset
-                ? `/datasets/${encodeURIComponent(state.dataset)}${
-                    window.location.search
-                  }`
-                : `/${window.location.search}`;
+              // !isAnUpdate === initial load (active tab)
+              let savedViewSlug = isAnUpdate
+                ? state.savedViewSlug
+                : state.viewName || "";
 
-              contextRef.current.history.replace(path, {
-                state,
-                colorscale,
-                config,
-                refresh: payload.refresh,
-                variables: dataset ? { view: state.view || null } : undefined,
-              });
+              const url = new URL(window.location.toString());
+              const oldPath = url.pathname + `${url.search}`;
+
+              if (isAnUpdate && !changingSavedView) {
+                url.searchParams.delete("view");
+              } else if (savedViewSlug) {
+                url.searchParams.set("view", savedViewSlug);
+              } else {
+                url.searchParams.delete("view");
+              }
+
+              let search = url.searchParams.toString();
+              if (search.length) {
+                search = `?${search}`;
+              }
+              const path = state.dataset
+                ? `/datasets/${encodeURIComponent(state.dataset)}${search}`
+                : `/${search}`;
+
+              if (
+                (isAnUpdate && !changingSavedView) ||
+                path !== oldPath ||
+                !isAnUpdate
+              ) {
+                contextRef.current.history.replace(path, {
+                  state,
+                  colorscale,
+                  config,
+                  refresh: payload.refresh,
+                  variables: dataset ? { view: state.view || null } : undefined,
+                });
+              }
 
               break;
             }

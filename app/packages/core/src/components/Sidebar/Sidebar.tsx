@@ -441,27 +441,7 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
-  const { savedViews = [] } = fos.useSavedViews();
   const loadedDatasetName = useRecoilValue<string>(fos.datasetName);
-
-  const setView = fos.useSetView();
-
-  const queryParams = new URLSearchParams(location.search);
-  const viewName = queryParams.get("view");
-  const hasSavedViews = savedViews?.length;
-
-  // TODO: MANI - load view by slug instead of name
-  useEffect(() => {
-    if (hasSavedViews && viewName && !modal) {
-      const theLoadedDataset = savedViews.filter(
-        (ds: fos.State.SavedView) => ds.name === viewName
-      )?.[0];
-      if (theLoadedDataset) {
-        const { slug } = theLoadedDataset;
-        setView([], [], viewName, true, slug);
-      }
-    }
-  }, [hasSavedViews, viewName, modal]);
 
   if (entries instanceof Error) {
     throw entries;
@@ -773,8 +753,9 @@ const InteractiveSidebar = ({
             if (entry.kind === fos.EntryKind.GROUP) {
               group = entry.name;
             }
-            const { shadow, cursor, ...springs } =
-              items.current[key].controller.springs;
+            const { shadow, cursor, ...springs } = items.current[
+              key
+            ].controller.springs;
             const { children } = render(
               key,
               group,

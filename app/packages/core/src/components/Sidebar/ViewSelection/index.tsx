@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { filter, map } from "lodash";
 import {
   atom,
@@ -18,6 +18,14 @@ import {
 } from "../../../Root/Root";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 
+const DEFAULT_SELECTED: DatasetViewOption = {
+  id: "1",
+  label: "Unsaved view",
+  color: "#9e9e9e",
+  description: "Unsaved view",
+  slug: "unsaved-view",
+};
+
 export const viewSearchTerm = atom<string>({
   key: "viewSearchTerm",
   default: "",
@@ -26,19 +34,15 @@ export const viewDialogOpen = atom<boolean>({
   key: "viewDialogOpen",
   default: false,
 });
+export const selectedSavedViewState = atom<DatasetViewOption | null>({
+  key: "selectedSavedViewState",
+  default: DEFAULT_SELECTED,
+});
 
 export type DatasetViewOption = Pick<
   fos.State.SavedView,
   "id" | "description" | "color"
 > & { label: string; slug: string };
-
-const DEFAULT_SELECTED: DatasetViewOption = {
-  id: "1",
-  label: "Unsaved view",
-  color: "#9e9e9e",
-  description: "Unsaved view",
-  slug: "unsaved-view",
-};
 
 export interface DatasetView {
   id: string;
@@ -56,13 +60,18 @@ interface Props {
 }
 
 export default function ViewSelection(props: Props) {
-  const { datasetName, queryRef } = props;
+  const [selected, setSelected] = useRecoilState<DatasetViewOption | null>(
+    selectedSavedViewState
+  );
 
+  const { datasetName, queryRef } = props;
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
   const [savedViewParam, setSavedViewParam] = fos.useQueryState("view");
   const setEditView = useSetRecoilState(viewDialogContent);
   const setView = fos.useSetView();
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
+
+  const { savedViews: savedViewsV2 = [] } = fos.useSavedViews();
 
   const fragments = usePreloadedQuery(DatasetSavedViewsQuery, queryRef);
   const [data, refetch] = useRefetchableFragment(
@@ -71,7 +80,8 @@ export default function ViewSelection(props: Props) {
   );
 
   const items =
-    (data as { savedViews: [fos.State.SavedView] })?.savedViews || [];
+    (data as { savedViews: fos.State.SavedView[] })?.savedViews || [];
+  const dataset = useRecoilValue(fos.dataset);
 
   const viewOptions: DatasetViewOption[] = useMemo(
     () => [
@@ -93,7 +103,7 @@ export default function ViewSelection(props: Props) {
       filter(
         viewOptions,
         ({ id, label, description, slug }: DatasetViewOption) =>
-          id === "1" ||
+          id === DEFAULT_SELECTED.id ||
           label.toLowerCase().includes(viewSearch) ||
           description?.toLowerCase().includes(viewSearch) ||
           slug?.toLowerCase().includes(viewSearch)
@@ -103,45 +113,70 @@ export default function ViewSelection(props: Props) {
 
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
   const isEmptyView = !loadedView?.length;
-  const selectedView = viewOptions[0];
-  const [selected, setSelected] = useState<DatasetViewOption | null>(
-    selectedView
-  );
-  const [isExtendingSavedView, setIsExtendingSavedView] =
-    useState<boolean>(false);
 
   useEffect(() => {
-    if (!loadedView?.length && selected?.id !== DEFAULT_SELECTED.id) {
-      setSelected(null);
-    } else if (savedViewParam) {
+    if (savedViewParam) {
       const potentialView = viewOptions.filter(
         (v) => v.slug === savedViewParam
       )?.[0];
       if (potentialView) {
         setSelected(potentialView);
+        setView(loadedView, [], potentialView.label, true, potentialView.slug);
       } else {
-        setSelected(null);
-      }
-    }
-  }, [viewOptions, savedViewParam, loadedView]);
-
-  useEffect(() => {
-    if (selected) {
-      if (selected.id === DEFAULT_SELECTED.id) {
-        return;
-      } else if (
-        (savedViewParam && selected.id !== DEFAULT_SELECTED.id) ||
-        savedViewParam !== selected.slug
-      ) {
-        setView([], [], selected.label, true, selected.slug);
+        const potentialUpdatedView = savedViewsV2.filter(
+          (v) => v.urlName === savedViewParam
+        )?.[0];
+        if (potentialUpdatedView) {
+          refetch(
+            { name: datasetName },
+            {
+              fetchPolicy: "network-only",
+              onComplete: () => {
+                setSelected({
+                  ...potentialUpdatedView,
+                  label: potentialUpdatedView.name,
+                  slug: potentialUpdatedView.urlName,
+                });
+                setView(
+                  [],
+                  [],
+                  potentialUpdatedView.name,
+                  true,
+                  potentialUpdatedView.urlName
+                );
+              },
+            }
+          );
+        } else {
+          // bad/old view param
+          setSelected(DEFAULT_SELECTED);
+          setView(loadedView, [], "", false, "");
+        }
       }
     } else {
-      if (selected === null && savedViewParam) {
-        setView([], [], "", true, "");
+      // no view param
+      if (selected && selected.slug !== DEFAULT_SELECTED.slug) {
         setSelected(DEFAULT_SELECTED);
+        setView(loadedView, [], "", false, "");
       }
     }
-  }, [selected]);
+  }, [savedViewParam]);
+
+  useEffect(() => {
+    const callback = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.code === "KeyS") {
+        event.preventDefault();
+        if (!isEmptyView) {
+          setIsOpen(true);
+        }
+      }
+    };
+
+    document.addEventListener("keydown", callback);
+    return () => {
+      document.removeEventListener("keydown", callback);
+    };
+  }, [isEmptyView]);
 
   return (
     <Box>
@@ -152,7 +187,7 @@ export default function ViewSelection(props: Props) {
             { name: datasetName },
             {
               fetchPolicy: "network-only",
-              onComplete: () => {
+              onComplete: (data) => {
                 if (savedView && reload) {
                   setSavedViewParam(savedView.slug);
                 }
@@ -161,16 +196,22 @@ export default function ViewSelection(props: Props) {
           );
         }}
         onDeleteSuccess={(name: string) => {
-          refetch({ name: datasetName }, { fetchPolicy: "network-only" });
-          if (selected && name !== selected.label) {
-            setView([], [], "", true, "");
-          }
+          refetch(
+            { name: datasetName },
+            {
+              fetchPolicy: "network-only",
+              onComplete: () => {
+                setSavedViewParam(null);
+              },
+            }
+          );
         }}
       />
       <Selection
         selected={selected}
         setSelected={(item: DatasetViewOption) => {
           setSelected(item);
+          setView([], [], item.label, true, item.slug);
         }}
         items={searchData}
         onEdit={(item) => {

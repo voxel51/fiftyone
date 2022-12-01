@@ -267,6 +267,8 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
             state.selected = []
             state.selected_labels = []
             state.view = None
+            state.saved_view_slug = None
+            state.changing_saved_view = False
 
             await dispatch_event(payload.subscription, StateUpdate(state))
 
