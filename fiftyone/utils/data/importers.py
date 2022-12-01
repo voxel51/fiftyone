@@ -1704,7 +1704,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 dict(
                     _id=doc.id,
                     name=doc.name,
-                    url_name=doc.url_name,
+                    slug=doc.slug,
                     persistent=doc.persistent,
                     created_at=doc.created_at,
                     last_loaded_at=doc.last_loaded_at,

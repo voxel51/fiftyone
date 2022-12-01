@@ -35,38 +35,38 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset("test dataset names!?!")
 
         self.assertEqual(dataset.name, "test dataset names!?!")
-        self.assertEqual(dataset._doc.url_name, "test-dataset-names")
+        self.assertEqual(dataset.slug, "test-dataset-names")
 
         dataset.name = "test-dataset-names"
 
         self.assertEqual(dataset.name, "test-dataset-names")
-        self.assertEqual(dataset._doc.url_name, "test-dataset-names")
+        self.assertEqual(dataset.slug, "test-dataset-names")
 
         # name clashes
         with self.assertRaises(ValueError):
             fo.Dataset("test dataset names!?!")
 
-        # url_name clashes
+        # slug clashes
         with self.assertRaises(ValueError):
             fo.Dataset("test dataset names!?!")
 
         dataset = fo.Dataset()
         name = dataset.name
-        url_name = dataset._doc.url_name
+        slug = dataset.slug
 
         # name clashes
         with self.assertRaises(ValueError):
             dataset.name = "test-dataset-names"
 
         self.assertEqual(dataset.name, name)
-        self.assertEqual(dataset._doc.url_name, url_name)
+        self.assertEqual(dataset.slug, slug)
 
-        # url_name clashes
+        # slug clashes
         with self.assertRaises(ValueError):
             dataset.name = "test dataset names!?!"
 
         self.assertEqual(dataset.name, name)
-        self.assertEqual(dataset._doc.url_name, url_name)
+        self.assertEqual(dataset.slug, slug)
 
     @drop_datasets
     def test_delete_dataset(self):
@@ -2415,7 +2415,7 @@ class DatasetExtrasTests(unittest.TestCase):
         dataset = self.dataset
 
         names = ["my-view1", "my_view2", "My  %&#  View3!"]
-        url_names = ["my-view1", "my-view2", "my-view3"]
+        slugs = ["my-view1", "my-view2", "my-view3"]
 
         for idx, name in enumerate(names, 1):
             dataset.save_view(name, dataset.limit(idx))
@@ -2424,7 +2424,7 @@ class DatasetExtrasTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.save_view("my-view1", dataset.limit(1))
 
-        # Can't use duplicate URL name when saving a view
+        # Can't use duplicate slug when saving a view
         with self.assertRaises(ValueError):
             dataset.save_view("my   view1", dataset.limit(1))
 
@@ -2432,14 +2432,14 @@ class DatasetExtrasTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.update_saved_view_info("my-view1", {"name": "my_view2"})
 
-        # Can't rename a view to an existing URL name
+        # Can't rename a view to an existing slug
         with self.assertRaises(ValueError):
             dataset.update_saved_view_info("my-view1", {"name": "my_view2!"})
 
         view_docs = dataset._saved_views()
 
         self.assertListEqual([v.name for v in view_docs], names)
-        self.assertListEqual([v.url_name for v in view_docs], url_names)
+        self.assertListEqual([v.slug for v in view_docs], slugs)
 
         dataset.delete_saved_view("my_view2")
 

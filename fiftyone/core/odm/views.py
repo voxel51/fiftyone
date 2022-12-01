@@ -26,7 +26,7 @@ class SavedViewDocument(Document):
 
     dataset_id = ObjectIdField(db_field="_dataset_id")
     name = StringField()
-    url_name = StringField()
+    slug = StringField()
     description = StringField()
     color = ColorField()
     view_stages = ListField(StringField())

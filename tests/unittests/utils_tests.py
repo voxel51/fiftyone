@@ -41,25 +41,25 @@ class CoreUtilsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             fou.validate_hex_color("#FFFF")
 
-    def test_to_url_name(self):
-        self.assertEqual(fou.to_url_name("coco_2017"), "coco-2017")
-        self.assertEqual(fou.to_url_name("c+o+c+o 2-0-1-7"), "c-o-c-o-2-0-1-7")
-        self.assertEqual(fou.to_url_name("cat.DOG"), "cat-dog")
-        self.assertEqual(fou.to_url_name("---z----"), "z")
+    def test_to_slug(self):
+        self.assertEqual(fou.to_slug("coco_2017"), "coco-2017")
+        self.assertEqual(fou.to_slug("c+o+c+o 2-0-1-7"), "c-o-c-o-2-0-1-7")
+        self.assertEqual(fou.to_slug("cat.DOG"), "cat-dog")
+        self.assertEqual(fou.to_slug("---z----"), "z")
         self.assertEqual(
-            fou.to_url_name("Brian's #$&@ [awesome?] dataset!"),
+            fou.to_slug("Brian's #$&@ [awesome?] dataset!"),
             "brians-awesome-dataset",
         )
         self.assertEqual(
-            fou.to_url_name("     sPaM     aNd  EgGs    "),
+            fou.to_slug("     sPaM     aNd  EgGs    "),
             "spam-and-eggs",
         )
 
         with self.assertRaises(ValueError):
-            fou.to_url_name("------")  # too short
+            fou.to_slug("------")  # too short
 
         with self.assertRaises(ValueError):
-            fou.to_url_name("a" * 101)  # too long
+            fou.to_slug("a" * 101)  # too long
 
 
 class LabelsTests(unittest.TestCase):

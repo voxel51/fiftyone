@@ -88,14 +88,14 @@ def _validate_dataset_name(name, skip=None):
         skip (None): an optional :class:`Dataset` to ignore
 
     Returns:
-        the URL name
+        the slug
 
     Raises:
         ValueError: if the name is not available
     """
-    url_name = fou.to_url_name(name)
+    slug = fou.to_slug(name)
 
-    query = {"$or": [{"name": name}, {"url_name": url_name}]}
+    query = {"$or": [{"name": name}, {"slug": slug}]}
     if skip is not None:
         query = {"$and": [query, {"_id": {"$ne": skip._doc.id}}]}
 
@@ -103,7 +103,7 @@ def _validate_dataset_name(name, skip=None):
     if bool(list(conn.datasets.find(query, {"_id": 1}).limit(1))):
         raise ValueError("Dataset name '%s' is not available" % name)
 
-    return url_name
+    return slug
 
 
 def load_dataset(name):
@@ -603,15 +603,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if name == _name:
             return
 
-        url_name = _validate_dataset_name(name, skip=self)
+        slug = _validate_dataset_name(name, skip=self)
 
         self._doc.name = name
-        self._doc.url_name = url_name
+        self._doc.slug = slug
         self._doc.save(safe=True)
 
         # Update singleton
         self._instances.pop(_name, None)
         self._instances[name] = self
+
+    @property
+    def slug(self):
+        """The slug of the dataset."""
+        return self._doc.slug
 
     @property
     def created_at(self):
@@ -3126,14 +3131,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError("Cannot save view into a different dataset")
 
         view._set_name(name)
-        url_name = self._validate_saved_view_name(name, overwrite=overwrite)
+        slug = self._validate_saved_view_name(name, overwrite=overwrite)
 
         now = datetime.utcnow()
 
         view_doc = foo.SavedViewDocument(
             dataset_id=self._doc.id,
             name=name,
-            url_name=url_name,
+            slug=slug,
             description=description,
             color=color,
             view_stages=[
@@ -3195,10 +3200,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for key, value in info.items():
             if value != view_doc[key]:
                 if key == "name":
-                    url_name = self._validate_saved_view_name(
-                        value, skip=view_doc
-                    )
-                    view_doc.url_name = url_name
+                    slug = self._validate_saved_view_name(value, skip=view_doc)
+                    view_doc.slug = slug
 
                 view_doc[key] = value
                 edited = True
@@ -3278,13 +3281,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.saved_views
 
     def _validate_saved_view_name(self, name, skip=None, overwrite=False):
-        url_name = fou.to_url_name(name)
+        slug = fou.to_slug(name)
 
         for view_doc in self._doc.saved_views:
             if view_doc is skip:
                 continue
 
-            if name == view_doc.name or url_name == view_doc.url_name:
+            if name == view_doc.name or slug == view_doc.slug:
                 dup_name = view_doc.name
 
                 if not overwrite:
@@ -3294,7 +3297,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 self.delete_saved_view(dup_name)
 
-        return url_name
+        return slug
 
     def clone(self, name=None, persistent=False):
         """Creates a copy of the dataset.
@@ -6155,7 +6158,7 @@ def _create_dataset(
     _clips=False,
     _src_collection=None,
 ):
-    url_name = _validate_dataset_name(name)
+    slug = _validate_dataset_name(name)
 
     _id = ObjectId()
 
@@ -6187,7 +6190,7 @@ def _create_dataset(
     dataset_doc = foo.DatasetDocument(
         id=_id,
         name=name,
-        url_name=url_name,
+        slug=slug,
         version=focn.VERSION,
         created_at=datetime.utcnow(),
         media_type=None,  # will be inferred when first sample is added
@@ -6372,7 +6375,7 @@ def _delete_dataset_doc(dataset_doc):
 
 
 def _clone_dataset_or_view(dataset_or_view, name, persistent):
-    url_name = _validate_dataset_name(name)
+    slug = _validate_dataset_name(name)
 
     contains_videos = dataset_or_view._contains_videos(any_slice=True)
 
@@ -6398,7 +6401,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     dataset_doc.id = _id
     dataset_doc.name = name
-    dataset_doc.url_name = url_name
+    dataset_doc.slug = slug
     dataset_doc.created_at = datetime.utcnow()
     dataset_doc.last_loaded_at = None
     dataset_doc.persistent = persistent
