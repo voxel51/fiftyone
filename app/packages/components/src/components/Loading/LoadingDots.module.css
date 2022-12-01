@@ -1,28 +1,28 @@
-.loading span {
-  width: 4px;
-  height: 4px;
-  margin: 0 0.5px;
-  border-radius: 50%;
-  display: inline-block;
-  animation-name: dots;
-  animation-duration: 1.4s;
-  animation-iteration-count: infinite;
-  animation-timing-function: ease-in-out;
-  background-color: #fff;
+.loading {
+  margin-right: 5px;
 }
 
-.loading span:nth-child(2) {
-  animation-delay: 0.3s;
-  background-color: #fff;
-}
-
-.loading span:nth-child(3) {
-  animation-delay: 0.6s;
-  background-color: #fff;
+.loading:after {
+  content: " .";
+  margin-right: 5px;
+  animation: dots 1s steps(5, end) infinite;
 }
 
 @keyframes dots {
-  50% {
-    opacity: 0;
+  0%,
+  20% {
+    color: rgba(0, 0, 0, 0);
+    text-shadow: 0.25em 0 0 rgba(0, 0, 0, 0), 0.5em 0 0 rgba(0, 0, 0, 0);
+  }
+  40% {
+    color: white;
+    text-shadow: 0.25em 0 0 rgba(0, 0, 0, 0), 0.5em 0 0 rgba(0, 0, 0, 0);
+  }
+  60% {
+    text-shadow: 0.25em 0 0 white, 0.5em 0 0 rgba(0, 0, 0, 0);
+  }
+  80%,
+  100% {
+    text-shadow: 0.25em 0 0 white, 0.5em 0 0 white;
   }
 }
