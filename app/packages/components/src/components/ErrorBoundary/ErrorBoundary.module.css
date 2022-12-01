@@ -33,27 +33,39 @@
   cursor: pointer;
 }
 
-.message {
+.content {
   font-weight: bold;
   text-align: center;
-}
-
-.stack {
   border: 1px solid var(--joy-palette-divider);
-  border-top: 2px solid var(--joy-palette-primary-plainColor);
-  background: var(--joy-palette-background-level3);
   border-radius: 2px;
-  color: var(--joy-palette-text-primary);
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem 0 0.5rem;
   text-align: left;
   font-weight: normal;
   font-size: 1rem;
+  background: var(--joy-palette-background-level3);
+}
 
+.contentHeading {
+  padding: 0.25rem 0;
+  display: flex;
+  justify-content: space-between;
+  text-overflow: ellipsis;
+}
+
+.contentHeading > div {
+  display: flex;
+  justify-content: right;
+}
+
+.contentBody {
+  border-top: 1px solid var(--joy-palette-primary-plainColor);
+  color: var(--joy-palette-text-primary);
+  padding-top: 0.25rem;
   overflow: auto;
   white-space: nowrap;
 }
 
-.stack > div {
+.contentBody > div {
   white-space: nowrap;
 }

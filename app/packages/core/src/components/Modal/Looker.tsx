@@ -73,6 +73,7 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   const theme = useTheme();
   const initialRef = useRef<boolean>(true);
   const lookerOptions = fos.useLookerOptions(true);
+  const [reset, setReset] = useState(false);
   const createLooker = fos.useCreateLooker(true, false, {
     ...lookerOptions,
     hasNext: Boolean(onNext),
@@ -80,7 +81,7 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   });
   const looker = React.useMemo(
     () => createLooker.current(sampleData),
-    [useRecoilValue(fos.selectedMediaField(true)), createLooker]
+    [useRecoilValue(fos.selectedMediaField(true)), reset, createLooker]
   );
 
   useEffect(() => {
@@ -102,6 +103,9 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   useEventHandler(looker, "options", (e) => updateLookerOptions(e.detail));
   useEventHandler(looker, "fullscreen", useFullscreen());
   useEventHandler(looker, "showOverlays", useShowOverlays());
+  useEventHandler(looker, "reset", () => {
+    setReset((c) => !c);
+  });
 
   useEventHandler(looker, "close", () => {
     jsonPanel.close();
