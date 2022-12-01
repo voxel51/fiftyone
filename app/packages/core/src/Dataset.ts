@@ -93,8 +93,9 @@ export const DatasetNodeQuery = graphql`
       version
       viewCls
       appConfig {
-        mediaFields
         gridMediaField
+        mediaFields
+        modalMediaField
         plugins
         sidebarGroups {
           name

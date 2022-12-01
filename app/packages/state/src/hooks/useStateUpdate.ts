@@ -12,10 +12,7 @@ import {
   dataset as datasetAtom,
   resolveGroups,
   filters,
-  colorPool as colorPoolAtom,
   selectedLabels,
-  appConfig,
-  colorscale as colorscaleAtom,
   selectedSamples,
   patching,
   similaritySorting,
@@ -26,7 +23,6 @@ import {
   selectedMediaField,
   sidebarMode,
   groupStatistics,
-  theme,
 } from "../recoil";
 import { useColorScheme } from "@mui/material";
 
