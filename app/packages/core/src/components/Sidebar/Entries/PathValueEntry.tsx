@@ -92,7 +92,7 @@ const ScalarValueEntry = ({
       trigger={trigger}
     >
       <ScalarDiv>
-        <Suspense fallback={<LoadingDots text="Loading" />}>
+        <Suspense fallback={<LoadingDots text="" />}>
           <Loadable path={path} />
         </Suspense>
         <FieldLabelAndInfo

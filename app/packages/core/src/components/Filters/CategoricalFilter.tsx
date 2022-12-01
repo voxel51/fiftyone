@@ -397,7 +397,7 @@ const CategoricalFilter = <T extends V = V>({
       <CategoricalFilterContainer
         onMouseDown={(event) => event.stopPropagation()}
       >
-        {results === null && <LoadingDots text="Loading" />}
+        {results === null && <LoadingDots text="" />}
         {results !== null && results.length > CHECKBOX_LIMIT && !skeleton && (
           <Selector
             useSearch={useSearch}

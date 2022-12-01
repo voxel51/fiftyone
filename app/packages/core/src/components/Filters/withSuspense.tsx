@@ -30,7 +30,7 @@ export const LoadingContainer = ({ path }: { path?: string; text: string }) => {
     <Container>
       {path && <Header>{path.split(".").slice(-1)[0]}</Header>}
       <Body>
-        <LoadingDots text={"Loading"} />
+        <LoadingDots text={""} />
       </Body>
     </Container>
   );

@@ -152,7 +152,7 @@ const Section = ({
     <>
       <TaggingContainerInput>
         {isLoading ? (
-          <LoadingDots text="Loading" />
+          <LoadingDots text="" />
         ) : (
           <TaggingInput
             placeholder={
@@ -446,7 +446,7 @@ const usePlaceHolder = (
 const SuspenseLoading = () => {
   return (
     <TaggingContainerInput>
-      <LoadingDots text="Loading" />
+      <LoadingDots text="" />
     </TaggingContainerInput>
   );
 };
