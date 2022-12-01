@@ -146,13 +146,11 @@ export default class Flashlight<K> {
     return Boolean(this.element.parentElement);
   }
   private showPixels() {
-    !this.pixelsSet && this.container.classList.add(flashlightPixels);
-    this.pixelsSet = true;
+    this.container.classList.add(flashlightPixels);
   }
 
   private hidePixels() {
-    this.pixelsSet && this.container.classList.remove(flashlightPixels);
-    this.pixelsSet = false;
+    this.container.classList.remove(flashlightPixels);
   }
 
   attach(element: HTMLElement | string): void {
