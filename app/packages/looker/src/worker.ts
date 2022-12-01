@@ -255,25 +255,36 @@ const createReader = ({
           return Promise.resolve();
         }
 
+        const call = (): Promise<FrameChunk> =>
+          getFetchFunction()(
+            "POST",
+            "/frames",
+            {
+              frameNumber: frameNumber,
+              numFrames: chunkSize,
+              frameCount: frameCount,
+              sampleId,
+              dataset,
+              view,
+            },
+            "json",
+            2
+          );
+
         return await (async () => {
           try {
-            const { frames, range }: FrameChunk = await getFetchFunction()(
-              "POST",
-              "/frames",
-              {
-                frameNumber: frameNumber,
-                numFrames: chunkSize,
-                frameCount: frameCount,
-                sampleId,
-                dataset,
-                view,
-              }
-            );
+            const { frames, range } = await call();
 
             controller.enqueue({ frames, range, coloring });
             frameNumber = range[1] + 1;
           } catch (error) {
-            postMessage({ error });
+            postMessage({
+              error: {
+                cls: error.constructor.name,
+                data: error.data,
+                message: error.message,
+              },
+            });
           }
         })();
       },
