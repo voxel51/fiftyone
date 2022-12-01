@@ -2858,6 +2858,7 @@ __metadata:
   resolution: "@fiftyone/utilities@workspace:packages/utilities"
   dependencies:
     "@microsoft/fetch-event-source": ^2.0.1
+    fetch-retry: ^5.0.3
     lodash: ^4.17.21
     mime: ^2.5.2
     prettier: ^2.7.1
@@ -7403,6 +7404,13 @@ __metadata:
   dependencies:
     pend: ~1.2.0
   checksum: c8585fd5713f4476eb8261150900d2cb7f6ff2d87f8feb306ccc8a1122efd152f1783bdb2b8dc891395744583436bfd8081d8e63ece0ec8687eeefea394d4ff2
+  languageName: node
+  linkType: hard
+
+"fetch-retry@npm:^5.0.3":
+  version: 5.0.3
+  resolution: "fetch-retry@npm:5.0.3"
+  checksum: b4eebc04bd41651417e89ae9287e5b9e5421970ce07058c6e1e22f7d9c1cd5f935fc39a328fd66b433247c0ae1bb8a6b2d48c073d5a9f911992f72c5d311b14d
   languageName: node
   linkType: hard
 
