@@ -90,6 +90,7 @@ export default graphql`
         appConfig {
           gridMediaField
           mediaFields
+          modalMediaField
           plugins
           sidebarGroups {
             expanded
