@@ -25,6 +25,7 @@
         "recoil-relay": "*"
     },
     "devDependencies": {
+        "@testing-library/react-hooks": "latest",
         "@vitest/ui": "^0.25.2",
         "babel-plugin-relay": "^14.1.0",
         "prettier": "^2.7.1",

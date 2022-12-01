@@ -12,7 +12,7 @@ export function setMockAtoms(newMockValues: { [key: string]: any }) {
   mockDefaults = { ...mockDefaults, ...newMockValues };
 }
 
-const getValue = (atom) => {
+export const getValue = (atom) => {
   if (mockValuesStore[atom.key]) {
     const str = JSON.stringify(atom.params);
     if (mockValuesStore[atom.key].hasOwnProperty(str)) {
@@ -21,7 +21,6 @@ const getValue = (atom) => {
   }
 
   if (atom.params !== undefined) {
-    console.log(atom.key);
     return mockValues[atom.key](atom.params);
   }
   return mockValues[atom.key];
@@ -31,7 +30,7 @@ const resetValue = (atom) => {
   if (atom.params && mockValuesStore[atom.key]) {
     delete mockValuesStore[atom.key][JSON.stringify(atom.params)];
   } else {
-    delete mockValues[atom.key];
+    mockValues[atom.key] = mockDefaults[atom.key];
   }
 };
 
@@ -58,8 +57,8 @@ export function atomFamily<T, P extends recoil.SerializableParam>(
 }
 
 export function selector<T extends unknown>(
-  options: Parameters<typeof recoil.selector<T>>[0]
-): { (): T; key: string } {
+  options: recoil.ReadWriteSelectorOptions<T>
+): { (): T; key: string; set: (value: T) => void } {
   function resolver() {
     return options.get({
       get: getValue,
@@ -78,6 +77,8 @@ export function selector<T extends unknown>(
     }) as T;
   }
   resolver.key = options.key;
+  resolver.set = (value) =>
+    options.set({ set: setValue, get: getValue, reset: resetValue }, value);
   return resolver;
 }
 
@@ -85,8 +86,8 @@ export function selectorFamily<
   T extends unknown,
   P extends recoil.SerializableParam
 >(
-  options: Parameters<typeof recoil.selectorFamily<T, P>>[0]
-): (params: P) => { (): T; key: string } {
+  options: recoil.ReadWriteSelectorFamilyOptions<T, P>[0]
+): (params: P) => { (): T; key: string; set: (value: T) => void } {
   return (params) => {
     function resolver() {
       return options.get(params)({
@@ -107,6 +108,8 @@ export function selectorFamily<
     }
     resolver.key = options.key;
     resolver.params = params;
+    resolver.set = (value) =>
+      options.set({ set: setValue, get: getValue, reset: resetValue }, value);
     return resolver;
   };
 }
