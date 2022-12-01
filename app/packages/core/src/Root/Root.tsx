@@ -46,7 +46,6 @@ import { DarkMode, LightMode } from "@mui/icons-material";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int, $cursor: String) {
-    ...RootConfig_query
     ...RootDatasets_query
     ...RootGA_query
     ...RootNav_query
@@ -223,42 +222,6 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
 };
 
 const Root: Route<RootQuery> = ({ children, prepared }) => {
-  const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);
-  const data = useFragment(
-    graphql`
-      fragment RootConfig_query on Query {
-        config {
-          colorBy
-          colorPool
-          colorscale
-          gridZoom
-          loopVideos
-          notebookHeight
-          plugins
-          showConfidence
-          showIndex
-          showLabel
-          showSkeletons
-          showTooltip
-          sidebarMode
-          theme
-          timezone
-          useFrameNumber
-        }
-        colorscale
-      }
-    `,
-    query as RootConfig_query$key
-  );
-
-  const update = fos.useStateUpdate();
-  useEffect(() => {
-    update({
-      colorscale: clone(data.colorscale) as RGB[],
-      config: clone(data.config),
-    });
-  }, [data]);
-
   return (
     <>
       <Nav prepared={prepared} />

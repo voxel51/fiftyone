@@ -12,6 +12,7 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noImplicitAny": false,
+    "jsx": "react",
     "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },
   "include": ["./src"]
