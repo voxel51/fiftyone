@@ -38,7 +38,7 @@ export type setViewMutation$data = {
       readonly appConfig: {
         readonly gridMediaField: string | null;
         readonly modalMediaField: string | null;
-        readonly mediaFields: ReadonlyArray<string>;
+        readonly mediaFields: ReadonlyArray<string> | null;
         readonly plugins: object | null;
         readonly sidebarGroups: ReadonlyArray<{
           readonly expanded: boolean | null;
