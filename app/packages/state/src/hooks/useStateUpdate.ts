@@ -49,7 +49,7 @@ const useStateUpdate = () => {
 
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
-      const { dataset, state } =
+      const { config, dataset, state } =
         resolve instanceof Function ? resolve(t) : resolve;
 
       const { get, reset, set } = t;
@@ -78,6 +78,11 @@ const useStateUpdate = () => {
             ])
           )
         );
+
+      if (config && config.theme !== "browser") {
+        set(theme, config.theme);
+        setMode(config.theme);
+      }
 
       if (dataset) {
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
