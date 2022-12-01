@@ -8,6 +8,7 @@ import { BaseElement } from "../base";
 
 import { lookerErrorPage } from "./error.module.css";
 import errorIcon from "../../icons/error.svg";
+import refreshIcon from "../../icons/refresh.svg";
 import { AppError } from "@fiftyone/utilities";
 
 export class ErrorElement<State extends BaseState> extends BaseElement<State> {
@@ -33,6 +34,12 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
       this.errorElement = document.createElement("div");
       this.errorElement.classList.add(lookerErrorPage);
       const errorImg = document.createElement("img");
+      errorImg.addEventListener("mouseenter", () => {
+        errorImg.src = refreshIcon;
+      });
+      errorImg.addEventListener("mouseleave", () => {
+        errorImg.src = errorIcon;
+      });
       errorImg.src = errorIcon;
       errorImg.title = "Click to reload";
       errorImg.style.cursor = "pointer";
