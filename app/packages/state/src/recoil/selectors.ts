@@ -53,7 +53,7 @@ export const isVideoDataset = selector({
 export const timeZone = selector<string>({
   key: "timeZone",
   get: ({ get }) => {
-    return get(atoms.appConfig)?.timezone || "UTC";
+    return get(config)?.timezone || "UTC";
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -346,7 +346,9 @@ export const extendedStages = selector({
 export const mediaFields = selector<string[]>({
   key: "string",
   get: ({ get }) => {
-    const selectedFields = Object.keys(get(fieldSchema({})));
+    const selectedFields = Object.keys(
+      get(fieldSchema({ space: State.SPACE.SAMPLE }))
+    );
     return (get(atoms.dataset)?.appConfig?.mediaFields || []).filter((field) =>
       selectedFields.includes(field)
     );
