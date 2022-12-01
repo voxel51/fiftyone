@@ -21,6 +21,7 @@ export const DatasetNodeQuery = graphql`
       }
       appConfig {
         gridMediaField
+        modalMediaField
         mediaFields
         plugins
         sidebarGroups {
@@ -95,6 +96,7 @@ export const DatasetNodeQuery = graphql`
       appConfig {
         mediaFields
         gridMediaField
+        modalMediaField
         plugins
         sidebarGroups {
           name

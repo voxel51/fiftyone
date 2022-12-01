@@ -89,6 +89,7 @@ export default graphql`
         }
         appConfig {
           gridMediaField
+          modalMediaField
           mediaFields
           plugins
           sidebarGroups {
