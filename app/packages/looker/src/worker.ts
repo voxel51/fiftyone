@@ -2,17 +2,22 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
+import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import {
   get32BitColor,
   getFetchFunction,
+  HEATMAP,
   LABEL_LIST,
+  SEGMENTATION,
   setFetchFunction,
   Stage,
   VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
+import { decode as decodePng } from "fast-png";
 import { CHUNK_SIZE } from "./constants";
-import { ARRAY_TYPES, deserialize } from "./numpy";
+import { ARRAY_TYPES, deserialize, NumpyResult } from "./numpy";
 import { Coloring, FrameChunk } from "./state";
+import { getArrayBufferFromUrl } from "./util";
 
 interface ResolveColor {
   key: string | number;
@@ -128,7 +133,61 @@ const mapId = (obj) => {
 
 const LABELS = new Set(VALID_LABEL_TYPES);
 
-const processLabels = (
+/**
+ * Some label types (example: segmentation, heatmap) can have their overlay data stored on-disk,
+ * we want to impute the relevant mask property of these labels from what's stored in the disk
+ */
+const imputeOverlayFromPath = async (
+  label: Record<string, any>,
+  buffers: ArrayBuffer[]
+) => {
+  // only support loading overlay data for segmentation and heatmap for now
+  if (!label || (label._cls !== SEGMENTATION && label._cls !== HEATMAP)) {
+    return;
+  }
+
+  // overlay path is in `map_path` property for heatmap, or else, it's in `mask_path` property
+  const overlayPathField = label._cls === HEATMAP ? "map_path" : "mask_path";
+  const overlayField = overlayPathField === "map_path" ? "map" : "mask";
+
+  // make sure the relevant fields are present
+  if (
+    (label._cls === SEGMENTATION &&
+      (Object.hasOwn(label, "mask") || !Object.hasOwn(label, "mask_path"))) ||
+    (label._cls === HEATMAP &&
+      (Object.hasOwn(label, "map") || !Object.hasOwn(label, "map_path")))
+  ) {
+    return;
+  }
+
+  // convert absolute file path to a URL that we can "fetch" from
+  const overlayPngImageUrl = getSampleSrc(label[overlayPathField] as string);
+
+  const pngArrayBuffer = await getArrayBufferFromUrl(overlayPngImageUrl);
+  const overlayData = decodePng(pngArrayBuffer);
+
+  const width = overlayData.width;
+  const height = overlayData.height;
+
+  // frame what we have as a specialized type `NumpyResult` that's used in downstream while processing overlays
+  const data: NumpyResult = {
+    shape: [height, width],
+    buffer: overlayData.data.buffer,
+    arrayType: overlayData.data.constructor.name as NumpyResult["arrayType"],
+  };
+
+  // set the `mask` property for this label
+  label[overlayField] = {
+    data,
+    image: new ArrayBuffer(width * height * 4),
+  };
+
+  // transfer buffers
+  buffers.push(data.buffer);
+  buffers.push(label[overlayField].image);
+};
+
+const processLabels = async (
   sample: { [key: string]: any },
   coloring: Coloring,
   prefix: string = ""
@@ -143,6 +202,7 @@ const processLabels = (
     }
 
     if (label._cls in DESERIALIZE) {
+      await imputeOverlayFromPath(label, buffers);
       DESERIALIZE[label._cls](label, buffers);
     }
 
