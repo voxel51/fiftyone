@@ -16,7 +16,7 @@ import {
   Optional,
 } from "./state";
 
-import { getFetchFunction, getFetchParameters } from "@fiftyone/utilities";
+import { getFetchParameters } from "@fiftyone/utilities";
 import LookerWorker from "./worker.ts?worker&inline";
 
 /**
@@ -519,8 +519,3 @@ export const getMimeType = (sample: any) => {
 
 export const isFloatArray = (arr) =>
   arr instanceof Float32Array || arr instanceof Float64Array;
-
-export const getArrayBufferFromUrl = async (url: string) => {
-  const data = await getFetchFunction()("GET", url, null, "arrayBuffer");
-  return data as ArrayBuffer;
-};

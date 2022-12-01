@@ -17,7 +17,6 @@ import { decode as decodePng } from "fast-png";
 import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize, NumpyResult } from "./numpy";
 import { Coloring, FrameChunk } from "./state";
-import { getArrayBufferFromUrl } from "./util";
 
 interface ResolveColor {
   key: string | number;
@@ -163,7 +162,12 @@ const imputeOverlayFromPath = async (
   // convert absolute file path to a URL that we can "fetch" from
   const overlayPngImageUrl = getSampleSrc(label[overlayPathField] as string);
 
-  const pngArrayBuffer = await getArrayBufferFromUrl(overlayPngImageUrl);
+  const pngArrayBuffer: ArrayBuffer = await getFetchFunction()(
+    "GET",
+    overlayPngImageUrl,
+    null,
+    "arrayBuffer"
+  );
   const overlayData = decodePng(pngArrayBuffer);
 
   const width = overlayData.width;
