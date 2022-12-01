@@ -17,9 +17,12 @@ import {
 } from "./state";
 
 import {
-  AppError, getFetchFunction, getFetchParameters,
+  AppError,
+  getFetchFunction,
+  getFetchParameters,
   GraphQLError,
-  NetworkError, ServerError
+  NetworkError,
+  ServerError
 } from "@fiftyone/utilities";
 import LookerWorker from "./worker.ts?worker&inline";
 
@@ -542,5 +545,5 @@ export const isFloatArray = (arr) =>
 
 export const getArrayBufferFromUrl = async (url: string) => {
   const data = await getFetchFunction()("GET", url, null, "arrayBuffer");
-  return data;
+  return data as ArrayBuffer;
 };
