@@ -11,5 +11,6 @@ export const ItemAction = animated(styled.div`
   align-content: center;
   flex-direction: column;
   text-decoration: none;
+  white-space: no-wrap;
   color: ${({ theme }) => theme.text.secondary};
 `);

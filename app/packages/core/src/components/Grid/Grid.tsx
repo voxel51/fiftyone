@@ -22,10 +22,13 @@ const Grid: React.FC<{}> = () => {
   const expandSample = useExpandSample(store);
   const initialized = useRef(false);
   const deferred = deferrer(initialized);
+
   const lookerOptions = fos.useLookerOptions(false);
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
+
   const selected = useRecoilValue(fos.selectedSamples);
   const [next, pager] = usePage(false, store);
+
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
 
