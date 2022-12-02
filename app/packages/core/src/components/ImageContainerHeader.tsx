@@ -118,7 +118,7 @@ const ImageContainerHeader = () => {
         <Suspense
           fallback={
             <RightDiv>
-              <LoadingDots text="" />
+              <LoadingDots text="Loading" />
             </RightDiv>
           }
         >

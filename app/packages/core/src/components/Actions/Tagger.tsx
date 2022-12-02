@@ -452,7 +452,7 @@ const useSamplePlaceHolder = (
 const SuspenseLoading = () => {
   return (
     <TaggingContainerInput>
-      <LoadingDots text="" />
+      <LoadingDots text="Loading" />
     </TaggingContainerInput>
   );
 };

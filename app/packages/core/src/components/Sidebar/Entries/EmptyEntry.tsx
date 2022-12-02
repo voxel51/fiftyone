@@ -22,7 +22,7 @@ const EmptyEntry = ({
       heading={
         <NameAndCountContainer>
           <span style={{ color: theme.text.tertiary }}>
-            {loading ? <LoadingDots text="" /> : text}
+            {loading ? <LoadingDots text={text} /> : text}
           </span>
         </NameAndCountContainer>
       }

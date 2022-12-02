@@ -205,7 +205,7 @@ const Selector = <T extends unknown>({
                 minWidth: triggerBounds?.width,
               }}
             >
-              <Suspense fallback={<LoadingDots text="" />}>
+              <Suspense fallback={<LoadingDots text="Loading" />}>
                 <SelectorResults
                   active={active}
                   search={search}
