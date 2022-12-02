@@ -44,7 +44,7 @@ export interface DatasetView {
   id: string;
   name: string;
   datasetId: string;
-  urlName: string;
+  slug: string;
   color: string | null;
   description: string | null;
   viewStages: readonly string[];
@@ -76,12 +76,12 @@ export default function ViewSelection(props: Props) {
   const viewOptions: DatasetViewOption[] = useMemo(
     () => [
       DEFAULT_SELECTED,
-      ...map(items, ({ name, color, description, urlName, viewStages }) => ({
-        id: urlName,
+      ...map(items, ({ name, color, description, slug, viewStages }) => ({
+        id: slug,
         label: name,
         color,
         description,
-        slug: urlName,
+        slug: slug,
         viewStages,
       })),
     ],
@@ -154,7 +154,7 @@ export default function ViewSelection(props: Props) {
               fetchPolicy: "network-only",
               onComplete: () => {
                 if (savedView && reload) {
-                  setSavedViewParam(savedView.urlName);
+                  setSavedViewParam(savedView.slug);
                 }
               },
             }

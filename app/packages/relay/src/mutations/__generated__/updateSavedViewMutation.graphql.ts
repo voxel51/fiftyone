@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<479db881da8c610020ea77c9921def9c>>
+ * @generated SignedSource<<0b8055f5b095ed530d5bd17b2efa5ba0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -29,7 +29,7 @@ export type updateSavedViewMutation$data = {
     readonly lastLoadedAt: any | null;
     readonly lastModifiedAt: any | null;
     readonly name: string | null;
-    readonly urlName: string | null;
+    readonly slug: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
   } | null;
 };
@@ -107,7 +107,7 @@ v4 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "urlName",
+        "name": "slug",
         "storageKey": null
       },
       {
@@ -184,16 +184,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "ad2d7096302b27f93587349155aba277",
+    "cacheID": "8f533425729a2f1cd8d3a9c9362f9462",
     "id": null,
     "metadata": {},
     "name": "updateSavedViewMutation",
     "operationKind": "mutation",
-    "text": "mutation updateSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $updatedInfo: SavedViewInfo!\n) {\n  updateSavedView(subscription: $subscription, session: $session, viewName: $viewName, updatedInfo: $updatedInfo) {\n    id\n    name\n    urlName\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
+    "text": "mutation updateSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $updatedInfo: SavedViewInfo!\n) {\n  updateSavedView(subscription: $subscription, session: $session, viewName: $viewName, updatedInfo: $updatedInfo) {\n    id\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "bb1eca18548c272a33cc58d31d27f629";
+(node as any).hash = "89efd3a3aa91747032eb6ac84c79749b";
 
 export default node;

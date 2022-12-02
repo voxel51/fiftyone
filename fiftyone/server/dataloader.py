@@ -85,7 +85,7 @@ def get_dataloader_resolver(
 #                                 "name": True,
 #                                 "color": True,
 #                                 "description": True,
-#                                 "url_name": True,
+#                                 "slug": True,
 #                                 "last_loaded_at": True,
 #                                 "created_at": True,
 #                                 "last_modified_at": True,

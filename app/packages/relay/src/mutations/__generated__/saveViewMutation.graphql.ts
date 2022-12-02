@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a81b40713d6115e0a370dca13c2469cd>>
+ * @generated SignedSource<<4965a45812d46f80e11a8376bc00997b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,7 +22,7 @@ export type saveViewMutation$data = {
     readonly datasetId: string | null;
     readonly description: string | null;
     readonly name: string | null;
-    readonly urlName: string | null;
+    readonly slug: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
   } | null;
 };
@@ -102,7 +102,7 @@ v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "urlName",
+  "name": "slug",
   "storageKey": null
 },
 v9 = {
@@ -199,16 +199,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "98ce1dde21755c454028108eb5dd11bd",
+    "cacheID": "7b4faaacf9a6859891e6f14a69989951",
     "id": null,
     "metadata": {},
     "name": "saveViewMutation",
     "operationKind": "mutation",
-    "text": "mutation saveViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $description: String = null\n  $color: String = null\n) {\n  saveView(subscription: $subscription, session: $session, viewName: $viewName, description: $description, color: $color) {\n    datasetId\n    name\n    urlName\n    description\n    color\n    viewStages\n    id\n  }\n}\n"
+    "text": "mutation saveViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $description: String = null\n  $color: String = null\n) {\n  saveView(subscription: $subscription, session: $session, viewName: $viewName, description: $description, color: $color) {\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "281ed6ef9395b713a1fb1914bc1fead4";
+(node as any).hash = "de731cf23774b58fafe7c887057ac036";
 
 export default node;

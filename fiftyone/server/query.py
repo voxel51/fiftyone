@@ -113,7 +113,7 @@ class SavedView:
     id: t.Optional[gql.ID]
     dataset_id: t.Optional[str]
     name: t.Optional[str]
-    url_name: t.Optional[str]
+    slug: t.Optional[str]
     description: t.Optional[str]
     color: t.Optional[str]
     view_stages: t.Optional[t.List[str]]
@@ -147,7 +147,7 @@ async def load_saved_views(object_ids):
                         "name": True,
                         "color": True,
                         "description": True,
-                        "url_name": True,
+                        "slug": True,
                         "last_loaded_at": True,
                         "created_at": True,
                         "last_modified_at": True,

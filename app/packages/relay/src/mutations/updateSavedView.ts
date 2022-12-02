@@ -15,7 +15,7 @@ export default graphql`
     ) {
       id
       name
-      urlName
+      slug
       description
       color
       viewStages

@@ -136,7 +136,6 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
-  getSavedView(viewName: String): SavedView
 }
 
 type DatasetAppConfig {
@@ -372,7 +371,6 @@ type Query {
   teamsSubmission: Boolean!
   uid: String!
   version: String!
-  savedView(datasetName: String!, viewName: String): SavedView
   savedViews(datasetName: String!): [SavedView!]
 }
 
@@ -442,7 +440,7 @@ type SavedView {
   id: ID
   datasetId: String
   name: String
-  urlName: String
+  slug: String
   description: String
   color: String
   viewStages: [String!]

@@ -88,7 +88,7 @@ const DatasetNodeQuery = graphql`
       #        id
       #        datasetId
       #        name
-      #        urlName
+      #        slug
       #        description
       #        color
       #        viewStages
