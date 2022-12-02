@@ -45,6 +45,8 @@ export const DatasetNodeQuery = graphql`
         embeddedDocType
         path
         dbField
+        description
+        info
       }
       maskTargets {
         name
