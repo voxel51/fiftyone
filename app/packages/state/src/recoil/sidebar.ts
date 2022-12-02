@@ -249,6 +249,7 @@ export const resolveGroups = (
   const labels = dataset.sampleFields
     .reduce(fieldsReducer([], LABELS), [])
     .filter((path) => !present.has(path));
+
   const frameLabels = dataset.frameFields
     .reduce(fieldsReducer([], LABELS), [])
     .map((path) => `frames.${path}`)

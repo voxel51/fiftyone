@@ -89,6 +89,7 @@ const useStateUpdate = () => {
 
         const currentSidebar = get(sidebarGroupsDefinition(false));
         let groups = resolveGroups(dataset, currentSidebar);
+
         if (
           !previousDataset ||
           previousDataset.id !== dataset.id ||
