@@ -25,7 +25,8 @@ ________________________________________________________________________
 
 	Single-Node deployments are not highly available.  If high-availability is critical to your FiftyOne Teams installation, using a MongoDB Atlas Dedicated Cluster deployment is recommended.
 
-**Install Docker and snapd**
+Install Docker and snapd
+-------------------------
 
 You will need:
 
@@ -69,7 +70,8 @@ If you are attempting an install on a non Debian-based system, please refer to t
 	sudo snap install core
 	sudo snap refresh core
 
-**Build the FiftyOne Teams image**
+Build the FiftyOne Teams image
+--------------------------------
 
 You will need:
 
@@ -97,13 +99,14 @@ On fiftyone-appnode, in the directory with the Dockerfile, build the FiftyOne Te
 	sudo docker build --build-arg TOKEN=${TOKEN} \
 		-t voxel51/fiftyone-teams-app .
 
-**Set your MongoDB Connection String Parameters**
+Set your MongoDB Connection String Parameters
+------------------------------------------------
 
 You will need:
 
 * The host where the FiftyOne Teams will be deployed (fiftyone-appnode)
 
-Using the information from the **Install MongoDB ADD LINK!!!** section of this document, set the following environment variables on fiftyone-appnode.
+Using the information from the :ref:`Install MongoDB <install-mongo>` section, set the following environment variables on fiftyone-appnode.
 
 .. note::
 
@@ -128,7 +131,8 @@ Combine all of those parameters to create a Mongo Connection String.
 
 The remainder of these instructions assume these environment variables have been set and are available.
 
-**Deploy the FiftyOne Teams container**
+Deploy the FiftyOne Teams container
+-------------------------------------
 
 You will need:
 
@@ -171,8 +175,8 @@ should result in
 	[date] [6] [INFO] Running on http://0.0.0.0:5151 (CTRL + C to quit)
 	Running on http://0.0.0.0:5151 (CTRL + C to quit)
 
-**Deploy SSL Endpoint with Certbot and Let's Encrypt SSL Certificates**
-
+Deploy SSL Endpoint with Certbot and Let's Encrypt SSL Certificates
+--------------------------------------------------------------------
 You will need:
 
 * The host where the FiftyOne Teams container was deployed (fiftyone-appnode)
@@ -246,7 +250,8 @@ _____________________________________
 
 The following provides some guidelines for building and deploying the FiftyOne Teams container.
 
-**Build the FiftyOne Teams image**
+Build the FiftyOne Teams image
+--------------------------------
 
 You will need:
 
@@ -270,7 +275,8 @@ Please review the Dockerfile for other build arguments that can be used to modif
 	If you plan to use this image on a system other than where it was built, you will need to push this image to a container registry which is beyond the scope of this guide.
 
 
-**Deploy the FiftyOne Teams container**
+Deploy the FiftyOne Teams container
+------------------------------------
 
 You will need:
 
@@ -301,7 +307,8 @@ An example of running this container on the host where it was built would be:
 	
 	You will not be able to access the application on port 5151 without first passing through an SSL Endpoint and FiftyOne Teams Authentication.
 
-**Deploy an SSL Endpoint**
+Deploy an SSL Endpoint
+------------------------
 
 FiftyOne Teams requires an SSL endpoint in order to authorize logins.  The IP associated with the DNS record does not need to be exposed to the Internet, but a HTTPS endpoint with connectivity to https://login.fiftyone.ai is required.
 
