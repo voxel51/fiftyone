@@ -430,23 +430,31 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       seeked: ({ update, dispatchEvent }) => {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            update(({ loaded, playing, options: { autoplay } }) => {
-              if (!loaded) {
+            update(
+              ({
+                config: { thumbnail },
+                loaded,
+                playing,
+                options: { autoplay },
+              }) => {
+                // thumbnails are initialized with a poster
+                if (!thumbnail && !loaded) {
+                  return {
+                    loaded: true,
+                    playing: autoplay || playing,
+                    dimensions: [
+                      this.element.videoWidth,
+                      this.element.videoHeight,
+                    ],
+                    waitingForVideo: false,
+                  };
+                }
+
                 return {
-                  loaded: true,
-                  playing: autoplay || playing,
-                  dimensions: [
-                    this.element.videoWidth,
-                    this.element.videoHeight,
-                  ],
                   waitingForVideo: false,
                 };
               }
-
-              return {
-                waitingForVideo: false,
-              };
-            });
+            );
             dispatchEvent("load");
           });
         });
