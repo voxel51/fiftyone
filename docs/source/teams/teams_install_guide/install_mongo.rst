@@ -20,14 +20,14 @@ When you deploy your FiftyOne Teams server or the FiftyOne Teams python clients,
 Deployment considerations
 __________________________
 
-* by default, Mongo will set the wiredTigerCacheSizeGB to a value proportional to the host’s total memory, regardless of memory limits imposed on the container. It is recommended that MongoDB be deployed on a separate host than the FiftyOne Teams installation. If you choose to install MongoDB and FiftyOne Teams on the same host you should limit the WiredTiger cache by following `MongoDB’s WiredTiger Options instructions <https://www.mongodb.com/docs/v4.4/reference/program/mongod/#wiredtiger-options>`_.
-* before deploying your MongoDB infrastructure, please review the Voxel51 FiftyOne Teams Database Cost Analysis document for information regarding sizing estimates.  In summary, for a team of up to 10 users, it is recommended that MongoDB have 64GB+ of RAM and 16+ vCPUs.
-* for performance and administrative ease, it is recommended that the MongoDB database data is stored outside the docker container, `on an XFS filesystem <https://www.mongodb.com/docs/v4.4/administration/production-notes/#kernel-and-file-systems>`_.  These instructions include directions on how to configure an external volume at /opt/mongodb/data. You may wish to attach an additional persistent disk at that location, or otherwise modify these directions to comply with your storage standards.
-* FiftyOne Teams is designed for MongoDB v4.4.  These instructions assume the deployment of **MongoDB v4.4**, but you can modify them to use MongoDB v5 by following `these instructions <https://voxel51.com/docs/fiftyone/user_guide/config.html#using-a-different-mongodb-version>`_ and updating the tag on the docker image pulled in the **Install MongoDB step ADD LINK!!!**.
-* these instructions provision an initial administrative user for MongoDB, but you may consider creating additional administrative users for internal activities like backups and database maintenance.
-* these instructions do not include `backing up <https://www.mongodb.com/docs/v4.4/core/backups/>`_ or `monitoring <https://www.mongodb.com/docs/v4.4/administration/monitoring/>`_ your MongoDB installation. For information regarding these and other administrative tasks, please refer to the `MongoDB Administration <https://www.mongodb.com/docs/v4.4/administration/>`_ documentation.
+* By default, Mongo will set the wiredTigerCacheSizeGB to a value proportional to the host’s total memory, regardless of memory limits imposed on the container. It is recommended that MongoDB be deployed on a separate host than the FiftyOne Teams installation. If you choose to install MongoDB and FiftyOne Teams on the same host you should limit the WiredTiger cache by following `MongoDB’s WiredTiger Options instructions <https://www.mongodb.com/docs/v4.4/reference/program/mongod/#wiredtiger-options>`_.
+* Before deploying your MongoDB infrastructure, please review the Voxel51 FiftyOne Teams Database Cost Analysis document for information regarding sizing estimates.  In summary, for a team of up to 10 users, it is recommended that MongoDB have 64GB+ of RAM and 16+ vCPUs.
+* For performance and administrative ease, it is recommended that the MongoDB database data is stored outside the docker container, `on an XFS filesystem <https://www.mongodb.com/docs/v4.4/administration/production-notes/#kernel-and-file-systems>`_.  These instructions include directions on how to configure an external volume at /opt/mongodb/data. You may wish to attach an additional persistent disk at that location, or otherwise modify these directions to comply with your storage standards.
+* FiftyOne Teams is designed for MongoDB v4.4.  These instructions assume the deployment of **MongoDB v4.4**, but you can modify them to use MongoDB v5 by following :ref:`these instructions <using-a-different-mongodb-version>` and updating the tag on the docker image pulled in the **Install MongoDB step ADD LINK!!!**.
+* These instructions provision an initial administrative user for MongoDB, but you may consider creating additional administrative users for internal activities like backups and database maintenance.
+* These instructions do not include `backing up <https://www.mongodb.com/docs/v4.4/core/backups/>`_ or `monitoring <https://www.mongodb.com/docs/v4.4/administration/monitoring/>`_ your MongoDB installation. For information regarding these and other administrative tasks, please refer to the `MongoDB Administration <https://www.mongodb.com/docs/v4.4/administration/>`_ documentation.
 
-If you have chosen to use an existing MongoDB installation or MongoDB Atlas for your deployment, please collect your MongoDB connection string details and proceed to the **Installing FiftyOne Teams ADD LINK!!!** section of this guide.
+If you have chosen to use an existing MongoDB installation or MongoDB Atlas for your deployment, please collect your MongoDB connection string details and proceed.
 
 .. _single-node-installation:
 
@@ -38,7 +38,8 @@ ______________________________________________
 	
 	Single-Node deployments are not highly available. If high-availability is critical to your FiftyOne Teams installation, using a MongoDB Atlas Dedicated Cluster deployment is recommended.
 
-**Install Docker**
+Install Docker
+----------------
 
 The following is a summary of the instructions from `Docker <https://docs.docker.com/engine/install/debian/>`_.
 
@@ -74,7 +75,8 @@ If you are attempting an install on a non Debian-based system, please refer to t
 		docker-ce-cli \
 		containerd.io
 
-**Prepare MongoDB Data Directory**
+Prepare MongoDB Data Directory
+--------------------------------
 
 .. code-block:: shell
 	:caption: Create mongodb data directory
@@ -85,7 +87,8 @@ If you are attempting an install on a non Debian-based system, please refer to t
 If you have chosen to mount a persistent storage volume for MongoDB data use, follow the directions for your infrastructure provider to provision, format, and mount the drive at startup.
 
 
-**Install MongoDB**
+Install MongoDB
+----------------
 
 Do not copy and paste the following commands; you should create your own admin username and password for MongoDB.
 
@@ -108,7 +111,9 @@ You will want to record your ``FIFTYONE_DB_USERNAME`` and ``FIFTYONE_DB_PASSWORD
 		-v /opt/mongodb/data:/data/db \
 		mongo:4.4
 
-**Verify the MongoDB Install**
+Verify the MongoDB Install
+----------------------------
+
 While these steps are not necessary, they will ensure that you are ready to move on to installing FiftyOne Teams.
 
 .. code-block:: shell

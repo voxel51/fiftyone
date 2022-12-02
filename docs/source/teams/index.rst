@@ -21,12 +21,6 @@ FiftyOne Teams is designed to integrate naturally into your ML workflow. All doc
     :button_link: overview.html
 
 .. customcalloutitem::
-    :header: Get started
-    :description: Instructions to get you set up as quickly as possible.
-    :button_text: Learn more about loading data
-    :button_link: get_started_teams.html
-
-.. customcalloutitem::
     :header: Installation
     :description: Learn how to install the FiftyOne Teams Python SDK.
     :button_text: Install SDK
@@ -34,7 +28,7 @@ FiftyOne Teams is designed to integrate naturally into your ML workflow. All doc
 
 .. customcalloutitem::
     :header: Configure cloud credentials
-    :description: To Do... 
+    :description: Configure the FiftyOne Teams App to work with your private AWS, GCP, or Azure cloud.
     :button_text: Configure credentials
     :button_link: cloud_credentials.html
 
@@ -45,10 +39,10 @@ FiftyOne Teams is designed to integrate naturally into your ML workflow. All doc
     :button_link: cloud_media.html
 
 .. customcalloutitem::
-    :header: Permissioning
+    :header: Roles and permissions
     :description: Learn how to configure roles and access permissions for guests and members of your organization.
     :button_text: Learn how to set permissions
-    :button_link: permissions.html
+    :button_link: roles_and_permissions.html
 
 .. customcalloutitem::
     :header: FiftyOne Teams App
@@ -76,11 +70,10 @@ FiftyOne Teams is designed to integrate naturally into your ML workflow. All doc
     :hidden:
 
     Teams overview <overview>
-    Getting started <get_started_teams>
     Installation guide <teams_install_guide/index>
     Configuring cloud credentials <cloud_credentials>
     Cloud-backed media <cloud_media>
-    Permissioning <permissions>
+    Roles and permissions <roles_and_permissions>
     FiftyOne Teams App <teams_app>
     Upgrading and downgrading <upgrading_downgrading>
 

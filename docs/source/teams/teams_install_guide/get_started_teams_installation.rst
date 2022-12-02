@@ -38,7 +38,8 @@ ___________________________
 
 The FiftyOne Teams application integrates with your SSO Identity Provider (IdP) through Auth0.  This guide provides high-level configuration details for SAML and OpenID IdP configuration, but you can find detailed information on integrating these and other IdPs on the `Auth0 documentation site <https://auth0.com/docs/authenticate/identity-providers/enterprise-identity-providers>`_.
 
-**SAML IdP**
+SAML IdP
+---------
 
 You will need to provide your Voxel51 Support Team with:
 
@@ -46,7 +47,8 @@ You will need to provide your Voxel51 Support Team with:
 * X509 Signing Certificate File
 * Assertion Consumer Service URL (a.k.a. Post-back URL)
 
-**OpenID IdP**
+OpenID IdP
+-----------
 
 You will need to provide your Voxel51 Support Team with:
 
