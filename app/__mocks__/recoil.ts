@@ -56,24 +56,29 @@ export function atomFamily<T, P extends recoil.SerializableParam>(
   });
 }
 
+const getCallback = (callback) => {
+  throw new Error(
+    "A getCallback unit test mock has not been implemented. Please test within a hook"
+  ); // TODO complete mocking of getCallback
+  return (...args: readonly unknown[]) =>
+    callback({
+      snapshot: new recoil.Snapshot(),
+      set: setValue,
+      reset: resetValue,
+      refresh: (atom) => {},
+      node: undefined as unknown as recoil.RecoilState<unknown>,
+      gotoSnapshot: (_) => {},
+      transact_UNSTABLE: (_) => {},
+    })(...args);
+};
+
 export function selector<T extends unknown>(
   options: recoil.ReadWriteSelectorOptions<T>
 ): { (): T; key: string; set: (value: T) => void } {
   function resolver() {
     return options.get({
       get: getValue,
-      getCallback: (callback) => {
-        return (...args) =>
-          callback({
-            snapshot: new recoil.Snapshot(),
-            set: (atom, value) => (mockValues[atom.key] = value),
-            reset: resetValue,
-            refresh: (atom) => {},
-            node: undefined as unknown as recoil.RecoilState<unknown>,
-            gotoSnapshot: (_) => {},
-            transact_UNSTABLE: (_) => {},
-          })(...args);
-      },
+      getCallback,
     }) as T;
   }
   resolver.key = options.key;
@@ -92,18 +97,7 @@ export function selectorFamily<
     function resolver() {
       return options.get(params)({
         get: getValue,
-        getCallback: (callback) => {
-          return (...args) =>
-            callback({
-              snapshot: new recoil.Snapshot(),
-              set: setValue,
-              reset: resetValue,
-              refresh: (atom) => {},
-              node: undefined as unknown as recoil.RecoilState<unknown>,
-              gotoSnapshot: (_) => {},
-              transact_UNSTABLE: (_) => {},
-            })(...args);
-        },
+        getCallback,
       }) as T;
     }
     resolver.key = options.key;
