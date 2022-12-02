@@ -87,6 +87,8 @@ export const removeKeys = <T>(
 interface BaseField {
   ftype: string;
   dbField: string | null;
+  description: string | null;
+  info: object | null;
   name: string;
   embeddedDocType: string | null;
   subfield: string | null;
