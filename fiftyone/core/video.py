@@ -635,7 +635,10 @@ def make_frames_dataset(
             skip_failures=skip_failures,
         )
 
+    #
     # Merge frame data
+    #
+
     pipeline = []
 
     if sample_frames == "dynamic":
@@ -653,10 +656,6 @@ def make_frames_dataset(
     )
 
     sample_collection._aggregate(frames_only=True, post_pipeline=pipeline)
-
-    # Delete samples for frames without filepaths
-    if sample_frames == True:
-        dataset._sample_collection.delete_many({"filepath": None})
 
     if sample_frames == False and not dataset:
         logger.warning(
@@ -833,6 +832,7 @@ def _init_frames(
 
             _id = frame_ids_map.get(fn, None)
             _filepath = images_patt % fn
+            _rand = foos._generate_rand(_filepath)
 
             if missing_fps is not None and fn in missing_fps:
                 missing_filepaths.append((_sample_id, fn, _filepath))
@@ -840,7 +840,9 @@ def _init_frames(
             if sample_frames == "dynamic":
                 filepath = video_path
             else:
-                filepath = None  # will be populated later
+                # This will be overwritten in the final merge if the actual
+                # filepath is different
+                filepath = _filepath
 
             doc = {
                 "filepath": filepath,
@@ -848,7 +850,7 @@ def _init_frames(
                 "metadata": None,
                 "frame_number": fn,
                 "_media_type": "image",
-                "_rand": foos._generate_rand(_filepath),
+                "_rand": _rand,
                 "_sample_id": _sample_id,
             }
 
