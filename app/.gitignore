@@ -11,3 +11,4 @@ dist
 .yarnrc
 yarn-error.log
 tsconfig.tsbuildinfo
+doc
