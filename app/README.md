@@ -236,7 +236,3 @@ Best practices:
 -   We recommend writing fully typed TypeScript, although we are still
     transitioning
 -   With the app dev environment installed, you can run `yarn storybook`
-
-```
-
-```
