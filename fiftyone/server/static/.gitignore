@@ -1,0 +1,3 @@
+# keep empty but include the directory in the repository
+*
+!.gitignore
