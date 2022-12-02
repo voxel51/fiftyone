@@ -9,7 +9,7 @@ import { useRecoilValue } from "recoil";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
-import { HelpPanel, JSONPanel } from "@fiftyone/components";
+import { ErrorBoundary, HelpPanel, JSONPanel } from "@fiftyone/components";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -194,22 +194,24 @@ const SampleModal = () => {
       >
         <Container style={{ ...screen, zIndex: 10001 }}>
           <ContentColumn>
-            {isGroup ? <Group /> : <Sample />}
-            {jsonPanel.isOpen && (
-              <JSONPanel
-                containerRef={jsonPanel.containerRef}
-                jsonHTML={jsonPanel.jsonHTML}
-                onClose={() => jsonPanel.close()}
-                onCopy={() => jsonPanel.copy()}
-              />
-            )}
-            {helpPanel.isOpen && (
-              <HelpPanel
-                containerRef={helpPanel.containerRef}
-                onClose={() => helpPanel.close()}
-                items={helpPanel.items}
-              />
-            )}
+            <ErrorBoundary onReset={() => {}}>
+              {isGroup ? <Group /> : <Sample />}
+              {jsonPanel.isOpen && (
+                <JSONPanel
+                  containerRef={jsonPanel.containerRef}
+                  jsonHTML={jsonPanel.jsonHTML}
+                  onClose={() => jsonPanel.close()}
+                  onCopy={() => jsonPanel.copy()}
+                />
+              )}
+              {helpPanel.isOpen && (
+                <HelpPanel
+                  containerRef={helpPanel.containerRef}
+                  onClose={() => helpPanel.close()}
+                  items={helpPanel.items}
+                />
+              )}
+            </ErrorBoundary>
           </ContentColumn>
           <Sidebar render={renderEntry} modal={true} />
         </Container>
