@@ -155,6 +155,7 @@ async def aggregate_resolver(
     flattened = []
     for aggs in aggregations:
         flattened += aggs
+    print("flattened", flattened)
 
     result = await view._async_aggregate(flattened)
     results = []

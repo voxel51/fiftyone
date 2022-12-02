@@ -7,6 +7,9 @@ FiftyOne Server view
 """
 from typing import List, Optional
 
+from bson import json_util
+from dacite import Config, from_dict
+
 import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
@@ -15,6 +18,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.server.scalars import BSONArray
 
 from fiftyone.server.utils import iter_label_fields
 import fiftyone.core.odm as foo
@@ -22,13 +26,22 @@ import fiftyone.core.odm as foo
 _LABEL_TAGS = "_label_tags"
 
 
-async def get_saved_views(object_ids):
+async def get_saved_views(cls, object_ids):
     if len(object_ids) < 1:
         return None
     db = foo.get_db_conn()
     # TODO: remove view_stages and query separately upon view selection
-    return list(
-        db.views.aggregate(
+    return [
+        from_dict(
+            data_class=cls,
+            data=view,
+            config=Config(
+                type_hooks={
+                    BSONArray: lambda x: [json_util.loads(s) for s in x]
+                }
+            ),
+        )
+        for view in db.views.aggregate(
             [
                 {"$match": {"_id": {"$in": object_ids}}},
                 {
@@ -45,7 +58,7 @@ async def get_saved_views(object_ids):
                 },
             ]
         )
-    )
+    ]
 
 
 def get_saved_view_stages(identifier):

@@ -127,9 +127,10 @@ class SavedView:
             return None
         return self.name
 
-    @gql.field
-    def view_stages(self) -> t.Optional[t.List[str]]:
-        return get_saved_view_stages(self.id)
+    # @gql.field
+    # def view_stages(self) -> t.Optional[t.List[str]]:
+    #     return get_saved_view_stages(self.id)
+    #
 
 
 async def load_saved_views(object_ids):
@@ -223,11 +224,11 @@ class Dataset:
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
 
-    @gql.field
-    async def get_saved_view(
-        self, view_name: t.Optional[str]
-    ) -> t.Optional[SavedView]:
-        return await saved_views_loader.load(view_name)
+    # @gql.field
+    # async def get_saved_view(
+    #     self, view_name: t.Optional[str]
+    # ) -> t.Optional[SavedView]:
+    #     return await saved_views_loader.load(view_name)
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -243,7 +244,9 @@ class Dataset:
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
-        doc["saved_views"] = get_saved_views(doc.get("saved_views", []))
+        doc["saved_views"] = get_saved_views(
+            SavedView, doc.get("saved_views", [])
+        )
         # if doc['saved_views']:
         #     print("doc['saved_views']", doc['saved_views'])
         doc["skeletons"] = list(
@@ -389,25 +392,25 @@ class Query(fosa.AggregateQuery):
     def version(self) -> str:
         return foc.VERSION
 
-    @gql.field
-    async def saved_view(
-        self, dataset_name: str, view_name: t.Optional[str]
-    ) -> t.Optional[SavedView]:
-        if not view_name and dataset_name:
-            return
-
-        ds = fo.load_dataset(dataset_name)
-        if ds.has_saved_views and ds.has_saved_view(view_name):
-            return next(
-                (
-                    view_doc
-                    for view_doc in ds._doc.saved_views
-                    if view_doc.name == view_name
-                ),
-                None,
-            )
-        return
-
+    # @gql.field
+    # async def saved_view(
+    #     self, dataset_name: str, view_name: t.Optional[str]
+    # ) -> t.Optional[SavedView]:
+    #     if not view_name and dataset_name:
+    #         return
+    #
+    #     ds = fo.load_dataset(dataset_name)
+    #     if ds.has_saved_views and ds.has_saved_view(view_name):
+    #         return next(
+    #             (
+    #                 view_doc
+    #                 for view_doc in ds._doc.saved_views
+    #                 if view_doc.name == view_name
+    #             ),
+    #             None,
+    #         )
+    #     return
+    #
     @gql.field
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
         ds = fo.load_dataset(dataset_name)
