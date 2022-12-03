@@ -126,6 +126,7 @@ class DownloadContext(object):
         self._total += 1
 
     def _download_batch(self):
+        # @todo optimize to avoid appending `skip()`
         view = self.sample_collection.skip(self._total).limit(self.batch_size)
 
         if self.quiet:
@@ -905,6 +906,7 @@ class SampleCollection(object):
 
         Examples::
 
+            import time
             import fiftyone as fo
             import fiftyone.core.cache as foc
 
@@ -913,6 +915,7 @@ class SampleCollection(object):
             with dataset.download_context(batch_size=100):
                 for sample in dataset.iter_samples(progress=True):
                     assert foc.media_cache.is_local_or_cached(sample.filepath)
+                    time.sleep(0.01)
 
         Args:
             batch_size (100): the sample batch size to use when downloading
