@@ -1443,6 +1443,25 @@ class SetAttributes(object):
             setattr(self._obj, k, v)
 
 
+class SuppressLogging(object):
+    """Context manager that temporarily disables system-wide logging.
+
+    Args:
+        level (logging.CRITICAL): the ``logging`` level at or below which to
+            suppress all messages
+    """
+
+    def __init__(self, level=logging.CRITICAL):
+        self.level = level
+
+    def __enter__(self):
+        logging.disable(self.level)
+        return self
+
+    def __exit__(self, *args):
+        logging.disable(logging.NOTSET)
+
+
 def is_arm_mac():
     """Determines whether the system is an ARM-based Mac (Apple Silicon).
 
