@@ -134,7 +134,7 @@ const exampleSelector = selectorFamily<number, number>({
         (param) =>
         ({ get }) =>
             param + get(one) + get(two(param)),
-    get:
+    set:
         (param) =>
         ({ set }, newValue) =>
             set(one, newValue),
