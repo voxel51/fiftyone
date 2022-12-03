@@ -129,7 +129,10 @@ class DownloadContext(object):
         view = self.sample_collection.skip(self._total).limit(self.batch_size)
 
         if self.quiet:
-            with fou.SetAttributes(fo.config, show_progress_bars=False):
+            with (
+                fou.SuppressLogging(level=logging.INFO),
+                fou.SetAttributes(fo.config, show_progress_bars=False),
+            ):
                 view.download_media(**self.kwargs)
         else:
             view.download_media(**self.kwargs)
