@@ -59,6 +59,8 @@ export const buildSchema = (dataset: State.Dataset): Schema => {
       name: "frames",
       fields: dataset.frameFields.reduce(schemaReduce, {}),
       dbField: null,
+      description: null,
+      info: null,
       embeddedDocType: null,
       subfield: "Frame",
     };
