@@ -52,6 +52,7 @@ def display(
     funcs = {
         focx._COLAB: display_colab,
         focx._IPYTHON: display_ipython,
+        focx._DATABRICKS: display_databricks,
     }
     fn = funcs[focx._get_context()]
     fn(client, cell, reactivate)
@@ -124,3 +125,53 @@ def display_colab(
         f"fiftyone.deactivate.{cell.subscription.replace('-', '_')}",
         lambda: client.send_event(fose.DeactivateNotebookCell()),
     )
+
+
+def display_databricks(
+    client: Client, cell: NotebookCell, reactivate: bool = False
+):
+    """Display a FiftyOne instance in a Databricks output frame.
+    The Databricks driver port is accessible via a proxy url and can be displayed inside an IFrame.
+    """
+    display_html = None
+    try:
+        import IPython
+
+        shell = IPython.get_ipython()
+        display_html = shell.user_ns["displayHTML"]
+    except ImportError as e:
+        raise ValueError(
+            "You must verify that the Databricks Runtime is installed properly."
+        ) from e
+
+    frame_id = f"fiftyone-frame-{cell.subscription}"
+    proxy_url = f"{_get_databricks_proxy_url(cell.port)}?notebook=true&subscription={cell.subscription}&polling=true"
+    html_string = f"""
+    <iframe id="{frame_id}" width="100%" height="{cell.height}" frameborder="0" src="{proxy_url}"></iframe>
+    """
+    display_html(html_string)
+
+
+def _get_databricks_proxy_url(port):
+    dbutils = None
+    try:
+        import IPython
+
+        shell = IPython.get_ipython()
+        dbutils = shell.user_ns["dbutils"]
+    except ImportError as e:
+        raise ValueError(
+            "You must verify that the Databricks Runtime is installed properly."
+        ) from e
+
+    import json
+
+    ctx = json.loads(
+        dbutils.entry_point.getDbutils().notebook().getContext().toJson()
+    )
+    ctx_tags = ctx["tags"]
+    browser_host_name = ctx_tags["browserHostName"]
+    org_id = ctx_tags["orgId"]
+    cluster_id = ctx_tags["clusterId"]
+
+    return f"https://{browser_host_name}/driver-proxy/o/{org_id}/{cluster_id}/{port}/"
