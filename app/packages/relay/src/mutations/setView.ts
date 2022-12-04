@@ -32,6 +32,8 @@ export default graphql`
           embeddedDocType
           path
           dbField
+          description
+          info
         }
         frameFields {
           ftype
@@ -39,6 +41,8 @@ export default graphql`
           embeddedDocType
           path
           dbField
+          description
+          info
         }
         maskTargets {
           name
@@ -90,6 +94,7 @@ export default graphql`
         appConfig {
           gridMediaField
           mediaFields
+          modalMediaField
           plugins
           sidebarGroups {
             expanded
