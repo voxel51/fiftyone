@@ -4,8 +4,6 @@
 
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import {
-  DETECTION,
-  DETECTIONS,
   get32BitColor,
   getFetchFunction,
   HEATMAP,
@@ -132,36 +130,32 @@ const mapId = (obj) => {
   return obj;
 };
 
-const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
+const LABELS = new Set(VALID_LABEL_TYPES);
 
-const LABELS_THAT_CAN_HAVE_OVERLAYS_ON_DISK = new Set([
-  SEGMENTATION,
-  HEATMAP,
-  DETECTION,
-  DETECTIONS,
-]);
-
+/**
+ * Some label types (example: segmentation, heatmap) can have their overlay data stored on-disk,
+ * we want to impute the relevant mask property of these labels from what's stored in the disk
+ */
 const imputeOverlayFromPath = async (
   label: Record<string, any>,
   buffers: ArrayBuffer[]
 ) => {
-  // handle all list types here
-  if (label._cls === DETECTIONS) {
-    label.detections.forEach((detection) =>
-      imputeOverlayFromPath(detection, buffers)
-    );
+  // only support loading overlay data for segmentation and heatmap for now
+  if (!label || (label._cls !== SEGMENTATION && label._cls !== HEATMAP)) {
     return;
   }
 
-  // overlay path is in `map_path` property for heatmap, or else, it's in `mask_path` property (for segmentation or detection)
+  // overlay path is in `map_path` property for heatmap, or else, it's in `mask_path` property
   const overlayPathField = label._cls === HEATMAP ? "map_path" : "mask_path";
   const overlayField = overlayPathField === "map_path" ? "map" : "mask";
 
+  // make sure the relevant fields are present
   if (
-    Object.hasOwn(label, overlayField) ||
-    !Object.hasOwn(label, overlayPathField)
+    (label._cls === SEGMENTATION &&
+      (Object.hasOwn(label, "mask") || !Object.hasOwn(label, "mask_path"))) ||
+    (label._cls === HEATMAP &&
+      (Object.hasOwn(label, "map") || !Object.hasOwn(label, "map_path")))
   ) {
-    // nothing to be done
     return;
   }
 
@@ -174,7 +168,6 @@ const imputeOverlayFromPath = async (
     null,
     "arrayBuffer"
   );
-
   const overlayData = decodePng(pngArrayBuffer);
 
   const width = overlayData.width;
@@ -198,30 +191,6 @@ const imputeOverlayFromPath = async (
   buffers.push(label[overlayField].image);
 };
 
-const processDenseLabel = async ({ label }) => {
-  let buffers: ArrayBuffer[] = [];
-  await imputeOverlayFromPath(label, buffers);
-  postMessage(
-    { method: "processDenseLabel", label },
-    // @ts-ignore
-    buffers
-  );
-
-  // todo: shared array buffer is gated by presence of two headers
-  // await imputeOverlayFromPathShared(label);
-  // postMessage({ label });
-};
-
-const colorDenseOverlay = async ({ label, field, coloring }) => {
-  UPDATE_LABEL[label._cls](field, label, coloring);
-  const buffers = [label.mask.data.buffer, label.mask.image];
-  postMessage(
-    { method: "colorDenseOverlay", label },
-    // @ts-ignore
-    buffers
-  );
-};
-
 const processLabels = async (
   sample: { [key: string]: any },
   coloring: Coloring,
@@ -236,15 +205,12 @@ const processLabels = async (
       continue;
     }
 
-    // if (LABELS_THAT_CAN_HAVE_OVERLAYS_ON_DISK.has(label._cls)) {
-    //   await imputeOverlayFromPath(label, buffers);
-    // }
-
     if (label._cls in DESERIALIZE) {
+      await imputeOverlayFromPath(label, buffers);
       DESERIALIZE[label._cls](label, buffers);
     }
 
-    if (ALL_VALID_LABELS.has(label._cls)) {
+    if (LABELS.has(label._cls)) {
       if (label._cls in LABEL_LIST) {
         const list = label[LABEL_LIST[label._cls]];
         if (Array.isArray(list)) {
@@ -255,9 +221,9 @@ const processLabels = async (
       }
     }
 
-    // if (UPDATE_LABEL[label._cls]) {
-    //   promises.push(UPDATE_LABEL[label._cls](prefix + field, label, coloring));
-    // }
+    if (UPDATE_LABEL[label._cls]) {
+      promises.push(UPDATE_LABEL[label._cls](prefix + field, label, coloring));
+    }
   }
 
   return Promise.all(promises).then(() => buffers);
@@ -285,19 +251,7 @@ interface ProcessSample {
   coloring: Coloring;
 }
 
-interface ProcessDenseLabel {
-  label: any;
-}
-
-interface ColorDenseOverlay {
-  label: any;
-  field: string;
-  coloring: Coloring;
-}
-
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
-type ProcessDenseLabelMethod = ReaderMethod & ProcessDenseLabel;
-type ColorDenseOverlayMethod = ReaderMethod & ColorDenseOverlay;
 
 const processSample = ({ sample, uuid, coloring }: ProcessSample) => {
   mapId(sample);
@@ -365,36 +319,25 @@ const createReader = ({
           return Promise.resolve();
         }
 
-        const call = (): Promise<FrameChunk> =>
-          getFetchFunction()(
-            "POST",
-            "/frames",
-            {
-              frameNumber: frameNumber,
-              numFrames: chunkSize,
-              frameCount: frameCount,
-              sampleId,
-              dataset,
-              view,
-            },
-            "json",
-            2
-          );
-
         return await (async () => {
           try {
-            const { frames, range } = await call();
+            const { frames, range }: FrameChunk = await getFetchFunction()(
+              "POST",
+              "/frames",
+              {
+                frameNumber: frameNumber,
+                numFrames: chunkSize,
+                frameCount: frameCount,
+                sampleId,
+                dataset,
+                view,
+              }
+            );
 
             controller.enqueue({ frames, range, coloring });
             frameNumber = range[1] + 1;
           } catch (error) {
-            postMessage({
-              error: {
-                cls: error.constructor.name,
-                data: error.data,
-                message: error.message,
-              },
-            });
+            postMessage({ error });
           }
         })();
       },
@@ -492,6 +435,7 @@ const UPDATE_LABEL = {
     if (!label.mask) {
       return;
     }
+
     const color = await requestColor(
       coloring.pool,
       coloring.seed,
@@ -580,23 +524,29 @@ const UPDATE_LABEL = {
       label.mask.data.buffer
     );
     let maskTargets = coloring.maskTargets[field];
+
     if (!maskTargets) {
       maskTargets = coloring.defaultMaskTargets;
     }
     const cache = {};
+
     let color;
     if (maskTargets && Object.keys(maskTargets).length === 1) {
       color = get32BitColor(
         await requestColor(coloring.pool, coloring.seed, field)
       );
     }
+
     const getColor = (i) => {
       i = Math.round(Math.abs(i)) % coloring.targets.length;
+
       if (!(i in cache)) {
         cache[i] = get32BitColor(coloring.targets[i]);
       }
+
       return cache[i];
     };
+
     // these for loops must be fast. no "in" or "of" syntax
     for (let i = 0; i < overlay.length; i++) {
       if (targets[i] !== 0) {
@@ -620,8 +570,6 @@ const init = ({ origin, headers, pathPrefix }: Init) => {
 
 type Method =
   | InitMethod
-  | ColorDenseOverlayMethod
-  | ProcessDenseLabelMethod
   | ProcessSampleMethod
   | RequestFrameChunkMethod
   | ResolveColorMethod
@@ -632,14 +580,8 @@ onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
     case "init":
       init(args as Init);
       return;
-    case "colorDenseOverlay":
-      colorDenseOverlay(args as ColorDenseOverlay);
-      return;
     case "processSample":
       processSample(args as ProcessSample);
-      return;
-    case "processDenseLabel":
-      processDenseLabel(args as ProcessDenseLabel);
       return;
     case "requestFrameChunk":
       requestFrameChunk(args as RequestFrameChunk);

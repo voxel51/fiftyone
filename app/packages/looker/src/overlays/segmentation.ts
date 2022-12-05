@@ -13,6 +13,7 @@ import {
   PointInfo,
   SelectData,
 } from "./base";
+import { DenseOverlay, getDenseOverlayWorker } from "./dense";
 import { sizeBytes, strokeCanvasRect, t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
@@ -20,6 +21,7 @@ interface SegmentationLabel extends BaseLabel {
     data: NumpyResult;
     image: ArrayBuffer;
   };
+  mask_path?: string;
 }
 
 interface SegmentationInfo extends BaseLabel {
@@ -28,52 +30,132 @@ interface SegmentationInfo extends BaseLabel {
   };
 }
 
-export default class SegmentationOverlay<State extends BaseState>
-  implements Overlay<State>
-{
+const worker = getDenseOverlayWorker(() => {});
+export default class SegmentationOverlay<
+  State extends BaseState
+> extends DenseOverlay<State> {
   readonly field: string;
   private label: SegmentationLabel;
   private targets?: TypedArray;
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
 
+  private processing = false;
+
   constructor(field: string, label: SegmentationLabel) {
+    super();
     this.field = field;
     this.label = label;
-    if (!this.label.mask) {
+    console.log("In constructor of seg overlay");
+  }
+
+  async load(state: State) {
+    if (!this.label.mask && !this.label.mask_path) {
       return;
     }
-    const [height, width] = this.label.mask.data.shape;
 
-    if (!height || !width) {
+    if (this.processing || this.processed) {
       return;
     }
 
-    this.targets = new ARRAY_TYPES[this.label.mask.data.arrayType](
-      this.label.mask.data.buffer
+    this.processing = true;
+
+    return new Promise<void>((mainResolve) => {
+      new Promise<void>((resolve) => {
+        if (this.label.mask_path) {
+          worker.postMessage({
+            method: "processDenseLabel",
+            label: this.label,
+          });
+
+          const listener = ({ data: { method, label } }) => {
+            if (label.id !== this.label.id) {
+              return;
+            }
+
+            if (method === "processDenseLabel") {
+              this.label = label;
+              worker.removeEventListener("message", listener);
+              resolve();
+            }
+          };
+          worker.addEventListener("message", listener);
+        } else {
+          resolve();
+        }
+      }).then(() => {
+        this.color(state).then(() => {
+          mainResolve();
+        });
+      });
+    });
+  }
+
+  async color(state: State) {
+    if (!this.label.mask || !(this.label.mask.data.buffer.byteLength > 0)) {
+      return;
+    }
+
+    const buffers = [this.label.mask.data.buffer, this.label.mask.image];
+    worker.postMessage(
+      {
+        method: "colorDenseOverlay",
+        label: this.label,
+        field: this.field,
+        coloring: state.options.coloring,
+      },
+      buffers
     );
 
-    this.canvas = document.createElement("canvas");
-    this.canvas.width = width;
-    this.canvas.height = height;
+    return new Promise<void>((resolve) => {
+      const listener = ({ data: { method, label } }) => {
+        if (method === "colorDenseOverlay" && this.label.id === label.id) {
+          this.label = label;
+          worker.removeEventListener("message", listener);
+          this.processed = true;
 
-    this.imageData = new ImageData(
-      new Uint8ClampedArray(this.label.mask.image),
-      width,
-      height
-    );
-    const maskCtx = this.canvas.getContext("2d");
-    maskCtx.imageSmoothingEnabled = false;
-    maskCtx.clearRect(
-      0,
-      0,
-      this.label.mask.data.shape[1],
-      this.label.mask.data.shape[0]
-    );
-    maskCtx.putImageData(this.imageData, 0, 0);
+          // copied from constructor
+          const [height, width] = this.label.mask.data.shape;
+
+          if (!height || !width) {
+            return;
+          }
+
+          this.targets = new ARRAY_TYPES[this.label.mask.data.arrayType](
+            this.label.mask.data.buffer
+          );
+
+          this.canvas = document.createElement("canvas");
+          this.canvas.width = width;
+          this.canvas.height = height;
+
+          this.imageData = new ImageData(
+            new Uint8ClampedArray(this.label.mask.image),
+            width,
+            height
+          );
+
+          const maskCtx = this.canvas.getContext("2d");
+          maskCtx.imageSmoothingEnabled = false;
+          maskCtx.clearRect(
+            0,
+            0,
+            this.label.mask.data.shape[1],
+            this.label.mask.data.shape[0]
+          );
+          maskCtx.putImageData(this.imageData, 0, 0);
+          resolve();
+        }
+      };
+      worker.addEventListener("message", listener);
+    });
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
+    if (!this.processed) {
+      return CONTAINS.NONE;
+    }
+
     const {
       pixelCoordinates: [x, y],
       dimensions: [w, h],
@@ -84,12 +166,16 @@ export default class SegmentationOverlay<State extends BaseState>
     return CONTAINS.NONE;
   }
 
-  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
+  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
     if (!this.targets) {
       return;
     }
 
-    if (this.imageData) {
+    // if (this.imageData && !this.processed) {
+    //   await this.color(state);
+    // }
+
+    if (this.imageData && this.processed) {
       const [tlx, tly] = t(state, 0, 0);
       const [brx, bry] = t(state, 1, 1);
       const tmp = ctx.globalAlpha;

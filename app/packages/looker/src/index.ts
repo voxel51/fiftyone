@@ -77,6 +77,7 @@ import { zoomToContent } from "./zoom";
 import { getColor } from "@fiftyone/utilities";
 import { Events } from "./elements/base";
 import { getFrameNumber } from "./elements/util";
+import SegmentationOverlay from "./overlays/segmentation";
 
 export { createColorGenerator, getRGB } from "@fiftyone/utilities";
 export { freeVideos } from "./elements/util";
@@ -280,9 +281,11 @@ export abstract class Looker<
         this.pluckedOverlays = this.pluckOverlays(this.state);
         this.state = this.postProcess();
 
+        // filter overlays before rendering
         [this.currentOverlays, this.state.rotate] = processOverlays(
           this.state,
-          this.pluckedOverlays
+          this.pluckedOverlays,
+          this.updater
         );
 
         this.state.mouseIsOnOverlay =
@@ -336,7 +339,21 @@ export abstract class Looker<
         const numOverlays = this.currentOverlays.length;
 
         for (let index = numOverlays - 1; index >= 0; index--) {
-          this.currentOverlays[index].draw(ctx, this.state);
+          if (this.currentOverlays[index] instanceof SegmentationOverlay) {
+            if (this.currentOverlays[index].processed) {
+              this.currentOverlays[index].draw(ctx, this.state);
+            }
+            //  else if (this.currentOverlays[index].processing) {
+            //   continue;
+            // } else {
+            //   this.currentOverlays[index].load(this.state).then(() => {
+            //     this.updater({ ...this.state, loaded: true });
+            //     // this.currentOverlays[index].draw(ctx, this.state);
+            //   });
+            // }
+          } else {
+            this.currentOverlays[index].draw(ctx, this.state);
+          }
         }
         ctx.globalAlpha = 1;
       } catch (error) {
@@ -1051,20 +1068,22 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
   getCurrentSampleLabels(): LabelData[] {
     const labels: LabelData[] = [];
-    processOverlays(this.state, this.sampleOverlays)[0].forEach((overlay) => {
-      if (overlay instanceof ClassificationsOverlay) {
-        overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
-          labels.push({
-            field: field,
-            labelId: label.id,
-            sampleId: this.sample.id,
+    processOverlays(this.state, this.sampleOverlays, this.updater)[0].forEach(
+      (overlay) => {
+        if (overlay instanceof ClassificationsOverlay) {
+          overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
+            labels.push({
+              field: field,
+              labelId: label.id,
+              sampleId: this.sample.id,
+            });
           });
-        });
-      } else {
-        const { id: labelId, field } = overlay.getSelectData(this.state);
-        labels.push({ labelId, field, sampleId: this.sample.id });
+        } else {
+          const { id: labelId, field } = overlay.getSelectData(this.state);
+          labels.push({ labelId, field, sampleId: this.sample.id });
+        }
       }
-    });
+    );
 
     return labels;
   }
@@ -1073,26 +1092,28 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     const frame = this.frames.get(this.frameNumber).deref();
     const labels: LabelData[] = [];
     if (frame) {
-      processOverlays(this.state, frame.overlays)[0].forEach((overlay) => {
-        if (overlay instanceof ClassificationsOverlay) {
-          overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
-            labels.push({
-              field: field,
-              labelId: label.id,
-              frameNumber: this.frameNumber,
-              sampleId: this.sample.id,
+      processOverlays(this.state, frame.overlays, this.updater)[0].forEach(
+        (overlay) => {
+          if (overlay instanceof ClassificationsOverlay) {
+            overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
+              labels.push({
+                field: field,
+                labelId: label.id,
+                frameNumber: this.frameNumber,
+                sampleId: this.sample.id,
+              });
             });
-          });
-        } else {
-          const { id: labelId, field } = overlay.getSelectData(this.state);
-          labels.push({
-            labelId,
-            field,
-            sampleId: this.sample.id,
-            frameNumber: this.frameNumber,
-          });
+          } else {
+            const { id: labelId, field } = overlay.getSelectData(this.state);
+            labels.push({
+              labelId,
+              field,
+              sampleId: this.sample.id,
+              frameNumber: this.frameNumber,
+            });
+          }
         }
-      });
+      );
     }
 
     return labels;

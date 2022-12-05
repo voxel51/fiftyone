@@ -13,7 +13,7 @@ import {
   Coordinates,
   Dimensions,
   DispatchEvent,
-  Optional
+  Optional,
 } from "./state";
 
 import {
@@ -21,7 +21,7 @@ import {
   getFetchParameters,
   GraphQLError,
   NetworkError,
-  ServerError
+  ServerError,
 } from "@fiftyone/utilities";
 import LookerWorker from "./worker.ts?worker&inline";
 

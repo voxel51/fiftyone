@@ -9,9 +9,11 @@ import { rotate } from "./util";
 
 const processOverlays = <State extends BaseState>(
   state: State,
-  overlays: Overlay<State>[]
+  overlays: Overlay<State>[],
+  updater: any
 ): [Overlay<State>[], number] => {
   const activePaths = state.options.activePaths;
+
   const bins = Object.fromEntries(
     activePaths.map<[string, Overlay<State>[]]>((l) => [l, []])
   );
@@ -21,6 +23,8 @@ const processOverlays = <State extends BaseState>(
   if (!state.config.thumbnail && !state.options.showOverlays) {
     return [[], 0];
   }
+
+  const promises = [];
 
   for (const overlay of overlays) {
     if (overlay instanceof ClassificationsOverlay) {
@@ -32,8 +36,23 @@ const processOverlays = <State extends BaseState>(
 
     if (!overlay.isShown(state)) continue;
 
+    if (
+      overlay.field in bins &&
+      Object.hasOwn(overlay, "processed") &&
+      overlay.processed === false &&
+      overlay.processing === false &&
+      Object.hasOwn(overlay, "label")
+    ) {
+      promises.push(overlay.load(state));
+    }
+
     bins[overlay.field].push(overlay);
   }
+
+  promises.length > 0 &&
+    Promise.all(promises).then(() => {
+      updater({ loaded: true });
+    });
 
   let ordered = activePaths.reduce((acc, cur) => [...acc, ...bins[cur]], []);
 

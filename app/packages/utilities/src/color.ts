@@ -48,7 +48,6 @@ export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
   bitColorCache[key] = BIG_ENDIAN
     ? (r << 24) | (g << 16) | (b << 8) | alpha
     : (alpha << 24) | (b << 16) | (g << 8) | r;
-
   return bitColorCache[key];
 };
 
