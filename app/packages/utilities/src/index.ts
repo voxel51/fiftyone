@@ -2,11 +2,11 @@ import _ from "lodash";
 import mime from "mime";
 import { isElectron } from "./electron";
 
-export { isElectron } from "./electron";
-export { GraphQLError, NotFoundError, ServerError } from "./errors";
+export * from "./color";
+export * from "./electron";
+export * from "./errors";
 export * from "./fetch";
 export * from "./Resource";
-export * from "./color";
 
 interface O {
   [key: string]: O | any;
@@ -87,6 +87,8 @@ export const removeKeys = <T>(
 interface BaseField {
   ftype: string;
   dbField: string | null;
+  description: string | null;
+  info: object | null;
   name: string;
   embeddedDocType: string | null;
   subfield: string | null;

@@ -169,11 +169,6 @@ export const savedLookerOptions = atom({
   default: {},
 });
 
-export const appConfig = atom<State.Config>({
-  key: "appConfig",
-  default: null,
-});
-
 export const patching = atom<boolean>({
   key: "patching",
   default: false,

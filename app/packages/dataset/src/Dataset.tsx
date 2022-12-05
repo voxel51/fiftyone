@@ -17,7 +17,7 @@ import {
 import { usePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { getEnvironment, RelayEnvironmentKey } from "@fiftyone/state";
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { PreloadedQuery, useQueryLoader } from "react-relay";
 import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 import { RecoilRelayEnvironmentProvider } from "recoil-relay";
@@ -28,6 +28,7 @@ import { DatasetQuery } from "@fiftyone/core";
 // built-in plugins
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
+import { setCurrentEnvironment } from "@fiftyone/state/src/hooks/useRouter";
 
 const Container = styled.div`
   width: 100%;
@@ -62,6 +63,11 @@ export interface DatasetProps {
 
 export const Dataset: React.FC<DatasetProps> = (props) => {
   const [environment] = useState(getEnvironment);
+
+  useEffect(() => {
+    setCurrentEnvironment(environment);
+  }, [environment]);
+
   return (
     <RecoilRoot>
       <RecoilRelayEnvironmentProvider
