@@ -196,10 +196,13 @@ def compute_birds_eye_view_map(filepath, size, bounds=None):
     ] = normalized_counts
 
     # Encode intensity, height, and density in RGB map
-    rgb_map = np.zeros((3, height, width))
-    rgb_map[2, :, :] = density_map[:height, :width]  # r_map
-    rgb_map[1, :, :] = height_map[:height, :width]  # g_map
-    rgb_map[0, :, :] = intensity_map[:height, :width]  # b_map
+    rgb_map = np.stack(
+        (
+            density_map[:height, :width],  # r_map
+            height_map[:height, :width],  # g_map
+            intensity_map[:height, :width],  # b_map
+        )
+    )
 
     # Reshape and rescale pixel values
     bev_map = np.einsum("ijk -> jki", rgb_map)
