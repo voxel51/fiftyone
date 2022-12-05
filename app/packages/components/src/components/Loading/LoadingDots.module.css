@@ -1,28 +1,22 @@
 .loading {
-  margin-right: 5px;
+  display: inline-block;
+  height: 12px;
+  line-height: 12px;
+  overflow: hidden;
+  margin-left: 1px;
+  margin-right: 2px;
 }
-
-.loading:after {
-  content: " .";
-  margin-right: 5px;
-  animation: dots 1s steps(5, end) infinite;
+.loading::after {
+  display: inline-table;
+  white-space: pre;
+  content: "\A.\A. .\A. . .";
+  animation: spin 1s steps(4) infinite;
+  margin-left: 1px;
+  margin-right: 2px;
 }
-
-@keyframes dots {
-  0%,
-  20% {
-    color: rgba(0, 0, 0, 0);
-    text-shadow: 0.25em 0 0 rgba(0, 0, 0, 0), 0.5em 0 0 rgba(0, 0, 0, 0);
-  }
-  40% {
-    color: white;
-    text-shadow: 0.25em 0 0 rgba(0, 0, 0, 0), 0.5em 0 0 rgba(0, 0, 0, 0);
-  }
-  60% {
-    text-shadow: 0.25em 0 0 white, 0.5em 0 0 rgba(0, 0, 0, 0);
-  }
-  80%,
-  100% {
-    text-shadow: 0.25em 0 0 white, 0.5em 0 0 white;
+@keyframes spin {
+  to {
+    -webkit-transform: translateY(-48px);
+    transform: translateY(-48px);
   }
 }
