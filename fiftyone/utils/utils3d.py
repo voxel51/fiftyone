@@ -35,7 +35,7 @@ def compute_birds_eye_view_maps(
     out_media_field=None,
     bounds=None,
 ):
-    """Computes bird's eye view (BEV) maps for the point clouds in the given
+    """Computes bird's-eye view (BEV) maps for the point clouds in the given
     collection.
 
     Args:
@@ -53,13 +53,13 @@ def compute_birds_eye_view_maps(
         out_group_slice (None): the name of a group slice to which to add
             samples containing the BEV images
         out_media_field (None): the name of a field in which to store the paths
-            to the raw BEV feature maps. If ``out_group_slice``
+            to the BEV images
         bounds (None): an optional ``([xmin, ymin, zmin], [xmax, ymax, zmax])``
             tuple defining the field of view for which to generate the map. By
             default, a tight crop of the point cloud is used
 
     Returns:
-        the list of BEV image paths, only if neither of ``out_group_slice`` and
+        the list of BEV image paths, only if neither ``out_group_slice`` or
         ``out_media_field`` are provided
     """
     if in_group_slice is None and samples.media_type == fom.GROUP:
@@ -117,7 +117,7 @@ def compute_birds_eye_view_maps(
 
 
 def compute_birds_eye_view_map(filepath, size, bounds=None):
-    """Generates a birds-eye view (BEV) image for the given PCD file.
+    """Generates a bird's-eye view (BEV) image for the given PCD file.
 
     The returned image is RGB encoding the intensity, height, and density of
     the point cloud.
