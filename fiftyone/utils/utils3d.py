@@ -10,7 +10,6 @@ import logging
 
 import cv2
 import numpy as np
-import open3d as o3d
 
 import eta.core.image as etai
 
