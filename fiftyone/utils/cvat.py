@@ -4302,7 +4302,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     task_name = f"FiftyOne_{_dataset_name}"
                 else:
                     task_name = config.task_name
-                # append task number when multiple tasks are created
+
+                # Append task number when multiple tasks are created
                 if num_batches > 1:
                     task_name += f"_{idx + 1}"
 
