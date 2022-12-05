@@ -6,6 +6,7 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import math
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
@@ -4229,6 +4230,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         num_samples = len(samples)
         batch_size = self._get_batch_size(samples, task_size)
+        num_batches = math.ceil(num_samples / batch_size)
 
         samples.compute_metadata()
 
@@ -4294,10 +4296,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     project_ids.append(project_id)
 
                 if config.task_name is None:
-                    _dataset_name = samples_batch._dataset.name.replace(" ", "_")
-                    task_name = "FiftyOne_%s" % _dataset_name
+                    _dataset_name = samples_batch._dataset.name.replace(
+                        " ", "_"
+                    )
+                    task_name = f"FiftyOne_{_dataset_name}"
                 else:
                     task_name = config.task_name
+                # append task number when multiple tasks are created
+                if num_batches > 1:
+                    task_name += f"_{idx + 1}"
 
                 (
                     task_id,

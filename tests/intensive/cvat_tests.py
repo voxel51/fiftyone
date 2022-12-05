@@ -434,11 +434,11 @@ class CVATTests(unittest.TestCase):
         with results:
             api = results.connect_to_api()
             self.assertEqual(len(task_ids), 2)
-            for task_id in task_ids:
+            for idx, task_id in enumerate(task_ids):
                 task_json = api.get(api.task_url(task_id)).json()
                 self.assertEqual(task_json["bug_tracker"], bug_tracker)
                 self.assertEqual(task_json["segment_size"], 1)
-                self.assertEqual(task_json["name"], task_name)
+                self.assertEqual(task_json["name"], f"{task_name}_{idx + 1}")
                 if user is not None:
                     self.assertEqual(task_json["assignee"]["username"], user)
                 for job in api.get(api.jobs_url(task_id)).json():
