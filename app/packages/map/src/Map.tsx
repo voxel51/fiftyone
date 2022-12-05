@@ -118,6 +118,7 @@ const Plot: React.FC<{}> = () => {
         defaultMode: "draw_polygon",
       })
   );
+  const [mapError, setMapError] = React.useState(false);
 
   const onLoad = React.useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -181,6 +182,19 @@ const Plot: React.FC<{}> = () => {
     <div className={container} ref={ref}>
       {loading && !length ? (
         <foc.Loading style={{ opacity: 0.5 }}>Pixelating...</foc.Loading>
+      ) : mapError ? (
+        <foc.Loading>
+          Something went wrong... is your&nbsp;
+          <ExternalLink
+            style={{ color: theme.text.primary }}
+            href={
+              "https://voxel51.com/docs/fiftyone/user_guide/app.html#map-tab"
+            }
+          >
+            Mapbox token
+          </ExternalLink>
+          &nbsp;valid?
+        </foc.Loading>
       ) : (
         <Map
           ref={mapRef}
@@ -201,7 +215,10 @@ const Plot: React.FC<{}> = () => {
               if (draw.getMode() !== "draw_polygon") {
                 draw.changeMode("draw_polygon");
               }
-            } catch {}
+            } catch (error) {
+              setMapError(true);
+              throw error;
+            }
           }}
         >
           <Source
