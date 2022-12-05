@@ -31,10 +31,10 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
-    """Base class for importing datasets in Open Images V6 format.
+class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
+    """Base class for importing datasets in Open Images format.
 
-    See :class:`fiftyone.types.OpenImagesV6Dataset` for format details.
+    See :class:`fiftyone.types.OpenImagesDataset` for format details.
 
     Args:
         dataset_dir: the dataset directory
@@ -82,6 +82,7 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
     def __init__(
         self,
         dataset_dir,
+        version="v7",
         label_types=None,
         classes=None,
         attrs=None,
@@ -93,7 +94,11 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         seed=None,
         max_samples=None,
     ):
-        _label_types = _parse_label_types(label_types)
+
+        print("INIT")
+        print(version)
+        self.version = version
+        _label_types = _parse_label_types(version, label_types)
         if include_id:
             _label_types.append("open_images_id")
 
@@ -118,6 +123,7 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         self._attrs_map = None
         self._cls_data = None
         self._det_data = None
+        self._pnt_data = None
         self._rel_data = None
         self._seg_data = None
         self._uuids = None
@@ -155,6 +161,17 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
             )
             if detections is not None:
                 label["detections"] = detections
+
+        if "points" in self._label_types:
+            # Add points
+            points = _create_points(
+                self._pnt_data,
+                image_id,
+                self._classes_map,
+                self.dataset_dir,
+            )
+            if points is not None:
+                label["points"] = points
 
         if "segmentations" in self._label_types:
             # Add segmentations
@@ -203,6 +220,7 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         types = {
             "classifications": fol.Classifications,
             "detections": fol.Detections,
+            "points": fol.Keypoints,
             "segmentations": fol.Detections,
             "relationships": fol.Detections,
             "open_images_id": fof.StringField,
@@ -246,6 +264,9 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         else:
             image_ids = available_ids
 
+        print("PRE:")
+        print(self.version)
+
         (
             classes_map,
             all_classes,
@@ -256,8 +277,10 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
             attrs,
             oi_attrs,
             seg_classes,
+            pnt_classes,
             _,
         ) = _setup(
+            self.version,
             dataset_dir,
             label_types=label_types,
             classes=classes,
@@ -269,12 +292,14 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         (
             cls_data,
             det_data,
+            pnt_data,
             rel_data,
             seg_data,
             all_label_ids,
             any_label_ids,
             _,
         ) = _get_all_label_data(
+            self.version,
             dataset_dir,
             image_ids,
             label_types=label_types,
@@ -283,6 +308,7 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
             attrs=attrs,
             oi_attrs=oi_attrs,
             seg_classes=seg_classes,
+            pnt_classes=pnt_classes,
             ids_only=False,
             track_all_ids=max_samples is not None,
             only_matching=self.only_matching,
@@ -334,6 +360,9 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         if seg_classes:
             info["segmentation_classes"] = seg_classes
 
+        if pnt_classes:
+            info["point_classes"] = pnt_classes
+
         info["classes_map"] = classes_map
         info["classes"] = all_classes
 
@@ -341,6 +370,7 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         self._attrs_map = attrs_map
         self._cls_data = cls_data
         self._det_data = det_data
+        self._pnt_data = pnt_data
         self._rel_data = rel_data
         self._seg_data = seg_data
         self._uuids = valid_ids
@@ -349,12 +379,15 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         return self._info
 
 
-def get_attributes(version="v6", dataset_dir=None):
+################################################################
+
+
+def get_attributes(version="v7", dataset_dir=None):
     """Gets the list of relationship attributes in the Open Images dataset.
 
     Args:
-        version ("v6"): the version of the Open Images dataset. Supported
-            values are ``("v6")``
+        version ("v7"): the version of the Open Images dataset. Supported
+            values are ``("v6", "v7")``
         dataset_dir (None): an optional root directory the in which the dataset
             is downloaded
 
@@ -379,15 +412,15 @@ def get_attributes(version="v6", dataset_dir=None):
     return sorted(attrs_map.values())
 
 
-def get_classes(version="v6", dataset_dir=None):
-    """Gets the boxable classes that exist in classifications, detections, and
+def get_classes(version="v7", dataset_dir=None):
+    """Gets the boxable classes that exist in classifications, detections, points, and
     relationships in the Open Images dataset.
 
     This method can be called in isolation without downloading the dataset.
 
     Args:
-        version ("v6"): the version of the Open Images dataset. Supported
-            values are ``("v6")``
+        version ("v7"): the version of the Open Images dataset. Supported
+            values are ``("v6", "v7")``
         dataset_dir (None): an optional root directory the in which the dataset
             is downloaded
 
@@ -414,7 +447,7 @@ def get_classes(version="v6", dataset_dir=None):
 
 def get_segmentation_classes(version="v6", dataset_dir=None):
     """Gets the list of classes (350) that are labeled with segmentations in
-    the Open Images V6 dataset.
+    the Open Images V6/V7 dataset.
 
     This method can be called in isolation without downloading the dataset.
 
@@ -445,10 +478,44 @@ def get_segmentation_classes(version="v6", dataset_dir=None):
     return seg_classes
 
 
+def get_point_classes(version="v7", dataset_dir=None):
+    """Gets the list of classes that are labeled with points in
+    the Open Images V7 dataset.
+
+    This method can be called in isolation without downloading the dataset.
+
+    Args:
+        version ("v7"): the version of the Open Images dataset. Supported
+            values are ``("v7")``
+        dataset_dir (None): an optional root directory the in which the dataset
+            is downloaded
+
+    Returns:
+        a sorted list of segmentation class name strings
+    """
+    _verify_version(version)
+    if version != "v7":
+        return
+
+    if dataset_dir is None:
+        dataset_dir = os.path.join(
+            fo.config.dataset_zoo_dir, "open-images-%s" % version
+        )
+
+    try:
+        # Try to use already downloaded file
+        pnt_classes, _ = _get_pnt_classes(dataset_dir, download=False)
+    except:
+        # Download file to temporary location
+        with etau.TempDir() as tmp_dir:
+            pnt_classes, _ = _get_pnt_classes(tmp_dir, download=True)
+    return pnt_classes
+
+
 def download_open_images_split(
     dataset_dir,
     split,
-    version="v6",
+    version="v7",
     label_types=None,
     classes=None,
     attrs=None,
@@ -461,7 +528,7 @@ def download_open_images_split(
     """Utility that downloads full or partial splits of the
     `Open Images dataset <https://storage.googleapis.com/openimages/web/index.html>`_.
 
-    See :class:`fiftyone.types.OpenImagesV6Dataset` for the format in which
+    See :class:`fiftyone.types.OpenImagesDataset` for the format in which
     ``dataset_dir`` will be arranged.
 
     Any existing files are not re-downloaded.
@@ -475,11 +542,14 @@ def download_open_images_split(
         dataset_dir: the directory to download the dataset
         split: the split to download. Supported values are
             ``("train", "validation", "test")``
-        version ("v6"): the version of the Open Images dataset to download.
-            Supported values are ``("v6")``
+        version ("v7"): the version of the Open Images dataset to download.
+            Supported values are ``("v6", "v7")``
         label_types (None): a label type or list of label types to load. The
             supported values are
-            ``("detections", "classifications", "relationships", "segmentations")``.
+            ``("detections", "classifications", "relationships", "segmentations")``
+            for ``"v6"`` and
+            ``("detections", "classifications", "points", "relationships",
+            "segmentations")`` for ``"v7"``.
             By default, all label types are loaded
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
@@ -540,6 +610,9 @@ def download_open_images_split(
 
     downloaded_ids = _get_downloaded_image_ids(dataset_dir)
 
+    print("B" * 40)
+    print(version)
+
     (
         classes_map,
         all_classes,
@@ -550,8 +623,10 @@ def download_open_images_split(
         attrs,
         oi_attrs,
         seg_classes,
+        pnt_classes,
         _did_download,
     ) = _setup(
+        version,
         dataset_dir,
         label_types=label_types,
         classes=classes,
@@ -559,6 +634,8 @@ def download_open_images_split(
         seed=seed,
         download=True,
     )
+
+    print(version)
     did_download |= _did_download
 
     # Download class hierarchy if necessary (used in evaluation)
@@ -568,11 +645,13 @@ def download_open_images_split(
     did_download |= _did_download
 
     num_samples, _did_download = _download(
+        version,
         image_ids,
         downloaded_ids,
         oi_classes,
         oi_attrs,
         seg_classes,
+        pnt_classes,
         dataset_dir,
         split,
         label_types=label_types,
@@ -583,12 +662,14 @@ def download_open_images_split(
         num_workers=num_workers,
         download=True,
     )
+
     did_download |= _did_download
 
     return num_samples, all_classes, did_download
 
 
 def _setup(
+    version,
     dataset_dir,
     label_types=None,
     classes=None,
@@ -596,9 +677,11 @@ def _setup(
     seed=None,
     download=False,
 ):
-    did_download = False
-    _label_types = _parse_label_types(label_types)
+    print("A" * 30)
+    print(version)
 
+    did_download = False
+    _label_types = _parse_label_types(version, label_types)
     if etau.is_str(classes):
         classes = [classes]
 
@@ -683,6 +766,20 @@ def _setup(
     else:
         seg_classes = None
 
+    print(_label_types)
+    print("C" * 40)
+    # pnt_classes = None
+    if "points" in _label_types:
+        pnt_classes, _did_download = _get_pnt_classes(
+            dataset_dir, classes_map=classes_map, download=download
+        )
+        did_download |= _did_download
+    elif "points" not in _label_types:
+        #     print("E"*40)
+        pnt_classes = None
+
+    # print(pnt_classes[:10])
+
     return (
         classes_map,
         all_classes,
@@ -693,6 +790,7 @@ def _setup(
         attrs,
         oi_attrs,
         seg_classes,
+        pnt_classes,
         did_download,
     )
 
@@ -732,6 +830,16 @@ def _get_classes_map(dataset_dir, download=True):
     cls_data = _parse_csv(cls_csv)
     classes_map = {k: v for k, v in cls_data}
     return classes_map, did_download
+
+
+def _get_pnt_classes(dataset_dir, classes_map=None, download=True):
+    url = _ANNOTATION_DOWNLOAD_URLS["general"]["point_classes"]
+    pnt_cls_csv, did_download = _get_general_metadata_file(
+        dataset_dir, "point_classes.csv", url, download=download
+    )
+    pnt_cls_data = _parse_csv(pnt_cls_csv)
+    pnt_classes = [p[1] for p in pnt_cls_data[1:]]
+    return sorted(pnt_classes), did_download
 
 
 def _get_seg_classes(dataset_dir, classes_map=None, download=True):
@@ -891,27 +999,28 @@ def _parse_and_verify_image_ids(image_ids, dataset_dir, split, download=True):
     )
 
 
-def _parse_label_types(label_types):
+def _parse_label_types(version, label_types):
+    _SLT = _SUPPORTED_LABEL_TYPES[version]
     if label_types is None:
-        return _SUPPORTED_LABEL_TYPES
+        return _SLT
 
     if etau.is_str(label_types):
         label_types = [label_types]
     else:
         label_types = list(label_types)
 
-    bad_types = [l for l in label_types if l not in _SUPPORTED_LABEL_TYPES]
+    bad_types = [l for l in label_types if l not in _SLT]
 
     if len(bad_types) == 1:
         raise ValueError(
             "Unsupported label type '%s'. Supported types are %s"
-            % (bad_types[0], _SUPPORTED_LABEL_TYPES)
+            % (bad_types[0], _SLT)
         )
 
     if len(bad_types) > 1:
         raise ValueError(
             "Unsupported label types %s. Supported types are %s"
-            % (bad_types, _SUPPORTED_LABEL_TYPES)
+            % (bad_types, _SLT)
         )
 
     return label_types
@@ -958,6 +1067,7 @@ def _get_downloaded_image_ids(dataset_dir):
 
 
 def _get_all_label_data(
+    version,
     dataset_dir,
     image_ids,
     label_types=None,
@@ -966,6 +1076,7 @@ def _get_all_label_data(
     attrs=None,
     oi_attrs=None,
     seg_classes=None,
+    pnt_classes=None,
     download_only=False,
     ids_only=False,
     track_all_ids=True,
@@ -975,6 +1086,7 @@ def _get_all_label_data(
 ):
     cls_data = {}
     det_data = {}
+    pnt_data = {}
     rel_data = {}
     seg_data = {}
 
@@ -984,7 +1096,7 @@ def _get_all_label_data(
     all_attrs_ids = set(image_ids)
     any_attrs_ids = set()
 
-    _label_types = _parse_label_types(label_types)
+    _label_types = _parse_label_types(version, label_types)
 
     did_download = False
 
@@ -1038,6 +1150,25 @@ def _get_all_label_data(
 
         all_classes_ids &= det_all_ids
         any_classes_ids |= det_any_ids
+    # if "points" in _label_types:
+    #     if download:
+    #         url = _ANNOTATION_DOWNLOAD_URLS[split]["points"]
+    #     else:
+    #         url = None
+
+    # pnt_all_ids, pnt_any_ids, pnt_data, _did_download = _get_label_data(
+    #     dataset_dir,
+    #     image_ids,
+    #     "points",
+    #     classes=classes,
+    #     oi_classes=oi_classes,
+    #     url=url,
+    #     download=download,
+    #     download_only=download_only,
+    #     ids_only=ids_only,
+    #     track_all_ids=track_all_ids,
+    #     only_matching=only_matching,
+    #     )
 
     if "relationships" in _label_types:
         if download:
@@ -1114,6 +1245,7 @@ def _get_all_label_data(
     return (
         cls_data,
         det_data,
+        pnt_data,
         rel_data,
         seg_data,
         all_label_ids,
@@ -1203,11 +1335,13 @@ def _get_label_data(
 
 
 def _download(
+    version,
     image_ids,
     downloaded_ids,
     oi_classes,
     oi_attrs,
     seg_classes,
+    pnt_classes,
     dataset_dir,
     split,
     label_types=None,
@@ -1225,10 +1359,12 @@ def _download(
         _,
         _,
         _,
+        _,
         all_label_ids,
         any_label_ids,
         did_download,
     ) = _get_all_label_data(
+        version,
         dataset_dir,
         image_ids,
         label_types=label_types,
@@ -1237,6 +1373,7 @@ def _download(
         attrs=attrs,
         oi_attrs=oi_attrs,
         seg_classes=seg_classes,
+        pnt_classes=pnt_classes,
         download_only=classes is None and attrs is None,
         ids_only=True,
         track_all_ids=max_samples is not None,
@@ -1308,12 +1445,12 @@ def _download(
             max_samples,
         )
 
-    if "segmentations" in _parse_label_types(label_types):
+    ####### POINTS??????? #######
+    if "segmentations" in _parse_label_types(version, label_types):
         _did_download = _download_masks_if_necessary(
             all_ids, dataset_dir, split, download=download
         )
         did_download |= _did_download
-
     num_downloaded = _download_images_if_necessary(
         target_ids,
         split,
@@ -1466,6 +1603,11 @@ def _create_relationships(rel_data, image_id, classes_map, attrs_map):
     matching_df = _get_dataframe_rows(df, image_id)
     rels = [_make_label(row[1]) for row in matching_df.iterrows()]
     return fol.Detections(detections=rels)
+
+
+def _create_points(pnt_data, image_id, classes_map, dataset_dir):
+    points = None
+    return points
 
 
 def _create_segmentations(seg_data, image_id, classes_map, dataset_dir):
@@ -1637,12 +1779,14 @@ _ANNOTATION_DOWNLOAD_URLS = {
         "attr_names": "https://storage.googleapis.com/openimages/v6/oidv6-attributes-description.csv",
         "hierarchy": "https://storage.googleapis.com/openimages/2018_04/bbox_labels_600_hierarchy.json",
         "segmentation_classes": "https://storage.googleapis.com/openimages/v5/classes-segmentation.txt",
+        "point_classes": "https://storage.googleapis.com/openimages/v7/oidv7-class-descriptions.csv",
     },
     "train": {
         "num_images": 1743042,
         "image_ids": "https://storage.googleapis.com/openimages/2018_04/train/train-images-boxable-with-rotation.csv",
         "classifications": "https://storage.googleapis.com/openimages/v5/train-annotations-human-imagelabels-boxable.csv",
         "detections": "https://storage.googleapis.com/openimages/v6/oidv6-train-annotations-bbox.csv",
+        "points": "https://storage.googleapis.com/openimages/v7/oidv7-train-annotations-point-labels.csv",
         "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-train-annotations-vrd.csv",
         "segmentations": {
             "mask_csv": "https://storage.googleapis.com/openimages/v5/train-annotations-object-segmentation.csv",
@@ -1671,6 +1815,7 @@ _ANNOTATION_DOWNLOAD_URLS = {
         "image_ids": "https://storage.googleapis.com/openimages/2018_04/test/test-images-with-rotation.csv",
         "classifications": "https://storage.googleapis.com/openimages/v5/test-annotations-human-imagelabels-boxable.csv",
         "detections": "https://storage.googleapis.com/openimages/v5/test-annotations-bbox.csv",
+        "points": "https://storage.googleapis.com/openimages/v7/oidv7-test-annotations-point-labels.csv",
         "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-test-annotations-vrd.csv",
         "segmentations": {
             "mask_csv": "https://storage.googleapis.com/openimages/v5/test-annotations-object-segmentation.csv",
@@ -1699,6 +1844,7 @@ _ANNOTATION_DOWNLOAD_URLS = {
         "image_ids": "https://storage.googleapis.com/openimages/2018_04/validation/validation-images-with-rotation.csv",
         "classifications": "https://storage.googleapis.com/openimages/v5/validation-annotations-human-imagelabels-boxable.csv",
         "detections": "https://storage.googleapis.com/openimages/v5/validation-annotations-bbox.csv",
+        "points": "https://storage.googleapis.com/openimages/v7/oidv7-val-annotations-point-labels.csv",
         "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-validation-annotations-vrd.csv",
         "segmentations": {
             "mask_csv": "https://storage.googleapis.com/openimages/v5/validation-annotations-object-segmentation.csv",
@@ -1728,12 +1874,26 @@ _BUCKET_NAME = "open-images-dataset"
 
 _CSV_DELIMITERS = [",", ";", ":", " ", "\t", "\n"]
 
-_SUPPORTED_LABEL_TYPES = [
+_SUPPORTED_LABEL_TYPES_v6 = [
     "classifications",
     "detections",
     "relationships",
     "segmentations",
 ]
+
+_SUPPORTED_LABEL_TYPES_v7 = [
+    "classifications",
+    "detections",
+    "points",
+    "relationships",
+    "segmentations",
+]
+
+_SUPPORTED_LABEL_TYPES = {
+    "v6": _SUPPORTED_LABEL_TYPES_v6,
+    "v7": _SUPPORTED_LABEL_TYPES_v7,
+}
+
 
 _SUPPORTED_SPLITS = [
     "train",
@@ -1743,4 +1903,5 @@ _SUPPORTED_SPLITS = [
 
 _SUPPORTED_VERSIONS = [
     "v6",
+    "v7",
 ]
