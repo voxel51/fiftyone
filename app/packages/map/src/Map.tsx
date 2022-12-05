@@ -162,7 +162,7 @@ const Plot: React.FC<{}> = () => {
   if (!settings.mapboxAccessToken) {
     return (
       <foc.Loading>
-        No Mapbox token provided:&nbsp;
+        No Mapbox token provided.&nbsp;
         <ExternalLink
           style={{ color: theme.text.primary }}
           href={"https://voxel51.com/docs/fiftyone/user_guide/app.html#map-tab"}
