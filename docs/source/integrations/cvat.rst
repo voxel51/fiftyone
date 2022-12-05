@@ -492,6 +492,7 @@ provided:
     otherwise a new project is created. By default, no project is used
 -   **project_id** (*None*): an optional ID of an existing CVAT project to
     which to upload the annotation tasks. By default, no project is used
+-   **task_name** (None): an optional task name to use for the created CVAT task
 -   **occluded_attr** (*None*): an optional attribute name containing existing
     occluded values and/or in which to store downloaded occluded values for all
     objects in the annotation run

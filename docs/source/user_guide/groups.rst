@@ -595,6 +595,9 @@ Here's how a typical PCD file is structured:
     encoded in the `r` channel of the `rgb` field of the
     `PCD files <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_.
 
+    When coloring by intensity in the App, the intensity values are
+    automatically scaled to use the full dynamic range of the colorscale.
+
 As usual, point cloud samples may contain any type and number of custom fields,
 including certain visualizable |Label| types as described below.
 
@@ -615,13 +618,21 @@ detections represented as |Detection| instances with their `label`, `location`,
     # Object label
     label = "vehicle"
 
-    # Object center location ``(x, y, z)`` in camera coordinates
+    #
+    # Object center `[x, y, z]` in scene coordinates
+    #
+    # Note that, when `useLegacyCoordinates=True` (the default), the y coordinate
+    # of location is offset by half of the object's y dimension.
+    #
+    # Set `useLegacyCoordinates=False` (recommended) to treat location as the
+    # true centroid of the object
+    #
     location = [0.47, 1.49, 69.44]
 
-    # Object dimensions ``[height, width, length]`` in object coordinates
+    # Object dimensions `[x, y, z]` in scene units
     dimensions = [2.85, 2.63, 12.34]
 
-    # Object rotation around ``[x, y, z]`` camera axes, in ``[-pi, pi]``
+    # Object rotation `[x, y, z]` around scene axes, in `[-pi, pi]`
     rotation = [0, -1.56, 0]
 
     # A 3D object detection
@@ -638,8 +649,8 @@ detections represented as |Detection| instances with their `label`, `location`,
 ------------
 
 The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D polylines
-represented as |Polyline| instances with their `label`, `points3d`, `closed`,
-and `filled` attributes populated as shown below:
+represented as |Polyline| instances with their `label` and `points3d`
+attributes populated as shown below:
 
 .. code-block:: python
     :linenos:
@@ -649,25 +660,12 @@ and `filled` attributes populated as shown below:
     # Object label
     label = "lane"
 
-    # A list of lists of ``(x, y, z)`` points in camera coordinates describing
+    # A list of lists of `[x, y, z]` points in scene coordinates describing
     # the vertices of each shape in the polyline
     points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
 
-    # Whether the shapes are closed, i.e., and edge should be drawn from the
-    # last vertex to the first vertex of each shape
-    closed = False
-
-    # Whether the polyline represents polygons, i.e., shapes that should be
-    # filled when rendering them
-    filled = False
-
-    # A set of semantically related 3D polylines or polygons.
-    polyline = fo.Polyline(
-        label=label,
-        points3d=points3d,
-        closed=closed,
-        filled=filled,
-    )
+    # A set of semantically related 3D polylines
+    polyline = fo.Polyline(label=label, points3d=points3d)
 
 .. _groups-views:
 
@@ -1097,10 +1095,15 @@ shown below under the `plugins.3d` key of your
                 // Whether to show the 3D visualizer
                 "enabled": true,
 
-                // The initial camera position in 3D space
+                // Whether to use legacy coordinates, where the y coordinate of
+                // the `location` of 3D detections is offset by half of the
+                // object's y size
+                "useLegacyCoordinates": true,
+
+                // The initial camera position in the 3D scene
                 "defaultCameraPosition": {"x": 0, "y": 0, "z": 0},
 
-                // Transformation from PCD -> reference coordinates
+                // Transformation from PCD -> scene coordinates
                 "pointCloud": {
                     // A rotation to apply to the PCD's coordinate system
                     "rotation": [0, 0, 0],
@@ -1109,7 +1112,7 @@ shown below under the `plugins.3d` key of your
                     "minZ": null
                 },
 
-                // Transformation from Label -> reference coorindates
+                // Transformation from Label -> scene coorindates
                 "overlay": {
                     // A rotation to apply to the Label's coordinate system
                     "rotation": [0, 0, 0],
