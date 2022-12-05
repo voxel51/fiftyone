@@ -216,8 +216,8 @@ const Plot: React.FC<{}> = () => {
                 draw.changeMode("draw_polygon");
               }
             } catch (error) {
-              console.error(error);
               setMapError(true);
+              throw error;
             }
           }}
         >
