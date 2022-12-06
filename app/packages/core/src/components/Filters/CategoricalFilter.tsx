@@ -111,7 +111,8 @@ const Wrapper = ({
   const skeleton = useRecoilValue(isKeypointLabel(path));
 
   if (
-    (results.length <= CHECKBOX_LIMIT && !NEVEREXPAND_FIELDS.includes(name)) ||
+    (results.length <= CHECKBOX_LIMIT &&
+      !NEVEREXPAND_FIELDS.includes(name.toLowerCase())) ||
     skeleton
   ) {
     allValues = [
@@ -404,7 +405,7 @@ const CategoricalFilter = <T extends V = V>({
         {results === null && <LoadingDots text="" />}
         {results !== null &&
           (results.length > CHECKBOX_LIMIT ||
-            NEVEREXPAND_FIELDS.includes(name.toLocaleLowerCase())) &&
+            NEVEREXPAND_FIELDS.includes(name.toLowerCase())) &&
           !skeleton && (
             <Selector
               useSearch={useSearch}
