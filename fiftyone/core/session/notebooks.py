@@ -53,6 +53,7 @@ def display(
     funcs = {
         focx._COLAB: display_colab,
         focx._IPYTHON: display_ipython,
+        focx._DATABRICKS: display_databricks,
     }
     fn = funcs[focx._get_context()]
     fn(client, cell, reactivate)
@@ -151,7 +152,6 @@ def display_databricks(
 
 
 def _get_databricks_proxy_url(port):
-    dbutils = None
     try:
         import IPython
 

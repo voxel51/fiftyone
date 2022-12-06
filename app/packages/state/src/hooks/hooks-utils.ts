@@ -182,27 +182,6 @@ export const useScreenshot = (
     return Promise.all(styles);
   }, []);
 
-  const captureCanvas = useCallback(() => {
-    const canvases = document.body.querySelectorAll("canvas");
-    const promises = [];
-    canvases.forEach((canvas) => {
-      const rect = canvas.getBoundingClientRect();
-      const dataURI = canvas.toDataURL("image/png");
-      const img = new Image(rect.width, rect.height);
-      img.style.height = `${rect.height}px`;
-      img.style.width = `${rect.width}px`;
-      canvas.parentNode.replaceChild(img, canvas);
-      promises.push(
-        new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = dataURI;
-        })
-      );
-    });
-    return Promise.all(promises);
-  }, []);
-
   const capture = useCallback(() => {
     const { width } = document.body.getBoundingClientRect();
     html2canvas(document.body).then((canvas) => {

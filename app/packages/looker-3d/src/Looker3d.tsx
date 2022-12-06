@@ -444,7 +444,10 @@ function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
 
   return (
     <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
-      <Canvas onClick={() => setAction(null)}>
+      <Canvas
+        onClick={() => setAction(null)}
+        gl={{ preserveDrawingBuffer: true }} // for noteboook screenshots
+      >
         <CameraSetup
           controlsRef={controlsRef}
           cameraRef={cameraRef}

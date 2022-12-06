@@ -1,3 +1,4 @@
+import Color from "color";
 import React, { Suspense } from "react";
 import { Apps } from "@mui/icons-material";
 import styled from "styled-components";
@@ -23,9 +24,9 @@ const SamplesHeader = styled.div`
   width: 100%;
   background-image: linear-gradient(
     to top,
-    rgba(0, 0, 0, 0),
-    30%,
-    ${({ theme }) => theme.background.mediaSpace}
+    ${({ theme }) => Color(theme.background.mediaSpace).alpha(0.0).toString()}
+      0%,
+    ${({ theme }) => theme.background.mediaSpace} 100%
   );
   margin-left: -1rem;
 `;

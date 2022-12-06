@@ -990,7 +990,9 @@ def _attach_listeners(session: "Session"):
     if focx.is_notebook_context() and not focx.is_colab_context():
 
         def on_capture_notebook_cell(event: CaptureNotebookCell) -> None:
-            fosn.capture(session._notebook_cells[event.subscription], event)
+            event.subscription in session._notebook_cells and fosn.capture(
+                session._notebook_cells[event.subscription], event
+            )
 
         session._client.add_event_listener(
             "capture_notebook_cell", on_capture_notebook_cell
