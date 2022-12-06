@@ -6,8 +6,8 @@ Session notebook handling.
 |
 """
 from dataclasses import dataclass
-import json
 import os
+import typing as t
 
 from jinja2 import Template
 
@@ -60,14 +60,19 @@ def display(
 
 
 def display_ipython(
-    client: Client, cell: NotebookCell, reactivate: bool = False
+    client: Client,
+    cell: NotebookCell,
+    reactivate: bool = False,
+    **kwargs: t.Dict[str, t.Union[str, bool]],
 ) -> None:
     iframe = IPython.display.IFrame(
-        f"""{focx.get_url(
+        focx.get_url(
             cell.address,
             os.environ.get("FIFTYONE_APP_CLIENT_PORT", cell.port),
+            notebook=True,
             subscription=cell.subscription,
-        )}""",
+            **kwargs,
+        ),
         height=cell.height,
         width="100%",
     )
@@ -134,47 +139,9 @@ def display_databricks(
     """Display a FiftyOne instance in a Databricks output frame.
     The Databricks driver port is accessible via a proxy url and can be displayed inside an IFrame.
     """
-    try:
-        import IPython
-
-        shell = IPython.get_ipython()
-        display_html = shell.user_ns["displayHTML"]
-    except ImportError as e:
-        raise ValueError(
-            "You must verify that the Databricks Runtime is installed properly."
-        ) from e
-
-    url, proxy = _get_databricks_proxy_url(cell.port)
-    url = f"{url}?notebook=true&subscription={cell.subscription}&polling=true&proxy={proxy}"
-    html_string = f"""
-        <iframe
-            id="{cell.subscription}"
-            width="100%"
-            height="{cell.height}"
-            frameborder="0"
-            src="{url}">
-        </iframe>
-    """
-    display_html(html_string)
-
-
-def _get_databricks_proxy_url(port):
-    try:
-        import IPython
-
-        shell = IPython.get_ipython()
-        dbutils = shell.user_ns["dbutils"]
-    except ImportError as e:
-        raise ValueError(
-            "You must verify that the Databricks Runtime is installed properly."
-        ) from e
-
-    data = json.loads(
-        dbutils.entry_point.getDbutils().notebook().getContext().toJson()
-    )["tags"]
-    browser_host_name = data["browserHostName"]
-    org_id = data["orgId"]
-    cluster_id = data["clusterId"]
-    proxy = f"/driver-proxy/o/{org_id}/{cluster_id}/{port}/"
-
-    return f"https://{browser_host_name}{proxy}", proxy
+    display_ipython(
+        client,
+        cell,
+        reactivate=reactivate,
+        polling=True,
+    )
