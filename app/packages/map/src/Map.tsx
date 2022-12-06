@@ -211,14 +211,13 @@ const Plot: React.FC<{}> = () => {
           mapboxAccessToken={settings.mapboxAccessToken}
           onLoad={onLoad}
           onRender={() => {
-            try {
-              if (draw.getMode() !== "draw_polygon") {
-                draw.changeMode("draw_polygon");
-              }
-            } catch (error) {
-              setMapError(true);
-              throw error;
+            if (draw.getMode() !== "draw_polygon") {
+              draw.changeMode("draw_polygon");
             }
+          }}
+          onError={({ error }) => {
+            setMapError(true);
+            throw error;
           }}
         >
           <Source
