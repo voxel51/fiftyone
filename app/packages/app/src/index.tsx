@@ -11,7 +11,6 @@ import Network from "./Network";
 import "./index.css";
 import {
   modal,
-  refresher,
   State,
   stateSubscription,
   useReset,
@@ -42,7 +41,6 @@ const App: React.FC = ({}) => {
   readyStateRef.current = readyState;
   const subscription = useRecoilValue(stateSubscription);
   const { context, environment } = useRouter(makeRoutes, []);
-  const refresh = useRefresh();
   const contextRef = useRef(context);
   contextRef.current = context;
   const reset = useReset();
@@ -85,7 +83,6 @@ const App: React.FC = ({}) => {
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
               const { colorscale, config, ...data } = payload.state;
-              payload.refresh && refresh();
 
               const state = {
                 ...toCamelCase(data),
@@ -111,8 +108,8 @@ const App: React.FC = ({}) => {
               contextRef.current.history.replace(path, {
                 state,
                 colorscale,
-                config,
                 refresh: payload.refresh,
+                config,
                 variables: dataset ? { view: state.view || null } : undefined,
               });
 

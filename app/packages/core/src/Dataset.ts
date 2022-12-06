@@ -124,10 +124,11 @@ export const usePreLoadedDataset = (
   const router = React.useContext(fos.RouterContext);
 
   React.useLayoutEffect(() => {
-    const { colorscale, config, state } = router?.state || {};
+    const { colorscale, config, state, refresh } = router?.state || {};
 
     if (dataset) {
       update(() => {
+        router.state.refresh = false;
         return {
           colorscale,
           config: config
@@ -135,6 +136,7 @@ export const usePreLoadedDataset = (
             : undefined,
           dataset: fos.transformDataset(dataset),
           state,
+          refresh,
         };
       });
       setReady(true);

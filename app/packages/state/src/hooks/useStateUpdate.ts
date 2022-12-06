@@ -34,6 +34,7 @@ interface StateUpdate {
   config?: State.Config;
   dataset?: State.Dataset;
   state?: Partial<State.Description>;
+  refresh?: boolean;
 }
 
 export type StateResolver =
@@ -45,7 +46,7 @@ const useStateUpdate = () => {
 
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
-      const { config, dataset, state } =
+      const { refresh, config, dataset, state } =
         resolve instanceof Function ? resolve(t) : resolve;
 
       const { get, reset, set } = t;
@@ -53,7 +54,7 @@ const useStateUpdate = () => {
       if (state) {
         const view = get(viewAtoms.view);
 
-        if (!viewsAreEqual(view || [], state.view || [])) {
+        if (!viewsAreEqual(view || [], state.view || []) || refresh) {
           set(viewAtoms.view, state.view || []);
           reset(extendedSelection);
           reset(similarityParameters);
@@ -93,7 +94,8 @@ const useStateUpdate = () => {
         if (
           !previousDataset ||
           previousDataset.id !== dataset.id ||
-          dataset.groupSlice !== previousDataset.groupSlice
+          dataset.groupSlice !== previousDataset.groupSlice ||
+          refresh
         ) {
           if (dataset?.name !== previousDataset?.name) {
             reset(sidebarMode(false));
