@@ -106,6 +106,7 @@ const Section = ({
 }: SectionProps) => {
   const items = useRecoilValue(itemsAtom);
   const elementNames = useRecoilValue(fos.elementNames);
+  const theme = useTheme();
   const [tagging, setTagging] = useRecoilState(taggingAtom);
   const [value, setValue] = useState("");
   const [count, placeholder] = countAndPlaceholder();
@@ -140,7 +141,7 @@ const Section = ({
   };
 
   if (!items) {
-    return <LoadingDots text="" />;
+    return <LoadingDots text="" color={theme.text.secondary} />;
   }
 
   const hasChanges = Object.keys(changes).length > 0;
@@ -152,7 +153,7 @@ const Section = ({
     <>
       <TaggingContainerInput>
         {isLoading ? (
-          <LoadingDots text="" />
+          <LoadingDots text="" color={theme.text.secondary} />
         ) : (
           <TaggingInput
             placeholder={
@@ -450,9 +451,10 @@ const useSamplePlaceHolder = (
 };
 
 const SuspenseLoading = () => {
+  const theme = useTheme();
   return (
     <TaggingContainerInput>
-      <LoadingDots text="Loading" />
+      <LoadingDots text="Loading" color={theme.text.secondary} />
     </TaggingContainerInput>
   );
 };
