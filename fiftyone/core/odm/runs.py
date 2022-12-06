@@ -8,11 +8,11 @@ Dataset run documents.
 from mongoengine import FileField
 
 from fiftyone.core.fields import (
+    DateTimeField,
     DictField,
     ListField,
     ObjectIdField,
     StringField,
-    DateTimeField,
 )
 
 from .document import Document

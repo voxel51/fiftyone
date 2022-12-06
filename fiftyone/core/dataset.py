@@ -3254,6 +3254,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         view_doc = self._get_saved_view_doc(name, pop=True)
         deleted_id = view_doc._id
+
         view_doc.delete()
         self._doc.save()
         return deleted_id
