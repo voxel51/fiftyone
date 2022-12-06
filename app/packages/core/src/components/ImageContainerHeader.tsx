@@ -13,6 +13,7 @@ import GroupSliceSelector from "./GroupSliceSelector";
 
 import * as fos from "@fiftyone/state";
 import { groupStatistics, isGroup } from "@fiftyone/state";
+import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 const SamplesHeader = styled.div`
   position: absolute;
@@ -115,7 +116,13 @@ const ImageContainerHeader = () => {
     <SamplesHeader>
       <GridActionsRow />
       <RightContainer>
-        <Suspense fallback={<RightDiv>{"Loading..."}</RightDiv>}>
+        <Suspense
+          fallback={
+            <RightDiv>
+              <LoadingDots text="Loading" />
+            </RightDiv>
+          }
+        >
           {groupStats === "group" ? <GroupsCount /> : <Count />}
         </Suspense>
         {group && (
