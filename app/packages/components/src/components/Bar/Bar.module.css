@@ -8,6 +8,13 @@
   width: 100%;
   z-index: 1000;
 
+  background-image: linear-gradient(
+    to top,
+    var(--joy-palette-background-mediaSpaceTransparent),
+    30%,
+    var(--joy-palette-background-mediaSpace)
+  );
+
   display: flex;
   justify-content: space-between;
 }
