@@ -109,12 +109,9 @@ const Wrapper = ({
     count: counts[String(value)] ?? 0,
   }));
   const skeleton = useRecoilValue(isKeypointLabel(path));
+  const neverShowExpansion = NEVEREXPAND_FIELDS.includes(name.toLowerCase());
 
-  if (
-    (results.length <= CHECKBOX_LIMIT &&
-      !NEVEREXPAND_FIELDS.includes(name.toLowerCase())) ||
-    skeleton
-  ) {
+  if ((results.length <= CHECKBOX_LIMIT && !neverShowExpansion) || skeleton) {
     allValues = [
       ...allValues,
       ...results
@@ -366,6 +363,7 @@ const CategoricalFilter = <T extends V = V>({
   const theme = useTheme();
   const field = useRecoilValue(fos.field(path));
   const countsLoadable = useRecoilValueLoadable(countsAtom);
+  const neverShowExpansion = NEVEREXPAND_FIELDS.includes(name.toLowerCase());
 
   if (countsLoadable.state !== "hasValue") return null;
 
@@ -404,8 +402,7 @@ const CategoricalFilter = <T extends V = V>({
       >
         {results === null && <LoadingDots text="" />}
         {results !== null &&
-          (results.length > CHECKBOX_LIMIT ||
-            NEVEREXPAND_FIELDS.includes(name.toLowerCase())) &&
+          (results.length > CHECKBOX_LIMIT || neverShowExpansion) &&
           !skeleton && (
             <Selector
               useSearch={useSearch}
