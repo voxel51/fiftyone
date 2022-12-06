@@ -41,7 +41,11 @@ export function getFetchPathPrefix(): string {
   if (typeof window.FIFTYONE_SERVER_PATH_PREFIX === "string") {
     return window.FIFTYONE_SERVER_PATH_PREFIX;
   }
-  return "";
+
+  return (
+    new URL(window.location.toString()).searchParams.get("proxy") ||
+    fetchPathPrefix
+  );
 }
 
 export const getFetchParameters = () => {

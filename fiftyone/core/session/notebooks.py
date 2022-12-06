@@ -144,7 +144,8 @@ def display_databricks(
             "You must verify that the Databricks Runtime is installed properly."
         ) from e
 
-    proxy_url = f"{_get_databricks_proxy_url(cell.port)}?notebook=true&subscription={cell.subscription}&polling=true"
+    url, prefix = _get_databricks_proxy_url(cell.port)
+    proxy_url = f"{url}?notebook=true&subscription={cell.subscription}&polling=true&prefix={prefix}"
     html_string = f"""
     <iframe id="{cell.subscription}" width="100%" height="{cell.height}" frameborder="0" src="{proxy_url}"></iframe>
     """
@@ -168,5 +169,6 @@ def _get_databricks_proxy_url(port):
     browser_host_name = data["browserHostName"]
     org_id = data["orgId"]
     cluster_id = data["clusterId"]
+    prefix = f"driver-proxy/o/{org_id}/{cluster_id}/{port}"
 
-    return f"https://{browser_host_name}/driver-proxy/o/{org_id}/{cluster_id}/{port}/"
+    return f"https://{browser_host_name}/{prefix}", prefix
