@@ -2646,6 +2646,7 @@ __metadata:
     "@mui/icons-material": ^5.10.2
     "@mui/material": ^5.9.0
     "@react-spring/web": ^9.4.3
+    "@types/color": ^3.0.3
     "@types/lodash": ^4.14.182
     "@types/mime": ^2.0.3
     "@types/react": ^18.0.9
@@ -4291,10 +4292,35 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/color-convert@npm:*":
+  version: 2.0.0
+  resolution: "@types/color-convert@npm:2.0.0"
+  dependencies:
+    "@types/color-name": "*"
+  checksum: 027b68665dc2278cc2d83e796ada0a05a08aa5a11297e227c48c7f9f6eac518dec98578ab0072bd211963d3e4b431da70b20ea28d6c3136d0badfd3f9913baee
+  languageName: node
+  linkType: hard
+
+"@types/color-name@npm:*":
+  version: 1.1.1
+  resolution: "@types/color-name@npm:1.1.1"
+  checksum: b71fcad728cc68abcba1d405742134410c8f8eb3c2ef18113b047afca158ad23a4f2c229bcf71a38f4a818dead375c45b20db121d0e69259c2d81e97a740daa6
+  languageName: node
+  linkType: hard
+
 "@types/color-string@npm:^1.5.0":
   version: 1.5.2
   resolution: "@types/color-string@npm:1.5.2"
   checksum: b604373cd151b66c44b3fb1df5e7a93136307755f571016ff249b378b20c0ce190ed373af294cc6cdbbe489fdcd71eb2026a6150a0312eee9ca7b2de4eea4e17
+  languageName: node
+  linkType: hard
+
+"@types/color@npm:^3.0.3":
+  version: 3.0.3
+  resolution: "@types/color@npm:3.0.3"
+  dependencies:
+    "@types/color-convert": "*"
+  checksum: 4a54a6eca687b1f19d393c6c44e292009e913fa2377b5b815d1cd04470131087d7a799718d9e66a970f43e6ba16e7056a5b40b49d2d0d1d0f1530aff23864528
   languageName: node
   linkType: hard
 

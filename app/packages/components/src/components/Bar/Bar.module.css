@@ -8,13 +8,6 @@
   width: 100%;
   z-index: 1000;
 
-  background-image: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0),
-    30%,
-    var(--joy-palette-background-level2)
-  );
-
   display: flex;
   justify-content: space-between;
 }
