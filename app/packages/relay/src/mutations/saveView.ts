@@ -15,10 +15,9 @@ export default graphql`
       description: $description
       color: $color
     ) {
-      id
       datasetId
       name
-      urlName
+      slug
       description
       color
       viewStages

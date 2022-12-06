@@ -276,7 +276,7 @@ class PatchesTests(unittest.TestCase):
         self.assertEqual(view.name, view_name)
         self.assertTrue(view.is_saved)
 
-        also_view = dataset.load_view(view_name)
+        also_view = dataset.load_saved_view(view_name)
         self.assertEqual(view, also_view)
         self.assertEqual(also_view.name, view_name)
         self.assertTrue(also_view.is_saved)
@@ -581,7 +581,7 @@ class PatchesTests(unittest.TestCase):
         self.assertEqual(view.name, view_name)
         self.assertTrue(view.is_saved)
 
-        also_view = dataset.load_view(view_name)
+        also_view = dataset.load_saved_view(view_name)
         self.assertEqual(view, also_view)
         self.assertEqual(also_view.name, view_name)
         self.assertTrue(also_view.is_saved)

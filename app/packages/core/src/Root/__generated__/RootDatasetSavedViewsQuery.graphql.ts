@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5ab7da4a4472ff878db517f6e0834fa2>>
+ * @generated SignedSource<<261552aa21e01bfe1b437050ec5fe089>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -90,7 +90,7 @@ return {
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "urlName",
+            "name": "slug",
             "storageKey": null
           },
           {
@@ -141,12 +141,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "25d47784f4ed90e546e8341c22f51d55",
+    "cacheID": "59912ac6130465246ff78deaea346773",
     "id": null,
     "metadata": {},
     "name": "RootDatasetSavedViewsQuery",
     "operationKind": "query",
-    "text": "query RootDatasetSavedViewsQuery(\n  $name: String!\n) {\n  ...RootDatasetSavedViewsFragment\n}\n\nfragment RootDatasetSavedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    urlName\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
+    "text": "query RootDatasetSavedViewsQuery(\n  $name: String!\n) {\n  ...RootDatasetSavedViewsFragment\n}\n\nfragment RootDatasetSavedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
   }
 };
 })();

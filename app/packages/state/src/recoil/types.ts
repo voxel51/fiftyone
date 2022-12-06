@@ -68,7 +68,7 @@ export namespace State {
     id: string;
     datasetId: string;
     name: string;
-    urlName: string;
+    slug: string;
     description?: string;
     color?: string;
     viewStages: Stage[];

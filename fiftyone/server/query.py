@@ -15,14 +15,15 @@ import asyncio
 import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
-from bson import ObjectId
+from bson import ObjectId, json_util
 from dacite import Config, from_dict
-
+from strawberry.dataloader import DataLoader
 
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
@@ -39,8 +40,12 @@ from fiftyone.server.samples import (
     SampleItem,
     paginate_samples,
 )
+from fiftyone.server.view import (
+    get_saved_views,
+    get_saved_view_stages,
+    load_saved_views_by_dataset,
+)
 from fiftyone.server.scalars import BSONArray, JSON
-
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -109,23 +114,71 @@ class EvaluationRun(Run):
 
 @gql.type
 class SavedView:
-    dataset_id: str
-    name: str
-    url_name: str
+    id: t.Optional[str]
+    dataset_id: t.Optional[str]
+    name: t.Optional[str]
+    slug: t.Optional[str]
     description: t.Optional[str]
     color: t.Optional[str]
-    view_stages: t.List[str]
-    created_at: datetime
+    view_stages: t.Optional[t.List[str]]
+    created_at: t.Optional[datetime]
     last_modified_at: t.Optional[datetime]
     last_loaded_at: t.Optional[datetime]
-    # TODO: temporarily make id optional since previous
-    # saved_views didn't have this field, but make it required for actual
-    # release
-    id: t.Optional[str]
 
     @gql.field
-    def view_name(self) -> str:
+    def view_name(self) -> t.Optional[str]:
+        if isinstance(self, ObjectId):
+            return None
         return self.name
+
+    # @gql.field
+    # def view_stages(self) -> t.Optional[t.List[str]]:
+    #     return get_saved_view_stages(self.id)
+    #
+
+
+async def load_saved_views(object_ids):
+    if len(object_ids) < 1:
+        return None
+    db = foo.get_async_db_conn()
+    pipeline = [
+        {"$match": {"_id": {"$in": object_ids}}},
+        {
+            "$project": {
+                "_id": True,
+                "id": {"$toString": "$_id"},
+                "_dataset_id": {"$ifNull": ["$dataset_id", "$_dataset_id"]},
+                "dataset_id": {"$toString": "$_dataset_id"},
+                "name": True,
+                "color": True,
+                "description": True,
+                "slug": True,
+                "last_loaded_at": True,
+                "created_at": True,
+                "last_modified_at": True,
+                "view_stages": True,
+            }
+        },
+    ]
+    results = db.views.aggregate(pipeline)
+    print("results", results)
+    # TODO: remove view_stages and query separately upon view selection
+    saved_views = [
+        from_dict(
+            data_class=SavedView,
+            data=view,
+            config=Config(
+                type_hooks={
+                    BSONArray: lambda x: [json_util.loads(s) for s in x]
+                }
+            ),
+        )
+        async for view in results
+    ]
+    return saved_views
+
+
+saved_views_loader = DataLoader(load_fn=load_saved_views)
 
 
 @gql.type
@@ -181,7 +234,8 @@ class Dataset:
     frame_fields: t.Optional[t.List[SampleField]]
     brain_methods: t.List[BrainRun]
     evaluations: t.List[EvaluationRun]
-    saved_views: t.Optional[t.List[SavedView]]
+    saved_view_ids: gql.Private[t.Optional[t.List[gql.ID]]]
+    # saved_views: t.Optional[t.List[SavedView]]
     version: t.Optional[str]
     view_cls: t.Optional[str]
     view_name: t.Optional[str]
@@ -189,6 +243,10 @@ class Dataset:
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
+
+    @gql.field
+    async def saved_views(self) -> t.Optional[t.List[SavedView]]:
+        return await saved_views_loader.load_many(self.saved_view_ids)
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -204,7 +262,11 @@ class Dataset:
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
-        doc["saved_views"] = doc.get("saved_views", [])
+        doc["saved_view_ids"] = doc.get("saved_views", [])
+        if len(doc["saved_view_ids"]) > 0:
+            doc["saved_views"] = get_saved_views(
+                SavedView, doc.get("saved_view_ids", []), saved_views_loader
+            )
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -216,23 +278,13 @@ class Dataset:
         doc["default_skeletons"] = doc.get("default_skeletons", None)
         return doc
 
-    @gql.field
-    def saved_view(
-        self, view_name: t.Optional[str] = None
-    ) -> t.Optional[SavedView]:
-        if view_name:
-            return SavedView(name=view_name)
-        elif self.view_name:
-            return SavedView(name=self.view_name)
-        return
-
     @classmethod
     async def resolver(
         cls,
         name: str,
         view: t.Optional[BSONArray],
-        view_name: t.Optional[str],
         info: Info,
+        view_name: t.Optional[str] = gql.UNSET,
     ) -> t.Optional["Dataset"]:
         return await serialize_dataset(name, view, view_name)
 
@@ -307,7 +359,7 @@ class Query(fosa.AggregateQuery):
     def do_not_track(self) -> bool:
         return fo.config.do_not_track
 
-    dataset = gql.field(resolver=Dataset.resolver)
+    dataset: Dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset, str] = gql.field(
         resolver=get_paginator_resolver(
             Dataset, "created_at", DATASET_FILTER_STAGE, "datasets"
@@ -340,6 +392,20 @@ class Query(fosa.AggregateQuery):
         return None
 
     @gql.field
+    async def get_saved_views_for_dataset(
+        self, dataset_id: str
+    ) -> t.Optional[t.List[SavedView]]:
+        saved_views = load_saved_views_by_dataset(SavedView, dataset_id)
+        saved_views_loader.prime_many(
+            {saved_view.name: saved_view for saved_view in saved_views}
+        )
+        return saved_views
+
+    @gql.field
+    async def get_saved_view(self, view_name: str) -> SavedView:
+        return await saved_views_loader.load(view_name)
+
+    @gql.field
     def teams_submission(self) -> bool:
         isfile = os.path.isfile(foc.TEAMS_PATH)
         if isfile:
@@ -358,29 +424,29 @@ class Query(fosa.AggregateQuery):
     def version(self) -> str:
         return foc.VERSION
 
+    # @gql.field
+    # async def saved_view(
+    #     self, dataset_name: str, view_name: t.Optional[str]
+    # ) -> t.Optional[SavedView]:
+    #     if not view_name and dataset_name:
+    #         return
+    #
+    #     ds = fo.load_dataset(dataset_name)
+    #     if ds.has_saved_views and ds.has_saved_view(view_name):
+    #         return next(
+    #             (
+    #                 view_doc
+    #                 for view_doc in ds._doc.saved_views
+    #                 if view_doc.name == view_name
+    #             ),
+    #             None,
+    #         )
+    #     return
+    #
     @gql.field
-    async def saved_view(
-        self, dataset_name: str, view_name: t.Optional[str]
-    ) -> t.Optional[SavedView]:
-        if not view_name and dataset_name:
-            return
-
+    def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
         ds = fo.load_dataset(dataset_name)
-        if ds.has_views and ds.has_view(view_name):
-            return next(
-                (
-                    view_doc
-                    for view_doc in ds._doc.saved_views
-                    if view_doc.name == view_name
-                ),
-                None,
-            )
-        return
-
-    @gql.field
-    def saved_views(self, dataset_name: str) -> t.List[SavedView]:
-        ds = fo.load_dataset(dataset_name)
-        return ds._doc.saved_views or []
+        return ds._doc.saved_views
 
 
 def _flatten_fields(
@@ -400,19 +466,19 @@ def _flatten_fields(
     return result
 
 
-def _convert_targets(targets: t.Dict[str, str]) -> Target:
+def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
     return [Target(target=int(k), value=v) for k, v in targets.items()]
 
 
 async def serialize_dataset(
-    name: str, serialized_view: BSONArray, view_name: t.Optional[str] = None
+    name: str, serialized_view: BSONArray, view_name: t.Optional[str]
 ) -> Dataset:
     def run():
         dataset = fo.load_dataset(name)
 
         dataset.reload()
         if view_name is not None:
-            view = dataset.load_view(view_name)
+            view = dataset.load_saved_view(view_name)
         else:
             view = fov.DatasetView._build(dataset, serialized_view or [])
 
@@ -446,6 +512,7 @@ async def serialize_dataset(
 
         if dataset.media_type == fom.GROUP:
             data.group_slice = collection.group_slice
+
         return data
 
     loop = asyncio.get_running_loop()

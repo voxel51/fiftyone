@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cd7ebbd9dc14e50f315beae1468cf816>>
+ * @generated SignedSource<<c952d68c5a85ad26b856ee2185570f98>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,16 +13,16 @@ import { FragmentRefs } from "relay-runtime";
 export type RootDatasetSavedViewsFragment$data = {
   readonly savedViews: ReadonlyArray<{
     readonly color: string | null;
-    readonly createdAt: any;
-    readonly datasetId: string;
+    readonly createdAt: any | null;
+    readonly datasetId: string | null;
     readonly description: string | null;
     readonly id: string | null;
     readonly lastLoadedAt: any | null;
     readonly lastModifiedAt: any | null;
-    readonly name: string;
-    readonly urlName: string;
-    readonly viewStages: ReadonlyArray<string>;
-  }>;
+    readonly name: string | null;
+    readonly slug: string | null;
+    readonly viewStages: ReadonlyArray<string> | null;
+  }> | null;
   readonly " $fragmentType": "RootDatasetSavedViewsFragment";
 };
 export type RootDatasetSavedViewsFragment$key = {
@@ -88,7 +88,7 @@ const node: ReaderFragment = {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "urlName",
+          "name": "slug",
           "storageKey": null
         },
         {
@@ -141,6 +141,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "847f8eba4c04caaab427bb5c7b7accce";
+(node as any).hash = "b69e4e143a106d1fc02b949d1a7d3810";
 
 export default node;

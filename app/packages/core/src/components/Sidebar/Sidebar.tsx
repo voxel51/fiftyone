@@ -450,15 +450,15 @@ const InteractiveSidebar = ({
   const viewName = queryParams.get("view");
   const hasSavedViews = savedViews?.length;
 
-  // TODO: MANI - load view by url_name instead of name
+  // TODO: MANI - load view by slug instead of name
   useEffect(() => {
     if (hasSavedViews && viewName && !modal) {
       const theLoadedDataset = savedViews.filter(
         (ds: fos.State.SavedView) => ds.name === viewName
       )?.[0];
       if (theLoadedDataset) {
-        const { urlName } = theLoadedDataset;
-        setView([], [], viewName, true, urlName);
+        const { slug } = theLoadedDataset;
+        setView([], [], viewName, true, slug);
       }
     }
   }, [hasSavedViews, viewName, modal]);

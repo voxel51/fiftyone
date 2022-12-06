@@ -30,7 +30,7 @@ import fiftyone.core.utils as fou
 from .document import Document
 from .embedded_document import EmbeddedDocument, BaseEmbeddedDocument
 from .runs import RunDocument
-from .views import ViewDocument
+from .views import SavedViewDocument
 
 fol = fou.lazy_import("fiftyone.core.labels")
 fom = fou.lazy_import("fiftyone.core.metadata")
@@ -536,6 +536,7 @@ class DatasetDocument(Document):
     meta = {"collection": "datasets", "strict": False}
 
     name = StringField(unique=True, required=True)
+    slug = StringField()
     version = StringField(required=True, null=True)
     created_at = DateTimeField()
     last_loaded_at = DateTimeField()
@@ -547,6 +548,7 @@ class DatasetDocument(Document):
     group_media_types = DictField(StringField())
     default_group_slice = StringField()
     tags = ListField(StringField())
+    description = StringField()
     info = DictField()
     app_config = EmbeddedDocumentField(
         DatasetAppConfig, default=DatasetAppConfig
@@ -559,7 +561,7 @@ class DatasetDocument(Document):
     default_skeleton = EmbeddedDocumentField(KeypointSkeleton)
     sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
     frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
+    saved_views = ListField(ReferenceField(SavedViewDocument))
     annotation_runs = DictField(ReferenceField(RunDocument))
     brain_methods = DictField(ReferenceField(RunDocument))
     evaluations = DictField(ReferenceField(RunDocument))
-    saved_views = ListField(ReferenceField(ViewDocument))

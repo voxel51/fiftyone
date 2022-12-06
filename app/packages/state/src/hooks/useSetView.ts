@@ -45,7 +45,7 @@ const useSetView = (
         addStages?: State.Stage[],
         viewName?: string,
         changingSavedView?: boolean,
-        viewUrlName?: string
+        viewSlug?: string
       ) => {
         const dataset = snapshot.getLoadable(fos.dataset).contents;
         const savedViews = dataset.savedViews || [];
@@ -79,40 +79,41 @@ const useSetView = (
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
-              const newState = {
-                ...router.history.location.state.state,
-                view: value,
-                viewName,
-                viewCls: dataset.viewCls,
-                selected: [],
-                selectedLabels: [],
-                savedViews,
-              };
-              router.history.location.state.state = newState;
+              if (router.history.location.state) {
+                router.history.location.state.state = {
+                  ...router.history.location.state,
+                  view: value,
+                  viewName: viewName,
+                  viewCls: dataset.viewCls,
+                  selected: [],
+                  selectedLabels: [],
+                  savedViews: savedViews,
+                };
 
-              if (changingSavedView) {
-                router.history.push(
-                  `${location.pathname}${
-                    viewUrlName ? `?view=${viewUrlName}` : ""
-                  }`,
-                  {
-                    state: newState,
-                    variables: { view: value },
-                  }
-                );
-              } else {
-                updateState({
-                  dataset: transformDataset(dataset),
-                  state: {
-                    view: value,
-                    viewCls: dataset.viewCls,
-                    selected: [],
-                    selectedLabels: [],
-                    viewName,
-                    savedViews,
-                  },
-                });
+                if (changingSavedView) {
+                  router.history.push(
+                    `${location.pathname}${
+                      viewSlug ? `?view=${viewSlug}` : ""
+                    }`,
+                    {
+                      state: router.history.location.state.state,
+                      variables: { view: value },
+                    }
+                  );
+                }
               }
+
+              updateState({
+                dataset: transformDataset(dataset),
+                state: {
+                  view: value,
+                  viewCls: dataset.viewCls,
+                  selected: [],
+                  selectedLabels: [],
+                  viewName: viewName,
+                  savedViews: savedViews,
+                },
+              });
 
               onComplete && onComplete();
             },

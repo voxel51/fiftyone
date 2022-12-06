@@ -1,7 +1,8 @@
 import * as fos from "@fiftyone/state";
 import { toCamelCase } from "@fiftyone/utilities";
 import React, { useState } from "react";
-import { graphql, usePreloadedQuery } from "react-relay";
+import { usePreloadedQuery } from "react-relay";
+import { graphql } from "relay-runtime";
 import {
   DatasetQuery,
   DatasetQuery$data,
@@ -48,6 +49,8 @@ const DatasetNodeQuery = graphql`
         embeddedDocType
         path
         dbField
+        description
+        info
       }
       maskTargets {
         name
@@ -83,15 +86,15 @@ const DatasetNodeQuery = graphql`
           patchesField
         }
       }
-      savedViews {
-        id
-        datasetId
-        name
-        urlName
-        description
-        color
-        viewStages
-      }
+      #      savedViews {
+      #        id
+      #        datasetId
+      #        name
+      #        slug
+      #        description
+      #        color
+      #        viewStages
+      #      }
       lastLoadedAt
       createdAt
       skeletons {
@@ -106,8 +109,9 @@ const DatasetNodeQuery = graphql`
       version
       viewCls
       appConfig {
-        mediaFields
         gridMediaField
+        mediaFields
+        modalMediaField
         plugins
         sidebarGroups {
           name
@@ -134,6 +138,7 @@ export const usePreLoadedDataset = (
 
   React.useLayoutEffect(() => {
     const { colorscale, config, state } = router?.state || {};
+
     if (dataset) {
       update(() => {
         return {

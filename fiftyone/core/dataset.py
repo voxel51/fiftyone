@@ -80,6 +80,32 @@ def dataset_exists(name):
     return bool(list(conn.datasets.find({"name": name}, {"_id": 1}).limit(1)))
 
 
+def _validate_dataset_name(name, skip=None):
+    """Validates that the given dataset name is available.
+
+    Args:
+        name: a dataset name
+        skip (None): an optional :class:`Dataset` to ignore
+
+    Returns:
+        the slug
+
+    Raises:
+        ValueError: if the name is not available
+    """
+    slug = fou.to_slug(name)
+
+    query = {"$or": [{"name": name}, {"slug": slug}]}
+    if skip is not None:
+        query = {"$and": [query, {"_id": {"$ne": skip._doc.id}}]}
+
+    conn = foo.get_db_conn()
+    if bool(list(conn.datasets.find(query, {"_id": 1}).limit(1))):
+        raise ValueError("Dataset name '%s' is not available" % name)
+
+    return slug
+
+
 def load_dataset(name):
     """Loads the FiftyOne dataset with the given name.
 
@@ -257,6 +283,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._evaluation_cache = {}
 
         self._deleted = False
+
+        if not _virtual:
+            self._update_last_loaded_at()
 
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
@@ -574,15 +603,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if name == _name:
             return
 
-        if name in list_datasets():
-            raise ValueError("A dataset with name '%s' already exists" % name)
+        slug = _validate_dataset_name(name, skip=self)
 
         self._doc.name = name
+        self._doc.slug = slug
         self._doc.save(safe=True)
 
         # Update singleton
         self._instances.pop(_name, None)
         self._instances[name] = self
+
+    @property
+    def slug(self):
+        """The slug of the dataset."""
+        return self._doc.slug
 
     @property
     def created_at(self):
@@ -608,7 +642,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def tags(self):
-        """A list of tags given to the dataset.
+        """A list of tags on the dataset.
 
         Examples::
 
@@ -630,6 +664,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def tags(self, value):
         self._doc.tags = value
         self._doc.save(safe=True)
+
+    @property
+    def description(self):
+        """A string description on the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Store a description on the dataset
+            dataset.description = "Your description here"
+        """
+        return self._doc.description
+
+    @description.setter
+    def description(self, description):
+        self._doc.description = description
+        self._doc.save()
 
     @property
     def info(self):
@@ -3019,11 +3073,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise
 
     @property
-    def has_views(self):
+    def has_saved_views(self):
         """Whether this dataset has any saved views."""
-        return bool(self.list_views())
+        return bool(self.list_saved_views())
 
-    def has_view(self, name):
+    def has_saved_view(self, name):
         """Whether this dataset has a saved view with the given name.
 
         Args:
@@ -3032,9 +3086,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             True/False
         """
-        return name in self.list_views()
+        return name in self.list_saved_views()
 
-    def list_views(self):
+    def list_saved_views(self):
         """Returns the names of saved views on this dataset.
 
         Returns:
@@ -3051,7 +3105,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite=False,
     ):
         """Saves the given view into this dataset under the given name so it
-        can be loaded later via :meth:`load_view`.
+        can be loaded later via :meth:`load_saved_view`.
 
         Examples::
 
@@ -3064,7 +3118,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             dataset.save_view("cats", view)
 
-            also_view = dataset.load_view("cats")
+            also_view = dataset.load_saved_view("cats")
             assert view == also_view
 
         Args:
@@ -3076,15 +3130,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view._root_dataset is not self:
             raise ValueError("Cannot save view into a different dataset")
 
-        url_name = self._validate_view_name(name, overwrite=overwrite)
+        view._set_name(name)
+        slug = self._validate_saved_view_name(name, overwrite=overwrite)
 
         now = datetime.utcnow()
 
-        view_doc = foo.ViewDocument(
-            id=ObjectId(),
+        view_doc = foo.SavedViewDocument(
             dataset_id=self._doc.id,
             name=name,
-            url_name=url_name,
+            slug=slug,
             description=description,
             color=color,
             view_stages=[
@@ -3094,14 +3148,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             created_at=now,
             last_modified_at=now,
         )
+        print("saving view_doc", view_doc)
         view_doc.save()
+        print("saved view_doc")
 
         self._doc.saved_views.append(view_doc)
         self._doc.save()
 
-        view._set_name(name)
-
-    def get_view_info(self, name):
+    def get_saved_view_info(self, name):
         """Loads the editable information about the saved view with the given
         name.
 
@@ -3111,10 +3165,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a dict of editable info
         """
-        view_doc = self._get_view_doc(name)
+        view_doc = self._get_saved_view_doc(name)
         return {f: view_doc[f] for f in view_doc._EDITABLE_FIELDS}
 
-    def update_view_info(self, name, info):
+    def update_saved_view_info(self, name, info):
         """Updates the editable information for the saved view with the given
         name.
 
@@ -3128,17 +3182,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             dataset.save_view("test", view)
 
-            info = dataset.get_view_info("test")
+            info = dataset.get_saved_view_info("test")
             info["name"] = "a new name"
 
-            dataset.update_view_info("test", info)
+            dataset.update_saved_view_info("test", info)
 
         Args:
             name: the name of a saved view
             info: a dict whose keys are a subset of the keys returned by
-                :meth:`get_view_info`
+                :meth:`get_saved_view_info`
         """
-        view_doc = self._get_view_doc(name)
+        view_doc = self._get_saved_view_doc(name)
 
         invalid_fields = set(info.keys()) - set(view_doc._EDITABLE_FIELDS)
         if invalid_fields:
@@ -3148,8 +3202,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for key, value in info.items():
             if value != view_doc[key]:
                 if key == "name":
-                    url_name = self._validate_view_name(value, skip=view_doc)
-                    view_doc.url_name = url_name
+                    slug = self._validate_saved_view_name(value, skip=view_doc)
+                    view_doc.slug = slug
 
                 view_doc[key] = value
                 edited = True
@@ -3158,7 +3212,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             view_doc.last_modified_at = datetime.utcnow()
             view_doc.save()
 
-    def load_view(self, name):
+    def load_saved_view(self, name):
         """Loads the saved view with the given name.
 
         Examples::
@@ -3172,7 +3226,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             dataset.save_view("cats", view)
 
-            also_view = dataset.load_view("cats")
+            also_view = dataset.load_saved_view("cats")
             assert view == also_view
 
         Args:
@@ -3181,7 +3235,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        view_doc = self._get_view_doc(name)
+        view_doc = self._get_saved_view_doc(name)
 
         stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
         view = fov.DatasetView._build(self, stage_dicts)
@@ -3192,18 +3246,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return view
 
-    def delete_view(self, name):
+    def delete_saved_view(self, name):
         """Deletes the saved view with the given name.
 
         Args:
             name: the name of a saved view
         """
-        view_doc = self._get_view_doc(name, pop=True)
+        view_doc = self._get_saved_view_doc(name, pop=True)
+        deleted_id = view_doc._id
         view_doc.delete()
         self._doc.save()
-        return name
+        return deleted_id
 
-    def delete_views(self):
+    def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
         for view_doc in self._doc.saved_views:
             view_doc.delete()
@@ -3211,7 +3266,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.saved_views = []
         self._doc.save()
 
-    def _get_view_doc(self, name, pop=False):
+    def _get_saved_view_doc(self, name, pop=False):
         idx = None
         for i, view_doc in enumerate(self._doc.saved_views):
             if name == view_doc.name:
@@ -3226,24 +3281,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self._doc.saved_views[idx]
 
-    def _views(self):
+    def _saved_views(self):
         return self._doc.saved_views
 
-    def _reorder_views(self, new_order):
-        if sorted(new_order) != list(range(len(self._doc.saved_views))):
-            raise ValueError("Invalid ordering %s" % list(new_order))
+    def _validate_saved_view_name(self, name, skip=None, overwrite=False):
+        slug = fou.to_slug(name)
 
-        self._doc.saved_views = [self._doc.saved_views[i] for i in new_order]
-        self._doc.save()
-
-    def _validate_view_name(self, name, skip=None, overwrite=False):
-        url_name = fou.to_url_name(name)
-        print(self._doc)
         for view_doc in self._doc.saved_views:
             if view_doc is skip:
                 continue
 
-            if name == view_doc.name or url_name == view_doc.url_name:
+            if name == view_doc.name or slug == view_doc.slug:
                 dup_name = view_doc.name
 
                 if not overwrite:
@@ -3251,9 +3299,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         "Saved view with name '%s' already exists" % dup_name
                     )
 
-                self.delete_view(dup_name)
+                self.delete_saved_view(dup_name)
 
-        return url_name
+        return slug
 
     def clone(self, name=None, persistent=False):
         """Creates a copy of the dataset.
@@ -6032,6 +6080,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self._group_slice is None:
             self._group_slice = doc.default_group_slice
 
+        self._update_last_loaded_at()
+
     def _reload_docs(self, hard=False):
         fos.Sample._reload_docs(self._sample_collection_name, hard=hard)
 
@@ -6040,6 +6090,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _serialize(self):
         return self._doc.to_dict(extended=True)
+
+    def _update_last_loaded_at(self):
+        self._doc.last_loaded_at = datetime.utcnow()
+        self._doc.save()
 
 
 def _get_random_characters(n):
@@ -6108,14 +6162,7 @@ def _create_dataset(
     _clips=False,
     _src_collection=None,
 ):
-    if dataset_exists(name):
-        raise ValueError(
-            (
-                "Dataset '%s' already exists; use `fiftyone.load_dataset()` "
-                "to load an existing dataset"
-            )
-            % name
-        )
+    slug = _validate_dataset_name(name)
 
     _id = ObjectId()
 
@@ -6144,13 +6191,12 @@ def _create_dataset(
         frame_doc_cls = _create_frame_document_cls(obj, frame_collection_name)
         frame_fields = []
 
-    now = datetime.utcnow()
     dataset_doc = foo.DatasetDocument(
         id=_id,
         name=name,
+        slug=slug,
         version=focn.VERSION,
-        created_at=now,
-        last_loaded_at=now,
+        created_at=datetime.utcnow(),
         media_type=None,  # will be inferred when first sample is added
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
@@ -6260,7 +6306,7 @@ def _load_dataset(obj, name, virtual=False):
         fomi.migrate_dataset_if_necessary(name)
 
     try:
-        return _do_load_dataset(obj, name, virtual=virtual)
+        return _do_load_dataset(obj, name)
     except Exception as e:
         try:
             version = fomi.get_dataset_revision(name)
@@ -6277,7 +6323,7 @@ def _load_dataset(obj, name, virtual=False):
         raise e
 
 
-def _do_load_dataset(obj, name, virtual=False):
+def _do_load_dataset(obj, name):
     try:
         # pylint: disable=no-member
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
@@ -6304,15 +6350,11 @@ def _do_load_dataset(obj, name, virtual=False):
             obj, frame_collection_name, field_docs=dataset_doc.frame_fields
         )
 
-    if not virtual:
-        dataset_doc.last_loaded_at = datetime.utcnow()
-        dataset_doc.save()
-
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
 def _delete_dataset_doc(dataset_doc):
-    for view_doc in dataset_doc.views:
+    for view_doc in dataset_doc.saved_views:
         view_doc.delete()
 
     for run_doc in dataset_doc.annotation_runs.values():
@@ -6337,8 +6379,7 @@ def _delete_dataset_doc(dataset_doc):
 
 
 def _clone_dataset_or_view(dataset_or_view, name, persistent):
-    if dataset_exists(name):
-        raise ValueError("Dataset '%s' already exists" % name)
+    slug = _validate_dataset_name(name)
 
     contains_videos = dataset_or_view._contains_videos(any_slice=True)
 
@@ -6364,6 +6405,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     dataset_doc.id = _id
     dataset_doc.name = name
+    dataset_doc.slug = slug
     dataset_doc.created_at = datetime.utcnow()
     dataset_doc.last_loaded_at = None
     dataset_doc.persistent = persistent
@@ -6420,7 +6462,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     # Clone extras (full datasets only)
     if view is None and (
-        dataset.has_views
+        dataset.has_saved_views
         or dataset.has_annotation_runs
         or dataset.has_brain_runs
         or dataset.has_evaluations
@@ -6757,6 +6799,7 @@ def _clone_extras(dst_dataset, src_doc):
     # Clone saved views
     for _view_doc in src_doc.saved_views:
         view_doc = _clone_view_doc(_view_doc)
+        view_doc.dataset_id = dst_doc.id
         view_doc.save()
 
         dst_doc.saved_views.append(view_doc)
@@ -6764,6 +6807,7 @@ def _clone_extras(dst_dataset, src_doc):
     # Clone annotation runs
     for anno_key, _run_doc in src_doc.annotation_runs.items():
         run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
         run_doc.save()
 
         dst_doc.annotation_runs[anno_key] = run_doc
@@ -6771,6 +6815,7 @@ def _clone_extras(dst_dataset, src_doc):
     # Clone brain method runs
     for brain_key, _run_doc in src_doc.brain_methods.items():
         run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
         run_doc.save()
 
         dst_doc.brain_methods[brain_key] = run_doc
@@ -6778,6 +6823,7 @@ def _clone_extras(dst_dataset, src_doc):
     # Clone evaluation runs
     for eval_key, _run_doc in src_doc.evaluations.items():
         run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
         run_doc.save()
 
         dst_doc.evaluations[eval_key] = run_doc
@@ -6787,13 +6833,13 @@ def _clone_extras(dst_dataset, src_doc):
 
 def _clone_view_doc(view_doc):
     _view_doc = view_doc.copy()
-    _view_doc.id = ObjectId()  # IDs must be unique across datasets
+    _view_doc.id = ObjectId()
     return _view_doc
 
 
 def _clone_run(run_doc):
     _run_doc = run_doc.copy()
-    _run_doc.id = ObjectId()  # IDs must be unique across datasets
+    _run_doc.id = ObjectId()
 
     # Unfortunately the only way to copy GridFS files is to read-write them...
     # https://jira.mongodb.org/browse/TOOLS-2208

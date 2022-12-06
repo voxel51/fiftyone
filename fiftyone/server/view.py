@@ -5,6 +5,15 @@ FiftyOne Server view
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from typing import List, Optional
+
+import asyncio
+from bson import ObjectId, json_util
+from dacite import Config, from_dict
+import strawberry as gql
+
+import fiftyone as fo
+import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
@@ -13,11 +22,171 @@ import fiftyone.core.media as fom
 import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.server.scalars import BSONArray
 
 from fiftyone.server.utils import iter_label_fields
-
+import fiftyone.core.odm as foo
 
 _LABEL_TAGS = "_label_tags"
+
+
+async def load_saved_views(cls, object_ids):
+    if len(object_ids) < 1:
+        return None
+    db = foo.get_async_db_conn()
+    # TODO: remove view_stages and query separately upon view selection
+    return [
+        from_dict(
+            data_class=cls,
+            data=view,
+            config=Config(
+                type_hooks={
+                    BSONArray: lambda x: [json_util.loads(s) for s in x]
+                }
+            ),
+        )
+        for view in db.views.aggregate(
+            [
+                {"$match": {"_id": {"$in": object_ids}}},
+                {
+                    "$project": {
+                        "name": True,
+                        "color": True,
+                        "description": True,
+                        "slug": True,
+                        "last_loaded_at": True,
+                        "created_at": True,
+                        "last_modified_at": True,
+                        "view_stages": True,
+                    }
+                },
+            ]
+        )
+    ]
+
+
+def load_saved_views_by_dataset(cls, dataset_id: str):
+    db = foo.get_db_conn()
+    # TODO: remove view_stages and query separately upon view selection
+    return [
+        from_dict(
+            data_class=cls,
+            data=view,
+            config=Config(
+                type_hooks={
+                    BSONArray: lambda x: [json_util.loads(s) for s in x],
+                    ObjectId: lambda x: str(x),
+                }
+            ),
+        )
+        for view in db.views.aggregate(
+            [
+                {"$match": {"dataset_id": {"$eq": ObjectId(dataset_id)}}},
+                {
+                    "$project": {
+                        "_id": True,
+                        "id": {"$toString": "$_id"},
+                        "_dataset_id": {
+                            "$ifNull": ["$dataset_id", "$_dataset_id"]
+                        },
+                        "dataset_id": {"$toString": "$_dataset_id"},
+                        "name": True,
+                        "color": True,
+                        "description": True,
+                        "slug": True,
+                        "last_loaded_at": True,
+                        "created_at": True,
+                        "last_modified_at": True,
+                        "view_stages": True,
+                    }
+                },
+            ]
+        )
+    ]
+
+
+def get_saved_views(
+    cls, object_ids, data_loader: Optional[gql.dataloader.DataLoader] = None
+):
+    if len(object_ids) < 1:
+        return None
+    db = foo.get_db_conn()
+    agg = db.views.aggregate(
+        [
+            {"$match": {"_id": {"$in": object_ids}}},
+            {
+                "$project": {
+                    "_id": True,
+                    "id": {"$toString": "$_id"},
+                    "_dataset_id": {
+                        "$ifNull": ["$dataset_id", "$_dataset_id"]
+                    },
+                    "dataset_id": {"$toString": "$_dataset_id"},
+                    "name": True,
+                    "color": True,
+                    "description": True,
+                    "slug": True,
+                    "last_loaded_at": True,
+                    "created_at": True,
+                    "last_modified_at": True,
+                    "view_stages": True,
+                }
+            },
+        ]
+    )
+    print("agg", agg)
+    # TODO: remove view_stages and query separately upon view selection
+    saved_views = [
+        from_dict(
+            data_class=cls,
+            data=view,
+            config=Config(
+                type_hooks={
+                    BSONArray: lambda x: [json_util.loads(s) for s in x]
+                }
+            ),
+        )
+        for view in agg
+    ]
+    if data_loader:
+        data_loader.prime_many(
+            {saved_view.name: saved_view for saved_view in saved_views}
+        )
+        data_loader.prime_many(
+            {saved_view.name: saved_view for saved_view in saved_views}
+        )
+    return saved_views
+
+
+def get_saved_view_stages(identifier):
+    db = foo.get_db_conn()
+    return list(
+        db.views.aggregate(
+            [
+                {"$match": {"slug": identifier}},
+                {"$project": {"view_stages": True}},
+            ]
+        )
+    )
+
+
+async def load_view(
+    *,
+    dataset_name: str,
+    serialized_view: BSONArray,
+    view_name: Optional[str] = None,
+) -> foc.SampleCollection:
+    def run() -> foc.SampleCollection:
+        dataset = fo.load_dataset(dataset_name)
+        dataset.reload()
+        if view_name:
+            return dataset.load_saved_view(view_name)
+        else:
+            return fo.DatasetView._build(dataset, serialized_view or [])
+
+    loop = asyncio.get_running_loop()
+
+    return await loop.run_in_executor(None, run)
 
 
 def get_view(
@@ -31,7 +200,7 @@ def get_view(
     sort=False,
     view_name=None,
 ):
-    """Construct a new view using the request paramters or load a previously
+    """Construct a new view using the request parameters or load a previously
     saved view by name.
 
     Args:
@@ -57,7 +226,7 @@ def get_view(
 
     # Load a previously saved view
     if view_name and dataset.has_views and dataset.has_view(view_name):
-        return dataset.load_view(view_name)
+        return dataset.load_saved_view(view_name)
 
     # Construct a new view
     view = dataset.view()

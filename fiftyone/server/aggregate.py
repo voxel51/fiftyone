@@ -18,6 +18,7 @@ import fiftyone.core.collections as foc
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import T
 from fiftyone.server.scalars import BSONArray
+from fiftyone.server.view import load_view
 
 
 _DEFAULT_NUM_HISTOGRAM_BINS = 25
@@ -160,25 +161,6 @@ class AggregateQuery:
             responses.append(resolver(result))
 
         return responses
-
-
-async def load_view(
-    *,
-    dataset_name: str,
-    serialized_view: BSONArray,
-    view_name: t.Optional[str] = None,
-) -> foc.SampleCollection:
-    def run() -> foc.SampleCollection:
-        dataset = fo.load_dataset(dataset_name)
-        dataset.reload()
-        if view_name:
-            return dataset.load_view(view_name)
-        else:
-            return fo.DatasetView._build(dataset, serialized_view or [])
-
-    loop = asyncio.get_running_loop()
-
-    return await loop.run_in_executor(None, run)
 
 
 async def _count_values(

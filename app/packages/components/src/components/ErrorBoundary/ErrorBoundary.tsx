@@ -1,5 +1,10 @@
 import { useClearModal, useTo } from "@fiftyone/state";
-import { GraphQLError, NotFoundError, ServerError } from "@fiftyone/utilities";
+import {
+  GraphQLError,
+  NetworkError,
+  NotFoundError,
+  ServerError,
+} from "@fiftyone/utilities";
 import { Clear, FileCopy } from "@mui/icons-material";
 import classnames from "classnames";
 import React, { PropsWithChildren, useLayoutEffect } from "react";
@@ -12,80 +17,104 @@ import Loading from "../Loading";
 
 import style from "./ErrorBoundary.module.css";
 
-interface Props extends FallbackProps {
-  error: GraphQLError | Error | ServerError;
+type AppError = GraphQLError | NetworkError | NotFoundError | ServerError;
+
+interface Props<T extends AppError> extends FallbackProps {
+  error: T;
 }
 
-const Errors: React.FC<Props> = ({ error, resetErrorBoundary }) => {
-  const { to } = useTo({ state: {} });
-  const clearModal = useClearModal();
-  useLayoutEffect(() => {
-    clearModal();
-  }, []);
+const Errors =
+  (onReset?: () => void) =>
+  <T extends AppError>({ error, resetErrorBoundary }: Props<T>) => {
+    const { to } = useTo({ state: {} });
+    const clearModal = useClearModal();
+    useLayoutEffect(() => {
+      clearModal();
+    }, []);
 
-  const [_, copy] = useCopyToClipboard();
-  if (error instanceof NotFoundError) {
-    return <Loading>{error.message}</Loading>;
-  }
+    const [_, copy] = useCopyToClipboard();
 
-  let stacks = [""];
+    if (error instanceof NotFoundError) {
+      return <Loading>{error.message}</Loading>;
+    }
 
-  if ("errors" in error) {
-    stacks = error.errors.map(
-      (e) => e.message + "\n\n" + e.extensions.stack.join("\n")
-    );
-  } else if (error.stack) {
-    stacks = [error.stack];
-  }
+    let messages: { message: string; content: string }[] = [];
 
-  return (
-    <div className={style.wrapper}>
-      {stacks.map((stack, i) => (
-        <div key={i} className={classnames(style.container, scrollable)}>
+    if (error instanceof GraphQLError) {
+      messages = error.errors.map((e) => ({
+        message: e.message,
+        content: "\n\n" + e.extensions.stack.join("\n"),
+      }));
+    } else if (error instanceof NetworkError) {
+      messages = [
+        { message: "Code", content: String(error.code) },
+        { message: "Route", content: error.route },
+        { message: "Payload", content: JSON.stringify(error.payload, null, 2) },
+      ];
+    }
+
+    if (error.stack) {
+      messages = [...messages, { message: "Trace", content: error.stack }];
+    }
+
+    return (
+      <div className={style.wrapper}>
+        <div className={classnames(style.container, scrollable)}>
           <div className={style.heading}>
-            <div>{error.name}</div>
             <div>
-              {i === 0 && (
-                <div>
-                  <span
-                    title={"Reset"}
-                    onClick={() => {
-                      to("/");
-                      resetErrorBoundary();
-                    }}
-                  >
-                    <Clear />
-                  </span>
-                </div>
-              )}
-              {stack && (
-                <div>
-                  <span title={"Copy stack"} onClick={() => copy(stack)}>
-                    <FileCopy />
-                  </span>
-                </div>
-              )}
+              {error.name}
+              {error.message ? ": " + error.message : null}
+            </div>
+            <div>
+              <span
+                title={"Reset"}
+                onClick={() => {
+                  onReset ? onReset : to("/");
+                  resetErrorBoundary();
+                }}
+              >
+                <Clear />
+              </span>
             </div>
           </div>
-          {stack && (
-            <div className={style.message}>
-              {stack && (
-                <div className={style.stack}>
-                  {stack.split("\n").map((line, i) => (
-                    <div key={i}>{line}</div>
+          {messages.map(({ message, content }, i) => (
+            <div key={i} className={style.content}>
+              <div className={style.contentHeading}>
+                {message ? message : null}
+                <div>
+                  {content && (
+                    <div>
+                      <span
+                        style={{ cursor: "pointer" }}
+                        title={"Copy"}
+                        onClick={() => copy(content)}
+                      >
+                        <FileCopy />
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {content && (
+                <div className={style.contentBody}>
+                  {content.split("\n").map((line, j) => (
+                    <div key={j}>{line}</div>
                   ))}
                 </div>
               )}
             </div>
-          )}
+          ))}
         </div>
-      ))}
-    </div>
-  );
-};
+      </div>
+    );
+  };
 
-const ErrorBoundary: React.FC<PropsWithChildren<{}>> = ({ children }) => {
-  return <Boundary FallbackComponent={Errors}>{children}</Boundary>;
+const ErrorBoundary: React.FC<PropsWithChildren<{ onReset?: () => void }>> = ({
+  children,
+  onReset,
+}) => {
+  // @ts-ignore
+  return <Boundary FallbackComponent={Errors(onReset)}>{children}</Boundary>;
 };
 
 export default ErrorBoundary;

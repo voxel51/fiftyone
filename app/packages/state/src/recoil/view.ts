@@ -131,20 +131,3 @@ export const isFramesView = selector<boolean>({
     eviction: "most-recent",
   },
 });
-
-export const persistSavedView = (name: String, description?: String) => {
-  getFetchFunction()("POST", "/view", {
-    dataset,
-    view,
-    name: name,
-    description: description,
-  });
-};
-
-export const loadSavedView = (name: String) => {
-  getFetchFunction()("GET", "/view", {
-    dataset: useRecoilValue(datasetName),
-    view,
-    name: name,
-  });
-};

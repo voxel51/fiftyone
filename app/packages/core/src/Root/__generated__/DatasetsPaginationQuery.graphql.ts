@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1d9774641c7b3b6b0a2619c479403362>>
+ * @generated SignedSource<<a14e0bade0e7eb45cd4a095cd8bb2403>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -128,45 +128,6 @@ return {
                   {
                     "alias": null,
                     "args": null,
-                    "concreteType": "SavedView",
-                    "kind": "LinkedField",
-                    "name": "savedViews",
-                    "plural": true,
-                    "selections": [
-                      {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "viewName",
-                        "storageKey": null
-                      },
-                      {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "urlName",
-                        "storageKey": null
-                      },
-                      {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "color",
-                        "storageKey": null
-                      },
-                      {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "description",
-                        "storageKey": null
-                      }
-                    ],
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
                     "kind": "ScalarField",
                     "name": "id",
                     "storageKey": null
@@ -226,16 +187,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "97661da41150ba2326ac9b255d84ca21",
+    "cacheID": "1e0b621671e78c21b0947dcfa72dd51e",
     "id": null,
     "metadata": {},
     "name": "DatasetsPaginationQuery",
     "operationKind": "query",
-    "text": "query DatasetsPaginationQuery(\n  $count: Int\n  $cursor: String\n  $search: String\n) {\n  ...RootDatasets_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        savedViews {\n          viewName\n          urlName\n          color\n          description\n        }\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n"
+    "text": "query DatasetsPaginationQuery(\n  $count: Int\n  $cursor: String\n  $search: String\n) {\n  ...RootDatasets_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b658c281100f2b21662138f3335b9824";
+(node as any).hash = "280afc557752c2245a140c58ccb00248";
 
 export default node;

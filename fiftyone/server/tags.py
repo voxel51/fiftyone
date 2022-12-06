@@ -17,6 +17,7 @@ import fiftyone.server.view as fosv
 
 def get_tag_view(
     dataset: str,
+    *,
     stages: t.List,
     filters: t.Dict,
     slice: str = None,

@@ -99,6 +99,11 @@ async def add_event_listener(
                     # # else [], event.state.view.name if event.state.view
                     else None,
                 )
+                print(
+                    "events.py\n\tasync def add_event_listener(\n\t\t d["
+                    '"dataset"]=',
+                    d["dataset"],
+                )
 
             yield ServerSentEvent(
                 event=StateUpdate.get_event_name(),

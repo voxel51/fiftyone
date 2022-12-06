@@ -33,8 +33,11 @@ class DatasetSingleton(type):
             instance.__init__(name=name, _create=_create, *args, **kwargs)
             name = instance.name  # `__init__` may have changed `name`
             cls._instances[name] = instance
+        else:
+            instance = cls._instances[name]
+            instance._update_last_loaded_at()
 
-        return cls._instances[name]
+        return instance
 
 
 class DocumentSingleton(type):

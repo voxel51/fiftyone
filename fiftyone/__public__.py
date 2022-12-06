@@ -129,6 +129,7 @@ from .core.models import (
 from .core.odm import (
     DatasetAppConfig,
     KeypointSkeleton,
+    SidebarGroupDocument,
 )
 from .core.plots import (
     plot_confusion_matrix,

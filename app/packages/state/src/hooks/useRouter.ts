@@ -14,6 +14,10 @@ export const getCurrentEnvironment = () => {
   return currentEnvironment;
 };
 
+export const setCurrentEnvironment = (environment: Environment) => {
+  currentEnvironment = environment;
+};
+
 const useRouter = (
   makeRoutes: (environment: Environment) => RouteDefinition[],
   deps?: React.DependencyList | undefined

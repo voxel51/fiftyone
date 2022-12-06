@@ -70,7 +70,7 @@ export const DatasetSavedViewsFragment = graphql`
       id
       datasetId
       name
-      urlName
+      slug
       description
       color
       viewStages
@@ -99,12 +99,12 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
               node {
                 name
                 # TODO: @mani, can the view selector rely on this fragment instead of creating a new db call?
-                savedViews {
-                  viewName
-                  urlName
-                  color
-                  description
-                }
+                #                savedViews {
+                #                  viewName
+                #                  slug
+                #                  color
+                #                  description
+                #                }
               }
             }
           }

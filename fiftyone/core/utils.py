@@ -1625,10 +1625,10 @@ def _sanitize_char(c):
     return ""
 
 
-def to_url_name(name):
-    """Returns a URL-friendly version of the given string.
+def to_slug(name):
+    """Returns the URL-friendly slug for the given string.
 
-    The following strategy is used to generate URL-friendly strings:
+    The following strategy is used to generate slugs:
 
         -   The characters ``A-Za-z0-9`` are converted to lowercase
         -   Whitespace and ``+_.-`` are converted to ``-``
@@ -1640,7 +1640,7 @@ def to_url_name(name):
 
     Examples::
 
-        Input name                       | URL-friendly name
+        name                             | slug
         ---------------------------------+-----------------------
         coco_2017                        | coco-2017
         c+o+c+o 2-0-1-7                  | c-o-c-o-2-0-1-7
@@ -1653,10 +1653,10 @@ def to_url_name(name):
         name: a string
 
     Returns:
-        a URL-friendly string
+        the slug string
 
     Raises:
-        ValueError: if the name cannot be made URL-friendly
+        ValueError: if the name is invalid
     """
     if not etau.is_str(name):
         raise ValueError("Expected string; found %s: %s" % (type(name), name))
@@ -1675,21 +1675,21 @@ def to_url_name(name):
             safe.append(s)
             last = s
 
-    url_name = "".join(safe).strip("-").lower()
+    slug = "".join(safe).strip("-").lower()
 
-    if len(url_name) < _NAME_LENGTH_RANGE[0]:
+    if len(slug) < _NAME_LENGTH_RANGE[0]:
         raise ValueError(
-            "'%s' has invalid URL-friendly name '%s'; length %d < %d"
-            % (name, url_name, len(url_name), _NAME_LENGTH_RANGE[0])
+            "'%s' has invalid slug-friendly name '%s'; length %d < %d"
+            % (name, slug, len(slug), _NAME_LENGTH_RANGE[0])
         )
 
-    if len(url_name) > _NAME_LENGTH_RANGE[1]:
+    if len(slug) > _NAME_LENGTH_RANGE[1]:
         raise ValueError(
-            "'%s' has invalid URL-friendly name '%s'; length %d > %d"
-            % (name, url_name, len(url_name), _NAME_LENGTH_RANGE[1])
+            "'%s' has invalid slug-friendly name '%s'; length %d > %d"
+            % (name, slug, len(slug), _NAME_LENGTH_RANGE[1])
         )
 
-    return url_name
+    return slug
 
 
 def validate_hex_color(value):

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3472954d74cf8f9767599af1b215ffb3>>
+ * @generated SignedSource<<106f7c13b128216e7db538f750f9044a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -90,7 +90,7 @@ return {
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "urlName",
+            "name": "slug",
             "storageKey": null
           },
           {
@@ -141,16 +141,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "199930b0a3823083795234160a6d2e85",
+    "cacheID": "82415fc2849d0cb358474f90f4dff61e",
     "id": null,
     "metadata": {},
     "name": "EootDatasetSavedViewsQuery",
     "operationKind": "query",
-    "text": "query EootDatasetSavedViewsQuery(\n  $name: String!\n) {\n  ...RootDatasetSavedViewsFragment\n}\n\nfragment RootDatasetSavedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    urlName\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
+    "text": "query EootDatasetSavedViewsQuery(\n  $name: String!\n) {\n  ...RootDatasetSavedViewsFragment\n}\n\nfragment RootDatasetSavedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "847f8eba4c04caaab427bb5c7b7accce";
+(node as any).hash = "b69e4e143a106d1fc02b949d1a7d3810";
 
 export default node;
