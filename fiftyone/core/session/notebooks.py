@@ -145,9 +145,15 @@ def display_databricks(
         ) from e
 
     url, proxy = _get_databricks_proxy_url(cell.port)
-    proxy_url = f"{url}?notebook=true&subscription={cell.subscription}&polling=true&proxy={proxy}"
+    url = f"{url}?notebook=true&subscription={cell.subscription}&polling=true&proxy={proxy}"
     html_string = f"""
-    <iframe id="{cell.subscription}" width="100%" height="{cell.height}" frameborder="0" src="{proxy_url}"></iframe>
+        <iframe
+            id="{cell.subscription}"
+            width="100%"
+            height="{cell.height}"
+            frameborder="0"
+            src="{url}">
+        </iframe>
     """
     display_html(html_string)
 
