@@ -2469,11 +2469,9 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         return True
 
     def _download_and_prepare(self, dataset_dir, version, split):
-        print("MYMY" * 39)
         num_samples, classes, downloaded = fouo.download_open_images_split(
             dataset_dir,
             split,
-            version="v6",
             label_types=self.label_types,
             classes=self.classes,
             attrs=self.attrs,
@@ -2482,6 +2480,7 @@ class OpenImagesV6Dataset(FiftyOneDataset):
             shuffle=self.shuffle,
             seed=self.seed,
             max_samples=self.max_samples,
+            version="v6",
         )
 
         dataset_type = fot.OpenImagesDataset()
@@ -2663,12 +2662,9 @@ class OpenImagesV7Dataset(FiftyOneDataset):
         return True
 
     def _download_and_prepare(self, dataset_dir, _, split):
-        print("YUM" * 39)
-
         num_samples, classes, downloaded = fouo.download_open_images_split(
             dataset_dir,
             split,
-            version="v7",
             label_types=self.label_types,
             classes=self.classes,
             attrs=self.attrs,
@@ -2677,9 +2673,8 @@ class OpenImagesV7Dataset(FiftyOneDataset):
             shuffle=self.shuffle,
             seed=self.seed,
             max_samples=self.max_samples,
+            version="v7",
         )
-
-        print("END" * 30)
 
         dataset_type = fot.OpenImagesDataset()
 

@@ -82,7 +82,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
     def __init__(
         self,
         dataset_dir,
-        version="v7",
         label_types=None,
         classes=None,
         attrs=None,
@@ -95,12 +94,13 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         max_samples=None,
     ):
 
-        print("INIT")
-        print(version)
-        self.version = version
-        _label_types = _parse_label_types(version, label_types)
+        if label_types == None:
+            label_types = []
+        elif type(label_types) != list:
+            label_types = [label_types]
+
         if include_id:
-            _label_types.append("open_images_id")
+            label_types.append("open_images_id")
 
         super().__init__(
             dataset_dir=dataset_dir,
@@ -116,7 +116,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         self.only_matching = only_matching
         self.load_hierarchy = load_hierarchy
 
-        self._label_types = _label_types
+        self._label_types = label_types
         self._images_map = None
         self._info = None
         self._classes_map = None
@@ -264,9 +264,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         else:
             image_ids = available_ids
 
-        print("PRE:")
-        print(self.version)
-
         (
             classes_map,
             all_classes,
@@ -280,7 +277,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             pnt_classes,
             _,
         ) = _setup(
-            self.version,
             dataset_dir,
             label_types=label_types,
             classes=classes,
@@ -299,7 +295,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             any_label_ids,
             _,
         ) = _get_all_label_data(
-            self.version,
             dataset_dir,
             image_ids,
             label_types=label_types,
@@ -515,7 +510,6 @@ def get_point_classes(version="v7", dataset_dir=None):
 def download_open_images_split(
     dataset_dir,
     split,
-    version="v7",
     label_types=None,
     classes=None,
     attrs=None,
@@ -524,6 +518,7 @@ def download_open_images_split(
     shuffle=None,
     seed=None,
     max_samples=None,
+    version="v7",
 ):
     """Utility that downloads full or partial splits of the
     `Open Images dataset <https://storage.googleapis.com/openimages/web/index.html>`_.
@@ -594,6 +589,7 @@ def download_open_images_split(
             necessary files were already downloaded (False)
     """
     _verify_version(version)
+    label_types = _parse_label_types(version, label_types)
 
     did_download = False
 
@@ -610,9 +606,6 @@ def download_open_images_split(
 
     downloaded_ids = _get_downloaded_image_ids(dataset_dir)
 
-    print("B" * 40)
-    print(version)
-
     (
         classes_map,
         all_classes,
@@ -626,7 +619,6 @@ def download_open_images_split(
         pnt_classes,
         _did_download,
     ) = _setup(
-        version,
         dataset_dir,
         label_types=label_types,
         classes=classes,
@@ -635,7 +627,6 @@ def download_open_images_split(
         download=True,
     )
 
-    print(version)
     did_download |= _did_download
 
     # Download class hierarchy if necessary (used in evaluation)
@@ -645,7 +636,6 @@ def download_open_images_split(
     did_download |= _did_download
 
     num_samples, _did_download = _download(
-        version,
         image_ids,
         downloaded_ids,
         oi_classes,
@@ -669,7 +659,6 @@ def download_open_images_split(
 
 
 def _setup(
-    version,
     dataset_dir,
     label_types=None,
     classes=None,
@@ -677,11 +666,10 @@ def _setup(
     seed=None,
     download=False,
 ):
-    print("A" * 30)
-    print(version)
 
     did_download = False
-    _label_types = _parse_label_types(version, label_types)
+    _label_types = label_types
+    # _label_types = _parse_label_types(version, label_types)
     if etau.is_str(classes):
         classes = [classes]
 
@@ -766,8 +754,6 @@ def _setup(
     else:
         seg_classes = None
 
-    print(_label_types)
-    print("C" * 40)
     # pnt_classes = None
     if "points" in _label_types:
         pnt_classes, _did_download = _get_pnt_classes(
@@ -775,10 +761,7 @@ def _setup(
         )
         did_download |= _did_download
     elif "points" not in _label_types:
-        #     print("E"*40)
         pnt_classes = None
-
-    # print(pnt_classes[:10])
 
     return (
         classes_map,
@@ -1067,7 +1050,6 @@ def _get_downloaded_image_ids(dataset_dir):
 
 
 def _get_all_label_data(
-    version,
     dataset_dir,
     image_ids,
     label_types=None,
@@ -1096,7 +1078,7 @@ def _get_all_label_data(
     all_attrs_ids = set(image_ids)
     any_attrs_ids = set()
 
-    _label_types = _parse_label_types(version, label_types)
+    _label_types = label_types
 
     did_download = False
 
@@ -1335,7 +1317,6 @@ def _get_label_data(
 
 
 def _download(
-    version,
     image_ids,
     downloaded_ids,
     oi_classes,
@@ -1364,7 +1345,6 @@ def _download(
         any_label_ids,
         did_download,
     ) = _get_all_label_data(
-        version,
         dataset_dir,
         image_ids,
         label_types=label_types,
@@ -1446,7 +1426,8 @@ def _download(
         )
 
     ####### POINTS??????? #######
-    if "segmentations" in _parse_label_types(version, label_types):
+    # if "segmentations" in _parse_label_types(version, label_types):
+    if "segmentations" in label_types:
         _did_download = _download_masks_if_necessary(
             all_ids, dataset_dir, split, download=download
         )
