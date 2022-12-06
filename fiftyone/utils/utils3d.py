@@ -128,14 +128,14 @@ def _parse_size(size, bounds):
     width, height = size
     min_bounds, max_bounds = bounds
 
-    iw = max_bounds[0] - min_bounds[0]
-    ih = max_bounds[1] - min_bounds[1]
+    w = max_bounds[0] - min_bounds[0]
+    h = max_bounds[1] - min_bounds[1]
 
     if height is None or height < 0:
-        height = int(round(ih * (width * 1.0 / iw)))
+        height = int(round(h * (width * 1.0 / w)))
 
     if width is None or width < 0:
-        width = int(round(iw * (height * 1.0 / ih)))
+        width = int(round(w * (height * 1.0 / h)))
 
     return width, height
 
@@ -151,7 +151,7 @@ def _fill_none(values, ref_values):
     if values is None:
         return ref_values
 
-    return tuple(v if v is not None else r for v, r in zip(values, ref_values))
+    return [v if v is not None else r for v, r in zip(values, ref_values)]
 
 
 def compute_birds_eye_view_maps(
