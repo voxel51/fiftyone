@@ -20,6 +20,8 @@ import fiftyone.core.validation as fov
 sg = fou.lazy_import("shapely.geometry")
 so = fou.lazy_import("shapely.ops")
 
+foue3d = fou.lazy_import("fiftyone.utils.eval.utils3d")
+
 
 def compute_ious(
     preds,
@@ -418,7 +420,7 @@ def _check_bbox_dim(gt):
 
 def _compute_2d_bbox_iou(gt, gt_crowd, pred):
     """
-    computes single IoU
+    computes single IoU for 2d bboxes
     """
     gx, gy, gw, gh = gt.bounding_box
     gt_area = gh * gw
@@ -469,9 +471,7 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
     elif bbox_dim == 2:
         bbox_iou_func = _compute_2d_bbox_iou
     else:
-        from fiftyone.utils.eval.utils_3d import _compute_3d_bbox_iou
-
-        bbox_iou_func = _compute_3d_bbox_iou
+        bbox_iou_func = foue3d._compute_3d_bbox_iou
 
     ious = np.zeros((len(preds), len(gts)))
 
@@ -490,63 +490,6 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
             ious[i, j] = iou
 
     return ious
-
-
-# def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
-#     is_symmetric = preds is gts
-
-#     if iscrowd is not None:
-#         gt_crowds = [iscrowd(gt) for gt in gts]
-#     else:
-#         gt_crowds = [False] * len(gts)
-
-#     if isinstance(preds[0], fol.Polyline):
-#         preds = _polylines_to_detections(preds)
-
-#         if is_symmetric:
-#             gts = preds
-#         else:
-#             gts = _polylines_to_detections(gts)
-
-#     ious = np.zeros((len(preds), len(gts)))
-
-#     for j, (gt, gt_crowd) in enumerate(zip(gts, gt_crowds)):
-#         gx, gy, gw, gh = gt.bounding_box
-#         gt_area = gh * gw
-
-#         for i, pred in enumerate(preds):
-#             if is_symmetric and i < j:
-#                 iou = ious[j, i]
-#             elif is_symmetric and i == j:
-#                 iou = 1
-#             elif classwise and pred.label != gt.label:
-#                 continue
-#             else:
-#                 px, py, pw, ph = pred.bounding_box
-#                 pred_area = ph * pw
-
-#                 # Width of intersection
-#                 w = min(px + pw, gx + gw) - max(px, gx)
-#                 if w <= 0:
-#                     continue
-
-#                 # Height of intersection
-#                 h = min(py + ph, gy + gh) - max(py, gy)
-#                 if h <= 0:
-#                     continue
-
-#                 inter = h * w
-
-#                 if gt_crowd:
-#                     union = pred_area
-#                 else:
-#                     union = pred_area + gt_area - inter
-
-#                 iou = min(etan.safe_divide(inter, union), 1)
-
-#             ious[i, j] = iou
-
-#     return ious
 
 
 def _compute_polyline_ious(
