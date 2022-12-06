@@ -6,6 +6,7 @@ Session notebook handling.
 |
 """
 from dataclasses import dataclass
+import json
 import os
 
 from jinja2 import Template
@@ -124,3 +125,48 @@ def display_colab(
         f"fiftyone.deactivate.{cell.subscription.replace('-', '_')}",
         lambda: client.send_event(fose.DeactivateNotebookCell()),
     )
+
+
+def display_databricks(
+    client: Client, cell: NotebookCell, reactivate: bool = False
+):
+    """Display a FiftyOne instance in a Databricks output frame.
+    The Databricks driver port is accessible via a proxy url and can be displayed inside an IFrame.
+    """
+    try:
+        import IPython
+
+        shell = IPython.get_ipython()
+        display_html = shell.user_ns["displayHTML"]
+    except ImportError as e:
+        raise ValueError(
+            "You must verify that the Databricks Runtime is installed properly."
+        ) from e
+
+    proxy_url = f"{_get_databricks_proxy_url(cell.port)}?notebook=true&subscription={cell.subscription}&polling=true"
+    html_string = f"""
+    <iframe id="{cell.subscription}" width="100%" height="{cell.height}" frameborder="0" src="{proxy_url}"></iframe>
+    """
+    display_html(html_string)
+
+
+def _get_databricks_proxy_url(port):
+    dbutils = None
+    try:
+        import IPython
+
+        shell = IPython.get_ipython()
+        dbutils = shell.user_ns["dbutils"]
+    except ImportError as e:
+        raise ValueError(
+            "You must verify that the Databricks Runtime is installed properly."
+        ) from e
+
+    data = json.loads(
+        dbutils.entry_point.getDbutils().notebook().getContext().toJson()
+    )["tags"]
+    browser_host_name = data["browserHostName"]
+    org_id = data["orgId"]
+    cluster_id = data["clusterId"]
+
+    return f"https://{browser_host_name}/driver-proxy/o/{org_id}/{cluster_id}/{port}/"
