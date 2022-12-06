@@ -3,9 +3,9 @@ import nodePolyfills from "rollup-plugin-polyfill-node";
 import { defineConfig } from "vite";
 import relay from "vite-plugin-relay";
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(() => {
   return {
-    base: mode === "desktop" ? "" : "/",
+    base: "",
     plugins: [
       reactRefresh({
         parserPlugins: ["classProperties", "classPrivateProperties"],

@@ -7,6 +7,7 @@ FiftyOne Server app.
 """
 from datetime import date, datetime
 import os
+import pathlib
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
@@ -37,8 +38,13 @@ class Static(StaticFiles):
         response = await super().get_response(path, scope)
 
         if response.status_code == 404:
-            full_path, stat_result = self.lookup_path("index.html")
-            return self.file_response(full_path, stat_result, scope)
+            path = pathlib.Path(
+                *pathlib.Path(path).parts[2:]
+            )  # strip dataset/{name}
+            response = await super().get_response(path, scope)
+            if response.status_code == 404:
+                full_path, stat_result = self.lookup_path("index.html")
+                return self.file_response(full_path, stat_result, scope)
 
         return response
 
