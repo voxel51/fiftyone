@@ -47,6 +47,7 @@ const NamedCategoricalFilterHeader = styled.div`
 `;
 
 const CHECKBOX_LIMIT = 20;
+const NEVEREXPAND_FIELDS = ["id"];
 
 type V = { value: string | number | null | boolean; count: number };
 
@@ -109,7 +110,10 @@ const Wrapper = ({
   }));
   const skeleton = useRecoilValue(isKeypointLabel(path));
 
-  if (results.length <= CHECKBOX_LIMIT || skeleton) {
+  if (
+    (results.length <= CHECKBOX_LIMIT && !NEVEREXPAND_FIELDS.includes(name)) ||
+    skeleton
+  ) {
     allValues = [
       ...allValues,
       ...results
@@ -398,21 +402,24 @@ const CategoricalFilter = <T extends V = V>({
         onMouseDown={(event) => event.stopPropagation()}
       >
         {results === null && <LoadingDots text="" />}
-        {results !== null && results.length > CHECKBOX_LIMIT && !skeleton && (
-          <Selector
-            useSearch={useSearch}
-            placeholder={`+ filter by ${name}`}
-            component={ResultComponent}
-            onSelect={onSelect}
-            inputStyle={{
-              color: theme.text.secondary,
-              fontSize: "1rem",
-              width: "100%",
-            }}
-            containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
-            toKey={({ value }) => String(value)}
-          />
-        )}
+        {results !== null &&
+          (results.length > CHECKBOX_LIMIT ||
+            NEVEREXPAND_FIELDS.includes(name.toLocaleLowerCase())) &&
+          !skeleton && (
+            <Selector
+              useSearch={useSearch}
+              placeholder={`+ filter by ${name}`}
+              component={ResultComponent}
+              onSelect={onSelect}
+              inputStyle={{
+                color: theme.text.secondary,
+                fontSize: "1rem",
+                width: "100%",
+              }}
+              containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
+              toKey={({ value }) => String(value)}
+            />
+          )}
         <Wrapper
           path={path}
           color={color}
