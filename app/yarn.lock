@@ -2744,6 +2744,7 @@ __metadata:
     "@types/node": ^18.0.3
     "@types/react": ^18.0.0
     "@types/react-dom": ^18.0.0
+    "@types/three": ^0.146.0
     "@vitejs/plugin-react": ^1.3.0
     lodash: ^4.17.21
     nodemon: ^2.0.19
@@ -4780,6 +4781,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/three@npm:^0.146.0":
+  version: 0.146.0
+  resolution: "@types/three@npm:0.146.0"
+  dependencies:
+    "@types/webxr": "*"
+  checksum: f8ea5ba032f6aaa1cb5ad7dfbbd13851e8cba04365bc7fa9a5320ea7e9a2538ea5f2426391f690f0465347ade15cc145d5dc84b1730d8cceea89f746231f667c
+  languageName: node
+  linkType: hard
+
 "@types/uuid@npm:^8.3.0":
   version: 8.3.4
   resolution: "@types/uuid@npm:8.3.4"
@@ -4800,6 +4810,13 @@ __metadata:
   dependencies:
     gl-matrix: ^3.2.0
   checksum: 5d1c4666bb39c2eb16fa3c09a8ee58ee4deb9ddbb19d5bd3089c88ca5b57463b9672326443da21db6698192bbf502f1cc0eddfb33954ad1e4b273800950c62fd
+  languageName: node
+  linkType: hard
+
+"@types/webxr@npm:*":
+  version: 0.5.0
+  resolution: "@types/webxr@npm:0.5.0"
+  checksum: 891af0e96a229f45584d89daa3101232862da2ded14076aa631b2e12deb4e4b91fa35ff8d8d5ab4613aa8adce0870bd32cd61f070c1bc70d37303c515e1ae6ac
   languageName: node
   linkType: hard
 
