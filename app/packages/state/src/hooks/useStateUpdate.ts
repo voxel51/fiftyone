@@ -4,7 +4,6 @@ import {
   useRecoilTransaction_UNSTABLE,
 } from "recoil";
 import {
-  aggregationsTick,
   modal,
   sidebarGroupsDefinition,
   State,
@@ -13,10 +12,7 @@ import {
   dataset as datasetAtom,
   resolveGroups,
   filters,
-  colorPool as colorPoolAtom,
   selectedLabels,
-  appConfig,
-  colorscale as colorscaleAtom,
   selectedSamples,
   patching,
   similaritySorting,
@@ -27,7 +23,6 @@ import {
   selectedMediaField,
   sidebarMode,
   groupStatistics,
-  theme,
 } from "../recoil";
 import { useColorScheme } from "@mui/material";
 
@@ -50,7 +45,7 @@ const useStateUpdate = () => {
 
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
-      const { colorscale, config, dataset, state } =
+      const { config, dataset, state } =
         resolve instanceof Function ? resolve(t) : resolve;
 
       const { get, reset, set } = t;
@@ -66,9 +61,6 @@ const useStateUpdate = () => {
         }
       }
 
-      colorscale !== undefined && set(colorscaleAtom, colorscale);
-
-      config !== undefined && set(appConfig, config);
       state?.viewCls !== undefined && set(viewAtoms.viewCls, state.viewCls);
 
       state?.selected && set(selectedSamples, new Set(state.selected));
@@ -86,13 +78,6 @@ const useStateUpdate = () => {
       if (config && config.theme !== "browser") {
         set(theme, config.theme);
         setMode(config.theme);
-      }
-      const colorPool = get(colorPoolAtom);
-      if (
-        config &&
-        JSON.stringify(config.colorPool) !== JSON.stringify(colorPool)
-      ) {
-        set(colorPoolAtom, config.colorPool);
       }
 
       if (dataset) {
@@ -125,13 +110,21 @@ const useStateUpdate = () => {
           reset(groupStatistics(false));
 
           reset(similarityParameters);
+
+          const getMediaPathWithOverride = (f: string) =>
+            dataset.sampleFields.map((field) => field.name).includes(f)
+              ? f
+              : "filepath";
+
           set(
             selectedMediaField(false),
-            dataset?.appConfig?.gridMediaField || "filepath"
+            getMediaPathWithOverride(dataset?.appConfig?.gridMediaField) ||
+              "filepath"
           );
           set(
             selectedMediaField(true),
-            dataset?.appConfig?.modalMediaField || "filepath"
+            getMediaPathWithOverride(dataset?.appConfig?.modalMediaField) ||
+              "filepath"
           );
           reset(extendedSelection);
           reset(filters);

@@ -160,12 +160,12 @@ export const createColorGenerator = (() => {
   let colorMaps = {};
 
   return (
-    colorPool: string[],
+    colorPool: readonly string[],
     seed: number
   ): ((value: string | number | boolean | null) => string) => {
     if (JSON.stringify(poolCache) !== JSON.stringify(colorPool)) {
       colorMaps = {};
-      poolCache = colorPool;
+      poolCache = [...colorPool];
     }
 
     if (seed in colorMaps) {
@@ -175,7 +175,7 @@ export const createColorGenerator = (() => {
     colorPool = [...colorPool];
 
     if (seed > 0) {
-      colorPool = shuffle(colorPool, seed);
+      colorPool = shuffle([...colorPool], seed);
     }
 
     let map = {};
@@ -196,7 +196,7 @@ export const createColorGenerator = (() => {
 })();
 
 export const getColor = (
-  pool: string[],
+  pool: readonly string[],
   seed: number,
   fieldOrValue: string | number | boolean | null
 ) => {

@@ -5,6 +5,7 @@ import LRU from "lru-cache";
 import { v4 as uuid } from "uuid";
 
 import {
+  AppError,
   DATE_FIELD,
   DATE_TIME_FIELD,
   LABELS,
@@ -210,6 +211,10 @@ export abstract class Looker<
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
+    if (detail instanceof ErrorEvent) {
+      this.updater({ error: detail.error });
+      return;
+    }
     if (detail instanceof Event) {
       this.eventTarget.dispatchEvent(
         // @ts-ignore
@@ -260,8 +265,8 @@ export abstract class Looker<
 
         this.previousState = this.state;
         this.state = mergeUpdates(this.state, updates);
-        if (!this.state.loaded) {
-          this.lookerElement.render(this.state, undefined);
+        if (!this.state.loaded && this.sample) {
+          this.lookerElement.render(this.state, this.sample);
           return;
         }
 
@@ -337,13 +342,10 @@ export abstract class Looker<
         }
         ctx.globalAlpha = 1;
       } catch (error) {
-        if (error instanceof MediaError) {
+        if (error instanceof AppError || error instanceof MediaError) {
           this.updater({ error });
         } else {
-          this.dispatchEvent(
-            "error",
-            new ErrorEvent("looker error", { error })
-          );
+          this.eventTarget.dispatchEvent(new ErrorEvent("error", { error }));
         }
       }
     };

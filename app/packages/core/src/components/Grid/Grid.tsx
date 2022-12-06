@@ -22,10 +22,13 @@ const Grid: React.FC<{}> = () => {
   const expandSample = useExpandSample(store);
   const initialized = useRef(false);
   const deferred = deferrer(initialized);
+
   const lookerOptions = fos.useLookerOptions(false);
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
+
   const selected = useRecoilValue(fos.selectedSamples);
   const [next, pager] = usePage(false, store);
+
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
 
@@ -40,7 +43,7 @@ const Grid: React.FC<{}> = () => {
         store.lookers.has(id) && store.lookers.get(id)?.resize(dimensions),
       get: pager,
       render: (id, element, dimensions, soft, hide) => {
-        const result = store.samples.get(id);
+        let result = store.samples.get(id);
 
         if (store.lookers.has(id)) {
           const looker = store.lookers.get(id);
@@ -53,23 +56,58 @@ const Grid: React.FC<{}> = () => {
           throw new Error("bad data");
         }
 
-        if (!soft) {
-          const looker = createLooker.current(result);
-          looker.addEventListener(
-            "selectthumbnail",
-            ({ detail }: CustomEvent) => {
-              selectSample.current(flashlight, detail);
-            }
-          );
+        const init = (l) => {
+          l.addEventListener("selectthumbnail", ({ detail }: CustomEvent) => {
+            selectSample.current(flashlight, detail);
+          });
 
-          store.lookers.set(id, looker);
-          looker.attach(element, dimensions);
+          l.addEventListener("reset", () => {
+            l.detach();
+            l.destroy();
+            result = store.samples.get(id);
+            if (!result) {
+              throw new Error("unexpected value");
+            }
+            l = createLooker.current(result);
+            init(l);
+          });
+
+          store.lookers.set(id, l);
+          l.attach(element, dimensions);
+        };
+
+        if (!soft) {
+          init(createLooker.current(result));
         }
       },
     });
 
     return flashlight;
   });
+
+  useLayoutEffect(
+    deferred(() => {
+      if (isTagging || !flashlight.isAttached()) {
+        return;
+      }
+
+      next.current = 0;
+      flashlight.reset();
+      store.reset();
+      freeVideos();
+    }),
+    [
+      stringifyObj(useRecoilValue(fos.filters)),
+      useRecoilValue(fos.datasetName),
+      useRecoilValue(fos.cropToContent(false)),
+      fos.filterView(useRecoilValue(fos.view)),
+      useRecoilValue(fos.groupSlice(false)),
+      useRecoilValue(fos.refresher),
+      useRecoilValue(fos.similarityParameters),
+      useRecoilValue(fos.selectedMediaField(false)),
+      useRecoilValue(fos.extendedStagesUnsorted),
+    ]
+  );
 
   const select = fos.useSelectFlashlightSample();
   const selectSample = useRef(select);
@@ -107,44 +145,19 @@ const Grid: React.FC<{}> = () => {
   );
   const isTagging = taggingLabels || taggingSamples;
 
-  useLayoutEffect(
-    deferred(() => {
-      if (isTagging || !flashlight.isAttached()) {
-        return;
-      }
-
-      next.current = 0;
-      flashlight.reset();
-      store.reset();
-      freeVideos();
-    }),
-    [
-      stringifyObj(useRecoilValue(fos.filters)),
-      useRecoilValue(fos.datasetName),
-      useRecoilValue(fos.cropToContent(false)),
-      fos.filterView(useRecoilValue(fos.view)),
-      useRecoilValue(fos.groupSlice(false)),
-      useRecoilValue(fos.refresher),
-      useRecoilValue(fos.similarityParameters),
-      useRecoilValue(fos.selectedMediaField(false)),
-      useRecoilValue(fos.extendedStagesUnsorted),
-    ]
-  );
-
   useEventHandler(
     document,
     "keydown",
     useRecoilCallback(
-      ({ snapshot, set }) =>
-        async (event: KeyboardEvent) => {
-          if (event.key !== "Escape") {
-            return;
-          }
+      ({ snapshot, set }) => async (event: KeyboardEvent) => {
+        if (event.key !== "Escape") {
+          return;
+        }
 
-          if (!(await snapshot.getPromise(fos.modal))) {
-            set(fos.selectedSamples, new Set());
-          }
-        },
+        if (!(await snapshot.getPromise(fos.modal))) {
+          set(fos.selectedSamples, new Set());
+        }
+      },
       []
     )
   );
