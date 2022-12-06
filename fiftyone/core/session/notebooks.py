@@ -169,6 +169,6 @@ def _get_databricks_proxy_url(port):
     browser_host_name = data["browserHostName"]
     org_id = data["orgId"]
     cluster_id = data["clusterId"]
-    proxy = f"driver-proxy/o/{org_id}/{cluster_id}/{port}"
+    proxy = f"/driver-proxy/o/{org_id}/{cluster_id}/{port}/"
 
-    return f"https://{browser_host_name}/{proxy}", proxy
+    return f"https://{browser_host_name}{proxy}", proxy
