@@ -33,3 +33,9 @@ class SavedViewDocument(Document):
     created_at = DateTimeField()
     last_modified_at = DateTimeField()
     last_loaded_at = DateTimeField()
+
+    def serialize(self):
+        d = self.to_dict()
+        d["id"] = str(d.pop("_id"))
+        d["dataset_id"] = str(d.pop("_dataset_id"))
+        return d

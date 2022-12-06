@@ -3253,11 +3253,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name: the name of a saved view
         """
         view_doc = self._get_saved_view_doc(name, pop=True)
-        deleted_id = view_doc._id
+        deleted_id = view_doc.id
 
         view_doc.delete()
         self._doc.save()
-        return deleted_id
+        return str(deleted_id)
 
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""

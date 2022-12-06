@@ -81,7 +81,7 @@ def load_saved_views_by_dataset(cls, dataset_id: str):
         )
         for view in db.views.aggregate(
             [
-                {"$match": {"dataset_id": {"$eq": ObjectId(dataset_id)}}},
+                {"$match": {"_dataset_id": {"$eq": ObjectId(dataset_id)}}},
                 {
                     "$project": {
                         "_id": True,
@@ -108,6 +108,7 @@ def load_saved_views_by_dataset(cls, dataset_id: str):
 def get_saved_views(
     cls, object_ids, data_loader: Optional[gql.dataloader.DataLoader] = None
 ):
+    # Called by serialize_dataset > modifier
     if len(object_ids) < 1:
         return None
     db = foo.get_db_conn()
@@ -148,13 +149,6 @@ def get_saved_views(
         )
         for view in agg
     ]
-    if data_loader:
-        data_loader.prime_many(
-            {saved_view.name: saved_view for saved_view in saved_views}
-        )
-        data_loader.prime_many(
-            {saved_view.name: saved_view for saved_view in saved_views}
-        )
     return saved_views
 
 
