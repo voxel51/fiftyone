@@ -133,7 +133,7 @@ const Wrapper = ({
     );
   }
 
-  allValues = [...new Set(allValues)].filter((v) => Boolean(v.value));
+  allValues = [...new Set(allValues)];
 
   return (
     <>
