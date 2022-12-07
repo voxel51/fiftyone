@@ -10,8 +10,6 @@ from typing import Tuple, Union
 
 import math
 import numpy as np
-from shapely.geometry import Polygon
-import open3d as o3d
 
 import fiftyone.core.utils as fou
 
@@ -20,6 +18,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as nnF
 from torch.autograd import Variable
+
+o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
+sg = fou.lazy_import(
+    "shapely.geometry", callback=lambda: fou.ensure_package("shapely")
+)
 
 
 class Upsample(nn.Module):
@@ -57,7 +60,7 @@ class YOLOLayer(nn.Module):
         self.img_dim = img_dim
         self.grid_size = 0  # grid size
 
-    def compute_grid_offsets(self, grid_size, cuda=True):
+    def _compute_grid_offsets(self, grid_size, cuda=True):
         self.grid_size = grid_size
         g = self.grid_size
         FloatTensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
@@ -123,7 +126,7 @@ class YOLOLayer(nn.Module):
 
         # If grid size does not match current we compute new offsets
         if grid_size != self.grid_size:
-            self.compute_grid_offsets(grid_size, cuda=x.is_cuda)
+            self._compute_grid_offsets(grid_size, cuda=x.is_cuda)
 
         # Add offset and scale with anchors
         pred_boxes = FloatTensor(prediction[..., :6].shape)
@@ -248,9 +251,9 @@ def create_modules(module_defs):
             ]
             anchors = [anchors[i] for i in anchor_idxs]
             num_classes = int(module_def["classes"])
-            img_size = int(hyperparams["height"])
+            img_height = int(hyperparams["height"])
             # Define detection layer
-            yolo_layer = YOLOLayer(anchors, num_classes, img_size)
+            yolo_layer = YOLOLayer(anchors, num_classes, img_height)
             modules.add_module(f"yolo_{module_i}", yolo_layer)
         # Register module list and number of output filters
         module_list.append(modules)
@@ -262,7 +265,7 @@ def create_modules(module_defs):
 class ComplexYOLOv3(nn.Module):
     """Complex-YOLOv3 object detection model"""
 
-    def __init__(self, config_path, img_size=416):
+    def __init__(self, config_path, img_height=416):
         super().__init__()
         self.module_defs = parse_model_config(config_path)
         self.hyperparams, self.module_list = create_modules(self.module_defs)
@@ -271,11 +274,9 @@ class ComplexYOLOv3(nn.Module):
             for layer in self.module_list
             if hasattr(layer[0], "metrics")
         ]
-        self.img_size = img_size
+        self.img_height = img_height
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
-        self.class_heights = {}
-        self.class_zs = {}
 
     def forward(self, x, targets=None):
         img_dim = x.shape[2]
@@ -329,7 +330,7 @@ class ComplexYOLOv3(nn.Module):
     def _convert_boxes_to_shapely(self, boxes_array):
         return np.array(
             [
-                Polygon([(box[i, 0], box[i, 1]) for i in range(4)])
+                sg.Polygon([(box[i, 0], box[i, 1]) for i in range(4)])
                 for box in boxes_array
             ]
         )
@@ -361,7 +362,7 @@ class ComplexYOLOv3(nn.Module):
 
         return self._compute_iou(bbox1[0], bbox2)
 
-    def nms(self, prediction, conf_thresh, nms_thresh):
+    def _nms(self, prediction, conf_thresh, nms_thresh):
         """
         Removes detections with lower object confidence score than 'conf_thresh' and performs
         Non-Maximum Suppression to further filter detections.
@@ -413,7 +414,7 @@ class ComplexYOLOv3(nn.Module):
 
         return output
 
-    def compute_height(self, predictions):
+    def _compute_height(self, predictions):
         new_preds = []
         for img in predictions:
             if img is None:
@@ -423,10 +424,10 @@ class ComplexYOLOv3(nn.Module):
             labels = [self._labels[cid] for cid in class_ids]
 
             detection_heights = np.array(
-                [[self.class_heights.get(label, 1.6) for label in labels]]
+                [[self.class_heights[label] for label in labels]]
             )
             detection_zs = np.array(
-                [[self.class_zs.get(label, 1.55) for label in labels]]
+                [[self.class_zs[label] for label in labels]]
             )
 
             new_preds.append(
@@ -437,9 +438,9 @@ class ComplexYOLOv3(nn.Module):
         return new_preds
 
 
-def build_model(config, img_size=608):
+def _build_model(config, img_size=(608, 608)):
     device = config.device
-    model = ComplexYOLOv3(config.config_path, img_size=img_size)
+    model = ComplexYOLOv3(config.config_path, img_height=img_size[0])
     model.load_state_dict(
         torch.load(config.weights_path, map_location=torch.device(device))
     )
