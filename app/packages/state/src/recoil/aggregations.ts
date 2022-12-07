@@ -274,12 +274,6 @@ export const stringCountResults = selectorFamily<
       const results: [string | null, number][] = values.map(
         ({ count, value }) => [value, count]
       );
-      const none: number = get(noneCount(params));
-
-      if (none) {
-        results.push([null, none]);
-        count++;
-      }
 
       return {
         count,
@@ -305,7 +299,6 @@ export const booleanCountResults = selectorFamily<
         results: [
           [false, data.false],
           [true, data.true],
-          [null, get(noneCount(params))],
         ],
       };
     },
@@ -334,6 +327,7 @@ export const labelCount = selectorFamily<
     eviction: "most-recent",
   },
 });
+
 export const values = selectorFamily<
   string[],
   { extended: boolean; path: string; modal: boolean }
