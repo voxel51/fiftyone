@@ -554,6 +554,7 @@ class VOCObject(object):
         # Handles CVAT exported attributes
         if "attributes" in d:
             cvat_attrs = d.pop("attributes", {}).pop("attribute", {})
+            cvat_attrs = _ensure_list(cvat_attrs)
             cvat_attrs = {a["name"]: a["value"] for a in cvat_attrs}
             d.update(cvat_attrs)
 

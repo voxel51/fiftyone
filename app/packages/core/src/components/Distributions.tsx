@@ -21,6 +21,7 @@ import {
   noDistributionPathsData,
 } from "@fiftyone/state";
 import { useTheme, Loading } from "@fiftyone/components";
+import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -278,7 +279,13 @@ const Distributions = ({ group }: { group: string }) => {
   if (noData.state === "hasError") throw noData.contents;
   return noData.state === "hasValue" ? (
     !noData.contents ? (
-      <Suspense fallback={<Loading>Loading...</Loading>}>
+      <Suspense
+        fallback={
+          <Loading>
+            <LoadingDots text="Loading" />
+          </Loading>
+        }
+      >
         <DistributionsContainer>
           {paths.map((path) => {
             return <DistributionRenderer key={path} path={path} />;
@@ -289,7 +296,9 @@ const Distributions = ({ group }: { group: string }) => {
       <Loading>No data</Loading>
     )
   ) : (
-    <Loading>Loading...</Loading>
+    <Loading>
+      <LoadingDots text="Loading" />
+    </Loading>
   );
 };
 

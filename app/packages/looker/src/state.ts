@@ -4,7 +4,7 @@
 
 import { Overlay } from "./overlays/base";
 
-import { Schema, Stage } from "@fiftyone/utilities";
+import { AppError, Schema, Stage } from "@fiftyone/utilities";
 
 // vite won't import these from fou
 export type RGB = [number, number, number];
@@ -208,7 +208,7 @@ export interface BaseState {
   setZoom: boolean;
   hasDefaultZoom: boolean;
   SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
-  error: boolean | number;
+  error: boolean | number | AppError;
   destroyed: boolean;
   reloading: boolean;
 }

@@ -23,6 +23,7 @@ import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import withSuspense from "./withSuspense";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
+import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -396,12 +397,11 @@ const CategoricalFilter = <T extends V = V>({
       <CategoricalFilterContainer
         onMouseDown={(event) => event.stopPropagation()}
       >
-        {results.length > CHECKBOX_LIMIT && !skeleton && (
+        {results === null && <LoadingDots text="" />}
+        {results !== null && results.length > CHECKBOX_LIMIT && !skeleton && (
           <Selector
             useSearch={useSearch}
-            placeholder={
-              results === null ? "Loading..." : `+ filter by ${name}`
-            }
+            placeholder={`+ filter by ${name}`}
             component={ResultComponent}
             onSelect={onSelect}
             inputStyle={{

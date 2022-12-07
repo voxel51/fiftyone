@@ -201,7 +201,7 @@ export function usePluginSettings<T>(
   defaults?: Partial<T>
 ): T {
   const dataset = recoil.useRecoilValue(fos.dataset);
-  const appConfig = recoil.useRecoilValue(fos.appConfig);
+  const appConfig = recoil.useRecoilValue(fos.config);
   const datasetPlugins = _.get(dataset, "appConfig.plugins", {});
   const appConfigPlugins = _.get(appConfig, "plugins", {});
 
