@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0e0dd503aa1ac3c8a6a42641301ad46f>>
+ * @generated SignedSource<<8fbeeb255893294c12088079b059f5d3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -41,7 +41,7 @@ export type DatasetQuery$data = {
       readonly timestamp: any | null;
       readonly version: string | null;
       readonly viewStages: ReadonlyArray<string> | null;
-    }>;
+    }> | null;
     readonly createdAt: any | null;
     readonly defaultGroupSlice: string | null;
     readonly defaultMaskTargets: ReadonlyArray<{
@@ -62,7 +62,7 @@ export type DatasetQuery$data = {
       readonly timestamp: any | null;
       readonly version: string | null;
       readonly viewStages: ReadonlyArray<string> | null;
-    }>;
+    }> | null;
     readonly frameFields: ReadonlyArray<{
       readonly dbField: string | null;
       readonly description: string | null;

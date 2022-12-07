@@ -21,6 +21,7 @@ import fiftyone.server.view as fosv
 class Sort(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
+        print("Sort(HTTPEndpoint) post request with data: ", data)
         dataset_name = data.get("dataset", None)
         filters = data.get("filters", {})
         stages = data.get("view", None)
@@ -48,7 +49,11 @@ class Sort(HTTPEndpoint):
             view = None
 
         return {
-            "dataset": await serialize_dataset(dataset_name, stages)
+            "dataset": await serialize_dataset(
+                dataset_name=dataset_name,
+                serialized_view=stages,
+                view_name=view.name,
+            )
             if changed
             else None,
             "state": state.serialize(),

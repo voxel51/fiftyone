@@ -126,8 +126,9 @@ type Dataset {
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!
   frameFields: [SampleField!]
-  brainMethods: [BrainRun!]!
-  evaluations: [EvaluationRun!]!
+  brainMethods: [BrainRun!]
+  evaluations: [EvaluationRun!]
+  savedViews: [SavedView!]
   version: String
   viewCls: String
   viewName: String
@@ -135,7 +136,6 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
-  savedViews: [SavedView!]
 }
 
 type DatasetAppConfig {

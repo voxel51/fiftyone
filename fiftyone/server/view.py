@@ -45,22 +45,22 @@ async def load_saved_views(cls, object_ids):
                 }
             ),
         )
-        for view in db.views.aggregate(
-            [
-                {"$match": {"_id": {"$in": object_ids}}},
-                {
-                    "$project": {
-                        "name": True,
-                        "color": True,
-                        "description": True,
-                        "slug": True,
-                        "last_loaded_at": True,
-                        "created_at": True,
-                        "last_modified_at": True,
-                        "view_stages": True,
-                    }
-                },
-            ]
+        for view in db.views.find(
+            {"_id": {"$in": object_ids}},
+            {
+                "_id": True,
+                "id": {"$toString": "$_id"},
+                "_dataset_id": {"$ifNull": ["$dataset_id", "$_dataset_id"]},
+                "dataset_id": {"$toString": "$_dataset_id"},
+                "name": True,
+                "color": True,
+                "description": True,
+                "slug": True,
+                "last_loaded_at": True,
+                "created_at": True,
+                "last_modified_at": True,
+                "view_stages": True,
+            },
         )
     ]
 
@@ -135,8 +135,7 @@ def get_saved_views(
             },
         ]
     )
-    print("agg", agg)
-    # TODO: remove view_stages and query separately upon view selection
+
     saved_views = [
         from_dict(
             data_class=cls,

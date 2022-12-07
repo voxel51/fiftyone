@@ -131,10 +131,41 @@ class SavedView:
             return None
         return self.name
 
-    # @gql.field
-    # def view_stages(self) -> t.Optional[t.List[str]]:
-    #     return get_saved_view_stages(self.id)
-    #
+    @staticmethod
+    def modifier(doc: dict) -> dict:
+        return dict
+
+    @classmethod
+    async def resolver(cls, object_id) -> t.Optional[t.List["SavedView"]]:
+        return await load_saved_views(object_id)
+
+
+saved_views_dataloader = get_dataloader_resolver(
+    SavedView,
+    "views",
+    "_id",
+    {},
+    {
+        "_id": True,
+        "id": {"$toString": "$_id"},
+        "_dataset_id": {"$ifNull": ["$dataset_id", "$_dataset_id"]},
+        "dataset_id": {"$toString": "$_dataset_id"},
+        "name": True,
+        "color": True,
+        "description": True,
+        "slug": True,
+        "last_loaded_at": True,
+        "created_at": True,
+        "last_modified_at": True,
+        "view_stages": True,
+    },
+)
+
+
+# @gql.field
+# def view_stages(self) -> t.Optional[t.List[str]]:
+#     return get_saved_view_stages(self.id)
+#
 
 
 async def load_saved_views(object_ids):
@@ -160,7 +191,8 @@ async def load_saved_views(object_ids):
             }
         },
     ]
-    results = db.views.aggregate(pipeline)
+    # results = db.views.aggregate(pipeline)
+    results = await foo.aggregate(db.views, pipeline).to_list(len(object_ids))
     print("results", results)
     # TODO: remove view_stages and query separately upon view selection
     saved_views = [
@@ -175,7 +207,7 @@ async def load_saved_views(object_ids):
         )
         async for view in results
     ]
-    return saved_views
+    return await saved_views
 
 
 saved_views_loader = DataLoader(load_fn=load_saved_views)
@@ -232,10 +264,10 @@ class Dataset:
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]
     frame_fields: t.Optional[t.List[SampleField]]
-    brain_methods: t.List[BrainRun]
-    evaluations: t.List[EvaluationRun]
+    brain_methods: t.Optional[t.List[BrainRun]]
+    evaluations: t.Optional[t.List[EvaluationRun]]
+    saved_views: t.Optional[t.List[SavedView]]
     saved_view_ids: gql.Private[t.Optional[t.List[gql.ID]]]
-    # saved_views: t.Optional[t.List[SavedView]]
     version: t.Optional[str]
     view_cls: t.Optional[str]
     view_name: t.Optional[str]
@@ -244,9 +276,31 @@ class Dataset:
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
 
-    @gql.field
-    async def saved_views(self) -> t.Optional[t.List[SavedView]]:
-        return await saved_views_loader.load_many(self.saved_view_ids)
+    # saved_views: t.Optional[t.List[SavedView]] = gql.field(
+    #         resolver=get_dataloader_resolver(
+    #                 SavedView, "views", "_id", {}, {
+    #                     "_id": True,
+    #                     "id": {"$toString": "$_id"},
+    #                     "_dataset_id": {
+    #                         "$ifNull": ["$dataset_id", "$_dataset_id"]
+    #                     },
+    #                     "dataset_id": {"$toString": "$_dataset_id"},
+    #                     "name": True,
+    #                     "color": True,
+    #                     "description": True,
+    #                     "slug": True,
+    #                     "last_loaded_at": True,
+    #                     "created_at": True,
+    #                     "last_modified_at": True,
+    #                     "view_stages": True,
+    #                 }
+    #         ))
+
+    # @gql.field
+    # async def resolve_saved_views(self) -> t.Optional[t.List]:
+    #     return await self.info.context.dataloaders[
+    #         SavedView].load_many(
+    #             self.saved_view_ids)
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -264,9 +318,11 @@ class Dataset:
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
         doc["saved_view_ids"] = doc.get("saved_views", [])
         if len(doc["saved_view_ids"]) > 0:
-            doc["saved_views"] = get_saved_views(
-                SavedView, doc.get("saved_view_ids", []), saved_views_loader
-            )
+            doc["saved_views"] = load_saved_views(
+                doc.get("saved_view_ids", [])
+            )  # get_saved_views(
+            #     SavedView, doc.get("saved_view_ids", []), saved_views_loader
+            # )
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -286,7 +342,9 @@ class Dataset:
         info: Info,
         view_name: t.Optional[str] = gql.UNSET,
     ) -> t.Optional["Dataset"]:
-        return await serialize_dataset(name, view, view_name)
+        return await serialize_dataset(
+            dataset_name=name, serialized_view=view, view_name=view_name
+        )
 
 
 dataset_dataloader = get_dataloader_resolver(
@@ -471,10 +529,13 @@ def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
 
 
 async def serialize_dataset(
-    name: str, serialized_view: BSONArray, view_name: t.Optional[str]
+    *,
+    dataset_name: str,
+    serialized_view: BSONArray,
+    view_name: t.Optional[str]
 ) -> Dataset:
     def run():
-        dataset = fo.load_dataset(name)
+        dataset = fo.load_dataset(dataset_name)
 
         dataset.reload()
         if view_name is not None and dataset.has_saved_view(view_name):
