@@ -200,57 +200,18 @@ def compute_birds_eye_view_maps(
         session = fo.launch_app(dataset)
 
         #
-        # Option 2: store bird's-eye view images with size `size` in a new `bev_filepath`
-        # field, with bounds `bounds`.
+        # Option 2: store bird's-eye view images with custom bounds in a new
+        # `bev_filepath`field
         #
-
-        min_bound = (0, 0, 0)
-        max_bound = (100, 200, 50)
-
-        size = (400, 600)
 
         view = dataset.select_group_slices("pcd")
         fou3d.compute_birds_eye_view_maps(
             view,
-            size,
-            "/tmp/bev",
-            bounds=(min_bound, max_bound)
-            out_image_field="bev_filepath",
-        )
-
-
-        #
-        # Option 3: store bird's-eye view images in a new `bev` group slice
-        # and the bev feature map in a `feature_map_filepath` field on the 'bev' group
-        # slice
-        #
-
-        fou3d.compute_birds_eye_view_maps(
-            dataset,
-            (-1, 512),
-            "/tmp/bev",
-            out_group_slice="bev",
-            out_map_field="feature_map_filepath",
-        )
-
-        #
-        # Option 4: generate the bird's-eye view images for a collection of point cloud
-        # samples and store them in `bev_filepath`
-        #
-
-
-        ## Generate the point-cloud only dataset
-        dataset = foz.load_zoo_dataset("quickstart-groups")
-        dataset = dataset.select_group_slices("pcd").clone()
-
-        fou3d.compute_birds_eye_view_maps(
-            dataset,
-            (-1, 512),
+            (400, 600),
             "/tmp/bev",
             out_image_field="bev_filepath",
+            bounds=((0, 0, 0), (100, 200, 50))
         )
-
-
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
