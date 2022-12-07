@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<93626ddadea826ecf240e9bf7b85ed1a>>
+ * @generated SignedSource<<87284df5094dcf01a164c0bb8ee3136d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,6 +21,7 @@ export type saveViewMutation$data = {
     readonly color: string | null;
     readonly datasetId: string | null;
     readonly description: string | null;
+    readonly id: string | null;
     readonly name: string | null;
     readonly slug: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
@@ -92,6 +93,13 @@ v5 = [
     "name": "saveView",
     "plural": false,
     "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "id",
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -168,16 +176,16 @@ return {
     "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "8605dfda50aa8da574c9c75cf85af787",
+    "cacheID": "db88e212edcd185f6d90912bf676e45b",
     "id": null,
     "metadata": {},
     "name": "saveViewMutation",
     "operationKind": "mutation",
-    "text": "mutation saveViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $description: String = null\n  $color: String = null\n) {\n  saveView(subscription: $subscription, session: $session, viewName: $viewName, description: $description, color: $color) {\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n  }\n}\n"
+    "text": "mutation saveViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $description: String = null\n  $color: String = null\n) {\n  saveView(subscription: $subscription, session: $session, viewName: $viewName, description: $description, color: $color) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "de731cf23774b58fafe7c887057ac036";
+(node as any).hash = "609b9693bbfb7f0e3115adb5d6793ea0";
 
 export default node;

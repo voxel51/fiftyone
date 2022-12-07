@@ -263,7 +263,7 @@ class Mutation:
     @gql.mutation
     async def delete_saved_view(
         self, subscription: str, session: t.Optional[str], view_name: str
-    ) -> bool:
+    ) -> t.Optional[str]:
         state = get_state()
         dataset = state.dataset
         if dataset.has_saved_views and dataset.has_saved_view(view_name):

@@ -315,7 +315,7 @@ type Mutation {
     subscription: String!
     session: String
     viewName: String!
-  ): Boolean!
+  ): String
   updateSavedView(
     viewName: String!
     subscription: String

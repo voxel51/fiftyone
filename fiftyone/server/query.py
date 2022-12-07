@@ -477,7 +477,7 @@ async def serialize_dataset(
         dataset = fo.load_dataset(name)
 
         dataset.reload()
-        if view_name is not None:
+        if view_name is not None and dataset.has_saved_view(view_name):
             view = dataset.load_saved_view(view_name)
         else:
             view = fov.DatasetView._build(dataset, serialized_view or [])

@@ -14,6 +14,7 @@ export default graphql`
       updatedInfo: $updatedInfo
     ) {
       id
+      datasetId
       name
       slug
       description

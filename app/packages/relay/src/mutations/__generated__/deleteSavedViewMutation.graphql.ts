@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<57221bf7931e09fe8f2fa8835909ddc5>>
+ * @generated SignedSource<<1b68f3b88513f1f7376ea005d7eba477>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,7 +15,7 @@ export type deleteSavedViewMutation$variables = {
   viewName: string;
 };
 export type deleteSavedViewMutation$data = {
-  readonly deleteSavedView: boolean;
+  readonly deleteSavedView: string | null;
 };
 export type deleteSavedViewMutation = {
   response: deleteSavedViewMutation$data;

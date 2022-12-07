@@ -67,7 +67,7 @@ async def load_saved_views(cls, object_ids):
 
 def load_saved_views_by_dataset(cls, dataset_id: str):
     db = foo.get_db_conn()
-    # TODO: remove view_stages and query separately upon view selection
+    # TODO: refactor once everything works
     return [
         from_dict(
             data_class=cls,

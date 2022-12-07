@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0b8055f5b095ed530d5bd17b2efa5ba0>>
+ * @generated SignedSource<<d1de5d018889c6b633db8808dffadf6c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,6 +24,7 @@ export type updateSavedViewMutation$data = {
   readonly updateSavedView: {
     readonly color: string | null;
     readonly createdAt: any | null;
+    readonly datasetId: string | null;
     readonly description: string | null;
     readonly id: string | null;
     readonly lastLoadedAt: any | null;
@@ -94,6 +95,13 @@ v4 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "datasetId",
         "storageKey": null
       },
       {
@@ -184,16 +192,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "8f533425729a2f1cd8d3a9c9362f9462",
+    "cacheID": "4bac6edf47d4f3f5b6a815cbb0d152df",
     "id": null,
     "metadata": {},
     "name": "updateSavedViewMutation",
     "operationKind": "mutation",
-    "text": "mutation updateSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $updatedInfo: SavedViewInfo!\n) {\n  updateSavedView(subscription: $subscription, session: $session, viewName: $viewName, updatedInfo: $updatedInfo) {\n    id\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
+    "text": "mutation updateSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $updatedInfo: SavedViewInfo!\n) {\n  updateSavedView(subscription: $subscription, session: $session, viewName: $viewName, updatedInfo: $updatedInfo) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "89efd3a3aa91747032eb6ac84c79749b";
+(node as any).hash = "274b86991a500238678eba61c0839a8f";
 
 export default node;
