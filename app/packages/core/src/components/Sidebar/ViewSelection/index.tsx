@@ -81,7 +81,6 @@ export default function ViewSelection(props: Props) {
 
   const items =
     (data as { savedViews: fos.State.SavedView[] })?.savedViews || [];
-  const dataset = useRecoilValue(fos.dataset);
 
   const viewOptions: DatasetViewOption[] = useMemo(
     () => [
@@ -124,7 +123,7 @@ export default function ViewSelection(props: Props) {
         setView(loadedView, [], potentialView.label, true, potentialView.slug);
       } else {
         const potentialUpdatedView = savedViewsV2.filter(
-          (v) => v.urlName === savedViewParam
+          (v) => v.slug === savedViewParam
         )?.[0];
         if (potentialUpdatedView) {
           refetch(
@@ -135,14 +134,14 @@ export default function ViewSelection(props: Props) {
                 setSelected({
                   ...potentialUpdatedView,
                   label: potentialUpdatedView.name,
-                  slug: potentialUpdatedView.urlName,
+                  slug: potentialUpdatedView.slug,
                 });
                 setView(
                   [],
                   [],
                   potentialUpdatedView.name,
                   true,
-                  potentialUpdatedView.urlName
+                  potentialUpdatedView.slug
                 );
               },
             }

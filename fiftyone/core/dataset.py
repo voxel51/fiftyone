@@ -3117,7 +3117,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "id": v.id,
                 "dataset_id": self._doc.id,
                 "name": v.name,
-                "url_name": v.url_name,
+                "url_name": v.slug,
                 "description": v.description,
                 "color": v.color,
                 "created_at": v.created_at,
