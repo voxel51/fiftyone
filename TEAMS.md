@@ -86,7 +86,7 @@ To merge the latest [FiftyOne](https://github.com/voxel51/fiftyone) into this
 repository, the basic workflow is to update `public` and then open a pull
 request into `develop`. See below for details.
 
-### Setup
+### One-time setup
 
 You must add [FiftyOne](https://github.com/voxel51/fiftyone) as a remote
 repository:
