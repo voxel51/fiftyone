@@ -89,23 +89,26 @@ request into `develop`. See below for details.
 ### Setup
 
 You must add [FiftyOne](https://github.com/voxel51/fiftyone) as a remote
-repository for the `public` branch:
+repository:
 
 ```shell
 git remote add public git@github.com:voxel51/fiftyone.git
 ```
 
-Note that the `public` branch is protected, so, if you are not an admin, you
-must replace `public` in the instructions below with another branch and then
-make a pull request into `public` rather than directly pushing to it.
+Here we choose the name `public` because we plan to use this remote only to
+update the `public` branch of Teams.
 
 ### Updating `public`
 
 Follow the instructions below to update the `public` branch to match
-[FiftyOne](https://github.com/voxel51/fiftyone)'s `develop` branch:
+[FiftyOne](https://github.com/voxel51/fiftyone)'s `develop` branch.
+
+Note that the `public` branch is protected, so, if you are not an admin, you
+must replace `public` in the instructions below with another branch and then
+make a pull request into `public` rather than directly pushing to it.
 
 ```shell
-# Pull open source changes
+# Pull latest state of OSS `develop` branch
 git checkout public
 git pull public develop
 
