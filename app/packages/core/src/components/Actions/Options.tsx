@@ -191,7 +191,6 @@ const MediaFields = ({ modal }) => {
   const [selectedMediaField, setSelectedMediaField] = useRecoilState(
     fos.selectedMediaField(modal)
   );
-
   const mediaFields = useRecoilValue(fos.mediaFields);
 
   if (mediaFields.length <= 1) return null;

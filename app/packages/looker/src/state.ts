@@ -4,14 +4,14 @@
 
 import { Overlay } from "./overlays/base";
 
-import { Schema, Stage } from "@fiftyone/utilities";
+import { AppError, Schema, Stage } from "@fiftyone/utilities";
 
 // vite won't import these from fou
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 export interface Coloring {
   by: "field" | "instance" | "label";
-  pool: string[];
+  pool: readonly string[];
   scale: RGB[];
   seed: number;
   defaultMaskTargets?: MaskTargets;
@@ -208,7 +208,7 @@ export interface BaseState {
   setZoom: boolean;
   hasDefaultZoom: boolean;
   SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
-  error: boolean | number;
+  error: boolean | number | AppError;
   destroyed: boolean;
   reloading: boolean;
 }

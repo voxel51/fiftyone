@@ -7,10 +7,8 @@ export default graphql`
     $dataset: String!
     $view: BSONArray!
     $filter: SampleFilter!
-    $pinnedSampleFilter: SampleFilter!
   ) {
     ...paginateGroup_query
-    ...paginateGroupPinnedSample_query
   }
 `;
 
@@ -56,41 +54,6 @@ export const paginateGroupPaginationFragment = graphql`
               url
             }
           }
-        }
-      }
-    }
-  }
-`;
-
-export const paginateGroupPinnedSampleFragment = graphql`
-  fragment paginateGroupPinnedSample_query on Query @inline {
-    sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {
-      __typename
-      ... on ImageSample {
-        id
-        aspectRatio
-        sample
-        urls {
-          field
-          url
-        }
-      }
-      ... on PointCloudSample {
-        id
-        sample
-        urls {
-          field
-          url
-        }
-      }
-      ... on VideoSample {
-        id
-        aspectRatio
-        frameRate
-        sample
-        urls {
-          field
-          url
         }
       }
     }

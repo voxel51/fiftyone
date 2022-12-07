@@ -7,8 +7,8 @@ import DatasetComponent from "../../components/Dataset";
 import * as fos from "@fiftyone/state";
 import { Route, RouterContext } from "@fiftyone/state";
 import { getDatasetName } from "@fiftyone/state";
-import { usePreLoadedDataset } from "../../Dataset";
 import { DatasetQuery } from "../../__generated__/DatasetQuery.graphql";
+import { usePreLoadedDataset } from "../../Dataset";
 
 export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const router = useContext(RouterContext);

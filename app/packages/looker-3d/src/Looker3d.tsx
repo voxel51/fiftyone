@@ -134,12 +134,13 @@ function Cuboid({
   tooltip,
   label,
   color,
+  useLegaceCoordinates,
 }) {
   const [x, y, z] = location;
   const x2 = x;
   const y2 = y - 0.5 * dimensions[1];
   const z2 = z;
-  const loc = [x2, y2, z2];
+  const loc = useLegaceCoordinates ? [x2, y2, z2] : [x, y, z];
   const itemRotationVec = new THREE.Vector3(...itemRotation);
   const rawLegacyRotation = [0, rotation_y, rotation_z];
   const resolvedRotation = new THREE.Vector3(
@@ -282,7 +283,7 @@ export function Looker3d(props) {
 }
 
 function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
-  const settings = fop.usePluginSettings("3d");
+  const settings = fop.usePluginSettings("3d", { useLegacyCoordinates: true });
 
   const modal = true;
   // @ts-ignore
@@ -461,6 +462,7 @@ function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
                 onClick={() => handleSelect(label)}
                 label={label}
                 tooltip={tooltip}
+                useLegaceCoordinates={settings.useLegacyCoordinates}
               />
             ))}
         </mesh>

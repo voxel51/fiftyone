@@ -20,6 +20,7 @@ import fiftyone as fo
 from fiftyone import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+import fiftyone.utils.data as foud
 
 from decorators import drop_datasets, skip_windows
 
@@ -85,6 +86,24 @@ class DatasetTests(unittest.TestCase):
         self.assertIs(dataset1, dataset2)
         self.assertIs(dataset1, dataset3)
         self.assertIs(dataset1, dataset4)
+
+    @drop_datasets
+    def test_last_loaded_at(self):
+        dataset_name = self.test_dataset_info.__name__
+
+        dataset = fo.Dataset(dataset_name)
+        last_loaded_at1 = dataset.last_loaded_at
+
+        also_dataset = fo.load_dataset(dataset_name)
+        last_loaded_at2 = dataset.last_loaded_at
+
+        self.assertIs(also_dataset, dataset)
+        self.assertTrue(last_loaded_at2 > last_loaded_at1)
+
+        dataset.reload()
+        last_loaded_at3 = dataset.last_loaded_at
+
+        self.assertTrue(last_loaded_at3 > last_loaded_at2)
 
     @drop_datasets
     def test_dataset_tags(self):
@@ -784,6 +803,217 @@ class DatasetTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             dataset.clone_frame_field("foo", "_private")
+
+    @drop_datasets
+    def test_field_schemas(self):
+        dataset = fo.Dataset()
+
+        dataset.add_sample_field("foo", fo.StringField)
+        dataset.add_sample_field("bar", fo.BooleanField)
+        dataset.add_sample_field(
+            "spam",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        dataset.add_sample_field(
+            "eggs", fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
+        )
+
+        schema = dataset.get_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "foo",
+                "bar",
+                "spam",
+                "eggs",
+            },
+        )
+
+        schema = dataset.get_field_schema(ftype=fo.StringField)
+        self.assertSetEqual(set(schema.keys()), {"filepath", "foo"})
+
+        schema = dataset.get_field_schema(
+            ftype=[fo.StringField, fo.BooleanField]
+        )
+        self.assertSetEqual(set(schema.keys()), {"filepath", "foo", "bar"})
+
+        schema = dataset.get_field_schema(embedded_doc_type=fo.Classification)
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        schema = dataset.get_field_schema(
+            embedded_doc_type=[fo.Classification, fo.Detections]
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam", "eggs"})
+
+        view = dataset.select_fields(["foo", "spam", "eggs"]).exclude_fields(
+            "eggs"
+        )
+
+        schema = view.get_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"id", "filepath", "tags", "metadata", "foo", "spam"},
+        )
+
+        schema = view.get_field_schema(ftype=fo.StringField)
+        self.assertSetEqual(set(schema.keys()), {"filepath", "foo"})
+
+        schema = view.get_field_schema(ftype=[fo.BooleanField, fo.StringField])
+        self.assertSetEqual(set(schema.keys()), {"filepath", "foo"})
+
+        schema = view.get_field_schema(embedded_doc_type=fo.Classification)
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        schema = view.get_field_schema(
+            embedded_doc_type=[fo.Classification, fo.Detections]
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        # Just checks for existence
+        dataset.validate_field_type("filepath")
+        dataset.validate_field_type("foo")
+        dataset.validate_field_type("spam.label")
+        dataset.validate_field_type("eggs.detections.label")
+
+        # Check types
+        dataset.validate_field_type("filepath", ftype=fo.StringField)
+        dataset.validate_field_type("bar", ftype=fo.BooleanField)
+        dataset.validate_field_type("bar", ftype=[fo.Field, fo.StringField])
+        dataset.validate_field_type(
+            "spam", embedded_doc_type=fo.Classification
+        )
+        dataset.validate_field_type(
+            "spam", embedded_doc_type=[fo.Label, fo.Detections]
+        )
+        dataset.validate_field_type("eggs", embedded_doc_type=fo.Detections)
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("spam.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("eggs.detections.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("foo", ftype=fo.BooleanField)
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type(
+                "spam", embedded_doc_type=fo.Detections
+            )
+
+    @drop_datasets
+    def test_frame_field_schemas(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+
+        dataset.add_frame_field("foo", fo.StringField)
+        dataset.add_frame_field("bar", fo.BooleanField)
+        dataset.add_frame_field(
+            "spam",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        dataset.add_frame_field(
+            "eggs", fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
+        )
+
+        schema = dataset.get_frame_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"id", "frame_number", "foo", "bar", "spam", "eggs"},
+        )
+
+        schema = dataset.get_frame_field_schema(ftype=fo.StringField)
+        self.assertSetEqual(set(schema.keys()), {"foo"})
+
+        schema = dataset.get_frame_field_schema(
+            ftype=[fo.StringField, fo.BooleanField]
+        )
+        self.assertSetEqual(set(schema.keys()), {"foo", "bar"})
+
+        schema = dataset.get_frame_field_schema(
+            embedded_doc_type=fo.Classification
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        schema = dataset.get_frame_field_schema(
+            embedded_doc_type=[fo.Classification, fo.Detections]
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam", "eggs"})
+
+        view = dataset.select_fields(
+            ["frames.foo", "frames.spam", "frames.eggs"]
+        ).exclude_fields("frames.eggs")
+
+        schema = view.get_frame_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()), {"id", "frame_number", "foo", "spam"}
+        )
+
+        schema = view.get_frame_field_schema(ftype=fo.StringField)
+        self.assertSetEqual(set(schema.keys()), {"foo"})
+
+        schema = view.get_frame_field_schema(
+            ftype=[fo.BooleanField, fo.StringField]
+        )
+        self.assertSetEqual(set(schema.keys()), {"foo"})
+
+        schema = view.get_frame_field_schema(
+            embedded_doc_type=fo.Classification
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        schema = view.get_frame_field_schema(
+            embedded_doc_type=[fo.Classification, fo.Detections]
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        # Just checks for existence
+        dataset.validate_field_type("frames.id")
+        dataset.validate_field_type("frames.foo")
+        dataset.validate_field_type("frames.spam.label")
+        dataset.validate_field_type("frames.eggs.detections.label")
+
+        # Check types
+        dataset.validate_field_type("frames.id", ftype=fo.ObjectIdField)
+        dataset.validate_field_type("frames.bar", ftype=fo.BooleanField)
+        dataset.validate_field_type(
+            "frames.bar", ftype=[fo.Field, fo.StringField]
+        )
+        dataset.validate_field_type(
+            "frames.spam", embedded_doc_type=fo.Classification
+        )
+        dataset.validate_field_type(
+            "frames.spam", embedded_doc_type=[fo.Label, fo.Detections]
+        )
+        dataset.validate_field_type(
+            "frames.eggs", embedded_doc_type=fo.Detections
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("frames.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("frames.spam.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("frames.eggs.detections.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("frames.foo", ftype=fo.BooleanField)
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type(
+                "frames.spam", embedded_doc_type=fo.Detections
+            )
 
     @drop_datasets
     def test_merge_samples1(self):
@@ -3781,6 +4011,121 @@ class _LabelMetadata(foo.DynamicEmbeddedDocument):
     created_at = fof.DateTimeField(default=datetime.utcnow)
 
     model_name = fof.StringField()
+
+
+class DatasetFactoryTests(unittest.TestCase):
+    @drop_datasets
+    def test_from_images(self):
+        filepaths = ["image.jpg"]
+        dataset = fo.Dataset.from_images(filepaths)
+
+        self.assertEqual(len(dataset), 1)
+
+        samples = [{"filepath": "image.jpg"}]
+        sample_parser = _ImageSampleParser()
+        dataset = fo.Dataset.from_images(samples, sample_parser=sample_parser)
+
+        self.assertEqual(len(dataset), 1)
+
+    @drop_datasets
+    def test_from_videos(self):
+        filepaths = ["image.jpg"]
+        dataset = fo.Dataset.from_videos(filepaths)
+
+        self.assertEqual(len(dataset), 1)
+
+        samples = [{"filepath": "video.mp4"}]
+        sample_parser = _VideoSampleParser()
+        dataset = fo.Dataset.from_videos(samples, sample_parser=sample_parser)
+
+        self.assertEqual(len(dataset), 1)
+
+    @drop_datasets
+    def test_from_labeled_images(self):
+        samples = [{"filepath": "image.jpg", "label": "label"}]
+        sample_parser = _LabeledImageSampleParser()
+        dataset = fo.Dataset.from_labeled_images(
+            samples, sample_parser, label_field="ground_truth"
+        )
+
+        self.assertEqual(dataset.values("ground_truth.label"), ["label"])
+
+    @drop_datasets
+    def test_from_labeled_videos(self):
+        samples = [{"filepath": "video.mp4", "label": "label"}]
+        sample_parser = _LabeledVideoSampleParser()
+        dataset = fo.Dataset.from_labeled_videos(
+            samples, sample_parser, label_field="ground_truth"
+        )
+
+        self.assertEqual(dataset.values("ground_truth.label"), ["label"])
+
+
+class _ImageSampleParser(foud.ImageSampleParser):
+    @property
+    def has_image_path(self):
+        return True
+
+    @property
+    def has_image_metadata(self):
+        return False
+
+    def get_image_path(self):
+        return self.current_sample["filepath"]
+
+
+class _VideoSampleParser(foud.VideoSampleParser):
+    @property
+    def has_video_metadata(self):
+        return False
+
+    def get_video_path(self):
+        return self.current_sample["filepath"]
+
+
+class _LabeledImageSampleParser(foud.LabeledImageSampleParser):
+    @property
+    def has_image_path(self):
+        return True
+
+    @property
+    def has_image_metadata(self):
+        return False
+
+    def get_image_path(self):
+        return self.current_sample["filepath"]
+
+    @property
+    def label_cls(self):
+        return fo.Classification
+
+    def get_label(self):
+        label = self.current_sample["label"]
+        return fo.Classification(label=label)
+
+
+class _LabeledVideoSampleParser(foud.LabeledVideoSampleParser):
+    @property
+    def has_video_metadata(self):
+        return False
+
+    def get_video_path(self):
+        return self.current_sample["filepath"]
+
+    @property
+    def label_cls(self):
+        return fo.Classification
+
+    @property
+    def frame_label_cls(self):
+        return None
+
+    def get_label(self):
+        label = self.current_sample["label"]
+        return fo.Classification(label=label)
+
+    def get_frame_labels(self):
+        return None
 
 
 if __name__ == "__main__":

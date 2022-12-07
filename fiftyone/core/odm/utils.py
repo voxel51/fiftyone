@@ -377,7 +377,7 @@ def _finalize_embedded_doc_fields(fields_dict):
     for field in fields_dict.values():
         if field is not None:
             fields.append(field)
-            if field.get("fype") == fof.EmbeddedDocumentField:
+            if field["ftype"] == fof.EmbeddedDocumentField:
                 field["fields"] = _finalize_embedded_doc_fields(
                     field["fields"]
                 )

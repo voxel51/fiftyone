@@ -2858,6 +2858,7 @@ __metadata:
   resolution: "@fiftyone/utilities@workspace:packages/utilities"
   dependencies:
     "@microsoft/fetch-event-source": ^2.0.1
+    fetch-retry: ^5.0.3
     lodash: ^4.17.21
     mime: ^2.5.2
     prettier: ^2.7.1
@@ -4932,7 +4933,7 @@ __metadata:
     "@babel/preset-typescript": ^7.9.0
     "@babel/register": ^7.9.0
     cross-env: ^7.0.3
-    electron: 18.2.3
+    electron: 18.3.7
     electron-builder: ^23.0.3
     electron-devtools-installer: ^3.2.0
     typescript: ^4.7.4
@@ -6857,16 +6858,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron@npm:18.2.3":
-  version: 18.2.3
-  resolution: "electron@npm:18.2.3"
+"electron@npm:18.3.7":
+  version: 18.3.7
+  resolution: "electron@npm:18.3.7"
   dependencies:
     "@electron/get": ^1.13.0
     "@types/node": ^16.11.26
     extract-zip: ^1.0.3
   bin:
     electron: cli.js
-  checksum: d60fcebd13d133ec6d40392700ea18e9afd3a1d212ddb18dd3ccdf3aae3c2fc7b573a36ef6c4b8be9eb471e26996edb8da79984e5056ef619b1a4713041072f7
+  checksum: 365a82082926ccf062e9dcc7d997e43988c9d2a1b1bf9ea1e5c3f00d0ec05c9e45d3382cbfa51673a50e0f0127cabc3c4eb5ced0bd797ea2eebe36f1a27e0ecb
   languageName: node
   linkType: hard
 
@@ -7403,6 +7404,13 @@ __metadata:
   dependencies:
     pend: ~1.2.0
   checksum: c8585fd5713f4476eb8261150900d2cb7f6ff2d87f8feb306ccc8a1122efd152f1783bdb2b8dc891395744583436bfd8081d8e63ece0ec8687eeefea394d4ff2
+  languageName: node
+  linkType: hard
+
+"fetch-retry@npm:^5.0.3":
+  version: 5.0.3
+  resolution: "fetch-retry@npm:5.0.3"
+  checksum: b4eebc04bd41651417e89ae9287e5b9e5421970ce07058c6e1e22f7d9c1cd5f935fc39a328fd66b433247c0ae1bb8a6b2d48c073d5a9f911992f72c5d311b14d
   languageName: node
   linkType: hard
 
