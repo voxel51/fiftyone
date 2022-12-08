@@ -29,7 +29,6 @@ function Dataset() {
     <>
       {isModalActive && <Modal />}
       <Container>
-        <HorizontalNav key={"nav"} />
         <Body key={"body"}>
           <SamplesContainer key={"samples"} />
         </Body>

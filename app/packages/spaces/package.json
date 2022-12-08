@@ -1,16 +1,21 @@
 {
   "name": "@fiftyone/spaces",
+  "private": true,
   "author": "Voxel51, Inc.",
-  "version": "0.0.0",
+  "version": "0.0.1",
+  "type": "module",
   "description": "FiftyOne App Spaces",
   "homepage": "https://github.com/voxel51/fiftyone/app/packages/spaces",
-  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/voxel51/fiftyone/"
   },
-  "main": "./src/index.ts",
+  "main": "./src/SpacesRoot.tsx",
   "scripts": {
-    "dev": "vite"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
-  "private": true
+  "devDependencies": {
+    "vite": "^3.0.0"
+  }
 }
