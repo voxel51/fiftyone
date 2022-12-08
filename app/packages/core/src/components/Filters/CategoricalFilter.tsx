@@ -47,7 +47,6 @@ const NamedCategoricalFilterHeader = styled.div`
 `;
 
 const CHECKBOX_LIMIT = 20;
-const NEVEREXPAND_FIELDS = ["id"];
 
 type V = { value: string | number | null | boolean; count: number };
 
@@ -109,9 +108,7 @@ const Wrapper = ({
     count: counts[String(value)] ?? 0,
   }));
   const skeleton = useRecoilValue(isKeypointLabel(path));
-  const neverShowExpansion =
-    NEVEREXPAND_FIELDS.includes(name.toLowerCase()) &&
-    schema?.ftype.includes("ObjectIdField");
+  const neverShowExpansion = schema?.ftype.includes("ObjectIdField");
 
   if ((results.length <= CHECKBOX_LIMIT && !neverShowExpansion) || skeleton) {
     allValues = [
