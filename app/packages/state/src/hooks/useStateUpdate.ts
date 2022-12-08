@@ -94,7 +94,7 @@ const useStateUpdate = () => {
         if (
           !previousDataset ||
           previousDataset.id !== dataset.id ||
-          dataset.groupSlice !== previousDataset.groupSlice ||
+          dataset.groupSlice != previousDataset.groupSlice ||
           refresh
         ) {
           if (dataset?.name !== previousDataset?.name) {
