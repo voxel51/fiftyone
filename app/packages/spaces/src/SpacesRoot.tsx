@@ -1,70 +1,84 @@
 import React from "react";
-import * as fop from "@fiftyone/plugins";
-import { atom, useRecoilState } from "recoil";
+import { atom, selectorFamily, useRecoilState, useRecoilValue } from "recoil";
+import styled from "styled-components";
+import * as fos from "@fiftyone/state";
+import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
+import { Popout } from "@fiftyone/components";
+import { v4 as uuid } from "uuid";
+import { EnumType } from "typescript";
+import ExtensionIcon from "@mui/icons-material/Extension";
+import { Resizable } from "re-resizable";
 
-// a type for storing information about a Tab
-// a Tab specifies an area of the UI that can be navigated to
-// a Tab can either be selected and its panel is shown, or not selected and its panel is hidden
-export type Tab = {
-  // the label of the tab
-  label: string;
-  // the icon of the tab
-  icon: string;
-};
+/**
+ *
+ *  ---------- Enums ----------
+ *
+ */
 
-// a type for storing info about a panel
-// includes the panels component and the icon to display in the panel's tab
-export type Panel = {
-  // the name of the panel
-  name: string;
-  // the component to render for the panel
-  component: React.ComponentType;
-  // the tab that the panel is associated with
-  tab: Tab;
-};
-
-// a function that generates a random uuid
-function uuid() {
-  return Math.random().toString(36).slice(2);
-}
-
-// an enum for differnt layouts of a space
+// an enum for different layouts of a space
 export enum Layout {
   Vertical = "vertical",
   Horizontal = "horizontal",
 }
 
-function spaceNodeFromJSON(json) {
+const enum SPACE_TYPES {
+  PANEL_CONTAINER = "panel-container",
+  EMPTY = "empty",
+}
+
+/**
+ *
+ *  ---------- Core ----------
+ *
+ */
+
+function spaceNodeFromJSON(json: SpaceNodeJSON, parent?: SpaceNode) {
   const node = new SpaceNode(json.id);
   node.layout = json.layout;
-  node.type = json.type;
-  node.currentChild = json.currentChild;
-  node.children = json.children.map((child) => spaceNodeFromJSON(child));
+  if (json.type) node.type = json.type;
+  node.activeChild = json.activeChild;
+  node.children = json.children.map((child) => spaceNodeFromJSON(child, node));
+  node.parent = parent;
+  node.pinned = json.pinned;
   return node;
 }
 
 export class SpaceNode {
-  children: SpaceNode[] = [];
+  children: SpaceNode[];
   id: string;
   parent?: SpaceNode;
-  type: SPACE_TYPES = SPACE_TYPES.EMPTY;
+  type: SpaceNodeType;
   activeChild?: string;
-  layout: Layout;
-  constructor(id?: string) {
+  // if layout is set, render as space container instead of panel container
+  layout?: Layout;
+  pinned?: boolean;
+  constructor(
+    id?: string,
+    children?: SpaceNode[],
+    parent?: SpaceNode,
+    type?: SpaceNodeType,
+    activeChild?: string,
+    layout?: Layout
+  ) {
     this.id = id || uuid();
+    this.children = children || [];
+    this.parent = parent;
+    this.type = type || SPACE_TYPES.EMPTY;
+    this.activeChild = activeChild;
+    this.layout = layout;
   }
   append(node: SpaceNode) {
+    node.parent = this;
     this.children.push(node);
     if (node.isPanel()) {
       this.type = SPACE_TYPES.PANEL_CONTAINER;
     }
-    node.parent = this;
   }
   hasChildren() {
     return this.children.length > 0;
   }
   hasActiveChild() {
-    return !!this.activeChild;
+    return Boolean(this.activeChild);
   }
   getActiveChild() {
     return this.children.find((child) => child.id === this.activeChild);
@@ -84,6 +98,9 @@ export class SpaceNode {
       throw new Error("Cannot remove root node");
     }
   }
+  firstChild() {
+    return this.children[0];
+  }
   lastChild() {
     return this.children[this.children.length - 1];
   }
@@ -94,6 +111,9 @@ export class SpaceNode {
   }
   isPanelContainer() {
     return this.getPanels().length > 0;
+  }
+  isSpaceContainer() {
+    return Boolean(this.layout);
   }
   isSpace() {
     return !this.isPanel();
@@ -108,57 +128,17 @@ export class SpaceNode {
     const panels = this.getPanels();
     return panels[panels.length - 1];
   }
-  toJSON() {
+  toJSON(): SpaceNodeJSON {
     return {
       id: this.id,
       children: this.children.map((child) => child.toJSON()),
       type: this.type,
       layout: this.layout,
-      currentChild: this.currentChild,
+      pinned: this.pinned,
+      activeChild: this.activeChild,
     };
   }
 }
-
-class SpaceType {
-  constructor(
-    public name: string,
-    public label: string,
-    public icon: string,
-    public isSelectable: boolean,
-    public componentResolver: () => React.ComponentType
-  ) {}
-}
-
-// class PluginSpaceType extends SpaceType {
-//   constructor(
-//     public plugin: string
-//   ) {
-
-//     // TODO -
-//     // 1. get the plugin's name and icon
-//     // 2. get the plugin's component resolver
-//     // 3. call super with the plugin's name, icon, and component resolver
-
-//   }
-// }
-
-const enum SPACE_TYPES {
-  PANEL_CONTAINER = "panel-container",
-  FLASHLIGHT = "flashlight",
-  EMPTY = "empty",
-  GRID = "grid",
-  EMBEDDINGS = "embeddings",
-  MAP = "map",
-}
-
-// TODO - this should be resolved from the plugin registry
-const PANELS = {
-  empty: new SpaceType("empty", null, false, () => EmptyPanel),
-  flashlight: new SpaceType("flashlight", "Grid", "grid-icon"),
-  embeddings: new SpaceType("embeddings", "dots-icon"),
-  histograms: new SpaceType("embeddings", "dots-icon"),
-  map: new SpaceType("map", "map-icon"),
-};
 
 // a class for querying and manipulating the space tree
 // the space tree has a root node and each node has a list of children
@@ -167,25 +147,64 @@ const PANELS = {
 class SpaceTree {
   // the root node of the tree
   root: SpaceNode;
+  onUpdate: Function = () => {};
 
   // the constructor takes the root node, the selected node, and the layout
-  constructor(serializedTree?: any) {
+  constructor(serializedTree?: any, onTreeUpdate?: Function) {
     this.root = serializedTree
       ? spaceNodeFromJSON(serializedTree)
       : new SpaceNode("root");
+    if (onTreeUpdate) this.onUpdate = onTreeUpdate;
+  }
+
+  updateTree(node: SpaceNode) {
+    let rootNode = node;
+    while (rootNode.parent) {
+      rootNode = rootNode.parent;
+    }
+    this.onUpdate(rootNode.toJSON());
   }
 
   // a method for adding a new node to the tree
   // the new node is added as a child of the selected node
   // the new node is selected
-  addNodeAfter(node: SpaceNode, tab: Tab) {
-    // create a new node
-    const newNode = new SpaceNode();
+  addNodeAfter(node: SpaceNode, newNode: SpaceNode) {
+    node.append(newNode);
+    node.activeChild = newNode.id;
+    this.updateTree(node);
+  }
 
-    const target = node.parent ? node.parent : node;
+  joinNode(node: SpaceNode) {
+    if (node.isSpaceContainer() && node.children.length === 1) {
+      for (const child of node.firstChild().children) {
+        this.moveNode(child, node);
+      }
+      node.activeChild = node.firstChild().activeChild;
+      node.firstChild().remove();
+      node.layout = undefined;
+      this.updateTree(node);
+    }
+  }
 
-    // add the new node to the target node's children
-    target.append(newNode);
+  removeNode(node: SpaceNode) {
+    const parentNode = node.parent;
+    let ancestorNode = parentNode;
+    if (parentNode?.parent && parentNode?.children.length === 1) {
+      ancestorNode = parentNode?.parent;
+      parentNode?.remove();
+      this.joinNode(ancestorNode);
+    } else if (ancestorNode) {
+      node.remove();
+      ancestorNode.activeChild = ancestorNode?.getLastPanel()?.id;
+    }
+    if (ancestorNode) this.updateTree(ancestorNode);
+  }
+
+  setNodeActive(node: SpaceNode) {
+    if (node.parent) {
+      node.parent.activeChild = node.id;
+      this.updateTree(node);
+    }
   }
 
   // a method for moving a node in the tree
@@ -197,12 +216,14 @@ class SpaceTree {
 
     // add the node to the new parent
     newParent.append(node);
+    this.updateTree(node);
   }
   canSplitLayout(node: SpaceNode) {
     // can split a space if it has more than one panel
-    return node.getPanels().length > 1;
+    // and node is root (limit to allow splitting only once)
+    return node.getPanels().length > 1 && node.isRoot();
   }
-  splitLayout(node: SpaceNode, layout: Layout) {
+  splitLayout(node: SpaceNode, layout?: Layout) {
     const newNodeA = new SpaceNode();
     const newNodeB = new SpaceNode();
     const lastPanel = node.getLastPanel();
@@ -212,46 +233,62 @@ class SpaceTree {
     for (const child of node.children) {
       this.moveNode(child, newNodeA);
     }
-
     // insert the new nodes into the now empty node
     node.append(newNodeA);
     node.append(newNodeB);
+    newNodeA.activeChild =
+      node.activeChild === lastPanel.id
+        ? newNodeA.getLastPanel().id
+        : node.activeChild;
+    newNodeB.activeChild = lastPanel.id;
+    node.layout = layout;
+    this.updateTree(node);
   }
   toJSON() {
     return this.root.toJSON();
   }
 }
 
-// a type for storing all the spaces in the app
-export type SpacesState = {
-  spaces: SpaceTree;
-};
-
-function createDefaultSpaces() {
-  const spaces = new SpaceTree();
-  const defaultGrid = new SpaceNode("default-grid");
-  defaultGrid.type = SPACE_TYPES.GRID;
-  spaces.root.append(defaultGrid);
-  return spaces;
-}
-
 // a react hook for managing the state of all spaces in the app
 // it should use recoil to persist the tree
-const spacesAtom = atom<SpacesState>({
+const spacesAtom = atom<{ [spaceId: string]: SpaceNodeJSON }>({
   key: "spaces",
-  default: {
-    spaces: createDefaultSpaces().toJSON(),
-  },
+  default: {},
 });
 
-export function useSpaces() {
-  const [state, setState] = useRecoilState(spacesAtom);
-  const spaces = new SpaceTree(state.spaces);
+const spaceSelector = selectorFamily({
+  key: "spaceSelector",
+  get:
+    (spaceId: string) =>
+    ({ get }) => {
+      return get(spacesAtom)[spaceId];
+    },
+  set:
+    (spaceId: string) =>
+    ({ get, set }, spaceState) => {
+      const spaces = get(spacesAtom);
+      const updateSpaces = { ...spaces };
+      updateSpaces[spaceId] = spaceState as SpaceNodeJSON;
+      set(spacesAtom, updateSpaces);
+    },
+});
+
+export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
+  const [state, setState] = useRecoilState(spaceSelector(id));
+
+  if (!state) {
+    const baseState = new SpaceNode("root").toJSON();
+    setState(defaultState || baseState);
+  }
+
+  const spaces = new SpaceTree(state, (spaces: SpaceNodeJSON) => {
+    setState(spaces);
+  });
   return {
     spaces,
     updateSpaces: (updater: (spaces: SpaceTree) => void) => {
-      setState((latestState) => {
-        const spaces = new SpaceTree(latestState.spaces);
+      setState((latestSpaces) => {
+        const spaces = new SpaceTree(latestSpaces);
         updater(spaces);
         return {
           spaces: spaces.toJSON(),
@@ -261,44 +298,157 @@ export function useSpaces() {
   };
 }
 
-function useActiveSpacePlugins() {
-  const ctx = {};
-  return [
-    ...fop.useActivePlugins(fop.PluginComponentType.SpacePanel, ctx),
-    ...fop.useActivePlugins(fop.PluginComponentType.Plot, ctx),
-  ];
+// Hook to use currently available panels
+// todo: add can duplicate logic
+function usePanels() {
+  const schema = useRecoilValue(
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+  );
+  const panels = useActivePlugins(PluginComponentType.Plot, { schema });
+  return panels;
 }
 
-// a react hook for resolving how a spce should be rendered
-// it should resolve which component to render based on the space type
-// it should resolve the props to pass to the component
-export function usePanel(node: SpaceNode) {
-  const plugin = activePlugins.find((plugin) => plugin.name === node.type);
-
-  const ContentComponent = plugin?.component;
+// Hook to use a panel matching id provided
+function usePanel(id: SpaceNodeType) {
+  const panels = usePanels();
+  return panels.find(({ name }) => name === id);
 }
 
-export function SpacesRoot() {
-  const { spaces } = useSpaces();
-  return <Space node={spaces.root} />;
+export function SpacesRoot(props: SpacesRootProps) {
+  const { id, defaultState } = props;
+  const { spaces } = useSpaces(id, defaultState);
+  return <Space node={spaces.root} id={id} />;
 }
 
-export function Space({ node }) {
-  if (node.isPanelContainer() && node.hasChildren()) {
+type SpacesRootProps = {
+  id: string;
+  defaultState?: SpaceNodeJSON;
+};
+
+type AddPanelItemProps = {
+  node: SpaceNode;
+  name: SpaceNodeType;
+  label: string;
+  Icon?: JSX.Element;
+  onClick?: Function;
+  spaceId: string;
+};
+
+function AddPanelItem({
+  node,
+  name,
+  label,
+  onClick,
+  spaceId,
+}: AddPanelItemProps) {
+  const { spaces } = useSpaces(spaceId);
+  return (
+    <StyledPanelItem
+      onClick={() => {
+        const newNode = new SpaceNode();
+        newNode.type = name;
+        spaces.addNodeAfter(node, newNode);
+        if (onClick) onClick();
+      }}
+    >
+      <PanelIcon name={name} />
+      {label}
+    </StyledPanelItem>
+  );
+}
+
+function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
+  const [open, setOpen] = React.useState(false);
+  const panels = usePanels();
+
+  return (
+    <AddPanelButtonContainer>
+      <GhostButton
+        onClick={() => {
+          setOpen(!open);
+        }}
+      >
+        +
+      </GhostButton>
+      {open && (
+        <Popout style={{ top: "80%", left: "16%", padding: 0 }}>
+          {panels.map((panel) => (
+            <AddPanelItem
+              spaceId={spaceId}
+              {...panel}
+              node={node}
+              onClick={() => setOpen(!open)}
+            />
+          ))}
+        </Popout>
+      )}
+    </AddPanelButtonContainer>
+  );
+}
+
+function SplitPanelButton({ node, layout, spaceId }: SplitPanelButtonProps) {
+  const { spaces } = useSpaces(spaceId);
+
+  return (
+    <GhostButton
+      onClick={() => {
+        spaces.splitLayout(node, layout);
+      }}
+    >
+      [ ]
+    </GhostButton>
+  );
+}
+
+export function Space({ node, id }: SpaceProps) {
+  const { spaces } = useSpaces(id);
+
+  if (node.layout) {
     return (
-      <PanelContainer>
+      <SpaceContainer data-type="space-container">
+        {node.children.map((space) => (
+          <Space node={space} id={id} />
+        ))}
+      </SpaceContainer>
+    );
+  } else if (node.isPanelContainer() && node.hasChildren()) {
+    const canSpaceSplit = spaces.canSplitLayout(node);
+    const activeChild = node.getActiveChild();
+    return (
+      <PanelContainer data-type="panel-container">
         <PanelTabs>
           {node.children.map((child, index) => (
-            <PanelTab key={child.id} node={child} />
+            <PanelTab
+              key={child.id}
+              node={child}
+              active={activeChild?.id === child.id}
+              spaceId={id}
+            />
           ))}
+          <AddPanelButton node={node} spaceId={id} />
+          {canSpaceSplit && (
+            <SplitPanelButton
+              node={node}
+              layout={Layout.Vertical}
+              spaceId={id}
+            />
+          )}
         </PanelTabs>
-        {node.hasActiveChild() ? <Panel node={node.getActiveChild()} /> : null}
+        {node.hasActiveChild() ? (
+          <Panel node={activeChild as SpaceNode} />
+        ) : null}
       </PanelContainer>
     );
   } else if (node.isPanel()) {
-    return <Panel node={child} />;
+    return <Panel node={node} />;
   } else if (node.isEmpty()) {
-    return <EmptySpace />;
+    return (
+      <PanelContainer data-type="panel-container">
+        <PanelTabs>
+          <AddPanelButton node={node} spaceId={id} />
+        </PanelTabs>
+      </PanelContainer>
+    );
   }
   return null;
 }
@@ -307,10 +457,181 @@ export function EmptySpace() {
   return <h1>Empty Space</h1>;
 }
 
-export function Panel({ node }) {
-  return <h3>{node.label}</h3>;
+function panelNotFoundError(name: SpaceNodeType) {
+  throw new Error(`Panel with name ${name} cannot be found`);
 }
 
-function PanelTab({ node }) {
-  return <button>{node.label}</button>;
+export function Panel({ node }: PanelProps) {
+  const panelName = node.type;
+  const panel = usePanel(panelName);
+  if (!panel) panelNotFoundError(panelName);
+  const { component: Component } = panel;
+  return (
+    <StyledPanel id={node.id}>
+      <Component panelNode={node} />
+    </StyledPanel>
+  );
 }
+
+type PanelIconProps = {
+  name: string;
+};
+
+function PanelIcon(props: PanelIconProps) {
+  const { name } = props;
+  const panel = usePanel(name);
+  if (!panel) panelNotFoundError(name);
+  const { Icon } = panel;
+  const PanelTabIcon = Icon || ExtensionIcon;
+  return (
+    <PanelTabIcon
+      style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }}
+    />
+  );
+}
+
+function PanelTab({ node, active, spaceId }: PanelTabProps) {
+  const { spaces } = useSpaces(spaceId);
+  const panelName = node.type;
+  const panel = usePanel(panelName);
+  if (!panel) panelNotFoundError(panelName);
+  return (
+    <StyledTab
+      onClick={() => {
+        if (!active) spaces.setNodeActive(node);
+      }}
+      active={active}
+    >
+      <PanelIcon name={panelName as string} />
+      {panel.label}
+      {!node.pinned && (
+        <StyleCloseButton
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            spaces.removeNode(node);
+          }}
+        >
+          x
+        </StyleCloseButton>
+      )}
+    </StyledTab>
+  );
+}
+/**
+ *
+ *  ---------- Styled Components ----------
+ *
+ */
+
+const SpaceContainer = styled.div`
+  display: flex;
+`;
+const PanelContainer = styled.div`
+  flex: 1;
+`;
+const PanelTabs = styled.div`
+  display: flex;
+  background: #252525;
+  padding-bottom: 0px;
+`;
+
+const StyledPanel = styled.div``;
+
+const GhostButton = styled.button`
+  cursor: pointer;
+  background: none;
+  border: none;
+  margin: 4px;
+  margin-left: 8px;
+  padding: 0px 12px 4px 12px;
+  color: #9e9e9e;
+  border-radius: 4px;
+  color: #fff;
+  transition: background ease 0.25s;
+  &:hover {
+    background: #454545;
+  }
+`;
+
+const AddPanelButtonContainer = styled.div`
+  position: relative;
+`;
+
+const StyledPanelItem = styled.div`
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: background ease 0.25s;
+  &:hover {
+    background: #2b2b2b;
+  }
+`;
+
+const StyledTab = styled.button<{ active?: boolean }>`
+  display: flex;
+  align-items: center;
+  cursor: ${(props) => (props.active ? "default" : "pointer")};
+  background: ${(props) => (props.active ? "#1a1a1a" : "#2c2c2c")};
+  border: none;
+  color: #fff;
+  padding: 0px 12px 4px 12px;
+  :hover {
+    background: ${(props) => (props.active ? "#1a1a1a" : "hsl(0deg 0% 13%)")};
+  }
+`;
+
+const StyleCloseButton = styled.button`
+  cursor: pointer;
+  border: none;
+  padding: 2.5px 6px;
+  margin-left: 6px;
+  background: none;
+  color: #fff;
+  border-radius: 4px;
+  &:hover {
+    background: #454545;
+  }
+`;
+
+/**
+ *
+ *  ---------- Types ----------
+ *
+ */
+
+type SpaceNodeType = EnumType | string;
+
+type AddPanelButtonProps = {
+  node: SpaceNode;
+  spaceId: string;
+};
+
+type SplitPanelButtonProps = {
+  node: SpaceNode;
+  layout: Layout;
+  spaceId: string;
+};
+
+type SpaceNodeJSON = {
+  activeChild: SpaceNode["activeChild"];
+  children: Array<SpaceNodeJSON>;
+  id: SpaceNode["id"];
+  layout: SpaceNode["layout"];
+  type?: SpaceNode["type"];
+  pinned?: SpaceNode["pinned"];
+};
+
+type PanelProps = {
+  node: SpaceNode;
+};
+
+type PanelTabProps = {
+  node: SpaceNode;
+  active?: boolean;
+  spaceId: string;
+};
+
+type SpaceProps = {
+  node: SpaceNode;
+  id: string;
+};
