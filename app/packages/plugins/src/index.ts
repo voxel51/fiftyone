@@ -177,8 +177,8 @@ export interface PluginComponentRegistration<T extends {} = {}> {
   /**
    * The optional label of the plugin to display to the user
    */
-  label?: string;
-  icon?: string;
+  label: string;
+  Icon?: JSX.Element;
   /**
    * The React component to render
    */
