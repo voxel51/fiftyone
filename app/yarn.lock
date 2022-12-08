@@ -9499,7 +9499,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-<<<<<<< HEAD
 "allotment@npm:^1.17.0":
   version: 1.17.0
   resolution: "allotment@npm:1.17.0"
@@ -9517,8 +9516,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-=======
->>>>>>> 34a6ad005 (initial embeddings support)
 "almost-equal@npm:^1.1.0":
   version: 1.1.0
   resolution: "almost-equal@npm:1.1.0"
@@ -24923,13 +24920,6 @@ __metadata:
   dependencies:
     acorn: ^8.8.1
   checksum: ada9b60f322ce3e3fd167b65a186ab77a8c76b8f9074dcdbad4c1a810b46f21c9dca30d4d807e98af580cbe99bfbccd6d8176f69183a454ae2868d8ddd6d4f88
-  languageName: node
-  linkType: hard
-
-"strongly-connected-components@npm:^1.0.1":
-  version: 1.0.1
-  resolution: "strongly-connected-components@npm:1.0.1"
-  checksum: f731c4a1e9b02b9d19a419e6bf1f901b1a7369cb4e0edca3b7ecb6c5076d2afe151ba12103669156594b2c2186ec9cffbd84f9d45c7e7928373d705e7ff7c3b2
   languageName: node
   linkType: hard
 
