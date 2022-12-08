@@ -362,7 +362,8 @@ const CategoricalFilter = <T extends V = V>({
   const theme = useTheme();
   const field = useRecoilValue(fos.field(path));
   const countsLoadable = useRecoilValueLoadable(countsAtom);
-  const neverShowExpansion = NEVEREXPAND_FIELDS.includes(name.toLowerCase());
+  const schema = useRecoilValue(fos.field(path));
+  const neverShowExpansion = schema?.ftype.includes("ObjectIdField");
 
   if (countsLoadable.state !== "hasValue") return null;
 
