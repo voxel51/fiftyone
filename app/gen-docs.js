@@ -1,5 +1,6 @@
 const _ = require("lodash");
 const fs = require("fs");
+const path = require("path");
 
 const docs = require("./docs.json");
 
@@ -685,7 +686,12 @@ function toFragment(raw, override) {
   throw new Error(`Unknown fragment type: ${raw.kindString}`);
 }
 
+const PLUGIN_RST_DOCS = path.join(__dirname, "..", "docs/source/plugins/api");
+
 const file = new RstFile("state");
 const project = new DocProject(docs);
 project.write(file);
-fs.writeFileSync("docs.rst", file.toSource());
+fs.writeFileSync(
+  path.join(PLUGIN_RST_DOCS, "fiftyone.state.rst"),
+  file.toSource()
+);

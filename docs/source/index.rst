@@ -342,4 +342,5 @@ or reach out to us at support@voxel51.com.
    Release Notes <release-notes>
    CLI Documentation <cli/index>
    API Reference <api/fiftyone>
+   Plugin Documentation <plugins/index>
    FAQ <faq/index>
