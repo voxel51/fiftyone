@@ -1,3 +1,5 @@
+name: Test
+
 on: workflow_call
 
 jobs:
@@ -107,7 +109,7 @@ jobs:
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
-          pip install pytest tensorflow tensorflow-datasets torch torchvision
+          pip install pytest pytest-cov tensorflow tensorflow-datasets torch torchvision
       # obtained from "Windows, pip" instructions at
       # https://pytorch.org/get-started/locally/ - unaware of a way to update
       # the version number automatically, but tests on other platforms should
@@ -116,7 +118,7 @@ jobs:
       - name: Install test dependencies (Windows)
         if: ${{ startsWith(matrix.os, 'windows') }}
         run: |
-          pip install pytest tensorflow tensorflow-datasets
+          pip install pytest pytest-cov tensorflow tensorflow-datasets
           pip install torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
       - name: Install fiftyone
         run: |
@@ -149,6 +151,7 @@ jobs:
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
       - name: Upload coverage
+        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == 3.9 }}
         uses: codecov/codecov-action@v3
       - name: Run no wrapper tests
         run: |
