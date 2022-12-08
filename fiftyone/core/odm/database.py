@@ -85,6 +85,11 @@ def get_db_config():
     except moe.DoesNotExist:
         config = DatabaseConfigDocument()
         save = True
+    except moe.MultipleObjectsReturned:
+        cleanup_multiple_config_docs()
+
+        # pylint: disable=no-member
+        config = DatabaseConfigDocument.objects.get()
 
     if config.version is None:
         #
@@ -116,6 +121,37 @@ def get_db_config():
         config.save()
 
     return config
+
+
+def cleanup_multiple_config_docs():
+    """Internal utility that ensures that there is only one
+    :class:`DatabaseConfigDocument` in the database.
+    """
+    db = get_db_conn()
+
+    docs = list(db.config.aggregate([]))
+    if len(docs) <= 1:
+        return
+
+    logger.warning(
+        "Unexpectedly found %d documents in the 'config' collection; assuming "
+        "the one with latest 'version' is the correct one",
+        len(docs),
+    )
+
+    versions = []
+    for doc in docs:
+        try:
+            versions.append((doc["_id"], Version(doc["version"])))
+        except:
+            pass
+
+    try:
+        keep_id = max(versions, key=lambda kv: kv[1])[0]
+    except:
+        keep_id = docs[0]["_id"]
+
+    db.config.delete_many({"_id": {"$ne": keep_id}})
 
 
 def establish_db_conn(config):
