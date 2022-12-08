@@ -8,10 +8,10 @@ on:
 
 jobs:
   build:
-    uses: .github/workflows/build.yml
+    uses: ./github/workflows/build.yml
 
   test:
-    uses: .github/workflows/test.yml
+    uses: ./github/workflows/test.yml
 
   success:
     runs-on: ubuntu-latest

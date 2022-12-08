@@ -1,7 +1,6 @@
 name: Build
 
-on:
-  workflow_call:
+on: workflow_call
 
 jobs:
   changes:
