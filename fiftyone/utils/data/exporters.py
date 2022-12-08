@@ -526,8 +526,10 @@ def _check_for_patches_export(samples, dataset_exporter, label_field, kwargs):
             export_types = list(label_cls.values())
         elif isinstance(label_cls, (list, tuple)):
             export_types = list(label_cls)
-        else:
+        elif label_cls is not None:
             export_types = [label_cls]
+        else:
+            export_types = None
 
         try:
             label_type = samples._get_label_field_type(label_field)
@@ -536,6 +538,7 @@ def _check_for_patches_export(samples, dataset_exporter, label_field, kwargs):
 
         if (
             label_type is not None
+            and export_types is not None
             and not issubclass(label_type, tuple(export_types))
             and fol.Classification in export_types
         ):
@@ -598,8 +601,10 @@ def _check_for_clips_export(samples, dataset_exporter, label_field, kwargs):
             export_types = list(label_cls.values())
         elif isinstance(label_cls, (list, tuple)):
             export_types = list(label_cls)
-        else:
+        elif label_cls is not None:
             export_types = [label_cls]
+        else:
+            export_types = None
 
         try:
             label_type = samples._get_label_field_type(label_field)
@@ -608,6 +613,7 @@ def _check_for_clips_export(samples, dataset_exporter, label_field, kwargs):
 
         if (
             label_type is not None
+            and export_types is not None
             and not issubclass(label_type, tuple(export_types))
             and fol.Classification in export_types
         ):
