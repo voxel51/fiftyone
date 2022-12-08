@@ -1,0 +1,7 @@
+-r common.txt
+-r test.txt
+
+tensorflow
+tensorflow-datasets
+torch
+torchvision

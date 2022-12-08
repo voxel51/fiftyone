@@ -79,38 +79,17 @@ jobs:
         uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python }}
         uses: actions/setup-python@v2
+        id: pip-cache
         with:
           python-version: ${{ matrix.python }}
           cache: "pip"
-      - name: Install pip dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-      - name: Install test dependencies (non-Windows)
-        if: ${{ !startsWith(matrix.os, 'windows') }} && steps.pip-cache.outputs.cache-hit != 'true'
-        run: |
-          pip install pytest pytest-cov tensorflow tensorflow-datasets torch torchvision
-      # obtained from "Windows, pip" instructions at
-      # https://pytorch.org/get-started/locally/ - unaware of a way to update
-      # the version number automatically, but tests on other platforms should
-      # hopefully catch any relevant PyTorch incompatibilities even if the
-      # PyTorch version used on Windows is not the latest
-      - name: Install test dependencies (Windows)
-        if: ${{ startsWith(matrix.os, 'windows') }}
-        run: |
-          pip install pytest pytest-cov tensorflow tensorflow-datasets
-          pip install torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          cache-dependency-path: |
+            requirements/common.txt
+            requirements/github.txt
+            requirements/test.txt
       - name: Install fiftyone
         run: |
-          pip install -r requirements/extras.txt
           pip install .
-      - name: Install ETA from source
-        if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
-        run: |
-          echo "Installing ETA from source because github.ref = ${{ github.ref }} (not a release)"
-          git clone https://github.com/voxel51/eta eta --depth 1 --branch develop
-          cd eta
-          python setup.py bdist_wheel
-          pip install ./dist/*.whl --force-reinstall
       - name: Configure fiftyone for tests
         id: test_config
         run: |
@@ -136,8 +115,7 @@ jobs:
       - name: Run no wrapper tests
         run: |
           pytest tests/no_wrapper --verbose
-      # Intended to run even if the tests above failed (todo: don't run if the
-      # tests were skipped due to an earlier step failing?)
+      # Intended to run even if the tests above failed
       - name: Run isolated tests
         if: success() || failure()
         run: |
