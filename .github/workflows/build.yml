@@ -34,7 +34,7 @@ jobs:
         run: |
           pip install --upgrade pip setuptools wheel
       - name: Fetch app dependency cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: app/node_modules
           key: npm-${{ hashFiles('app/package.json') }}

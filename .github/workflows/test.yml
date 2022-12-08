@@ -30,7 +30,7 @@ jobs:
       - name: Clone fiftyone
         uses: actions/checkout@v2
       - name: Fetch app dependency cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: app/node_modules
           key: npm-${{ hashFiles('app/yarn.lock') }}
@@ -86,7 +86,7 @@ jobs:
           mkdir -p pip-cache
           echo "PIP_CACHE_DIR=pip-cache" >> $GITHUB_ENV
       - name: Fetch pip cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: pip-cache
           key: pip-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
@@ -95,7 +95,7 @@ jobs:
             pip-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('setup.py') }}-
             pip-${{ runner.os }}-${{ matrix.python }}-
       - name: Fetch DB cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           key: db-${{ runner.os }}-${{ hashFiles('package/db/setup.py') }}
           path: package/db/cache/
