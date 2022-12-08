@@ -148,7 +148,7 @@ jobs:
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
       - name: Upload coverage
-        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == 3.9 }}
+        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.9' }}
         uses: codecov/codecov-action@v3
       - name: Run no wrapper tests
         run: |
