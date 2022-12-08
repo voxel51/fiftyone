@@ -1,7 +1,6 @@
 -r common.txt
 -r test.txt
 
-promise==2.2.1
 pydicom>=2.2.0
 shapely>=1.7.1
 tensorflow
