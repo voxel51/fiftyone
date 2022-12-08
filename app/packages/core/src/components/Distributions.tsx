@@ -194,7 +194,8 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
       <Title>{`${path}${hasMore ? ` (first ${data?.length})` : ""}`}</Title>
       <BarChart
         ref={container}
-        height={height - 37}
+        // todo: compute dynamically
+        height={300}
         width={data.length * (barWidth + 4) + 50}
         barCategoryGap={"4px"}
         data={strData}
@@ -272,7 +273,13 @@ const DistributionsContainer = styled.div`
   ${scrollbarStyles}
 `;
 
-const Distributions = ({ group }: { group: string }) => {
+const Distributions = ({
+  group,
+  style,
+}: {
+  group: string;
+  style?: React.CSSProperties;
+}) => {
   const paths = useRecoilValue(distributionPaths(group));
   const noData = useRecoilValueLoadable(noDistributionPathsData(group));
 
@@ -286,7 +293,7 @@ const Distributions = ({ group }: { group: string }) => {
           </Loading>
         }
       >
-        <DistributionsContainer>
+        <DistributionsContainer style={style}>
           {paths.map((path) => {
             return <DistributionRenderer key={path} path={path} />;
           })}

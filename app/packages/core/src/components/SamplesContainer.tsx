@@ -2,18 +2,9 @@ import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
-
-import Grid from "./Grid";
-import ContainerHeader from "./ImageContainerHeader";
 import Sidebar, { Entries } from "./Sidebar";
 import * as fos from "@fiftyone/state";
-
-const ContentColumn = styled.div`
-  flex-grow: 1;
-  width: 1px;
-  position: relative;
-  padding-left: 1rem;
-`;
+import { SpacesRoot } from "@fiftyone/spaces";
 
 const Container = styled.div`
   display: flex;
@@ -21,7 +12,6 @@ const Container = styled.div`
   flex-grow: 1;
   overflow: hidden;
   background: ${({ theme }) => theme.background.mediaSpace};
-  border-top: 1px ${({ theme }) => theme.primary.plainBorder} solid;
 `;
 
 const SamplesContainer = React.memo(() => {
@@ -143,14 +133,24 @@ const SamplesContainer = React.memo(() => {
     []
   );
 
+  const defaultSpacesState = {
+    id: "root",
+    children: [
+      {
+        id: "default-samples-node",
+        children: [],
+        type: "Samples",
+        pinned: true,
+      },
+    ],
+    type: "panel-container",
+    activeChild: "default-samples-node",
+  };
+
   return (
     <Container>
       {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}
-
-      <ContentColumn>
-        <Grid key={"grid"} />
-        <ContainerHeader key={"header"} />
-      </ContentColumn>
+      <SpacesRoot id="primary" defaultState={defaultSpacesState} />
     </Container>
   );
 });

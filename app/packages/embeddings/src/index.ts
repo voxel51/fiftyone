@@ -1,6 +1,6 @@
 import { registerComponent, PluginComponentType } from "@fiftyone/plugins";
-import { Schema } from "@fiftyone/utilities";
 import Map from "./Embeddings";
+import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
 
 registerComponent({
   name: "Embeddings",
@@ -8,4 +8,5 @@ registerComponent({
   component: Map,
   type: PluginComponentType.Plot,
   activator: () => true,
+  Icon: ScatterPlotIcon,
 });
