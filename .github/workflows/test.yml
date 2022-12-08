@@ -22,31 +22,31 @@ jobs:
               - 'requirements/**'
               - 'setup.py'
 
-    test-app:
-      needs: changes
-      if: ${{ needs.changes.outputs.app == 'true' }}
-      runs-on: ubuntu-20.04
-      steps:
-        - name: Clone fiftyone
-          uses: actions/checkout@v2
-        - name: Fetch app dependency cache
-          uses: actions/cache@v2
-          with:
-            path: app/node_modules
-            key: npm-${{ hashFiles('app/yarn.lock') }}
-            restore-keys: |
-              npm-${{ hashFiles('app/package.json') }}
-              npm-
-        - name: Install app
-          run: cd app && yarn install
-        - name: Run tests
-          run: cd app && yarn test --coverage && mv ./coverage/coverage-final.json ../
-        - name: Upload coverage
-          uses: codecov/codecov-action@v3
-          with:
-            files: ./coverage-final.json
-            flags: unit-tests
-            fail_ci_if_error: true
+  test-app:
+    needs: changes
+    if: ${{ needs.changes.outputs.app == 'true' }}
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v2
+      - name: Fetch app dependency cache
+        uses: actions/cache@v2
+        with:
+          path: app/node_modules
+          key: npm-${{ hashFiles('app/yarn.lock') }}
+          restore-keys: |
+            npm-${{ hashFiles('app/package.json') }}
+            npm-
+      - name: Install app
+        run: cd app && yarn install
+      - name: Run tests
+        run: cd app && yarn test --coverage && mv ./coverage/coverage-final.json ../
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage-final.json
+          flags: unit-tests
+          fail_ci_if_error: true
 
   test-python:
     needs: changes
