@@ -151,10 +151,7 @@ function SamplesContainer() {
   return (
     <Container>
       {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}
-      <SpacesRoot
-        id={`primary-${datasetName}`}
-        defaultState={defaultSpacesState}
-      />
+      <SpacesRoot id="primary" defaultState={defaultSpacesState} />
     </Container>
   );
 }
