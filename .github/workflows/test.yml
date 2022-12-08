@@ -79,34 +79,12 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python }}
+          cache: "pip"
       - name: Install pip dependencies
-        # use `python -m pip` to work around Windows permission issues when
-        # upgrading pip
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          mkdir -p pip-cache
-          echo "PIP_CACHE_DIR=pip-cache" >> $GITHUB_ENV
-      - name: Fetch pip cache
-        uses: actions/cache@v3
-        with:
-          path: pip-cache
-          key: pip-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
-          restore-keys: |
-            pip-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
-            pip-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('setup.py') }}-
-            pip-${{ runner.os }}-${{ matrix.python }}-
-      - name: Fetch DB cache
-        uses: actions/cache@v3
-        with:
-          key: db-${{ runner.os }}-${{ hashFiles('package/db/setup.py') }}
-          path: package/db/cache/
-      - name: Install fiftyone-db
-        working-directory: package/db
-        run: |
-          python setup.py bdist_wheel
-          pip install dist/*.whl
       - name: Install test dependencies (non-Windows)
-        if: ${{ !startsWith(matrix.os, 'windows') }}
+        if: ${{ !startsWith(matrix.os, 'windows') }} && steps.pip-cache.outputs.cache-hit != 'true'
         run: |
           pip install pytest pytest-cov tensorflow tensorflow-datasets torch torchvision
       # obtained from "Windows, pip" instructions at
@@ -149,6 +127,7 @@ jobs:
             --ignore tests/utils/ \
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
+            --ignore session_tests.py
       - name: Upload coverage
         if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.9' }}
         uses: codecov/codecov-action@v3
