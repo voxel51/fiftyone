@@ -48,7 +48,7 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           files: ./coverage-final.json
-          flags: unit-tests
+          flags: app
           fail_ci_if_error: true
 
   test-python:
@@ -116,6 +116,10 @@ jobs:
       - name: Upload
         if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.9' }}
         uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          flags: python
+          fail_ci_if_error: true
       - name: Run no wrapper tests
         run: |
           pytest tests/no_wrapper --verbose
