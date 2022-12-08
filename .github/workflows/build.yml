@@ -37,9 +37,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: app/node_modules
-          key: npm-${{ hashFiles('app/package.json') }}
+          key: npm-${{ hashFiles('app/yarn.lock') }}
           restore-keys: |
-            npm-${{ hashFiles('app/package.json') }}
+            npm-${{ hashFiles('app/yarn.lock') }}
             npm-
       - name: Build app
         run: make app

@@ -35,7 +35,7 @@ jobs:
           path: app/node_modules
           key: npm-${{ hashFiles('app/yarn.lock') }}
           restore-keys: |
-            npm-${{ hashFiles('app/package.json') }}
+            npm-${{ hashFiles('app/yarn.lock') }}
             npm-
       - name: Install app
         run: cd app && yarn install
