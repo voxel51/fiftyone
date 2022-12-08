@@ -140,8 +140,8 @@ export enum PluginComponentType {
 type PluginActivator = (props: any) => boolean;
 interface PluginComponentRegistration<T extends {} = {}> {
   name: string;
-  label?: string;
-  icon?: string;
+  label: string;
+  Icon?: JSX.Element;
   component: FunctionComponent<T>;
   type: PluginComponentType;
   activator: PluginActivator;
