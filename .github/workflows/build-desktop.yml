@@ -43,7 +43,6 @@ jobs:
             app/.yarn/cache
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
       - name: Install app
-        if: steps.node-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
       - name: Package App (Non-Windows)
         if: ${{ matrix.platform != 'win-amd64' }}
