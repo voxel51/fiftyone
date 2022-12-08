@@ -89,7 +89,7 @@ def get_db_config():
         cleanup_multiple_config_docs()
 
         # pylint: disable=no-member
-        config = DatabaseConfigDocument.objects.get()
+        config = DatabaseConfigDocument.objects.first()
 
     if config.version is None:
         #
@@ -127,9 +127,11 @@ def cleanup_multiple_config_docs():
     """Internal utility that ensures that there is only one
     :class:`DatabaseConfigDocument` in the database.
     """
-    db = get_db_conn()
 
-    docs = list(db.config.aggregate([]))
+    # We use mongoengine here because `get_db_conn()` will not currently work
+    # until `import fiftyone` succeeds, which requires a single config doc
+    # pylint: disable=no-member
+    docs = list(DatabaseConfigDocument.objects)
     if len(docs) <= 1:
         return
 
@@ -142,16 +144,18 @@ def cleanup_multiple_config_docs():
     versions = []
     for doc in docs:
         try:
-            versions.append((doc["_id"], Version(doc["version"])))
+            versions.append((doc.id, Version(doc.version)))
         except:
             pass
 
     try:
         keep_id = max(versions, key=lambda kv: kv[1])[0]
     except:
-        keep_id = docs[0]["_id"]
+        keep_id = docs[0].id
 
-    db.config.delete_many({"_id": {"$ne": keep_id}})
+    for doc in docs:
+        if doc.id != keep_id:
+            doc.delete()
 
 
 def establish_db_conn(config):
