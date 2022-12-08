@@ -31,11 +31,6 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
-      - name: Setup node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 17.9.0
-          cache: "yarn"
       - name: Cache Node Modules
         id: node-cache
         uses: actions/cache@v3

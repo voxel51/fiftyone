@@ -33,11 +33,15 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-      - name: Setup cache
-        uses: actions/setup-node@v3
+      - name: Cache Node Modules
+        id: node-cache
+        uses: actions/cache@v3
         with:
-          node-version: 17.9.0
-          cache: "yarn"
+          path: app/node_modules
+          key: node-modules-${{ hashFiles('app/yarn.lock') }}
+      - name: Install app
+        if: steps.node-cache.outputs.cache-hit != 'true'
+        run: cd app && yarn install
       - name: Build app
         run: make app
       - name: Set environment
