@@ -13,6 +13,7 @@ import numpy as np
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.uid as fou
 from fiftyone.migrations.runner import MigrationRunner
 
@@ -243,6 +244,24 @@ class UIDTests(unittest.TestCase):
         fou.log_import_if_allowed(test=True)
         time.sleep(2)
         self.assertTrue(fou._import_logged)
+
+
+class ConfigTests(unittest.TestCase):
+    def test_multiple_config_cleanup(self):
+        db = foo.get_db_conn()
+        orig_config = foo.get_db_config()
+
+        # Add some duplicate documents
+        d = dict(orig_config.to_dict())
+        for _ in range(2):
+            d.pop("_id", None)
+            db.config.insert_one(d)
+
+        # Ensure that duplicate documents are automatically cleaned up
+        config = foo.get_db_config()
+
+        self.assertEqual(len(list(db.config.aggregate([]))), 1)
+        self.assertEqual(config.id, orig_config.id)
 
 
 if __name__ == "__main__":
