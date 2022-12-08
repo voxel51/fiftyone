@@ -27,7 +27,6 @@ class GraphQL(gqla.GraphQL):
         loaders = {}
         for cls, config in dataloaders.items():
             loaders[cls] = get_dataloader(cls, config, db, session)
-        print("loaders from get_context = ", loaders)
 
         return Context(
             db=db,

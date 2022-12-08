@@ -34,7 +34,6 @@ async def load_saved_views(cls, object_ids):
     if len(object_ids) < 1:
         return None
     db = foo.get_async_db_conn()
-    # TODO: remove view_stages and query separately upon view selection
     return [
         from_dict(
             data_class=cls,

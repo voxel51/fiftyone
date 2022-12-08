@@ -360,10 +360,10 @@ class MongoEngineBaseDocument(SerializableDocument):
         db_fields = []
 
         for field_name in field_names:
+            # pylint: disable=no-member
             if field_name == "id":
                 db_fields.append("_id")
             else:
-                # pylint: disable=no-member
                 field = self._fields.get(field_name, None)
                 if field is None:
                     value = self.get_field(field_name)
@@ -382,9 +382,16 @@ class MongoEngineBaseDocument(SerializableDocument):
         # pylint: disable=no-member
         return self._fields_ordered
 
-    def to_dict(self, extended=False):
+    def to_dict(self, extended=False, no_dereference=False):
         # pylint: disable=no-member
         d = self.to_mongo(use_db_field=True)
+        if no_dereference:
+            # TODO: handle dict[ref] types for
+            for k, val in d.items():
+                if type(val) in [list, dict]:
+                    if type(val) == list and len(val) > 0:
+                        if isinstance(val[0], ObjectId):
+                            d[k] = [obj.to_dict() for obj in getattr(self, k)]
 
         if not extended:
             return d

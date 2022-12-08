@@ -795,7 +795,6 @@ class DocumentView(_Document):
             )
 
             d = {k: v for k, v in d.items() if k in field_names}
-
         return d
 
     def to_mongo_dict(self, include_id=False):

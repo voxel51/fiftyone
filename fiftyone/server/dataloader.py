@@ -79,31 +79,4 @@ def get_dataloader_resolver(
         return await info.context.dataloaders[cls].load(name)
 
     resolver.__annotations__[key] = resolver.__annotations__.pop("name")
-    # resolver.__annotations__["name"] = cls
     return resolver
-
-
-# async def load_saved_views(object_ids) -> t.Optional[t.List[SavedView]]:
-#     if len(object_ids) < 1:
-#         return None
-#     db = foo.get_db_conn()
-#     # TODO: remove view_stages and query separately upon view selection
-#     return list(
-#             db.views.aggregate(
-#                     [
-#                         {"$match": {"_id": {"$in": object_ids}}},
-#                         {
-#                             "$project": {
-#                                 "name": True,
-#                                 "color": True,
-#                                 "description": True,
-#                                 "slug": True,
-#                                 "last_loaded_at": True,
-#                                 "created_at": True,
-#                                 "last_modified_at": True,
-#                                 "view_stages": True,
-#                             }
-#                         },
-#                     ]
-#             )
-#     )

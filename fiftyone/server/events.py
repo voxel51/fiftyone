@@ -27,7 +27,7 @@ from fiftyone.core.session.events import (
     StateUpdate,
 )
 import fiftyone.core.state as fos
-from fiftyone.server.query import serialize_dataset
+from fiftyone.server.query import serialize_dataset  # ,deserialize_saved_views
 
 
 @dataclass(frozen=True)
@@ -98,11 +98,6 @@ async def add_event_listener(
                     # data.state.view._serialize() if data.state.view is not None
                     # # else [], event.state.view.name if event.state.view
                     else None,
-                )
-                print(
-                    "events.py\n\tasync def add_event_listener(\n\t\t d["
-                    '"dataset"]=',
-                    d["dataset"],
                 )
 
             yield ServerSentEvent(

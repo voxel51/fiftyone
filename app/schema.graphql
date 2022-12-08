@@ -368,8 +368,6 @@ type Query {
     filter: SampleFilter = null
   ): SampleItemStrConnection!
   sample(dataset: String!, view: BSONArray!, filter: SampleFilter!): SampleItem
-  getSavedViewsForDataset(datasetId: String!): [SavedView!]
-  getSavedView(viewName: String!): SavedView!
   teamsSubmission: Boolean!
   uid: String!
   version: String!

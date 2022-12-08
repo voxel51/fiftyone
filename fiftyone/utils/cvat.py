@@ -929,8 +929,6 @@ class CVATImageDatasetExporter(
         self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
-        # develop HEAD
-        # self._name = sample_collection.name
         self._name = sample_collection._dataset.name
         self._task_labels = sample_collection.info.get("task_labels", None)
 

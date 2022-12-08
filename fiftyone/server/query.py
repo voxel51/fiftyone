@@ -40,11 +40,7 @@ from fiftyone.server.samples import (
     SampleItem,
     paginate_samples,
 )
-from fiftyone.server.view import (
-    get_saved_views,
-    get_saved_view_stages,
-    load_saved_views_by_dataset,
-)
+
 from fiftyone.server.scalars import BSONArray, JSON
 
 ID = gql.scalar(
@@ -133,84 +129,81 @@ class SavedView:
 
     @staticmethod
     def modifier(doc: dict) -> dict:
-        return dict
+        return doc
 
-    @classmethod
-    async def resolver(cls, object_id) -> t.Optional[t.List["SavedView"]]:
-        return await load_saved_views(object_id)
-
-
-saved_views_dataloader = get_dataloader_resolver(
-    SavedView,
-    "views",
-    "_id",
-    {},
-    {
-        "_id": True,
-        "id": {"$toString": "$_id"},
-        "_dataset_id": {"$ifNull": ["$dataset_id", "$_dataset_id"]},
-        "dataset_id": {"$toString": "$_dataset_id"},
-        "name": True,
-        "color": True,
-        "description": True,
-        "slug": True,
-        "last_loaded_at": True,
-        "created_at": True,
-        "last_modified_at": True,
-        "view_stages": True,
-    },
-)
+    # @classmethod
+    # async def resolver(cls, object_id) -> t.Optional[t.List["SavedView"]]:
+    #     return await deserialize_saved_views(
+    #             refs=[object_id]
+    #     )
 
 
-# @gql.field
-# def view_stages(self) -> t.Optional[t.List[str]]:
-#     return get_saved_view_stages(self.id)
 #
+# saved_views_dataloader = get_dataloader_resolver(
+#     SavedView,
+#     "views",
+#     "_id",
+#     {},
+#     {
+#         "_id": True,
+#         "id": {"$toString": "$_id"},
+#         "_dataset_id": {"$ifNull": ["$dataset_id", "$_dataset_id"]},
+#         "dataset_id": {"$toString": "$_dataset_id"},
+#         "name": True,
+#         "color": True,
+#         "description": True,
+#         "slug": True,
+#         "last_loaded_at": True,
+#         "created_at": True,
+#         "last_modified_at": True,
+#         "view_stages": True,
+#     },
+# )
 
 
-async def load_saved_views(object_ids):
-    if len(object_ids) < 1:
-        return None
-    db = foo.get_async_db_conn()
-    pipeline = [
-        {"$match": {"_id": {"$in": object_ids}}},
-        {
-            "$project": {
-                "_id": True,
-                "id": {"$toString": "$_id"},
-                "_dataset_id": {"$ifNull": ["$dataset_id", "$_dataset_id"]},
-                "dataset_id": {"$toString": "$_dataset_id"},
-                "name": True,
-                "color": True,
-                "description": True,
-                "slug": True,
-                "last_loaded_at": True,
-                "created_at": True,
-                "last_modified_at": True,
-                "view_stages": True,
-            }
-        },
-    ]
-    # results = db.views.aggregate(pipeline)
-    results = await foo.aggregate(db.views, pipeline).to_list(len(object_ids))
-    print("results", results)
-    # TODO: remove view_stages and query separately upon view selection
-    saved_views = [
-        from_dict(
-            data_class=SavedView,
-            data=view,
-            config=Config(
-                type_hooks={
-                    BSONArray: lambda x: [json_util.loads(s) for s in x]
-                }
-            ),
-        )
-        async for view in results
-    ]
-    return await saved_views
-
-
-saved_views_loader = DataLoader(load_fn=load_saved_views)
+#
+# async def load_saved_views(object_ids: t.List[ObjectId]):
+#     if len(object_ids) < 1:
+#         return None
+#     db = foo.get_async_db_conn()
+#     pipeline = [
+#         {"$match": {"_id": {"$in": object_ids}}},
+#         {
+#             "$project": {
+#                 "_id": True,
+#                 "id": {"$toString": "$_id"},
+#                 "_dataset_id": {"$ifNull": ["$dataset_id", "$_dataset_id"]},
+#                 "dataset_id": {"$toString": "$_dataset_id"},
+#                 "name": True,
+#                 "color": True,
+#                 "description": True,
+#                 "slug": True,
+#                 "last_loaded_at": True,
+#                 "created_at": True,
+#                 "last_modified_at": True,
+#                 "view_stages": True,
+#             }
+#         },
+#     ]
+#     results = await foo.aggregate(db.views, pipeline).to_list(len(object_ids))
+#     # print("results", results)
+#     saved_views = [
+#         from_dict(
+#                 data_class=SavedView,
+#                 data=view,
+#                 config=Config(
+#                         type_hooks={
+#                             BSONArray: lambda x: [json_util.loads(s) for s in
+#                                                   x]
+#                         }
+#                 ),
+#         )
+#         for view in results
+#     ]
+#     return saved_views
+#
+#
+# saved_views_loader = DataLoader(load_fn=load_saved_views)
 
 
 @gql.type
@@ -316,13 +309,15 @@ class Dataset:
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
-        doc["saved_view_ids"] = doc.get("saved_views", [])
-        if len(doc["saved_view_ids"]) > 0:
-            doc["saved_views"] = load_saved_views(
-                doc.get("saved_view_ids", [])
-            )  # get_saved_views(
-            #     SavedView, doc.get("saved_view_ids", []), saved_views_loader
-            # )
+        doc["saved_views"] = doc.get("saved_views", [])
+
+        # doc["saved_view_ids"] = doc.get("saved_views", [])
+        # if len(doc["saved_view_ids"]) > 0:
+        #     doc["saved_views"] = load_saved_views(
+        #         doc.get("saved_view_ids", [])
+        #     )  # get_saved_views(
+        #     #     SavedView, doc.get("saved_view_ids", []), saved_views_loader
+        #     # )
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -450,20 +445,6 @@ class Query(fosa.AggregateQuery):
         return None
 
     @gql.field
-    async def get_saved_views_for_dataset(
-        self, dataset_id: str
-    ) -> t.Optional[t.List[SavedView]]:
-        saved_views = load_saved_views_by_dataset(SavedView, dataset_id)
-        saved_views_loader.prime_many(
-            {saved_view.name: saved_view for saved_view in saved_views}
-        )
-        return saved_views
-
-    @gql.field
-    async def get_saved_view(self, view_name: str) -> SavedView:
-        return await saved_views_loader.load(view_name)
-
-    @gql.field
     def teams_submission(self) -> bool:
         isfile = os.path.isfile(foc.TEAMS_PATH)
         if isfile:
@@ -543,7 +524,7 @@ async def serialize_dataset(
         else:
             view = fov.DatasetView._build(dataset, serialized_view or [])
 
-        doc = dataset._doc.to_dict()
+        doc = dataset._doc.to_dict(no_dereference=True)
         Dataset.modifier(doc)
         data = from_dict(Dataset, doc, config=Config(check_types=False))
         data.view_cls = None
