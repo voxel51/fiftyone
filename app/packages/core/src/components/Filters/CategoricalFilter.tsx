@@ -98,8 +98,8 @@ const Wrapper = ({
   selectedCounts,
 }: WrapperProps) => {
   const name = path.split(".").slice(-1)[0];
+  const schema = useRecoilValue(fos.field(path));
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
-
   const selectedSet = new Set(selected);
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
@@ -109,7 +109,9 @@ const Wrapper = ({
     count: counts[String(value)] ?? 0,
   }));
   const skeleton = useRecoilValue(isKeypointLabel(path));
-  const neverShowExpansion = NEVEREXPAND_FIELDS.includes(name.toLowerCase());
+  const neverShowExpansion =
+    NEVEREXPAND_FIELDS.includes(name.toLowerCase()) &&
+    schema?.ftype.includes("ObjectIdField");
 
   if ((results.length <= CHECKBOX_LIMIT && !neverShowExpansion) || skeleton) {
     allValues = [
