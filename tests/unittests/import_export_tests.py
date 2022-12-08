@@ -2931,9 +2931,7 @@ class OpenLABELVideoDatasetTests(VideoDatasetTests):
 
 
 class VideoExportCoersionTests(VideoDatasetTests):
-    @skipwindows
-    @drop_datasets
-    def test_clip_exports(self):
+    def _make_dataset(self):
         sample1 = fo.Sample(
             filepath=self._new_video(),
             predictions=fo.TemporalDetections(
@@ -3003,6 +3001,132 @@ class VideoExportCoersionTests(VideoDatasetTests):
 
         dataset = fo.Dataset()
         dataset.add_samples([sample1, sample2])
+
+        return dataset
+
+    @drop_datasets
+    def test_frame_label_fields(self):
+        dataset = self._make_dataset()
+
+        #
+        # `label_field` scalar syntax
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field="frames.predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field={"detections": "predictions"},
+        )
+
+        self.assertEqual(
+            dataset.count("frames.predictions.detections"),
+            dataset2.count("frames.predictions.detections"),
+        )
+
+        #
+        # `label_field` dict syntax
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field={"dets": "frames.predictions"},
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field={"detections": "predictions"},
+        )
+
+        self.assertEqual(
+            dataset.count("frames.predictions.detections"),
+            dataset2.count("frames.predictions.detections"),
+        )
+
+        #
+        # `frame_labels_field`
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            frame_labels_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field={"detections": "predictions"},
+        )
+
+        self.assertEqual(
+            dataset.count("frames.predictions.detections"),
+            dataset2.count("frames.predictions.detections"),
+        )
+
+        #
+        # `frame_labels_field` with "frames." prefix
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            frame_labels_field="frames.predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field={"detections": "predictions"},
+        )
+
+        self.assertEqual(
+            dataset.count("frames.predictions.detections"),
+            dataset2.count("frames.predictions.detections"),
+        )
+
+        #
+        # `frame_labels_field` with dict syntax
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            frame_labels_field={"dets": "frames.predictions"},
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field={"detections": "predictions"},
+        )
+
+        self.assertEqual(
+            dataset.count("frames.predictions.detections"),
+            dataset2.count("frames.predictions.detections"),
+        )
+
+    @skipwindows
+    @drop_datasets
+    def test_clip_exports(self):
+        dataset = self._make_dataset()
 
         #
         # Export unlabeled video clips
