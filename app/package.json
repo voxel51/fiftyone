@@ -10,6 +10,7 @@
     "dev": "yarn workspace @fiftyone/app dev",
     "dev:py": "python ../fiftyone/server/main.py",
     "dev:wpy": "concurrently -k yarn:dev yarn:dev:py",
+    "doc": "./gen-docs.sh",
     "lint:prettify": "prettier --config ../.prettierrc.js --ignore-path ../.prettierignore  --write \"packages/**/*.(ts|js|jsx|tsx|json|css|scss)\"",
     "postinstall": "patch-package",
     "start": "yarn workspace @fiftyone/app start",

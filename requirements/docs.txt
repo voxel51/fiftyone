@@ -8,3 +8,4 @@ sphinx-tabs==1.2.1
 Sphinx==2.4.4
 sphinxcontrib-napoleon==0.7
 sphinx-copybutton==0.4.0
+sphinx-js==3.1.2
