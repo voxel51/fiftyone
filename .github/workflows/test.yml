@@ -31,12 +31,19 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
-      - name: Setup cache
+      - name: Setup node
         uses: actions/setup-node@v3
         with:
           node-version: 17.9.0
           cache: "yarn"
+      - name: Cache Node Modules
+          id: node-cache
+          uses: actions/cache@v3
+          with:
+            path: app/node_modules
+            key: node-modules-${{ hashFiles('app/yarn.lock') }}
       - name: Install app
+        if: steps.node-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
       - name: Run tests
         run: cd app && yarn test --coverage && mv ./coverage/coverage-final.json ../
