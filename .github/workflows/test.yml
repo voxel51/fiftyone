@@ -29,9 +29,9 @@ jobs:
     if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: ubuntu-20.04
     steps:
-      - name: Clone fiftyone
+      - name: Checkout
         uses: actions/checkout@v2
-      - name: Cache Node Modules
+      - name: Cache
         id: node-cache
         uses: actions/cache@v3
         with:
@@ -39,12 +39,12 @@ jobs:
             app/node_modules
             app/.yarn/cache
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
-      - name: Install app
+      - name: Install
         if: steps.node-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
-      - name: Run tests
+      - name: Run
         run: cd app && yarn test --coverage && mv ./coverage/coverage-final.json ../
-      - name: Upload coverage
+      - name: Upload
         uses: codecov/codecov-action@v3
         with:
           files: ./coverage-final.json
@@ -75,9 +75,9 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Clone fiftyone
+      - name: Checkout
         uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python }}
+      - name: Setup
         uses: actions/setup-python@v2
         id: pip-cache
         with:
@@ -94,25 +94,26 @@ jobs:
       - name: Install fiftyone
         run: |
           pip install .
-      - name: Configure fiftyone for tests
+      - name: Configure
         id: test_config
         run: |
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
-      - name: Setup FFmpeg
+      - name: FFmpeg
         uses: FedericoCarboni/setup-ffmpeg@v1
       # Important: use pytest_wrapper.py instead of pytest directly to ensure
       # that services shut down cleanly and do not conflict with steps later in
       # this workflow
       - name: Run tests
         run: |
-          python tests/utils/pytest_wrapper.py tests/ --verbose --cov \
+          python tests/utils/pytest_wrapper.py tests/ --verbose \
+            --cov --cov-report xml \
             --ignore tests/benchmarking/ \
             --ignore tests/isolated/ \
             --ignore tests/utils/ \
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
-      - name: Upload coverage
+      - name: Upload
         if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.9' }}
         uses: codecov/codecov-action@v3
       - name: Run no wrapper tests
