@@ -49,7 +49,6 @@ jobs:
         with:
           files: ./coverage-final.json
           flags: app
-          fail_ci_if_error: true
 
   test-python:
     needs: changes
@@ -119,7 +118,6 @@ jobs:
         with:
           files: ./coverage.xml
           flags: python
-          fail_ci_if_error: true
       - name: Run no wrapper tests
         run: |
           pytest tests/no_wrapper --verbose
