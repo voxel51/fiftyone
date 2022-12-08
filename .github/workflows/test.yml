@@ -112,7 +112,6 @@ jobs:
             --ignore tests/utils/ \
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
-            --ignore tests/session_tests.py
       - name: Upload coverage
         if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.9' }}
         uses: codecov/codecov-action@v3
