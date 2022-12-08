@@ -193,7 +193,8 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
       <Title>{`${path}${hasMore ? ` (first ${data?.length})` : ""}`}</Title>
       <BarChart
         ref={container}
-        height={height - 37}
+        // todo: compute dynamically
+        height={300}
         width={data.length * (barWidth + 4) + 50}
         barCategoryGap={"4px"}
         data={strData}

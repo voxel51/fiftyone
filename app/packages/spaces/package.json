@@ -9,7 +9,7 @@
   "bugs": {
     "url": "https://github.com/voxel51/fiftyone/"
   },
-  "main": "./src/index.ts",
+  "main": "./src/SpacesRoot.tsx",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
