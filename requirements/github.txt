@@ -7,3 +7,4 @@ tensorflow
 tensorflow-datasets
 torch
 torchvision
+wheel
