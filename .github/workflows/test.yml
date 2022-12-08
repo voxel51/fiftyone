@@ -31,14 +31,11 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
-      - name: Fetch app dependency cache
-        uses: actions/cache@v3
+      - name: Setup cache
+        uses: actions/setup-node@v3
         with:
-          path: app/node_modules
-          key: npm-${{ hashFiles('app/yarn.lock') }}
-          restore-keys: |
-            npm-${{ hashFiles('app/yarn.lock') }}
-            npm-
+          node-version: 17.9.0
+          cache: "yarn"
       - name: Install app
         run: cd app && yarn install
       - name: Run tests

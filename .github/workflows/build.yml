@@ -33,14 +33,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-      - name: Fetch app dependency cache
-        uses: actions/cache@v3
+      - name: Setup cache
+        uses: actions/setup-node@v3
         with:
-          path: app/node_modules
-          key: npm-${{ hashFiles('app/yarn.lock') }}
-          restore-keys: |
-            npm-${{ hashFiles('app/yarn.lock') }}
-            npm-
+          node-version: 17.9.0
+          cache: "yarn"
       - name: Build app
         run: make app
       - name: Set environment
