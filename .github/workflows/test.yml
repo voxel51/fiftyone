@@ -90,7 +90,7 @@ jobs:
       - name: Install requirements
         if: steps.pip-cache.outputs.cache-hit != true
         run: |
-          pip install requirements/github.txt
+          pip install -r requirements/github.txt
       - name: Install fiftyone
         run: |
           pip install .
