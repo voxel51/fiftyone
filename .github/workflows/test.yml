@@ -3,11 +3,11 @@ on: workflow_call
 jobs:
   changes:
     runs-on: ubuntu-latest
-    uses: actions/checkout@v2
     outputs:
       app: ${{ steps.filter.outputs.app }}
       python: ${{ steps.filter.outputs.python }}
     steps:
+      - uses: actions/checkout@v2
       - uses: dorny/paths-filter@v2
         id: filter
         with:
