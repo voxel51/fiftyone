@@ -1,6 +1,11 @@
 import { ThemeProvider } from "@fiftyone/components";
 import { Loading, Setup, makeRoutes } from "@fiftyone/core";
-import { useRefresh, useScreenshot } from "@fiftyone/state";
+import {
+  BeforeScreenshotContext,
+  screenshotCallbacks,
+  useRefresh,
+  useScreenshot,
+} from "@fiftyone/state";
 import { ThemeProvider } from "@fiftyone/components";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
@@ -154,10 +159,12 @@ const App: React.FC = ({}) => {
 
 createRoot(document.getElementById("root") as HTMLDivElement).render(
   <RecoilRoot>
-    <EventsContext.Provider value={{ session: null }}>
-      <ThemeProvider>
-        <App />
-      </ThemeProvider>
-    </EventsContext.Provider>
+    <BeforeScreenshotContext.Provider value={screenshotCallbacks}>
+      <EventsContext.Provider value={{ session: null }}>
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      </EventsContext.Provider>
+    </BeforeScreenshotContext.Provider>
   </RecoilRoot>
 );

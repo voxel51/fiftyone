@@ -26,6 +26,7 @@ import {
   Settings,
 } from "./state";
 import Options from "./Options";
+import { useBeforeScreenshot } from "@fiftyone/state";
 
 const fitBoundsOptions = { animate: false, padding: 30 };
 
@@ -160,6 +161,15 @@ const Plot: React.FC<{}> = () => {
     mapRef.current && fitBounds(mapRef.current, data);
   }, [data]);
 
+  useBeforeScreenshot(() => {
+    return new Promise((resolve) => {
+      mapRef.current.once("render", () => {
+        resolve(mapRef.current.getCanvas());
+      });
+      mapRef.current.setBearing(mapRef.current.getBearing());
+    });
+  });
+
   if (!settings.mapboxAccessToken) {
     return (
       <foc.Loading>
@@ -211,14 +221,13 @@ const Plot: React.FC<{}> = () => {
           mapboxAccessToken={settings.mapboxAccessToken}
           onLoad={onLoad}
           onRender={() => {
-            try {
-              if (draw.getMode() !== "draw_polygon") {
-                draw.changeMode("draw_polygon");
-              }
-            } catch (error) {
-              setMapError(true);
-              throw error;
+            if (draw.getMode() !== "draw_polygon") {
+              draw.changeMode("draw_polygon");
             }
+          }}
+          onError={({ error }) => {
+            setMapError(true);
+            throw error;
           }}
         >
           <Source
