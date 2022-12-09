@@ -39,7 +39,6 @@ from fiftyone.core.session.events import (
     ReactivateNotebookCell,
     StateUpdate,
 )
-
 import fiftyone.core.session.notebooks as fosn
 
 

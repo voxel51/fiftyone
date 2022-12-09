@@ -5,6 +5,7 @@ Session events.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import base64
 from dataclasses import dataclass
 import re
 import typing as t
@@ -119,3 +120,15 @@ def dict_factory(data: t.List[t.Tuple[str, t.Any]]) -> t.Dict[str, t.Any]:
         (k, v.serialize() if isinstance(v, fos.StateDescription) else v)
         for k, v in data
     )
+
+
+_SCREENSHOTS = {}
+
+
+def add_screenshot(subscription: str, src: str) -> None:
+    data = src.split(",")[1].encode()
+    _SCREENSHOTS[subscription] = base64.decodebytes(data)
+
+
+def get_screenshot(subscription: str) -> str:
+    return _SCREENSHOTS.pop(subscription)

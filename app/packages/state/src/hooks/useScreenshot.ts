@@ -113,6 +113,15 @@ export const useScreenshot = (
           subscription,
           data: { src: imgData, width: canvas.width, subscription },
         });
+
+        if (context === "databricks") {
+          const params = new URLSearchParams(window.location.search);
+          const prefix = params.get("prefix");
+
+          window.location.assign(
+            `${prefix || "/"}screenshot/${subscription}.png`
+          );
+        }
       });
   }, []);
 

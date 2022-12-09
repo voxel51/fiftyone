@@ -148,6 +148,7 @@ def get_url(
     elif _context == _DATABRICKS:
         _url = _get_databricks_proxy_url(port)
         kwargs["proxy"] = _get_databricks_proxy(port)
+        kwargs["context"] = "databricks"
     else:
         _url = f"http://{address}:{port}/"
 
