@@ -135,6 +135,7 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
 export enum PluginComponentType {
   Visualizer,
   Plot,
+  Panel,
 }
 
 type PluginActivator = (props: any) => boolean;

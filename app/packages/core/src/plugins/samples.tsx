@@ -21,7 +21,7 @@ registerComponent({
       <ContainerHeader key={"header"} />
     </FlashlightContainer>
   ),
-  type: PluginComponentType.Plot,
+  type: PluginComponentType.Panel,
   Icon: AppsIcon,
   activator: () => true,
 });
