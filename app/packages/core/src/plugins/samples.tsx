@@ -24,4 +24,7 @@ registerComponent({
   type: PluginComponentType.Panel,
   Icon: AppsIcon,
   activator: () => true,
+  panelOptions: {
+    allowDuplicates: false,
+  },
 });
