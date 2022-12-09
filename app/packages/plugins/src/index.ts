@@ -144,11 +144,15 @@ type PanelOptions = {
   allowDuplicates?: boolean;
 };
 
+type PluginComponentProps<T> = T & {
+  panelNode?: unknown;
+};
+
 interface PluginComponentRegistration<T extends {} = {}> {
   name: string;
   label: string;
-  Icon?: JSX.Element;
-  component: FunctionComponent<T>;
+  Icon?: React.ComponentType;
+  component: FunctionComponent<PluginComponentProps<T>>;
   type: PluginComponentType;
   activator: PluginActivator;
   panelOptions?: PanelOptions;
