@@ -271,7 +271,7 @@ export const getEventSource = (
 };
 
 export const sendEvent = async (data: {}) => {
-  return await getFetchFunction()("POST", "/event", data);
+  return await getFetchFunction()("POST", "event", data);
 };
 
 interface PollingEventResponse {
