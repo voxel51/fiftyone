@@ -129,7 +129,14 @@ const NumericFieldFilter = ({
 
   const setFilter = useSetRecoilState(fos.filter({ modal, path }));
   const bounds = useRecoilValue(fos.boundsAtom({ path, defaultRange }));
-
+  const values = useRecoilValue(
+    fos.rangeAtom({
+      modal,
+      path,
+      defaultRange,
+      withBounds: true,
+    })
+  );
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const field = useRecoilValue(fos.field(path));
   const hasDefaultRange = useRecoilValue(
@@ -156,6 +163,10 @@ const NumericFieldFilter = ({
     nonfinites.length === 0 ||
     (nonfinites.length === 1 && nonfinites[0][0] === "none")
   );
+
+  const hasNone = nonfinites.some((x) => x[0] === "none");
+  const isSliderAtInitialPostion =
+    bounds[0] === values[0] && bounds[1] === values[1];
 
   if (!hasNonfinites && !hasBounds && named) {
     return null;
@@ -238,9 +249,7 @@ const NumericFieldFilter = ({
           />
         ) : null}
         {(hasDefaultRange ||
-          nonfinites.some(
-            ([_, { value: v }]) => v !== nonfinites[0][1].value
-          ) ||
+          (hasNone && isSliderAtInitialPostion) ||
           !hasBounds) &&
           nonfinites.map(([key, props]) => (
             <Checkbox
