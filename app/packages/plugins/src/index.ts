@@ -171,6 +171,10 @@ type PanelOptions = {
   allowDuplicates?: boolean;
 };
 
+type PluginComponentProps<T> = T & {
+  panelNode?: unknown;
+};
+
 /**
  * A plugin registration.
  */
@@ -183,11 +187,11 @@ export interface PluginComponentRegistration<T extends {} = {}> {
    * The optional label of the plugin to display to the user
    */
   label: string;
-  Icon?: JSX.Element;
+  Icon?: React.ComponentType;
   /**
    * The React component to render
    */
-  component: FunctionComponent<T>;
+  component: FunctionComponent<PluginComponentProps<T>>;
   /** The plugin type */
   type: PluginComponentType;
   /**
