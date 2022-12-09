@@ -164,9 +164,7 @@ const NumericFieldFilter = ({
     (nonfinites.length === 1 && nonfinites[0][0] === "none")
   );
 
-  const hasNone =
-    nonfinites.some((x) => x[0] === "none") &&
-    nonfinites.find((x) => x[0] === "none")![1].count !== 0;
+  const hasNone = nonfinites.some((x) => x[0] === "none")
   const isSliderAtInitialPostion =
     bounds[0] === values[0] && bounds[1] === values[1];
 
