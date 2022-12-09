@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState, Fragment } from "react";
 import { atom, selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import * as fos from "@fiftyone/state";
@@ -41,6 +41,17 @@ function spaceNodeFromJSON(json: SpaceNodeJSON, parent?: SpaceNode) {
   node.parent = parent;
   node.pinned = json.pinned;
   return node;
+}
+
+function getNodes(node: SpaceNode): SpaceNode[] {
+  const nodes = [];
+  nodes.push(node);
+  if (node.children) {
+    for (const child of node.children) {
+      nodes.push(...getNodes(child));
+    }
+  }
+  return nodes;
 }
 
 export class SpaceNode {
@@ -298,6 +309,15 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
   };
 }
 
+function useSpaceNodes(spaceId: string) {
+  const { spaces } = useSpaces(spaceId);
+
+  return useMemo(() => {
+    const nodes = getNodes(spaces.root);
+    return nodes;
+  }, [spaces]);
+}
+
 // Hook to use currently available panels
 // todo: add can duplicate logic
 function usePanels() {
@@ -359,8 +379,27 @@ function AddPanelItem({
 }
 
 function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
   const panels = usePanels();
+  const spaceNodes = useSpaceNodes(spaceId);
+  const nodeTypes = useMemo(
+    () => spaceNodes.map((node) => node.type),
+    [spaceNodes]
+  );
+
+  const availablePanels = panels
+    .filter(
+      (panel) =>
+        panel?.panelOptions?.allowDuplicates === true ||
+        !nodeTypes.includes(panel.name)
+    )
+    .sort((panelA, panelB) => {
+      if (panelA.name < panelB.name) return -1;
+      if (panelA.name > panelB.name) return 1;
+      return 0;
+    });
+
+  if (availablePanels.length === 0) return null;
 
   return (
     <AddPanelButtonContainer>
@@ -373,7 +412,7 @@ function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
       </GhostButton>
       {open && (
         <Popout style={{ top: "80%", left: "16%", padding: 0 }}>
-          {panels.map((panel) => (
+          {availablePanels.map((panel) => (
             <AddPanelItem
               spaceId={spaceId}
               {...panel}
