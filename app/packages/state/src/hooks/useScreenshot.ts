@@ -116,10 +116,10 @@ export const useScreenshot = (
 
         if (context === "databricks") {
           const params = new URLSearchParams(window.location.search);
-          const prefix = params.get("prefix");
+          const proxy = params.get("proxy");
 
           window.location.assign(
-            `${prefix || "/"}screenshot/${subscription}.png`
+            `${proxy || "/"}screenshot/${subscription}.png`
           );
         }
       });
