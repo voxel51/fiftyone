@@ -301,9 +301,7 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
       setState((latestSpaces) => {
         const spaces = new SpaceTree(latestSpaces);
         updater(spaces);
-        return {
-          spaces: spaces.toJSON(),
-        };
+        return spaces.toJSON();
       });
     },
   };
@@ -350,7 +348,7 @@ type AddPanelItemProps = {
   node: SpaceNode;
   name: SpaceNodeType;
   label: string;
-  Icon?: JSX.Element;
+  Icon?: React.ComponentType;
   onClick?: Function;
   spaceId: string;
 };
@@ -446,9 +444,15 @@ export function Space({ node, id }: SpaceProps) {
   if (node.layout) {
     return (
       <SpaceContainer data-type="space-container">
-        {node.children.map((space) => (
-          <Space node={space} id={id} />
-        ))}
+        {node.children.map((space, i) => {
+          const Wrapper = i === 0 ? Fragment : Resizable;
+          const wrapperProps = i === 0 ? {} : { enable: { left: true } };
+          return (
+            <Wrapper {...wrapperProps}>
+              <Space node={space} id={id} />
+            </Wrapper>
+          );
+        })}
       </SpaceContainer>
     );
   } else if (node.isPanelContainer() && node.hasChildren()) {
@@ -498,13 +502,14 @@ export function EmptySpace() {
 }
 
 function panelNotFoundError(name: SpaceNodeType) {
-  throw new Error(`Panel with name ${name} cannot be found`);
+  console.error(`Panel with name ${name} cannot be found`);
+  return null;
 }
 
 export function Panel({ node }: PanelProps) {
   const panelName = node.type;
   const panel = usePanel(panelName);
-  if (!panel) panelNotFoundError(panelName);
+  if (!panel) return panelNotFoundError(panelName);
   const { component: Component } = panel;
   return (
     <StyledPanel id={node.id}>
@@ -514,13 +519,13 @@ export function Panel({ node }: PanelProps) {
 }
 
 type PanelIconProps = {
-  name: string;
+  name: SpaceNodeType;
 };
 
 function PanelIcon(props: PanelIconProps) {
   const { name } = props;
   const panel = usePanel(name);
-  if (!panel) panelNotFoundError(name);
+  if (!panel) return panelNotFoundError(name);
   const { Icon } = panel;
   const PanelTabIcon = Icon || ExtensionIcon;
   return (
@@ -534,7 +539,7 @@ function PanelTab({ node, active, spaceId }: PanelTabProps) {
   const { spaces } = useSpaces(spaceId);
   const panelName = node.type;
   const panel = usePanel(panelName);
-  if (!panel) panelNotFoundError(panelName);
+  if (!panel) return panelNotFoundError(panelName);
   return (
     <StyledTab
       onClick={() => {
@@ -615,6 +620,7 @@ const StyledTab = styled.button<{ active?: boolean }>`
   border: none;
   color: #fff;
   padding: 0px 12px 4px 12px;
+  transition: background ease 0.25s;
   :hover {
     background: ${(props) => (props.active ? "#1a1a1a" : "hsl(0deg 0% 13%)")};
   }
