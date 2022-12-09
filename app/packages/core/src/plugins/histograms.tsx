@@ -29,7 +29,7 @@ registerComponent({
   name: "Histograms",
   label: "Histograms",
   component: Plots,
-  type: PluginComponentType.Plot,
+  type: PluginComponentType.Panel,
   activator: () => true,
   Icon: BarChart,
 });
