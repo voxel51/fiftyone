@@ -304,8 +304,9 @@ function usePanels() {
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
-  const panels = useActivePlugins(PluginComponentType.Plot, { schema });
-  return panels;
+  const plots = useActivePlugins(PluginComponentType.Plot, { schema });
+  const panels = useActivePlugins(PluginComponentType.Panel, { schema });
+  return panels.concat(plots);
 }
 
 // Hook to use a panel matching id provided
