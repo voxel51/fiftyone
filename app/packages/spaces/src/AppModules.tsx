@@ -28,7 +28,7 @@ export function useActivePlugins() {
       label: "Samples",
       component: () => <h1>Samples</h1>,
       panelOptions: {
-        canDuplicate: false,
+        allowDuplicates: false,
       },
       Icon: Apps,
     },
@@ -36,6 +36,9 @@ export function useActivePlugins() {
       name: "Map",
       label: "Map",
       component: () => <h1>Map</h1>,
+      panelOptions: {
+        allowDuplicates: false,
+      },
       Icon: Map,
     },
     {

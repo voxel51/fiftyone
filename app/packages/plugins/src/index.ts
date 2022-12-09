@@ -139,6 +139,11 @@ export enum PluginComponentType {
 }
 
 type PluginActivator = (props: any) => boolean;
+
+type PanelOptions = {
+  allowDuplicates?: boolean;
+};
+
 interface PluginComponentRegistration<T extends {} = {}> {
   name: string;
   label: string;
@@ -146,6 +151,7 @@ interface PluginComponentRegistration<T extends {} = {}> {
   component: FunctionComponent<T>;
   type: PluginComponentType;
   activator: PluginActivator;
+  panelOptions?: PanelOptions;
 }
 
 const DEFAULT_ACTIVATOR = () => true;
