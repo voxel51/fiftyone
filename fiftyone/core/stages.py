@@ -739,7 +739,9 @@ class ExcludeFields(ViewStage):
 
         return self._get_excluded_fields(sample_collection)
 
-    def _get_excluded_fields(self, sample_collection, use_db_fields=False):
+    def _get_excluded_fields(
+        self, sample_collection, use_db_fields=False, include_virtual=True
+    ):
         excluded_paths = set()
 
         if self._field_names is not None:
@@ -765,13 +767,24 @@ class ExcludeFields(ViewStage):
 
         excluded_paths = list(excluded_paths)
 
+        if not include_virtual:
+            virtual_paths = set(
+                sample_collection.get_field_schema(
+                    include_private=True, virtual=True, flat=True
+                ).keys()
+            )
+            if virtual_paths:
+                excluded_paths = [
+                    p for p in excluded_paths if p not in virtual_paths
+                ]
+
         if use_db_fields:
             return sample_collection._handle_db_fields(excluded_paths)
 
         return excluded_paths
 
     def _get_excluded_frame_fields(
-        self, sample_collection, use_db_fields=False
+        self, sample_collection, use_db_fields=False, include_virtual=True
     ):
         if not sample_collection._contains_videos():
             return None
@@ -797,6 +810,17 @@ class ExcludeFields(ViewStage):
 
         excluded_paths = list(excluded_paths)
 
+        if not include_virtual:
+            virtual_paths = set(
+                sample_collection.get_frame_field_schema(
+                    include_private=True, virtual=True, flat=True
+                ).keys()
+            )
+            if virtual_paths:
+                excluded_paths = [
+                    p for p in excluded_paths if p not in virtual_paths
+                ]
+
         if use_db_fields:
             return sample_collection._handle_db_fields(
                 excluded_paths, frames=True
@@ -806,12 +830,12 @@ class ExcludeFields(ViewStage):
 
     def to_mongo(self, sample_collection):
         excluded_paths = self._get_excluded_fields(
-            sample_collection, use_db_fields=True
+            sample_collection, use_db_fields=True, include_virtual=False
         )
 
         if sample_collection._contains_videos():
             excluded_frame_paths = self._get_excluded_frame_fields(
-                sample_collection, use_db_fields=True
+                sample_collection, use_db_fields=True, include_virtual=False
             )
             _merge_frame_paths(excluded_paths, excluded_frame_paths)
 
@@ -5353,6 +5377,93 @@ class MatchTags(ViewStage):
         ]
 
 
+class Materialize(ViewStage):
+    """Immediately materializes the virtual field(s) on a collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        dataset.add_sample_field(
+            "num_objects",
+            fo.IntField,
+            expr=F("ground_truth.detections").length(),
+        )
+
+        #
+        # Match based on a virtual field
+        #
+
+        view = dataset.materialize().match(F("num_objects") >= 30)
+
+        stage1 = fo.Materialize()
+        stage2 = fo.Match(F("num_objects") >= 30)
+        view = dataset.add_stage(stage1).add_stage(stage2)
+
+    Args:
+        fields (None): a name or iterable of names of virtual fields to
+            materialize. By default, all virtual fields are materialized
+    """
+
+    def __init__(self, fields=None):
+        if etau.is_str(fields):
+            fields = [fields]
+        elif fields is not None:
+            fields = list(fields)
+
+        self._fields = fields
+
+    @property
+    def fields(self):
+        """The list of field names to materialize."""
+        return self._fields
+
+    def to_mongo(self, sample_collection):
+        if self._fields is None:
+            attach_frames = self._needs_frames(sample_collection)
+        else:
+            attach_frames = None
+
+        virtual_op = sample_collection._dataset._set_virtual_fields_op(
+            view=sample_collection,
+            fields=self._fields,
+            attach_frames=attach_frames,
+        )
+
+        if virtual_op:
+            return [{"$set": virtual_op}]
+
+        return []
+
+    def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos():
+            return False
+
+        if self._fields is None:
+            return sample_collection.has_virtual_frame_fields
+
+        _, frame_fields = fou.split_frame_fields(self._fields)
+        return bool(frame_fields)
+
+    def _kwargs(self):
+        return [["fields", self._fields]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "fields",
+                "type": "NoneType|list<field>|field|list<str>|str",
+                "default": "None",
+                "placeholder": "list,of,fields",
+            }
+        ]
+
+
 class Mongo(ViewStage):
     """A view stage defined by a raw MongoDB aggregation pipeline.
 
@@ -5857,7 +5968,9 @@ class SelectFields(ViewStage):
 
         return self._get_selected_fields(sample_collection)
 
-    def _get_selected_fields(self, sample_collection, use_db_fields=False):
+    def _get_selected_fields(
+        self, sample_collection, use_db_fields=False, include_virtual=True
+    ):
         contains_videos = sample_collection._contains_videos()
         selected_paths = set()
 
@@ -5891,13 +6004,24 @@ class SelectFields(ViewStage):
         _remove_path_collisions(selected_paths)
         selected_paths = list(selected_paths)
 
+        if not include_virtual:
+            virtual_paths = set(
+                sample_collection.get_field_schema(
+                    include_private=True, virtual=True, flat=True
+                ).keys()
+            )
+            if virtual_paths:
+                selected_paths = [
+                    p for p in selected_paths if p not in virtual_paths
+                ]
+
         if use_db_fields:
             return sample_collection._handle_db_fields(selected_paths)
 
         return {path for path in selected_paths if path is not None}
 
     def _get_selected_frame_fields(
-        self, sample_collection, use_db_fields=False
+        self, sample_collection, use_db_fields=False, include_virtual=True
     ):
         if not sample_collection._contains_videos():
             return None
@@ -5927,6 +6051,17 @@ class SelectFields(ViewStage):
         _remove_path_collisions(selected_paths)
         selected_paths = list(selected_paths)
 
+        if not include_virtual:
+            virtual_paths = set(
+                sample_collection.get_frame_field_schema(
+                    include_private=True, virtual=True, flat=True
+                ).keys()
+            )
+            if virtual_paths:
+                selected_paths = [
+                    p for p in selected_paths if p not in virtual_paths
+                ]
+
         if use_db_fields:
             return sample_collection._handle_db_fields(
                 selected_paths, frames=True
@@ -5936,12 +6071,12 @@ class SelectFields(ViewStage):
 
     def to_mongo(self, sample_collection):
         selected_paths = self._get_selected_fields(
-            sample_collection, use_db_fields=True
+            sample_collection, use_db_fields=True, include_virtual=False
         )
 
         if sample_collection._contains_videos():
             selected_frame_paths = self._get_selected_frame_fields(
-                sample_collection, use_db_fields=True
+                sample_collection, use_db_fields=True, include_virtual=False
             )
             _merge_frame_paths(selected_paths, selected_frame_paths)
 
@@ -8388,6 +8523,7 @@ _STAGES = [
     MatchFrames,
     MatchLabels,
     MatchTags,
+    Materialize,
     Mongo,
     Shuffle,
     Select,

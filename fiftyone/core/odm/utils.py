@@ -16,6 +16,8 @@ from bson import Binary, json_util, ObjectId, SON
 import numpy as np
 import pytz
 
+import eta.core.utils as etau
+
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
@@ -183,6 +185,7 @@ def create_field(
     db_field=None,
     description=None,
     info=None,
+    expr=None,
     **kwargs,
 ):
     """Creates the field defined by the given specification.
@@ -214,6 +217,8 @@ def create_field(
             ``name`` is used
         description (None): an optional description
         info (None): an optional info dict
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression`
+            defining the field's virtual expression
 
     Returns:
         a :class:`fiftyone.core.fields.Field`
@@ -226,7 +231,11 @@ def create_field(
 
     # All user-defined fields are nullable
     field_kwargs = dict(
-        null=True, db_field=db_field, description=description, info=info
+        null=True,
+        db_field=db_field,
+        description=description,
+        info=info,
+        expr=expr,
     )
     field_kwargs.update(kwargs)
 
@@ -295,11 +304,15 @@ def get_field_kwargs(field):
     """Constructs the field keyword arguments dictionary for the given field.
 
     Args:
-        field: a :class:`fiftyone.core.fields.Field`
+        field: a :class:`fiftyone.core.fields.Field` or ``str(field)``
+            representation of one
 
     Returns:
         a field specification dict
     """
+    if etau.is_str(field):
+        return _parse_field_str(field)
+
     fields = []
 
     kwargs = {
@@ -308,6 +321,7 @@ def get_field_kwargs(field):
         "db_field": field.db_field,
         "description": field.description,
         "info": field.info,
+        "expr": field.expr,
     }
 
     if isinstance(field, (fof.ListField, fof.DictField)):
@@ -322,6 +336,23 @@ def get_field_kwargs(field):
                 _kwargs = get_field_kwargs(f)
                 _kwargs["name"] = f.name
                 fields.append(_kwargs)
+
+    return kwargs
+
+
+def _parse_field_str(field_str):
+    chunks = field_str.strip().split("(", 1)
+    ftype = etau.get_class(chunks[0])
+    kwargs = {"ftype": ftype}
+
+    if len(chunks) > 1:
+        param = etau.get_class(chunks[1][:-1])  # remove trailing ")"
+        if issubclass(ftype, fof.EmbeddedDocumentField):
+            kwargs["embedded_doc_type"] = param
+        elif issubclass(ftype, (fof.ListField, fof.DictField)):
+            kwargs["subfield"] = param
+        else:
+            raise ValueError("Failed to parse field string '%s'" % field_str)
 
     return kwargs
 
@@ -406,6 +437,7 @@ def _get_field_kwargs(value, field, dynamic):
         "db_field": field.db_field,
         "description": field.description,
         "info": field.info,
+        "expr": field.expr,
     }
 
     if isinstance(field, (fof.ListField, fof.DictField)):

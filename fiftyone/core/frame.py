@@ -11,6 +11,7 @@ from bson import ObjectId
 from pymongo import ReplaceOne, UpdateOne, DeleteOne, DeleteMany
 
 from fiftyone.core.document import Document, DocumentView
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
 from fiftyone.core.singletons import FrameSingleton
@@ -510,9 +511,7 @@ class Frames(object):
         return frame_numbers
 
     def _get_frame_db(self, frame_number):
-        return self._frame_collection.find_one(
-            {"_sample_id": self._sample_id, "frame_number": frame_number}
-        )
+        return _get_frame_db(self._dataset, self._sample_id, frame_number)
 
     def _get_frames_match_stage(self):
         if self._dataset._is_clips:
@@ -623,6 +622,10 @@ class Frames(object):
                         break
 
     def _iter_frames_db(self):
+        if self._dataset.has_virtual_frame_fields:
+            view = self._dataset.match(F("_id") == self._sample_id)
+            return view._aggregate(frames_only=True)
+
         pipeline = [
             self._get_frames_match_stage(),
             {"$sort": {"frame_number": 1}},
@@ -1080,9 +1083,7 @@ class Frame(Document, metaclass=FrameSingleton):
         if not self._in_db:
             return
 
-        d = self._dataset._frame_collection.find_one(
-            {"_sample_id": self._sample_id, "frame_number": self.frame_number}
-        )
+        d = _get_frame_db(self._dataset, self._sample_id, self.frame_number)
         self._doc = self._dataset._frame_dict_to_doc(d)
 
 
@@ -1142,3 +1143,30 @@ class FrameView(DocumentView):
     def _sample_id(self):
         _id = self._doc._sample_id
         return ObjectId(_id) if _id is not None else None
+
+
+def _get_frame_db(dataset, sample_id, frame_number):
+    if dataset.has_virtual_frame_fields:
+        view = dataset.match(F("_id") == sample_id)
+        try:
+            return next(
+                iter(
+                    view._aggregate(
+                        frames_only=True,
+                        post_pipeline=[
+                            {
+                                "$match": {
+                                    "_sample_id": sample_id,
+                                    "frame_number": frame_number,
+                                }
+                            }
+                        ],
+                    )
+                )
+            )
+        except StopIteration:
+            return None
+
+    return dataset._frame_collection.find_one(
+        {"_sample_id": sample_id, "frame_number": frame_number}
+    )

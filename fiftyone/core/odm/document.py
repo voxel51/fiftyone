@@ -342,7 +342,11 @@ class MongoEngineBaseDocument(SerializableDocument):
             doc = self.get_field(chunks[0])
             return doc.set_field(chunks[1], value, create=create)
 
-        if not create and not self.has_field(field_name):
+        if self.has_field(field_name):
+            # pylint: disable=no-member
+            if self._fields[field_name].is_virtual:
+                raise ValueError("Virtual fields cannot be edited")
+        elif not create:
             raise ValueError(
                 "%s has no field '%s'" % (self.__class__.__name__, field_name)
             )
@@ -419,7 +423,12 @@ class MongoEngineBaseDocument(SerializableDocument):
 
     def to_dict(self, extended=False):
         # pylint: disable=no-member
-        d = self.to_mongo(use_db_field=True)
+        fields = [
+            field_name
+            for field_name, field in self._fields.items()
+            if not getattr(field, "is_virtual", False)
+        ]
+        d = self.to_mongo(use_db_field=True, fields=fields)
 
         if not extended:
             return d

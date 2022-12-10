@@ -10,6 +10,7 @@ import os
 from bson import ObjectId
 
 from fiftyone.core.document import Document, DocumentView
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.labels as fol
@@ -523,7 +524,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         if not self._in_db:
             return
 
-        d = self._dataset._sample_collection.find_one({"_id": self._id})
+        d = _get_sample_db(self._dataset, self._id)
         self._doc = self._dataset._sample_dict_to_doc(d)
 
     def reload(self, hard=False):
@@ -779,3 +780,14 @@ def _is_frames_dict(label):
     return isinstance(label, dict) and fofu.is_frame_number(
         next(iter(label.keys()))
     )
+
+
+def _get_sample_db(dataset, _id):
+    if dataset.has_virtual_sample_fields:
+        view = dataset.match(F("_id") == _id)
+        try:
+            return next(view._aggregate())
+        except StopIteration:
+            return None
+
+    return dataset._sample_collection.find_one({"_id": _id})

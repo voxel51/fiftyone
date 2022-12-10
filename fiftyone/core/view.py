@@ -19,6 +19,7 @@ import eta.core.utils as etau
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
@@ -756,7 +757,7 @@ class DatasetView(foc.SampleCollection):
         group_field = self.group_field
         id_field = group_field + "._id"
 
-        view = self.match(foe.ViewField(id_field) == ObjectId(group_id))
+        view = self.match(F(id_field) == ObjectId(group_id))
 
         try:
             groups = view._iter_groups(group_slices=group_slices)
@@ -822,8 +823,10 @@ class DatasetView(foc.SampleCollection):
         self,
         ftype=None,
         embedded_doc_type=None,
+        virtual=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
         the view.
@@ -836,38 +839,44 @@ class DatasetView(foc.SampleCollection):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            virtual (None): whether to only include virtual (True) or
+                non-virtual (False) fields
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the ``ftype``, ``embedded_doc_type``
+                and ``virtual`` constraints before and/or after flattening the
+                schema. Only applicable when ``flat`` is True. Supported values
+                are ``("before", "after", "both")``. The default is ``"after"``
 
         Returns:
              a dictionary mapping field names to field types
         """
         schema = self._dataset.get_field_schema(
-            ftype=ftype,
-            embedded_doc_type=embedded_doc_type,
-            include_private=include_private,
+            include_private=include_private
         )
 
         schema = self._get_filtered_schema(schema)
 
-        if flat:
-            schema = fof.flatten_schema(
-                schema,
-                ftype=ftype,
-                embedded_doc_type=embedded_doc_type,
-                include_private=include_private,
-            )
-
-        return schema
+        return fof.filter_schema(
+            schema,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            virtual=virtual,
+            include_private=include_private,
+            flat=flat,
+            mode=mode,
+        )
 
     def get_frame_field_schema(
         self,
         ftype=None,
         embedded_doc_type=None,
+        virtual=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the view.
@@ -882,10 +891,16 @@ class DatasetView(foc.SampleCollection):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            virtual (None): whether to only include virtual (True) or
+                non-virtual (False) fields
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the ``ftype``, ``embedded_doc_type``
+                and ``virtual`` constraints before and/or after flattening the
+                schema. Only applicable when ``flat`` is True. Supported values
+                are ``("before", "after", "both")``. The default is ``"after"``
 
         Returns:
             a dictionary mapping field names to field types, or ``None`` if
@@ -895,22 +910,20 @@ class DatasetView(foc.SampleCollection):
             return None
 
         schema = self._dataset.get_frame_field_schema(
-            ftype=ftype,
-            embedded_doc_type=embedded_doc_type,
-            include_private=include_private,
+            include_private=include_private
         )
 
-        schema = self._get_filtered_schema(schema, frames=True)
+        schema = self._get_filtered_schema(schema)
 
-        if flat:
-            schema = fof.flatten_schema(
-                schema,
-                ftype=ftype,
-                embedded_doc_type=embedded_doc_type,
-                include_private=include_private,
-            )
-
-        return schema
+        return fof.filter_schema(
+            schema,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            virtual=virtual,
+            include_private=include_private,
+            flat=flat,
+            mode=mode,
+        )
 
     def clone_sample_field(self, field_name, new_field_name):
         """Clones the given sample field of the view into a new field of the
@@ -1407,6 +1420,8 @@ class DatasetView(foc.SampleCollection):
         self,
         pipeline=None,
         media_type=None,
+        attach_virtual=True,
+        detach_virtual=False,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
@@ -1430,6 +1445,11 @@ class DatasetView(foc.SampleCollection):
         _contains_groups = self._dataset.media_type == fom.GROUP
         _group_slices = set()
         _attach_groups_idx = None
+
+        if not _contains_videos:
+            attach_frames = False
+            detach_frames = False
+            frames_only = False
 
         idx = 0
         for stage in self._stages:
@@ -1550,8 +1570,32 @@ class DatasetView(foc.SampleCollection):
             )
             _pipelines.insert(_attach_groups_idx, _pipeline)
 
+        if detach_virtual and not pipeline:
+            attach_virtual = False
+
+        if not attach_virtual:
+            detach_virtual = False
+
+        # Populate virtual fields, if needed
+        if attach_virtual:
+            virtual_op = self._dataset._set_virtual_fields_op(
+                attach_frames=attach_frames, view=self
+            )
+            if virtual_op:
+                _pipelines.append([{"$set": virtual_op}])
+
+            attach_virtual = False
+
         if pipeline is not None:
             _pipelines.append(pipeline)
+
+        if detach_virtual:
+            if virtual_op:
+                _pipelines.append(
+                    [{"$project": {f: False for f in virtual_op.keys()}}]
+                )
+
+            detach_virtual = False
 
         _pipeline = list(itertools.chain.from_iterable(_pipelines))
 
@@ -1563,11 +1607,13 @@ class DatasetView(foc.SampleCollection):
 
         return self._dataset._pipeline(
             pipeline=_pipeline,
+            media_type=media_type,
+            attach_virtual=attach_virtual,
+            detach_virtual=detach_virtual,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
             support=support,
-            media_type=media_type,
             group_slice=group_slice,
             group_slices=group_slices,
             detach_groups=detach_groups,
@@ -1580,6 +1626,8 @@ class DatasetView(foc.SampleCollection):
         self,
         pipeline=None,
         media_type=None,
+        attach_virtual=True,
+        detach_virtual=False,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
@@ -1594,6 +1642,8 @@ class DatasetView(foc.SampleCollection):
         _pipeline = self._pipeline(
             pipeline=pipeline,
             media_type=media_type,
+            attach_virtual=attach_virtual,
+            detach_virtual=detach_virtual,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
