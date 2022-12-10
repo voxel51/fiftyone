@@ -5428,16 +5428,14 @@ class Materialize(ViewStage):
         else:
             attach_frames = None
 
-        virtual_op = sample_collection._dataset._set_virtual_fields_op(
+        dataset = sample_collection._dataset
+        pipeline, _ = dataset._attach_virtual_fields_pipeline(
             view=sample_collection,
             fields=self._fields,
             attach_frames=attach_frames,
         )
 
-        if virtual_op:
-            return [{"$set": virtual_op}]
-
-        return []
+        return pipeline
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():

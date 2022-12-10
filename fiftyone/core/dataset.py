@@ -3417,17 +3417,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self.delete_samples(samples_or_ids)
 
-    def save(self):
+    def save(self, fields=None, materialize=False):
         """Saves the dataset to the database.
 
-        This only needs to be called when dataset-level information such as its
-        :meth:`Dataset.info` is modified.
-        """
-        self._save()
+        This method only needs to be called in the following circumstances:
 
-    def _save(self, view=None, fields=None):
-        if view is not None:
-            _save_view(view, fields=fields)
+        -   when dataset-level information such as its :meth:`Dataset.info` has
+            been modified
+        -   when materializing virtual fields
+
+        Args:
+            fields (None): a field name or iterable of field names of virtual
+                fields. Only applicable when ``materialize`` is True
+            materialize (False): whether to materialize virtual fields into
+                regular fields. If True and ``fields`` is None, all virtual
+                fields are materialized by default
+        """
+        self._save(fields=fields, materialize=materialize)
+
+    def _save(self, view=None, fields=None, materialize=False):
+        if view is not None or fields is not None or materialize:
+            sample_collection = view if view is not None else self
+            _save_collection(
+                sample_collection, fields=fields, materialize=materialize
+            )
 
         try:
             self._doc.save(safe=True)
@@ -6110,7 +6123,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             contains_videos = self._contains_videos(any_slice=True)
 
-        if detach_virtual and not pipeline:
+        # No need to attach virtual fields in this case
+        if detach_virtual == True and not pipeline:
             attach_virtual = False
 
         if not attach_virtual:
@@ -6155,22 +6169,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._attach_groups_pipeline(group_slices=group_slices)
             )
 
-        # Populate virtual fields, if needed
         if attach_virtual:
-            virtual_op = self._set_virtual_fields_op(
-                attach_frames=attach_frames
+            (
+                virtual_pipeline,
+                detach_virtual,
+            ) = self._attach_virtual_fields_pipeline(
+                detach_virtual=detach_virtual,
+                attach_frames=attach_frames,
+                detach_frames=detach_frames,
             )
-            if virtual_op:
-                _pipeline.append({"$set": virtual_op})
+            _pipeline.extend(virtual_pipeline)
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
 
         if detach_virtual:
-            if virtual_op:
-                _pipeline.append(
-                    {"$project": {f: False for f in virtual_op.keys()}}
-                )
+            _pipeline.append({"$project": {f: False for f in detach_virtual}})
 
         if detach_frames:
             _pipeline.append({"$project": {"frames": False}})
@@ -6189,13 +6203,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return _pipeline
 
-    def _set_virtual_fields_op(
-        self, view=None, fields=None, attach_frames=None
+    def _attach_virtual_fields_pipeline(
+        self,
+        view=None,
+        fields=None,
+        detach_virtual=None,
+        attach_frames=None,
+        detach_frames=None,
     ):
-        if view is not None:
-            sample_collection = view
-        else:
-            sample_collection = self
+        if view is None:
+            view = self
+
+        contains_videos = view._contains_videos()
 
         if fields is not None:
             if etau.is_str(fields):
@@ -6203,7 +6222,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             else:
                 fields = list(fields)
 
-            if sample_collection._contains_videos():
+            if contains_videos:
                 sample_fields, frame_fields = fou.split_frame_fields(fields)
             else:
                 sample_fields = fields
@@ -6214,7 +6233,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         virtual_op = {}
 
-        schema = sample_collection.get_field_schema(virtual=True, flat=True)
+        schema = view.get_virtual_field_schema()
 
         if sample_fields is not None:
             schema = {
@@ -6225,9 +6244,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             virtual_op.update(field._set_field_expr())
 
         if attach_frames:
-            schema = sample_collection.get_frame_field_schema(
-                virtual=True, flat=True
-            )
+            schema = view.get_virtual_frame_field_schema()
+            if schema is None:
+                schema = {}
 
             if frame_fields is not None:
                 schema = {
@@ -6237,7 +6256,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for field in schema.values():
                 virtual_op.update(field._set_field_expr())
 
-        return virtual_op
+        if virtual_op:
+            virtual_pipeline = [{"$set": virtual_op}]
+        else:
+            virtual_pipeline = []
+
+        if detach_virtual not in (None, False):
+            if detach_virtual == True:
+                detach_virtual = list(virtual_op.keys())
+            elif etau.is_str(detach_virtual):
+                detach_virtual = [detach_virtual]
+            else:
+                detach_virtual = list(detach_virtual)
+
+            if detach_frames and contains_videos:
+                # No need to detach virtual frame fields
+                detach_virtual, _ = fou.split_frame_fields(detach_virtual)
+
+        return virtual_pipeline, detach_virtual
 
     def _attach_frames_pipeline(self, support=None):
         """A pipeline that attaches the frame documents for each document."""
@@ -7153,12 +7189,14 @@ def _get_frames_pipeline(sample_collection):
     return coll, pipeline
 
 
-def _save_view(view, fields=None):
+def _save_collection(sample_collection, fields=None, materialize=False):
     # Note: for grouped views, only the active slice's contents are saved,
     # since views cannot edit other slices
 
-    dataset = view._dataset
+    dataset = sample_collection._dataset
+    view = sample_collection
 
+    full_dataset = dataset is view
     contains_videos = view._contains_videos()
     all_fields = fields is None
 
@@ -7173,6 +7211,69 @@ def _save_view(view, fields=None):
     else:
         sample_fields = fields
         frame_fields = []
+
+    virtual_schema = view.get_virtual_field_schema()
+    if contains_videos:
+        virtual_frame_schema = view.get_virtual_frame_field_schema()
+    else:
+        virtual_frame_schema = None
+
+    if materialize:
+        materialize_fields = []
+        detach_virtual = []
+
+        if all_fields:
+            materialize_fields.extend(virtual_schema.values())
+        else:
+            _sample_fields = set(sample_fields)
+            materialize_fields.extend(
+                field
+                for path, field in virtual_schema.items()
+                if path in _sample_fields
+            )
+            detach_virtual.extend(set(virtual_schema.keys()) - _sample_fields)
+
+        if contains_videos:
+            if all_fields:
+                materialize_fields.extend(virtual_frame_schema.values())
+            else:
+                _frame_fields = set(frame_fields)
+                materialize_fields.extend(
+                    field
+                    for path, field in virtual_frame_schema.items()
+                    if path in _frame_fields
+                )
+                detach_virtual.extend(
+                    view._FRAMES_PREFIX + f
+                    for f in set(virtual_frame_schema.keys()) - _frame_fields
+                )
+    else:
+        materialize_fields = []
+        detach_virtual = True
+
+        if not all_fields:
+            for i, field in reversed(list(enumerate(sample_fields))):
+                if field in virtual_schema:
+                    logger.warning(
+                        "Skipping virtual field '%s' when materialize=%s",
+                        field,
+                        materialize,
+                    )
+                    del sample_fields[i]
+
+            if contains_videos:
+                for i, field in reversed(list(enumerate(frame_fields))):
+                    if field in virtual_frame_schema:
+                        logger.warning(
+                            "Skipping virtual frame field '%s' when "
+                            "materialize=%s",
+                            field,
+                            materialize,
+                        )
+                        del frame_fields[i]
+
+    if full_dataset and not materialize_fields:
+        return
 
     if sample_fields:
         sample_fields = dataset._handle_db_fields(sample_fields)
@@ -7191,7 +7292,7 @@ def _save_view(view, fields=None):
     #
 
     pipeline = view._pipeline(
-        detach_virtual=True, detach_frames=True, detach_groups=True
+        detach_virtual=detach_virtual, detach_frames=True, detach_groups=True
     )
 
     if sample_fields:
@@ -7216,7 +7317,9 @@ def _save_view(view, fields=None):
     if save_frames:
         # The view may modify the frames, so we route the frames through the
         # sample collection
-        pipeline = view._pipeline(detach_virtual=True, frames_only=True)
+        pipeline = view._pipeline(
+            detach_virtual=detach_virtual, frames_only=True
+        )
 
         # Clips datasets may contain overlapping clips, so we must select only
         # the first occurrance of each frame
@@ -7242,6 +7345,14 @@ def _save_view(view, fields=None):
                 }
             )
             foo.aggregate(dataset._sample_collection, pipeline)
+
+    #
+    # Convert materialized fields to regular fields
+    #
+
+    for field in materialize_fields:
+        field.expr = None
+        field.save()
 
     #
     # Reload in-memory documents

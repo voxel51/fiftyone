@@ -1228,7 +1228,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._ensure_frames(view=self)
 
-    def save(self, fields=None):
+    def save(self, fields=None, materialize=False):
         """Saves the contents of the view to the database.
 
         This method **does not** delete samples or frames from the underlying
@@ -1247,10 +1247,13 @@ class DatasetView(foc.SampleCollection):
             ``fields`` is used to omit such fields from the save.
 
         Args:
-            fields (None): an optional field or list of fields to save. If
+            fields (None): an optional field or iterable of fields to save. If
                 specified, only these field's contents are modified
+            materialize (False): whether to materialize virtual fields into
+                regular fields. If True and ``fields`` is None, all virtual
+                fields are materialized by default
         """
-        self._dataset._save(view=self, fields=fields)
+        self._dataset._save(view=self, fields=fields, materialize=materialize)
 
     def clone(self, name=None, persistent=False):
         """Creates a new dataset containing a copy of the contents of the view.
@@ -1570,31 +1573,33 @@ class DatasetView(foc.SampleCollection):
             )
             _pipelines.insert(_attach_groups_idx, _pipeline)
 
-        if detach_virtual and not pipeline:
+        # No need to attach virtual fields in this case
+        if detach_virtual == True and not pipeline:
             attach_virtual = False
 
         if not attach_virtual:
             detach_virtual = False
 
-        # Populate virtual fields, if needed
         if attach_virtual:
-            virtual_op = self._dataset._set_virtual_fields_op(
-                attach_frames=attach_frames, view=self
+            (
+                virtual_pipeline,
+                detach_virtual,
+            ) = self._dataset._attach_virtual_fields_pipeline(
+                view=self,
+                detach_virtual=detach_virtual,
+                attach_frames=attach_frames,
+                detach_frames=detach_frames,
             )
-            if virtual_op:
-                _pipelines.append([{"$set": virtual_op}])
-
+            _pipelines.append(virtual_pipeline)
             attach_virtual = False
 
         if pipeline is not None:
             _pipelines.append(pipeline)
 
         if detach_virtual:
-            if virtual_op:
-                _pipelines.append(
-                    [{"$project": {f: False for f in virtual_op.keys()}}]
-                )
-
+            _pipelines.append(
+                [{"$project": {f: False for f in detach_virtual}}]
+            )
             detach_virtual = False
 
         _pipeline = list(itertools.chain.from_iterable(_pipelines))

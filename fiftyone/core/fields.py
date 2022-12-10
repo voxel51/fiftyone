@@ -522,6 +522,8 @@ class Field(mongoengine.fields.BaseField):
     @expr.setter
     def expr(self, expr):
         self._expr = expr
+        if expr is None:
+            self.__set_expr = None
 
     def _set_field_expr(self):
         if self.path is None or self._expr is None:
