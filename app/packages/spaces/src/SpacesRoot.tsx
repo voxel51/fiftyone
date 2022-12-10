@@ -284,6 +284,8 @@ const spaceSelector = selectorFamily({
     },
 });
 
+const panelTitlesState = atom({ key: "panelTitles", default: new Map() });
+
 export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
   const [state, setState] = useRecoilState(spaceSelector(id));
 
@@ -332,26 +334,27 @@ function usePanel(id: SpaceNodeType) {
   const panels = usePanels();
   return panels.find(({ name }) => name === id);
 }
+/**
+ * Spaces hook to dynamically set the title of a panel from the component of
+ *  a panel
+ */
+export function usePanelTitle(id: string) {
+  const [panelTitles, setPanelTitles] = useRecoilState(panelTitlesState);
+  const panelTitle = panelTitles.get(id);
+
+  function setPanelTitle(title: string) {
+    const updatedPanelTitles = new Map(panelTitles);
+    updatedPanelTitles.set(id, title);
+    setPanelTitles(updatedPanelTitles);
+  }
+  return [panelTitle, setPanelTitle];
+}
 
 export function SpacesRoot(props: SpacesRootProps) {
   const { id, defaultState } = props;
   const { spaces } = useSpaces(id, defaultState);
   return <Space node={spaces.root} id={id} />;
 }
-
-type SpacesRootProps = {
-  id: string;
-  defaultState?: SpaceNodeJSON;
-};
-
-type AddPanelItemProps = {
-  node: SpaceNode;
-  name: SpaceNodeType;
-  label: string;
-  Icon?: React.ComponentType;
-  onClick?: Function;
-  spaceId: string;
-};
 
 function AddPanelItem({
   node,
@@ -518,10 +521,6 @@ export function Panel({ node }: PanelProps) {
   );
 }
 
-type PanelIconProps = {
-  name: SpaceNodeType;
-};
-
 function PanelIcon(props: PanelIconProps) {
   const { name } = props;
   const panel = usePanel(name);
@@ -530,7 +529,12 @@ function PanelIcon(props: PanelIconProps) {
   const PanelTabIcon = Icon || ExtensionIcon;
   return (
     <PanelTabIcon
-      style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }}
+      style={{
+        width: "1rem",
+        height: "1rem",
+        marginRight: "0.5rem",
+        verticalAlign: "sub",
+      }}
     />
   );
 }
@@ -539,7 +543,10 @@ function PanelTab({ node, active, spaceId }: PanelTabProps) {
   const { spaces } = useSpaces(spaceId);
   const panelName = node.type;
   const panel = usePanel(panelName);
+  const [title] = usePanelTitle(node.id);
+
   if (!panel) return panelNotFoundError(panelName);
+
   return (
     <StyledTab
       onClick={() => {
@@ -548,7 +555,7 @@ function PanelTab({ node, active, spaceId }: PanelTabProps) {
       active={active}
     >
       <PanelIcon name={panelName as string} />
-      {panel.label}
+      {title || panel.label}
       {!node.pinned && (
         <StyleCloseButton
           onClick={(e) => {
@@ -607,6 +614,7 @@ const StyledPanelItem = styled.div`
   cursor: pointer;
   padding: 4px 8px;
   transition: background ease 0.25s;
+
   &:hover {
     background: #2b2b2b;
   }
@@ -644,6 +652,24 @@ const StyleCloseButton = styled.button`
  *  ---------- Types ----------
  *
  */
+
+type SpacesRootProps = {
+  id: string;
+  defaultState?: SpaceNodeJSON;
+};
+
+type AddPanelItemProps = {
+  node: SpaceNode;
+  name: SpaceNodeType;
+  label: string;
+  Icon?: React.ComponentType;
+  onClick?: Function;
+  spaceId: string;
+};
+
+type PanelIconProps = {
+  name: SpaceNodeType;
+};
 
 type SpaceNodeType = EnumType | string;
 

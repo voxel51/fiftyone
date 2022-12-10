@@ -1,7 +1,8 @@
 import React from "react";
 import { selectorFamily } from "recoil";
 import styled from "styled-components";
-import { Apps, BarChart, Map, ScatterPlot } from "@mui/icons-material";
+import { Apps, BarChart, Map, ScatterPlot, Ballot } from "@mui/icons-material";
+import { usePanelTitle } from "./SpacesRoot";
 
 export namespace State {
   export enum SPACE {
@@ -20,8 +21,11 @@ export const fieldSchema = selectorFamily({
 export enum PluginComponentType {
   Visualizer,
   Plot,
+  Panel,
 }
-export function useActivePlugins() {
+
+export function useActivePlugins(type: PluginComponentType) {
+  if (type !== PluginComponentType.Panel) return [];
   return [
     {
       name: "Samples",
@@ -31,6 +35,7 @@ export function useActivePlugins() {
         allowDuplicates: false,
       },
       Icon: Apps,
+      type: PluginComponentType.Panel,
     },
     {
       name: "Map",
@@ -40,18 +45,31 @@ export function useActivePlugins() {
         allowDuplicates: false,
       },
       Icon: Map,
+      type: PluginComponentType.Panel,
     },
     {
       name: "Histograms",
       label: "Histograms",
       component: () => <h1>Histograms</h1>,
       Icon: BarChart,
+      type: PluginComponentType.Panel,
     },
     {
       name: "Embeddings",
       label: "Embeddings",
       component: () => <h1>Embeddings</h1>,
       Icon: ScatterPlot,
+      type: PluginComponentType.Panel,
+    },
+    {
+      name: "Form",
+      label: "Form",
+      component: (props) => {
+        const [title, setTitle] = usePanelTitle(props.panelNode.id);
+        return <input type="text" onChange={(e) => setTitle(e.target.value)} />;
+      },
+      Icon: Ballot,
+      type: PluginComponentType.Panel,
     },
   ];
 }
