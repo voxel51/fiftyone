@@ -1262,7 +1262,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 are ``("before", "after", "both")``. The default is ``"after"``
 
         Returns:
-             a dictionary mapping field names to field types
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances
         """
         return self._sample_doc_cls.get_field_schema(
             ftype=ftype,
@@ -1307,8 +1308,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 are ``("before", "after", "both")``. The default is ``"after"``
 
         Returns:
-            a dictionary mapping field names to field types, or ``None`` if the
-            dataset does not contain videos
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances, or ``None`` if the dataset does not contain videos
         """
         if not self._has_frame_fields():
             return None

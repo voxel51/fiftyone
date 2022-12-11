@@ -212,7 +212,7 @@ def filter_schema(
     """Filters the schema according to the given constraints.
 
     Args:
-        schema: a dict mapping field names to field types
+        schema: a dict mapping field names to :class:`Field` instances
         ftype (None): an optional field type or iterable of types to which
             to restrict the returned schema. Must be subclass(es) of
             :class:`Field`
@@ -232,7 +232,7 @@ def filter_schema(
             are ``("before", "after", "both")``. The default is ``"after"``
 
     Returns:
-         a dict mapping field names to field types
+        a dict mapping field names to :class:`Field` instances
     """
     has_contraints = validate_type_constraints(
         ftype=ftype, embedded_doc_type=embedded_doc_type, virtual=virtual
@@ -291,11 +291,11 @@ def flatten_schema(
     virtual=None,
     include_private=False,
 ):
-    """Returns a flattened copy of the given schema where all embedded document
+    """Returns a flat version of the given schema where all embedded document
     fields are included as top-level keys.
 
     Args:
-        schema: a dict mapping keys to :class:`Field` instances
+        schema: a dict mapping field names to :class:`Field` instances
         ftype (None): an optional field type or iterable of types to which to
             restrict the returned schema. Must be subclass(es) of
             :class:`Field`
@@ -308,7 +308,7 @@ def flatten_schema(
             ``_`` in the returned schema
 
     Returns:
-        a dictionary mapping flattened paths to :class:`Field` instances
+        a dict mapping flattened paths to :class:`Field` instances
     """
     validate_type_constraints(
         ftype=ftype, embedded_doc_type=embedded_doc_type, virtual=virtual
@@ -1613,7 +1613,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                 are ``("before", "after", "both")``. The default is ``"after"``
 
         Returns:
-             a dict mapping field names to field types
+            a dict mapping field names to :class:`Field` instances
         """
         schema = {
             field_name: self._fields[field_name]

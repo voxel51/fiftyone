@@ -190,7 +190,8 @@ class DatasetMixin(object):
                 are ``("before", "after", "both")``. The default is ``"after"``
 
         Returns:
-             a dictionary mapping field names to field types
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances
         """
         schema = OrderedDict(
             (fn, cls._fields[fn])  # pylint: disable=no-member
@@ -218,8 +219,7 @@ class DatasetMixin(object):
         """Merges the field schema into this document.
 
         Args:
-            schema: a dictionary mapping field names or
-                ``embedded.field.names`` to
+            schema: a dict mapping field names or ``embedded.field.names``to
                 :class:`fiftyone.core.fields.Field` instances
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that fields already exist with
