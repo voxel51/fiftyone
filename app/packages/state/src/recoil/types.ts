@@ -8,6 +8,11 @@ export namespace State {
     SAMPLE = "SAMPLE",
   }
 
+  /**
+   * An object containing the configuration for plugins.
+   * Each key is the name of a plugin, and the value is the
+   * configuration for that plugin.
+   */
   export type PluginConfig = { [pluginName: string]: object };
   export interface Config {
     colorPool: string[];
@@ -133,6 +138,9 @@ export namespace State {
     info: { [key: string]: string };
   }
 
+  /**
+   * @hidden
+   */
   export interface Filter {}
 
   export enum TagKey {
