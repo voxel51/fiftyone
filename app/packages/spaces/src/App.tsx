@@ -1,7 +1,6 @@
-import React from "react";
 import ReactDOM from "react-dom/client";
 import { RecoilRoot } from "recoil";
-import { SpacesRoot } from "./SpacesRoot";
+import { SpacesRoot } from "./";
 import "./App.css";
 
 function App() {

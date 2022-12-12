@@ -1,0 +1,112 @@
+import { Layout } from "./enums";
+import SpaceNode from "./SpaceNode";
+import { spaceNodeFromJSON } from "./utils";
+
+// a class for querying and manipulating the space tree
+// the space tree has a root node and each node has a list of children
+// each node can have a tab associated with it
+// the class should be able to re-organize the tree based on the layout
+export default class SpaceTree {
+  // the root node of the tree
+  root: SpaceNode;
+  onUpdate: Function = () => {};
+
+  // the constructor takes the root node, the selected node, and the layout
+  constructor(serializedTree?: any, onTreeUpdate?: Function) {
+    this.root = serializedTree
+      ? spaceNodeFromJSON(serializedTree)
+      : new SpaceNode("root");
+    if (onTreeUpdate) this.onUpdate = onTreeUpdate;
+  }
+
+  updateTree(node: SpaceNode) {
+    let rootNode = node;
+    while (rootNode.parent) {
+      rootNode = rootNode.parent;
+    }
+    this.onUpdate(rootNode.toJSON());
+  }
+
+  // a method for adding a new node to the tree
+  // the new node is added as a child of the selected node
+  // the new node is selected
+  addNodeAfter(node: SpaceNode, newNode: SpaceNode) {
+    node.append(newNode);
+    node.activeChild = newNode.id;
+    this.updateTree(node);
+  }
+
+  joinNode(node: SpaceNode) {
+    if (node.isSpaceContainer() && node.children.length === 1) {
+      for (const child of node.firstChild().children) {
+        this.moveNode(child, node);
+      }
+      node.activeChild = node.firstChild().activeChild;
+      node.firstChild().remove();
+      node.layout = undefined;
+      this.updateTree(node);
+    }
+  }
+
+  removeNode(node: SpaceNode) {
+    const parentNode = node.parent;
+    let ancestorNode = parentNode;
+    if (parentNode?.parent && parentNode?.children.length === 1) {
+      ancestorNode = parentNode?.parent;
+      parentNode?.remove();
+      this.joinNode(ancestorNode);
+    } else if (ancestorNode) {
+      node.remove();
+      ancestorNode.activeChild = ancestorNode?.getLastPanel()?.id;
+    }
+    if (ancestorNode) this.updateTree(ancestorNode);
+  }
+
+  setNodeActive(node: SpaceNode) {
+    if (node.parent) {
+      node.parent.activeChild = node.id;
+      this.updateTree(node);
+    }
+  }
+
+  // a method for moving a node in the tree
+  // the node is moved to the new parent
+  // the node is selected
+  moveNode(node: SpaceNode, newParent: SpaceNode) {
+    // remove the node from its current parent
+    node.remove();
+
+    // add the node to the new parent
+    newParent.append(node);
+    this.updateTree(node);
+  }
+  canSplitLayout(node: SpaceNode) {
+    // can split a space if it has more than one panel
+    // and node is root (limit to allow splitting only once)
+    return node.getPanels().length > 1 && node.isRoot();
+  }
+  splitLayout(node: SpaceNode, layout?: Layout) {
+    const newNodeA = new SpaceNode();
+    const newNodeB = new SpaceNode();
+    const lastPanel = node.getLastPanel();
+
+    // move all the current children to the new node
+    this.moveNode(lastPanel, newNodeB);
+    for (const child of node.children) {
+      this.moveNode(child, newNodeA);
+    }
+    // insert the new nodes into the now empty node
+    node.append(newNodeA);
+    node.append(newNodeB);
+    newNodeA.activeChild =
+      node.activeChild === lastPanel.id
+        ? newNodeA.getLastPanel().id
+        : node.activeChild;
+    newNodeB.activeChild = lastPanel.id;
+    node.layout = layout;
+    this.updateTree(node);
+  }
+  toJSON() {
+    return this.root.toJSON();
+  }
+}

@@ -1,8 +1,7 @@
-import React from "react";
+import { Apps, Ballot, BarChart, Map, ScatterPlot } from "@mui/icons-material";
 import { selectorFamily } from "recoil";
 import styled from "styled-components";
-import { Apps, BarChart, Map, ScatterPlot, Ballot } from "@mui/icons-material";
-import { usePanelTitle } from "./SpacesRoot";
+import { usePanelTitle } from "./hooks";
 
 export namespace State {
   export enum SPACE {

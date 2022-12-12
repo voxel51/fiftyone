@@ -1,18 +1,13 @@
 import path from "path";
 import { defineConfig, UserConfig } from "vite";
-import reactRefresh from "@vitejs/plugin-react-refresh";
+import react from "@vitejs/plugin-react";
 import relay from "vite-plugin-relay";
 import { viteExternalsPlugin } from "vite-plugin-externals";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const config: UserConfig = {
-    plugins: [
-      reactRefresh({
-        parserPlugins: ["classProperties", "classPrivateProperties"],
-      }),
-      relay,
-    ],
+    plugins: [react(), relay],
   };
 
   if (mode === "production") {
@@ -22,19 +17,21 @@ export default defineConfig(({ mode }) => {
         "react-dom": "ReactDOM",
         recoil: "recoil",
         "@fiftyone/state": "__fos__",
+        "@fiftyone/components": "__foc__",
+        "@fiftyone/plugins": "__fop__",
+        "@mui/icons-material": "__muiim__",
+        "re-resizable": "ReResizable",
+        "styled-components": "StyledComponents",
+        typescript: "Typescript",
       })
     );
     config.build = {
       minify: true,
       lib: {
-        entry: path.resolve(__dirname, "./src/SpacesRoot.tsx"),
+        entry: path.resolve(__dirname, "./src/index.ts"),
         formats: ["es"],
       },
       target: "es2015",
-    };
-
-    config.optimizeDeps = {
-      exclude: ["react", "react-dom"],
     };
   } else {
     config.resolve = {
