@@ -26,6 +26,7 @@ import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
@@ -154,6 +155,23 @@ class ViewStage(object):
 
         Returns:
             a list of fields, or ``None`` if no fields have been selected
+        """
+        return None
+
+    def get_virtual_fields(self, sample_collection, frames=False):
+        """Returns a dict of virtual fields that have been added by the stage,
+        if any.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+            frames (False): whether to return sample-level (False) or
+                frame-level (True) fields
+
+        Returns:
+            a dict mapping paths to :class:`fiftyone.core.fields.Field`
+            instances, or ``None`` if no fields have been added
         """
         return None
 
@@ -4170,18 +4188,27 @@ class SetField(ViewStage):
         expr: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the field value to set
+        virtual (None): a dict of keyword arguments for
+            :func:`fiftyone.core.odm.create_field`
+        **kwargs: keyword arguments for :func:`fiftyone.core.odm.create_field`
     """
 
-    def __init__(self, field, expr, _allow_missing=False):
+    def __init__(
+        self, field, expr, virtual=None, _allow_missing=False, **kwargs
+    ):
         if isinstance(expr, MongoEngineBaseDocument):
             expr = expr.to_dict()
             expr.pop("_id", None)
 
+        virtual = self._parse_virtual_kwargs(virtual=virtual, **kwargs)
+
         self._field = field
         self._expr = expr
+        self._virtual = virtual
         self._allow_missing = _allow_missing
         self._pipeline = None
         self._expr_dict = None
+        self._virtual_field = None
 
     @property
     def field(self):
@@ -4193,6 +4220,11 @@ class SetField(ViewStage):
         """The expression to apply."""
         return self._expr
 
+    @property
+    def virtual(self):
+        """Virtual field parameters."""
+        return self._virtual
+
     def to_mongo(self, sample_collection):
         if self._pipeline is None:
             raise ValueError(
@@ -4201,6 +4233,23 @@ class SetField(ViewStage):
             )
 
         return self._pipeline
+
+    def get_virtual_fields(self, sample_collection, frames=False):
+        if self._virtual_field is None:
+            return None
+
+        if sample_collection._contains_videos():
+            path, is_frame_field = sample_collection._handle_frame_field(
+                self._field
+            )
+        else:
+            path = self._field
+            is_frame_field = False
+
+        if frames != is_frame_field:
+            return None
+
+        return {path: self._virtual_field}
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -4220,10 +4269,20 @@ class SetField(ViewStage):
 
         return list(group_slices)
 
+    def _parse_virtual_kwargs(self, virtual=None, **kwargs):
+        if kwargs:
+            if virtual is None:
+                virtual = kwargs
+            else:
+                virtual.update(kwargs)
+
+        return virtual
+
     def _kwargs(self):
         return [
             ["field", self._field],
             ["expr", self._get_mongo_expr()],
+            ["virtual", self._virtual],
             ["_allow_missing", self._allow_missing],
         ]
 
@@ -4232,6 +4291,12 @@ class SetField(ViewStage):
         return [
             {"name": "field", "type": "field|str"},
             {"name": "expr", "type": "json", "placeholder": ""},
+            {
+                "name": "virtual",
+                "type": "NoneType|json",
+                "default": "None",
+                "placeholder": "virtual (default=None)",
+            },
             {"name": "_allow_missing", "type": "bool", "default": "False"},
         ]
 
@@ -4253,17 +4318,47 @@ class SetField(ViewStage):
         return foe.to_mongo(self._expr, prefix=prefix)
 
     def validate(self, sample_collection):
-        if not self._allow_missing:
+        allow_missing = self._allow_missing
+
+        if self._virtual:
+            path = self._field
+            field_name, _ = sample_collection._handle_frame_field(path)
+
+            # Setting new top-level virtual fields is always allowed
+            if "." not in field_name:
+                allow_missing = True
+
+        if not allow_missing:
             sample_collection.validate_fields_exist(self._field)
 
         pipeline, expr_dict = sample_collection._make_set_field_pipeline(
             self._field,
             self._expr,
             embedded_root=True,
-            allow_missing=self._allow_missing,
+            allow_missing=allow_missing,
         )
-        self._pipeline = pipeline
         self._expr_dict = expr_dict
+
+        if self._virtual:
+            field = sample_collection.get_field(path)
+            if field is not None:
+                raise ValueError(
+                    "Cannot overwrite existing field '%s' with a virtual "
+                    "field" % path
+                )
+
+            set_expr = pipeline[0]["$set"]
+
+            virtual_field = foo.create_field(
+                field_name, expr=expr_dict, **self._virtual
+            )
+            virtual_field._set_dataset(None, path, set_expr=set_expr)
+
+            self._pipeline = []
+            self._virtual_field = virtual_field
+        else:
+            self._pipeline = pipeline
+            self._virtual_field = None
 
 
 class Match(ViewStage):

@@ -389,31 +389,24 @@ class Field(mongoengine.fields.BaseField):
         self._info = info
         self._expr = expr
 
-        self.__dataset = None
-        self.__path = None
-        self.__set_expr = None
+        self._dataset = None
+        self._path = None
+        self._set_expr = None
 
     def __str__(self):
         return etau.get_class_name(self)
 
-    def _set_dataset(self, dataset, path):
-        self.__dataset = dataset
-        self.__path = path
-        self.__set_expr = None
-
-    @property
-    def _dataset(self):
-        """The :class:`fiftyone.core.dataset.Dataset` that this field belongs
-        to, or ``None`` if the field is not associated with a dataset.
-        """
-        return self.__dataset
+    def _set_dataset(self, dataset, path, set_expr=None):
+        self._dataset = dataset
+        self._path = path
+        self._set_expr = set_expr
 
     @property
     def path(self):
         """The fully-qualified path of this field in the dataset's schema, or
         ``None`` if the field is not associated with a dataset.
         """
-        return self.__path
+        return self._path
 
     @property
     def description(self):
@@ -523,24 +516,20 @@ class Field(mongoengine.fields.BaseField):
     def expr(self, expr):
         self._expr = expr
         if expr is None:
-            self.__set_expr = None
+            self._set_expr = None
 
     def _set_field_expr(self):
         if self.path is None or self._expr is None:
             return None
 
-        if getattr(self, "__set_expr", None) is None:
+        if getattr(self, "_set_expr", None) is None:
             pipeline, expr_dict = self._dataset._make_set_field_pipeline(
-                self.path,
-                self._expr,
-                embedded_root=True,
-                allow_missing=True,
+                self.path, self._expr, embedded_root=True
             )
-
-            self.__set_expr = pipeline[0]["$set"]
+            self._set_expr = pipeline[0]["$set"]
             self._expr = expr_dict
 
-        return self.__set_expr
+        return self._set_expr
 
     @property
     def is_virtual(self):
@@ -591,10 +580,10 @@ class Field(mongoengine.fields.BaseField):
             print(field.description)  # 'Area of the box, in pixels^2'
             field.info = {"url": "https://fiftyone.ai"}
         """
-        if self.__dataset is None:
+        if self._dataset is None:
             return
 
-        self.__dataset._save_field(self)
+        self._dataset._save_field(self)
 
 
 class IntField(mongoengine.fields.IntField, Field):
@@ -847,8 +836,8 @@ class ListField(mongoengine.fields.ListField, Field):
 
         return etau.get_class_name(self)
 
-    def _set_dataset(self, dataset, path):
-        super()._set_dataset(dataset, path)
+    def _set_dataset(self, dataset, path, set_expr=None):
+        super()._set_dataset(dataset, path, set_expr=set_expr)
 
         if self.field is not None:
             self.field._set_dataset(dataset, path)
@@ -924,8 +913,8 @@ class DictField(mongoengine.fields.DictField, Field):
 
         return etau.get_class_name(self)
 
-    def _set_dataset(self, dataset, path):
-        super()._set_dataset(dataset, path)
+    def _set_dataset(self, dataset, path, set_expr=None):
+        super()._set_dataset(dataset, path, set_expr=set_expr)
 
         if self.field is not None:
             self.field._set_dataset(dataset, path)
@@ -1469,6 +1458,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         self._expr = expr
         self._selected_fields = None
         self._excluded_fields = None
+        self._virtual_fields = None
         self.__fields = None
 
     def __str__(self):
@@ -1477,8 +1467,8 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             etau.get_class_name(self.document_type),
         )
 
-    def _set_dataset(self, dataset, path):
-        super()._set_dataset(dataset, path)
+    def _set_dataset(self, dataset, path, set_expr=None):
+        super()._set_dataset(dataset, path, set_expr=set_expr)
 
         for field_name, field in self._fields.items():
             if not isinstance(field, Field):
@@ -1501,13 +1491,19 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
         return self.__fields
 
-    def _use_view(self, selected_fields=None, excluded_fields=None):
+    def _use_view(
+        self, selected_fields=None, excluded_fields=None, virtual_fields=None
+    ):
         if selected_fields is not None and excluded_fields is not None:
             selected_fields = selected_fields.difference(excluded_fields)
             excluded_fields = None
 
+        if virtual_fields is not None:
+            self._fields.update(virtual_fields)
+
         self._selected_fields = selected_fields
         self._excluded_fields = excluded_fields
+        self._virtual_fields = virtual_fields
 
     def _get_field_names(self, include_private=False, use_db_fields=False):
         field_names = tuple(self._fields.keys())

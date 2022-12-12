@@ -21,11 +21,13 @@ import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 
+fod = fou.lazy_import("fiftyone.core.dataset")
 fost = fou.lazy_import("fiftyone.core.stages")
 
 
@@ -203,6 +205,10 @@ class DatasetView(foc.SampleCollection):
     @property
     def _sample_cls(self):
         return fos.SampleView
+
+    @property
+    def _frame_cls(self):
+        return fofr.FrameView
 
     @property
     def _stages(self):
@@ -505,12 +511,11 @@ class DatasetView(foc.SampleCollection):
                     save_context.save(sample)
 
     def _iter_samples(self):
-        make_sample = self._make_sample_fcn()
         index = 0
 
         try:
             for d in self._aggregate(detach_frames=True, detach_groups=True):
-                sample = make_sample(d)
+                sample = self._make_sample(d)
 
                 index += 1
                 yield sample
@@ -521,16 +526,38 @@ class DatasetView(foc.SampleCollection):
             for sample in view._iter_samples():
                 yield sample
 
-    def _make_sample_fcn(self):
+    def _make_sample(self, d):
+        if getattr(self, "_make_sample_fcn", None) is None:
+            self._make_sample_fcn = self._init_make_sample()
+
+        return self._make_sample_fcn(d)
+
+    def _make_frame(self, d):
+        if getattr(self, "_make_frame_fcn", None) is None:
+            self._make_frame_fcn = self._init_make_frame()
+
+        return self._make_frame_fcn(d)
+
+    def _init_make_sample(self):
         sample_cls = self._sample_cls
         selected_fields, excluded_fields = self._get_selected_excluded_fields(
             roots_only=True
         )
         filtered_fields = self._get_filtered_fields()
 
+        virtual_fields = self._get_virtual_fields()
+        if virtual_fields:
+            sample_doc_cls = fod._create_sample_document_cls(
+                self._dataset,
+                "virtual." + str(ObjectId()),
+                fields=list(self.get_field_schema().values()),
+            )
+        else:
+            sample_doc_cls = self._dataset._sample_doc_cls
+
         def make_sample(d):
             try:
-                doc = self._dataset._sample_dict_to_doc(d)
+                doc = sample_doc_cls.from_dict(d)
                 return sample_cls(
                     doc,
                     self,
@@ -545,6 +572,41 @@ class DatasetView(foc.SampleCollection):
                 ) from e
 
         return make_sample
+
+    def _init_make_frame(self):
+        frame_cls = self._frame_cls
+        selected_fields, excluded_fields = self._get_selected_excluded_fields(
+            frames=True, roots_only=True
+        )
+        filtered_fields = self._get_filtered_fields(frames=True)
+
+        virtual_fields = self._get_virtual_fields(frames=True)
+        if virtual_fields:
+            frame_doc_cls = fod._create_frame_document_cls(
+                self._dataset,
+                "virtual." + str(ObjectId()),
+                fields=list(self.get_frame_field_schema().values()),
+            )
+        else:
+            frame_doc_cls = self._dataset._frame_doc_cls
+
+        def make_frame(d):
+            try:
+                doc = frame_doc_cls.from_dict(d)
+                return frame_cls(
+                    doc,
+                    self,
+                    selected_fields=selected_fields,
+                    excluded_fields=excluded_fields,
+                    filtered_fields=filtered_fields,
+                )
+            except Exception as e:
+                raise ValueError(
+                    "Failed to load frame from the database. This is likely "
+                    "due to an invalid stage in the DatasetView"
+                ) from e
+
+        return make_frame
 
     def iter_groups(
         self,
@@ -631,7 +693,6 @@ class DatasetView(foc.SampleCollection):
                         save_context.save(sample)
 
     def _iter_groups(self, group_slices=None):
-        make_sample = self._make_sample_fcn()
         index = 0
 
         group_field = self.group_field
@@ -642,7 +703,7 @@ class DatasetView(foc.SampleCollection):
             for d in self._aggregate(
                 detach_frames=True, groups_only=True, group_slices=group_slices
             ):
-                sample = make_sample(d)
+                sample = self._make_sample(d)
 
                 group_id = sample[group_field].id
                 if curr_id is None:
@@ -914,7 +975,7 @@ class DatasetView(foc.SampleCollection):
             include_private=include_private
         )
 
-        schema = self._get_filtered_schema(schema)
+        schema = self._get_filtered_schema(schema, frames=True)
 
         return fof.filter_schema(
             schema,
@@ -1289,6 +1350,10 @@ class DatasetView(foc.SampleCollection):
         _view = self._base_view
         for stage in self._stages:
             _view = _view.add_stage(stage)
+
+        for name in ("_make_sample_fcn", "_make_frame_fcn"):
+            if hasattr(self, name):
+                delattr(self, name)
 
     def to_dict(
         self,
@@ -1746,8 +1811,16 @@ class DatasetView(foc.SampleCollection):
             frames=frames
         )
 
-        if selected_fields is not None or excluded_fields is not None:
-            _filter_schema(schema, selected_fields, excluded_fields)
+        virtual_fields = self._get_virtual_fields(frames=frames)
+
+        if (
+            selected_fields is not None
+            or excluded_fields is not None
+            or virtual_fields is not None
+        ):
+            _filter_schema(
+                schema, selected_fields, excluded_fields, virtual_fields
+            )
 
         return schema
 
@@ -1788,6 +1861,20 @@ class DatasetView(foc.SampleCollection):
             excluded_fields = None
 
         return selected_fields, excluded_fields
+
+    def _get_virtual_fields(self, frames=False):
+        virtual_fields = None
+
+        dataset = self._dataset
+        for stage in self._stages:
+            vf = stage.get_virtual_fields(dataset, frames=frames)
+            if vf:
+                if virtual_fields is None:
+                    virtual_fields = vf
+                else:
+                    virtual_fields.update(vf)
+
+        return virtual_fields
 
     def _get_filtered_fields(self, frames=False):
         filtered_fields = None
@@ -1922,10 +2009,11 @@ def _merge_selected_fields(selected_fields, sf):
     selected_fields.intersection_update(sf)
 
 
-def _filter_schema(schema, selected_fields, excluded_fields):
+def _filter_schema(schema, selected_fields, excluded_fields, virtual_fields):
     selected_fields, roots1 = _parse_selected_fields(selected_fields)
     excluded_fields, roots2 = _parse_excluded_fields(excluded_fields)
-    filtered_roots = roots1 | roots2
+    virtual_fields, roots3 = _parse_virtual_fields(virtual_fields)
+    filtered_roots = roots1 | roots2 | roots3
 
     # Explicitly include roots of any embedded fields that have been selected
     if roots1:
@@ -1939,6 +2027,7 @@ def _filter_schema(schema, selected_fields, excluded_fields):
 
     sf = selected_fields.get("", None)
     ef = excluded_fields.get("", None)
+    vf = virtual_fields.get("", None)
 
     if sf is not None:
         for name in tuple(schema.keys()):
@@ -1950,10 +2039,13 @@ def _filter_schema(schema, selected_fields, excluded_fields):
             if name in ef:
                 del schema[name]
 
+    if vf is not None:
+        schema.update(vf)
+
     if filtered_roots:
         for name, field in schema.items():
             _filter_embedded_field_schema(
-                field, name, selected_fields, excluded_fields
+                field, name, selected_fields, excluded_fields, virtual_fields
             )
 
 
@@ -1996,8 +2088,26 @@ def _parse_excluded_fields(paths):
     return d, r
 
 
+def _parse_virtual_fields(schema):
+    d = defaultdict(dict)
+    r = set()
+
+    if schema is not None:
+        for path, field in schema.items():
+            if "." in path:
+                root = path.split(".", 1)[0]
+                r.add(root)
+
+                base, leaf = path.rsplit(".", 1)
+                d[base][leaf] = field
+            else:
+                d[""][path] = field
+
+    return d, r
+
+
 def _filter_embedded_field_schema(
-    field, path, selected_fields, excluded_fields
+    field, path, selected_fields, excluded_fields, virtual_fields
 ):
     while isinstance(field, fof.ListField):
         field = field.field
@@ -2007,12 +2117,15 @@ def _filter_embedded_field_schema(
 
     sf = selected_fields.get(path, None)
     ef = excluded_fields.get(path, None)
+    vf = virtual_fields.get(path, None)
 
-    if sf is not None or ef is not None:
-        field._use_view(selected_fields=sf, excluded_fields=ef)
+    if sf is not None or ef is not None or vf is not None:
+        field._use_view(
+            selected_fields=sf, excluded_fields=ef, virtual_fields=vf
+        )
 
     for name, _field in field._fields.items():
         _path = path + "." + name
         _filter_embedded_field_schema(
-            _field, _path, selected_fields, excluded_fields
+            _field, _path, selected_fields, excluded_fields, virtual_fields
         )

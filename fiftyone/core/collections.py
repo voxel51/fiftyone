@@ -5027,7 +5027,9 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MapLabels(field, map))
 
     @view_stage
-    def set_field(self, field, expr, _allow_missing=False):
+    def set_field(
+        self, field, expr, virtual=None, _allow_missing=False, **kwargs
+    ):
         """Sets a field or embedded field on each sample in a collection by
         evaluating the given expression.
 
@@ -5130,12 +5132,22 @@ class SampleCollection(object):
             expr: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the field value to set
+            virtual (None): a dict of keyword arguments for
+                :func:`fiftyone.core.odm.create_field`
+            **kwargs: keyword arguments for
+                :func:`fiftyone.core.odm.create_field`
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.SetField(field, expr, _allow_missing=_allow_missing)
+            fos.SetField(
+                field,
+                expr,
+                virtual=virtual,
+                _allow_missing=_allow_missing,
+                **kwargs,
+            )
         )
 
     @view_stage
