@@ -26,6 +26,7 @@ import {
   Settings,
 } from "./state";
 import Options from "./Options";
+import { useBeforeScreenshot } from "@fiftyone/state";
 
 const fitBoundsOptions = { animate: false, padding: 30 };
 
@@ -159,6 +160,15 @@ const Plot: React.FC<{}> = () => {
   React.useEffect(() => {
     mapRef.current && fitBounds(mapRef.current, data);
   }, [data]);
+
+  useBeforeScreenshot(() => {
+    return new Promise((resolve) => {
+      mapRef.current.once("render", () => {
+        resolve(mapRef.current.getCanvas());
+      });
+      mapRef.current.setBearing(mapRef.current.getBearing());
+    });
+  });
 
   if (!settings.mapboxAccessToken) {
     return (
