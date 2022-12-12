@@ -82,7 +82,9 @@ export const setFetchFunction = (
       new URL(path);
       url = path;
     } catch {
-      url = `${origin}${path}`;
+      url = `${origin}${
+        !origin.endsWith("/") && !path.startsWith("/") ? "/" : ""
+      }${path}`;
     }
 
     headers = {

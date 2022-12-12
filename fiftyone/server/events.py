@@ -57,7 +57,7 @@ async def dispatch_event(
         event: the event
     """
     if isinstance(event, CaptureNotebookCell) and focx.is_databricks_context():
-        add_screenshot(event.subscription, event.src)
+        add_screenshot(event)
         return
 
     if isinstance(event, StateUpdate):
@@ -285,3 +285,15 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
     _requests[payload.subscription] = request_listeners
 
     return InitializedListener(is_app, request_listeners, state)
+
+
+_PORT = None
+
+
+def set_port(port: int):
+    global _PORT
+    _PORT = port
+
+
+def get_port() -> int:
+    return _PORT

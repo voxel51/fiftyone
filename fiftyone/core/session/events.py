@@ -122,13 +122,23 @@ def dict_factory(data: t.List[t.Tuple[str, t.Any]]) -> t.Dict[str, t.Any]:
     )
 
 
-_SCREENSHOTS = {}
+@dataclass
+class Screenshot:
+    bytes: bytes
+    max_width: int
 
 
-def add_screenshot(subscription: str, src: str) -> None:
-    data = src.split(",")[1].encode()
-    _SCREENSHOTS[subscription] = base64.decodebytes(data)
+_SCREENSHOTS: t.Dict[str, Screenshot] = {}
 
 
-def get_screenshot(subscription: str) -> str:
-    return _SCREENSHOTS.pop(subscription)
+def add_screenshot(event: CaptureNotebookCell) -> None:
+    data = event.src.split(",")[1].encode()
+    _SCREENSHOTS[event.subscription] = Screenshot(
+        base64.decodebytes(data), event.width
+    )
+
+
+def get_screenshot(subscription: str, pop=False) -> Screenshot:
+    return (
+        _SCREENSHOTS.pop(subscription) if pop else _SCREENSHOTS[subscription]
+    )

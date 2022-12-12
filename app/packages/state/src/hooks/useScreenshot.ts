@@ -118,7 +118,9 @@ export const useScreenshot = (
             const proxy = params.get("proxy");
 
             window.location.assign(
-              `${proxy || "/"}screenshot/${subscription}.png`
+              `http://localhost:5151${
+                proxy || "/"
+              }screenshot/${subscription}.html`
             );
           }
         });
