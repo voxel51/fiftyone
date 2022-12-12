@@ -82,69 +82,26 @@ const useSetView = (
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
-              const newState = {
-                ...router.history.location.state.state,
-                view: value,
-                viewName,
-                savedViewSlug,
-                viewCls: dataset.viewCls,
-                selected: [],
-                selectedLabels: [],
-                savedViews,
-                changingSavedView,
-              };
-              router.history.location.state.state = newState;
+              if (router.history.location.state) {
+                const newState = {
+                  ...router.history.location.state.state,
+                  view: value,
+                  viewName,
+                  savedViewSlug,
+                  viewCls: dataset.viewCls,
+                  selected: [],
+                  selectedLabels: [],
+                  savedViews,
+                  changingSavedView,
+                };
+                router.history.location.state.state = newState;
 
-              const url = new URL(window.location.toString());
-              const currentSlug = url.searchParams.get("view");
+                const url = new URL(window.location.toString());
+                const currentSlug = url.searchParams.get("view");
 
-              // single tab / clearing stage should remove query param
-              if (!changingSavedView && currentSlug && !value?.length) {
-                url.searchParams.delete("view");
-                let search = url.searchParams.toString();
-                if (search.length) {
-                  search = `?${search}`;
-                }
-
-                const path = `/datasets/${encodeURIComponent(
-                  dataset.name
-                )}${search}`;
-
-                router.history.replace(path, {
-                  state: newState,
-                  variables: { view: value?.length ? value : null },
-                });
-              }
-
-              if (
-                changingSavedView &&
-                (currentSlug || savedViewSlug) &&
-                currentSlug !== savedViewSlug
-              ) {
-                if (!savedViewSlug) {
+                // single tab / clearing stage should remove query param
+                if (!changingSavedView && currentSlug && !value?.length) {
                   url.searchParams.delete("view");
-                } else {
-                  url.searchParams.set("view", savedViewSlug);
-                }
-
-                let search = url.searchParams.toString();
-                if (search.length) {
-                  search = `?${search}`;
-                }
-
-                const path = `/datasets/${encodeURIComponent(
-                  dataset.name
-                )}${search}`;
-
-                router.history.push(path, {
-                  state: newState,
-                  variables: { view: value?.length ? value : null },
-                });
-              } else {
-                // single tab - clear saved view if ONLY view stages change - not the saved view
-                if (!changingSavedView && currentSlug) {
-                  url.searchParams.delete("view");
-
                   let search = url.searchParams.toString();
                   if (search.length) {
                     search = `?${search}`;
@@ -155,17 +112,62 @@ const useSetView = (
                   )}${search}`;
 
                   router.history.replace(path, {
-                    state: {
-                      view: value,
-                      viewCls: dataset.viewCls,
-                      selected: [],
-                      selectedLabels: [],
-                      viewName,
-                      savedViews,
-                      savedViewSlug,
-                      changingSavedView,
-                    },
+                    state: newState,
+                    variables: { view: value?.length ? value : null },
                   });
+                }
+
+                if (
+                  changingSavedView &&
+                  (currentSlug || savedViewSlug) &&
+                  currentSlug !== savedViewSlug
+                ) {
+                  if (!savedViewSlug) {
+                    url.searchParams.delete("view");
+                  } else {
+                    url.searchParams.set("view", savedViewSlug);
+                  }
+
+                  let search = url.searchParams.toString();
+                  if (search.length) {
+                    search = `?${search}`;
+                  }
+
+                  const path = `/datasets/${encodeURIComponent(
+                    dataset.name
+                  )}${search}`;
+
+                  router.history.push(path, {
+                    state: newState,
+                    variables: { view: value?.length ? value : null },
+                  });
+                } else {
+                  // single tab - clear saved view if ONLY view stages change - not the saved view
+                  if (!changingSavedView && currentSlug) {
+                    url.searchParams.delete("view");
+
+                    let search = url.searchParams.toString();
+                    if (search.length) {
+                      search = `?${search}`;
+                    }
+
+                    const path = `/datasets/${encodeURIComponent(
+                      dataset.name
+                    )}${search}`;
+
+                    router.history.replace(path, {
+                      state: {
+                        view: value,
+                        viewCls: dataset.viewCls,
+                        selected: [],
+                        selectedLabels: [],
+                        viewName,
+                        savedViews,
+                        savedViewSlug,
+                        changingSavedView,
+                      },
+                    });
+                  }
                 }
 
                 updateState({
@@ -181,6 +183,41 @@ const useSetView = (
                     changingSavedView,
                   },
                 });
+              } else {
+                // stateless use in teams / embedded app
+                const url = new URL(window.location.toString());
+                const currentSlug = url.searchParams.get("view");
+
+                if (currentSlug && !value?.length) {
+                  url.searchParams.delete("view");
+                  let search = url.searchParams.toString();
+                  if (search.length) {
+                    search = `?${search}`;
+                  }
+
+                  const path = `/datasets/${encodeURIComponent(
+                    dataset.name
+                  )}${search}`;
+
+                  router.history.replace(path, {
+                    variables: { view: value?.length ? value : null },
+                  });
+                } else if (currentSlug) {
+                  url.searchParams.set("view", savedViewSlug);
+
+                  let search = url.searchParams.toString();
+                  if (search.length) {
+                    search = `?${search}`;
+                  }
+
+                  const path = `/datasets/${encodeURIComponent(
+                    dataset.name
+                  )}${search}`;
+
+                  router.history.push(path, {
+                    variables: { view: value?.length ? value : null },
+                  });
+                }
               }
 
               updateState({
