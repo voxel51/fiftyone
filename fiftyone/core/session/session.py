@@ -880,7 +880,7 @@ class Session(object):
             height = self.config.notebook_height
 
         uuid = str(uuid4())
-        self._notebook_cells[uuid] = fosn.NotebookCell(
+        cell = fosn.NotebookCell(
             address=self.server_address,
             handle=IPython.display.DisplayHandle(display_id=uuid),
             height=height,
@@ -888,7 +888,8 @@ class Session(object):
             subscription=uuid,
         )
 
-        fosn.display(self._client, self._notebook_cells[uuid])
+        self._notebook_cells[uuid] = cell
+        fosn.display(self._client, cell)
 
     def no_show(self) -> fou.SetAttributes:
         """Returns a context manager that temporarily prevents new App
@@ -998,11 +999,9 @@ def _attach_listeners(session: "Session"):
         )
 
         def on_reactivate_notebook_cell(event: ReactivateNotebookCell) -> None:
-            fosn.display(
-                session._client,
-                session._notebook_cells[event.subscription],
-                reactivate=True,
-            )
+            cell = session._notebook_cells.get(event.subscription, None)
+            if cell is not None:
+                fosn.display(session._client, cell, reactivate=True)
 
         session._client.add_event_listener(
             "reactivate_notebook_cell", on_reactivate_notebook_cell

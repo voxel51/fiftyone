@@ -5,6 +5,8 @@ import { useRecoilValue } from "recoil";
 
 import * as fos from "../";
 
+const SCREENSHOT_QUALITY = 0.25;
+
 export const useScreenshot = (
   context: "ipython" | "colab" | "databricks" | undefined
 ) => {
@@ -95,7 +97,8 @@ export const useScreenshot = (
     captureCallbacks()
       .then(() => html2canvas(document.body))
       .then((canvas) => {
-        const imgData = canvas.toDataURL("image/png");
+        const imgData = canvas.toDataURL("image/jpeg", SCREENSHOT_QUALITY);
+
         if (context === "colab") {
           window.parent.postMessage(
             {

@@ -19,7 +19,7 @@ export interface FetchFunction {
     body?: A,
     result?: "json" | "blob",
     retries?: number,
-    retryDelay?: number
+    retryCodes?: number[]
   ): Promise<R>;
 }
 
@@ -69,8 +69,8 @@ export const setFetchFunction = (
     path,
     body = null,
     result = "json",
-    retries = 0,
-    retryDelay = 0
+    retries = 2,
+    retryCodes = [502, 503, 504]
   ) => {
     let url: string;
 
@@ -95,11 +95,11 @@ export const setFetchFunction = (
     const fetchCall = retries
       ? fetchRetry(fetch, {
           retries,
-          retryDelay,
+          retryDelay: 0,
           retryOn: (attempt, error, response) => {
             if (
               error !== null ||
-              (response.status >= 400 && attempt < retries)
+              (retryCodes.includes(response.status) && attempt < retries)
             ) {
               return true;
             }

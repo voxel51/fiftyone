@@ -1,4 +1,3 @@
-import { ThemeProvider } from "@fiftyone/components";
 import { Loading, Setup, makeRoutes } from "@fiftyone/core";
 import {
   BeforeScreenshotContext,
@@ -10,10 +9,11 @@ import {
   stateSubscription,
   useReset,
   useClearModal,
-  useRefresh,
   useScreenshot,
   useRouter,
+  useRefresh,
 } from "@fiftyone/state";
+import { ThemeProvider } from "@fiftyone/components";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";

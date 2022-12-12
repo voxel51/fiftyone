@@ -85,7 +85,7 @@ const Grid: React.FC<{}> = () => {
     return flashlight;
   });
 
-  useLayoutEffect(
+  useEffect(
     deferred(() => {
       if (isTagging || !flashlight.isAttached()) {
         return;
