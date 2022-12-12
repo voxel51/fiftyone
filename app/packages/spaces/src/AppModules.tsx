@@ -73,6 +73,8 @@ export function useActivePlugins(type: PluginComponentType) {
   ];
 }
 
+export function useOutsideClick() {}
+
 export const Popout = styled.div`
   position: absolute;
   padding: 4px 8px;
