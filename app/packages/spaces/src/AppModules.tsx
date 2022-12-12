@@ -63,8 +63,8 @@ export function useActivePlugins(type: PluginComponentType) {
     {
       name: "Form",
       label: "Form",
-      component: (props) => {
-        const [title, setTitle] = usePanelTitle(props.panelNode.id);
+      component: () => {
+        const [_, setTitle] = usePanelTitle();
         return <input type="text" onChange={(e) => setTitle(e.target.value)} />;
       },
       Icon: Ballot,
