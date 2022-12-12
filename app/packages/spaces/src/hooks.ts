@@ -1,7 +1,8 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { useMemo } from "react";
+import { useContext, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
+import { PanelContext } from "./contexts";
 import SpaceNode from "./SpaceNode";
 import SpaceTree from "./SpaceTree";
 import { panelTitlesState, spaceSelector } from "./state";
@@ -58,15 +59,19 @@ export function usePanel(id: SpaceNodeType) {
 }
 
 /**
- * Dynamically set the title of a panel from the component of a panel
+ * Dynamically set the title of a panel from the component of a panel. If `id`
+ *  is not provide, `node.id` from panel context will be used
  */
-export function usePanelTitle(id: string) {
+export function usePanelTitle(id?: string) {
+  const panelContext = useContext(PanelContext);
   const [panelTitles, setPanelTitles] = useRecoilState(panelTitlesState);
-  const panelTitle = panelTitles.get(id);
+
+  const panelId = id || panelContext?.node?.id;
+  const panelTitle = panelTitles.get(panelId);
 
   function setPanelTitle(title: string) {
     const updatedPanelTitles = new Map(panelTitles);
-    updatedPanelTitles.set(id, title);
+    updatedPanelTitles.set(panelId, title);
     setPanelTitles(updatedPanelTitles);
   }
   return [panelTitle, setPanelTitle];
