@@ -1,34 +1,33 @@
-import React, { useRef, PureComponent, Suspense, useMemo } from "react";
-import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
+import React, { PureComponent, Suspense, useRef } from "react";
+import useMeasure from "react-use-measure";
+import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
-import useMeasure from "react-use-measure";
 import { scrollbarStyles } from "./utils";
 
-import { ContentDiv, ContentHeader } from "./utils";
 import {
   formatDateTime,
   getDateTimeRangeFormattersWithPrecision,
   isFloat,
   prettify,
 } from "../utils/generic";
+import { ContentDiv, ContentHeader } from "./utils";
 
+import { Loading, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 import {
   distribution,
   distributionPaths,
   noDistributionPathsData,
 } from "@fiftyone/state";
-import { useTheme, Loading } from "@fiftyone/components";
+import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 
 const Container = styled.div`
   ${scrollbarStyles}
   overflow-y: hidden;
-  overflow-x: scroll;
+  overflow-x: auto;
   width: 100%;
   height: 100%;
-  padding-left: 1rem;
 `;
 
 const LIMIT = 200;
@@ -193,8 +192,7 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
       <Title>{`${path}${hasMore ? ` (first ${data?.length})` : ""}`}</Title>
       <BarChart
         ref={container}
-        // todo: compute dynamically
-        height={300}
+        height={height - 37}
         width={data.length * (barWidth + 4) + 50}
         barCategoryGap={"4px"}
         data={strData}
@@ -268,7 +266,7 @@ const DistributionsContainer = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
   width: 100%;
-  height: calc(100% - 3rem);
+  height: calc(100% - 2rem);
   ${scrollbarStyles}
 `;
 
