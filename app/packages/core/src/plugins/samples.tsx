@@ -1,6 +1,6 @@
-import React from "react";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import AppsIcon from "@mui/icons-material/Apps";
+import React from "react";
 import styled from "styled-components";
 import Grid from "../components/Grid";
 import ContainerHeader from "../components/ImageContainerHeader";
