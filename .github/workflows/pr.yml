@@ -13,7 +13,7 @@ jobs:
   test:
     uses: ./.github/workflows/test.yml
 
-  success:
+  all-tests:
     runs-on: ubuntu-latest
     needs: [build, test]
     if: always()

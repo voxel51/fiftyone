@@ -126,10 +126,3 @@ jobs:
         if: success() || failure()
         run: |
           find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
-
-  all-tests:
-    needs: [test-app, test-python]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - run: sh -c ${{ needs.test-app.result == 'success' && needs.test-python.result == 'success' }}
