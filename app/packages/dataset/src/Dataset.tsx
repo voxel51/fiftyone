@@ -12,7 +12,6 @@ import {
   Dataset as CoreDataset,
   DatasetNodeQuery,
   usePreLoadedDataset,
-  useSavedViewLoader,
   ViewBar,
 } from "@fiftyone/core";
 

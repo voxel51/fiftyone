@@ -202,7 +202,7 @@ const useSetView = (
                   router.history.replace(path, {
                     variables: { view: value?.length ? value : null },
                   });
-                } else if (currentSlug) {
+                } else if (savedViewSlug) {
                   url.searchParams.set("view", savedViewSlug);
 
                   let search = url.searchParams.toString();

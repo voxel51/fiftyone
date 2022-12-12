@@ -8,7 +8,7 @@ import {
   DatasetQuery$data,
 } from "./__generated__/DatasetQuery.graphql";
 
-const DatasetNodeQuery = graphql`
+export const DatasetNodeQuery = graphql`
   query DatasetQuery(
     $name: String!
     $view: BSONArray = null
@@ -86,15 +86,15 @@ const DatasetNodeQuery = graphql`
           patchesField
         }
       }
-      #      savedViews {
-      #        id
-      #        datasetId
-      #        name
-      #        slug
-      #        description
-      #        color
-      #        viewStages
-      #      }
+      savedViews {
+        id
+        datasetId
+        name
+        slug
+        description
+        color
+        viewStages
+      }
       lastLoadedAt
       createdAt
       skeletons {

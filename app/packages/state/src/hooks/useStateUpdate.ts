@@ -136,9 +136,7 @@ const useStateUpdate = () => {
           set(sidebarGroupsDefinition(false), groups);
         }
 
-        if (state.savedViews?.length > 0) {
-          console.log("state.savedViews", state.savedViews);
-          console.log("dataset.savedViews", dataset.savedViews);
+        if (state?.savedViews?.length > 0) {
           dataset.savedViews = state.savedViews;
         }
 
