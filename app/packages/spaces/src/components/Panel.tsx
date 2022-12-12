@@ -1,3 +1,4 @@
+import { PanelContext } from "../contexts";
 import { usePanel } from "../hooks";
 import { PanelProps } from "../types";
 import { panelNotFoundError } from "../utils";
@@ -10,7 +11,9 @@ export default function Panel({ node }: PanelProps) {
   const { component: Component } = panel;
   return (
     <StyledPanel id={node.id}>
-      <Component panelNode={node} />
+      <PanelContext.Provider value={{ node }}>
+        <Component panelNode={node} />
+      </PanelContext.Provider>
     </StyledPanel>
   );
 }
