@@ -26,10 +26,9 @@ import LoadingDots from "../../../components/src/components/Loading/LoadingDots"
 const Container = styled.div`
   ${scrollbarStyles}
   overflow-y: hidden;
-  overflow-x: scroll;
+  overflow-x: auto;
   width: 100%;
   height: 100%;
-  padding-left: 1rem;
 `;
 
 const LIMIT = 200;
@@ -194,8 +193,7 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
       <Title>{`${path}${hasMore ? ` (first ${data?.length})` : ""}`}</Title>
       <BarChart
         ref={container}
-        // todo: compute dynamically
-        height={300}
+        height={height - 37}
         width={data.length * (barWidth + 4) + 50}
         barCategoryGap={"4px"}
         data={strData}
@@ -269,7 +267,7 @@ const DistributionsContainer = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
   width: 100%;
-  height: calc(100% - 3rem);
+  height: calc(100% - 2rem);
   ${scrollbarStyles}
 `;
 
