@@ -5,7 +5,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { PanelContext } from "./contexts";
 import SpaceNode from "./SpaceNode";
 import SpaceTree from "./SpaceTree";
-import { panelTitlesState, spaceSelector } from "./state";
+import { panelsStateAtom, panelTitlesState, spaceSelector } from "./state";
 import { SpaceNodeJSON, SpaceNodeType } from "./types";
 import { getNodes } from "./utils";
 
@@ -60,7 +60,7 @@ export function usePanel(id: SpaceNodeType) {
 
 /**
  * Dynamically set the title of a panel from the component of a panel. If `id`
- *  is not provide, `node.id` from panel context will be used
+ *  is not provided, `node.id` from panel context will be used
  */
 export function usePanelTitle(id?: string) {
   const panelContext = useContext(PanelContext);
@@ -75,4 +75,19 @@ export function usePanelTitle(id?: string) {
     setPanelTitles(updatedPanelTitles);
   }
   return [panelTitle, setPanelTitle];
+}
+
+export function usePanelState(id?: string) {
+  const panelContext = useContext(PanelContext);
+  const [panelsState, setPanelsState] = useRecoilState(panelsStateAtom);
+  const panelId = id || panelContext?.node?.id;
+  const panelState = panelsState.get(panelId) || {};
+
+  function setPanelState(state: any) {
+    const updatedPanelsState = new Map(panelsState);
+    updatedPanelsState.set(panelId, state);
+    setPanelsState(updatedPanelsState);
+  }
+
+  return [panelState, setPanelState];
 }

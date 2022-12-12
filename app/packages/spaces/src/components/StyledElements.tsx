@@ -5,6 +5,7 @@ export const SpaceContainer = styled.div`
 `;
 export const PanelContainer = styled.div`
   flex: 1;
+  min-width: 0;
 `;
 export const PanelTabs = styled.div`
   display: flex;
