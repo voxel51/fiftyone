@@ -51,6 +51,10 @@ const SliderStyled = styled(SliderUnstyled)`
     color: transparent;
   }
 
+  .thumb input {
+    visibility: hidden;
+  }
+
   .thumb:hover,
   .thumb:focus,
   .thumb.active {

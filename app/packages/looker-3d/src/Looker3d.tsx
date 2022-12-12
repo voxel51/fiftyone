@@ -33,7 +33,7 @@ import {
   JSONIcon,
   HelpIcon,
 } from "@fiftyone/components";
-import { colorMap, dataset } from "@fiftyone/state";
+import { colorMap, dataset, useBeforeScreenshot } from "@fiftyone/state";
 import { removeListener } from "process";
 
 THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
@@ -445,6 +445,7 @@ function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
   return (
     <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
       <Canvas onClick={() => setAction(null)}>
+        <Screenshot />
         <CameraSetup
           controlsRef={controlsRef}
           cameraRef={cameraRef}
@@ -754,6 +755,18 @@ function ViewHelp({ helpPanel }) {
     </Fragment>
   );
 }
+
+const Screenshot = () => {
+  const { gl, scene, camera } = useThree();
+  useBeforeScreenshot(() => {
+    return new Promise((resolve) => {
+      gl.render(scene, camera);
+      resolve(gl.domElement);
+    });
+  });
+
+  return null;
+};
 
 function load3dOverlays(sample, selectedLabels, currentPath = []) {
   let overlays = [];

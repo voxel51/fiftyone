@@ -1,4 +1,9 @@
 export * from "./hooks-utils";
+export {
+  default as useBeforeScreenshot,
+  BeforeScreenshotContext,
+  callbacks as screenshotCallbacks,
+} from "./useBeforeScreenshot";
 export { default as useClearModal } from "./useClearModal";
 export { default as useCreateLooker } from "./useCreateLooker";
 export { default as useExpandSample } from "./useExpandSample";
@@ -10,6 +15,7 @@ export * from "./useLookerStore";
 export { default as usePanel } from "./usePanel";
 export { default as useReset } from "./useReset";
 export { default as useRouter } from "./useRouter";
+export { default as useScreenshot } from "./useScreenshot";
 export { default as useSelectFlashlightSample } from "./useSelectFlashlightSample";
 export { default as useSelectSample } from "./useSelectSample";
 export { default as useSendEvent } from "./useSendEvent";

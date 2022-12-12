@@ -1,3 +1,4 @@
+import Color from "color";
 import React, { Suspense } from "react";
 import { Apps } from "@mui/icons-material";
 import styled from "styled-components";
@@ -12,6 +13,7 @@ import GroupSliceSelector from "./GroupSliceSelector";
 
 import * as fos from "@fiftyone/state";
 import { groupStatistics, isGroup } from "@fiftyone/state";
+import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 const SamplesHeader = styled.div`
   position: absolute;
@@ -23,9 +25,9 @@ const SamplesHeader = styled.div`
   width: 100%;
   background-image: linear-gradient(
     to top,
-    rgba(0, 0, 0, 0),
-    30%,
-    ${({ theme }) => theme.background.mediaSpace}
+    ${({ theme }) => Color(theme.background.mediaSpace).alpha(0.0).toString()}
+      0%,
+    ${({ theme }) => theme.background.mediaSpace} 100%
   );
   margin-left: -1rem;
 `;
@@ -114,7 +116,13 @@ const ImageContainerHeader = () => {
     <SamplesHeader>
       <GridActionsRow />
       <RightContainer>
-        <Suspense fallback={<RightDiv>{"Loading..."}</RightDiv>}>
+        <Suspense
+          fallback={
+            <RightDiv>
+              <LoadingDots text="Loading" />
+            </RightDiv>
+          }
+        >
           {groupStats === "group" ? <GroupsCount /> : <Count />}
         </Suspense>
         {group && (

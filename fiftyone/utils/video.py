@@ -994,4 +994,4 @@ def _get_outpath(inpath, output_dir=None, rel_dir=None):
     else:
         filename = os.path.basename(inpath)
 
-    return os.path.join(output_dir, filename)
+    return os.path.join(fou.normalize_path(output_dir), filename)
