@@ -1,5 +1,6 @@
 import { Popout } from "@fiftyone/components";
-import { useMemo, useState } from "react";
+import { useOutsideClick } from "@fiftyone/state";
+import { useMemo, useRef, useState } from "react";
 import { usePanels, useSpaceNodes } from "../hooks";
 import { AddPanelButtonProps } from "../types";
 import AddPanelItem from "./AddPanelItem";
@@ -13,6 +14,10 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
     () => spaceNodes.map((node) => node.type),
     [spaceNodes]
   );
+  const popoutRef = useRef();
+  useOutsideClick(popoutRef, () => {
+    setOpen(false);
+  });
 
   const availablePanels = panels
     .filter(
@@ -29,7 +34,7 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
   if (availablePanels.length === 0) return null;
 
   return (
-    <AddPanelButtonContainer>
+    <AddPanelButtonContainer ref={popoutRef}>
       <GhostButton
         onClick={() => {
           setOpen(!open);
