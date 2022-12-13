@@ -18,28 +18,32 @@ from fiftyone.server.events import get_port
 
 class Screenshot(HTTPEndpoint):
     async def get(self, request: Request) -> Response:
-        img = request.path_params["img"]
-        subscription, ext = img.split(".")
-        screenshot = get_screenshot(subscription, False)
-        url = str(request.url)[: -len(f"screenshot/{subscription}.html")]
-        if ext == "html":
-            content = SCREENSHOT_DATABRICKS.render(
-                subscription=subscription,
-                image=f"{str(request.url)[:-4]}png",
-                url=url,
-                session_url=focx.get_url("localhost", get_port()),
-                max_width=screenshot.max_width,
-            )
-            media_type = "text/html"
-        else:
-            content = screenshot.bytes
-            media_type = "image/png"
+        try: 
+            img = request.path_params["img"]
+            subscription, ext = img.split(".")
+            screenshot = get_screenshot(subscription, False)
+            url = str(request.url)[: -len(f"screenshot/{subscription}.html")]
+            if ext == "html":
+                content = SCREENSHOT_DATABRICKS.render(
+                    subscription=subscription,
+                    image=f"{str(request.url)[:-4]}jpeg",
+                    url=url,
+                    session_url=focx.get_url("localhost", get_port()),
+                    max_width=screenshot.max_width,
+                )
+                media_type = "text/html"
+            else:
+                content = screenshot.bytes
+                media_type = "image/png"
 
-        return Response(
-            content,
-            media_type=media_type,
-            headers={
-                "Cache-Control": "max-age=31536000",
-                "Pragma": "public",
-            },
-        )
+            return Response(
+                content,
+                media_type=media_type,
+                headers={
+                    "Cache-Control": "max-age=31536000",
+                    "Pragma": "public",
+                },
+            )
+        except Exception as e:
+            import traceback
+            return Response(traceback.format_exc(), media_type="text/html")
