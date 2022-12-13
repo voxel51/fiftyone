@@ -326,7 +326,20 @@ information.
 [The App](https://github.com/voxel51/fiftyone/tree/develop/app) is a TypeScript
 monorepo in which the main package is a React 18 application.
 
-Style guide forthcoming.
+Comprehensive Style guide forthcoming.
+
+### ESLint
+
+We are introducing [ESLint](https://eslint.org/docs/latest/about/) to enforce
+linting rules. Since this is a rather late introduction, we're using the
+[only-warn](https://www.npmjs.com/package/eslint-plugin-only-warn) plugin to
+render all errors as warnings until we gracefully address all warnings in small
+chunks, after which this plugin will be removed and rules will be enforced with
+higher strictness.
+
+See `app/.eslintrc.js` for our ESLint config, and refer to
+[this page](https://eslint.org/docs/latest/user-guide/configuring/) for
+configuration options.
 
 ### Pre-commit hooks
 
@@ -335,7 +348,7 @@ TypeScript and CSS files in FiftyOne are formatted with
 [pre-commit hooks](CONTRIBUTING.md#developer-guide), which automatically
 enforces much of the whitespace-related components of our style.
 
-See `.prettierrc` for our prettier configuration, and refer to
+See `.prettierrc.js` for our prettier configuration, and refer to
 [this page](https://prettier.io/docs/en/configuration.html) for configuration
 options.
 
