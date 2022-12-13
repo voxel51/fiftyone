@@ -38,6 +38,14 @@ export default function Space({ node, id }: SpaceProps) {
             setList={(children, _, dragging) => {
               if (dragging?.dragging !== null) {
                 node.children = children;
+                const parentNode = node.parent;
+                if (node.hasChildren()) {
+                  node.activeChild =
+                    node.getActiveChild()?.id || node.firstChild().id;
+                } else {
+                  node.remove();
+                  spaces.joinNode(parentNode as SpaceNode);
+                }
                 spaces.updateTree(node);
               }
             }}
