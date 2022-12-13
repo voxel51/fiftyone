@@ -4,6 +4,9 @@ const path = require("path");
 
 const docs = require("./docs.json");
 
+////////
+/// RST
+////////
 class RstString {
   constructor(value) {
     this.value = value;
@@ -181,11 +184,10 @@ class RstFunction {
   }
   toSource() {
     const params = this.params.map(
-      ([name, type, description]) =>
-        `   :param ${uncode(name)}: ${description || ""}`
+      ([name, type, description]) => `   :param ${name}: ${description || ""}`
     );
     const types = this.params.map(
-      ([name, type]) => `   :type ${uncode(name)}: ${unref(type)}`
+      ([name, type]) => `   :type ${name}: ${type}`
     );
     if (params.length) {
       params.unshift("");
@@ -246,6 +248,9 @@ class RstFile {
     }
     return src.join("\n");
   }
+  refLabel(id) {
+    this.string(`.. _${id}:`);
+  }
   append(node) {
     if (!node.toSource) {
       throw new Error("node must have a toSource method");
@@ -270,6 +275,321 @@ class RstFile {
   }
   tableOfContents(maxDepth = 1) {
     const toc = new RstTableOfContents(maxDepth);
+    this.append(toc);
+    return toc;
+  }
+
+  typeLabel(type) {
+    const label = type.label();
+
+    return `\`\`${label}\`\``;
+  }
+  descToTable(desc) {
+    const table = new RstCsvTable({
+      header: Array.from(desc.headers),
+      widths: Array.from(desc.headers).map(() => 1),
+      align: "left",
+    });
+    for (const row of desc.rows) {
+      const label = row[0][1];
+      const type = row[1][1];
+      const desc = row[2][1];
+      const typeLabel = this.typeLabel(type);
+      table.addRow([label, typeLabel, desc]);
+    }
+    return table;
+  }
+  desc(desc) {
+    this.append(this.descToTable(desc));
+  }
+  code(src, lang = "typescript") {
+    this.append(new RstCodeExample(lang, src));
+  }
+  table(options) {
+    const table = new RstCsvTable(options);
+    this.append(table);
+    return table;
+  }
+  func(name) {
+    const func = new RstFunction(name);
+    this.append(func);
+    return func;
+  }
+}
+
+////////////
+/// MARKDOWN
+////////////
+
+class MdString {
+  constructor(value) {
+    this.value = value;
+  }
+  toSource() {
+    let src = [];
+    if (this.value !== undefined && this.value !== null)
+      src = this.value.split("\n");
+    src.push("");
+    return src;
+  }
+}
+class MdSection {
+  constructor(label, depth = 1) {
+    this.label = label;
+    this.depth = depth;
+  }
+  toSource() {
+    return [`${"#".repeat(this.depth)} ${this.label}`, ""];
+  }
+}
+class MdLink {
+  constructor(label, url) {
+    this.value = value;
+  }
+  toSource() {
+    return [`[${this.label}](${this.url})`];
+  }
+}
+class MdCodeExample {
+  constructor(lang, src) {
+    this.lang = lang;
+    this.src = src;
+  }
+  toSource() {
+    return ["```" + this.lang, this.src, "```", ""];
+  }
+}
+
+class MdTableOfContents {
+  constructor(maxDepth = 1) {
+    this.maxDepth = maxDepth;
+    this.items = [];
+  }
+  addItem(label, path) {
+    this.items.push({ label, path });
+  }
+  toSource() {
+    let src = [];
+    for (let item of this.items) {
+      src.push(`- [${item.label}](${item.path})`);
+    }
+  }
+}
+
+class MdListTable {
+  constructor({ title, widths, align }) {
+    this.title = title;
+    this.widths = widths && widths.length ? widths : null;
+    this.align = align;
+    this.rows = [];
+  }
+  addRow(row) {
+    this.rows.push(row);
+  }
+  toSource() {
+    if (!this.rows.length) {
+      return [];
+    }
+
+    return [
+      this.title ? `# ${this.title}` : null,
+      ...this.rows.map((row) => `- ${row.join(" | ")}`),
+      "",
+    ];
+  }
+}
+class MdCsvTable {
+  constructor({ title, header, widths, align }) {
+    this.title = title;
+    this.header = header && header.length ? header : null;
+    this.widths = widths && widths.length ? widths : null;
+    this.align = align;
+    this.rows = [];
+  }
+  addRow(row) {
+    this.rows.push(row);
+  }
+  toSource() {
+    if (!this.rows.length) {
+      return [];
+    }
+
+    // return an html table
+
+    return [
+      this.title ? `# ${this.title}` : null,
+      this.header ? `| ${this.header.join(" | ")} |` : null,
+      this.widths ? `| ${this.widths.map((w) => `---`).join(" | ")} |` : null,
+      ...this.rows.map((row) => `| ${row.map(escapeMdTable).join(" | ")} |`),
+      "",
+    ];
+  }
+}
+
+class MdProject {
+  constructor() {
+    this.files = [];
+  }
+  file(name) {
+    const file = new MdFile(name);
+    this.files.push(file);
+    return file;
+  }
+}
+
+class MdModule {
+  constructor(name, description) {
+    this.name = name;
+    this.alias = MODULE_ALIASES[name];
+    this.description = description;
+  }
+  toSource() {
+    return [
+      `.. js:module:: ${this.alias || this.name}`,
+      this.description ? `  :description: ${this.description}` : null,
+      "",
+    ];
+  }
+}
+class MdFunction {
+  constructor(name) {
+    this.name = name;
+    this.params = [];
+  }
+  summary(summary) {
+    this._summary = summary;
+  }
+  param(name, type, description) {
+    this.params.push([name, type, description]);
+  }
+  returns(type, description) {
+    this.returns = [type, description];
+  }
+  toSource() {
+    const params = this.params.map(
+      ([name, type, description]) => `   :param ${name}: ${description || ""}`
+    );
+    const types = this.params.map(
+      ([name, type]) => `   :type ${name}: ${type.label()}`
+    );
+    if (params.length) {
+      params.unshift("");
+    }
+    return [
+      "```{eval-rst}",
+      `.. js:function:: ${this.name}`,
+      this._summary ? "" : null,
+      this._summary ? `   :summary: ${this._summary}` : null,
+      ...params,
+      ...types,
+      this.returns
+        ? `   :returns: ${this.returns[0]} ${this.returns[1] || ""}`
+        : null,
+      "```",
+    ];
+  }
+}
+class MdMethod {
+  constructor() {}
+  toSource() {}
+}
+class MdClass {
+  constructor() {}
+  toSource() {}
+}
+class MdData {
+  constructor(name, hidden = false) {
+    this.name = name;
+    this.hidden = hidden;
+  }
+  toSource() {
+    return [
+      `.. js:data:: ${this.name}`,
+      this.hidden ? "   :hidden:" : null,
+      "",
+    ];
+  }
+}
+class MdAttribute {
+  constructor() {}
+  toSource() {}
+}
+
+class MdFile {
+  constructor(name) {
+    this.name = name;
+    this.children = [];
+  }
+  toSource() {
+    let src = [];
+    for (const child of this.children) {
+      src = src.concat(
+        child
+          .toSource()
+          .filter((l) => l !== null)
+          .map(replaceLastNewline)
+      );
+    }
+    return src.join("\n");
+  }
+  append(node) {
+    if (!node.toSource) {
+      console.error(node);
+      throw new Error("node must have a toSource method");
+    }
+    this.children.push(node);
+  }
+  typeLabel(type) {
+    const label = type.label();
+
+    return `[${label}](${type.fullPath()})`;
+  }
+  descToTable(desc) {
+    const table = new MdCsvTable({
+      header: Array.from(desc.headers),
+      widths: Array.from(desc.headers).map(() => 1),
+      align: "left",
+    });
+    for (const row of desc.rows) {
+      const label = row[0][1];
+      const type = row[1][1];
+      const desc = row[2][1];
+      const typeLabel = this.typeLabel(type);
+      table.addRow([label, typeLabel, desc]);
+    }
+    return table;
+  }
+  desc(desc) {
+    this.append(this.descToTable(desc));
+  }
+  code(src, lang = "typescript") {
+    this.append(new MdCodeExample(lang, src));
+  }
+  refLabel(name) {}
+  string(str) {
+    this.append(new MdString(str));
+  }
+  link(label, url) {
+    this.append(new MdLink(label, url));
+  }
+  section(label, level) {
+    this.append(new MdSection(label, level));
+  }
+  code(src, lang = "typescript") {
+    this.append(new MdCodeExample(lang, src));
+  }
+  table(options) {
+    const table = new MdCsvTable(options);
+    this.append(table);
+    return table;
+  }
+  func(name) {
+    const func = new MdFunction(name);
+    this.append(func);
+    return func;
+  }
+  tableOfContents(maxDepth = 1) {
+    const toc = new MdTableOfContents(maxDepth);
     this.append(toc);
     return toc;
   }
@@ -374,10 +694,10 @@ class DocFunction extends DocFragment {
     return this.get("signatures", []).map((raw) => new DocSignature(raw));
   }
   write(file) {
-    file.string(`.. _${this.fullPath()}:`);
+    file.refLabel(this.fullPath());
     file.section(this.label(), 3, true);
     for (const signature of this.signatures()) {
-      const func = new RstFunction(signature.toTextSignature());
+      const func = file.func(signature.toTextSignature());
       func.summary(signature.shortText());
       const desc = new FragmentDescription();
       for (const parameter of signature.parameters()) {
@@ -386,7 +706,6 @@ class DocFunction extends DocFragment {
       desc.addToRstFunction(func);
       const returnType = signature.returnType();
       func.returns(returnType.label(), returnType.shortText());
-      file.append(func);
     }
   }
 }
@@ -400,11 +719,10 @@ class DocEnumeration extends DocFragment {
     );
   }
   write(file) {
-    file.string(`.. _${this.fullPath()}:`);
+    file.refLabel(this.fullPath());
     file.section(this.label(), 3);
     file.string(this.shortText());
-    const table = new RstCsvTable({
-      title: "Members",
+    const table = file.table({
       header: ["Name", "Value"],
       widths: [1, 1],
       align: "left",
@@ -412,7 +730,6 @@ class DocEnumeration extends DocFragment {
     for (const member of this.members) {
       table.addRow([member.name(), member.value()]);
     }
-    file.append(table);
   }
 }
 class DocEnumerationMember extends DocFragment {
@@ -437,7 +754,7 @@ class DocVar extends DocFragment {
   }
   write(file) {
     const type = this.type();
-    file.string(`.. _${this.fullPath()}:`);
+    file.refLabel(this.fullPath());
     file.section(this.label(), 3);
     file.string(type.label());
     file.append(new RstData(this.label(), { hidden: true }));
@@ -449,15 +766,14 @@ class DocVar extends DocFragment {
         : `const [${this.get("name")}, set${capitalize(
             this.get("name")
           )}] = useRecoilState(fos.${this.label()});`;
-      const code = new RstCodeExample("js", ex);
       const desc = new FragmentDescription();
       for (const T of type.typeArguments()) {
         T.addToDescription(desc, this.label());
       }
-      file.append(desc.toTable());
-      file.append(code);
+      file.desc(desc);
+      file.code(ex);
     } else {
-      file.append(type.toDescription().toTable());
+      file.desc(type.toDescription());
     }
   }
 }
@@ -520,7 +836,7 @@ class DocType extends DocFragment {
     }
     if (this.isLiteral()) {
       // label = this.get("name", );
-      label = JSON.stringify(this.get("value"));
+      label = JSON.stringify(this.get("value")).replace(/"/g, "'");
     }
 
     if (label !== "null") label = capitalize(label);
@@ -528,20 +844,6 @@ class DocType extends DocFragment {
       label = `readonly ${label}`;
     }
     return label;
-  }
-  ref() {
-    if (
-      this.isLiteral() ||
-      this.isReflection() ||
-      this.isIntrinsic() ||
-      this.isUnion() ||
-      this.isTuple()
-    ) {
-      return this.label();
-    }
-
-    const escpaed = this.label().replace(/[<>]/g, (match) => `\\${match}`);
-    return `:ref:\`${escpaed} <${this.fullPath()}>\``;
   }
   isLiteral() {
     return this.get("type") === "literal";
@@ -626,9 +928,9 @@ class DocType extends DocFragment {
     } else if (this.isReference()) {
       const label = this.label();
       const name = parentName ? parentName : label;
-      desc.addTypeRow(name, this.ref(), this.shortText());
+      desc.addTypeRow(name, this, this.shortText());
     } else if (this.isUnion() || this.isTuple()) {
-      desc.addTypeRow(parentName, this.label(), this.shortText());
+      desc.addTypeRow(parentName, this, this.shortText());
     }
   }
   toDescription() {
@@ -658,17 +960,6 @@ class FragmentDescription {
       ["Description", desc],
     ]);
   }
-  toTable() {
-    const table = new RstCsvTable({
-      header: Array.from(this.headers),
-      widths: Array.from(this.headers).map(() => 1),
-      align: "left",
-    });
-    for (const row of this.rows) {
-      table.addRow(row.map((cell) => cell[1]));
-    }
-    return table;
-  }
   addToRstFunction(func) {
     for (const row of this.rows) {
       func.param(...row.map((cell) => cell[1]));
@@ -689,7 +980,8 @@ class DocTypeAlias extends DocFragment {
   }
   write(file) {
     const type = this.type();
-    file.string(`.. _${this.fullPath()}:`);
+    file.refLabel(this.fullPath());
+    file.string(`.. js:type:: ${this.fullPath()}`);
     file.section(this.label(), 3);
     file.string(this.shortText());
 
@@ -704,7 +996,7 @@ class DocTypeAlias extends DocFragment {
     }
     const desc = new FragmentDescription();
     type.addToDescription(desc, this.label());
-    file.append(desc.toTable());
+    file.desc(desc);
   }
 }
 
@@ -764,7 +1056,7 @@ class DocProperty extends DocFragment {
     const label = this.label();
     const name = parentName ? `${parentName}.${label}` : label;
     const type = this.type();
-    desc.addTypeRow(name, type.ref(), this.shortText());
+    desc.addTypeRow(name, type, this.shortText());
   }
 }
 
@@ -781,7 +1073,7 @@ class DocInterface extends DocFragment {
     return this.mapArray("children");
   }
   write(file) {
-    file.string(`.. _${this.fullPath()}:`);
+    file.refLabel(this.fullPath());
     file.section(this.label(), 3);
     file.string(this.shortText());
     const desc = new FragmentDescription();
@@ -791,13 +1083,13 @@ class DocInterface extends DocFragment {
       const valueType = new DocType(
         this.get("indexSignature.parameters.0.type")
       );
-      desc.addTypeRow(`[${keyName}]`, valueType.label(), valueType.shortText());
+      desc.addTypeRow(`[${keyName}]`, valueType, valueType.shortText());
     }
 
     for (const property of this.properties()) {
       property.addToDescription(desc);
     }
-    file.append(desc.toTable());
+    file.desc(desc);
   }
 }
 
@@ -833,7 +1125,7 @@ class DocParameter extends DocFragment {
   addToDescription(desc) {
     const type = this.type();
     const label = this.label();
-    desc.addTypeRow(label, type.label(), this.description());
+    desc.addTypeRow(label, type, this.description());
     type.addToDescription(desc, label);
   }
 }
@@ -874,6 +1166,7 @@ function toFragment(raw, override, parent = null) {
 const PLUGIN_RST_DOCS = path.join(__dirname, "..", "docs/source/plugins/api");
 
 const file = new RstFile("state");
+// const file = new MdFile("state");
 const project = new DocProject(docs);
 project.write(file);
 fs.writeFileSync(
@@ -909,7 +1202,15 @@ function wrapInQuotes(str) {
 }
 
 function escapeQuotes(str) {
+  if (str.includes('"')) {
+    console.log(str, str.replace(/"/g, '\\"'));
+  }
   return str.replace(/"/g, '\\"');
+}
+
+function escapeMdTable(str) {
+  if (!str) return str;
+  return str.replace(/\|/g, "\\|");
 }
 
 function code(str) {

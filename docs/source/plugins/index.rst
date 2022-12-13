@@ -35,3 +35,4 @@ functionality, integrate with your existing infrastructure, or even add new feat
    :hidden:
 
    @fiftyone/state <api/fiftyone.state>
+   Testing <test>
