@@ -428,6 +428,10 @@ class MongoEngineBaseDocument(SerializableDocument):
             for field_name, field in self._fields.items()
             if not getattr(field, "is_virtual", False)
         ]
+
+        if hasattr(self, "_dynamic_fields"):
+            fields.extend(self._dynamic_fields.keys())
+
         d = self.to_mongo(use_db_field=True, fields=fields)
 
         if not extended:
