@@ -1,6 +1,8 @@
+import { IconButton } from "@fiftyone/components";
+import { Splitscreen } from "@mui/icons-material";
+import { Layout } from "../enums";
 import { useSpaces } from "../hooks";
 import { SplitPanelButtonProps } from "../types";
-import { GhostButton } from "./StyledElements";
 
 export default function SplitPanelButton({
   node,
@@ -8,14 +10,17 @@ export default function SplitPanelButton({
   spaceId,
 }: SplitPanelButtonProps) {
   const { spaces } = useSpaces(spaceId);
+  const vertical = layout === Layout.Vertical;
 
   return (
-    <GhostButton
+    <IconButton
+      title={`Split ${vertical ? "vertically" : "horizontally"}`}
+      sx={{ rotate: vertical ? "" : "90deg" }}
       onClick={() => {
         spaces.splitLayout(node, layout);
       }}
     >
-      [ ]
-    </GhostButton>
+      <Splitscreen sx={{ fontSize: 16 }} />
+    </IconButton>
   );
 }

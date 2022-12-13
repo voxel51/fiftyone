@@ -1,10 +1,11 @@
-import { Popout } from "@fiftyone/components";
+import { IconButton, Popout } from "@fiftyone/components";
 import { useOutsideClick } from "@fiftyone/state";
+import { Add } from "@mui/icons-material";
 import { useMemo, useRef, useState } from "react";
 import { usePanels, useSpaceNodes } from "../hooks";
 import { AddPanelButtonProps } from "../types";
 import AddPanelItem from "./AddPanelItem";
-import { AddPanelButtonContainer, GhostButton } from "./StyledElements";
+import { AddPanelButtonContainer } from "./StyledElements";
 
 export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
   const [open, setOpen] = useState(false);
@@ -35,13 +36,13 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
 
   return (
     <AddPanelButtonContainer ref={popoutRef}>
-      <GhostButton
+      <IconButton
         onClick={() => {
           setOpen(!open);
         }}
       >
-        +
-      </GhostButton>
+        <Add sx={{ fontSize: 16 }} />
+      </IconButton>
       {open && (
         <Popout style={{ top: "80%", left: "16%", padding: 0 }}>
           {availablePanels.map((panel) => (
