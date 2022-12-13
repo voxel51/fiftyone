@@ -38,9 +38,11 @@ function App() {
   };
 
   return (
-    <RecoilRoot>
-      <SpacesRoot id="main" defaultState={defaultState} />
-    </RecoilRoot>
+    <div style={{ height: "100vh", width: "100vw" }}>
+      <RecoilRoot>
+        <SpacesRoot id="main" defaultState={defaultState} />
+      </RecoilRoot>
+    </div>
   );
 }
 
