@@ -8,6 +8,7 @@ View stages.
 from collections import defaultdict, OrderedDict
 import contextlib
 from copy import deepcopy
+import inspect
 import itertools
 import random
 import reprlib
@@ -4276,6 +4277,9 @@ class SetField(ViewStage):
             else:
                 virtual.update(kwargs)
 
+        if virtual:
+            return _serialize_field_kwargs(virtual)
+
         return virtual
 
     def _kwargs(self):
@@ -4349,8 +4353,9 @@ class SetField(ViewStage):
 
             set_expr = pipeline[0]["$set"]
 
+            kwargs = _deserialize_field_kwargs(self._virtual)
             virtual_field = foo.create_field(
-                field_name, expr=expr_dict, **self._virtual
+                field_name, expr=expr_dict, **kwargs
             )
             virtual_field._set_dataset(None, path, set_expr=set_expr)
 
@@ -4359,6 +4364,51 @@ class SetField(ViewStage):
         else:
             self._pipeline = pipeline
             self._virtual_field = None
+
+
+def _serialize_field_kwargs(kwargs):
+    return _process_value(kwargs, _serialize_field_values)
+
+
+def _deserialize_field_kwargs(kwargs):
+    return _process_value(kwargs, _deserialize_field_values)
+
+
+def _serialize_field_values(value):
+    if inspect.isclass(value) and issubclass(
+        value, (fof.Field, foo.SerializableDocument)
+    ):
+        return etau.get_class_name(value)
+
+    return value
+
+
+def _deserialize_field_values(value):
+    if etau.is_str(value):
+        return etau.get_class(value)
+
+    return value
+
+
+def _process_value(value, fcn):
+    if isinstance(value, dict):
+        value = {
+            k: _process_value(v, fcn)
+            for k, v in value.items()
+            if v is not None
+        }
+
+        for k in ("ftype", "embedded_doc_type", "subfield"):
+            v = value.get(k, None)
+            if v is not None:
+                value[k] = fcn(v)
+
+        return value
+
+    if isinstance(value, (tuple, list)):
+        return [_process_value(v, fcn) for v in value]
+
+    return value
 
 
 class Match(ViewStage):
