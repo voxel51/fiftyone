@@ -4595,6 +4595,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/spaces@workspace:packages/spaces"
   dependencies:
+    allotment: ^1.17.0
     vite: ^3.0.0
   languageName: unknown
   linkType: soft
@@ -9488,6 +9489,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"allotment@npm:^1.17.0":
+  version: 1.17.0
+  resolution: "allotment@npm:1.17.0"
+  dependencies:
+    classnames: ^2.3.0
+    eventemitter3: ^4.0.0
+    lodash.clamp: ^4.0.0
+    lodash.debounce: ^4.0.0
+    lodash.isequal: ^4.5.0
+    use-resize-observer: ^9.0.0
+  peerDependencies:
+    react: ^17.0.0 || ^18.0.0
+    react-dom: ^17.0.0 || ^18.0.0
+  checksum: 0ad579a514ca98099b3630aad540df14042610a6da8439f6a7ea7815f87c4f5a9c4ecce3a10779d67c8adaf5b2245880242b92e2f1570691e0c5b20d2c68959b
+  languageName: node
+  linkType: hard
+
 "almost-equal@npm:^1.1.0":
   version: 1.1.0
   resolution: "almost-equal@npm:1.1.0"
@@ -11408,6 +11426,13 @@ __metadata:
   version: 2.3.1
   resolution: "classnames@npm:2.3.1"
   checksum: 14db8889d56c267a591f08b0834989fe542d47fac659af5a539e110cc4266694e8de86e4e3bbd271157dbd831361310a8293e0167141e80b0f03a0f175c80960
+  languageName: node
+  linkType: hard
+
+"classnames@npm:^2.3.0":
+  version: 2.3.2
+  resolution: "classnames@npm:2.3.2"
+  checksum: 2c62199789618d95545c872787137262e741f9db13328e216b093eea91c85ef2bfb152c1f9e63027204e2559a006a92eb74147d46c800a9f96297ae1d9f96f4e
   languageName: node
   linkType: hard
 
@@ -14567,7 +14592,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eventemitter3@npm:^4.0.1":
+"eventemitter3@npm:^4.0.0, eventemitter3@npm:^4.0.1":
   version: 4.0.7
   resolution: "eventemitter3@npm:4.0.7"
   checksum: 1875311c42fcfe9c707b2712c32664a245629b42bb0a5a84439762dd0fd637fc54d078155ea83c2af9e0323c9ac13687e03cfba79b03af9f40c89b4960099374
@@ -19083,6 +19108,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"lodash.clamp@npm:^4.0.0":
+  version: 4.0.3
+  resolution: "lodash.clamp@npm:4.0.3"
+  checksum: 02baa03ebb96f2ce8d9cec28b21fa3ed808c32f3b8fe54e2f990f1177779b13dcda69232db72d7285763e14a0ee64666a82a2047558eaba7198580173756c888
+  languageName: node
+  linkType: hard
+
 "lodash.curry@npm:^4.0.1":
   version: 4.1.1
   resolution: "lodash.curry@npm:4.1.1"
@@ -19090,7 +19122,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lodash.debounce@npm:^4.0.8":
+"lodash.debounce@npm:^4.0.0, lodash.debounce@npm:^4.0.8":
   version: 4.0.8
   resolution: "lodash.debounce@npm:4.0.8"
   checksum: a3f527d22c548f43ae31c861ada88b2637eb48ac6aa3eb56e82d44917971b8aa96fbb37aa60efea674dc4ee8c42074f90f7b1f772e9db375435f6c83a19b3bc6
@@ -26422,6 +26454,18 @@ __metadata:
     "@types/react":
       optional: true
   checksum: ed3f2ddddf6f21825e2ede4c2e0f0db8dcce5129802b69d1f0575fc1b42380436e8c76a6cd885d4e9aa8e292e60fb8b959c955f33c6a9123b83814a1a1875367
+  languageName: node
+  linkType: hard
+
+"use-resize-observer@npm:^9.0.0":
+  version: 9.1.0
+  resolution: "use-resize-observer@npm:9.1.0"
+  dependencies:
+    "@juggle/resize-observer": ^3.3.1
+  peerDependencies:
+    react: 16.8.0 - 18
+    react-dom: 16.8.0 - 18
+  checksum: 92be0ac34a3b3cf884cd55847c90792b5b44833dc258e96d650152815ad246afe45825aa223332203004d836535a927ab74f18dc0313229e2c7c69510eddf382
   languageName: node
   linkType: hard
 
