@@ -1,12 +1,12 @@
-import { Machine, actions, assign, spawn, send } from "xstate";
 import { v4 as uuid } from "uuid";
+import { actions, assign, Machine, send, spawn } from "xstate";
 
+import { viewsAreEqual } from "@fiftyone/state";
+import { getFetchFunction } from "@fiftyone/utilities";
 import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
 import { PARSER as PARAM_PARSER } from "./ViewStage/viewStageParameterMachine";
-import { getFetchFunction } from "@fiftyone/utilities";
-import { viewsAreEqual } from "@fiftyone/state";
 
 const { choose } = actions;
 

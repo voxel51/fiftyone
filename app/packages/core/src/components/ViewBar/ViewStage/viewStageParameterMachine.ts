@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import { Machine, actions, sendParent } from "xstate";
+import { actions, Machine, sendParent } from "xstate";
 
 import { computeBestMatchString, getMatch } from "./utils";
 

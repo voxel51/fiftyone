@@ -5,8 +5,8 @@ import * as fos from "@fiftyone/state";
 
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 
-import { pathIsExpanded } from "./utils";
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
+import { pathIsExpanded } from "./utils";
 
 const showEntryCounts = selectorFamily<
   boolean,

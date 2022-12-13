@@ -1,15 +1,15 @@
+import { Apps } from "@mui/icons-material";
 import Color from "color";
 import React, { Suspense } from "react";
-import { Apps } from "@mui/icons-material";
-import styled from "styled-components";
 import { useRecoilValue, useSetRecoilState } from "recoil";
+import styled from "styled-components";
 
+import { useTheme } from "@fiftyone/components";
 import { GridActionsRow } from "./Actions";
 import { Slider } from "./Common/RangeSlider";
-import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
-import { useTheme } from "@fiftyone/components";
 import { gridZoom, gridZoomRange } from "./Grid";
 import GroupSliceSelector from "./GroupSliceSelector";
+import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
 import * as fos from "@fiftyone/state";
 import { groupStatistics, isGroup } from "@fiftyone/state";

@@ -1,9 +1,8 @@
+import { animated, useSpring } from "@react-spring/web";
 import { useState } from "react";
 import { selector, selectorFamily } from "recoil";
-import { animated, useSpring } from "@react-spring/web";
 import styled from "styled-components";
 
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
@@ -13,6 +12,7 @@ import {
   isGroup,
   State,
 } from "@fiftyone/state";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background.body};
