@@ -1,5 +1,6 @@
-import { Resizable } from "re-resizable";
-import { Fragment } from "react";
+import { Allotment } from "allotment";
+import "allotment/dist/style.css";
+import { ReactSortable } from "react-sortablejs";
 import { Layout } from "../enums";
 import { useSpaces } from "../hooks";
 import SpaceNode from "../SpaceNode";
@@ -9,8 +10,6 @@ import Panel from "./Panel";
 import PanelTab from "./PanelTab";
 import SplitPanelButton from "./SplitPanelButton";
 import { PanelContainer, PanelTabs, SpaceContainer } from "./StyledElements";
-import { Allotment } from "allotment";
-import "allotment/dist/style.css";
 
 export default function Space({ node, id }: SpaceProps) {
   const { spaces } = useSpaces(id);
@@ -18,7 +17,7 @@ export default function Space({ node, id }: SpaceProps) {
   if (node.layout) {
     return (
       <SpaceContainer data-type="space-container">
-        <Allotment>
+        <Allotment vertical={node.layout === Layout.Vertical}>
           {node.children.map((space, i) => (
             <Allotment.Pane>
               <Space node={space} id={id} />
@@ -33,19 +32,31 @@ export default function Space({ node, id }: SpaceProps) {
     return (
       <PanelContainer data-type="panel-container">
         <PanelTabs>
-          {node.children.map((child, index) => (
-            <PanelTab
-              key={child.id}
-              node={child}
-              active={activeChild?.id === child.id}
-              spaceId={id}
-            />
-          ))}
+          <ReactSortable
+            group="panel-tabs"
+            list={node.children}
+            setList={(children, _, dragging) => {
+              if (dragging?.dragging !== null) {
+                node.children = children;
+                spaces.updateTree(node);
+              }
+            }}
+            style={{ display: "flex" }}
+          >
+            {node.children.map((child) => (
+              <PanelTab
+                key={child.id}
+                node={child}
+                active={activeChild?.id === child.id}
+                spaceId={id}
+              />
+            ))}
+          </ReactSortable>
           <AddPanelButton node={node} spaceId={id} />
           {canSpaceSplit && (
             <SplitPanelButton
               node={node}
-              layout={Layout.Vertical}
+              layout={Layout.Horizontal}
               spaceId={id}
             />
           )}
