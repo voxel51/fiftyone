@@ -69,7 +69,24 @@ export const clipsFields = selector<string[]>({
 const evaluationKeys = selector<string[]>({
   key: "evaluationKeys",
   get: ({ get }) => {
-    return get(fos.dataset).evaluations.map(({ key }) => key);
+    const paths = get(fos.labelFields({}));
+    const valid = paths.filter((p) =>
+      get(
+        fos.meetsType({
+          path: p,
+          ftype: EMBEDDED_DOCUMENT_FIELD,
+          embeddedDocType: PATCHES_FIELDS,
+        })
+      )
+    );
+    
+    const evals = get(fos.dataset).evaluations.filter(
+      e => valid.includes(e.config.predField) || valid.includes(e.config.gtField)
+    )
+
+    const keys = evals.map(({key}) => key);
+
+    return keys;
   },
 });
 
