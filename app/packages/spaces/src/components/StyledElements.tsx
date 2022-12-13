@@ -45,7 +45,6 @@ export const AddPanelButtonContainer = styled.div`
 export const StyledPanelItem = styled.div`
   cursor: pointer;
   padding: 4px 8px;
-  transition: background ease 0.25s;
 
   &:hover {
     background: #2b2b2b;
@@ -61,10 +60,6 @@ export const StyledTab = styled.button<{ active?: boolean }>`
   border: none;
   color: #fff;
   padding: 0px 12px 4px 12px;
-  transition: background ease 0.25s;
-  :hover {
-    background: ${(props) => (props.active ? "#1a1a1a" : "hsl(0deg 0% 13%)")};
-  }
 `;
 
 export const StyleCloseButton = styled.button`
