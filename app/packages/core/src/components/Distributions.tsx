@@ -1,26 +1,26 @@
-import React, { useRef, PureComponent, Suspense, useMemo } from "react";
-import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
+import React, { PureComponent, Suspense, useRef } from "react";
+import useMeasure from "react-use-measure";
+import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
-import useMeasure from "react-use-measure";
 import { scrollbarStyles } from "./utils";
 
-import { ContentDiv, ContentHeader } from "./utils";
 import {
   formatDateTime,
   getDateTimeRangeFormattersWithPrecision,
   isFloat,
   prettify,
 } from "../utils/generic";
+import { ContentDiv, ContentHeader } from "./utils";
 
+import { Loading, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 import {
   distribution,
   distributionPaths,
   noDistributionPathsData,
 } from "@fiftyone/state";
-import { useTheme, Loading } from "@fiftyone/components";
+import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 const Container = styled.div`

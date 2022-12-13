@@ -1,5 +1,4 @@
 import { InfoIcon, useTheme } from "@fiftyone/components";
-import { useEventHandler } from "@fiftyone/state";
 import React, {
   MutableRefObject,
   useEffect,

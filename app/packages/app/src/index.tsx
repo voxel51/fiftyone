@@ -1,32 +1,29 @@
 import { ThemeProvider } from "@fiftyone/components";
-import { Loading, Setup, makeRoutes } from "@fiftyone/core";
+import { Loading, makeRoutes, Setup } from "@fiftyone/core";
 import {
   BeforeScreenshotContext,
   screenshotCallbacks,
   useRefresh,
   useScreenshot,
 } from "@fiftyone/state";
-import { ThemeProvider } from "@fiftyone/components";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot, useRecoilValue } from "recoil";
 import Network from "./Network";
 
-import "./index.css";
+import { usePlugins } from "@fiftyone/plugins";
 import {
+  EventsContext,
+  getDatasetName,
   modal,
-  refresher,
   State,
   stateSubscription,
-  useReset,
   useClearModal,
-  useScreenshot,
+  useReset,
+  useRouter,
 } from "@fiftyone/state";
-import { usePlugins } from "@fiftyone/plugins";
-import { useRouter } from "@fiftyone/state";
-import { EventsContext } from "@fiftyone/state";
-import { getDatasetName } from "@fiftyone/state";
+import "./index.css";
 
 import { useErrorHandler } from "react-error-boundary";
 

@@ -1,4 +1,6 @@
 *.html
 voxel51-website.js
 **/__generated__
-**/dist
+packages/*/dist
+node_modules/
+yarn.lock
