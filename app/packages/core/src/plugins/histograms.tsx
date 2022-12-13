@@ -20,7 +20,7 @@ function Plots() {
   const { plot = plots[0] } = state;
 
   useEffect(() => {
-    setTitle(`Histograms - ${plot}`);
+    setTitle(plot);
   }, [plot]);
 
   return (
