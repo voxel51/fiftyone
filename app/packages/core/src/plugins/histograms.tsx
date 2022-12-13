@@ -8,6 +8,7 @@ import Distributions from "../components/Distributions";
 import { scrollbarStyles } from "../components/utils";
 
 const DistributionsContainer = styled.div`
+  height: 100%;
   ${scrollbarStyles}
 `;
 
@@ -23,7 +24,7 @@ function Plots() {
   }, [plot]);
 
   return (
-    <DistributionsContainer style={{ height: "calc(100vh - 126px)" }}>
+    <DistributionsContainer>
       <Selector
         component={({ value }) => <>{value}</>}
         containerStyle={{

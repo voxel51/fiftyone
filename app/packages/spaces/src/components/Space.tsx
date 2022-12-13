@@ -9,6 +9,8 @@ import Panel from "./Panel";
 import PanelTab from "./PanelTab";
 import SplitPanelButton from "./SplitPanelButton";
 import { PanelContainer, PanelTabs, SpaceContainer } from "./StyledElements";
+import { Allotment } from "allotment";
+import "allotment/dist/style.css";
 
 export default function Space({ node, id }: SpaceProps) {
   const { spaces } = useSpaces(id);
@@ -16,15 +18,13 @@ export default function Space({ node, id }: SpaceProps) {
   if (node.layout) {
     return (
       <SpaceContainer data-type="space-container">
-        {node.children.map((space, i) => {
-          const Wrapper = i === 0 ? Fragment : Resizable;
-          const wrapperProps = i === 0 ? {} : { enable: { left: true } };
-          return (
-            <Wrapper {...wrapperProps}>
+        <Allotment>
+          {node.children.map((space, i) => (
+            <Allotment.Pane>
               <Space node={space} id={id} />
-            </Wrapper>
-          );
-        })}
+            </Allotment.Pane>
+          ))}
+        </Allotment>
       </SpaceContainer>
     );
   } else if (node.isPanelContainer() && node.hasChildren()) {
