@@ -7,9 +7,8 @@ import ContainerHeader from "../components/ImageContainerHeader";
 
 const FlashlightContainer = styled.div`
   position: relative;
-  // todo: compute dynamically
-  height: calc(100vh - 112px);
   padding: 0 0 0 1rem;
+  height: 100%;
 `;
 
 registerComponent({

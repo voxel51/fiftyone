@@ -1,19 +1,25 @@
 import styled from "styled-components";
 
 export const SpaceContainer = styled.div`
-  display: flex;
+  width: 100%;
+  height: 100%;
 `;
+
 export const PanelContainer = styled.div`
-  flex: 1;
-  min-width: 0;
+  width: 100%;
+  height: 100%;
 `;
+
 export const PanelTabs = styled.div`
   display: flex;
   background: #252525;
   padding-bottom: 0px;
 `;
 
-export const StyledPanel = styled.div``;
+export const StyledPanel = styled.div`
+  width: 100%;
+  height: calc(100% - 37px);
+`;
 
 export const GhostButton = styled.button`
   cursor: pointer;
