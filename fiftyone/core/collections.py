@@ -1238,9 +1238,9 @@ class SampleCollection(object):
             return schema
 
         if etau.is_str(fields):
-            fields = {fields}
+            fields = [fields]
         else:
-            fields = set(fields)
+            fields = list(fields)
 
         return {
             k: v

@@ -6115,7 +6115,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             contains_videos = self._contains_videos(any_slice=True)
 
-        # No need to attach virtual fields in this case
         if detach_virtual == True and not pipeline:
             attach_virtual = False
 

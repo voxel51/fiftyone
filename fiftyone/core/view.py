@@ -1506,6 +1506,7 @@ class DatasetView(foc.SampleCollection):
         _view = self._base_view
 
         _contains_videos = self._dataset._contains_videos(any_slice=True)
+        _found_materialize = False
         _found_select_group_slice = False
         _attach_frames_idx = None
         _attach_frames_idx0 = None
@@ -1522,7 +1523,9 @@ class DatasetView(foc.SampleCollection):
 
         idx = 0
         for stage in self._stages:
-            if isinstance(stage, fost.SelectGroupSlices):
+            if isinstance(stage, fost.Materialize):
+                _found_materialize = True
+            elif isinstance(stage, fost.SelectGroupSlices):
                 # We might need to reattach frames after `SelectGroupSlices`,
                 # since it involves a `$lookup` that resets the samples
                 _found_select_group_slice = True
@@ -1639,11 +1642,10 @@ class DatasetView(foc.SampleCollection):
             )
             _pipelines.insert(_attach_groups_idx, _pipeline)
 
-        # No need to attach virtual fields in this case
         if detach_virtual == True and not pipeline:
             attach_virtual = False
 
-        if not attach_virtual:
+        if not attach_virtual and not _found_materialize:
             detach_virtual = False
 
         if attach_virtual:
