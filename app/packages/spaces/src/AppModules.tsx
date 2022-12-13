@@ -1,4 +1,5 @@
 import { Apps, Ballot, BarChart, Map, ScatterPlot } from "@mui/icons-material";
+import { IconButton as MuiIconButton, Typography } from "@mui/material";
 import { selectorFamily } from "recoil";
 import styled from "styled-components";
 import { usePanelTitle } from "./hooks";
@@ -29,7 +30,11 @@ export function useActivePlugins(type: PluginComponentType) {
     {
       name: "Samples",
       label: "Samples",
-      component: () => <h1>Samples</h1>,
+      component: () => (
+        <Typography variant="h3" component="span">
+          Samples
+        </Typography>
+      ),
       panelOptions: {
         allowDuplicates: false,
       },
@@ -39,7 +44,11 @@ export function useActivePlugins(type: PluginComponentType) {
     {
       name: "Map",
       label: "Map",
-      component: () => <h1>Map</h1>,
+      component: () => (
+        <Typography variant="h3" component="span">
+          Map
+        </Typography>
+      ),
       panelOptions: {
         allowDuplicates: false,
       },
@@ -49,14 +58,22 @@ export function useActivePlugins(type: PluginComponentType) {
     {
       name: "Histograms",
       label: "Histograms",
-      component: () => <h1>Histograms</h1>,
+      component: () => (
+        <Typography variant="h3" component="span" sx={{ m: 2 }}>
+          Histograms
+        </Typography>
+      ),
       Icon: BarChart,
       type: PluginComponentType.Panel,
     },
     {
       name: "Embeddings",
       label: "Embeddings",
-      component: () => <h1>Embeddings</h1>,
+      component: () => (
+        <Typography variant="h3" component="span" sx={{ m: 2 }}>
+          Embeddings
+        </Typography>
+      ),
       Icon: ScatterPlot,
       type: PluginComponentType.Panel,
     },
@@ -80,7 +97,22 @@ export const Popout = styled.div`
   padding: 4px 8px;
   border: 1px solid #000;
   background: #1a1a1a;
-  left: 45%;
   width: 12rem;
   top: 95%;
 `;
+
+export function IconButton(props) {
+  return (
+    <MuiIconButton
+      disableRipple
+      {...props}
+      sx={{
+        p: 0.5,
+        ml: 0.5,
+        color: "#fff",
+        ":hover": { backgroundColor: "hsl(200, 0%, 25%)" },
+        ...props.sx,
+      }}
+    />
+  );
+}

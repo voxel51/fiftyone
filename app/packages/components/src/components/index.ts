@@ -4,6 +4,7 @@ export { default as ErrorBoundary } from "./ErrorBoundary";
 export { default as ExternalLink } from "./ExternalLink";
 export { default as Header } from "./Header";
 export { default as HelpPanel } from "./HelpPanel";
+export { default as IconButton } from "./IconButton";
 export * from "./Icons";
 export { default as JSONPanel } from "./JSONPanel";
 export { default as Link } from "./Link";
