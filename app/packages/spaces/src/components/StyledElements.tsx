@@ -19,6 +19,7 @@ export const PanelTabs = styled.div`
 export const StyledPanel = styled.div`
   width: 100%;
   height: calc(100% - 37px);
+  overflow: auto;
 `;
 
 export const GhostButton = styled.button`
