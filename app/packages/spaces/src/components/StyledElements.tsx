@@ -22,22 +22,6 @@ export const StyledPanel = styled.div`
   overflow: auto;
 `;
 
-export const GhostButton = styled.button`
-  cursor: pointer;
-  background: none;
-  border: none;
-  margin: 4px;
-  margin-left: 8px;
-  padding: 0px 12px 4px 12px;
-  color: #9e9e9e;
-  border-radius: 4px;
-  color: #fff;
-  transition: background ease 0.25s;
-  &:hover {
-    background: #454545;
-  }
-`;
-
 export const AddPanelButtonContainer = styled.div`
   position: relative;
 `;
@@ -54,23 +38,9 @@ export const StyledPanelItem = styled.div`
 export const StyledTab = styled.button<{ active?: boolean }>`
   display: flex;
   align-items: center;
-  // cursor: ${(props) => (props.active ? "default" : "pointer")};
   cursor: pointer;
   background: ${(props) => (props.active ? "#1a1a1a" : "#2c2c2c")};
   border: none;
   color: #fff;
   padding: 0px 12px 4px 12px;
-`;
-
-export const StyleCloseButton = styled.button`
-  cursor: pointer;
-  border: none;
-  padding: 2.5px 6px;
-  margin-left: 6px;
-  background: none;
-  color: #fff;
-  border-radius: 4px;
-  &:hover {
-    background: #454545;
-  }
 `;
