@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { filter, map } from "lodash";
 import {
   atom,
@@ -24,6 +24,7 @@ const DEFAULT_SELECTED: DatasetViewOption = {
   color: "#9e9e9e",
   description: "Unsaved view",
   slug: "unsaved-view",
+  viewStages: [],
 };
 
 export const viewSearchTerm = atom<string>({
@@ -41,7 +42,7 @@ export const selectedSavedViewState = atom<DatasetViewOption | null>({
 
 export type DatasetViewOption = Pick<
   fos.State.SavedView,
-  "id" | "description" | "color"
+  "id" | "description" | "color" | "viewStages"
 > & { label: string; slug: string };
 
 export interface DatasetView {
@@ -120,7 +121,13 @@ export default function ViewSelection(props: Props) {
       )?.[0];
       if (potentialView) {
         setSelected(potentialView);
-        setView(loadedView, [], potentialView.label, true, potentialView.slug);
+        setView(
+          potentialView?.viewStages,
+          [],
+          potentialView.label,
+          true,
+          potentialView.slug
+        );
       } else {
         const potentialUpdatedView = savedViewsV2.filter(
           (v) => v.slug === savedViewParam
@@ -186,7 +193,7 @@ export default function ViewSelection(props: Props) {
             { name: datasetName },
             {
               fetchPolicy: "network-only",
-              onComplete: (data) => {
+              onComplete: () => {
                 if (savedView && reload) {
                   setSavedViewParam(savedView.slug);
                 }
@@ -194,7 +201,7 @@ export default function ViewSelection(props: Props) {
             }
           );
         }}
-        onDeleteSuccess={(name: string) => {
+        onDeleteSuccess={() => {
           refetch(
             { name: datasetName },
             {

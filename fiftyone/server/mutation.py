@@ -245,21 +245,44 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         view_name: str,
+        view_stages: t.Optional[BSONArray] = None,
+        dataset_name: t.Optional[str] = None,
         description: t.Optional[str] = None,
         color: t.Optional[str] = None,
     ) -> t.Optional[SavedView]:
         state = get_state()
         dataset = state.dataset
+        use_state = True
+        if dataset is None:
+            use_state = False
+            # teams is stateless so dataset will be null
+            dataset = fo.load_dataset(dataset_name)
+            print("loaded dataset:", dataset)
 
+        if dataset is None:
+            raise ValueError(
+                "[mutation: saved_view] Missing dataset "
+                "reference for creating saved view with name = "
+                "{}".format(view_name)
+            )
         # view arg required to be an instance of
         # `fiftyone.core.view.DatasetView`
-        dataset.save_view(
-            view_name, state.view, description=description, color=color
-        )
-        dataset.reload()
-        state.view = dataset.load_saved_view(view_name)
-        state.view_name = view_name
-        await dispatch_event(subscription, StateUpdate(state=state))
+        if use_state:
+            print("stateful save_view called.")
+
+            dataset.save_view(
+                view_name, state.view, description=description, color=color
+            )
+            dataset.reload()
+            state.view = dataset.load_saved_view(view_name)
+            state.view_name = view_name
+            await dispatch_event(subscription, StateUpdate(state=state))
+        else:
+            view = get_view(dataset_name, stages=view_stages)
+            print("stateless save_view called. created view:\n", view)
+            dataset.save_view(
+                view_name, view, description=description, color=color
+            )
 
         return next(
             (

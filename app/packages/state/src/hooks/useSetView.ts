@@ -2,14 +2,9 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import {
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
   filters,
-  groupSlice,
   resolvedGroupSlice,
   selectedLabelList,
   selectedSamples,
@@ -22,6 +17,47 @@ import { transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
 import useStateUpdate from "./useStateUpdate";
 import * as fos from "../";
+
+const replaceUrlWithSavedView = (
+  replaceSlug: string,
+  datasetName: string,
+  router: any,
+  newState: any,
+  value: any[] | null,
+  replace: boolean,
+  isStateless?: boolean
+) => {
+  const url = new URL(window.location.toString());
+
+  if (!replaceSlug) {
+    url.searchParams.delete("view");
+  } else {
+    url.searchParams.set("view", replaceSlug);
+  }
+
+  let search = url.searchParams.toString();
+  if (search.length) {
+    search = `?${search}`;
+  }
+
+  let path = "";
+  if (isStateless) {
+    // TODO: not great, embedded app is stateless - we force /samples
+    path = `/datasets/${encodeURIComponent(datasetName)}/samples${search}`;
+  } else {
+    path = `/datasets/${encodeURIComponent(datasetName)}${search}`;
+  }
+
+  if (replace) {
+    router.history.replace(path, {
+      state: newState,
+      variables: { view: value?.length ? value : null },
+    });
+    return "";
+  } else {
+    return path;
+  }
+};
 
 const useSetView = (
   patch: boolean = false,
@@ -101,20 +137,14 @@ const useSetView = (
 
                 // single tab / clearing stage should remove query param
                 if (!changingSavedView && currentSlug && !value?.length) {
-                  url.searchParams.delete("view");
-                  let search = url.searchParams.toString();
-                  if (search.length) {
-                    search = `?${search}`;
-                  }
-
-                  const path = `/datasets/${encodeURIComponent(
-                    dataset.name
-                  )}${search}`;
-
-                  router.history.replace(path, {
-                    state: newState,
-                    variables: { view: value?.length ? value : null },
-                  });
+                  replaceUrlWithSavedView(
+                    null,
+                    dataset.name,
+                    router,
+                    newState,
+                    value,
+                    true
+                  );
                 }
 
                 if (
@@ -122,38 +152,25 @@ const useSetView = (
                   (currentSlug || savedViewSlug) &&
                   currentSlug !== savedViewSlug
                 ) {
-                  if (!savedViewSlug) {
-                    url.searchParams.delete("view");
-                  } else {
-                    url.searchParams.set("view", savedViewSlug);
-                  }
-
-                  let search = url.searchParams.toString();
-                  if (search.length) {
-                    search = `?${search}`;
-                  }
-
-                  const path = `/datasets/${encodeURIComponent(
-                    dataset.name
-                  )}${search}`;
-
-                  router.history.push(path, {
-                    state: newState,
-                    variables: { view: value?.length ? value : null },
-                  });
+                  replaceUrlWithSavedView(
+                    savedViewSlug,
+                    dataset.name,
+                    router,
+                    newState,
+                    value,
+                    true
+                  );
                 } else {
                   // single tab - clear saved view if ONLY view stages change - not the saved view
                   if (!changingSavedView && currentSlug) {
-                    url.searchParams.delete("view");
-
-                    let search = url.searchParams.toString();
-                    if (search.length) {
-                      search = `?${search}`;
-                    }
-
-                    const path = `/datasets/${encodeURIComponent(
-                      dataset.name
-                    )}${search}`;
+                    const path = replaceUrlWithSavedView(
+                      null,
+                      dataset.name,
+                      router,
+                      newState,
+                      value,
+                      false
+                    );
 
                     router.history.replace(path, {
                       state: {
@@ -189,34 +206,23 @@ const useSetView = (
                 const currentSlug = url.searchParams.get("view");
 
                 if (currentSlug && !value?.length) {
-                  url.searchParams.delete("view");
-                  let search = url.searchParams.toString();
-                  if (search.length) {
-                    search = `?${search}`;
-                  }
-
-                  const path = `/datasets/${encodeURIComponent(
-                    dataset.name
-                  )}${search}`;
-
-                  router.history.replace(path, {
-                    variables: { view: value?.length ? value : null },
-                  });
+                  replaceUrlWithSavedView(
+                    null,
+                    dataset.name,
+                    router,
+                    null, // should this be {}
+                    value,
+                    true
+                  );
                 } else if (savedViewSlug) {
-                  url.searchParams.set("view", savedViewSlug);
-
-                  let search = url.searchParams.toString();
-                  if (search.length) {
-                    search = `?${search}`;
-                  }
-
-                  const path = `/datasets/${encodeURIComponent(
-                    dataset.name
-                  )}${search}`;
-
-                  router.history.push(path, {
-                    variables: { view: value?.length ? value : null },
-                  });
+                  replaceUrlWithSavedView(
+                    savedViewSlug,
+                    dataset.name,
+                    router,
+                    null, // should this be {}
+                    value,
+                    true
+                  );
                 }
               }
 
