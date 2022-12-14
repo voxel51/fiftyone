@@ -2,14 +2,9 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import {
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
   filters,
-  groupSlice,
   resolvedGroupSlice,
   selectedLabelList,
   selectedSamples,
@@ -22,6 +17,47 @@ import { transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
 import useStateUpdate from "./useStateUpdate";
 import * as fos from "../";
+
+const replaceUrlWithSavedView = (
+  replaceSlug: string,
+  datasetName: string,
+  router: any,
+  newState: any,
+  value: any[] | null,
+  replace: boolean,
+  isStateless?: boolean
+) => {
+  const url = new URL(window.location.toString());
+
+  if (!replaceSlug) {
+    url.searchParams.delete("view");
+  } else {
+    url.searchParams.set("view", replaceSlug);
+  }
+
+  let search = url.searchParams.toString();
+  if (search.length) {
+    search = `?${search}`;
+  }
+
+  let path = "";
+  if (isStateless) {
+    // TODO: not great, embedded app is stateless - we force /samples
+    path = `/datasets/${encodeURIComponent(datasetName)}/samples${search}`;
+  } else {
+    path = `/datasets/${encodeURIComponent(datasetName)}${search}`;
+  }
+
+  if (replace) {
+    router.history.replace(path, {
+      state: newState,
+      variables: { view: value?.length ? value : null },
+    });
+    return "";
+  } else {
+    return path;
+  }
+};
 
 const useSetView = (
   patch: boolean = false,
@@ -45,7 +81,7 @@ const useSetView = (
         addStages?: State.Stage[],
         viewName?: string,
         changingSavedView?: boolean,
-        viewSlug?: string
+        savedViewSlug?: string
       ) => {
         const dataset = snapshot.getLoadable(fos.dataset).contents;
         const savedViews = dataset.savedViews || [];
@@ -55,12 +91,15 @@ const useSetView = (
             viewOrUpdater instanceof Function
               ? viewOrUpdater(snapshot.getLoadable(view).contents)
               : viewOrUpdater;
+
           commit({
             variables: {
+              changingSavedView,
+              savedViewSlug,
               viewName,
+              view: value,
               subscription,
               session,
-              view: value,
               datasetName: dataset.name,
               form: patch
                 ? {
@@ -80,25 +119,109 @@ const useSetView = (
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
               if (router.history.location.state) {
-                router.history.location.state.state = {
-                  ...router.history.location.state,
+                const newState = {
+                  ...router.history.location.state.state,
                   view: value,
-                  viewName: viewName,
+                  viewName,
+                  savedViewSlug,
                   viewCls: dataset.viewCls,
                   selected: [],
                   selectedLabels: [],
-                  savedViews: savedViews,
+                  savedViews,
+                  changingSavedView,
                 };
+                router.history.location.state.state = newState;
 
-                if (changingSavedView) {
-                  router.history.push(
-                    `${location.pathname}${
-                      viewSlug ? `?view=${viewSlug}` : ""
-                    }`,
-                    {
-                      state: router.history.location.state.state,
-                      variables: { view: value },
-                    }
+                const url = new URL(window.location.toString());
+                const currentSlug = url.searchParams.get("view");
+
+                // single tab / clearing stage should remove query param
+                if (!changingSavedView && currentSlug && !value?.length) {
+                  replaceUrlWithSavedView(
+                    null,
+                    dataset.name,
+                    router,
+                    newState,
+                    value,
+                    true
+                  );
+                }
+
+                if (
+                  changingSavedView &&
+                  (currentSlug || savedViewSlug) &&
+                  currentSlug !== savedViewSlug
+                ) {
+                  replaceUrlWithSavedView(
+                    savedViewSlug,
+                    dataset.name,
+                    router,
+                    newState,
+                    value,
+                    true
+                  );
+                } else {
+                  // single tab - clear saved view if ONLY view stages change - not the saved view
+                  if (!changingSavedView && currentSlug) {
+                    const path = replaceUrlWithSavedView(
+                      null,
+                      dataset.name,
+                      router,
+                      newState,
+                      value,
+                      false
+                    );
+
+                    router.history.replace(path, {
+                      state: {
+                        view: value,
+                        viewCls: dataset.viewCls,
+                        selected: [],
+                        selectedLabels: [],
+                        viewName,
+                        savedViews,
+                        savedViewSlug,
+                        changingSavedView,
+                      },
+                    });
+                  }
+                }
+
+                updateState({
+                  dataset: transformDataset(dataset),
+                  state: {
+                    view: value,
+                    viewCls: dataset.viewCls,
+                    selected: [],
+                    selectedLabels: [],
+                    viewName,
+                    savedViews,
+                    savedViewSlug,
+                    changingSavedView,
+                  },
+                });
+              } else {
+                // stateless use in teams / embedded app
+                const url = new URL(window.location.toString());
+                const currentSlug = url.searchParams.get("view");
+
+                if (currentSlug && !value?.length) {
+                  replaceUrlWithSavedView(
+                    null,
+                    dataset.name,
+                    router,
+                    null, // should this be {}
+                    value,
+                    true
+                  );
+                } else if (savedViewSlug) {
+                  replaceUrlWithSavedView(
+                    savedViewSlug,
+                    dataset.name,
+                    router,
+                    null, // should this be {}
+                    value,
+                    true
                   );
                 }
               }

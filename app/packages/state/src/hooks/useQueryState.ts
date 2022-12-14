@@ -19,16 +19,18 @@ const useQueryState = (query) => {
         { skipNulls: true }
       );
 
-      router.history.push(`${location.pathname}?${queryString}`, {
-        state: {
-          ...router.history.location.state.state,
-          selected: [],
-          selectedLabels: [],
-          // view: ,
-          ...(dataset.viewCls ? { viewCls: dataset.viewCls } : {}),
-          ...(dataset ? { dataset } : {}),
-        },
-      });
+      if (router.history.location.state.state) {
+        router.history.push(`${location.pathname}?${queryString}`, {
+          state: {
+            ...router.history.location.state.state,
+            selected: [],
+            selectedLabels: [],
+            // view: ,
+            ...(dataset.viewCls ? { viewCls: dataset.viewCls } : {}),
+            ...(dataset ? { dataset } : {}),
+          },
+        });
+      }
     },
     [history, location, query]
   );

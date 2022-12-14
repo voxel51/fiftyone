@@ -6,6 +6,8 @@ export default graphql`
     $session: String
     $view: BSONArray!
     $viewName: String
+    $savedViewSlug: String
+    $changingSavedView: Boolean
     $datasetName: String!
     $form: StateForm!
   ) {
@@ -14,6 +16,8 @@ export default graphql`
       session: $session
       view: $view
       viewName: $viewName
+      savedViewSlug: $savedViewSlug
+      changingSavedView: $changingSavedView
       datasetName: $datasetName
       form: $form
     ) {
@@ -104,6 +108,8 @@ export default graphql`
       }
       view
       viewName
+      savedViewSlug
+      changingSavedView
     }
   }
 `;

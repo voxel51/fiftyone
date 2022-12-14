@@ -5,6 +5,7 @@ Saved view documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import json
 from fiftyone.core.fields import (
     ColorField,
     DateTimeField,

@@ -39,6 +39,8 @@ class ViewResponse:
     view: BSONArray
     dataset: Dataset
     view_name: t.Optional[str] = None
+    saved_view_slug: t.Optional[str] = None
+    changing_saved_view: t.Optional[bool] = False
 
 
 @gql.input
@@ -146,6 +148,8 @@ class Mutation:
         dataset_name: str,
         view: t.Optional[BSONArray],
         view_name: t.Optional[str],
+        saved_view_slug: t.Optional[str],
+        changing_saved_view: t.Optional[bool],
         form: t.Optional[StateForm],
         info: Info,
     ) -> ViewResponse:
@@ -156,6 +160,7 @@ class Mutation:
         if view_name is not None and state.dataset.has_saved_view(view_name):
             # Load a saved view by name
             state.view = state.dataset.load_saved_view(view_name)
+            state.saved_views = state.dataset.all_views_v2
 
         elif form:
             # Update current view with form parameters
@@ -185,21 +190,28 @@ class Mutation:
             # Apply a list of view stages to dataset if provided
             state.view = fov.DatasetView._build(state.dataset, view)
 
-        await dispatch_event(subscription, StateUpdate(state=state))
+        state.saved_view_slug = saved_view_slug or None
+
+        await dispatch_event(
+            subscription,
+            StateUpdate(
+                state=state,
+                update=True,
+                changing_saved_view=changing_saved_view,
+            ),
+        )
         dataset = await Dataset.resolver(
             name=dataset_name,
             view=view,
             view_name=view_name if view_name else state.view.name,
             info=info,
         )
-        print(
-            "async def set_view called. Dataset.saved_views=",
-            dataset.saved_views,
-        )
         return ViewResponse(
             view=state.view._serialize(),
             dataset=dataset,
             view_name=state.view.name,
+            saved_view_slug=saved_view_slug,
+            changing_saved_view=changing_saved_view,
         )
 
     @gql.mutation
@@ -233,21 +245,44 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         view_name: str,
+        view_stages: t.Optional[BSONArray] = None,
+        dataset_name: t.Optional[str] = None,
         description: t.Optional[str] = None,
         color: t.Optional[str] = None,
     ) -> t.Optional[SavedView]:
         state = get_state()
         dataset = state.dataset
+        use_state = True
+        if dataset is None:
+            use_state = False
+            # teams is stateless so dataset will be null
+            dataset = fo.load_dataset(dataset_name)
+            print("loaded dataset:", dataset)
 
+        if dataset is None:
+            raise ValueError(
+                "[mutation: saved_view] Missing dataset "
+                "reference for creating saved view with name = "
+                "{}".format(view_name)
+            )
         # view arg required to be an instance of
         # `fiftyone.core.view.DatasetView`
-        dataset.save_view(
-            view_name, state.view, description=description, color=color
-        )
-        dataset.reload()
-        state.view = dataset.load_saved_view(view_name)
-        state.view_name = view_name
-        await dispatch_event(subscription, StateUpdate(state=state))
+        if use_state:
+            print("stateful save_view called.")
+
+            dataset.save_view(
+                view_name, state.view, description=description, color=color
+            )
+            dataset.reload()
+            state.view = dataset.load_saved_view(view_name)
+            state.view_name = view_name
+            await dispatch_event(subscription, StateUpdate(state=state))
+        else:
+            view = get_view(dataset_name, stages=view_stages)
+            print("stateless save_view called. created view:\n", view)
+            dataset.save_view(
+                view_name, view, description=description, color=color
+            )
 
         return next(
             (
