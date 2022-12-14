@@ -75,6 +75,7 @@ const Loading = React.memo(({ loading }: { loading: boolean }) => {
   );
 });
 
+
 const TaggingContainerInput = styled.div`
   font-size: 14px;
   border-bottom: 1px ${({ theme }) => theme.primary.plainColor} solid;
@@ -339,7 +340,7 @@ const useTagCallback = (
   targetLabels,
   lookerRef?: React.MutableRefObject<Lookers | undefined>
 ) => {
-  const setAggs = useSetRecoilState(fos.aggregationsTick);
+  const setAggs = useSetRecoilState(fos.refresher);
   const setLabels = fos.useSetSelectedLabels();
   const setSamples = fos.useSetSelected();
   const updateSample = fos.useUpdateSample();
