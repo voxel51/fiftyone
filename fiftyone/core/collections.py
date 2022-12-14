@@ -30,7 +30,6 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
-import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
@@ -952,23 +951,21 @@ class SampleCollection(object):
         does not exist.
 
         Args:
-            path: a field name or ``embedded.field.name``
-            ftype (None): an optional field type or iterable of types to
-                enforce. Must be subclass(es) of
-                :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type or
-                iterable of types to enforce. Must be a subclass(es) of
+            path: a field path
+            ftype (None): an optional field type to enforce. Must be a subclass
+                of :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type to
+                enforce. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             leaf (False): whether to return the subfield of list fields
 
         Returns:
-            a :class:`fiftyone.core.fields.Field` instance, or ``None``
+            a :class:`fiftyone.core.fields.Field` instance or ``None``
 
         Raises:
-            ValueError: if type constraints are provided and the field does not
-            exist or does not match the constraints
+            ValueError: if the field does not match provided type constraints
         """
         fof.validate_type_constraints(
             ftype=ftype, embedded_doc_type=embedded_doc_type
@@ -1050,12 +1047,11 @@ class SampleCollection(object):
         the collection.
 
         Args:
-            ftype (None): an optional field type or iterable of types to which
-                to restrict the returned schema. Must be subclass(es) of
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type or
-                iterable of types to which to restrict the returned schema.
-                Must be subclass(es) of
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -1080,12 +1076,11 @@ class SampleCollection(object):
         Only applicable for collections that contain videos.
 
         Args:
-            ftype (None): an optional field type or iterable of types to which
-                to restrict the returned schema. Must be subclass(es) of
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type or
-                iterable of types to which to restrict the returned schema.
-                Must be subclass(es) of
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -2217,6 +2212,8 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        output_dir=None,
+        rel_dir=None,
         **kwargs,
     ):
         """Applies the :class:`FiftyOne model <fiftyone.core.models.Model>` or
@@ -2254,6 +2251,17 @@ class SampleCollection(object):
                 raising an error if predictions cannot be generated for a
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
+            output_dir (None): an optional output directory in which to write
+                segmentation images. Only applicable if the model generates
+                segmentations. If none is provided, the segmentations are
+                stored in the database
+            rel_dir (None): an optional relative directory to strip from each
+                input filepath to generate a unique identifier that is joined
+                with ``output_dir`` to generate an output path for each
+                segmentation image. This argument allows for populating nested
+                subdirectories in ``output_dir`` that match the shape of the
+                input paths. The path is converted to an absolute path (if
+                necessary) via :func:`fiftyone.core.utils.normalize_path`
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
         """
@@ -2266,6 +2274,8 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            output_dir=output_dir,
+            rel_dir=rel_dir,
             **kwargs,
         )
 
@@ -8660,6 +8670,41 @@ class SampleCollection(object):
         # @todo handle "groups.<slice>.field.name", if it becomes necessary
         db_fields_map = self._get_db_fields_map(frames=frames)
         return [db_fields_map.get(p, p) for p in paths]
+
+    def _get_media_fields(
+        self, include_filepath=True, whitelist=None, frames=False
+    ):
+        media_fields = {}
+
+        if frames:
+            schema = self.get_frame_field_schema()
+            app_media_fields = set()
+        else:
+            schema = self.get_field_schema()
+            app_media_fields = set(self._dataset.app_config.media_fields)
+
+        if not include_filepath:
+            app_media_fields.discard("filepath")
+
+        for field_name, field in schema.items():
+            if field_name in app_media_fields:
+                media_fields[field_name] = None
+            elif isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+                field.document_type, fol._HasMedia
+            ):
+                media_fields[field_name] = field.document_type
+
+        if whitelist is not None:
+            if etau.is_container(whitelist):
+                whitelist = set(whitelist)
+            else:
+                whitelist = {whitelist}
+
+            media_fields = {
+                k: v for k, v in media_fields.items() if k in whitelist
+            }
+
+        return media_fields
 
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()

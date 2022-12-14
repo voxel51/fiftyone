@@ -4105,6 +4105,7 @@ __metadata:
     uuid: ^8.3.2
     vite: ^3.0.0
     vite-plugin-relay: ^1.0.7
+    vite-plugin-rewrite-all: ^1.0.0
     xstate: ^4.14.0
   languageName: unknown
   linkType: soft
@@ -4299,11 +4300,14 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/looker@workspace:packages/looker"
   dependencies:
+    "@rollup/plugin-inject": ^5.0.2
     "@types/color-string": ^1.5.0
     "@types/lru-cache": ^5.1.0
     "@types/uuid": ^8.3.0
     "@ungap/event-target": ^0.2.2
+    buffer: ^6.0.3
     copy-to-clipboard: ^3.3.1
+    fast-png: ^6.1.0
     immutable: ^4.0.0-rc.12
     json-format-highlight: ^1.0.4
     lru-cache: ^6.0.0
@@ -6019,6 +6023,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@rollup/plugin-inject@npm:^5.0.2":
+  version: 5.0.2
+  resolution: "@rollup/plugin-inject@npm:5.0.2"
+  dependencies:
+    "@rollup/pluginutils": ^5.0.1
+    estree-walker: ^2.0.2
+    magic-string: ^0.26.4
+  peerDependencies:
+    rollup: ^1.20.0||^2.0.0||^3.0.0
+  peerDependenciesMeta:
+    rollup:
+      optional: true
+  checksum: 5919093df95237d0ef00ade513c42d4bfcc88a527f73663427880dddd55f26004d5d1877e15436f2a76e87bfe7158b51fa5b295f28a6f73e062b701a720cb6b3
+  languageName: node
+  linkType: hard
+
 "@rollup/pluginutils@npm:^3.1.0":
   version: 3.1.0
   resolution: "@rollup/pluginutils@npm:3.1.0"
@@ -6039,6 +6059,22 @@ __metadata:
     estree-walker: ^2.0.1
     picomatch: ^2.2.2
   checksum: 6bc41f22b1a0f1efec3043899e4d3b6b1497b3dea4d94292d8f83b4cf07a1073ecbaedd562a22d11913ff7659f459677b01b09e9598a98936e746780ecc93a12
+  languageName: node
+  linkType: hard
+
+"@rollup/pluginutils@npm:^5.0.1":
+  version: 5.0.2
+  resolution: "@rollup/pluginutils@npm:5.0.2"
+  dependencies:
+    "@types/estree": ^1.0.0
+    estree-walker: ^2.0.2
+    picomatch: ^2.3.1
+  peerDependencies:
+    rollup: ^1.20.0||^2.0.0||^3.0.0
+  peerDependenciesMeta:
+    rollup:
+      optional: true
+  checksum: edea15e543bebc7dcac3b0ac8bc7b8e8e6dbd46e2864dbe5dd28072de1fbd5b0e10d545a610c0edaa178e8a7ac432e2a2a52e547ece1308471412caba47db8ce
   languageName: node
   linkType: hard
 
@@ -7627,7 +7663,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/estree@npm:*":
+"@types/estree@npm:*, @types/estree@npm:^1.0.0":
   version: 1.0.0
   resolution: "@types/estree@npm:1.0.0"
   checksum: 910d97fb7092c6738d30a7430ae4786a38542023c6302b95d46f49420b797f21619cdde11fa92b338366268795884111c2eb10356e4bd2c8ad5b92941e9e6443
@@ -7907,6 +7943,13 @@ __metadata:
   version: 4.1.4
   resolution: "@types/npmlog@npm:4.1.4"
   checksum: 740f7431ccfc0e127aa8d162fe05c6ce8aa71290be020d179b2824806d19bd2c706c7e0c9a3c9963cefcdf2ceacb1dec6988c394c3694451387759dafe0aa927
+  languageName: node
+  linkType: hard
+
+"@types/pako@npm:^1.0.2":
+  version: 1.0.4
+  resolution: "@types/pako@npm:1.0.4"
+  checksum: a7ee316fad8e01b895d97fd6db771624d28d7bab43693db563dba768ca6d563aacf99e6d1045288366fec5cd2cb379bf86ef947848690ea648470b21d9a572c5
   languageName: node
   linkType: hard
 
@@ -10412,6 +10455,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"buffer@npm:^6.0.3":
+  version: 6.0.3
+  resolution: "buffer@npm:6.0.3"
+  dependencies:
+    base64-js: ^1.3.1
+    ieee754: ^1.2.1
+  checksum: 5ad23293d9a731e4318e420025800b42bf0d264004c0286c8cc010af7a270c7a0f6522e84f54b9ad65cbd6db20b8badbfd8d2ebf4f80fa03dab093b89e68c3f9
+  languageName: node
+  linkType: hard
+
 "builder-util-runtime@npm:9.0.2":
   version: 9.0.2
   resolution: "builder-util-runtime@npm:9.0.2"
@@ -11318,6 +11371,13 @@ __metadata:
     write-file-atomic: ^3.0.0
     xdg-basedir: ^4.0.0
   checksum: 60ef65d493b63f96e14b11ba7ec072fdbf3d40110a94fb7199d1c287761bdea5c5244e76b2596325f30c1b652213aa75de96ea20afd4a5f82065e61ea090988e
+  languageName: node
+  linkType: hard
+
+"connect-history-api-fallback@npm:^1.6.0":
+  version: 1.6.0
+  resolution: "connect-history-api-fallback@npm:1.6.0"
+  checksum: 804ca2be28c999032ecd37a9f71405e5d7b7a4b3defcebbe41077bb8c5a0a150d7b59f51dcc33b2de30bc7e217a31d10f8cfad27e8e74c2fc7655eeba82d6e7e
   languageName: node
   linkType: hard
 
@@ -13552,7 +13612,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"estree-walker@npm:^2.0.1":
+"estree-walker@npm:^2.0.1, estree-walker@npm:^2.0.2":
   version: 2.0.2
   resolution: "estree-walker@npm:2.0.2"
   checksum: 6151e6f9828abe2259e57f5fd3761335bb0d2ebd76dc1a01048ccee22fabcfef3c0859300f6d83ff0d1927849368775ec5a6d265dde2f6de5a1be1721cd94efc
@@ -13840,6 +13900,17 @@ __metadata:
   version: 2.0.6
   resolution: "fast-levenshtein@npm:2.0.6"
   checksum: 92cfec0a8dfafd9c7a15fba8f2cc29cd0b62b85f056d99ce448bbcd9f708e18ab2764bda4dd5158364f4145a7c72788538994f0d1787b956ef0d1062b0f7c24c
+  languageName: node
+  linkType: hard
+
+"fast-png@npm:^6.1.0":
+  version: 6.1.0
+  resolution: "fast-png@npm:6.1.0"
+  dependencies:
+    "@types/pako": ^1.0.2
+    iobuffer: ^5.0.4
+    pako: ^2.0.4
+  checksum: 05c3b5226f8b317df67041bc7350710e58f2314788c26feec1436410cb94928ee59e3510ba173dd7a5b25e57ad3c151ea18c3f486883415ab59619969cd07091
   languageName: node
   linkType: hard
 
@@ -15487,7 +15558,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ieee754@npm:^1.1.12, ieee754@npm:^1.1.13, ieee754@npm:^1.1.4":
+"ieee754@npm:^1.1.12, ieee754@npm:^1.1.13, ieee754@npm:^1.1.4, ieee754@npm:^1.2.1":
   version: 1.2.1
   resolution: "ieee754@npm:1.2.1"
   checksum: 5144c0c9815e54ada181d80a0b810221a253562422e7c6c3a60b1901154184f49326ec239d618c416c1c5945a2e197107aee8d986a3dd836b53dffefd99b5e7e
@@ -15706,6 +15777,13 @@ __metadata:
   dependencies:
     loose-envify: ^1.0.0
   checksum: cc3182d793aad82a8d1f0af697b462939cb46066ec48bbf1707c150ad5fad6406137e91a262022c269702e01621f35ef60269f6c0d7fd178487959809acdfb14
+  languageName: node
+  linkType: hard
+
+"iobuffer@npm:^5.0.4":
+  version: 5.2.1
+  resolution: "iobuffer@npm:5.2.1"
+  checksum: eb7850819e998c26b350632eed6529fff5a7f751d7e38b5f006b125fa257da46f075883a5333f6d793067a9004de3a39eac9d33cfce4968505ec05a71b21aa7d
   languageName: node
   linkType: hard
 
@@ -17826,7 +17904,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"magic-string@npm:^0.26.1, magic-string@npm:^0.26.7":
+"magic-string@npm:^0.26.1, magic-string@npm:^0.26.4, magic-string@npm:^0.26.7":
   version: 0.26.7
   resolution: "magic-string@npm:0.26.7"
   dependencies:
@@ -19307,6 +19385,13 @@ __metadata:
     registry-url: ^5.0.0
     semver: ^6.2.0
   checksum: cc9f890d3667d7610e6184decf543278b87f657d1ace0deb4a9c9155feca738ef88f660c82200763d3348010f4e42e9c7adc91e96ab0f86a770955995b5351e2
+  languageName: node
+  linkType: hard
+
+"pako@npm:^2.0.4":
+  version: 2.1.0
+  resolution: "pako@npm:2.1.0"
+  checksum: 71666548644c9a4d056bcaba849ca6fd7242c6cf1af0646d3346f3079a1c7f4a66ffec6f7369ee0dc88f61926c10d6ab05da3e1fca44b83551839e89edd75a3e
   languageName: node
   linkType: hard
 
@@ -24515,6 +24600,17 @@ __metadata:
     babel-plugin-relay: ^14.1.0
     vite: ">=2.0.0"
   checksum: 123ee9ae0b0da51669a1698f6478e32725971522ccf90b77af678566cb2c23602a687a8caadac6ab25516937d9ff80a77ccae7b8e8a6b4c4f7170b5f5977fc0e
+  languageName: node
+  linkType: hard
+
+"vite-plugin-rewrite-all@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "vite-plugin-rewrite-all@npm:1.0.0"
+  dependencies:
+    connect-history-api-fallback: ^1.6.0
+  peerDependencies:
+    vite: ^2.0.0 || ^3.0.0
+  checksum: 5efb6f0b54452126067619a1a230d2dfc9264d963801159f9050aaf18d9335e600a017b2ce751e98c597535215c4732a79804f0bb664b4aafbaa6283f06b9aee
   languageName: node
   linkType: hard
 
