@@ -109,6 +109,10 @@ export namespace State {
     sidebarGroups?: SidebarGroup[];
     sidebarMode?: "all" | "best" | "fast";
   }
+
+  /**
+   * The dataset object returned by the API.
+   */
   export interface Dataset {
     id: string;
     brainMethods: BrainRun[];
