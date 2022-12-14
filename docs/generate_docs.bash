@@ -93,7 +93,7 @@ python scripts/make_model_zoo_docs.py
 
 echo "Generating TypeScript API docs"
 cd ../app
-yarn docs
+yarn doc
 cd ../docs
 
 echo "Building docs"

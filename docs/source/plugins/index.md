@@ -466,3 +466,12 @@ fop.registerComponent({
     activator: ({ dataset }) => findAvailableFields(dataset.fields).length > 0,
 });
 ```
+
+```{eval-rst}
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   Overview <self>
+   @fiftyone/state <api/fiftyone.state>
+```
