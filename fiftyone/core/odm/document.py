@@ -386,12 +386,17 @@ class MongoEngineBaseDocument(SerializableDocument):
         # pylint: disable=no-member
         d = self.to_mongo(use_db_field=True)
         if no_dereference:
-            # TODO: handle dict[ref] types for
             for k, val in d.items():
                 if type(val) in [list, dict]:
                     if type(val) == list and len(val) > 0:
                         if isinstance(val[0], ObjectId):
-                            d[k] = [obj.to_dict() for obj in getattr(self, k)]
+                            d[k] = [
+                                obj.serialize() for obj in getattr(self, k)
+                            ]
+                    elif type(val) == dict:
+                        for k2, v2 in val.items():
+                            if isinstance(v2, ObjectId):
+                                d[k][k2] = getattr(self, k)[k2].to_dict()
 
         if not extended:
             return d
