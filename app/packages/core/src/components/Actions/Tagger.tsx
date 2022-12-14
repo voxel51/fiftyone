@@ -42,20 +42,6 @@ import {
   tagStats,
 } from "./utils";
 
-const IconDiv = styled.div`
-  position: absolute;
-  top: 0.25rem;
-  right: -0.75rem;
-  height: 2rem;
-  width: 2rem;
-
-  & > svg {
-    margin-top: 0.5rem;
-    margin-right: 0.25rem;
-    color: ${({ theme }) => theme.text.primary};
-  }
-`;
-
 const TaggingContainerInput = styled.div`
   font-size: 14px;
   border-bottom: 1px ${({ theme }) => theme.primary.plainColor} solid;
@@ -325,7 +311,7 @@ const useTagCallback = (
   targetLabels,
   lookerRef?: React.MutableRefObject<Lookers | undefined>
 ) => {
-  const setAggs = useSetRecoilState(fos.aggregationsTick);
+  const setAggs = useSetRecoilState(fos.refresher);
   const setLabels = fos.useSetSelectedLabels();
   const setSamples = fos.useSetSelected();
   const updateSample = fos.useUpdateSample();
