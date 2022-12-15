@@ -17,6 +17,7 @@ import { transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
 import useStateUpdate from "./useStateUpdate";
 import * as fos from "../";
+import { isElectron } from "@fiftyone/utilities";
 
 const replaceUrlWithSavedView = (
   replaceSlug: string,
@@ -24,10 +25,15 @@ const replaceUrlWithSavedView = (
   router: any,
   newState: any,
   value: any[] | null,
-  replace: boolean,
+  shouldPush: boolean,
   isStateless?: boolean
 ) => {
+  const isDesktop = isElectron();
   const url = new URL(window.location.toString());
+
+  if (isDesktop) {
+    return "";
+  }
 
   if (!replaceSlug) {
     url.searchParams.delete("view");
@@ -48,8 +54,8 @@ const replaceUrlWithSavedView = (
     path = `/datasets/${encodeURIComponent(datasetName)}${search}`;
   }
 
-  if (replace) {
-    router.history.replace(path, {
+  if (shouldPush) {
+    router.history.push(path, {
       state: newState,
       variables: { view: value?.length ? value : null },
     });
@@ -118,6 +124,7 @@ const useSetView = (
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
+              const isDesktop = isElectron();
               if (router.history.location.state) {
                 const newState = {
                   ...router.history.location.state.state,
@@ -172,18 +179,20 @@ const useSetView = (
                       false
                     );
 
-                    router.history.replace(path, {
-                      state: {
-                        view: value,
-                        viewCls: dataset.viewCls,
-                        selected: [],
-                        selectedLabels: [],
-                        viewName,
-                        savedViews,
-                        savedViewSlug,
-                        changingSavedView,
-                      },
-                    });
+                    if (!isDesktop) {
+                      router.history.replace(path, {
+                        state: {
+                          view: value,
+                          viewCls: dataset.viewCls,
+                          selected: [],
+                          selectedLabels: [],
+                          viewName,
+                          savedViews,
+                          savedViewSlug,
+                          changingSavedView,
+                        },
+                      });
+                    }
                   }
                 }
 
@@ -233,8 +242,10 @@ const useSetView = (
                   viewCls: dataset.viewCls,
                   selected: [],
                   selectedLabels: [],
-                  viewName: viewName,
-                  savedViews: savedViews,
+                  viewName,
+                  savedViews,
+                  savedViewSlug,
+                  changingSavedView,
                 },
               });
 

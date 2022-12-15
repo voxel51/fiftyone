@@ -17,6 +17,7 @@ import {
   DatasetSavedViewsFragment,
 } from "../../../Root/Root";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
+import { isElectron } from "@fiftyone/utilities";
 
 const DEFAULT_SELECTED: DatasetViewOption = {
   id: "1",
@@ -114,6 +115,15 @@ export default function ViewSelection(props: Props) {
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
   const isEmptyView = !loadedView?.length;
 
+  // special case for electron app to clear the selection
+  // when there is no loaded view
+  const isDesktop = isElectron();
+  useEffect(() => {
+    if (isDesktop && !loadedView.length) {
+      setSelected(DEFAULT_SELECTED);
+    }
+  }, [isDesktop, loadedView]);
+
   useEffect(() => {
     if (savedViewParam) {
       const potentialView = viewOptions.filter(
@@ -201,13 +211,19 @@ export default function ViewSelection(props: Props) {
             }
           );
         }}
-        onDeleteSuccess={() => {
+        onDeleteSuccess={(deletedSavedViewName: string) => {
           refetch(
             { name: datasetName },
             {
               fetchPolicy: "network-only",
               onComplete: () => {
-                setSavedViewParam(null);
+                if (selected?.label === deletedSavedViewName) {
+                  setSavedViewParam(null);
+
+                  if (isDesktop) {
+                    setSelected(DEFAULT_SELECTED);
+                  }
+                }
               },
             }
           );

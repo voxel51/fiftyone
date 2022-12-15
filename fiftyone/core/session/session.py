@@ -336,11 +336,15 @@ class Session(object):
 
         self.plots = plots
 
+        final_view_name = None
+        if view and view.name:
+            final_view_name = view.name
+
         self._state = StateDescription(
             config=config,
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
-            view_name=view.name,
+            view_name=final_view_name,
         )
         self._client = fosc.Client(
             address=address,
@@ -560,6 +564,7 @@ class Session(object):
 
         self._state.selected = []
         self._state.selected_labels = []
+        self._state.view_name = view.name
 
     @update_state()
     def clear_view(self) -> None:

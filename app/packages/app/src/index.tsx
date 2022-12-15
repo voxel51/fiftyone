@@ -21,6 +21,7 @@ import { usePlugins } from "@fiftyone/plugins";
 import { useRouter } from "@fiftyone/state";
 import { EventsContext } from "@fiftyone/state";
 import { getDatasetName } from "@fiftyone/state";
+import { isElectron } from "@fiftyone/utilities";
 
 import { useErrorHandler } from "react-error-boundary";
 
@@ -129,9 +130,10 @@ const App: React.FC = ({}) => {
                 : `/${search}`;
 
               if (
-                (isAnUpdate && !changingSavedView) ||
-                path !== oldPath ||
-                !isAnUpdate
+                !isElectron() &&
+                ((isAnUpdate && !changingSavedView) ||
+                  path !== oldPath ||
+                  !isAnUpdate)
               ) {
                 contextRef.current.history.replace(path, {
                   state,
