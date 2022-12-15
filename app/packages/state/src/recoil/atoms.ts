@@ -105,7 +105,7 @@ export const activePlot = atom<string>({
   default: "Labels",
 });
 
-export const loading = atom({
+export const loading = atom<boolean>({
   key: "loading",
   default: false,
 });

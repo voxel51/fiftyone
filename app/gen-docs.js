@@ -139,17 +139,6 @@ class RstCsvTable {
   }
 }
 
-class RstProject {
-  constructor() {
-    this.files = [];
-  }
-  file(name) {
-    const file = new RstFile(name);
-    this.files.push(file);
-    return file;
-  }
-}
-
 const MODULE_ALIASES = {
   "@fiftyone/state": "fos",
 };
@@ -188,9 +177,14 @@ class RstFunction {
     this.params.push([name, type, description]);
   }
   returns(type, description) {
+    if (typeof type === "string") return type;
     this._returns = [type, description];
   }
-  toSource() {
+  getRtypeStr(file) {
+    const type = this._returns[0];
+    return file.typeLabel(type);
+  }
+  toSource(file) {
     const params = this.params.map(
       ([name, type, description]) => `   :param ${name}: ${description || ""}`
     );
@@ -210,10 +204,22 @@ class RstFunction {
         ? `   :returns: ${this._returns[1] || ""}`
         : null,
       this._returns && this._returns[0]
-        ? `   :rtype: ${this._returns[0] || ""}`
+        ? `   :rtype: ${this.getRtypeStr(file)}`
         : null,
       "",
     ];
+  }
+}
+
+class DocRef {
+  constructor(fragment) {
+    this.name = fragment.toRefName();
+    this.type = fragment.toRefType();
+    this.module = fragment.module().toRefName();
+  }
+  toString(name) {
+    const s = `:js:${this.type}:\`${this.module}.${name || this.name}\``;
+    return s;
   }
 }
 class RstMethod {
@@ -230,6 +236,9 @@ class RstClass {
     if (this._paramNames.has(name)) return;
     this._paramNames.add(name);
     this.params.push([name, type, description]);
+  }
+  desc(description) {
+    this._summary = description;
   }
   toSource() {
     const params = this.params.map(
@@ -270,12 +279,15 @@ class RstFile {
     this.name = name;
     this.children = [];
   }
+  setDepth(depth) {
+    this._depth = depth;
+  }
   toSource() {
     let src = [];
     for (const child of this.children) {
       src = src.concat(
         child
-          .toSource()
+          .toSource(this)
           .filter((l) => l !== null)
           .map((l) => (child.indent ? indent(l, child.indent * 3) : l))
           .map(replaceLastNewline)
@@ -286,9 +298,15 @@ class RstFile {
   refLabel(id) {
     this.string(`.. _${id}:`);
   }
+  ref(type, module, className) {
+    return `:js:${type}:\`${module}.${className}\``;
+  }
   append(node) {
     if (!node.toSource) {
       throw new Error("node must have a toSource method");
+    }
+    if (!node instanceof RstSection) {
+      node.indent = Math.max(0, this._depth - 2);
     }
     this.children.push(node);
   }
@@ -313,14 +331,23 @@ class RstFile {
     this.append(toc);
     return toc;
   }
-
   typeLabel(type) {
-    const label = type.label();
-
-    if (type.isReference()) {
-      return `:js:class:\`${label}\``;
+    const template = type.labelTemplate();
+    let resolved = [];
+    for (let part of template) {
+      if (typeof part !== "string") {
+        let src;
+        if (part instanceof DocType && part.isLinkable()) {
+          src = part.toRef().toString();
+        } else {
+          src = "``" + part.label() + "``";
+        }
+        resolved = [...resolved, src];
+      } else {
+        resolved.push("``" + part + "``");
+      }
     }
-    return `\`\`${label}\`\``;
+    return resolved.join(" ");
   }
   descToTable(desc) {
     const table = new RstCsvTable({
@@ -357,6 +384,14 @@ class RstFile {
     const cls = new RstClass(name);
     this.append(cls);
     return cls;
+  }
+  writeToFs() {
+    if (this.children.length === 0) return;
+
+    fs.writeFileSync(
+      path.join(PLUGIN_RST_DOCS, this.name + ".rst"),
+      this.toSource()
+    );
   }
 }
 
@@ -643,6 +678,22 @@ class DocFragment {
     this.raw = raw;
     this.parent = parent;
   }
+  module() {
+    if (this.constructor.kind() === "Module") return this;
+    if (this.parent) return this.parent.module();
+  }
+  toRef() {
+    return new DocRef(this);
+  }
+  toRefName() {
+    return this.get("name", "unknown");
+  }
+  toRefType() {
+    return this.constructor.kind().toLowerCase();
+  }
+  depth() {
+    return this.parent ? this.parent.depth() + 1 : 0;
+  }
   group() {
     console.error(this.constructor);
     throw new Error("must define a group() method");
@@ -655,7 +706,7 @@ class DocFragment {
   }
   mapArray(path, override) {
     return this.get(path, [])
-      .map((raw) => toFragment(raw, override))
+      .map((raw) => toFragment(raw, override, this))
       .filter((f) => f.shouldInclude());
   }
   label() {
@@ -690,57 +741,104 @@ class DocFragment {
   fullPath() {
     return this.pathParts().join(".");
   }
-  write(file) {
+  writeContent(file) {
     if (this.hasChildren()) {
       for (const child of this.children()) {
         child.write(file);
       }
     }
   }
+  write(file) {
+    file.setDepth(this.depth());
+    this.writeContent(file);
+  }
 }
 
 const GROUPS = ["State", "Hooks", "Functions", "Types", "Enums", "Variables"];
 
-class DocProject extends DocFragment {
-  static kind = () => "Project";
-  constructor(raw) {
-    super(raw);
+class DocModule extends DocFragment {
+  static kind = () => "Module";
+  group() {
+    return "Modules";
   }
-  write(file) {
+  toRefName() {
+    return this.toFilename();
+  }
+  label() {
+    return this.toFilename();
+  }
+  writeContent(file) {
     file.section(this.label(), 1);
     file.append(new RstModule(this.label(), this.shortText()));
     const groups = _.groupBy(this.children(), (child) => child.group());
     for (const kind of GROUPS) {
+      file.setDepth(this.depth());
       const children = groups[kind] || [];
+      if (children.length === 0) continue;
       file.section(kind, 2);
       for (const child of children) {
+        if (!child.write) {
+          console.log(child);
+        }
         child.write(file);
       }
+    }
+  }
+  toFilename() {
+    return this.get("name").replace("@", "").replace("/", ".");
+  }
+}
+
+class DocProject extends DocFragment {
+  static kind = () => "Project";
+  constructor(raw, FileType) {
+    super(raw);
+    this.FileType = FileType;
+  }
+  generate() {
+    const modules = this.children();
+    const files = [];
+    for (const module of modules) {
+      const file = new this.FileType(module.toFilename());
+      module.write(file);
+      files.push(file);
+    }
+    for (const file of files) {
+      file.writeToFs();
     }
   }
 }
 
 class DocNamespace extends DocFragment {
   static kind = () => "Namespace";
-  constructor(raw) {
-    super(raw);
-  }
   group() {
     return "Types";
+  }
+  toRefType() {
+    return "class";
   }
 }
 
 class DocClass extends DocFragment {
   static kind = () => "Class";
-  constructor(raw) {
-    super(raw);
+  group() {
+    return "Classes";
+  }
+  writeContent(file) {
+    file.refLabel(this.fullPath());
+    file.section(this.label(), 3);
+    const cls = file.cls(this.label());
+    cls.desc(this.shortText());
+    for (const child of this.children()) {
+      child.write(file);
+    }
   }
 }
 
 class DocFunction extends DocFragment {
   static kind = () => "Function";
-  constructor(raw) {
-    super(raw);
+  toRefType() {
+    return "function";
   }
   group() {
     const firstSig = this.signatures().length > 0 ? this.signatures()[0] : null;
@@ -750,11 +848,14 @@ class DocFunction extends DocFragment {
     return "Functions";
   }
   signatures() {
-    return this.get("signatures", []).map((raw) => new DocSignature(raw));
+    return this.mapArray("signatures", DocSignature);
   }
-  write(file) {
-    file.refLabel(this.fullPath());
+  writeSectionHeader(file) {
     file.section(this.label(), 3, true);
+  }
+  writeContent(file) {
+    file.refLabel(this.fullPath());
+    this.writeSectionHeader(file);
     for (const signature of this.signatures()) {
       this.writeSignature(file, signature);
     }
@@ -763,7 +864,7 @@ class DocFunction extends DocFragment {
     const funcName = nameOverride ? nameOverride : signature.toTextSignature();
     const func = file.func(funcName);
     if (nested) {
-      func.indent = 1;
+      func.indent = this.depth() + 1;
     }
     func.summary(signature.shortText());
     const desc = new FragmentDescription();
@@ -789,23 +890,35 @@ class DocFunction extends DocFragment {
         returnFnName
       );
     } else {
-      func.returns(returnType.label(), returnType.shortText());
+      func.returns(returnType, returnType.shortText());
     }
   }
 }
 
+class DocConstructor extends DocFunction {
+  static kind = () => "Constructor";
+  group() {
+    return "Classes";
+  }
+  writeSectionHeader(file) {
+    // no header
+  }
+}
+class DocMethod extends DocFragment {
+  static kind = () => "Method";
+}
 class DocEnumeration extends DocFragment {
   static kind = () => "Enumeration";
-  constructor(raw) {
-    super(raw);
-    this.members = this.get("children", []).map(
-      (raw) => new DocEnumerationMember(raw)
-    );
+  toRefType() {
+    return "data";
   }
   group() {
     return "Enums";
   }
-  write(file) {
+  members() {
+    return this.mapArray("children", DocEnumerationMember);
+  }
+  writeContent(file) {
     file.refLabel(this.fullPath());
     file.section(this.label(), 3);
     file.string(this.shortText());
@@ -814,16 +927,13 @@ class DocEnumeration extends DocFragment {
       widths: [1, 1],
       align: "left",
     });
-    for (const member of this.members) {
+    for (const member of this.members()) {
       table.addRow([member.name(), member.value()]);
     }
   }
 }
 class DocEnumerationMember extends DocFragment {
   static kind = () => "Enumeration Member";
-  constructor(raw) {
-    super(raw);
-  }
   name() {
     return this.get("name");
   }
@@ -833,9 +943,6 @@ class DocEnumerationMember extends DocFragment {
 }
 class DocVar extends DocFragment {
   static kind = () => "Variable";
-  constructor(raw) {
-    super(raw);
-  }
   group() {
     if (this.type().isRecoil()) {
       return "State";
@@ -843,9 +950,9 @@ class DocVar extends DocFragment {
     return "Variables";
   }
   type() {
-    return new DocType(this.get("type"));
+    return new DocType(this.get("type"), this);
   }
-  write(file) {
+  writeContent(file) {
     const type = this.type();
     file.refLabel(this.fullPath());
     file.section(this.label(), 3);
@@ -871,18 +978,8 @@ class DocVar extends DocFragment {
   }
 }
 
-const typeRegistry = new Map();
-
 class DocType extends DocFragment {
   static kind = () => "Type";
-  constructor(raw) {
-    super(raw);
-    // if (this.get('type') === 'indexedAccess') {
-    //   this.raw = this._resolveRaw();
-    // }
-    // console.log(this.raw)
-    typeRegistry.set(raw.id, this);
-  }
   // _resolveRaw() {
   //   const targetType = new DocType(this.get('objectType'));
   //   const targetProperty = this.get('indexType.value');
@@ -893,54 +990,79 @@ class DocType extends DocFragment {
   //   console.error('Failed to resolve', {targetType, targetProperty}, this.raw)
   //   throw new Error(`Could not resolve type`);
   // }
-  label() {
-    let label = this.get("name", "Any");
-    if (this.has("declaration")) {
-      label = this.declaration().label();
-    }
-    const name = this.get("name");
-    if (this.isReference() && !this.isGeneric()) {
-      label = name;
-    }
-    if (this.isTuple()) {
-      return (
-        "[" +
-        this.elements()
-          .map((t) => t.label())
-          .join(", ") +
-        "]"
+  toRefType() {
+    return "class";
+  }
+  module(localOnly) {
+    if (this.isExternal() && !localOnly) {
+      return new DocModule(
+        {
+          name: this.get("package"),
+        },
+        this.parent
       );
     }
+    return this.parent.module(true);
+  }
+  isLinkable() {
+    return !this.isExternal() && this.isReference();
+  }
+  labelTemplate() {
+    let result = [];
+    if (this.has("declaration")) {
+      result = this.declaration().labelTemplate();
+    }
+    if (this.isReference() && !this.isGeneric()) {
+      result = [this];
+    }
+    if (this.isTuple()) {
+      result = ["[", ...delim(this.elements(), ","), "]"];
+    }
     if (this.isUnion()) {
-      return `Union<${this.types()
-        .map((t) => t.label())
-        .join(" | ")}>`;
+      result = ["Union<", ...delim(this.types(), ","), ">"];
     }
     if (this.isArray()) {
-      label = "Array";
+      let template = ["Array"];
       if (this.isTypedArray()) {
-        label = `${this.elementType().label()}[]`;
+        template = ["Array<", ...this.elementType().labelTemplate(), ">"];
       }
+      result = template;
     }
     if (this.isFunction()) {
-      return this.declaration().signatures()[0].toTextSignatureWithReturnType();
+      result = this.declaration().signatures()[0].labelTemplate();
     }
     if (this.isGeneric()) {
-      label = `${name}<${this.typeArguments()
-        .map((t) => t.label())
-        .join(", ")}>`;
+      result = [this, "<", ...delim(this.typeArguments(), ","), ">"];
     }
     if (this.isLiteral()) {
-      // label = this.get("name", );
-      label = JSON.stringify(this.get("value")).replace(/"/g, "'");
+      result = [JSON.stringify(this.get("value")).replace(/"/g, "'")];
     }
-
-    if (label !== "null" && label !== "void" && label !== "undefined")
-      label = capitalize(label);
+    if (this.isIntrinsic()) {
+      result = [this.get("name")];
+    }
     if (this.isReadOnly()) {
-      label = `readonly ${label}`;
+      result.unshift("readonly");
     }
-    return label;
+    return result;
+  }
+  label() {
+    const template = this.labelTemplate();
+    const resolved = [];
+    for (let part of template) {
+      if (typeof part !== "string") {
+        if (!part.get) console.error(part);
+        resolved.push(part.get("name"));
+      } else {
+        resolved.push(part);
+      }
+    }
+    return resolved.join(" ");
+  }
+  isPrimitive() {
+    return this.isLiteral() || this.isIntrinsic();
+  }
+  isExternal() {
+    return this.has("package");
   }
   isLiteral() {
     return this.get("type") === "literal";
@@ -961,7 +1083,7 @@ class DocType extends DocFragment {
     return this.get("type") === "tuple";
   }
   typeArguments() {
-    return this.get("typeArguments", []).map((raw) => new DocType(raw));
+    return this.get("typeArguments", []).map((raw) => new DocType(raw, this));
   }
   isReflection() {
     return this.get("type") === "reflection";
@@ -986,13 +1108,13 @@ class DocType extends DocFragment {
     return this.isArray() && this.get("elementType", null) !== null;
   }
   elementType() {
-    return new DocType(this.get("elementType"));
+    return new DocType(this.get("elementType"), this);
   }
   elements() {
     return this.mapArray("elements", DocType);
   }
   declaration() {
-    return new DocTypeLiteral(this.get("declaration"));
+    return new DocTypeLiteral(this.get("declaration"), this);
   }
   signatures() {
     return this.mapArray("signatures");
@@ -1072,19 +1194,16 @@ class FragmentDescription {
 
 class DocTypeAlias extends DocFragment {
   static kind = () => "Type alias";
-  constructor(raw) {
-    super(raw);
-  }
   group() {
     return "Types";
   }
   type() {
-    return new DocType(this.get("type"));
+    return new DocType(this.get("type"), this);
   }
   typeParameters() {
     return this.mapArray("typeParameters", DocType);
   }
-  write(file) {
+  writeContent(file) {
     const type = this.type();
     file.refLabel(this.fullPath());
     file.cls(this.label());
@@ -1108,11 +1227,14 @@ class DocTypeAlias extends DocFragment {
 
 class DocTypeLiteral extends DocFragment {
   static kind = () => "Type literal";
-  constructor(raw) {
-    super(raw);
-  }
   group() {
     return "Types";
+  }
+  labelTemplate() {
+    if (this.isFunction()) {
+      return this.signatures()[0].labelTemplate();
+    }
+    return [this.label()];
   }
   label() {
     if (this.signatures().length > 0) {
@@ -1138,7 +1260,7 @@ class DocTypeLiteral extends DocFragment {
     return this.isArray() && this.get("elementType", null) !== null;
   }
   elementType() {
-    return new DocType(this.get("elementType"));
+    return new DocType(this.get("elementType"), this);
   }
   signatures() {
     return this.mapArray("signatures");
@@ -1157,11 +1279,8 @@ class DocTypeLiteral extends DocFragment {
 
 class DocProperty extends DocFragment {
   static kind = () => "Property";
-  constructor(raw) {
-    super(raw);
-  }
   type() {
-    return new DocType(this.get("type"));
+    return new DocType(this.get("type"), this);
   }
   addToDescription(desc, parentName = null) {
     const label = this.label();
@@ -1173,10 +1292,6 @@ class DocProperty extends DocFragment {
 
 class DocInterface extends DocFragment {
   static kind = () => "Interface";
-  constructor(raw) {
-    super(raw);
-    typeRegistry.set(raw.id, this);
-  }
   group() {
     return "Types";
   }
@@ -1186,7 +1301,7 @@ class DocInterface extends DocFragment {
   properties() {
     return this.mapArray("children");
   }
-  write(file) {
+  writeContent(file) {
     file.refLabel(this.fullPath());
     file.section(this.label(), 3);
     const cls = file.cls(this.label());
@@ -1197,7 +1312,8 @@ class DocInterface extends DocFragment {
     if (this.get("indexSignature", null) !== null) {
       const keyName = this.get("indexSignature.parameters.0.name", "key");
       const valueType = new DocType(
-        this.get("indexSignature.parameters.0.type")
+        this.get("indexSignature.parameters.0.type"),
+        this
       );
       desc.addTypeRow(`[${keyName}]`, valueType, valueType.shortText());
     }
@@ -1214,11 +1330,22 @@ class DocInterface extends DocFragment {
 
 class DocSignature extends DocFragment {
   static kind = () => "Call signature";
-  constructor(raw) {
-    super(raw);
-  }
   label() {
     return this.toTextSignature();
+  }
+  labelTemplate(nameOverride) {
+    const name = nameOverride ? nameOverride : this.get("name", "");
+    const prefix = name === "__type" ? "" : name;
+    let template = [`${prefix}(`];
+    for (const p of this.parameters()) {
+      template = [...template, p.label(), ":", p.type(), ", "];
+    }
+    if (template.length > 1) {
+      // remove last comma
+      template.pop();
+    }
+    template.push(")");
+    return template;
   }
   isReactHook() {
     return this.get("name", "").startsWith("use");
@@ -1234,20 +1361,20 @@ class DocSignature extends DocFragment {
     return `${this.toTextSignature()} => ${this.returnType().label()}`;
   }
   parameters() {
-    return this.get("parameters", []).map((p) => new DocParameter(p));
+    return this.get("parameters", []).map((p) => new DocParameter(p, this));
   }
   returnType() {
-    return new DocType(this.get("type", { type: "intrinsic", name: "void" }));
+    return new DocType(
+      this.get("type", { type: "intrinsic", name: "void" }),
+      this
+    );
   }
 }
 
 class DocParameter extends DocFragment {
   static kind = () => "Parameter";
-  constructor(raw) {
-    super(raw);
-  }
   type() {
-    return new DocType(this.get("type"));
+    return new DocType(this.get("type"), this);
   }
   description() {
     return this.get("comment.text");
@@ -1263,6 +1390,8 @@ class DocParameter extends DocFragment {
 const fragmentTypes = [
   DocClass,
   DocFunction,
+  DocConstructor,
+  DocMethod,
   DocEnumeration,
   DocEnumerationMember,
   DocVar,
@@ -1273,6 +1402,7 @@ const fragmentTypes = [
   DocSignature,
   DocParameter,
   DocNamespace,
+  DocModule,
   DocProject,
   DocTypeAlias,
 ];
@@ -1283,7 +1413,7 @@ function capitalize(str) {
 
 function toFragment(raw, override, parent = null) {
   if (override) {
-    return new override(raw);
+    return new override(raw, parent);
   }
   for (const type of fragmentTypes) {
     if (type.kind() === raw.kindString) {
@@ -1292,17 +1422,6 @@ function toFragment(raw, override, parent = null) {
   }
   throw new Error(`Unknown fragment type: ${raw.kindString}`);
 }
-
-const PLUGIN_RST_DOCS = path.join(__dirname, "..", "docs/source/plugins/api");
-
-const file = new RstFile("state");
-// const file = new MdFile("state");
-const project = new DocProject(docs);
-project.write(file);
-fs.writeFileSync(
-  path.join(PLUGIN_RST_DOCS, "fiftyone.state.rst"),
-  file.toSource()
-);
 
 // a function that replaces the last newline character if it is at the end of the string
 function replaceLastNewline(str) {
@@ -1360,3 +1479,23 @@ function indent(str, indent = 2) {
 function lowerCaseFirstLetter(str) {
   return str.charAt(0).toLowerCase() + str.slice(1);
 }
+
+function delim(arr, str) {
+  const newArr = [];
+  for (let i = 0; i < arr.length; i++) {
+    newArr.push(arr[i]);
+    if (i < arr.length - 1) {
+      newArr.push(str);
+    }
+  }
+  return newArr;
+}
+
+//////////
+// MAIN
+//////////
+
+const PLUGIN_RST_DOCS = path.join(__dirname, "..", "docs/source/plugins/api");
+
+const project = new DocProject(docs, RstFile);
+project.generate();
