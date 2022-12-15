@@ -100,7 +100,7 @@ export const imageFilters = atomFamily<
   default: ({ filter }) => IMAGE_FILTERS[filter].default,
 });
 
-export const activePlot = atom({
+export const activePlot = atom<string>({
   key: "activePlot",
   default: "Labels",
 });
@@ -120,7 +120,7 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
 /**
  * The state of the current dataset. Contains informations about the dataset, and the samples contained in it.
  *
- * See :ref:\`fiftyone.core.Dataset\` for python documentation.
+ * See :py:class:\`fiftyone.core.dataset.Dataset\` for python documentation.
  */
 export const dataset = atom<State.Dataset>({
   key: "dataset",
