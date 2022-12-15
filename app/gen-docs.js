@@ -52,7 +52,7 @@ class RstCodeExample {
     this.src = src;
   }
   toSource() {
-    return [`.. code-block:: ${this.lang}`, "", indent(this.src), ""];
+    return [`.. code-block:: ${this.lang}`, "", indent(this.src, 3), ""];
   }
 }
 
@@ -67,7 +67,7 @@ class RstTableOfContents {
   toSource() {
     return [
       ".. toctree::",
-      `  :maxdepth: ${this.maxDepth}`,
+      `   :maxdepth: ${this.maxDepth}`,
       "",
       ...this.items.map(({ label, path }) =>
         path ? `  ${label} <${path}>` : `  ${label}`
@@ -163,7 +163,7 @@ class RstModule {
   toSource() {
     return [
       `.. js:module:: ${this.alias || this.name}`,
-      this.description ? `  :description: ${this.description}` : null,
+      this.description ? `   :description: ${this.description}` : null,
       "",
     ];
   }
@@ -172,34 +172,45 @@ class RstFunction {
   constructor(name) {
     this.name = name;
     this.params = [];
+    this._showHeader = true;
+    this.indent = 0;
+    this._paramNames = new Set();
+  }
+  hideHeader() {
+    this._showHeader = false;
   }
   summary(summary) {
     this._summary = summary;
   }
   param(name, type, description) {
+    if (this._paramNames.has(name)) return;
+    this._paramNames.add(name);
     this.params.push([name, type, description]);
   }
   returns(type, description) {
-    this.returns = [type, description];
+    this._returns = [type, description];
   }
   toSource() {
     const params = this.params.map(
       ([name, type, description]) => `   :param ${name}: ${description || ""}`
     );
     const types = this.params.map(
-      ([name, type]) => `   :type ${name}: ${type}`
+      ([name, type]) => `   :type ${name}: ${type.label()}\n`
     );
     if (params.length) {
       params.unshift("");
     }
     return [
-      `.. js:function:: ${this.name}`,
-      this._summary ? "" : null,
-      this._summary ? `   :summary: ${this._summary}` : null,
+      this._showHeader ? `.. js:function:: ${this.name}` : null,
+      "",
+      this._summary ? `   :summary: ${indent(this._summary, 6)}` : null,
       ...params,
       ...types,
-      this.returns
-        ? `   :returns: ${this.returns[0]} ${this.returns[1] || ""}`
+      this._returns && this._returns[1]
+        ? `   :returns: ${this._returns[1] || ""}`
+        : null,
+      this._returns && this._returns[0]
+        ? `   :rtype: ${this._returns[0] || ""}`
         : null,
       "",
     ];
@@ -210,20 +221,43 @@ class RstMethod {
   toSource() {}
 }
 class RstClass {
-  constructor() {}
-  toSource() {}
-}
-class RstData {
-  constructor(name, hidden = false) {
+  constructor(name) {
     this.name = name;
-    this.hidden = hidden;
+    this.params = [];
+    this._paramNames = new Set();
+  }
+  param(name, type, description) {
+    if (this._paramNames.has(name)) return;
+    this._paramNames.add(name);
+    this.params.push([name, type, description]);
   }
   toSource() {
+    const params = this.params.map(
+      ([name, type, description]) =>
+        `      js:attribute:: foo.${name}: ${description || ""}`
+    );
+    const types = this.params.map(
+      ([name, type]) => `   :type ${name}: ${type.label()}\n`
+    );
+    if (params.length) {
+      params.unshift("");
+    }
     return [
-      `.. js:data:: ${this.name}`,
-      this.hidden ? "   :hidden:" : null,
+      `.. js:class:: ${this.name}`,
       "",
+      this._summary ? `   :summary: ${indent(this._summary, 6)}` : null,
+      "",
+      ...params,
+      ...types,
     ];
+  }
+}
+class RstData {
+  constructor(name) {
+    this.name = name;
+  }
+  toSource() {
+    return [`.. js:data:: ${this.name}`, ""];
   }
 }
 class RstAttribute {
@@ -243,6 +277,7 @@ class RstFile {
         child
           .toSource()
           .filter((l) => l !== null)
+          .map((l) => (child.indent ? indent(l, child.indent * 3) : l))
           .map(replaceLastNewline)
       );
     }
@@ -282,12 +317,15 @@ class RstFile {
   typeLabel(type) {
     const label = type.label();
 
+    if (type.isReference()) {
+      return `:js:class:\`${label}\``;
+    }
     return `\`\`${label}\`\``;
   }
   descToTable(desc) {
     const table = new RstCsvTable({
       header: Array.from(desc.headers),
-      widths: Array.from(desc.headers).map(() => 1),
+      // widths: Array.from(desc.headers).map(() => 1),
       align: "left",
     });
     for (const row of desc.rows) {
@@ -314,6 +352,11 @@ class RstFile {
     const func = new RstFunction(name);
     this.append(func);
     return func;
+  }
+  cls(name) {
+    const cls = new RstClass(name);
+    this.append(cls);
+    return cls;
   }
 }
 
@@ -463,7 +506,7 @@ class MdFunction {
     this.params.push([name, type, description]);
   }
   returns(type, description) {
-    this.returns = [type, description];
+    this._returns = [type, description];
   }
   toSource() {
     const params = this.params.map(
@@ -482,8 +525,8 @@ class MdFunction {
       this._summary ? `   :summary: ${this._summary}` : null,
       ...params,
       ...types,
-      this.returns
-        ? `   :returns: ${this.returns[0]} ${this.returns[1] || ""}`
+      this._returns
+        ? `   :returns: ${this._returns[0]} ${this._returns[1] || ""}`
         : null,
       "```",
     ];
@@ -600,6 +643,10 @@ class DocFragment {
     this.raw = raw;
     this.parent = parent;
   }
+  group() {
+    console.error(this.constructor);
+    throw new Error("must define a group() method");
+  }
   get(path, defaultValue = null) {
     return _.get(this.raw, path, defaultValue);
   }
@@ -621,7 +668,8 @@ class DocFragment {
     return this.get("children", []).length > 0;
   }
   shouldInclude() {
-    if (this.get("name", "").startsWith("_")) {
+    const name = this.get("name", "");
+    if (name.startsWith("_") && name !== "__type") {
       return false;
     }
     return true;
@@ -651,6 +699,8 @@ class DocFragment {
   }
 }
 
+const GROUPS = ["State", "Hooks", "Functions", "Types", "Enums", "Variables"];
+
 class DocProject extends DocFragment {
   static kind = () => "Project";
   constructor(raw) {
@@ -659,11 +709,10 @@ class DocProject extends DocFragment {
   write(file) {
     file.section(this.label(), 1);
     file.append(new RstModule(this.label(), this.shortText()));
-    const groups = _.groupBy(this.children(), (child) =>
-      child.constructor.kind()
-    );
-    for (const [kind, children] of Object.entries(groups)) {
-      file.section(pluralize(kind), 2);
+    const groups = _.groupBy(this.children(), (child) => child.group());
+    for (const kind of GROUPS) {
+      const children = groups[kind] || [];
+      file.section(kind, 2);
       for (const child of children) {
         child.write(file);
       }
@@ -675,6 +724,9 @@ class DocNamespace extends DocFragment {
   static kind = () => "Namespace";
   constructor(raw) {
     super(raw);
+  }
+  group() {
+    return "Types";
   }
 }
 
@@ -690,6 +742,13 @@ class DocFunction extends DocFragment {
   constructor(raw) {
     super(raw);
   }
+  group() {
+    const firstSig = this.signatures().length > 0 ? this.signatures()[0] : null;
+    if (firstSig.isReactHook()) {
+      return "Hooks";
+    }
+    return "Functions";
+  }
   signatures() {
     return this.get("signatures", []).map((raw) => new DocSignature(raw));
   }
@@ -697,14 +756,39 @@ class DocFunction extends DocFragment {
     file.refLabel(this.fullPath());
     file.section(this.label(), 3, true);
     for (const signature of this.signatures()) {
-      const func = file.func(signature.toTextSignature());
-      func.summary(signature.shortText());
-      const desc = new FragmentDescription();
-      for (const parameter of signature.parameters()) {
-        parameter.addToDescription(desc);
-      }
-      desc.addToRstFunction(func);
-      const returnType = signature.returnType();
+      this.writeSignature(file, signature);
+    }
+  }
+  writeSignature(file, signature, nested = false, nameOverride) {
+    const funcName = nameOverride ? nameOverride : signature.toTextSignature();
+    const func = file.func(funcName);
+    if (nested) {
+      func.indent = 1;
+    }
+    func.summary(signature.shortText());
+    const desc = new FragmentDescription();
+    for (const parameter of signature.parameters()) {
+      parameter.addToDescription(desc);
+    }
+    desc.writeTo(func);
+    const returnType = signature.returnType();
+    const retType = signature.returnType();
+    if (retType.isFunction()) {
+      const returnTypeFunctionSignature = retType.declaration().signatures()[0];
+      const returnFnName = signature.isReactHook()
+        ? lowerCaseFirstLetter(this.get("name").replace("use", ""))
+        : funcName;
+      func.returns(
+        returnTypeFunctionSignature.toTextSignature(returnFnName),
+        returnType.shortText()
+      );
+      this.writeSignature(
+        file,
+        returnTypeFunctionSignature,
+        true,
+        returnFnName
+      );
+    } else {
       func.returns(returnType.label(), returnType.shortText());
     }
   }
@@ -717,6 +801,9 @@ class DocEnumeration extends DocFragment {
     this.members = this.get("children", []).map(
       (raw) => new DocEnumerationMember(raw)
     );
+  }
+  group() {
+    return "Enums";
   }
   write(file) {
     file.refLabel(this.fullPath());
@@ -749,6 +836,12 @@ class DocVar extends DocFragment {
   constructor(raw) {
     super(raw);
   }
+  group() {
+    if (this.type().isRecoil()) {
+      return "State";
+    }
+    return "Variables";
+  }
   type() {
     return new DocType(this.get("type"));
   }
@@ -756,8 +849,8 @@ class DocVar extends DocFragment {
     const type = this.type();
     file.refLabel(this.fullPath());
     file.section(this.label(), 3);
-    file.string(type.label());
-    file.append(new RstData(this.label(), { hidden: true }));
+    // file.append(new RstData(this.label()));
+    file.typeLabel(type);
     file.string(this.shortText());
 
     if (type.isRecoil()) {
@@ -819,15 +912,18 @@ class DocType extends DocFragment {
       );
     }
     if (this.isUnion()) {
-      return this.types()
+      return `Union<${this.types()
         .map((t) => t.label())
-        .join(" | ");
+        .join(" | ")}>`;
     }
     if (this.isArray()) {
       label = "Array";
       if (this.isTypedArray()) {
         label = `${this.elementType().label()}[]`;
       }
+    }
+    if (this.isFunction()) {
+      return this.declaration().signatures()[0].toTextSignatureWithReturnType();
     }
     if (this.isGeneric()) {
       label = `${name}<${this.typeArguments()
@@ -839,7 +935,8 @@ class DocType extends DocFragment {
       label = JSON.stringify(this.get("value")).replace(/"/g, "'");
     }
 
-    if (label !== "null") label = capitalize(label);
+    if (label !== "null" && label !== "void" && label !== "undefined")
+      label = capitalize(label);
     if (this.isReadOnly()) {
       label = `readonly ${label}`;
     }
@@ -871,8 +968,9 @@ class DocType extends DocFragment {
   }
   isFunction() {
     return (
-      this.get("type") === "reflection" &&
-      this.get("declaration.kindString") === "Function"
+      (this.get("type") === "reflection" &&
+        this.get("declaration.kindString") === "Function") ||
+      this.declaration().isFunction()
     );
   }
   isObject() {
@@ -929,7 +1027,12 @@ class DocType extends DocFragment {
       const label = this.label();
       const name = parentName ? parentName : label;
       desc.addTypeRow(name, this, this.shortText());
-    } else if (this.isUnion() || this.isTuple()) {
+    } else if (
+      this.isUnion() ||
+      this.isTuple() ||
+      this.isLiteral() ||
+      this.isIntrinsic()
+    ) {
       desc.addTypeRow(parentName, this, this.shortText());
     }
   }
@@ -955,14 +1058,14 @@ class FragmentDescription {
   }
   addTypeRow(name, type, desc) {
     this.add([
-      ["Name", code(name)],
+      ["Name", name],
       ["Type", type],
       ["Description", desc],
     ]);
   }
-  addToRstFunction(func) {
+  writeTo(writer) {
     for (const row of this.rows) {
-      func.param(...row.map((cell) => cell[1]));
+      writer.param(...row.map((cell) => cell[1]));
     }
   }
 }
@@ -971,6 +1074,9 @@ class DocTypeAlias extends DocFragment {
   static kind = () => "Type alias";
   constructor(raw) {
     super(raw);
+  }
+  group() {
+    return "Types";
   }
   type() {
     return new DocType(this.get("type"));
@@ -981,7 +1087,7 @@ class DocTypeAlias extends DocFragment {
   write(file) {
     const type = this.type();
     file.refLabel(this.fullPath());
-    file.string(`.. js:type:: ${this.fullPath()}`);
+    file.cls(this.label());
     file.section(this.label(), 3);
     file.string(this.shortText());
 
@@ -989,7 +1095,7 @@ class DocTypeAlias extends DocFragment {
       file.string(
         `Union of ${type
           .types()
-          .map((t) => t.label())
+          .map((t) => `:js:class:\`${t.label()}\``)
           .join(", ")}`
       );
       return;
@@ -1005,9 +1111,12 @@ class DocTypeLiteral extends DocFragment {
   constructor(raw) {
     super(raw);
   }
+  group() {
+    return "Types";
+  }
   label() {
-    if (this.isFunction()) {
-      return "Function";
+    if (this.signatures().length > 0) {
+      return this.signatures()[0].label();
     }
     if (this.isObject()) {
       return "Object";
@@ -1015,7 +1124,9 @@ class DocTypeLiteral extends DocFragment {
     return "Any";
   }
   isFunction() {
-    return this.get("kindString") === "Function";
+    return (
+      this.get("kindString") === "Function" || this.signatures().length > 0
+    );
   }
   isObject() {
     return this.get("children", []).length > 0;
@@ -1066,6 +1177,9 @@ class DocInterface extends DocFragment {
     super(raw);
     typeRegistry.set(raw.id, this);
   }
+  group() {
+    return "Types";
+  }
   extendedTypes() {
     return this.mapArray("extendedTypes", DocType);
   }
@@ -1075,7 +1189,9 @@ class DocInterface extends DocFragment {
   write(file) {
     file.refLabel(this.fullPath());
     file.section(this.label(), 3);
-    file.string(this.shortText());
+    const cls = file.cls(this.label());
+    // file.string(`.. js:class:: ${this.label()}`);
+    // file.string(this.shortText());
     const desc = new FragmentDescription();
 
     if (this.get("indexSignature", null) !== null) {
@@ -1085,23 +1201,37 @@ class DocInterface extends DocFragment {
       );
       desc.addTypeRow(`[${keyName}]`, valueType, valueType.shortText());
     }
-
+    if (this.properties().length > 0) {
+      file.section("Properties", 4);
+    }
     for (const property of this.properties()) {
       property.addToDescription(desc);
     }
+    desc.indent = 1;
     file.desc(desc);
   }
 }
 
 class DocSignature extends DocFragment {
-  static kind = () => "Signature";
+  static kind = () => "Call signature";
   constructor(raw) {
     super(raw);
   }
-  toTextSignature() {
-    return `${this.label()}(${this.parameters()
+  label() {
+    return this.toTextSignature();
+  }
+  isReactHook() {
+    return this.get("name", "").startsWith("use");
+  }
+  toTextSignature(nameOverride) {
+    const name = nameOverride ? nameOverride : this.get("name", "");
+    const prefix = name === "__type" ? "" : name;
+    return `${prefix}(${this.parameters()
       .map((p) => p.label())
       .join(", ")})`;
+  }
+  toTextSignatureWithReturnType() {
+    return `${this.toTextSignature()} => ${this.returnType().label()}`;
   }
   parameters() {
     return this.get("parameters", []).map((p) => new DocParameter(p));
@@ -1225,4 +1355,8 @@ function unref(str) {
 
 function indent(str, indent = 2) {
   return str.replace(/^/gm, " ".repeat(indent));
+}
+
+function lowerCaseFirstLetter(str) {
+  return str.charAt(0).toLowerCase() + str.slice(1);
 }
