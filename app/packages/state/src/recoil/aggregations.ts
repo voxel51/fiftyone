@@ -13,6 +13,7 @@ import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
 import { sidebarSampleId } from "./modal";
 import { refresher } from "./atoms";
+import { field } from "./schema";
 
 export const aggregationQuery = graphQLSelectorFamily<
   VariablesOf<foq.aggregationsQuery>,
@@ -91,7 +92,13 @@ export const noneCount = selectorFamily<
     ({ get }) => {
       const data = get(aggregation(params));
       const parent = params.path.split(".").slice(0, -1).join(".");
-      return (get(count({ ...params, path: parent })) as number) - data.count;
+
+      // for ListField, set noneCount to zero (so that it is the none option is omitted in display)
+      const schema = get(field(params.path));
+      const isListField = schema.ftype.includes("ListField");
+      return isListField
+        ? 0
+        : (get(count({ ...params, path: parent })) as number) - data.count;
     },
 });
 
