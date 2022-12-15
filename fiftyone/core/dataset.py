@@ -3097,10 +3097,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return [view_doc.name for view_doc in self._doc.saved_views]
 
     @property
-    def all_views(self):
-        return [view_doc for view_doc in self._doc.saved_views]
-
-    @property
     def all_views_v2(self):
         return [
             {
@@ -3167,9 +3163,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             created_at=now,
             last_modified_at=now,
         )
-        print("saving view_doc", view_doc)
         view_doc.save()
-        print("saved view_doc")
 
         self._doc.saved_views.append(view_doc)
         self._doc.save()

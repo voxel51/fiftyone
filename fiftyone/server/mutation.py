@@ -17,6 +17,7 @@ import fiftyone.core.odm as foo
 from fiftyone.core.session.events import StateUpdate
 import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
+import fiftyone.core.dataset as fod
 
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
@@ -160,7 +161,10 @@ class Mutation:
         if view_name is not None and state.dataset.has_saved_view(view_name):
             # Load a saved view by name
             state.view = state.dataset.load_saved_view(view_name)
-            state.saved_views = state.dataset.all_views_v2
+            if isinstance(state.dataset, fod.Dataset):
+                state.saved_views = state.dataset._doc.saved_views
+            else:
+                state.saved_views = []
 
         elif form:
             # Update current view with form parameters
