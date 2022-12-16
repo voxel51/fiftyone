@@ -38,6 +38,13 @@ workflows.
 .. Add recipe cards below
 
 .. customcarditem::
+    :header: Filtering cheat sheet
+    :description: Match and filter in FiftyOne.
+    :link: filtering_cheat_sheet.html
+    :image: ../_static/images/recipes/pandas_vs_fiftyone.png
+    :tags: Cheat-Sheets,Dataset-Curation,Advanced
+
+.. customcarditem::
     :header: pandas vs FiftyOne
     :description: See how to translate common pandas queries into FiftyOne's query syntax for computer vision.
     :link: pandas_vs_fiftyone.html
@@ -145,6 +152,7 @@ workflows.
    :maxdepth: 1
    :hidden:
 
+   Filtering cheat sheet <filtering_cheat_sheet>
    pandas vs FiftyOne <pandas_vs_fiftyone>
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
