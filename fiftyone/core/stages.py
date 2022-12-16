@@ -4351,13 +4351,11 @@ class SetField(ViewStage):
                     "field" % path
                 )
 
-            set_expr = pipeline[0]["$set"]
-
             kwargs = _deserialize_field_kwargs(self._virtual)
             virtual_field = foo.create_field(
                 field_name, expr=expr_dict, **kwargs
             )
-            virtual_field._set_dataset(None, path, set_expr=set_expr)
+            virtual_field._set_dataset(None, path, set_expr=pipeline[0])
 
             self._pipeline = []
             self._virtual_field = virtual_field

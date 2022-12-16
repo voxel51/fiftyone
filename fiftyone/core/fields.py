@@ -530,7 +530,7 @@ class Field(mongoengine.fields.BaseField):
             pipeline, expr_dict = self._dataset._make_set_field_pipeline(
                 self.path, self._expr, embedded_root=True
             )
-            self._set_expr = pipeline[0]["$set"]
+            self._set_expr = pipeline[0]
             self._expr = expr_dict
 
         return self._set_expr
