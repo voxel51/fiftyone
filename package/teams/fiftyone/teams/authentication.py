@@ -156,15 +156,18 @@ class Authentication(AuthenticationBackend):
             token = cookie
 
         try:
-            await authenticate_header(token, _jwks)
+            authenticated = await authenticate_header(token, _jwks)
         except Exception:
-            return AuthCredentials([]), UnauthenticatedUser()
+            authenticated = False
 
-        claims = jwt.get_unverified_claims(token)
-        return (
-            AuthCredentials(["authenticated"]),
-            AuthenticatedUser(sub=claims["sub"]),
-        )
+        if authenticated:
+            claims = jwt.get_unverified_claims(token)
+            return (
+                AuthCredentials(["authenticated"]),
+                AuthenticatedUser(sub=claims["sub"]),
+            )
+
+        return AuthCredentials([]), UnauthenticatedUser()
 
 
 def authenticate_route(endpoint):
