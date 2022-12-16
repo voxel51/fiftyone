@@ -514,9 +514,13 @@ class Field(mongoengine.fields.BaseField):
 
     @expr.setter
     def expr(self, expr):
+        if expr is not None and self._expr is None:
+            raise ValueError(
+                "Regular fields cannot be transformed into virtual fields"
+            )
+
         self._expr = expr
-        if expr is None:
-            self._set_expr = None
+        self._set_expr = None
 
     def _set_field_expr(self):
         if self.path is None or self._expr is None:
