@@ -561,10 +561,10 @@ class Session(object):
         if view is not None:
             view._root_dataset._reload()
             self._state.dataset = view._root_dataset
+            self._state.view_name = view.name
 
         self._state.selected = []
         self._state.selected_labels = []
-        self._state.view_name = view.name
 
     @update_state()
     def clear_view(self) -> None:

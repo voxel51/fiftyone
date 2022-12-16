@@ -38,8 +38,8 @@ class SavedViewDocument(Document):
 
     def serialize(self):
         d = self.to_dict()
-        # d["id"] = str(d.pop("_id"))
-        # d["dataset_id"] = str(d.pop("_dataset_id"))
+
+        # TODO: remove nested get when ready to merge
         d["id"] = str(d.get("_id", d.get("id", ObjectId())))
         d["dataset_id"] = str(d.get("_dataset_id", d.get("dataset_id", "")))
         return d

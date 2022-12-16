@@ -339,7 +339,8 @@ const useTagCallback = (
   targetLabels,
   lookerRef?: React.MutableRefObject<Lookers | undefined>
 ) => {
-  const setAggs = useSetRecoilState(fos.aggregationsTick);
+  // const setAggs = useSetRecoilState(fos.aggregationsTick);
+  const setAggs = useSetRecoilState(fos.refresher);
   const setLabels = fos.useSetSelectedLabels();
   const setSamples = fos.useSetSelected();
   const updateSample = fos.useUpdateSample();

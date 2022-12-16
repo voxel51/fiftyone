@@ -1,17 +1,21 @@
 import { graphql } from "react-relay";
 
 export default graphql`
-  mutation saveViewMutation(
+  mutation createSavedViewMutation(
     $subscription: String!
     $session: String
     $viewName: String!
+    $viewStages: BSONArray
+    $datasetName: String = null
     $description: String = null
     $color: String = null
   ) {
-    saveView(
+    createSavedView(
       subscription: $subscription
       session: $session
       viewName: $viewName
+      viewStages: $viewStages
+      datasetName: $datasetName
       description: $description
       color: $color
     ) {
@@ -22,6 +26,7 @@ export default graphql`
       description
       color
       viewStages
+      createdAt
     }
   }
 `;

@@ -30,7 +30,7 @@ def get_tag_view(
     target_labels: bool = False,
     modal: bool = False,
 ) -> foc.SampleCollection:
-    view = fosv.get_view(
+    view = fosv.get_dataset_view(
         dataset,
         stages=stages,
         filters=filters,

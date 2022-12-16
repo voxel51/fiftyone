@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1b68f3b88513f1f7376ea005d7eba477>>
+ * @generated SignedSource<<3e290d98eb9b0f8dcabed230f9c39003>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,6 +10,7 @@
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type deleteSavedViewMutation$variables = {
+  datasetName?: string | null;
   session?: string | null;
   subscription: string;
   viewName: string;
@@ -26,22 +27,32 @@ const node: ConcreteRequest = (function(){
 var v0 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "session"
+  "name": "datasetName"
 },
 v1 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "subscription"
+  "name": "session"
 },
 v2 = {
   "defaultValue": null,
   "kind": "LocalArgument",
+  "name": "subscription"
+},
+v3 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
   "name": "viewName"
 },
-v3 = [
+v4 = [
   {
     "alias": null,
     "args": [
+      {
+        "kind": "Variable",
+        "name": "datasetName",
+        "variableName": "datasetName"
+      },
       {
         "kind": "Variable",
         "name": "session",
@@ -68,37 +79,39 @@ return {
     "argumentDefinitions": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v2/*: any*/)
+      (v2/*: any*/),
+      (v3/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "deleteSavedViewMutation",
-    "selections": (v3/*: any*/),
+    "selections": (v4/*: any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
+      (v2/*: any*/),
       (v1/*: any*/),
-      (v0/*: any*/),
-      (v2/*: any*/)
+      (v3/*: any*/),
+      (v0/*: any*/)
     ],
     "kind": "Operation",
     "name": "deleteSavedViewMutation",
-    "selections": (v3/*: any*/)
+    "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "b54762d8ae944198ff38fab074ead92f",
+    "cacheID": "4ba96f75c5f2f30f1824a2aaf49fd7eb",
     "id": null,
     "metadata": {},
     "name": "deleteSavedViewMutation",
     "operationKind": "mutation",
-    "text": "mutation deleteSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n) {\n  deleteSavedView(subscription: $subscription, session: $session, viewName: $viewName)\n}\n"
+    "text": "mutation deleteSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $datasetName: String\n) {\n  deleteSavedView(subscription: $subscription, session: $session, viewName: $viewName, datasetName: $datasetName)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c60fe2d35fc14098d7b033793e78a7a4";
+(node as any).hash = "d25e17a369c05534c3d06f3319bef86c";
 
 export default node;

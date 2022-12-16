@@ -38,6 +38,8 @@ export default graphql`
           embeddedDocType
           path
           dbField
+          description
+          info
         }
         frameFields {
           ftype
@@ -45,6 +47,8 @@ export default graphql`
           embeddedDocType
           path
           dbField
+          description
+          info
         }
         maskTargets {
           name
@@ -56,6 +60,17 @@ export default graphql`
         defaultMaskTargets {
           target
           value
+        }
+        savedViews {
+          id
+          name
+          slug
+          description
+          color
+          viewStages
+          createdAt
+          lastModifiedAt
+          lastLoadedAt
         }
         evaluations {
           key

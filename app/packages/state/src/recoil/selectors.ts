@@ -16,6 +16,22 @@ export const datasetName = selector<string>({
   },
 });
 
+export const selectedViewName = selector<string>({
+  key: "currentViewName",
+  get: ({ get }) => {
+    return get(atoms.selectedViewName);
+  },
+});
+
+export const currentViewSlug = selector<string>({
+  key: "currentViewSlug",
+  get: () => {
+    const params = new URLSearchParams(window.location.search);
+
+    return params.get("view") || null;
+  },
+});
+
 export const isNotebook = selector<boolean>({
   key: "isNotebook",
   get: () => {

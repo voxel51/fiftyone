@@ -8,6 +8,7 @@ import * as foq from "@fiftyone/relay";
 
 export default function useSavedViews() {
   const savedViews = useRecoilValue(fos.savedViewsSelector);
+  const datasetNameValue = useRecoilValue(fos.datasetName);
   const refresh = useRecoilRefresher_UNSTABLE(fos.savedViewsSelector);
   const send = fos.useSendEvent();
   const onError = useErrorHandler();
@@ -15,25 +16,29 @@ export default function useSavedViews() {
 
   const [deleteView, isDeletingSavedView] =
     useMutation<foq.deleteSavedViewMutation>(foq.deleteSavedView);
-  const [saveView, isCreatingSavedView] = useMutation<foq.saveViewMutation>(
-    foq.saveView
-  );
+  const [saveView, isCreatingSavedView] =
+    useMutation<foq.createSavedViewMutation>(foq.createSavedView);
   const [updateView, isUpdatingSavedView] =
     useMutation<foq.updateSavedViewMutation>(foq.updateSavedView);
 
   const handleDeleteView = useCallback(
-    (nameValue: string, onDeleteSuccess: () => void) => {
+    (nameValue: string, onDeleteSuccess: (deletedId) => void) => {
       if (nameValue) {
         send((session) =>
           deleteView({
             onError,
             variables: {
               viewName: nameValue,
+              datasetName: datasetNameValue,
               subscription,
               session,
             },
-            onCompleted: () => {
-              onDeleteSuccess();
+            onCompleted: (data, err) => {
+              if (err) {
+                console.log("handleDeleteView error:", err);
+              }
+              const deletedId = data?.deleteSavedView;
+              onDeleteSuccess(deletedId);
             },
           })
         );
@@ -56,13 +61,18 @@ export default function useSavedViews() {
             onError,
             variables: {
               viewName: name,
+              datasetName: datasetNameValue,
+              viewStages: view,
               description,
               color,
               subscription,
               session,
             },
-            onCompleted: ({ saveView }) => {
-              onSuccess(saveView);
+            onCompleted: (data, err) => {
+              if (err) {
+                console.log("handleCreateSavedView response error:", err);
+              }
+              onSuccess(data?.createSavedView);
             },
           })
         );
@@ -84,9 +94,10 @@ export default function useSavedViews() {
           updateView({
             onError,
             variables: {
-              viewName: initialName,
               subscription,
               session,
+              datasetName: datasetNameValue,
+              viewName: initialName,
               updatedInfo: {
                 name,
                 color,

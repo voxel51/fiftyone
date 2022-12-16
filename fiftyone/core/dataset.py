@@ -3096,21 +3096,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return [view_doc.name for view_doc in self._doc.saved_views]
 
-    @property
-    def all_views_v2(self):
-        return [
-            {
-                "id": v.id,
-                "dataset_id": self._doc.id,
-                "name": v.name,
-                "url_name": v.slug,
-                "description": v.description,
-                "color": v.color,
-                "created_at": v.created_at,
-            }
-            for v in self._doc.saved_views
-        ]
-
     def save_view(
         self,
         name=name,

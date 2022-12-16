@@ -308,7 +308,8 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   const isObjectEditor = hasObjectType && (!hasExpansion || expanded);
   let isObject = false;
   try {
-    const parsedValue = JSON.parse(value);
+    // fails when value is just a string field name
+    const parsedValue = JSON.parse(value) || value;
     isObject = !Array.isArray(parsedValue) && typeof parsedValue === "object";
   } catch {}
   useEffect(() => {

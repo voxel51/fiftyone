@@ -386,6 +386,7 @@ class MongoEngineBaseDocument(SerializableDocument):
         # pylint: disable=no-member
         d = self.to_mongo(use_db_field=True)
         if no_dereference:
+            # Serialize the items in dict and list reference fields
             for k, val in d.items():
                 if type(val) in [list, dict]:
                     if type(val) == list and len(val) > 0:

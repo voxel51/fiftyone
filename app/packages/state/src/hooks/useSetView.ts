@@ -100,12 +100,12 @@ const useSetView = (
 
           commit({
             variables: {
-              changingSavedView,
-              savedViewSlug,
-              viewName,
+              changingSavedView: changingSavedView,
+              savedViewSlug: savedViewSlug,
               view: value,
-              subscription,
-              session,
+              viewName: viewName,
+              subscription: subscription,
+              session: session,
               datasetName: dataset.name,
               form: patch
                 ? {
@@ -242,10 +242,10 @@ const useSetView = (
                   viewCls: dataset.viewCls,
                   selected: [],
                   selectedLabels: [],
-                  viewName,
-                  savedViews,
-                  savedViewSlug,
-                  changingSavedView,
+                  viewName: viewName,
+                  savedViews: savedViews,
+                  savedViewSlug: savedViewSlug,
+                  changingSavedView: changingSavedView,
                 },
               });
 

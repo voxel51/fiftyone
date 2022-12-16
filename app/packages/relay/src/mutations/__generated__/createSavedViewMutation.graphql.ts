@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e19df5864a372dfbb6a8b6cdd846cfd3>>
+ * @generated SignedSource<<ac7248f4894983ff0b6fd8dac8bfa8bc>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,71 +9,86 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
-export type SavedViewInfo = {
+export type createSavedViewMutation$variables = {
   color?: string | null;
-  description?: string | null;
-  name?: string | null;
-};
-export type updateSavedViewMutation$variables = {
   datasetName?: string | null;
+  description?: string | null;
   session?: string | null;
   subscription: string;
-  updatedInfo: SavedViewInfo;
   viewName: string;
+  viewStages?: Array | null;
 };
-export type updateSavedViewMutation$data = {
-  readonly updateSavedView: {
+export type createSavedViewMutation$data = {
+  readonly createSavedView: {
     readonly color: string | null;
     readonly createdAt: any | null;
     readonly datasetId: string | null;
     readonly description: string | null;
     readonly id: string | null;
-    readonly lastLoadedAt: any | null;
-    readonly lastModifiedAt: any | null;
     readonly name: string | null;
     readonly slug: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
   } | null;
 };
-export type updateSavedViewMutation = {
-  response: updateSavedViewMutation$data;
-  variables: updateSavedViewMutation$variables;
+export type createSavedViewMutation = {
+  response: createSavedViewMutation$data;
+  variables: createSavedViewMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
 var v0 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "datasetName"
+  "name": "color"
 },
 v1 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "session"
+  "name": "datasetName"
 },
 v2 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "subscription"
+  "name": "description"
 },
 v3 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "updatedInfo"
+  "name": "session"
 },
 v4 = {
   "defaultValue": null,
   "kind": "LocalArgument",
+  "name": "subscription"
+},
+v5 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
   "name": "viewName"
 },
-v5 = [
+v6 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "viewStages"
+},
+v7 = [
   {
     "alias": null,
     "args": [
       {
         "kind": "Variable",
+        "name": "color",
+        "variableName": "color"
+      },
+      {
+        "kind": "Variable",
         "name": "datasetName",
         "variableName": "datasetName"
+      },
+      {
+        "kind": "Variable",
+        "name": "description",
+        "variableName": "description"
       },
       {
         "kind": "Variable",
@@ -87,18 +102,18 @@ v5 = [
       },
       {
         "kind": "Variable",
-        "name": "updatedInfo",
-        "variableName": "updatedInfo"
+        "name": "viewName",
+        "variableName": "viewName"
       },
       {
         "kind": "Variable",
-        "name": "viewName",
-        "variableName": "viewName"
+        "name": "viewStages",
+        "variableName": "viewStages"
       }
     ],
     "concreteType": "SavedView",
     "kind": "LinkedField",
-    "name": "updateSavedView",
+    "name": "createSavedView",
     "plural": false,
     "selections": [
       {
@@ -156,20 +171,6 @@ v5 = [
         "kind": "ScalarField",
         "name": "createdAt",
         "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "lastModifiedAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "lastLoadedAt",
-        "storageKey": null
       }
     ],
     "storageKey": null
@@ -182,39 +183,43 @@ return {
       (v1/*: any*/),
       (v2/*: any*/),
       (v3/*: any*/),
-      (v4/*: any*/)
+      (v4/*: any*/),
+      (v5/*: any*/),
+      (v6/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
-    "name": "updateSavedViewMutation",
-    "selections": (v5/*: any*/),
+    "name": "createSavedViewMutation",
+    "selections": (v7/*: any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v2/*: any*/),
-      (v1/*: any*/),
       (v4/*: any*/),
-      (v0/*: any*/),
-      (v3/*: any*/)
+      (v3/*: any*/),
+      (v5/*: any*/),
+      (v6/*: any*/),
+      (v1/*: any*/),
+      (v2/*: any*/),
+      (v0/*: any*/)
     ],
     "kind": "Operation",
-    "name": "updateSavedViewMutation",
-    "selections": (v5/*: any*/)
+    "name": "createSavedViewMutation",
+    "selections": (v7/*: any*/)
   },
   "params": {
-    "cacheID": "65edb571ce9ea9a98f56df77932a0af3",
+    "cacheID": "6fb874cc5e13f089e320464f5893370e",
     "id": null,
     "metadata": {},
-    "name": "updateSavedViewMutation",
+    "name": "createSavedViewMutation",
     "operationKind": "mutation",
-    "text": "mutation updateSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $datasetName: String\n  $updatedInfo: SavedViewInfo!\n) {\n  updateSavedView(subscription: $subscription, session: $session, viewName: $viewName, datasetName: $datasetName, updatedInfo: $updatedInfo) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
+    "text": "mutation createSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $viewStages: BSONArray\n  $datasetName: String = null\n  $description: String = null\n  $color: String = null\n) {\n  createSavedView(subscription: $subscription, session: $session, viewName: $viewName, viewStages: $viewStages, datasetName: $datasetName, description: $description, color: $color) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9b8c6b634b65416c2c7acd1949373fa6";
+(node as any).hash = "5fe8af39ab8589f64892785729950ef4";
 
 export default node;

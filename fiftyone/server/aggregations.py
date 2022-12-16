@@ -48,7 +48,7 @@ class AggregationForm:
     sample_ids: t.List[gql.ID]
     slice: t.Optional[str]
     view: BSONArray
-    viewName: t.Optional[str] = None
+    view_name: t.Optional[str] = None
 
 
 @gql.interface
@@ -118,9 +118,9 @@ AggregateResult = gql.union(
 async def aggregate_resolver(
     form: AggregationForm,
 ) -> t.List[AggregateResult]:
-    view = fosv.get_view(
+    view = fosv.get_dataset_view(
         form.dataset,
-        view_name=None,
+        view_name=form.view_name,
         stages=form.view,
         filters=form.filters,
         extended_stages=form.extended_stages,
@@ -147,24 +147,47 @@ async def aggregate_resolver(
 
     if form.mixed:
         view = view.select_group_slices(_allow_mixed=True)
-
+    # for path in form.paths:
+    #     print("path", path)
     aggregations, deserializers = zip(
         *[_resolve_path_aggregation(path, view) for path in form.paths]
     )
+    # print("aggregations", aggregations)
+    # print("deserializers", deserializers)
+    # for path in form.paths:
+    #     print("-" * 80)
+    #     print(
+    #             "_resolve_path_aggregation(path, view)",
+    #             _resolve_path_aggregation(path, view),
+    #     )
     counts = [len(a) for a in aggregations]
     flattened = []
-    for aggs in aggregations:
+    for i, aggs in enumerate(aggregations):
+        print("aggs", aggs)
         flattened += aggs
+        print("i, flattened", i, flattened)
+    print("final flattened:", flattened)
 
     result = await view._async_aggregate(flattened)
     results = []
     offset = 0
     for length, deserialize in zip(counts, deserializers):
+        #     print("*" * 80)
+        #     print(
+        #         "result[offset: length + offset]",
+        #         result[offset : length + offset],
+        #         offset,
+        #         length,
+        #     )
+        #     print(
+        #         "deserialize(result[offset : length + offset])",
+        #         deserialize(result[offset : length + offset]),
+        #     )
         results.append(deserialize(result[offset : length + offset]))
         offset += length
-
+    # print("results:", results)
     if form.mixed and "" in form.paths:
-        slice_view = fosv.get_view(
+        slice_view = fosv.get_dataset_view(
             form.dataset,
             stages=form.view,
             filters=form.filters,
@@ -205,8 +228,11 @@ RESULT_MAPPING = {
 def _resolve_path_aggregation(
     path: str, view: foc.SampleCollection
 ) -> AggregateResult:
-    aggregations: t.List[foa.Aggregation] = [foa.Count(path if path else None)]
+    aggregations: t.List[foa.Aggregation] = [
+        foa.Count(path if path and path != "" else None)
+    ]
     field = view.get_field(path)
+    print("[path={}, field={}]".format(path, field))
     while isinstance(field, fof.ListField):
         field = field.field
 
@@ -289,7 +315,7 @@ def _resolve_path_aggregation(
                         embedded_doc_type=fol.Label
                     )
                 )
-
+        print(data)
         return from_dict(cls, data, config=Config(check_types=False))
 
     return aggregations, from_results

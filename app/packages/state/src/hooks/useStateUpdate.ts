@@ -85,6 +85,7 @@ const useStateUpdate = () => {
       if (dataset) {
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
         dataset.evaluations = Object.values(dataset.evaluations || {});
+        dataset.savedViews = Object.values(dataset.savedViews || []);
         dataset.sampleFields = collapseFields(dataset.sampleFields);
         dataset.frameFields = collapseFields(dataset.frameFields);
         const previousDataset = get(datasetAtom);
@@ -134,10 +135,6 @@ const useStateUpdate = () => {
 
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
-        }
-
-        if (state?.savedViews?.length > 0) {
-          dataset.savedViews = state.savedViews;
         }
 
         set(datasetAtom, dataset);

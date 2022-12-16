@@ -108,7 +108,7 @@ export namespace State {
     defaultMaskTargets: Targets;
     evaluations: EvaluationRun[];
     savedViews: SavedView[];
-    changingSavedView?: boolean;
+    // changingSavedView?: boolean;
     frameFields: StrictField[];
     lastLoadedAt: DateTime;
     maskTargets: {

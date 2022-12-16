@@ -131,7 +131,7 @@ export default function ViewDialog(props: Props) {
     });
   }, [nameValue]);
 
-  const handleSaveView = useCallback(() => {
+  const onSaveView = useCallback(() => {
     if (isCreating && view?.length) {
       handleCreateSavedView(
         nameValue,
@@ -271,7 +271,7 @@ export default function ViewDialog(props: Props) {
               Cancel
             </Button>
             <Button
-              onClick={handleSaveView}
+              onClick={onSaveView}
               disabled={
                 isUpdatingSavedView ||
                 isCreatingSavedView ||

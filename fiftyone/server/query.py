@@ -17,13 +17,12 @@ import eta.core.utils as etau
 import strawberry as gql
 from bson import ObjectId, json_util
 from dacite import Config, from_dict
-from strawberry.dataloader import DataLoader
 
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
 import fiftyone.core.media as fom
-import fiftyone.core.odm as foo
+from fiftyone.core.odm import SavedViewDocument
 from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
@@ -127,83 +126,19 @@ class SavedView:
             return None
         return self.name
 
-    @staticmethod
-    def modifier(doc: dict) -> dict:
-        return doc
+    @gql.field
+    def stage_dicts(self) -> t.Optional[BSONArray]:
+        return [json_util.loads(x) for x in self.view_stages]
 
-    # @classmethod
-    # async def resolver(cls, object_id) -> t.Optional[t.List["SavedView"]]:
-    #     return await deserialize_saved_views(
-    #             refs=[object_id]
-    #     )
-
-
-#
-# saved_views_dataloader = get_dataloader_resolver(
-#     SavedView,
-#     "views",
-#     "_id",
-#     {},
-#     {
-#         "_id": True,
-#         "id": {"$toString": "$_id"},
-#         "_dataset_id": {"$ifNull": ["$dataset_id", "$_dataset_id"]},
-#         "dataset_id": {"$toString": "$_dataset_id"},
-#         "name": True,
-#         "color": True,
-#         "description": True,
-#         "slug": True,
-#         "last_loaded_at": True,
-#         "created_at": True,
-#         "last_modified_at": True,
-#         "view_stages": True,
-#     },
-# )
-
-
-#
-# async def load_saved_views(object_ids: t.List[ObjectId]):
-#     if len(object_ids) < 1:
-#         return None
-#     db = foo.get_async_db_conn()
-#     pipeline = [
-#         {"$match": {"_id": {"$in": object_ids}}},
-#         {
-#             "$project": {
-#                 "_id": True,
-#                 "id": {"$toString": "$_id"},
-#                 "_dataset_id": {"$ifNull": ["$dataset_id", "$_dataset_id"]},
-#                 "dataset_id": {"$toString": "$_dataset_id"},
-#                 "name": True,
-#                 "color": True,
-#                 "description": True,
-#                 "slug": True,
-#                 "last_loaded_at": True,
-#                 "created_at": True,
-#                 "last_modified_at": True,
-#                 "view_stages": True,
-#             }
-#         },
-#     ]
-#     results = await foo.aggregate(db.views, pipeline).to_list(len(object_ids))
-#     # print("results", results)
-#     saved_views = [
-#         from_dict(
-#                 data_class=SavedView,
-#                 data=view,
-#                 config=Config(
-#                         type_hooks={
-#                             BSONArray: lambda x: [json_util.loads(s) for s in
-#                                                   x]
-#                         }
-#                 ),
-#         )
-#         for view in results
-#     ]
-#     return saved_views
-#
-#
-# saved_views_loader = DataLoader(load_fn=load_saved_views)
+    @classmethod
+    def from_doc(cls, doc: SavedViewDocument):
+        stage_dicts = [json_util.loads(x) for x in doc.view_stages]
+        saved_view = from_dict(
+            data_class=cls,
+            data=doc.serialize(),
+        )
+        saved_view.stage_dicts = stage_dicts
+        return saved_view
 
 
 @gql.type
@@ -269,32 +204,6 @@ class Dataset:
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
 
-    # saved_views: t.Optional[t.List[SavedView]] = gql.field(
-    #         resolver=get_dataloader_resolver(
-    #                 SavedView, "views", "_id", {}, {
-    #                     "_id": True,
-    #                     "id": {"$toString": "$_id"},
-    #                     "_dataset_id": {
-    #                         "$ifNull": ["$dataset_id", "$_dataset_id"]
-    #                     },
-    #                     "dataset_id": {"$toString": "$_dataset_id"},
-    #                     "name": True,
-    #                     "color": True,
-    #                     "description": True,
-    #                     "slug": True,
-    #                     "last_loaded_at": True,
-    #                     "created_at": True,
-    #                     "last_modified_at": True,
-    #                     "view_stages": True,
-    #                 }
-    #         ))
-
-    # @gql.field
-    # async def resolve_saved_views(self) -> t.Optional[t.List]:
-    #     return await self.info.context.dataloaders[
-    #         SavedView].load_many(
-    #             self.saved_view_ids)
-
     @staticmethod
     def modifier(doc: dict) -> dict:
         doc["id"] = doc.pop("_id")
@@ -305,19 +214,14 @@ class Dataset:
             NamedTargets(name=name, targets=_convert_targets(targets))
             for name, targets in doc.get("mask_targets", {}).items()
         ]
-        doc["sample_fields"] = _flatten_fields([], doc["sample_fields"])
+        doc["sample_fields"] = _flatten_fields(
+            [], doc.get("sample_fields", [])
+        )
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
         doc["saved_views"] = doc.get("saved_views", [])
 
-        # doc["saved_view_ids"] = doc.get("saved_views", [])
-        # if len(doc["saved_view_ids"]) > 0:
-        #     doc["saved_views"] = load_saved_views(
-        #         doc.get("saved_view_ids", [])
-        #     )  # get_saved_views(
-        #     #     SavedView, doc.get("saved_view_ids", []), saved_views_loader
-        #     # )
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -471,21 +375,24 @@ class Query(fosa.AggregateQuery):
     #         return
     #
     #     ds = fo.load_dataset(dataset_name)
-    #     if ds.has_saved_views and ds.has_saved_view(view_name):
+    #     if ds.has_saved_view(view_name):
     #         return next(
     #             (
-    #                 view_doc
+    #                 SavedView.from_doc(view_doc)
     #                 for view_doc in ds._doc.saved_views
     #                 if view_doc.name == view_name
     #             ),
     #             None,
     #         )
     #     return
+
     #
     @gql.field
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
         ds = fo.load_dataset(dataset_name)
-        return ds._doc.saved_views
+        return [
+            SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
+        ]
 
 
 def _flatten_fields(

@@ -397,11 +397,16 @@ const getFieldAndValue = (
   let value: unknown = sample;
   let field: Field = null;
   let list = false;
+  // console.log('getFieldAndVlue sample, schema, path', sample, schema, path)
 
   for (const key of path.split(".")) {
     field = schema[key];
+    // console.log('field', field)
 
-    if (field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
+    if (
+      field === null ||
+      field.embeddedDocType === "fiftyone.core.frames.FrameSample"
+    ) {
       return [null, null, false];
     }
 

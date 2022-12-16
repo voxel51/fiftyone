@@ -181,8 +181,9 @@ async def load_view(
     return await loop.run_in_executor(None, run)
 
 
-def get_view(
+def get_dataset_view(
     dataset_name,
+    *,
     stages=None,
     filters=None,
     count_label_tags=False,
@@ -197,7 +198,7 @@ def get_view(
 
     Args:
         dataset_name: the dataset name
-        view_name (None): an optional str used for loading a previously saved
+        view_name (str): an optional str used for loading a previously saved
         view by name
         stages (None): an optional list of serialized
             :class:`fiftyone.core.stages.ViewStage` instances
@@ -217,8 +218,10 @@ def get_view(
     dataset = fod.load_dataset(dataset_name)
 
     # Load a previously saved view
-    if view_name and dataset.has_views and dataset.has_view(view_name):
-        return dataset.load_saved_view(view_name)
+    if view_name is not None and dataset.has_saved_view(view_name):
+        view = dataset.load_saved_view(view_name)
+        view.reload()
+        return
 
     # Construct a new view
     view = dataset.view()
