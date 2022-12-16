@@ -1897,15 +1897,17 @@ class DatasetView(foc.SampleCollection):
     def _get_missing_fields(self, frames=False):
         if frames:
             if not self._has_frame_fields():
-                return set()
+                return None
 
-            dataset_schema = self._dataset.get_frame_field_schema()
-            view_schema = self.get_frame_field_schema()
+            dataset_schema = self._dataset.get_frame_field_schema(flat=True)
+            view_schema = self.get_frame_field_schema(flat=True)
         else:
-            dataset_schema = self._dataset.get_field_schema()
-            view_schema = self.get_field_schema()
+            dataset_schema = self._dataset.get_field_schema(flat=True)
+            view_schema = self.get_field_schema(flat=True)
 
-        return set(dataset_schema.keys()) - set(view_schema.keys())
+        missing_fields = set(dataset_schema.keys()) - set(view_schema.keys())
+        _discard_nested_leafs(missing_fields)
+        return missing_fields
 
     def _contains_all_fields(self, frames=False):
         selected_fields, excluded_fields = self._get_selected_excluded_fields(
@@ -2131,3 +2133,17 @@ def _filter_embedded_field_schema(
         _filter_embedded_field_schema(
             _field, _path, selected_fields, excluded_fields, virtual_fields
         )
+
+
+def _discard_nested_leafs(paths):
+    discard = set()
+
+    for path in paths:
+        chunks = path.split(".")
+        for i in range(1, len(chunks)):
+            root = ".".join(chunks[:i])
+            if root in paths:
+                discard.add(path)
+
+    for path in discard:
+        paths.discard(path)
