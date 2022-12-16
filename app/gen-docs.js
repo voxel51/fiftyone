@@ -313,6 +313,9 @@ class RstFile {
   string(str) {
     this.append(new RstString(str));
   }
+  bold(str) {
+    this.string(`**${str}**`);
+  }
   link(label, url) {
     this.append(new RstLink(label, url));
   }
@@ -678,6 +681,12 @@ class DocFragment {
     this.raw = raw;
     this.parent = parent;
   }
+  comment() {
+    if (this.has("comment")) {
+      return new DocComment(this.get("comment"), this);
+    }
+    return null;
+  }
   module() {
     if (this.constructor.kind() === "Module") return this;
     if (this.parent) return this.parent.module();
@@ -713,7 +722,14 @@ class DocFragment {
     return this.get("name");
   }
   shortText() {
-    return this.get("comment.summary[0].text");
+    const comment = this.comment();
+    if (comment) {
+      const summary = comment.summary();
+      if (summary.length) {
+        return summary[0].text();
+      }
+    }
+    return null;
   }
   hasChildren() {
     return this.get("children", []).length > 0;
@@ -741,6 +757,13 @@ class DocFragment {
   fullPath() {
     return this.pathParts().join(".");
   }
+  writeHeader(file) {}
+  writeComment(file) {
+    const comment = this.comment();
+    if (comment) {
+      comment.write(file);
+    }
+  }
   writeContent(file) {
     if (this.hasChildren()) {
       for (const child of this.children()) {
@@ -748,9 +771,13 @@ class DocFragment {
       }
     }
   }
+  writeFooter(file) {}
   write(file) {
     file.setDepth(this.depth());
+    this.writeHeader(file);
+    this.writeComment(file);
     this.writeContent(file);
+    this.writeFooter(file);
   }
 }
 
@@ -767,9 +794,11 @@ class DocModule extends DocFragment {
   label() {
     return this.toFilename();
   }
-  writeContent(file) {
+  writeHeader(file) {
     file.section(this.label(), 1);
     file.append(new RstModule(this.label(), this.shortText()));
+  }
+  writeContent(file) {
     const groups = _.groupBy(this.children(), (child) => child.group());
     for (const kind of GROUPS) {
       file.setDepth(this.depth());
@@ -866,7 +895,10 @@ class DocFunction extends DocFragment {
     if (nested) {
       func.indent = this.depth() + 1;
     }
-    func.summary(signature.shortText());
+    const comment = signature.comment();
+    if (comment) {
+      comment.write(file);
+    }
     const desc = new FragmentDescription();
     for (const parameter of signature.parameters()) {
       parameter.addToDescription(desc);
@@ -895,6 +927,82 @@ class DocFunction extends DocFragment {
   }
 }
 
+class DocCommentBlock extends DocFragment {
+  kind() {
+    return this.get("kind");
+  }
+  text() {
+    return this.get("text");
+  }
+  writeHeader(file) {}
+  getRawCode() {
+    let src = this.text();
+    src = src.replace(/```typescript|```ts|```/g, "").trim();
+    return src;
+  }
+  writeContent(file) {
+    switch (this.kind()) {
+      case "text":
+        file.string(this.text());
+        break;
+      case "code":
+        file.code(this.getRawCode());
+        break;
+    }
+  }
+}
+
+class DocCommentTag extends DocFragment {
+  shouldInclude() {
+    return this.content().length > 0;
+  }
+  tag() {
+    return this.get("tag", "").replace("@", "");
+  }
+  content() {
+    return this.mapArray("content", DocCommentBlock);
+  }
+  writeHeader(file) {
+    file.bold(capitalize(this.tag()));
+  }
+  writeContent(file) {
+    for (const content of this.content()) {
+      content.write(file);
+    }
+  }
+}
+
+class DocComment extends DocFragment {
+  static kind = () => "Comment";
+  summary() {
+    // merge into a single block
+    const raw = this.get("summary", []);
+    if (raw.length) {
+      return [
+        new DocCommentBlock(
+          {
+            kind: "text",
+            text: raw.map((r) => r.text).join(""),
+          },
+          this
+        ),
+      ];
+    }
+    return [];
+  }
+  blockTags() {
+    return this.mapArray("blockTags", DocCommentTag);
+  }
+  writeContent(file) {
+    for (const block of this.summary()) {
+      block.write(file);
+    }
+    for (const tag of this.blockTags()) {
+      tag.write(file);
+    }
+  }
+}
+
 class DocConstructor extends DocFunction {
   static kind = () => "Constructor";
   group() {
@@ -918,10 +1026,11 @@ class DocEnumeration extends DocFragment {
   members() {
     return this.mapArray("children", DocEnumerationMember);
   }
-  writeContent(file) {
+  writeHeader(file) {
     file.refLabel(this.fullPath());
     file.section(this.label(), 3);
-    file.string(this.shortText());
+  }
+  writeContent(file) {
     const table = file.table({
       header: ["Name", "Value"],
       widths: [1, 1],
@@ -952,13 +1061,14 @@ class DocVar extends DocFragment {
   type() {
     return new DocType(this.get("type"), this);
   }
-  writeContent(file) {
+  writeHeader(file) {
     const type = this.type();
     file.refLabel(this.fullPath());
     file.section(this.label(), 3);
-    // file.append(new RstData(this.label()));
     file.typeLabel(type);
-    file.string(this.shortText());
+  }
+  writeContent(file) {
+    const type = this.type();
 
     if (type.isRecoil()) {
       const ex = type.isReadOnly()
@@ -1203,13 +1313,14 @@ class DocTypeAlias extends DocFragment {
   typeParameters() {
     return this.mapArray("typeParameters", DocType);
   }
-  writeContent(file) {
+  writeHeader(file) {
     const type = this.type();
     file.refLabel(this.fullPath());
     file.cls(this.label());
     file.section(this.label(), 3);
-    file.string(this.shortText());
-
+  }
+  writeContent(file) {
+    const type = this.type();
     if (type.isUnion()) {
       file.string(
         `Union of ${type
@@ -1301,12 +1412,13 @@ class DocInterface extends DocFragment {
   properties() {
     return this.mapArray("children");
   }
-  writeContent(file) {
+  writeHeader(file) {
     file.refLabel(this.fullPath());
     file.section(this.label(), 3);
-    const cls = file.cls(this.label());
-    // file.string(`.. js:class:: ${this.label()}`);
-    // file.string(this.shortText());
+    this.cls = file.cls(this.label());
+  }
+  writeContent(file) {
+    const cls = this.cls;
     const desc = new FragmentDescription();
 
     if (this.get("indexSignature", null) !== null) {
