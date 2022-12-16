@@ -154,13 +154,18 @@ class Mutation:
         form: t.Optional[StateForm],
         info: Info,
     ) -> ViewResponse:
+        print(
+            "set_view called for dataset_name:{}\nview:{}\nview_name:{}\nchanging_saved_view: {} \n".format(
+                dataset_name, view, view_name, changing_saved_view
+            )
+        )
         state = get_state()
         state.selected = []
         state.selected_labels = []
 
         result_view = None
 
-        if view_name is not None and changing_saved_view:
+        if view_name is not None:
             # Load a saved view by name
             ds = fod.load_dataset(dataset_name)
             if ds.has_saved_view(view_name):

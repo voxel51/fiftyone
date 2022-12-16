@@ -27,7 +27,7 @@ export const currentViewSlug = selector<string>({
   key: "currentViewSlug",
   get: () => {
     const params = new URLSearchParams(window.location.search);
-
+    console.log(params.get("view"));
     return params.get("view") || null;
   },
 });

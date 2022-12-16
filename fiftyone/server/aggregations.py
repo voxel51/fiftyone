@@ -128,6 +128,9 @@ async def aggregate_resolver(
             group=GroupElementFilter(id=form.group_id, slice=form.slice)
         ),
     )
+    if not view._root_dataset.persistent:
+        raise ValueError("Aggregate called for non-permanent dataset")
+        return []
 
     if form.sample_ids:
         view = fov.make_optimized_select_view(view, form.sample_ids)
@@ -166,7 +169,13 @@ async def aggregate_resolver(
         print("aggs", aggs)
         flattened += aggs
         print("i, flattened", i, flattened)
-    print("final flattened:", flattened)
+    print("-" * 100)
+    print(
+        "final flattened:{}\n\t\t----------\nfor view:{}:".format(
+            flattened, view
+        )
+    )
+    print("-" * 100)
 
     result = await view._async_aggregate(flattened)
     results = []

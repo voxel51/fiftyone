@@ -85,7 +85,7 @@ const Grid: React.FC<{}> = () => {
     return flashlight;
   });
 
-  useEffect(
+  useLayoutEffect(
     deferred(() => {
       if (isTagging || !flashlight.isAttached()) {
         return;
@@ -100,9 +100,9 @@ const Grid: React.FC<{}> = () => {
       stringifyObj(useRecoilValue(fos.filters)),
       useRecoilValue(fos.datasetName),
       useRecoilValue(fos.savedViewsSelector),
-      // useRecoilValue(fos.view),
-      fos.filterView(useRecoilValue(fos.view)),
-
+      // useRecoilValue(fos.selectedViewName),
+      useRecoilValue(fos.view),
+      // fos.filterView(useRecoilValue(fos.view)),
       useRecoilValue(fos.cropToContent(false)),
       useRecoilValue(fos.groupSlice(false)),
       useRecoilValue(fos.refresher),

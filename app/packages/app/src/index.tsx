@@ -88,6 +88,8 @@ const App: React.FC = ({}) => {
               payload.refresh && refresh();
               const isAnUpdate = payload.update;
               const changingSavedView = payload.changing_saved_view;
+              console.log(payload);
+              console.log(data);
 
               const state = {
                 ...toCamelCase(data),

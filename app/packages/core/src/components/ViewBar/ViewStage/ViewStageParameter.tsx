@@ -185,21 +185,21 @@ const ObjectEditor = ({
 
   useEffect(() => {
     containerSet({
-      position: state.matches("editing") ? "fixed" : "relative",
-      backgroundColor: state.matches("editing")
+      position: state?.matches("editing") ? "fixed" : "relative",
+      backgroundColor: state?.matches("editing")
         ? theme.background.level2
-        : state.matches("reading.submitted")
+        : state?.matches("reading.submitted")
         ? theme.background.level1
         : theme.background.body,
       borderColor:
         active && stageState.matches("focusedViewBar.yes")
           ? theme.primary.plainColor
           : theme.text.tertiary,
-      height: state.matches("editing") ? 200 : 36,
+      height: state?.matches("editing") ? 200 : 36,
       opacity: 1,
     });
   }, [
-    state.matches("editing"),
+    state?.matches("editing"),
     active,
     stageState.matches("focusedViewBar.yes"),
     themeMode,
@@ -289,8 +289,16 @@ const ObjectEditor = ({
     </>
   );
 };
-
+function isJsonString(str) {
+  try {
+    JSON.parse(str);
+  } catch (e) {
+    return false;
+  }
+  return true;
+}
 const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
+  console.log(parameterRef, barRef, stageRef);
   const theme = useTheme();
   const [state, send] = useService(parameterRef);
   const [stageState] = useService(stageRef);
@@ -309,9 +317,11 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   let isObject = false;
   try {
     // fails when value is just a string field name
-    const parsedValue = JSON.parse(value) || value;
+    const parsedValue = isJsonString(value) ? JSON.parse(value) : value;
     isObject = !Array.isArray(parsedValue) && typeof parsedValue === "object";
-  } catch {}
+  } catch {
+    console.log("ViewStageParameter Invalid JSON. Cannot parse value", value);
+  }
   useEffect(() => {
     if (!hasExpansion || expanded) return;
     isObject && setExpanded(true);

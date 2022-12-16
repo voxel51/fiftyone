@@ -147,6 +147,7 @@ class StateDescription(etas.Serializable):
             selected_labels=d.get("selected_labels", []),
             view=view,
             view_name=view_name,
+            changing_saved_view=d.get("changing_saved_view", False),
         )
 
 
