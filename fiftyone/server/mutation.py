@@ -198,14 +198,14 @@ class Mutation:
             # Set view state
             state.view = result_view
 
-            await dispatch_event(
-                subscription,
-                StateUpdate(
-                    state=state,
-                    update=True,
-                    changing_saved_view=changing_saved_view,
-                ),
-            )
+        await dispatch_event(
+            subscription,
+            StateUpdate(
+                state=state,
+                update=True,
+                changing_saved_view=changing_saved_view,
+            ),
+        )
         dataset = await Dataset.resolver(
             name=dataset_name,
             view=state.view._serialize(),
