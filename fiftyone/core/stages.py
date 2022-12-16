@@ -4322,21 +4322,20 @@ class SetField(ViewStage):
         return foe.to_mongo(self._expr, prefix=prefix)
 
     def validate(self, sample_collection):
+        path = self._field
         allow_missing = self._allow_missing
 
         if self._virtual:
-            path = self._field
-            field_name, _ = sample_collection._handle_frame_field(path)
-
-            # Setting new top-level virtual fields is always allowed
-            if "." not in field_name:
+            _path, _ = sample_collection._handle_frame_field(path)
+            if "." not in _path:
+                # Setting new top-level virtual fields is always allowed
                 allow_missing = True
 
         if not allow_missing:
-            sample_collection.validate_fields_exist(self._field)
+            sample_collection.validate_fields_exist(path)
 
         pipeline, expr_dict = sample_collection._make_set_field_pipeline(
-            self._field,
+            path,
             self._expr,
             embedded_root=True,
             allow_missing=allow_missing,
@@ -4351,6 +4350,7 @@ class SetField(ViewStage):
                     "field" % path
                 )
 
+            field_name = path.rsplit(".", 1)[-1]
             kwargs = _deserialize_field_kwargs(self._virtual)
             virtual_field = foo.create_field(
                 field_name, expr=expr_dict, **kwargs
