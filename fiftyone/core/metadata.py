@@ -229,7 +229,11 @@ def compute_sample_metadata(sample, overwrite=False, skip_failures=False):
 
 
 def compute_metadata(
-    sample_collection, overwrite=False, num_workers=None, skip_failures=True
+    sample_collection,
+    overwrite=False,
+    num_workers=None,
+    skip_failures=True,
+    progress=None,
 ):
     """Populates the ``metadata`` field of all samples in the collection.
 
@@ -244,6 +248,9 @@ def compute_metadata(
             ``multiprocessing.cpu_count()`` is used
         skip_failures (True): whether to gracefully continue without raising an
             error if metadata cannot be computed for a sample
+        progress (None): whether to show the progress bar of the import.
+            If None this uses the global setting, otherwise it overwrites
+            the setting for this method.
     """
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
@@ -254,12 +261,15 @@ def compute_metadata(
         )
 
     if num_workers <= 1:
-        _compute_metadata(sample_collection, overwrite=overwrite)
+        _compute_metadata(
+            sample_collection, overwrite=overwrite, progress=progress
+        )
     else:
         _compute_metadata_multi(
             sample_collection,
             num_workers,
             overwrite=overwrite,
+            progress=progress,
         )
 
     num_missing = len(sample_collection.exists("metadata", False))
@@ -289,7 +299,7 @@ def get_image_info(f):
     return (img.width, img.height, len(img.getbands()))
 
 
-def _compute_metadata(sample_collection, overwrite=False):
+def _compute_metadata(sample_collection, overwrite=False, progress=None):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
@@ -298,12 +308,14 @@ def _compute_metadata(sample_collection, overwrite=False):
         return
 
     logger.info("Computing metadata...")
-    with fou.ProgressBar(total=num_samples) as pb:
+    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         for sample in pb(sample_collection.select_fields()):
             compute_sample_metadata(sample, skip_failures=True)
 
 
-def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
+def _compute_metadata_multi(
+    sample_collection, num_workers, overwrite=False, progress=None
+):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
@@ -321,7 +333,7 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
     logger.info("Computing metadata...")
 
     view = sample_collection.select_fields()
-    with fou.ProgressBar(total=num_samples) as pb:
+    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with fou.get_multiprocessing_context().Pool(
             processes=num_workers
         ) as pool:

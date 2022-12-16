@@ -15,6 +15,7 @@ import fiftyone.constants as foc
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.uid as fou
+import fiftyone.core.utils as utils
 from fiftyone.migrations.runner import MigrationRunner
 
 from decorators import drop_datasets
@@ -262,6 +263,44 @@ class ConfigTests(unittest.TestCase):
 
         self.assertEqual(len(list(db.config.aggregate([]))), 1)
         self.assertEqual(config.id, orig_config.id)
+
+
+class ProgressBarTests(unittest.TestCase):
+    def _test_correct_value(self, progress, global_progress, quiet, expected):
+        fo.config.show_progress_bars = global_progress
+        with utils.ProgressBar(list(), progress=progress, quiet=quiet) as pb:
+            assert pb._progress == expected
+
+    def test_progress_None_uses_global(self):
+        self._test_correct_value(
+            progress=None, global_progress=True, quiet=None, expected=True
+        )
+        self._test_correct_value(
+            progress=None, global_progress=False, quiet=None, expected=False
+        )
+
+    def test_progress_overwrites_global(self):
+        self._test_correct_value(
+            progress=True, global_progress=True, quiet=None, expected=True
+        )
+        self._test_correct_value(
+            progress=True, global_progress=False, quiet=None, expected=True
+        )
+        self._test_correct_value(
+            progress=False, global_progress=True, quiet=None, expected=False
+        )
+        self._test_correct_value(
+            progress=False, global_progress=False, quiet=None, expected=False
+        )
+
+    def test_quiet_overwrites_all(self):
+        # Careful, we expect here to have progress the opposite value of quiet, as they are opposites
+        self._test_correct_value(
+            progress=True, global_progress=True, quiet=True, expected=False
+        )
+        self._test_correct_value(
+            progress=False, global_progress=False, quiet=False, expected=True
+        )
 
 
 if __name__ == "__main__":

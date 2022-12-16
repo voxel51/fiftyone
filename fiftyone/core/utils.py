@@ -820,9 +820,17 @@ class ResourceLimit(object):
 class ProgressBar(etau.ProgressBar):
     """.. autoclass:: eta.core.utils.ProgressBar"""
 
-    def __init__(self, *args, **kwargs):
-        if "quiet" not in kwargs:
-            kwargs["quiet"] = not fo.config.show_progress_bars
+    def __init__(self, *args, progress=None, quiet=None, **kwargs):
+        if quiet is not None:
+            # Allow overwrite with expected progress attribute
+            progress = not quiet
+
+        if progress is None:
+            # Use global config value
+            progress = fo.config.show_progress_bars
+
+        self._progress = progress
+        kwargs["quiet"] = not self._progress
 
         if "iters_str" not in kwargs:
             kwargs["iters_str"] = "samples"
@@ -898,7 +906,7 @@ class DynamicBatcher(object):
         max_batch_size=None,
         max_batch_beta=None,
         return_views=False,
-        progress=False,
+        progress=None,
         total=None,
     ):
         import fiftyone.core.collections as foc
@@ -944,23 +952,22 @@ class DynamicBatcher(object):
         else:
             self._iter = iter(self.iterable)
 
-        if self.progress:
-            if self._in_context:
-                total = self.total
-                if total is None:
-                    try:
-                        total = len(self.iterable)
-                    except:
-                        pass
+        if self._in_context:
+            total = self.total
+            if total is None:
+                try:
+                    total = len(self.iterable)
+                except:
+                    pass
 
-                self._pb = ProgressBar(total=total)
-                self._pb.__enter__()
-            else:
-                logger.warning(
-                    "DynamicBatcher must be invoked as a context manager in "
-                    "order to print progress"
-                )
-                self.progress = False
+            self._pb = ProgressBar(total=total, progress=self.progress)
+            self._pb.__enter__()
+        else:
+            logger.warning(
+                "DynamicBatcher must be invoked as a context manager in "
+                "order to print progress"
+            )
+            self.progress = False
 
         return self
 

@@ -133,6 +133,7 @@ def load_zoo_dataset(
     drop_existing_dataset=False,
     overwrite=False,
     cleanup=True,
+    progress=None,
     **kwargs,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
@@ -178,6 +179,9 @@ def load_zoo_dataset(
             dataset is to be downloaded
         cleanup (True): whether to cleanup any temporary files generated during
             download
+        progress (None): whether to show the progress bar of the import.
+                If None this uses the global setting, otherwise it overwrites
+                the setting for this method.
         **kwargs: optional arguments to pass to the
             :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.
             If ``download_if_necessary == True``, then ``kwargs`` can also
