@@ -4,9 +4,17 @@ import * as fos from "../recoil";
 
 /**
  * A react hook that allows clearing the modal state.
+ *
  * @example
- * const clearModal = useClearModal();
- * <Button onClick={clearModal}>Close Modal</Button>
+ * ```ts
+ * function MyComponent() {
+ *   const clearModal = useClearModal();
+ *   return (
+ *    <button onClick={clearModal}>Close Modal</button>
+ *   )
+ * }
+ * ```
+ *
  * @returns A function that clears the modal state.
  */
 

@@ -13,6 +13,24 @@ export const JSON_COLORS = {
   falseColor: "rgb(225, 100, 40)",
 };
 
+/**
+ * Manage the JSON panel state and events.
+ *
+ * @example
+ * ```ts
+ * function MyComponent() {
+ *   const jsonPanel = useJSONPanel();
+ *
+ *   return jsonPanel.isOpen && (
+ *      <JSONPanel
+ *        containerRef={jsonPanel.containerRef}
+ *        jsonHTML={jsonPanel.jsonHTML}
+ *        onClose={() => jsonPanel.close()}
+ *        onCopy={() => jsonPanel.copy()}
+ *      />
+ *    )
+ * }
+ */
 export default function useJSONPanel() {
   const { containerRef, open, close, toggle, state } = usePanel(
     "json",
