@@ -1099,6 +1099,9 @@ class DatasetMixin(object):
     def _add_field_schema(cls, path, field):
         field_name, doc, field_docs, root_doc = cls._parse_path(path)
 
+        if cls._is_frames_doc:
+            path = "frames." + path
+
         field = field.copy()
         field.db_field = _get_db_field(field, field_name)
         field.name = field_name
@@ -1118,6 +1121,9 @@ class DatasetMixin(object):
         field.db_field = new_db_field
 
         if same_root:
+            if cls._is_frames_doc:
+                new_path = "frames." + new_path
+
             doc._update_field(cls._dataset, field_name, new_path, field)
             _update_field_doc(field_docs, field_name, field)
         else:
@@ -1127,6 +1133,10 @@ class DatasetMixin(object):
             _, new_doc, new_field_docs, new_root_doc = cls._parse_path(
                 new_path
             )
+
+            if cls._is_frames_doc:
+                new_path = "frames." + new_path
+
             new_doc._declare_field(cls._dataset, new_path, field)
             _add_field_doc(new_field_docs, new_root_doc, field)
 
@@ -1264,9 +1274,6 @@ class DatasetMixin(object):
 
     @classmethod
     def _declare_field(cls, dataset, path, field_or_doc):
-        if cls._is_frames_doc:
-            path = "frames." + path
-
         if isinstance(field_or_doc, SampleFieldDocument):
             field = field_or_doc.to_field()
         else:
@@ -1291,9 +1298,6 @@ class DatasetMixin(object):
 
     @classmethod
     def _update_field(cls, dataset, field_name, new_path, field):
-        if cls._is_frames_doc:
-            new_path = "frames." + new_path
-
         new_field_name = field.name
 
         cls._fields_ordered = tuple(
