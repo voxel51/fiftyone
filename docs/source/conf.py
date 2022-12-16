@@ -64,6 +64,7 @@ extensions = [
     "nbsphinx",
     "sphinx_tabs.tabs",
     "sphinx_copybutton",
+    "sphinx_collapse",
     "autodocsumm",
 ]
 

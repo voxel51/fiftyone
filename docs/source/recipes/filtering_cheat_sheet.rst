@@ -18,7 +18,6 @@ A cheat sheet showing how to perform matching and filtering operations in FiftyO
         from fiftyone import ViewField as F
 
 
-
 Temporal
 ____________
 
@@ -73,9 +72,49 @@ ____________
 +-------------------------------------------+-------------------------------------------+---------------------------+
 
 
+
+Geo/spatial
+____________
+
+.. note::
+    The formulas in this table assumes the following:
+
+    .. code-block:: python
+
+      from datetime import datetime, timedelta
+
+      MANHATTAN = [
+          [
+              [-73.949701, 40.834487],
+              [-73.896611, 40.815076],
+              [-73.998083, 40.696534],
+              [-74.031751, 40.715273],
+              [-73.949701, 40.834487],
+          ]
+      ]
+
+      TIMES_SQUARE = [-73.9855, 40.7580]
+
+      ds = foz.load_zoo_dataset("quickstart-geo")
+
++-------------------------------------------+-----------------------------------------------------------------------+
+| Constraint                                | Code                                                                  |
++===========================================+=======================================================================+
+| Within 5km of Times Square                | ``ds.geo_within(MANHATTAN, max_distance=5000)``                       |
++-------------------------------------------+-------------------------------------------+---------------------------+
+| Within Manhattan                          | ``ds.geo_within(MANHATTAN)``                                          |
++-------------------------------------------+-------------------------------------------+---------------------------+
+
+
 Strings, regex, and pattern matching
 ____________________________________
 
+.. note::
+    The formulas in this section assume the following:
+
+    .. code-block:: python
+
+      ds = foz.load_zoo_dataset("quickstart")
 
 +-------------------------------------------+-----------------------------------------------------------------------+
 | Constraint                                | Code                                                                  |
@@ -93,11 +132,21 @@ ____________________________________
 Detections
 ____________
 
+.. note::
+    The formulas in this section assume the following:
+
+    .. code-block:: python
+
+      ds = foz.load_zoo_dataset("quickstart")
+
 
 +-------------------------------------------+-------------------------------------------------------------------------+
 | Constraint                                | Code                                                                    |
 +===========================================+=========================================================================+
 | Predictions with confidence > 0.95        | ``filter_labels("predictions", F("confidence") > 0.95)``                |
+|                                           | .. collapse:: Details                                                   |
+|                                           |                                                                         |
+|                                           |    This is some collapsible content.                                    |
 +-------------------------------------------+-------------------------------------------+-----------------------------+
 | *Exactly* n ground truth detections       | ``ds.match(F("ground_truth.detections").length() == n)``                |
 +-------------------------------------------+-------------------------------------------+-----------------------------+
@@ -187,6 +236,258 @@ Bounding boxes
 |                                           |        aspect_ratio > 2                                                 |
 |                                           |    )                                                                    |
 +-------------------------------------------+-------------------------------------------+-----------------------------+
+
+
+Evaluating Detections
+----------------------
+
+.. note::
+
+    The code in the following table uses the following lines have been run on a dataset ``ds`` with predictions
+
+    .. code-block:: python
+
+      ds.evaluate_detections("predictions")
+
+      import fiftyone.brain as fob
+      fob.compute_uniqueness(ds)
+      fob.compute_mistakenness(ds, "predictions", label_field="ground_truth")
+
++-------------------------------------------+-------------------------------------------------------------------------+
+| Constraint                                | Code                                                                    |
++===========================================+=========================================================================+
+| Highly unique images                      | ``ds.match(F("uniqueness") > 0.9)``                                     |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| Predictions with confidence > 0.95        | ``filter_labels("predictions", F("confidence") > 0.95)``                |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| 10 most "wrong" predictions               | ``ds.msort_by("mistakenness", reverse=True)[:10]``                      |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| Images with more than 10 false positives  | ``ds.match(F("eval_fp") > 10)``                                         |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| Predictions with IoU > 0.9                | ``ds.to_evaluation_patches("eval").match(F("iou") > 0.9)``              |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+
+
+Classification
+_______________
+
+.. note::
+    The formulas in this section assume the following:
+
+    .. code-block:: python
+
+      ds = foz.load_zoo_dataset("cifar10", split="test")
+
+
+
+Evaluating classification
+--------------------------
+
+.. note::
+
+    The code in the following table uses the following lines have been run on a dataset ``ds`` with predictions
+
+    .. code-block:: python
+
+      ds.evaluate_detections("predictions")
+
+      import fiftyone.brain as fob
+      fob.compute_uniqueness(ds)
+      fob.compute_hardness(ds, "predictions")
+      fob.compute_mistakenness(ds, "predictions", label_field="ground_truth")
+
+
+
++-------------------------------------------+-------------------------------------------------------------------------+
+| Constraint                                | Code                                                                    |
++===========================================+=========================================================================+
+| 10 most unique incorrect predictions      | .. code-block:: python                                                  |
+|                                           |                                                                         |
+|                                           |    ds.match(                                                            |
+|                                           |       F("predictions.label") != F("ground_truth.label")                 |
+|                                           |    ).sort_by("uniqueness", reverse=True)[:10]                           |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| 10 most "wrong" predictions               | ``ds.sort_by("mistakenness", reverse=True)[:10]``                       |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| 10 "hardest" false positives              | ``ds.match(F("eval")="FP").sort_by("hardness", reverse=True)[:10]``     |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| 10 most likely annotation mistakes        | ``ds.match_tags("train").sort_by("mistakenness, reverse = True)[:10]``  |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+
+
+Built-in filter and match functions
+____________________________________
+
+
+Filtering keypoints with ``filter_keypoints()``
+--------------------------------------------------
+
+.. note::
+
+    The table in this section uses the following example dataset:
+
+    .. code-block:: python
+
+      ds = fo.Dataset()
+      ds.add_samples(
+          [
+              fo.Sample(
+                  filepath="/path/to/image1.png",
+                  predictions=fo.Keypoints(
+                      keypoints=[
+                          fo.Keypoint(
+                              label="person",
+                              points=[(0.1, 0.1), (0.1, 0.9), (0.9, 0.9), (0.9, 0.1)],
+                              confidence=[0.7, 0.8, 0.95, 0.99],
+                          )
+                      ]
+                  )
+              ),
+              fo.Sample(filepath="/path/to/image2.png"),
+          ]
+      )
+
+      ds.default_skeleton = fo.KeypointSkeleton(
+          labels=["nose", "left eye", "right eye", "left ear", "right ear"],
+          edges=[[0, 1, 2, 0], [0, 3], [0, 4]],
+      )
+
+
+
++---------------+-----------------------------------------------------------------------------------------------------+
+| Constraint    | Only include predicted keypoints with confidence > 0.9                                              |
++---------------+-----------------------------------------------------------------------------------------------------+
+| Idiomatic     | ``view = ds.filter_keypoints("predictions", filter=F("confidence") > 0.9)``                         |
++---------------+----------------------+------------------------------------------------------------------------------+
+| Brute force   |   .. code-block:: python                                                                            |
+|               |                                                                                                     |
+|               |     view = ds.clone()                                                                               |
+|               |     for sample in dataset.iter_samples(autosave = True):                                            |
+|               |         if "predictions" not in sample or sample.predictions is None:                               |
+|               |             continue                                                                                |
+|               |         if "keypoints" not in sample["predictions"] or sample.predictions.keypoints is None:        |
+|               |             continue                                                                                |
+|               |         keypoints = sample.predictions.keypoints                                                    |
+|               |         for keypoint in keypoints:                                                                  |
+|               |             for i, c in enumerate(keypoint.confidence):                                             |
+|               |                 if c < 0.9:                                                                         |
+|               |                     keypoint.points[i] = [None, None]                                               |
++---------------+-----------------------------------------------------------------------------------------------------+
+
+
+Matching frames with ``match_frames()``
+------------------------------------------
+
+.. note::
+
+    The following table uses the "quickstart-video" dataset as ``ds`` and assumes the following:
+
+    .. code-block:: python
+
+      ds = foz.load_zoo_dataset("quickstart-video")
+      num_objects = F("detections.detections").length()
+
+
+
++-------------------------------------------+-------------------------------------------------------------------------+
+| Constraint                                | Samples that have a frame with at least 10 detections                   |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| Idiomatic                                 | ``ds.match_frames(num_objects > 10)``                                   |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| Brute force                               | ``ds.match(F("frames").filter(num_objects > 10).length()>0)``           |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+
+
+.. note::
+
+    The rest of the tables in this section use the "quickstart" dataset as ``ds`` and assume the following:
+
+    .. code-block:: python
+
+      ds = foz.load_zoo_dataset("quickstart")
+      
+      ### tag a few random samples to illustrate matching tags
+      ds.take(3).tag_labels("potential_mistake", label_fields="predictions")
+
+      ### select a few sample ids to illustrate matching labels on ids
+
+      my_ids = [
+          dataset.first().ground_truth.detections[0].id,
+          dataset.last().predictions.detections[0].id,
+      ]
+      ds.select_labels(ids=ids).tag_labels("error")
+      ds.save()
+
+      ### create an example filter
+      len_filter = F("label").strlen() < 3
+
+
+Filtering labels with ``filter_labels()``
+------------------------------------------
+
++-------------------------------------------+-------------------------------------------------------------------------+
+| Constraint                                | Get predicted detections that have confidence > 0.9                     |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| Idiomatic                                 | ``ds.filter_labels("predictions", F("confidence") > 0.9)``              |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| Brute force                               | **TO DO**                                                               |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+
+
+
+Matching labels with ``match_labels()``
+------------------------------------------
+
++-------------------------------------------+-------------------------------------------------------------------------+
+| Constraint                                | Samples that have labels with ``id``s in the list ``my_ids``            |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| Idiomatic                                 | ``ds.match_labels(ids=ids)``                                            |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| Brute force                               | **TO DO**                                                               |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+
+
++---------------+-----------------------------------------------------------------------------------------------------+
+| Constraint    | Samples that have labels satisfying ``len_filter`` in ``predictions`` or ``ground_truth`` field     |
++---------------+-----------------------------------------------------------------------------------------------------+
+| Idiomatic     | ``view = ds.match_labels(filter=len_filter, fields=["predictions", "ground_truth"])``               |
++---------------+----------------------+------------------------------------------------------------------------------+
+| Brute force   |   .. code-block:: python                                                                            |
+|               |                                                                                                     |
+|               |     view = ds.clone()                                                                               |
+|               |     pred_match = F("predictions.detections").filter(len_filter).length() > 0                        |
+|               |     gt_match = F("ground_truth.detections").filter(len_filter).length() > 0                         |
+|               |     ds.match(pred_match \| gt_match)                                                                |
++---------------+-----------------------------------------------------------------------------------------------------+
+
+
++---------------+-----------------------------------------------------------------------------------------------------+
+| Constraint    | Samples that have labels with tag "error" in ``predictions`` or ``ground_truth`` field              |
++---------------+-----------------------------------------------------------------------------------------------------+
+| Idiomatic     | ``ds.match_labels(tags="error")``                                                                   |
++---------------+----------------------+------------------------------------------------------------------------------+
+| Brute force   |   .. code-block:: python                                                                            |
+|               |                                                                                                     |
+|               |     pred_match = F("predictions.detections").filter(F("tags").contains("error")).length()>0         |
+|               |     gt_match = F("ground_truth.detections").filter(F("tags").contains("error")).length()>0          |
+|               |     ds.match(pred_match \| gt_match)                                                                |
++---------------+-----------------------------------------------------------------------------------------------------+
+
+
+Matching tags with ``match_tags()``
+------------------------------------------
+
++-------------------------------------------+-------------------------------------------------------------------------+
+| Constraint                                | Samples that have tag ``validation``                                    |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| Idiomatic                                 | ``ds.match_tags("validation")``                                         |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+| Brute force                               | ds.match(F("tags").contains("validation"))                              |
++-------------------------------------------+-------------------------------------------+-----------------------------+
+
+
+
+
 
 
 
