@@ -376,6 +376,82 @@ class VirtualFieldTests(unittest.TestCase):
         schema = dataset2.get_virtual_field_schema()
         self.assertEqual(len(schema), 0)
 
+    @drop_datasets
+    def test_clone(self):
+        dataset = self._make_dataset()
+
+        dataset2 = dataset.clone()
+
+        schema = dataset2.get_virtual_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"num_objects", "ground_truth.detections.area"},
+        )
+
+        sample = dataset2.first()
+        self.assertEqual(sample.num_objects, 2)
+        self.assertIsNotNone(sample.ground_truth.detections[0].area)
+
+        for d in dataset2._sample_collection.find({}):
+            self.assertNotIn("num_objects", d)
+
+        view = dataset.filter_labels("ground_truth", F("label") == "cat")
+
+        dataset3 = view.clone()
+
+        schema = dataset3.get_virtual_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"num_objects", "ground_truth.detections.area"},
+        )
+
+        self.assertEqual(len(dataset3), 1)
+        self.assertEqual(dataset3.count("ground_truth.detections"), 1)
+
+        sample = dataset3.first()
+        self.assertEqual(sample.num_objects, 1)
+        self.assertIsNotNone(sample.ground_truth.detections[0].area)
+
+        for d in dataset3._sample_collection.find({}):
+            self.assertNotIn("num_objects", d)
+
+        view = dataset.exclude_fields(
+            ["num_objects", "ground_truth.detections.area"]
+        )
+
+        dataset4 = view.clone()
+
+        schema = dataset4.get_virtual_field_schema()
+        self.assertEqual(len(schema), 0)
+
+        sample = dataset4.first()
+
+        with self.assertRaises(AttributeError):
+            sample.num_objects
+
+        for d in dataset4._sample_collection.find({}):
+            self.assertNotIn("num_objects", d)
+
+    @drop_datasets
+    def test_merge_samples(self):
+        dataset = self._make_dataset()
+
+        dataset2 = dataset[:1].clone()
+        dataset2.merge_samples(dataset[1:])
+
+        schema = dataset2.get_virtual_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"num_objects", "ground_truth.detections.area"},
+        )
+
+        sample = dataset2.first()
+        self.assertEqual(sample.num_objects, 2)
+        self.assertIsNotNone(sample.ground_truth.detections[0].area)
+
+        for d in dataset2._sample_collection.find({}):
+            self.assertNotIn("num_objects", d)
+
 
 class VirtualFrameFieldTests(unittest.TestCase):
     def _make_dataset(self):
@@ -773,6 +849,88 @@ class VirtualFrameFieldTests(unittest.TestCase):
 
         schema = dataset2.get_virtual_field_schema()
         self.assertEqual(len(schema), 0)
+
+    @drop_datasets
+    def test_clone(self):
+        dataset = self._make_dataset()
+
+        dataset2 = dataset.clone()
+
+        schema = dataset2.get_virtual_frame_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"num_objects", "ground_truth.detections.area"},
+        )
+
+        sample = dataset2.first()
+        frame = sample.frames.first()
+        self.assertEqual(frame.num_objects, 2)
+        self.assertIsNotNone(frame.ground_truth.detections[0].area)
+
+        for d in dataset2._frame_collection.find({}):
+            self.assertNotIn("num_objects", d)
+
+        view = dataset.filter_labels(
+            "frames.ground_truth", F("label") == "cat"
+        )
+
+        dataset3 = view.clone()
+
+        schema = dataset3.get_virtual_frame_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"num_objects", "ground_truth.detections.area"},
+        )
+
+        self.assertEqual(len(dataset3), 1)
+        self.assertEqual(dataset3.count("frames.ground_truth.detections"), 1)
+
+        sample = dataset3.first()
+        frame = sample.frames.first()
+        self.assertEqual(frame.num_objects, 1)
+        self.assertIsNotNone(frame.ground_truth.detections[0].area)
+
+        for d in dataset3._frame_collection.find({}):
+            self.assertNotIn("num_objects", d)
+
+        view = dataset.exclude_fields(
+            ["frames.num_objects", "frames.ground_truth.detections.area"]
+        )
+
+        dataset4 = view.clone()
+
+        schema = dataset4.get_virtual_frame_field_schema()
+        self.assertEqual(len(schema), 0)
+
+        sample = dataset4.first()
+        frame = sample.frames.first()
+
+        with self.assertRaises(AttributeError):
+            frame.num_objects
+
+        for d in dataset4._frame_collection.find({}):
+            self.assertNotIn("num_objects", d)
+
+    @drop_datasets
+    def test_merge_samples(self):
+        dataset = self._make_dataset()
+
+        dataset2 = dataset[:1].clone()
+        dataset2.merge_samples(dataset[1:])
+
+        schema = dataset2.get_virtual_frame_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"num_objects", "ground_truth.detections.area"},
+        )
+
+        sample = dataset2.first()
+        frame = sample.frames.first()
+        self.assertEqual(frame.num_objects, 2)
+        self.assertIsNotNone(frame.ground_truth.detections[0].area)
+
+        for d in dataset2._frame_collection.find({}):
+            self.assertNotIn("num_objects", d)
 
 
 if __name__ == "__main__":
