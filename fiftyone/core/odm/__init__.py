@@ -26,7 +26,7 @@ from .database import (
     drop_collection,
     drop_orphan_collections,
     drop_orphan_saved_views,
-    drop_orphan_runs,
+    drop_orphan_run_results,
     list_collections,
     get_collection_stats,
     stream_collection,
@@ -50,7 +50,11 @@ from .document import (
     Document,
     SerializableDocument,
 )
-from .embedded_document import DynamicEmbeddedDocument, EmbeddedDocument
+from .embedded_document import (
+    BaseEmbeddedDocument,
+    DynamicEmbeddedDocument,
+    EmbeddedDocument,
+)
 from .frame import (
     DatasetFrameDocument,
     NoDatasetFrameDocument,

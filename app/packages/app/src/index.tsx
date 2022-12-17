@@ -1,27 +1,32 @@
 import { ThemeProvider } from "@fiftyone/components";
-import { Loading, Setup, makeRoutes } from "@fiftyone/core";
+import { Loading, makeRoutes, Setup } from "@fiftyone/core";
+
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot, useRecoilValue } from "recoil";
 import Network from "./Network";
 
-import "./index.css";
+import { usePlugins } from "@fiftyone/plugins";
 import {
+  BeforeScreenshotContext,
+  screenshotCallbacks,
+  EventsContext,
+  getDatasetName,
   getSavedViewName,
-  useRefresh,
-  useScreenshot,
   modal,
   State,
   stateSubscription,
-  useReset,
   useClearModal,
+  useRefresh,
+  useReset,
+  useRouter,
+  useScreenshot,
 } from "@fiftyone/state";
-import { usePlugins } from "@fiftyone/plugins";
-import { useRouter } from "@fiftyone/state";
-import { EventsContext } from "@fiftyone/state";
-import { getDatasetName } from "@fiftyone/state";
+
 import { isElectron } from "@fiftyone/utilities";
+
+import "./index.css";
 
 import { useErrorHandler } from "react-error-boundary";
 
@@ -102,6 +107,7 @@ const App: React.FC = ({}) => {
                 if (dataset !== state.dataset) {
                   dataset = state.dataset;
                 }
+
                 setReadyState(AppReadyState.OPEN);
               } else {
                 dataset = state.dataset;
@@ -175,7 +181,7 @@ const App: React.FC = ({}) => {
       return loadingElement;
     case AppReadyState.OPEN:
       if (plugins.isLoading) return loadingElement;
-      if (plugins.error) return <Loading>Plugin error...</Loading>;
+      if (plugins.hasError) return <Loading>Plugin error...</Loading>;
       return <Network environment={environment} context={context} />;
     default:
       return <Setup />;
@@ -184,10 +190,12 @@ const App: React.FC = ({}) => {
 
 createRoot(document.getElementById("root") as HTMLDivElement).render(
   <RecoilRoot>
-    <EventsContext.Provider value={{ session: null }}>
-      <ThemeProvider>
-        <App />
-      </ThemeProvider>
-    </EventsContext.Provider>
+    <BeforeScreenshotContext.Provider value={screenshotCallbacks}>
+      <EventsContext.Provider value={{ session: null }}>
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      </EventsContext.Provider>
+    </BeforeScreenshotContext.Provider>
   </RecoilRoot>
 );

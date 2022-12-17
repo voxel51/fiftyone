@@ -363,10 +363,7 @@ class Run(Configurable):
 
         dataset_doc = samples._root_dataset._doc
         run_docs = getattr(dataset_doc, cls._runs_field())
-        view_stages = [
-            json_util.dumps(s)
-            for s in samples.view()._serialize(include_uuids=False)
-        ]
+        view_stages = [json_util.dumps(s) for s in samples.view()._serialize()]
 
         run_doc = RunDocument(
             dataset_id=dataset_doc.id,
@@ -399,6 +396,7 @@ class Run(Configurable):
         run_doc = run_docs[key]
         run_doc.config = deepcopy(config.serialize())
         run_doc.save()
+        dataset._doc.save()
 
     @classmethod
     def save_run_results(
@@ -423,6 +421,7 @@ class Run(Configurable):
 
         if run_doc.results:
             if overwrite:
+                # Must manually delete existing result from GridFS
                 run_doc.results.delete()
             else:
                 raise ValueError(
@@ -433,15 +432,18 @@ class Run(Configurable):
         if run_results is None:
             run_doc.results = None
         else:
+            # Write run result to GridFS
             # We use `json_util.dumps` so that run results may contain BSON
             results_bytes = json_util.dumps(run_results.serialize()).encode()
             run_doc.results.put(results_bytes, content_type="application/json")
 
+        # Cache the results for future use in this session
         if cache:
             results_cache = getattr(dataset, cls._results_cache_field())
             results_cache[key] = run_results
 
         run_doc.save()
+        dataset._doc.save()
 
     @classmethod
     def load_run_results(cls, samples, key, cache=True, load_view=True):
@@ -461,6 +463,7 @@ class Run(Configurable):
 
         results_cache = getattr(dataset, cls._results_cache_field())
 
+        # Returned cached results if available
         if key in results_cache:
             return results_cache[key]
 
@@ -469,6 +472,7 @@ class Run(Configurable):
         if not run_doc.results:
             return None
 
+        # Load run info
         run_info = cls.get_run_info(samples, key)
         config = run_info.config
 
@@ -501,6 +505,7 @@ class Run(Configurable):
                 )
             ) from e
 
+        # Cache the results for future use in this session
         if cache:
             results_cache[key] = run_results
 
@@ -568,6 +573,7 @@ class Run(Configurable):
         run_doc = cls._get_run_doc(samples, key)
 
         try:
+            # Cleanup after run, if possible
             run_info = cls.get_run_info(samples, key)
             run = run_info.config.build()
             run.cleanup(samples, key)
@@ -580,11 +586,13 @@ class Run(Configurable):
 
         dataset = samples._root_dataset
 
+        # Delete run from dataset doc
         run_docs = getattr(dataset._doc, cls._runs_field())
         run_docs.pop(key, None)
         results_cache = getattr(dataset, cls._results_cache_field())
         results_cache.pop(key, None)
 
+        # Must manually delete run result, which is stored via GridFS
         if run_doc.results:
             run_doc.results.delete()
 

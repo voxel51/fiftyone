@@ -14,7 +14,6 @@ import {
   usePreLoadedDataset,
   ViewBar,
 } from "@fiftyone/core";
-
 import { usePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { getEnvironment, RelayEnvironmentKey } from "@fiftyone/state";
@@ -22,7 +21,6 @@ import React, { useState, useEffect, Suspense } from "react";
 import { PreloadedQuery, useQueryLoader } from "react-relay";
 import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 import { RecoilRelayEnvironmentProvider } from "recoil-relay";
-
 import styled from "styled-components";
 
 import { DatasetQuery } from "@fiftyone/core";

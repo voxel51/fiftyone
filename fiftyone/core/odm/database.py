@@ -85,6 +85,11 @@ def get_db_config():
     except moe.DoesNotExist:
         config = DatabaseConfigDocument()
         save = True
+    except moe.MultipleObjectsReturned:
+        cleanup_multiple_config_docs()
+
+        # pylint: disable=no-member
+        config = DatabaseConfigDocument.objects.first()
 
     if config.version is None:
         #
@@ -116,6 +121,41 @@ def get_db_config():
         config.save()
 
     return config
+
+
+def cleanup_multiple_config_docs():
+    """Internal utility that ensures that there is only one
+    :class:`DatabaseConfigDocument` in the database.
+    """
+
+    # We use mongoengine here because `get_db_conn()` will not currently work
+    # until `import fiftyone` succeeds, which requires a single config doc
+    # pylint: disable=no-member
+    docs = list(DatabaseConfigDocument.objects)
+    if len(docs) <= 1:
+        return
+
+    logger.warning(
+        "Unexpectedly found %d documents in the 'config' collection; assuming "
+        "the one with latest 'version' is the correct one",
+        len(docs),
+    )
+
+    versions = []
+    for doc in docs:
+        try:
+            versions.append((doc.id, Version(doc.version)))
+        except:
+            pass
+
+    try:
+        keep_id = max(versions, key=lambda kv: kv[1])[0]
+    except:
+        keep_id = docs[0].id
+
+    for doc in docs:
+        if doc.id != keep_id:
+            doc.delete()
 
 
 def establish_db_conn(config):
@@ -473,6 +513,42 @@ def drop_orphan_saved_views(dry_run=False):
     )
     if not dry_run:
         _delete_saved_views(conn, orphan_view_ids)
+
+
+def drop_orphan_run_results(dry_run=False):
+    """Drops all orphan run results from the database.
+
+    Orphan run results are results that are not associated with any known
+    dataset.
+
+    Args:
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+    # pylint: disable=no-value-for-parameter
+    results_in_use = set()
+    for name in list_datasets():
+        dataset_dict = conn.datasets.find_one({"name": name})
+        results_in_use.update(_get_result_ids(dataset_dict))
+
+    all_run_results = set(conn.fs.files.distinct("_id", {}, {}))
+
+    orphan_results = [
+        _id for _id in all_run_results if _id not in results_in_use
+    ]
+
+    if not orphan_results:
+        return
+
+    _logger.info(
+        "Deleting %d orphan run result(s): %s",
+        len(orphan_results),
+        orphan_results,
+    )
+    if not dry_run:
+        _delete_run_results(orphan_results)
 
 
 def drop_orphan_runs(dry_run=False):
@@ -843,13 +919,45 @@ def delete_annotation_run(name, anno_key, dry_run=False):
         dry_run (False): whether to log the actions that would be taken but not
             perform them
     """
-    _delete_run(
-        name,
-        anno_key,
-        "annotation_runs",
-        "annotation",
-        dry_run=dry_run,
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", name)
+        return
+
+    annotation_runs = dataset_dict.get("annotation_runs", {})
+    if anno_key not in annotation_runs:
+        _logger.warning(
+            "Dataset '%s' has no annotation run with key '%s'",
+            name,
+            anno_key,
+        )
+        return
+
+    run_doc = annotation_runs.pop(anno_key)
+    result_id = run_doc.get("results", None)
+
+    if result_id is not None:
+        # pylint: disable=no-value-for-parameter
+        _logger.info("Deleting run result '%s'", result_id)
+        if not dry_run:
+            _delete_run_results([result_id])
+
+    _logger.info(
+        "Deleting annotation run '%s' from dataset '%s'", anno_key, name
     )
+    if not dry_run:
+        conn.datasets.replace_one({"name": name}, dataset_dict)
+
+    # _delete_run(
+    #     name,
+    #     anno_key,
+    #     "annotation_runs",
+    #     "annotation",
+    #     dry_run=dry_run,
+    # )
 
 
 def delete_annotation_runs(name, dry_run=False):
@@ -869,12 +977,42 @@ def delete_annotation_runs(name, dry_run=False):
         dry_run (False): whether to log the actions that would be taken but not
             perform them
     """
-    _delete_runs(
-        name,
-        "annotation_runs",
-        "annotation",
-        dry_run=dry_run,
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", name)
+        return
+
+    anno_keys = []
+    result_ids = []
+    for anno_key, run_doc in dataset_dict.get("annotation_runs", {}).items():
+        anno_keys.append(anno_key)
+
+        result_id = run_doc.get("results", None)
+        if result_id is not None:
+            result_ids.append(result_id)
+
+    if result_ids:
+        _logger.info("Deleting %d run result(s)", len(result_ids))
+        if not dry_run:
+            # pylint: disable=no-value-for-parameter
+            _delete_run_results(result_ids)
+
+    _logger.info(
+        "Deleting annotation runs %s from dataset '%s'", anno_keys, name
     )
+    if not dry_run:
+        dataset_dict["annotation_runs"] = {}
+        conn.datasets.replace_one({"name": name}, dataset_dict)
+
+    # _delete_runs(
+    #     name,
+    #     "annotation_runs",
+    #     "annotation",
+    #     dry_run=dry_run,
+    # )
 
 
 def delete_brain_run(name, brain_key, dry_run=False):
@@ -922,12 +1060,44 @@ def delete_brain_runs(name, dry_run=False):
         dry_run (False): whether to log the actions that would be taken but not
             perform them
     """
-    _delete_runs(
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", name)
+        return
+
+    brain_keys = []
+    result_ids = []
+    for brain_key, run_doc in dataset_dict.get("brain_methods", {}).items():
+        brain_keys.append(brain_key)
+
+        result_id = run_doc.get("results", None)
+        if result_id is not None:
+            result_ids.append(result_id)
+
+    if result_ids:
+        # pylint: disable=no-value-for-parameter
+        _logger.info("Deleting %d run result(s)", len(result_ids))
+        if not dry_run:
+            _delete_run_results(result_ids)
+
+    _logger.info(
+        "Deleting brain method runs %s from dataset '%s'",
+        brain_keys,
         name,
-        "brain_methods",
-        "brain method",
-        dry_run=dry_run,
     )
+    if not dry_run:
+        dataset_dict["brain_methods"] = {}
+        conn.datasets.replace_one({"name": name}, dataset_dict)
+
+    # _delete_runs(
+    #         name,
+    #         "brain_methods",
+    #         "brain method",
+    #         dry_run=dry_run,
+    # )
 
 
 def delete_evaluation(name, eval_key, dry_run=False):
@@ -949,13 +1119,41 @@ def delete_evaluation(name, eval_key, dry_run=False):
         dry_run (False): whether to log the actions that would be taken but not
             perform them
     """
-    _delete_run(
-        name,
-        eval_key,
-        "evaluations",
-        "evaluation",
-        dry_run=dry_run,
-    )
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", name)
+        return
+
+    evaluations = dataset_dict.get("evaluations", {})
+    if eval_key not in evaluations:
+        _logger.warning(
+            "Dataset '%s' has no evaluation with key '%s'", name, eval_key
+        )
+        return
+
+    run_doc = evaluations.pop(eval_key)
+    result_id = run_doc.get("results", None)
+
+    if result_id is not None:
+        # pylint: disable=no-value-for-parameter
+        _logger.info("Deleting run result '%s'", result_id)
+        if not dry_run:
+            _delete_run_results([result_id])
+
+    _logger.info("Deleting evaluation '%s' from dataset '%s'", eval_key, name)
+    if not dry_run:
+        conn.datasets.replace_one({"name": name}, dataset_dict)
+
+    # _delete_run(
+    #     name,
+    #     eval_key,
+    #     "evaluations",
+    #     "evaluation",
+    #     dry_run=dry_run,
+    # )
 
 
 def delete_evaluations(name, dry_run=False):
@@ -975,12 +1173,40 @@ def delete_evaluations(name, dry_run=False):
         dry_run (False): whether to log the actions that would be taken but not
             perform them
     """
-    _delete_runs(
-        name,
-        "evaluations",
-        "evaluation",
-        dry_run=dry_run,
-    )
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", name)
+        return
+
+    eval_keys = []
+    result_ids = []
+    # pylint: disable=no-value-for-parameter
+    for eval_key, run_doc in dataset_dict.get("evaluations", {}).items():
+        eval_keys.append(eval_key)
+
+        result_id = run_doc.get("results", None)
+        if result_id is not None:
+            result_ids.append(result_id)
+
+    if result_ids:
+        _logger.info("Deleting %d run result(s)", len(result_ids))
+        if not dry_run:
+            _delete_run_results(result_ids)
+
+    _logger.info("Deleting evaluations %s from dataset '%s'", eval_keys, name)
+    if not dry_run:
+        dataset_dict["evaluations"] = {}
+        conn.datasets.replace_one({"name": name}, dataset_dict)
+
+    # _delete_runs(
+    #     name,
+    #     "evaluations",
+    #     "evaluation",
+    #     dry_run=dry_run,
+    # )
 
 
 def _get_logger(dry_run=False):

@@ -403,10 +403,7 @@ const getFieldAndValue = (
     field = schema[key];
     // console.log('field', field)
 
-    if (
-      field === null ||
-      field.embeddedDocType === "fiftyone.core.frames.FrameSample"
-    ) {
+    if (field?.embeddedDocType === "fiftyone.core.frames.FrameSample") {
       return [null, null, false];
     }
 

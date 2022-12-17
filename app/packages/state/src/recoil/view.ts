@@ -1,9 +1,6 @@
-import { atom, selector, useRecoilValue } from "recoil";
+import { atom, selector } from "recoil";
 
 import { State } from "./types";
-import { getFetchFunction } from "@fiftyone/utilities";
-import { dataset } from "./atoms";
-import { datasetName } from "./selectors";
 
 export const view = atom<State.Stage[]>({
   key: "view",

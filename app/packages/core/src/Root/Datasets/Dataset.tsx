@@ -16,7 +16,9 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const name = useRecoilValue(fos.datasetName);
   if (!ready) return null;
   if (dataset === null) {
-    throw new NotFoundError(`/datasets/${getDatasetName(router)}`);
+    throw new NotFoundError(
+      `/datasets/${getDatasetName(useContext(RouterContext))}`
+    );
   }
   if (!name || name !== dataset.name) {
     return null;

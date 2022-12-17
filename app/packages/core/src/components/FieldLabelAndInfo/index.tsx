@@ -1,5 +1,4 @@
 import { InfoIcon, useTheme } from "@fiftyone/components";
-import { useEventHandler } from "@fiftyone/state";
 import React, {
   MutableRefObject,
   useEffect,
@@ -90,8 +89,7 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
 }
 
 function toLabel(path, nested) {
-  let label = !nested ? path : path.split(".").pop();
-  return label.replaceAll("_", " ");
+  return !nested ? path : path.split(".").pop();
 }
 
 const FieldInfoIcon = (props) => <InfoIcon {...props} style={{ opacity: 1 }} />;

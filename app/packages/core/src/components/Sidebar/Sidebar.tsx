@@ -753,9 +753,8 @@ const InteractiveSidebar = ({
             if (entry.kind === fos.EntryKind.GROUP) {
               group = entry.name;
             }
-            const { shadow, cursor, ...springs } = items.current[
-              key
-            ].controller.springs;
+            const { shadow, cursor, ...springs } =
+              items.current[key].controller.springs;
             const { children } = render(
               key,
               group,

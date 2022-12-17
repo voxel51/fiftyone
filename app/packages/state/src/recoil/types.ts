@@ -129,7 +129,6 @@ export namespace State {
     groupField: string;
     appConfig: DatasetAppConfig;
     info: { [key: string]: string };
-    viewCls: String;
   }
 
   export interface Filter {}

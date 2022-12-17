@@ -857,6 +857,217 @@ class DatasetTests(unittest.TestCase):
             dataset.clone_frame_field("foo", "_private")
 
     @drop_datasets
+    def test_field_schemas(self):
+        dataset = fo.Dataset()
+
+        dataset.add_sample_field("foo", fo.StringField)
+        dataset.add_sample_field("bar", fo.BooleanField)
+        dataset.add_sample_field(
+            "spam",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        dataset.add_sample_field(
+            "eggs", fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
+        )
+
+        schema = dataset.get_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "foo",
+                "bar",
+                "spam",
+                "eggs",
+            },
+        )
+
+        schema = dataset.get_field_schema(ftype=fo.StringField)
+        self.assertSetEqual(set(schema.keys()), {"filepath", "foo"})
+
+        schema = dataset.get_field_schema(
+            ftype=[fo.StringField, fo.BooleanField]
+        )
+        self.assertSetEqual(set(schema.keys()), {"filepath", "foo", "bar"})
+
+        schema = dataset.get_field_schema(embedded_doc_type=fo.Classification)
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        schema = dataset.get_field_schema(
+            embedded_doc_type=[fo.Classification, fo.Detections]
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam", "eggs"})
+
+        view = dataset.select_fields(["foo", "spam", "eggs"]).exclude_fields(
+            "eggs"
+        )
+
+        schema = view.get_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"id", "filepath", "tags", "metadata", "foo", "spam"},
+        )
+
+        schema = view.get_field_schema(ftype=fo.StringField)
+        self.assertSetEqual(set(schema.keys()), {"filepath", "foo"})
+
+        schema = view.get_field_schema(ftype=[fo.BooleanField, fo.StringField])
+        self.assertSetEqual(set(schema.keys()), {"filepath", "foo"})
+
+        schema = view.get_field_schema(embedded_doc_type=fo.Classification)
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        schema = view.get_field_schema(
+            embedded_doc_type=[fo.Classification, fo.Detections]
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        # Just checks for existence
+        dataset.validate_field_type("filepath")
+        dataset.validate_field_type("foo")
+        dataset.validate_field_type("spam.label")
+        dataset.validate_field_type("eggs.detections.label")
+
+        # Check types
+        dataset.validate_field_type("filepath", ftype=fo.StringField)
+        dataset.validate_field_type("bar", ftype=fo.BooleanField)
+        dataset.validate_field_type("bar", ftype=[fo.Field, fo.StringField])
+        dataset.validate_field_type(
+            "spam", embedded_doc_type=fo.Classification
+        )
+        dataset.validate_field_type(
+            "spam", embedded_doc_type=[fo.Label, fo.Detections]
+        )
+        dataset.validate_field_type("eggs", embedded_doc_type=fo.Detections)
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("spam.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("eggs.detections.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("foo", ftype=fo.BooleanField)
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type(
+                "spam", embedded_doc_type=fo.Detections
+            )
+
+    @drop_datasets
+    def test_frame_field_schemas(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+
+        dataset.add_frame_field("foo", fo.StringField)
+        dataset.add_frame_field("bar", fo.BooleanField)
+        dataset.add_frame_field(
+            "spam",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        dataset.add_frame_field(
+            "eggs", fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
+        )
+
+        schema = dataset.get_frame_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"id", "frame_number", "foo", "bar", "spam", "eggs"},
+        )
+
+        schema = dataset.get_frame_field_schema(ftype=fo.StringField)
+        self.assertSetEqual(set(schema.keys()), {"foo"})
+
+        schema = dataset.get_frame_field_schema(
+            ftype=[fo.StringField, fo.BooleanField]
+        )
+        self.assertSetEqual(set(schema.keys()), {"foo", "bar"})
+
+        schema = dataset.get_frame_field_schema(
+            embedded_doc_type=fo.Classification
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        schema = dataset.get_frame_field_schema(
+            embedded_doc_type=[fo.Classification, fo.Detections]
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam", "eggs"})
+
+        view = dataset.select_fields(
+            ["frames.foo", "frames.spam", "frames.eggs"]
+        ).exclude_fields("frames.eggs")
+
+        schema = view.get_frame_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()), {"id", "frame_number", "foo", "spam"}
+        )
+
+        schema = view.get_frame_field_schema(ftype=fo.StringField)
+        self.assertSetEqual(set(schema.keys()), {"foo"})
+
+        schema = view.get_frame_field_schema(
+            ftype=[fo.BooleanField, fo.StringField]
+        )
+        self.assertSetEqual(set(schema.keys()), {"foo"})
+
+        schema = view.get_frame_field_schema(
+            embedded_doc_type=fo.Classification
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        schema = view.get_frame_field_schema(
+            embedded_doc_type=[fo.Classification, fo.Detections]
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        # Just checks for existence
+        dataset.validate_field_type("frames.id")
+        dataset.validate_field_type("frames.foo")
+        dataset.validate_field_type("frames.spam.label")
+        dataset.validate_field_type("frames.eggs.detections.label")
+
+        # Check types
+        dataset.validate_field_type("frames.id", ftype=fo.ObjectIdField)
+        dataset.validate_field_type("frames.bar", ftype=fo.BooleanField)
+        dataset.validate_field_type(
+            "frames.bar", ftype=[fo.Field, fo.StringField]
+        )
+        dataset.validate_field_type(
+            "frames.spam", embedded_doc_type=fo.Classification
+        )
+        dataset.validate_field_type(
+            "frames.spam", embedded_doc_type=[fo.Label, fo.Detections]
+        )
+        dataset.validate_field_type(
+            "frames.eggs", embedded_doc_type=fo.Detections
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("frames.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("frames.spam.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("frames.eggs.detections.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("frames.foo", ftype=fo.BooleanField)
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type(
+                "frames.spam", embedded_doc_type=fo.Detections
+            )
+
+    @drop_datasets
     def test_merge_samples1(self):
         # Windows compatibility
         def expand_path(path):

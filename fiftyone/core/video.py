@@ -142,6 +142,10 @@ class FramesView(fov.DatasetView):
         )
 
     @property
+    def name(self):
+        return self.dataset_name + "-frames"
+
+    @property
     def media_type(self):
         return fom.IMAGE
 
