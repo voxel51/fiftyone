@@ -270,6 +270,41 @@ class VirtualFieldTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             sample.num_objects
 
+        view = dataset.filter_labels(
+            "ground_truth", F("label") == "cat", only_matches=False
+        )
+
+        bounds = view.bounds("num_objects")
+        self.assertEqual(bounds, (0, 1))
+
+        values = view.values("num_objects")
+        self.assertListEqual(values, [1, 0])
+
+        bounds = view.bounds("ground_truth.detections.area")
+        self.assertIsNotNone(bounds[0])
+        self.assertIsNotNone(bounds[1])
+
+        values = view.values("ground_truth.detections.area", unwind=True)
+        self.assertEqual(len(values), 1)
+        self.assertIsNotNone(values[0])
+
+        view2 = view.materialize().match(F("num_objects") == 1)
+
+        self.assertEqual(len(view2), 1)
+
+        sample = view2.first()
+        self.assertEqual(sample.num_objects, 1)
+
+        view3 = view2.filter_labels(
+            "ground_truth", F("label") != "cat", only_matches=False
+        )
+
+        self.assertEqual(len(view3), 1)
+        self.assertEqual(view3.count("ground_truth.detections"), 0)
+
+        sample = view3.first()
+        self.assertEqual(sample.num_objects, 0)
+
     @drop_datasets
     def test_save(self):
         dataset = self._make_dataset()
@@ -626,6 +661,44 @@ class VirtualFrameFieldTests(unittest.TestCase):
 
         with self.assertRaises(AttributeError):
             frame.num_objects
+
+        view = dataset.filter_labels(
+            "frames.ground_truth", F("label") == "cat", only_matches=False
+        )
+
+        bounds = view.bounds("frames.num_objects")
+        self.assertEqual(bounds, (0, 1))
+
+        values = view.values("frames.num_objects", unwind=True)
+        self.assertListEqual(values, [1, 0, 0, 0])
+
+        bounds = view.bounds("frames.ground_truth.detections.area")
+        self.assertIsNotNone(bounds[0])
+        self.assertIsNotNone(bounds[1])
+
+        values = view.values(
+            "frames.ground_truth.detections.area", unwind=True
+        )
+        self.assertEqual(len(values), 1)
+        self.assertIsNotNone(values[0])
+
+        view2 = view.materialize().match_frames(F("num_objects") == 1)
+
+        self.assertEqual(view2.count("frames"), 1)
+
+        sample = view2.first()
+        frame = sample.frames.first()
+        self.assertEqual(frame.num_objects, 1)
+
+        view3 = view2.filter_labels(
+            "frames.ground_truth", F("label") != "cat", only_matches=False
+        )
+
+        self.assertEqual(view3.count("frames.ground_truth.detections"), 0)
+
+        sample = view3.first()
+        frame = sample.frames.first()
+        self.assertEqual(frame.num_objects, 0)
 
     @drop_datasets
     def test_save(self):
