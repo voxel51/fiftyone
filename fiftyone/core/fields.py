@@ -543,14 +543,10 @@ class Field(mongoengine.fields.BaseField):
     def copy(self):
         """Returns a copy of the field.
 
-        The returned copy is not associated with a dataset.
-
         Returns:
             a :class:`Field`
         """
-        field = deepcopy(self)
-        field._set_dataset(None, None)
-        return field
+        return deepcopy(self)
 
     def save(self):
         """Saves any edits to this field's :attr:`description` and :attr:`info`

@@ -22,6 +22,8 @@ from .utils import (
     create_field,
     create_implied_field,
     validate_field_name,
+    get_field_kwargs,
+    get_implied_field_kwargs,
     validate_fields_match,
 )
 
@@ -1271,6 +1273,33 @@ class DatasetMixin(object):
                 )
 
         return field_name, doc, field_docs, root_field_doc
+
+    @classmethod
+    def _init_fields(cls, dataset, fields=None):
+        cls._dataset = dataset
+
+        for field_name in tuple(cls._fields.keys()):
+            field = cls._fields[field_name]
+
+            if cls._is_frames_doc:
+                path = "frames." + field_name
+            else:
+                path = field_name
+
+            if isinstance(field, fof.EmbeddedDocumentField):
+                field = create_field(field_name, **get_field_kwargs(field))
+                cls._declare_field(dataset, path, field)
+            else:
+                field._set_dataset(dataset, path)
+
+        if fields is not None:
+            for field in fields:
+                if cls._is_frames_doc:
+                    path = "frames." + field.name
+                else:
+                    path = field.name
+
+                cls._declare_field(dataset, path, field)
 
     @classmethod
     def _declare_field(cls, dataset, path, field_or_doc):

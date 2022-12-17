@@ -3747,7 +3747,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             sample_collection = self
 
-        return _clone_dataset_or_view(sample_collection, name, persistent)
+        return _clone_collection(sample_collection, name, persistent)
 
     def clear(self):
         """Removes all samples from the dataset.
@@ -6894,33 +6894,14 @@ def _make_frame_collection_name(sample_collection_name):
 
 def _create_sample_document_cls(dataset, sample_collection_name, fields=None):
     cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
-    cls._dataset = dataset
-
-    _declare_fields(dataset, cls, fields=fields)
+    cls._init_fields(dataset, fields=fields)
     return cls
 
 
 def _create_frame_document_cls(dataset, frame_collection_name, fields=None):
     cls = type(frame_collection_name, (foo.DatasetFrameDocument,), {})
-    cls._dataset = dataset
-
-    _declare_fields(dataset, cls, fields=fields)
+    cls._init_fields(dataset, fields=fields)
     return cls
-
-
-def _declare_fields(dataset, doc_cls, fields=None):
-    for field_name in tuple(doc_cls._fields.keys()):
-        field = doc_cls._fields[field_name]
-
-        if isinstance(field, fof.EmbeddedDocumentField):
-            field = foo.create_field(field_name, **foo.get_field_kwargs(field))
-            doc_cls._declare_field(dataset, field_name, field)
-        else:
-            field._set_dataset(dataset, field_name)
-
-    if fields is not None:
-        for field in fields:
-            doc_cls._declare_field(dataset, field.name, field)
 
 
 def _load_clips_source_dataset(frame_collection_name):
@@ -7035,19 +7016,19 @@ def _delete_dataset_doc(dataset_doc):
     dataset_doc.delete()
 
 
-def _clone_dataset_or_view(dataset_or_view, name, persistent):
+def _clone_collection(sample_collection, name, persistent):
     slug = _validate_dataset_name(name)
 
-    contains_videos = dataset_or_view._contains_videos(any_slice=True)
+    contains_videos = sample_collection._contains_videos(any_slice=True)
 
-    if isinstance(dataset_or_view, fov.DatasetView):
-        dataset = dataset_or_view._dataset
-        view = dataset_or_view
+    if isinstance(sample_collection, fov.DatasetView):
+        dataset = sample_collection._dataset
+        view = sample_collection
 
         if view.media_type == fom.MIXED:
             raise ValueError("Cloning mixed views is not allowed")
     else:
-        dataset = dataset_or_view
+        dataset = sample_collection
         view = None
 
     dataset._reload()
@@ -7078,7 +7059,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.frame_collection_name = frame_collection_name
 
-    dataset_doc.media_type = dataset_or_view.media_type
+    dataset_doc.media_type = sample_collection.media_type
     if dataset_doc.media_type != fom.GROUP:
         dataset_doc.group_field = None
         dataset_doc.group_media_types = {}
@@ -7094,18 +7075,16 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
         # Respect filtered sample fields, if any
         schema = view.get_field_schema()
         dataset_doc.sample_fields = [
-            f
-            for f in dataset_doc.sample_fields
-            if f.name in set(schema.keys())
+            foo.SampleFieldDocument.from_field(field)
+            for field in schema.values()
         ]
 
         # Respect filtered frame fields, if any
         if contains_videos:
             frame_schema = view.get_frame_field_schema()
             dataset_doc.frame_fields = [
-                f
-                for f in dataset_doc.frame_fields
-                if f.name in set(frame_schema.keys())
+                foo.SampleFieldDocument.from_field(field)
+                for field in frame_schema.values()
             ]
 
     dataset_doc.save(upsert=True)
@@ -7114,14 +7093,14 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     _create_indexes(sample_collection_name, frame_collection_name)
 
     # Clone samples
-    coll, pipeline = _get_samples_pipeline(dataset_or_view)
+    coll, pipeline = _get_samples_pipeline(sample_collection)
     pipeline.append({"$addFields": {"_dataset_id": _id}})
     pipeline.append({"$out": sample_collection_name})
     foo.aggregate(coll, pipeline)
 
     # Clone frames
     if contains_videos:
-        coll, pipeline = _get_frames_pipeline(dataset_or_view)
+        coll, pipeline = _get_frames_pipeline(sample_collection)
         pipeline.append({"$addFields": {"_dataset_id": _id}})
         pipeline.append({"$out": frame_collection_name})
         foo.aggregate(coll, pipeline)
