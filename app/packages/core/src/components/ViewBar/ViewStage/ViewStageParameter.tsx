@@ -215,6 +215,7 @@ const ObjectEditor = ({
       const { x, y } = state.matches("editing")
         ? followRef.current.getBoundingClientRect()
         : { x: 0, y: 0 };
+      // containerRef.current.style null
       containerRef.current.style.top = state.matches("editing")
         ? `${y}px`
         : "unset";

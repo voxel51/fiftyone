@@ -1034,13 +1034,44 @@ def delete_brain_run(name, brain_key, dry_run=False):
         dry_run (False): whether to log the actions that would be taken but not
             perform them
     """
-    _delete_run(
-        name,
-        brain_key,
-        "brain_methods",
-        "brain method",
-        dry_run=dry_run,
+    # _delete_run(
+    #     name,
+    #     brain_key,
+    #     "brain_methods",
+    #     "brain method",
+    #     dry_run=dry_run,
+    # )
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", name)
+        return
+
+    brain_methods = dataset_dict.get("brain_methods", {})
+    if brain_key not in brain_methods:
+        _logger.warning(
+            "Dataset '%s' has no brain method run with key '%s'",
+            name,
+            brain_key,
+        )
+        return
+
+    run_doc = brain_methods.pop(brain_key)
+    result_id = run_doc.get("results", None)
+
+    if result_id is not None:
+        # pylint: disable=no-value-for-parameter
+        _logger.info("Deleting run result '%s'", result_id)
+        if not dry_run:
+            _delete_run_results([result_id])
+
+    _logger.info(
+        "Deleting brain method run '%s' from dataset '%s'", brain_key, name
     )
+    if not dry_run:
+        conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
 def delete_brain_runs(name, dry_run=False):
