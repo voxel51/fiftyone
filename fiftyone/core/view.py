@@ -1308,8 +1308,9 @@ class DatasetView(foc.SampleCollection):
         .. warning::
 
             If a view has excluded fields or filtered list values, this method
-            will permanently delete this data from the dataset, unless
-            ``fields`` is used to omit such fields from the save.
+            will permanently delete this data from the dataset (only for the
+            samples in the view), unless ``fields`` is used to omit such fields
+            from the save.
 
         Args:
             fields (None): an optional field or iterable of fields to save. If
