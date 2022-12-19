@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<110fad434e453ab80f0414deb9a7b67c>>
+ * @generated SignedSource<<5f373db50b88edc3ad6cae631c4fceca>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,6 +18,7 @@ export type setSidebarGroupsMutation$variables = {
   dataset: string;
   sidebarGroups: ReadonlyArray<SidebarGroupInput>;
   stages: Array;
+  subscription: string;
 };
 export type setSidebarGroupsMutation$data = {
   readonly setSidebarGroups: boolean;
@@ -43,7 +44,12 @@ v2 = {
   "kind": "LocalArgument",
   "name": "stages"
 },
-v3 = [
+v3 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "subscription"
+},
+v4 = [
   {
     "alias": null,
     "args": [
@@ -61,6 +67,11 @@ v3 = [
         "kind": "Variable",
         "name": "stages",
         "variableName": "stages"
+      },
+      {
+        "kind": "Variable",
+        "name": "subscription",
+        "variableName": "subscription"
       }
     ],
     "kind": "ScalarField",
@@ -73,37 +84,39 @@ return {
     "argumentDefinitions": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v2/*: any*/)
+      (v2/*: any*/),
+      (v3/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "setSidebarGroupsMutation",
-    "selections": (v3/*: any*/),
+    "selections": (v4/*: any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
+      (v3/*: any*/),
       (v0/*: any*/),
       (v2/*: any*/),
       (v1/*: any*/)
     ],
     "kind": "Operation",
     "name": "setSidebarGroupsMutation",
-    "selections": (v3/*: any*/)
+    "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "49223211f87d09916d692a5b86c73e55",
+    "cacheID": "f588a5354111115f25b155c3911dff95",
     "id": null,
     "metadata": {},
     "name": "setSidebarGroupsMutation",
     "operationKind": "mutation",
-    "text": "mutation setSidebarGroupsMutation(\n  $dataset: String!\n  $stages: BSONArray!\n  $sidebarGroups: [SidebarGroupInput!]!\n) {\n  setSidebarGroups(dataset: $dataset, stages: $stages, sidebarGroups: $sidebarGroups)\n}\n"
+    "text": "mutation setSidebarGroupsMutation(\n  $subscription: String!\n  $dataset: String!\n  $stages: BSONArray!\n  $sidebarGroups: [SidebarGroupInput!]!\n) {\n  setSidebarGroups(subscription: $subscription, dataset: $dataset, stages: $stages, sidebarGroups: $sidebarGroups)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "22c6d57fcd3c020c73b93c7b6c8897e9";
+(node as any).hash = "8b056d24f0ffc6bf7bfb31c43f27b171";
 
 export default node;

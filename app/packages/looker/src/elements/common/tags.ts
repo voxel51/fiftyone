@@ -158,6 +158,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         };
       },
       [FRAME_SUPPORT_FIELD]: (path, value: [number, number]) => {
+        console.log("tags.ts:161", path, value);
         const v = `[${value.join(", ")}]`;
         return {
           value: v,
@@ -397,7 +398,7 @@ const getFieldAndValue = (
   let value: unknown = sample;
   let field: Field = null;
   let list = false;
-  // console.log('getFieldAndVlue sample, schema, path', sample, schema, path)
+  console.log("getFieldAndVlue sample, schema, path", sample, schema, path);
 
   for (const key of path.split(".")) {
     field = schema[key];

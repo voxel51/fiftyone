@@ -7,6 +7,7 @@ FiftyOne datasets.
 """
 from collections import defaultdict
 import contextlib
+from copy import deepcopy
 from datetime import datetime
 import fnmatch
 import itertools
@@ -26,9 +27,12 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.annotation as foan
+import fiftyone.core.brain as fob
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
-import fiftyone.core.expressions as foe
+import fiftyone.core.expressions as foex
+import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
@@ -310,7 +314,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if isinstance(id_filepath_slice, slice):
             return self.view()[id_filepath_slice]
 
-        if isinstance(id_filepath_slice, foe.ViewExpression):
+        if isinstance(id_filepath_slice, foex.ViewExpression):
             return self.view()[id_filepath_slice]
 
         if etau.is_container(id_filepath_slice):
@@ -1112,11 +1116,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         the dataset.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -1155,11 +1160,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Only applicable for datasets that contain videos.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -3376,7 +3382,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if self.media_type != fom.GROUP:
                 raise ValueError("Dataset is not grouped")
 
-            F = foe.ViewField
+            F = foex.ViewField
             oids = [ObjectId(_id) for _id in group_ids]
             view = self.select_group_slices(_allow_mixed=True).match(
                 F(self.group_field + "._id").is_in(oids)
@@ -5434,6 +5440,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if name is None:
             name = d.get("name", None)
+            if name is None:
+                raise ValueError("Attempting to load a Dataset with no name.")
 
         if rel_dir is not None:
             rel_dir = fou.normalize_path(rel_dir)
@@ -5702,7 +5710,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         id_field = self.group_field + "._id"
         name_field = self.group_field + ".name"
 
-        F = foe.ViewField
+        F = foex.ViewField
         expr = F(id_field) == "$$group_id"
         if etau.is_container(group_slices):
             expr &= F(name_field).is_in(list(group_slices))
@@ -5743,7 +5751,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         id_field = self.group_field + "._id"
         name_field = self.group_field + ".name"
 
-        F = foe.ViewField
+        F = foex.ViewField
         expr = F(id_field) == "$$group_id"
         if etau.is_container(group_slices):
             expr &= F(name_field).is_in(list(group_slices))
@@ -6353,6 +6361,11 @@ def _do_load_dataset(obj, name):
 
 
 def _delete_dataset_doc(dataset_doc):
+    #
+    # Must manually cleanup run results, which are stored using GridFS
+    # https://docs.mongoengine.org/guide/gridfs.html#deletion
+    #
+
     for view_doc in dataset_doc.saved_views:
         view_doc.delete()
 
@@ -6360,19 +6373,13 @@ def _delete_dataset_doc(dataset_doc):
         if run_doc.results is not None:
             run_doc.results.delete()
 
-        run_doc.delete()
-
     for run_doc in dataset_doc.brain_methods.values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
-        run_doc.delete()
-
     for run_doc in dataset_doc.evaluations.values():
         if run_doc.results is not None:
             run_doc.results.delete()
-
-        run_doc.delete()
 
     dataset_doc.delete()
 
@@ -6803,30 +6810,78 @@ def _clone_extras(dst_dataset, src_doc):
 
         dst_doc.saved_views.append(view_doc)
 
-    # Clone annotation runs
-    for anno_key, _run_doc in src_doc.annotation_runs.items():
-        run_doc = _clone_run(_run_doc)
-        run_doc.dataset_id = dst_doc.id
-        run_doc.save()
+    #
+    # Clone annotation runs results
+    #
+    # GridFS files must be manually copied
+    # This works by loading the source dataset's copy of the results into
+    # memory and then writing a new copy for the destination dataset
+    #
 
-        dst_doc.annotation_runs[anno_key] = run_doc
+    for anno_key, run_doc in src_doc.annotation_runs.items():
+        _run_doc = deepcopy(run_doc)
+        dst_doc.annotation_runs[anno_key] = _run_doc
+        results = foan.AnnotationMethod.load_run_results(
+            dst_dataset, anno_key, cache=False
+        )
+        _run_doc.results = None
+        foan.AnnotationMethod.save_run_results(
+            dst_dataset, anno_key, results, cache=False
+        )
+    # for anno_key, _run_doc in src_doc.annotation_runs.items():
+    # run_doc = _clone_run(_run_doc)
+    # run_doc.dataset_id = dst_doc.id
+    # run_doc.save()
+    #
+    # dst_doc.annotation_runs[anno_key] = run_doc
 
-    # Clone brain method runs
-    for brain_key, _run_doc in src_doc.brain_methods.items():
-        run_doc = _clone_run(_run_doc)
-        run_doc.dataset_id = dst_doc.id
-        run_doc.save()
+    #
+    # Clone brain results
+    #
+    # GridFS files must be manually copied
+    # This works by loading the source dataset's copy of the results into
+    # memory and then writing a new copy for the destination dataset
+    #
+    # for brain_key, _run_doc in src_doc.brain_methods.items():
+    # run_doc = _clone_run(_run_doc)
+    # run_doc.dataset_id = dst_doc.id
+    # run_doc.save()
+    #
+    # dst_doc.brain_methods[brain_key] = run_doc
+    for brain_key, run_doc in src_doc.brain_methods.items():
+        _run_doc = deepcopy(run_doc)
+        dst_doc.brain_methods[brain_key] = _run_doc
+        results = fob.BrainMethod.load_run_results(
+            dst_dataset, brain_key, cache=False
+        )
+        _run_doc.results = None
+        fob.BrainMethod.save_run_results(
+            dst_dataset, brain_key, results, cache=False
+        )
 
-        dst_doc.brain_methods[brain_key] = run_doc
-
-    # Clone evaluation runs
-    for eval_key, _run_doc in src_doc.evaluations.items():
-        run_doc = _clone_run(_run_doc)
-        run_doc.dataset_id = dst_doc.id
-        run_doc.save()
-
-        dst_doc.evaluations[eval_key] = run_doc
-
+    #
+    # Clone evaluation results
+    #
+    # GridFS files must be manually copied
+    # This works by loading the source dataset's copy of the results into
+    # memory and then writing a new copy for the destination dataset
+    #
+    # for eval_key, _run_doc in src_doc.evaluations.items():
+    #     run_doc = _clone_run(_run_doc)
+    #     run_doc.dataset_id = dst_doc.id
+    #     run_doc.save()
+    #
+    #     dst_doc.evaluations[eval_key] = run_doc
+    for eval_key, run_doc in src_doc.evaluations.items():
+        _run_doc = deepcopy(run_doc)
+        dst_doc.evaluations[eval_key] = _run_doc
+        results = foe.EvaluationMethod.load_run_results(
+            dst_dataset, eval_key, cache=False
+        )
+        _run_doc.results = None
+        foe.EvaluationMethod.save_run_results(
+            dst_dataset, eval_key, results, cache=False
+        )
     dst_doc.save()
 
 
@@ -6836,18 +6891,18 @@ def _clone_view_doc(view_doc):
     return _view_doc
 
 
-def _clone_run(run_doc):
-    _run_doc = run_doc.copy()
-    _run_doc.id = ObjectId()
-
-    # Unfortunately the only way to copy GridFS files is to read-write them...
-    # https://jira.mongodb.org/browse/TOOLS-2208
-    run_doc.results.seek(0)
-    results_bytes = run_doc.results.read()
-    _run_doc.results = None
-    _run_doc.results.put(results_bytes, content_type="application/json")
-
-    return _run_doc
+# def _clone_run(run_doc):
+#     _run_doc = run_doc.copy()
+#     _run_doc.id = ObjectId()
+#
+#     # Unfortunately the only way to copy GridFS files is to read-write them...
+#     # https://jira.mongodb.org/browse/TOOLS-2208
+#     run_doc.results.seek(0)
+#     results_bytes = run_doc.results.read()
+#     _run_doc.results = None
+#     _run_doc.results.put(results_bytes, content_type="application/json")
+#
+#     return _run_doc
 
 
 def _ensure_index(dataset, db_field, unique=False):

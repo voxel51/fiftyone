@@ -89,10 +89,12 @@ class Mutation:
     @gql.mutation
     async def set_sidebar_groups(
         self,
+        subscription: str,
         dataset: str,
         stages: BSONArray,
         sidebar_groups: t.List[SidebarGroupInput],
     ) -> bool:
+        state = get_state()
         view = get_dataset_view(dataset, stages=stages)
 
         current = (
@@ -112,7 +114,14 @@ class Mutation:
             )
             for group in sidebar_groups
         ]
+        print(
+            "[mutations.py] set_siebar_groups:\n\t "
+            "view._dataset.app_config.sidebar_groups:",
+            view._dataset.app_config.sidebar_groups,
+        )
         view._dataset._doc.save()
+        state.view = view
+        await dispatch_event(subscription, StateUpdate(state=state))
         return True
 
     @gql.mutation
@@ -178,7 +187,7 @@ class Mutation:
                 state.view_name = result_view.name
                 state.saved_view_slug = saved_view_slug
 
-        else:
+        if result_view is None:
             # Update current view with form parameters
             result_view = get_dataset_view(
                 dataset_name,

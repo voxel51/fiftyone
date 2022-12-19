@@ -274,6 +274,7 @@ type Mutation {
     viewName: String
   ): Boolean!
   setSidebarGroups(
+    subscription: String!
     dataset: String!
     stages: BSONArray!
     sidebarGroups: [SidebarGroupInput!]!
