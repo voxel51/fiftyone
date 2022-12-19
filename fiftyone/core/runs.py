@@ -374,7 +374,7 @@ class Run(Configurable):
             view_stages=view_stages,
             results=None,
         )
-        run_doc.save()
+        # run_doc.save()
 
         run_docs[key] = run_doc
         dataset_doc.save()
@@ -395,7 +395,7 @@ class Run(Configurable):
         run_docs = getattr(dataset._doc, cls._runs_field())
         run_doc = run_docs[key]
         run_doc.config = deepcopy(config.serialize())
-        run_doc.save()
+        # run_doc.save()
         dataset._doc.save()
 
     @classmethod
@@ -442,7 +442,7 @@ class Run(Configurable):
             results_cache = getattr(dataset, cls._results_cache_field())
             results_cache[key] = run_results
 
-        run_doc.save()
+        # run_doc.save()
         dataset._doc.save()
 
     @classmethod
@@ -596,7 +596,7 @@ class Run(Configurable):
         if run_doc.results:
             run_doc.results.delete()
 
-        run_doc.delete()
+        # run_doc.delete()
         dataset._doc.save()
 
     @classmethod

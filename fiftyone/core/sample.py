@@ -275,6 +275,7 @@ class _SampleMixin(object):
                 dynamic=dynamic,
             )
 
+        # TODO: Should this be removed? (not in latest develop branch)
         if self._in_db:
             self.save()
 
