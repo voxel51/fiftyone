@@ -933,6 +933,189 @@ class VirtualFrameFieldTests(unittest.TestCase):
             self.assertNotIn("num_objects", d)
 
 
+class VirtualSetFieldTests(unittest.TestCase):
+    def _make_view(self):
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            metadata=fo.ImageMetadata(width=10, height=10),
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                    ),
+                ]
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            metadata=fo.ImageMetadata(width=10, height=10),
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="rabbit",
+                        bounding_box=[0.1, 0.1, 0.8, 0.8],
+                    ),
+                ]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        bbox_area = (
+            F("$metadata.width")
+            * F("bounding_box")[2]
+            * F("$metadata.height")
+            * F("bounding_box")[3]
+        )
+
+        view = dataset.set_field(
+            "num_objects",
+            F("ground_truth.detections").length(),
+            ftype=fo.IntField,
+        ).set_field(
+            "ground_truth.detections.area",
+            bbox_area,
+            ftype=fo.FloatField,
+        )
+
+        return dataset, view
+
+    @drop_datasets
+    def test_schema(self):
+        dataset, view = self._make_view()
+
+        schema = dataset.get_field_schema()
+        self.assertNotIn("num_objects", schema)
+
+        schema = view.get_field_schema()
+        self.assertIn("num_objects", schema)
+
+        schema = view.get_virtual_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "num_objects",
+                "ground_truth.detections.area",
+            },
+        )
+
+        field = dataset.get_field("num_objects")
+        self.assertIsNone(field)
+
+        field = dataset.get_field("ground_truth.detections.area")
+        self.assertIsNone(field)
+
+        field = view.get_field("num_objects")
+        self.assertTrue(field.is_virtual)
+
+        field = view.get_field("ground_truth.detections.area")
+        self.assertTrue(field.is_virtual)
+
+    @drop_datasets
+    def test_samples(self):
+        dataset, view = self._make_view()
+
+        sample = view.first()
+
+        self.assertTrue(sample.num_objects, 2)
+        self.assertIsNotNone(sample.ground_truth.detections[0].area)
+
+        with self.assertRaises(ValueError):
+            sample.num_objects = 12
+
+    @drop_datasets
+    def test_aggregations(self):
+        dataset, view = self._make_view()
+
+        bounds = view.bounds("num_objects")
+        self.assertEqual(bounds, (1, 2))
+
+        values = view.values("num_objects")
+        self.assertListEqual(values, [2, 1])
+
+        bounds = view.bounds("ground_truth.detections.area")
+        self.assertIsNotNone(bounds[0])
+        self.assertIsNotNone(bounds[1])
+
+        values = view.values("ground_truth.detections.area", unwind=True)
+        self.assertEqual(len(values), 3)
+        self.assertIsNotNone(values[0])
+        self.assertIsNotNone(values[1])
+        self.assertIsNotNone(values[2])
+
+    @drop_datasets
+    def test_views(self):
+        dataset, view = self._make_view()
+
+        view2 = view.filter_labels(
+            "ground_truth", F("label") == "cat", only_matches=False
+        )
+
+        bounds = view2.bounds("num_objects")
+        self.assertEqual(bounds, (0, 1))
+
+        values = view2.values("num_objects")
+        self.assertListEqual(values, [1, 0])
+
+        bounds = view2.bounds("ground_truth.detections.area")
+        self.assertIsNotNone(bounds[0])
+        self.assertIsNotNone(bounds[1])
+
+        values = view2.values("ground_truth.detections.area", unwind=True)
+        self.assertEqual(len(values), 1)
+        self.assertIsNotNone(values[0])
+
+        view3 = view2.materialize().match(F("num_objects") == 1)
+
+        self.assertEqual(len(view3), 1)
+
+        sample = view3.first()
+        self.assertEqual(sample.num_objects, 1)
+
+        view4 = view3.filter_labels(
+            "ground_truth", F("label") != "cat", only_matches=False
+        )
+
+        self.assertEqual(len(view4), 1)
+        self.assertEqual(view4.count("ground_truth.detections"), 0)
+
+        sample = view4.first()
+        self.assertEqual(sample.num_objects, 0)
+
+    @drop_datasets
+    def test_keep_fields(self):
+        dataset, view = self._make_view()
+
+        schema = dataset.get_virtual_field_schema()
+        self.assertEqual(len(schema), 0)
+
+        view.keep_fields()
+
+        schema = dataset.get_virtual_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "num_objects",
+                "ground_truth.detections.area",
+            },
+        )
+
+        sample = dataset.first()
+
+        self.assertTrue(sample.num_objects, 2)
+        self.assertIsNotNone(sample.ground_truth.detections[0].area)
+
+        with self.assertRaises(ValueError):
+            sample.num_objects = 12
+
+
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)
