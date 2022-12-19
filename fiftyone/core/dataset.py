@@ -3827,14 +3827,40 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view is None:
             return
 
+        contains_videos = self._has_frame_fields()
+        updated = False
+
+        new_schema = view._get_new_fields()
+        if new_schema:
+            self._sample_doc_cls.merge_field_schema(new_schema)
+            updated = True
+
         del_sample_fields = view._get_missing_fields()
         if del_sample_fields:
-            self.delete_sample_fields(del_sample_fields)
+            self._delete_sample_fields(del_sample_fields, 0)
+            updated = True
 
-        if self._has_frame_fields():
+        if contains_videos:
+            new_frame_schema = view._get_new_fields(frames=True)
+            if new_frame_schema:
+                self._frame_doc_cls.merge_field_schema(
+                    {
+                        view._FRAMES_PREFIX + path: field
+                        for path, field in new_frame_schema.items()
+                    }
+                )
+                updated = True
+
             del_frame_fields = view._get_missing_fields(frames=True)
             if del_frame_fields:
-                self.delete_frame_fields(del_frame_fields)
+                self._delete_frame_fields(del_frame_fields, 0)
+                updated = True
+
+        if updated:
+            self._reload()
+            self._reload_sample_docs(hard=True)
+            if contains_videos:
+                self._reload_frame_docs(hard=True)
 
     def clear_frames(self):
         """Removes all frame labels from the dataset.

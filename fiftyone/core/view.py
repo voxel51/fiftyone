@@ -1255,6 +1255,9 @@ class DatasetView(foc.SampleCollection):
         """Deletes all fields that are excluded from the view from the
         underlying dataset.
 
+        If this view defines any virtual fields, they are added to the
+        underlying dataset.
+
         .. note::
 
             This method is not a :class:`fiftyone.core.stages.ViewStage`;
@@ -1894,6 +1897,26 @@ class DatasetView(foc.SampleCollection):
 
         return filtered_fields
 
+    def _get_new_fields(self, frames=False):
+        if frames:
+            if not self._has_frame_fields():
+                return None
+
+            dataset_schema = self._dataset.get_frame_field_schema(flat=True)
+            view_schema = self.get_frame_field_schema(flat=True)
+        else:
+            dataset_schema = self._dataset.get_field_schema(flat=True)
+            view_schema = self.get_field_schema(flat=True)
+
+        new_fields = set(view_schema.keys()) - set(dataset_schema.keys())
+        _discard_nested_leafs(new_fields)
+
+        return {
+            path: field
+            for path, field in view_schema.items()
+            if path in new_fields
+        }
+
     def _get_missing_fields(self, frames=False):
         if frames:
             if not self._has_frame_fields():
@@ -1907,6 +1930,7 @@ class DatasetView(foc.SampleCollection):
 
         missing_fields = set(dataset_schema.keys()) - set(view_schema.keys())
         _discard_nested_leafs(missing_fields)
+
         return missing_fields
 
     def _contains_all_fields(self, frames=False):
