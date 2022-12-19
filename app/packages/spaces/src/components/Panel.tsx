@@ -4,6 +4,7 @@ import { PanelProps } from "../types";
 import { warnPanelNotFound } from "../utils";
 import { StyledPanel } from "./StyledElements";
 import React from "react";
+import * as fos from "@fiftyone/state";
 
 function Panel({ node, spaceId }: PanelProps) {
   const { spaces } = useSpaces(spaceId);
@@ -14,10 +15,12 @@ function Panel({ node, spaceId }: PanelProps) {
     return warnPanelNotFound(panelName);
   }
   const { component: Component } = panel;
+  const dimensions = fos.useDimensions();
+
   return (
-    <StyledPanel id={node.id}>
+    <StyledPanel id={node.id} ref={dimensions.ref}>
       <PanelContext.Provider value={{ node }}>
-        <Component panelNode={node} />
+        <Component panelNode={node} dimensions={dimensions} />
       </PanelContext.Provider>
     </StyledPanel>
   );
