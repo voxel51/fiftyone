@@ -116,7 +116,7 @@ const Selectors = styled.div`
   gap: 1rem;
 `;
 
-export default function Embeddings({ containerHeight }) {
+export default function Embeddings({ containerHeight, dimensions }) {
   const el = useRef();
   const brainResultSelector = useBrainResultsSelector();
   const labelSelector = useLabelSelector();
@@ -145,6 +145,7 @@ export default function Embeddings({ containerHeight }) {
         </Selectors>
         {showPlot && (
           <EmbeddingsPlot
+            bounds={dimensions.bounds}
             el={el}
             brainKey={brainResultSelector.brainKey}
             labelField={labelSelector.label}
@@ -224,16 +225,10 @@ function tracesToData(traces, style, getColor, plotSelection) {
     });
 }
 
-function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
+function EmbeddingsPlot({ brainKey, labelField, el, bounds }) {
   const getColor = useRecoilValue(fos.colorMapRGB(true));
-  const [bounds, setBounds] = useState({});
   const isPatchesView = useRecoilValue(fos.isPatchesView);
 
-  useLayoutEffect(() => {
-    if (el.current) {
-      setBounds(el.current.getBoundingClientRect());
-    }
-  }, [el.current]);
   const {
     traces,
     style,
@@ -250,11 +245,11 @@ function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
   const isCategorical = style === "categorical";
 
   return (
-    <div>
+    <div style={{ height: "100%" }}>
       {hasExtendedSelection && (
         <Button onClick={() => clearSelection()}>Clear Selection</Button>
       )}
-      {bounds && (
+      {bounds?.width && (
         <Plot
           data={data}
           onSelected={(selected) => {
@@ -271,8 +266,8 @@ function EmbeddingsPlot({ brainKey, labelField, el, containerHeight }) {
               size: 14,
             },
             showlegend: isCategorical && valuesCount > 0,
-            width: bounds ? bounds.width : 800,
-            height: containerHeight - 50,
+            width: bounds.width - 150, // TODO - remove magic value!
+            height: bounds.height,
             hovermode: false,
             xaxis: {
               showgrid: false,
