@@ -1,18 +1,22 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { animated, useSpring } from "@react-spring/web";
-import styled, { ThemeContext } from "styled-components";
-import { useService } from "@xstate/react";
-import AutosizeInput from "react-input-autosize";
 import { ArrowDropDown, ArrowDropUp } from "@mui/icons-material";
+import { animated, useSpring } from "@react-spring/web";
+import { useService } from "@xstate/react";
+import React, { useContext, useEffect, useRef, useState } from "react";
+import AutosizeInput from "react-input-autosize";
+import styled, { ThemeContext } from "styled-components";
 
+import { useTheme } from "@fiftyone/components";
+import {
+  theme as themeState,
+  useEventHandler,
+  useObserve,
+  useOutsideClick,
+} from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
 import { BestMatchDiv } from "./BestMatch";
-import { PARSER } from "./viewStageParameterMachine";
-import { useEventHandler, useObserve, useOutsideClick } from "@fiftyone/state";
 import ErrorMessage from "./ErrorMessage";
 import SearchResults from "./SearchResults";
-import { useTheme } from "@fiftyone/components";
-import { theme as themeState } from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { PARSER } from "./viewStageParameterMachine";
 
 const ViewStageParameterContainer = styled.div`
   display: flex;

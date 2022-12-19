@@ -1062,11 +1062,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         the dataset.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -1105,11 +1106,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Only applicable for datasets that contain videos.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema

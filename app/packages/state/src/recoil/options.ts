@@ -1,7 +1,10 @@
 import { atomFamily, selector, selectorFamily } from "recoil";
 import { aggregationQuery } from "./aggregations";
-import { dataset } from "./atoms";
-import { appConfigDefault, isVideoDataset } from "./selectors";
+import {
+  appConfigDefault,
+  datasetAppConfig,
+  isVideoDataset,
+} from "./selectors";
 
 export const selectedMediaField = atomFamily<string, boolean>({
   key: "selectedMediaField",
@@ -17,7 +20,7 @@ export const configuredSidebarModeDefault = selectorFamily<
   "all" | "best" | "fast",
   boolean
 >({
-  key: "sidebarModeDefault",
+  key: "configuredSidebarModeDefault",
   get:
     (modal) =>
     ({ get }) => {
@@ -30,7 +33,7 @@ export const configuredSidebarModeDefault = selectorFamily<
         appConfigDefault({ modal: false, key: "sidebarMode" })
       ) as "all" | "best" | "fast";
 
-      const datasetDefault = get(dataset)?.appConfig?.sidebarMode;
+      const datasetDefault = get(datasetAppConfig)?.sidebarMode;
 
       return datasetDefault || appDefault;
     },
@@ -93,6 +96,6 @@ export const isLargeVideo = selector<boolean>({
       })
     );
 
-    return data.aggregations[0].count > 1000;
+    return data.aggregations[0].count >= 1000;
   },
 });

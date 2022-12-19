@@ -1,7 +1,7 @@
 import * as foq from "@fiftyone/relay";
 import { VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { VariablesOf } from "react-relay";
-import { atom, GetRecoilValue, selectorFamily } from "recoil";
+import { GetRecoilValue, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 
 import * as filterAtoms from "./filters";
@@ -13,101 +13,7 @@ import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
 import { sidebarSampleId } from "./modal";
 import { refresher } from "./atoms";
-
-type DateTimeBound = { datetime: number } | null;
-
-type DateTimeBounds = [DateTimeBound, DateTimeBound];
-
-type Bound = number | null;
-
-type FloatBounds = {
-  bounds: [Bound, Bound];
-  nan: number;
-  "-inf": number;
-  inf: number;
-};
-
-type Bounds = [Bound, Bound] | DateTimeBounds | FloatBounds;
-type Count = number;
-type None = number;
-type CountValues<T> = [number, [T, number][]];
-
-type BaseAggregations = {
-  Count: Count;
-  CountExists?: Count;
-  None: None;
-};
-
-export type CategoricalAggregations<T = unknown> = {
-  CountValues: CountValues<T>;
-} & BaseAggregations;
-
-type NumericAggregations = {
-  Bounds: Bounds;
-} & BaseAggregations;
-
-type Aggregations = CategoricalAggregations | NumericAggregations;
-
-type AggregationsData = {
-  [path: string]: Aggregations;
-};
-
-export const addNoneCounts = (
-  data: AggregationsData,
-  video: boolean = false
-) => {
-  let count = data[""].Count;
-  const frameCount = data?.frames?.Count;
-  let check = true;
-
-  for (let path in data) {
-    let parent = path.includes(".")
-      ? path.split(".").slice(0, -1).join(".")
-      : path;
-
-    if (video && path.startsWith("frames.")) {
-      count = frameCount;
-      path = path.slice("frames.".length);
-      let parent = path.includes(".")
-        ? path.split(".").slice(0, -1).join(".")
-        : path;
-
-      check = path.includes(".");
-      path = "frames." + path;
-      parent = "frames." + parent;
-    }
-
-    if (path === parent) {
-      data[path] = {
-        None:
-          data[path].CountExists !== undefined
-            ? count - data[path].CountExists
-            : count - data[path].Count,
-        ...data[path],
-      };
-    } else if (check && path.includes(".") && data[parent] && data[path]) {
-      data[path] = {
-        None: data[parent].Count - data[path].Count,
-        ...data[path],
-      };
-    }
-  }
-};
-
-const normalizeFilters = (filters) => {
-  const names = Object.keys(filters).sort();
-  const list = names.map((n) => filters[n]);
-  return JSON.stringify([names, list]);
-};
-
-export const filtersAreEqual = (filtersOne, filtersTwo) => {
-  return normalizeFilters(filtersOne) === normalizeFilters(filtersTwo);
-};
-
-export const aggregationsTick = atom<number>({
-  key: "aggregationsTick",
-  default: 0,
-});
+import { field } from "./schema";
 
 export const aggregationQuery = graphQLSelectorFamily<
   VariablesOf<foq.aggregationsQuery>,
@@ -186,11 +92,14 @@ export const noneCount = selectorFamily<
     ({ get }) => {
       const data = get(aggregation(params));
       const parent = params.path.split(".").slice(0, -1).join(".");
-      return (get(count({ ...params, path: parent })) as number) - data.count;
+
+      // for ListField, set noneCount to zero (so that it is the none option is omitted in display)
+      const schema = get(field(params.path));
+      const isListField = schema.ftype.includes("ListField");
+      return isListField
+        ? 0
+        : (get(count({ ...params, path: parent })) as number) - data.count;
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const labelTagCounts = selectorFamily<
@@ -220,9 +129,6 @@ export const labelTagCounts = selectorFamily<
 
       return result;
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const sampleTagCounts = selectorFamily<
@@ -238,19 +144,13 @@ export const sampleTagCounts = selectorFamily<
           ({ value, count }) => [value, count]
         )
       ),
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
-export const stringCountResults = selectorFamily<
-  { count: number; results: [string | null, number][] },
-  { path: string; modal: boolean; extended: boolean }
->({
+export const stringCountResults = selectorFamily({
   key: "stringCountResults",
   get:
-    (params) =>
-    ({ get }) => {
+    (params: { path: string; modal: boolean; extended: boolean }) =>
+    ({ get }): { count: number; results: [string | null, number][] } => {
       const keys = params.path.split(".");
       let parent = keys[0];
       let field = get(schemaAtoms.field(parent));
@@ -286,9 +186,6 @@ export const stringCountResults = selectorFamily<
         results,
       };
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const booleanCountResults = selectorFamily<
@@ -330,10 +227,8 @@ export const labelCount = selectorFamily<
 
       return sum;
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
+
 export const values = selectorFamily<
   string[],
   { extended: boolean; path: string; modal: boolean }
@@ -346,25 +241,21 @@ export const values = selectorFamily<
         .values.map(({ value }) => value)
         .sort();
     },
-
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
-export const count = selectorFamily<
-  number,
-  {
-    extended: boolean;
-    path: string;
-    modal: boolean;
-    value?: string | null;
-  }
->({
+export const count = selectorFamily({
   key: "count",
   get:
-    ({ value, ...params }) =>
-    ({ get }) => {
+    ({
+      value,
+      ...params
+    }: {
+      extended: boolean;
+      path: string;
+      modal: boolean;
+      value?: string | null;
+    }) =>
+    ({ get }): number => {
       if (params.path === "_") {
         return get(aggregation({ ...params, path: "" })).slice;
       }
@@ -385,7 +276,7 @@ export const count = selectorFamily<
           // this will never resolve, which allows for incoming schema changes
           // this shouldn't be necessary, but there is a mismatch between
           // aggs and schema when there is a field change
-          return new Promise(() => {});
+          throw new Promise(() => {});
         }
 
         const parent = split.slice(0, split.length - 1).join(".");
@@ -405,19 +296,13 @@ export const count = selectorFamily<
 
       return get(aggregation(params)).count as number;
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
-export const counts = selectorFamily<
-  { [key: string]: number },
-  { extended: boolean; path: string; modal: boolean }
->({
+export const counts = selectorFamily({
   key: "counts",
   get:
-    (params) =>
-    ({ get }) => {
+    (params: { extended: boolean; path: string; modal: boolean }) =>
+    ({ get }): { [key: string]: number } => {
       const exists = Boolean(get(schemaAtoms.field(params.path)));
 
       if (!exists) {
@@ -447,9 +332,6 @@ export const counts = selectorFamily<
 
       return Object.fromEntries(get(booleanCountResults(params)).results);
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 const gatherPaths = (
@@ -503,9 +385,6 @@ export const cumulativeCounts = selectorFamily<
         return result;
       }, {});
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const cumulativeValues = selectorFamily<
@@ -534,44 +413,23 @@ export const cumulativeValues = selectorFamily<
         )
       ).sort();
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
-export const bounds = selectorFamily<
-  [Bound, Bound],
-  { extended: boolean; path: string; modal: boolean }
->({
+export const bounds = selectorFamily({
   key: "bounds",
   get:
-    (params) =>
+    (params: { extended: boolean; path: string; modal: boolean }) =>
     ({ get }) => {
       const { min, max } = get(aggregation(params));
 
-      return [min, max];
+      return [min, max] as [number, number];
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
-export type Nonfinite = "nan" | "ninf" | "inf" | "none";
-
-export interface NonfiniteCounts {
-  none: number;
-  inf?: number;
-  ninf?: number;
-  nan?: number;
-}
-
-export const nonfiniteCounts = selectorFamily<
-  NonfiniteCounts,
-  { extended: boolean; path: string; modal: boolean }
->({
+export const nonfiniteCounts = selectorFamily({
   key: "nonfiniteCounts",
   get:
-    (params) =>
+    (params: { extended: boolean; path: string; modal: boolean }) =>
     ({ get }) => {
       const { inf, nan, ninf, exists } = get(aggregation(params));
 
@@ -588,10 +446,9 @@ export const nonfiniteCounts = selectorFamily<
         none: parentCount - exists,
       };
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
+
+export type Nonfinite = "nan" | "ninf" | "inf" | "none";
 
 export const nonfiniteCount = selectorFamily<
   number,
@@ -602,9 +459,6 @@ export const nonfiniteCount = selectorFamily<
     ({ key, ...params }) =>
     ({ get }) =>
       get(nonfiniteCounts(params))[key],
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const boundedCount = selectorFamily<
@@ -622,7 +476,4 @@ export const boundedCount = selectorFamily<
 
       return get(count(params)) - nonfinites;
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });

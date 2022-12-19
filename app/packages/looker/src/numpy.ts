@@ -2,6 +2,7 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
+import { Buffer } from "buffer";
 import pako from "./pako.js";
 
 export { deserialize };
@@ -164,8 +165,8 @@ function parse(array: Uint8Array): NumpyResult {
 }
 
 /**
- * Deserializes and parses a saved numpy array
+ * Deserializes and parses a base64 encoded numpy array
  */
-function deserialize(str: string): NumpyResult {
-  return parse(pako.inflate(atob(str)));
+function deserialize(compressedBase64Array: string): NumpyResult {
+  return parse(pako.inflate(Buffer.from(compressedBase64Array, "base64")));
 }

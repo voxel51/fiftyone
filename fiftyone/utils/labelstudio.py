@@ -785,7 +785,7 @@ def _to_segmentation(label):
         "label_studio_converter.brush",
         callback=lambda: fou.ensure_import("label_studio_converter.brush"),
     )
-    rle = brush.mask2rle(label.mask)
+    rle = brush.mask2rle(label.get_mask())
     result = {"format": "rle", "rle": rle, "brushlabels": [label.label]}
     return result, "brushlabels", label.id
 

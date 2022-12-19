@@ -288,19 +288,22 @@ class SimpleEvaluation(SegmentationEvaluation):
             sample_conf_mat = np.zeros((nc, nc), dtype=int)
             for image in images:
                 gt_seg = image[gt_field]
-                if gt_seg is None or gt_seg.mask is None:
+                if gt_seg is None or not gt_seg.has_mask:
                     msg = "Skipping sample with missing ground truth mask"
                     warnings.warn(msg)
                     continue
 
                 pred_seg = image[pred_field]
-                if pred_seg is None or pred_seg.mask is None:
+                if pred_seg is None or not pred_seg.has_mask:
                     msg = "Skipping sample with missing prediction mask"
                     warnings.warn(msg)
                     continue
 
                 image_conf_mat = _compute_pixel_confusion_matrix(
-                    pred_seg.mask, gt_seg.mask, values, bandwidth=bandwidth
+                    pred_seg.get_mask(),
+                    gt_seg.get_mask(),
+                    values,
+                    bandwidth=bandwidth,
                 )
                 sample_conf_mat += image_conf_mat
 
@@ -494,7 +497,7 @@ def _get_mask_values(samples, pred_field, gt_field):
         for image in images:
             for field in (pred_field, gt_field):
                 seg = image[field]
-                if seg is not None and seg.mask is not None:
-                    values.update(seg.mask.ravel())
+                if seg is not None and seg.has_mask:
+                    values.update(seg.get_mask().ravel())
 
     return sorted(values)

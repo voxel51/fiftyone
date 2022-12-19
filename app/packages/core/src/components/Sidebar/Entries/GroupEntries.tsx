@@ -20,14 +20,14 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
-import { removeKeys } from "@fiftyone/utilities";
 import * as fos from "@fiftyone/state";
+import { removeKeys } from "@fiftyone/utilities";
 
 import { PillButton } from "../../utils";
 
 import { useTheme } from "@fiftyone/components";
-import Draggable from "./Draggable";
 import { datasetName, readableTags, State } from "@fiftyone/state";
+import Draggable from "./Draggable";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
   key: "groupLength",

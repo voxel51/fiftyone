@@ -1,16 +1,16 @@
-import React, { Suspense } from "react";
-import { Checkbox } from "@mui/material";
 import { LocalOffer, Visibility } from "@mui/icons-material";
+import { Checkbox } from "@mui/material";
 import { useSpring } from "@react-spring/core";
+import React from "react";
 import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 
 import { NameAndCountContainer } from "../../utils";
 
-import { LabelTagCounts, PathEntryCounts, tagIsMatched } from "./EntryCounts";
-import RegularEntry from "./RegularEntry";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import Color from "color";
+import { LabelTagCounts, PathEntryCounts, tagIsMatched } from "./EntryCounts";
+import RegularEntry from "./RegularEntry";
 
 const ACTIVE_ATOM = {
   [fos.State.TagKey.LABEL]: fos.activeLabelTags,

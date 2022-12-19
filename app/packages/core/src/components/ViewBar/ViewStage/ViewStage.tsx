@@ -1,19 +1,19 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import styled, { ThemeContext } from "styled-components";
-import { animated, useSpring, config } from "@react-spring/web";
+import { Close, Help } from "@mui/icons-material";
+import { animated, config, useSpring } from "@react-spring/web";
 import { useService } from "@xstate/react";
+import React, { useEffect, useRef, useState } from "react";
 import AuosizeInput from "react-input-autosize";
-import { Add, KeyboardReturn as Arrow, Close, Help } from "@mui/icons-material";
+import styled from "styled-components";
 
-import { BestMatchDiv } from "./BestMatch";
-import ErrorMessage from "./ErrorMessage";
-import { ExternalLink } from "../../../utils/generic";
-import SearchResults from "./SearchResults";
-import ViewStageParameter from "./ViewStageParameter";
-import { getMatch } from "./utils";
 import { useTheme } from "@fiftyone/components";
 import { theme as themeState } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
+import { ExternalLink } from "../../../utils/generic";
+import { BestMatchDiv } from "./BestMatch";
+import ErrorMessage from "./ErrorMessage";
+import SearchResults from "./SearchResults";
+import { getMatch } from "./utils";
+import ViewStageParameter from "./ViewStageParameter";
 
 const ViewStageContainer = animated(styled.div`
   margin: 0.5rem;
