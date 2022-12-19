@@ -3843,12 +3843,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if contains_videos:
             new_frame_schema = view._get_new_fields(frames=True)
             if new_frame_schema:
-                self._frame_doc_cls.merge_field_schema(
-                    {
-                        view._FRAMES_PREFIX + path: field
-                        for path, field in new_frame_schema.items()
-                    }
-                )
+                self._frame_doc_cls.merge_field_schema(new_frame_schema)
                 updated = True
 
             del_frame_fields = view._get_missing_fields(frames=True)
