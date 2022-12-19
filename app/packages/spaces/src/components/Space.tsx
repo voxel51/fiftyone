@@ -17,7 +17,10 @@ export default function Space({ node, id }: SpaceProps) {
   if (node.layout) {
     return (
       <SpaceContainer data-type="space-container">
-        <Allotment vertical={node.layout === Layout.Vertical}>
+        <Allotment
+          vertical={node.layout === Layout.Vertical}
+          onChange={console.log}
+        >
           {node.children.map((space, i) => (
             <Allotment.Pane>
               <Space node={space} id={id} />
