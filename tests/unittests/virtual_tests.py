@@ -1116,6 +1116,213 @@ class VirtualSetFieldTests(unittest.TestCase):
             sample.num_objects = 12
 
 
+class VirtualSetFrameFieldTests(unittest.TestCase):
+    def _make_view(self):
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(frame_width=10, frame_height=10),
+        )
+        sample1.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                    ),
+                ]
+            ),
+        )
+        sample1.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="rabbit",
+                        bounding_box=[0.1, 0.1, 0.8, 0.8],
+                    ),
+                ]
+            )
+        )
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(frame_width=10, frame_height=10),
+        )
+        sample2.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="squirrel",
+                        bounding_box=[0.3, 0.3, 0.4, 0.4],
+                    ),
+                ]
+            ),
+        )
+        sample2.frames[2] = fo.Frame()
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        bbox_area = (
+            F("$metadata.frame_width")
+            * F("bounding_box")[2]
+            * F("$metadata.frame_height")
+            * F("bounding_box")[3]
+        )
+
+        view = dataset.set_field(
+            "frames.num_objects",
+            F("ground_truth.detections").length(),
+            ftype=fo.IntField,
+        ).set_field(
+            "frames.ground_truth.detections.area",
+            bbox_area,
+            ftype=fo.FloatField,
+        )
+
+        return dataset, view
+
+    @drop_datasets
+    def test_schema(self):
+        dataset, view = self._make_view()
+
+        schema = dataset.get_frame_field_schema()
+        self.assertNotIn("num_objects", schema)
+
+        schema = view.get_frame_field_schema()
+        self.assertIn("num_objects", schema)
+
+        schema = view.get_virtual_frame_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "num_objects",
+                "ground_truth.detections.area",
+            },
+        )
+
+        field = dataset.get_field("frames.num_objects")
+        self.assertIsNone(field)
+
+        field = dataset.get_field("frames.ground_truth.detections.area")
+        self.assertIsNone(field)
+
+        field = view.get_field("frames.num_objects")
+        self.assertTrue(field.is_virtual)
+
+        field = view.get_field("frames.ground_truth.detections.area")
+        self.assertTrue(field.is_virtual)
+
+    @drop_datasets
+    def test_samples(self):
+        dataset, view = self._make_view()
+
+        sample = view.first()
+        frame = sample.frames.first()
+
+        self.assertTrue(frame.num_objects, 2)
+        self.assertIsNotNone(frame.ground_truth.detections[0].area)
+
+        with self.assertRaises(ValueError):
+            frame.num_objects = 12
+
+    @drop_datasets
+    def test_aggregations(self):
+        dataset, view = self._make_view()
+
+        bounds = view.bounds("frames.num_objects")
+        self.assertEqual(bounds, (0, 2))
+
+        values = view.values("frames.num_objects", unwind=True)
+        self.assertListEqual(values, [2, 1, 1, 0])
+
+        bounds = view.bounds("frames.ground_truth.detections.area")
+        self.assertIsNotNone(bounds[0])
+        self.assertIsNotNone(bounds[1])
+
+        values = view.values(
+            "frames.ground_truth.detections.area", unwind=True
+        )
+        self.assertEqual(len(values), 4)
+        self.assertIsNotNone(values[0])
+        self.assertIsNotNone(values[1])
+        self.assertIsNotNone(values[2])
+        self.assertIsNotNone(values[3])
+
+    @drop_datasets
+    def test_views(self):
+        dataset, view = self._make_view()
+
+        view2 = view.filter_labels(
+            "frames.ground_truth", F("label") == "cat", only_matches=False
+        )
+
+        bounds = view2.bounds("frames.num_objects")
+        self.assertEqual(bounds, (0, 1))
+
+        values = view2.values("frames.num_objects", unwind=True)
+        self.assertListEqual(values, [1, 0, 0, 0])
+
+        bounds = view2.bounds("frames.ground_truth.detections.area")
+        self.assertIsNotNone(bounds[0])
+        self.assertIsNotNone(bounds[1])
+
+        values = view2.values(
+            "frames.ground_truth.detections.area", unwind=True
+        )
+        self.assertEqual(len(values), 1)
+        self.assertIsNotNone(values[0])
+
+        view3 = view2.materialize().match_frames(F("num_objects") == 1)
+
+        self.assertEqual(view3.count("frames"), 1)
+
+        sample = view3.first()
+        frame = sample.frames.first()
+        self.assertEqual(frame.num_objects, 1)
+
+        view4 = view3.filter_labels(
+            "frames.ground_truth", F("label") != "cat", only_matches=False
+        )
+
+        self.assertEqual(view4.count("frames"), 1)
+        self.assertEqual(view4.count("frames.ground_truth.detections"), 0)
+
+        sample = view4.first()
+        frame = sample.frames.first()
+        self.assertEqual(frame.num_objects, 0)
+
+    @drop_datasets
+    def test_keep_fields(self):
+        dataset, view = self._make_view()
+
+        schema = dataset.get_virtual_frame_field_schema()
+        self.assertEqual(len(schema), 0)
+
+        view.keep_fields()
+
+        schema = dataset.get_virtual_frame_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "num_objects",
+                "ground_truth.detections.area",
+            },
+        )
+
+        sample = dataset.first()
+        frame = sample.frames.first()
+
+        self.assertTrue(frame.num_objects, 2)
+        self.assertIsNotNone(frame.ground_truth.detections[0].area)
+
+        with self.assertRaises(ValueError):
+            frame.num_objects = 12
+
+
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)
