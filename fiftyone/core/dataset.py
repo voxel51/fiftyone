@@ -7207,65 +7207,70 @@ def _save_collection(sample_collection, fields=None, materialize=False):
         sample_fields = fields
         frame_fields = []
 
-    virtual_schema = view.get_virtual_field_schema()
-    if contains_videos:
-        virtual_frame_schema = view.get_virtual_frame_field_schema()
-    else:
-        virtual_frame_schema = None
+    materialize_fields = []
+    new_schema = {}
+    new_frame_schema = {}
 
     if materialize:
-        materialize_fields = []
         detach_virtual = []
-
-        if all_fields:
-            materialize_fields.extend(virtual_schema.values())
-        else:
-            _sample_fields = set(sample_fields)
-            materialize_fields.extend(
-                field
-                for path, field in virtual_schema.items()
-                if path in _sample_fields
-            )
-            detach_virtual.extend(set(virtual_schema.keys()) - _sample_fields)
-
-        if contains_videos:
-            if all_fields:
-                materialize_fields.extend(virtual_frame_schema.values())
-            else:
-                _frame_fields = set(frame_fields)
-                materialize_fields.extend(
-                    field
-                    for path, field in virtual_frame_schema.items()
-                    if path in _frame_fields
-                )
-                detach_virtual.extend(
-                    view._FRAMES_PREFIX + f
-                    for f in set(virtual_frame_schema.keys()) - _frame_fields
-                )
     else:
-        materialize_fields = []
         detach_virtual = True
 
-        if not all_fields:
-            for i, field in reversed(list(enumerate(sample_fields))):
-                if field in virtual_schema:
-                    logger.warning(
-                        "Skipping virtual field '%s' when materialize=%s",
-                        field,
-                        materialize,
-                    )
-                    del sample_fields[i]
+    if all_fields:
+        matches = lambda path: True
+    else:
+        matches = lambda path: any(
+            path == p or path.startswith(p + ".") for p in sample_fields
+        )
 
-            if contains_videos:
-                for i, field in reversed(list(enumerate(frame_fields))):
-                    if field in virtual_frame_schema:
+    for path, field in view.get_virtual_field_schema().items():
+        if matches(path):
+            if field._dataset is None:
+                # A new virtual field declared via `set_field()`
+                new_schema[path] = field
+
+            if materialize:
+                materialize_fields.append(path)
+            elif not all_fields and path not in new_schema:
+                # The user may have intended to materialize the virtual field,
+                # so warn them how to do that
+                logger.warning(
+                    "Skipping virtual field '%s' when materialize=%s",
+                    field,
+                    materialize,
+                )
+        elif materialize:
+            # We may materialize some virtual fields, but not this one
+            detach_virtual.append(path)
+
+    if contains_videos:
+        if all_fields:
+            frame_matches = lambda path: True
+        else:
+            frame_matches = lambda path: any(
+                path == p or path.startswith(p + ".") for p in frame_fields
+            )
+
+            for path, field in view.get_virtual_frame_field_schema().items():
+                if frame_matches(path):
+                    if field._dataset is None:
+                        # A new virtual field declared via `set_field()`
+                        new_frame_schema[path] = field
+
+                    if materialize:
+                        materialize_fields.append(view._FRAMES_PREFIX + path)
+                    elif not all_fields and path not in new_frame_schema:
+                        # The user may have intended to materialize the virtual
+                        # field, so warn them how to do that
                         logger.warning(
                             "Skipping virtual frame field '%s' when "
                             "materialize=%s",
                             field,
                             materialize,
                         )
-                        del frame_fields[i]
+                elif materialize:
+                    # We may materialize some virtual fields, but not this one
+                    detach_virtual.append(view._FRAMES_PREFIX + path)
 
     if full_dataset and not materialize_fields:
         return
@@ -7279,8 +7284,11 @@ def _save_collection(sample_collection, fields=None, materialize=False):
     save_samples = sample_fields or all_fields
     save_frames = contains_videos and (frame_fields or all_fields)
 
-    # Must retrieve IDs now in case view changes after saving
-    sample_ids = view.values("id")
+    if full_dataset:
+        sample_ids = None
+    else:
+        # Must retrieve IDs now in case view changes after saving
+        sample_ids = view.values("id")
 
     #
     # Save samples
@@ -7342,10 +7350,22 @@ def _save_collection(sample_collection, fields=None, materialize=False):
             foo.aggregate(dataset._sample_collection, pipeline)
 
     #
+    # Handle new virtual fields defined on views that need to be added to the
+    # underlying dataset's schema
+    #
+
+    if new_schema:
+        dataset._sample_doc_cls.merge_field_schema(new_schema)
+
+    if new_frame_schema:
+        dataset._frame_doc_cls.merge_field_schema(new_frame_schema)
+
+    #
     # Convert materialized fields to regular fields
     #
 
-    for field in materialize_fields:
+    for path in materialize_fields:
+        field = dataset.get_field(path)
         field.expr = None
         field.save()
 
