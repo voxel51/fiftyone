@@ -7251,26 +7251,26 @@ def _save_collection(sample_collection, fields=None, materialize=False):
                 path == p or path.startswith(p + ".") for p in frame_fields
             )
 
-            for path, field in view.get_virtual_frame_field_schema().items():
-                if frame_matches(path):
-                    if field._dataset is None:
-                        # A new virtual field declared via `set_field()`
-                        new_frame_schema[path] = field
+        for path, field in view.get_virtual_frame_field_schema().items():
+            if frame_matches(path):
+                if field._dataset is None:
+                    # A new virtual field declared via `set_field()`
+                    new_frame_schema[path] = field
 
-                    if materialize:
-                        materialize_fields.append(view._FRAMES_PREFIX + path)
-                    elif not all_fields and path not in new_frame_schema:
-                        # The user may have intended to materialize the virtual
-                        # field, so warn them how to do that
-                        logger.warning(
-                            "Skipping virtual frame field '%s' when "
-                            "materialize=%s",
-                            field,
-                            materialize,
-                        )
-                elif materialize:
-                    # We may materialize some virtual fields, but not this one
-                    detach_virtual.append(view._FRAMES_PREFIX + path)
+                if materialize:
+                    materialize_fields.append(view._FRAMES_PREFIX + path)
+                elif not all_fields and path not in new_frame_schema:
+                    # The user may have intended to materialize the virtual
+                    # field, so warn them how to do that
+                    logger.warning(
+                        "Skipping virtual frame field '%s' when "
+                        "materialize=%s",
+                        field,
+                        materialize,
+                    )
+            elif materialize:
+                # We may materialize some virtual fields, but not this one
+                detach_virtual.append(view._FRAMES_PREFIX + path)
 
     if full_dataset and not materialize_fields:
         return
