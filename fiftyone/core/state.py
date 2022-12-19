@@ -59,7 +59,7 @@ class StateDescription(etas.Serializable):
         self.view = view
         self.view_name = view_name
         self.saved_view_slug = saved_view_slug
-        self.changing_saved_view = changing_saved_view
+        self.changing_saved_view = changing_saved_view or False
 
     def serialize(self, reflective=False):
         with fou.disable_progress_bars():
@@ -76,6 +76,8 @@ class StateDescription(etas.Serializable):
                     d["view_cls"] = etau.get_class_name(self.view)
 
                     d["view_name"] = self.view.name  # None for unsaved views
+
+                    d["changing_saved_view"] = False
 
                 d["sample_fields"] = serialize_fields(
                     collection.get_field_schema(flat=True), dicts=True

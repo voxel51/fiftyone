@@ -217,21 +217,26 @@ class Mutation:
             StateUpdate(
                 state=state,
                 update=True,
-                changing_saved_view=changing_saved_view,
+                changing_saved_view=changing_saved_view or False,
             ),
         )
+
+        final_view = []
+        if state and state.view:
+            final_view = state.view._serialize()
+
         dataset = await Dataset.resolver(
             name=dataset_name,
-            view=state.view._serialize(),
+            view=final_view,
             view_name=view_name,
             info=info,
         )
         return ViewResponse(
-            view=state.view._serialize(),
+            view=final_view,
             dataset=dataset,
             view_name=view_name,
             saved_view_slug=saved_view_slug,
-            changing_saved_view=changing_saved_view,
+            changing_saved_view=changing_saved_view or False,
         )
 
     @gql.mutation

@@ -8,6 +8,7 @@ import {
 } from "recoil";
 import { usePreloadedQuery, useRefetchableFragment } from "react-relay";
 
+import qs from "qs";
 import * as fos from "@fiftyone/state";
 import { Selection } from "@fiftyone/components";
 
@@ -66,6 +67,11 @@ export default function ViewSelection(props: Props) {
     selectedSavedViewState
   );
 
+  const existingQueries = qs.parse(location.search, {
+    ignoreQueryPrefix: true,
+  });
+  const isIPython = existingQueries?.["context"] === "ipython";
+
   const { datasetName, queryRef } = props;
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
   const [savedViewParam, setSavedViewParam] = fos.useQueryState("view");
@@ -112,6 +118,21 @@ export default function ViewSelection(props: Props) {
     [viewOptions, viewSearch]
   );
 
+  useEffect(() => {
+    if (
+      selected &&
+      selected?.id !== DEFAULT_SELECTED.id &&
+      searchData?.length
+    ) {
+      const potentialView = searchData.filter(
+        (v) => v.slug === selected.slug
+      )?.[0];
+      if (potentialView) {
+        setSelected(potentialView);
+      }
+    }
+  }, [searchData, selected]);
+
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
   const isEmptyView = !loadedView?.length;
 
@@ -119,10 +140,10 @@ export default function ViewSelection(props: Props) {
   // when there is no loaded view
   const isDesktop = isElectron();
   useEffect(() => {
-    if (isDesktop && !loadedView.length) {
+    if ((isDesktop || isIPython) && !loadedView.length) {
       setSelected(DEFAULT_SELECTED);
     }
-  }, [isDesktop, loadedView]);
+  }, [isDesktop, loadedView, isIPython]);
 
   useEffect(() => {
     if (savedViewParam) {
@@ -198,14 +219,21 @@ export default function ViewSelection(props: Props) {
     <Box>
       <ViewDialog
         savedViews={items}
-        onEditSuccess={(savedView: fos.State.SavedView, reload?: boolean) => {
+        onEditSuccess={(
+          createSavedView: fos.State.SavedView,
+          reload?: boolean
+        ) => {
           refetch(
             { name: datasetName },
             {
               fetchPolicy: "network-only",
-              onComplete: () => {
-                if (savedView && reload) {
-                  setSavedViewParam(savedView.slug);
+              onComplete: (newOptions) => {
+                if (createSavedView && reload) {
+                  setSavedViewParam(createSavedView.slug);
+                  setSelected({
+                    ...createSavedView,
+                    label: createSavedView.name,
+                  });
                 }
               },
             }
