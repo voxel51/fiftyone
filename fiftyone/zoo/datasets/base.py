@@ -2525,7 +2525,7 @@ class OpenImagesV7Dataset(FiftyOneDataset):
         #
         # Load 50 random samples from the validation split
         #
-        # By default, all label types are loaded
+        # By default, all label types are loaded, including "points"
         #
 
         dataset = foz.load_zoo_dataset(
@@ -2538,7 +2538,7 @@ class OpenImagesV7Dataset(FiftyOneDataset):
         session = fo.launch_app(dataset)
 
         #
-        # Load detections and classifications for 25 samples from the
+        # Load detections, classifications, and points for 25 samples from the
         # validation split that contain fedoras and pianos
         #
         # Images that contain all `label_types` and `classes` will be
@@ -2553,7 +2553,7 @@ class OpenImagesV7Dataset(FiftyOneDataset):
         dataset = foz.load_zoo_dataset(
             "open-images-v7",
             split="validation",
-            label_types=["detections", "classifications"],
+            label_types=["detections", "classifications", "points"],
             classes=["Fedora", "Piano"],
             max_samples=25,
         )

@@ -40,8 +40,9 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         dataset_dir: the dataset directory
         label_types (None): a label type or list of label types to load. The
             supported values are
-            ``("detections", "classifications", "relationships", "segmentations")``.
-            By default, all label types are loaded
+            ``("detections", "classifications", "points", "relationships",
+            "segmentations")``. "points" are only supported for open-imagesv7
+            By default, all supported label types for version are loaded
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
@@ -167,7 +168,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             points = _create_points(
                 self._pnt_data,
                 image_id,
-                self._classes_map,
+                self._point_classes_map,
                 self.dataset_dir,
             )
             if points is not None:
@@ -274,7 +275,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             attrs,
             oi_attrs,
             seg_classes,
-            pnt_classes,
+            pnt_classes_map,
             _,
         ) = _setup(
             dataset_dir,
@@ -303,7 +304,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             attrs=attrs,
             oi_attrs=oi_attrs,
             seg_classes=seg_classes,
-            pnt_classes=pnt_classes,
+            pnt_classes=pnt_classes_map,
             ids_only=False,
             track_all_ids=max_samples is not None,
             only_matching=self.only_matching,
@@ -355,13 +356,14 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         if seg_classes:
             info["segmentation_classes"] = seg_classes
 
-        if pnt_classes:
-            info["point_classes"] = pnt_classes
+        if pnt_classes_map:
+            info["point_classes"] = list(pnt_classes_map.values())
 
         info["classes_map"] = classes_map
         info["classes"] = all_classes
 
         self._classes_map = classes_map
+        self._point_classes_map = pnt_classes_map
         self._attrs_map = attrs_map
         self._cls_data = cls_data
         self._det_data = det_data
@@ -499,12 +501,14 @@ def get_point_classes(version="v7", dataset_dir=None):
 
     try:
         # Try to use already downloaded file
-        pnt_classes, _ = _get_pnt_classes(dataset_dir, download=False)
+        pnt_classes_map, _ = _get_pnt_classes_map(dataset_dir, download=False)
+
     except:
         # Download file to temporary location
         with etau.TempDir() as tmp_dir:
-            pnt_classes, _ = _get_pnt_classes(tmp_dir, download=True)
-    return pnt_classes
+            pnt_classes_map, _ = _get_pnt_classes_map(tmp_dir, download=True)
+    # return pnt_classes
+    return pnt_classes_map
 
 
 def download_open_images_split(
@@ -616,7 +620,7 @@ def download_open_images_split(
         attrs,
         oi_attrs,
         seg_classes,
-        pnt_classes,
+        pnt_classes_map,
         _did_download,
     ) = _setup(
         dataset_dir,
@@ -641,7 +645,7 @@ def download_open_images_split(
         oi_classes,
         oi_attrs,
         seg_classes,
-        pnt_classes,
+        pnt_classes_map,
         dataset_dir,
         split,
         label_types=label_types,
@@ -754,14 +758,13 @@ def _setup(
     else:
         seg_classes = None
 
-    # pnt_classes = None
     if "points" in _label_types:
-        pnt_classes, _did_download = _get_pnt_classes(
+        pnt_classes_map, _did_download = _get_pnt_classes_map(
             dataset_dir, classes_map=classes_map, download=download
         )
         did_download |= _did_download
     elif "points" not in _label_types:
-        pnt_classes = None
+        pnt_classes_map = None
 
     return (
         classes_map,
@@ -773,7 +776,7 @@ def _setup(
         attrs,
         oi_attrs,
         seg_classes,
-        pnt_classes,
+        pnt_classes_map,
         did_download,
     )
 
@@ -815,14 +818,14 @@ def _get_classes_map(dataset_dir, download=True):
     return classes_map, did_download
 
 
-def _get_pnt_classes(dataset_dir, classes_map=None, download=True):
+def _get_pnt_classes_map(dataset_dir, classes_map=None, download=True):
     url = _ANNOTATION_DOWNLOAD_URLS["general"]["point_classes"]
     pnt_cls_csv, did_download = _get_general_metadata_file(
         dataset_dir, "point_classes.csv", url, download=download
     )
     pnt_cls_data = _parse_csv(pnt_cls_csv)
-    pnt_classes = [p[1] for p in pnt_cls_data[1:]]
-    return sorted(pnt_classes), did_download
+    pnt_classes_map = {p[0]: p[1] for p in pnt_cls_data[1:]}
+    return pnt_classes_map, did_download
 
 
 def _get_seg_classes(dataset_dir, classes_map=None, download=True):
@@ -1132,25 +1135,26 @@ def _get_all_label_data(
 
         all_classes_ids &= det_all_ids
         any_classes_ids |= det_any_ids
-    # if "points" in _label_types:
-    #     if download:
-    #         url = _ANNOTATION_DOWNLOAD_URLS[split]["points"]
-    #     else:
-    #         url = None
 
-    # pnt_all_ids, pnt_any_ids, pnt_data, _did_download = _get_label_data(
-    #     dataset_dir,
-    #     image_ids,
-    #     "points",
-    #     classes=classes,
-    #     oi_classes=oi_classes,
-    #     url=url,
-    #     download=download,
-    #     download_only=download_only,
-    #     ids_only=ids_only,
-    #     track_all_ids=track_all_ids,
-    #     only_matching=only_matching,
-    #     )
+    if "points" in _label_types:
+        if download:
+            url = _ANNOTATION_DOWNLOAD_URLS[split]["points"]
+        else:
+            url = None
+
+        pnt_all_ids, pnt_any_ids, pnt_data, _did_download = _get_label_data(
+            dataset_dir,
+            image_ids,
+            "points",
+            classes=classes,
+            oi_classes=oi_classes,
+            url=url,
+            download=download,
+            download_only=download_only,
+            ids_only=ids_only,
+            track_all_ids=track_all_ids,
+            only_matching=only_matching,
+        )
 
     if "relationships" in _label_types:
         if download:
@@ -1258,6 +1262,11 @@ def _get_label_data(
         return set(), set(), {}, did_download
 
     df = _parse_csv(csv_path, dataframe=True)
+
+    if label_type == "points":
+        df["ImageID"] = df["ImageId"]
+        df = df.drop(columns=["ImageId"])
+
     df.set_index("ImageID", drop=False, inplace=True)
     df = df.loc[df.index.intersection(image_ids)]
 
@@ -1265,6 +1274,18 @@ def _get_label_data(
         # Restrict by classes
         if label_type == "relationships":
             cols = ["LabelName1", "LabelName2"]
+        elif label_type == "points":
+            cols = [
+                "X",
+                "Y",
+                "Label",
+                "EstimatedYesNo",
+                "Source",
+                "YesVotes",
+                "NoVotes",
+                "UnsureVotes",
+                "TextLabel",
+            ]
         else:
             cols = ["LabelName"]
 
@@ -1425,8 +1446,6 @@ def _download(
             max_samples,
         )
 
-    ####### POINTS??????? #######
-    # if "segmentations" in _parse_label_types(version, label_types):
     if "segmentations" in label_types:
         _did_download = _download_masks_if_necessary(
             all_ids, dataset_dir, split, download=download
@@ -1587,8 +1606,39 @@ def _create_relationships(rel_data, image_id, classes_map, attrs_map):
 
 
 def _create_points(pnt_data, image_id, classes_map, dataset_dir):
-    points = None
-    return points
+    all_label_ids = pnt_data["all_ids"]
+    relevant_ids = pnt_data["relevant_ids"]
+    df = pnt_data["df"]
+
+    if image_id not in all_label_ids:
+        return None
+
+    if image_id not in relevant_ids:
+        return fol.Keypoints()
+
+    def _make_label(row):
+        label = classes_map[row["Label"]]
+        points = [(float(row["X"]), float(row["Y"]))]
+        estimated_yn = row["EstimatedYesNo"]
+        source = row["Source"]
+        yes_votes, no_votes = int(row["YesVotes"]), int(row["NoVotes"])
+        unsure_votes = int(row["UnsureVotes"])
+
+        return fol.Keypoint(
+            label=label,
+            points=points,
+            estimated_yes_no=estimated_yn,
+            source=source,
+            yes_votes=yes_votes,
+            no_votes=no_votes,
+            unsure_votes=unsure_votes,
+        )
+
+    matching_df = _get_dataframe_rows(df, image_id)
+
+    points = [_make_label(row[1]) for row in matching_df.iterrows()]
+    points = [p for p in points if p is not None]
+    return fol.Keypoints(keypoints=points)
 
 
 def _create_segmentations(seg_data, image_id, classes_map, dataset_dir):
