@@ -367,7 +367,7 @@ class DatasetView(foc.SampleCollection):
         """
         return copy(self)
 
-    def iter_samples(self, progress=False, autosave=False, batch_size=None):
+    def iter_samples(self, progress=None, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the view.
 
         Examples::
@@ -402,7 +402,7 @@ class DatasetView(foc.SampleCollection):
                 sample.ground_truth.label = make_label()
 
         Args:
-            progress (False): whether to render a progress bar tracking the
+            progress (None): whether to render a progress bar tracking the
                 iterator's progress
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
@@ -416,10 +416,9 @@ class DatasetView(foc.SampleCollection):
         with contextlib.ExitStack() as exit_context:
             samples = self._iter_samples()
 
-            if progress:
-                pb = fou.ProgressBar(total=len(self))
-                exit_context.enter_context(pb)
-                samples = pb(samples)
+            pb = fou.ProgressBar(total=len(self), progress=progress)
+            exit_context.enter_context(pb)
+            samples = pb(samples)
 
             if autosave:
                 save_context = foc.SaveContext(self, batch_size=batch_size)
@@ -473,7 +472,7 @@ class DatasetView(foc.SampleCollection):
 
         return make_sample
 
-    def iter_groups(self, progress=False, autosave=False, batch_size=None):
+    def iter_groups(self, progress=None, autosave=False, batch_size=None):
         """Returns an iterator over the groups in the view.
 
         Examples::
@@ -511,7 +510,7 @@ class DatasetView(foc.SampleCollection):
                     sample["test"] = make_label()
 
         Args:
-            progress (False): whether to render a progress bar tracking the
+            progress (None): whether to render a progress bar tracking the
                 iterator's progress
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
@@ -529,10 +528,9 @@ class DatasetView(foc.SampleCollection):
         with contextlib.ExitStack() as exit_context:
             groups = self._iter_groups()
 
-            if progress:
-                pb = fou.ProgressBar(total=len(self))
-                exit_context.enter_context(pb)
-                groups = pb(groups)
+            pb = fou.ProgressBar(total=len(self), progress=progress)
+            exit_context.enter_context(pb)
+            groups = pb(groups)
 
             if autosave:
                 save_context = foc.SaveContext(self, batch_size=batch_size)
