@@ -294,7 +294,7 @@ export const count = selectorFamily({
         return get(counts(params))[value] || 0;
       }
 
-      return get(aggregation(params)).count as number;
+      return get(aggregation(params))?.count as number;
     },
 });
 

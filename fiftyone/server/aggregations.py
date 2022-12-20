@@ -177,7 +177,11 @@ async def aggregate_resolver(
     )
     print("-" * 100)
 
-    result = await view._async_aggregate(flattened)
+    try:
+        result = await view._async_aggregate(flattened)
+    except:
+        return []
+
     results = []
     offset = 0
     for length, deserialize in zip(counts, deserializers):
