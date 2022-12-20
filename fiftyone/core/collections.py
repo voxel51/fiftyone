@@ -3239,6 +3239,51 @@ class SampleCollection(object):
         )
 
     @view_stage
+    def exclude_groups(self, group_ids):
+        """Excludes the groups with the given IDs from the grouped collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            #
+            # Select some specific groups by ID
+            #
+
+            group_ids = dataset.take(10).values("group.id")
+
+            view = dataset.exclude_groups(group_ids)
+
+            view_group_ids = set(view.values("group.id"))
+            dataset_group_ids = set(dataset.values("group.id"))
+
+            assert view_group_ids == set(group_ids)
+            assert set() = view_group_ids.intersection(dataset_group_ids)
+
+        Args:
+            groups_ids: the groups to select. Can be any of the following:
+
+                -   a group ID
+                -   an iterable of group IDs
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView`
+                -   a group dict returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances
+                -   an iterable of group dicts returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.ExcludeGroups(group_ids))
+
+    @view_stage
     def exclude_labels(
         self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
     ):
