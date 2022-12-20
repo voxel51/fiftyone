@@ -2728,6 +2728,7 @@ __metadata:
   resolution: "@fiftyone/dataset@workspace:packages/dataset"
   dependencies:
     "@fiftyone/core": "*"
+    framer-motion: ^6.2.8
     prettier: ^2.7.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^3.4.0
@@ -2790,6 +2791,7 @@ __metadata:
     "@types/lru-cache": ^5.1.0
     "@types/uuid": ^8.3.0
     "@ungap/event-target": ^0.2.2
+    "@xmldom/xmldom": ^0.8.6
     copy-to-clipboard: ^3.3.1
     immutable: ^4.0.0-rc.12
     json-format-highlight: ^1.0.4
@@ -2864,6 +2866,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/state@workspace:packages/state"
   dependencies:
+    "@fiftyone/looker": "*"
     "@fiftyone/relay": "*"
     "@fiftyone/utilities": "*"
     "@microsoft/fetch-event-source": ^2.0.1
@@ -4579,9 +4582,9 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:^18.0.3":
-  version: 18.6.1
-  resolution: "@types/node@npm:18.6.1"
-  checksum: 06331f68bc73d93b73977ae19ca87818e004bc7b8e70b0d4f73b0ea5e341a4a1ba6f0e79db8fb75a841af2b8d74552d6b9a8f846b267954689f57effedcf5d77
+  version: 18.11.17
+  resolution: "@types/node@npm:18.11.17"
+  checksum: 1933afd068d5c75c068c6c4df6d10edb3b0b2bb6503d544e2f0496ac007c90596e6a5e284a8ef032451bc16f871b7e46719d7d2bea60e9b25d13a77d52161cac
   languageName: node
   linkType: hard
 
@@ -4936,6 +4939,13 @@ __metadata:
   version: 0.0.15
   resolution: "@webgpu/glslang@npm:0.0.15"
   checksum: 0bb8c2e8e4533f95deeff09a24fa2551cdf984159f25cd8c3fc21e0e8ecfea54b88363bdcd04412f43669e199dcc8f6ea80a6a7ddd098005527567ec009d6881
+  languageName: node
+  linkType: hard
+
+"@xmldom/xmldom@npm:^0.8.6":
+  version: 0.8.6
+  resolution: "@xmldom/xmldom@npm:0.8.6"
+  checksum: f17ac6d99a971a6aeb831fcfc5cfa86f367664e45815046548814b2deb17ccc421fef4e0d5ba29e66179d112b552f6caa5680064f8e7bd8a389b788a60404c8e
   languageName: node
   linkType: hard
 

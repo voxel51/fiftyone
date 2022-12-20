@@ -9,7 +9,7 @@ export { default as useLookerStore } from "./useLookerStore";
 export * from "./useLookerStore";
 export { default as usePanel } from "./usePanel";
 export { default as useReset } from "./useReset";
-export { default as useRouter } from "./useRouter";
+export { default as useRouter, setCurrentEnvironment } from "./useRouter";
 export { default as useSelectFlashlightSample } from "./useSelectFlashlightSample";
 export { default as useSelectSample } from "./useSelectSample";
 export { default as useSendEvent } from "./useSendEvent";

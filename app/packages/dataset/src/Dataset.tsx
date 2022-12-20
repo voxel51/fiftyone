@@ -6,7 +6,6 @@ import {
   KeyboardArrowDown,
   KeyboardArrowUp,
   Loading,
-  ThemeProvider,
 } from "@fiftyone/components";
 import {
   Dataset as CoreDataset,
@@ -16,11 +15,9 @@ import {
 } from "@fiftyone/core";
 import { usePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { getEnvironment, RelayEnvironmentKey } from "@fiftyone/state";
-import React, { useState, useEffect, Suspense } from "react";
+import React, { Suspense } from "react";
 import { PreloadedQuery, useQueryLoader } from "react-relay";
-import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
-import { RecoilRelayEnvironmentProvider } from "recoil-relay";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 
 import { DatasetQuery } from "@fiftyone/core";
@@ -28,7 +25,6 @@ import { DatasetQuery } from "@fiftyone/core";
 // built-in plugins
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
-import { setCurrentEnvironment } from "@fiftyone/state/src/hooks/useRouter";
 
 const Container = styled.div`
   width: 100%;
@@ -61,26 +57,7 @@ export interface DatasetProps {
   toggleHeaders?: () => void;
 }
 
-export const Dataset: React.FC<DatasetProps> = (props) => {
-  const [environment] = useState(getEnvironment);
-
-  useEffect(() => {
-    setCurrentEnvironment(environment);
-  }, [environment]);
-
-  return (
-    <RecoilRoot>
-      <RecoilRelayEnvironmentProvider
-        environment={environment}
-        environmentKey={RelayEnvironmentKey}
-      >
-        <DatasetRenderer {...props} />
-      </RecoilRelayEnvironmentProvider>
-    </RecoilRoot>
-  );
-};
-
-export const DatasetRenderer: React.FC<DatasetProps> = ({
+export const Dataset: React.FC<DatasetProps> = ({
   dataset,
   compactLayout = true,
   hideHeaders = false,
@@ -113,27 +90,25 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
   if (plugins.hasError) return <div>Plugin error...</div>;
 
   return (
-    <ThemeProvider>
-      <Container>
-        <Suspense fallback={loadingElement}>
-          <DatasetLoader dataset={dataset} queryRef={queryRef}>
-            <ViewBarWrapper>
-              <ViewBar />
-              {toggleHeaders && (
-                <HeadersToggle
-                  toggleHeaders={toggleHeaders}
-                  hideHeaders={hideHeaders}
-                />
-              )}
-            </ViewBarWrapper>
-            <CoreDatasetContainer>
-              <CoreDataset />
-            </CoreDatasetContainer>
-          </DatasetLoader>
-        </Suspense>
-        <div id="modal" />
-      </Container>
-    </ThemeProvider>
+    <Container>
+      <Suspense fallback={loadingElement}>
+        <DatasetLoader dataset={dataset} queryRef={queryRef}>
+          <ViewBarWrapper>
+            <ViewBar />
+            {toggleHeaders && (
+              <HeadersToggle
+                toggleHeaders={toggleHeaders}
+                hideHeaders={hideHeaders}
+              />
+            )}
+          </ViewBarWrapper>
+          <CoreDatasetContainer>
+            <CoreDataset />
+          </CoreDatasetContainer>
+        </DatasetLoader>
+      </Suspense>
+      <div id="modal" />
+    </Container>
   );
 };
 

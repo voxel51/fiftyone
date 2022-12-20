@@ -19,6 +19,7 @@
   ],
   "dependencies": {
     "@ungap/event-target": "^0.2.2",
+    "@xmldom/xmldom": "^0.8.6",
     "copy-to-clipboard": "^3.3.1",
     "immutable": "^4.0.0-rc.12",
     "json-format-highlight": "^1.0.4",

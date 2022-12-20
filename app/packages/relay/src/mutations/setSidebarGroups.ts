@@ -1,6 +1,8 @@
 import { graphql } from "react-relay";
 
-export default graphql`
+import r from "../resolve";
+
+export default r(graphql`
   mutation setSidebarGroupsMutation(
     $dataset: String!
     $stages: BSONArray!
@@ -12,4 +14,4 @@ export default graphql`
       sidebarGroups: $sidebarGroups
     )
   }
-`;
+`);
