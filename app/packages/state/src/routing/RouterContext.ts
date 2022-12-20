@@ -255,12 +255,15 @@ async function fetchGraphQL(
   );
 
   if ("errors" in data && data.errors) {
-    throw new GraphQLError(data.errors as unknown as GraphQLError[]);
+    console.log("graphql error", data.errors, data);
+    return null;
+    // throw new GraphQLError(data.errors as unknown as GraphQLError[]);
   }
   return data;
 }
 
 const fetchRelay: FetchFunction = async (params, variables) => {
+  console.log("fetchRelay", params.text, variables);
   return fetchGraphQL(params.text, variables);
 };
 

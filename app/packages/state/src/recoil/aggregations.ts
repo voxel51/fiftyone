@@ -55,12 +55,15 @@ export const aggregations = selectorFamily({
   get:
     (params: { extended: boolean; modal: boolean; paths: string[] }) =>
     ({ get }) => {
-      let extended = params.extended;
-      if (extended && !get(filterAtoms.hasFilters(params.modal))) {
-        extended = false;
-      }
+      if (params) {
+        let extended = params.extended;
+        if (extended && !get(filterAtoms.hasFilters(params.modal))) {
+          extended = false;
+        }
 
-      return get(aggregationQuery({ ...params, extended })).aggregations;
+        return get(aggregationQuery({ ...params, extended })).aggregations;
+      }
+      return [];
     },
 });
 
@@ -76,9 +79,11 @@ export const aggregation = selectorFamily({
       path: string;
     }) =>
     ({ get }) => {
-      return get(
+      const result = get(
         aggregations({ ...params, paths: get(schemaAtoms.filterFields(path)) })
-      ).filter((data) => data.path === path)[0];
+      ).filter((data) => data.path === path);
+      console.log("aggregation selector result", result[0]);
+      return result ? result[0] : [];
     },
 });
 
@@ -237,9 +242,16 @@ export const values = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      return get(aggregation(params))
-        .values.map(({ value }) => value)
-        .sort();
+      if (params) {
+        console.log("values {{get}} params", params);
+
+        return get(aggregation(params)).values
+          ? get(aggregation(params))
+              .values.map(({ value }) => value)
+              .sort()
+          : [];
+      }
+      return [];
     },
 });
 

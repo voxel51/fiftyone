@@ -303,7 +303,6 @@ function isJsonString(str) {
   return true;
 }
 const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
-  console.log(parameterRef, barRef, stageRef);
   const theme = useTheme();
   const [state, send] = useService(parameterRef);
   const [stageState] = useService(stageRef);
