@@ -38,6 +38,10 @@ class TorchVisionDataset(fozd.ZooDataset):
     :mod:`torchvision:torchvision.datasets` package.
     """
 
+    @property
+    def _download_size(self):
+        return None
+
     pass
 
 
@@ -69,7 +73,7 @@ class MNISTDataset(TorchVisionDataset):
 
     @property
     def tags(self):
-        return ("image", "classification")
+        return ("image", "classification", "multiclass-classification")
 
     @property
     def supported_splits(self):
@@ -92,6 +96,10 @@ class MNISTDataset(TorchVisionDataset):
             get_classes_fcn,
             sample_parser,
         )
+
+    @property
+    def _download_size(self):
+        return 0.021  ## GB
 
 
 class FashionMNISTDataset(TorchVisionDataset):
@@ -122,7 +130,7 @@ class FashionMNISTDataset(TorchVisionDataset):
 
     @property
     def tags(self):
-        return ("image", "classification")
+        return ("image", "classification", "multiclass-classification")
 
     @property
     def supported_splits(self):
@@ -145,6 +153,10 @@ class FashionMNISTDataset(TorchVisionDataset):
             get_classes_fcn,
             sample_parser,
         )
+
+    @property
+    def _download_size(self):
+        return 0.03642  ## GB
 
 
 class CIFAR10Dataset(TorchVisionDataset):
@@ -174,7 +186,7 @@ class CIFAR10Dataset(TorchVisionDataset):
 
     @property
     def tags(self):
-        return ("image", "classification")
+        return ("image", "classification", "multiclass-classification")
 
     @property
     def supported_splits(self):
@@ -197,6 +209,10 @@ class CIFAR10Dataset(TorchVisionDataset):
             get_classes_fcn,
             sample_parser,
         )
+
+    @property
+    def _download_size(self):
+        return 0.13240  ## GB
 
 
 class CIFAR100Dataset(TorchVisionDataset):
@@ -228,7 +244,7 @@ class CIFAR100Dataset(TorchVisionDataset):
 
     @property
     def tags(self):
-        return ("image", "classification")
+        return ("image", "classification", "multiclass-classification")
 
     @property
     def supported_splits(self):
@@ -251,6 +267,10 @@ class CIFAR100Dataset(TorchVisionDataset):
             get_classes_fcn,
             sample_parser,
         )
+
+    @property
+    def _download_size(self):
+        return 0.13203  ## GB
 
 
 class ImageNet2012Dataset(TorchVisionDataset):
@@ -316,7 +336,12 @@ class ImageNet2012Dataset(TorchVisionDataset):
 
     @property
     def tags(self):
-        return ("image", "classification", "manual")
+        return (
+            "image",
+            "classification",
+            "multiclass-classification",
+            "manual",
+        )
 
     @property
     def supported_splits(self):
@@ -349,6 +374,10 @@ class ImageNet2012Dataset(TorchVisionDataset):
             get_classes_fcn,
             sample_parser,
         )
+
+    @property
+    def _download_size(self):
+        return 144.02  ## GB
 
 
 class VOC2007Dataset(TorchVisionDataset):
@@ -414,6 +443,10 @@ class VOC2007Dataset(TorchVisionDataset):
             sample_parser,
         )
 
+    @property
+    def _download_size(self):
+        return 0.86885  ## GB
+
 
 class VOC2012Dataset(TorchVisionDataset):
     """The dataset for the PASCAL Visual Object Classes Challenge 2012
@@ -477,6 +510,10 @@ class VOC2012Dataset(TorchVisionDataset):
             get_classes_fcn,
             sample_parser,
         )
+
+    @property
+    def _download_size(self):
+        return 3.59  ## GB
 
 
 AVAILABLE_DATASETS = {

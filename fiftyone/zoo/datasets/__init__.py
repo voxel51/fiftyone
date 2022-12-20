@@ -23,18 +23,89 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-def list_zoo_datasets():
-    """Returns the list of available datasets in the FiftyOne Dataset Zoo.
+def list_zoo_datasets(task=None, media_type=None, max_size=None):
 
-    Returns:
-        a list of dataset names
+    """Returns the list of available datasets in the FiftyOne Dataset Zoo
+            fitting the specified conditions. If no conditions are given,
+            it returns a list of all datasets in the FiftyOne Dataset Zoo
+
+    Args:
+        task (None): Allowed values include
+            ``("detection", "temporal-detection", "classification",
+            "binary-classification", "multiclass-classification",
+            "segmentation", "action-recognition", "facial-recognition",
+            "semantic-segmentation", "instance-segmentation", "relationships")``
+        media_type (None): Allowed valus include
+            ``("image", "video", "location", "group", "point-cloud")``
+        max_size (None): Max allowed size of the dataset in GB, if full dataset
+            download is required.
+
     """
-    datasets = set()
-    all_datasets = _get_zoo_datasets()
-    for d in all_datasets.values():
-        datasets |= d.keys()
+    allowed_tasks = [
+        "detection",
+        "temporal-detection",
+        "classification",
+        "binary-classification",
+        "multiclass-classification",
+        "segmentation",
+        "action-recognition",
+        "facial-recognition",
+        "semantic-segmentation",
+        "instance-segmentation",
+        "relationships",
+    ]
 
-    return sorted(datasets)
+    allowed_media_types = [
+        "image",
+        "video",
+        "location",
+        "group",
+        "point-cloud",
+    ]
+
+    if task is not None and task not in allowed_tasks:
+        return []
+
+    if media_type is not None and media_type not in allowed_media_types:
+        return []
+
+    if task is None and media_type is None and max_size is None:
+        datasets = set()
+        all_datasets = _get_zoo_datasets()
+        for d in all_datasets.values():
+            datasets |= d.keys()
+
+        return sorted(datasets)
+    else:
+
+        from .base import AVAILABLE_DATASETS as BASE_DATASETS
+        from .torch import AVAILABLE_DATASETS as TORCH_DATASETS
+        from .tf import AVAILABLE_DATASETS as TF_DATASETS
+
+        datasets = [
+            d()
+            for d in {
+                **BASE_DATASETS,
+                **TORCH_DATASETS,
+                **TF_DATASETS,
+            }.values()
+        ]
+
+        if task is not None:
+            datasets = [d for d in datasets if task in d.tags]
+
+        if media_type is not None:
+            datasets = [d for d in datasets if media_type in d.tags]
+
+        if max_size is not None:
+            datasets = [
+                d
+                for d in datasets
+                if d._download_size and d._download_size < max_size
+            ]
+
+        dataset_names = [d.name for d in datasets]
+        return dataset_names
 
 
 def list_downloaded_zoo_datasets(base_dir=None):

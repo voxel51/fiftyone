@@ -34,6 +34,10 @@ logger = logging.getLogger(__name__)
 class FiftyOneDataset(fozd.ZooDataset):
     """Base class for zoo datasets that are provided natively by FiftyOne."""
 
+    @property
+    def _download_size(self):
+        return None
+
     pass
 
 
@@ -501,6 +505,10 @@ class BDD100KDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, None
 
+    @property
+    def _download_size(self):
+        return 7.1  ## GB
+
 
 class Caltech101Dataset(FiftyOneDataset):
     """The Caltech-101 dataset of images.
@@ -571,6 +579,10 @@ class Caltech101Dataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
+
+    @property
+    def _download_size(self):
+        return 0.1386  ## GB
 
 
 class Caltech256Dataset(FiftyOneDataset):
@@ -666,6 +678,10 @@ class Caltech256Dataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
+
+    @property
+    def _download_size(self):
+        return 1.16  ## GB
 
 
 class CityscapesDataset(FiftyOneDataset):
@@ -780,6 +796,10 @@ class CityscapesDataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, None
+
+    @property
+    def _download_size(self):
+        return 11.8  ## GB
 
 
 class COCO2014Dataset(FiftyOneDataset):
@@ -1322,6 +1342,10 @@ class FIWDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, classes
 
+    @property
+    def _download_size(self):
+        return 0.173  ## GB
+
 
 class HMDB51Dataset(FiftyOneDataset):
     """HMDB51 is an action recognition dataset containing a total of 6,766
@@ -1390,6 +1414,10 @@ class HMDB51Dataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
+
+    @property
+    def _download_size(self):
+        return 2.16  ## GB
 
 
 class ImageNetSampleDataset(FiftyOneDataset):
@@ -1485,6 +1513,10 @@ class ImageNetSampleDataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
+
+    @property
+    def _download_size(self):
+        return 0.09826  ## GB
 
 
 class Kinetics400Dataset(FiftyOneDataset):
@@ -2166,6 +2198,10 @@ class KITTIDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, None
 
+    @property
+    def _download_size(self):
+        return 12.57  ## GB
+
 
 class KITTIMultiviewDataset(FiftyOneDataset):
     """KITTI contains a suite of vision tasks built using an autonomous
@@ -2234,6 +2270,10 @@ class KITTIMultiviewDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, None
 
+    @property
+    def _download_size(self):
+        return 53.34  ## GB
+
 
 class LabeledFacesInTheWildDataset(FiftyOneDataset):
     """Labeled Faces in the Wild is a public benchmark for face verification,
@@ -2297,6 +2337,10 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
+
+    @property
+    def _download_size(self):
+        return 0.173  ## GB
 
 
 class OpenImagesV6Dataset(FiftyOneDataset):
@@ -2522,7 +2566,7 @@ class QuickstartDataset(FiftyOneDataset):
 
     @property
     def tags(self):
-        return ("image", "quickstart")
+        return ("image", "quickstart", "detection")
 
     @property
     def supported_splits(self):
@@ -2601,6 +2645,10 @@ class QuickstartGeoDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, classes
 
+    @property
+    def _download_size(self):
+        return 0.0335  ## GB
+
 
 class QuickstartVideoDataset(FiftyOneDataset):
     """A small video dataset with dense annotations.
@@ -2654,6 +2702,10 @@ class QuickstartVideoDataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, None
+
+    @property
+    def _download_size(self):
+        return 0.00352  ## GB
 
 
 class QuickstartGroupsDataset(FiftyOneDataset):
@@ -2709,6 +2761,10 @@ class QuickstartGroupsDataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
+
+    @property
+    def _download_size(self):
+        return 0.5163  ## GB
 
 
 class UCF101Dataset(FiftyOneDataset):
@@ -2793,6 +2849,10 @@ class UCF101Dataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
+
+    @property
+    def _download_size(self):
+        return 6.48  ## GB
 
 
 AVAILABLE_DATASETS = {
