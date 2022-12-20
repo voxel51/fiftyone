@@ -76,10 +76,10 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
             necessary) via :func:`fiftyone.core.utils.normalize_path`
         abs_paths (False): whether to store absolute paths to the media in the
             exported labels
-        media_path ("filepath"): the name of the field containing the media to
+        media_field ("filepath"): the name of the field containing the media to
             export for each sample
         fields (None): a field or iterable of fields to include as columns in
-            the exported CSV file. By default, only the ``media_path`` is used
+            the exported CSV file. By default, only the ``media_field`` is used
     """
 
     def __init__(
@@ -90,7 +90,7 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
         export_media=None,
         rel_dir=None,
         abs_paths=False,
-        media_path="filepath",
+        media_field="filepath",
         fields=None,
     ):
         data_path, export_media = self._parse_data_path(
@@ -113,7 +113,7 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
         self.export_media = export_media
         self.rel_dir = rel_dir
         self.abs_paths = abs_paths
-        self.media_path = media_path
+        self.media_field = media_field
         self.fields = fields
 
         self._media_exporter = None
@@ -129,12 +129,11 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
             self.export_media,
             export_path=self.data_path,
             rel_dir=self.rel_dir,
-            supported_modes=(True, False, "move", "symlink"),
         )
         self._media_exporter.setup()
 
         fields, media_idx, include_media = _parse_fields(
-            self.fields, self.media_path, self.export_media
+            self.fields, self.media_field, self.export_media
         )
         needs_metadata = any(p.startswith("metadata.") for p in fields)
 
@@ -180,9 +179,9 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
         self._f.close()
 
 
-def _parse_fields(fields, media_path, export_media):
+def _parse_fields(fields, media_field, export_media):
     if not fields:
-        fields = media_path
+        fields = media_field
 
     if etau.is_str(fields):
         fields = [fields]
@@ -190,11 +189,11 @@ def _parse_fields(fields, media_path, export_media):
         fields = list(fields)
 
     try:
-        media_idx = fields.index(media_path)
+        media_idx = fields.index(media_field)
         include_media = True
     except ValueError:
         if export_media != False:
-            fields.append(media_path)
+            fields.append(media_field)
             media_idx = len(fields) - 1
             include_media = False
         else:
