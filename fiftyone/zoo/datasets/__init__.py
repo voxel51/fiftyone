@@ -29,6 +29,23 @@ def list_zoo_datasets(task=None, media_type=None, max_size=None):
             fitting the specified conditions. If no conditions are given,
             it returns a list of all datasets in the FiftyOne Dataset Zoo
 
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        #
+        # List all zoo datasets with media_type "image", which support
+        # "detection" tasks, and which require at most 1GB download.
+        #
+
+        foz.list_zoo_datasets(
+            task="detection",
+            media_type="image",
+            max_size=1.0,
+        )
+
+
     Args:
         task (None): Allowed values include
             ``("detection", "temporal-detection", "classification",
