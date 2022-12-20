@@ -97,12 +97,9 @@ const Grid: React.FC<{}> = () => {
       freeVideos();
     }),
     [
+      fos.filterView(useRecoilValue(fos.view)),
       stringifyObj(useRecoilValue(fos.filters)),
       useRecoilValue(fos.datasetName),
-      // useRecoilValue(fos.savedViewsSelector),
-      // useRecoilValue(fos.selectedViewName),
-      // useRecoilValue(fos.view),
-      fos.filterView(useRecoilValue(fos.view)),
       useRecoilValue(fos.cropToContent(false)),
       useRecoilValue(fos.groupSlice(false)),
       useRecoilValue(fos.refresher),

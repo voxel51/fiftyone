@@ -10,11 +10,11 @@ import Network from "./Network";
 import { usePlugins } from "@fiftyone/plugins";
 import {
   BeforeScreenshotContext,
-  screenshotCallbacks,
   EventsContext,
   getDatasetName,
   getSavedViewName,
   modal,
+  screenshotCallbacks,
   State,
   stateSubscription,
   useClearModal,
@@ -89,12 +89,11 @@ const App: React.FC = ({}) => {
               break;
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
+              // console.log(payload);
               const { colorscale, config, ...data } = payload.state;
               payload.refresh && refresh();
               const isAnUpdate = payload.update;
               const changingSavedView = payload.changing_saved_view;
-              console.log(payload);
-              console.log(data);
 
               const state = {
                 ...toCamelCase(data),

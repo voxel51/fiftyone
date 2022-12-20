@@ -2,9 +2,14 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
 import {
   filters,
+  groupSlice,
   resolvedGroupSlice,
   selectedLabelList,
   selectedSamples,
@@ -97,15 +102,11 @@ const useSetView = (
             viewOrUpdater instanceof Function
               ? viewOrUpdater(snapshot.getLoadable(view).contents)
               : viewOrUpdater;
-
           commit({
             variables: {
-              changingSavedView: changingSavedView,
-              savedViewSlug: savedViewSlug,
-              view: value,
-              viewName: viewName,
               subscription: subscription,
               session: session,
+              view: value,
               datasetName: dataset.name,
               form: patch
                 ? {
@@ -121,21 +122,25 @@ const useSetView = (
                       : null,
                   }
                 : {},
+
+              changingSavedView: changingSavedView,
+              savedViewSlug: savedViewSlug,
+              viewName: viewName,
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
               const isDesktop = isElectron();
               if (router.history.location.state) {
                 const newState = {
-                  ...router.history.location.state.state,
+                  ...router.history.location.state,
                   view: value,
-                  viewName,
-                  savedViewSlug,
                   viewCls: dataset.viewCls,
                   selected: [],
                   selectedLabels: [],
-                  savedViews,
-                  changingSavedView,
+                  viewName: viewName,
+                  savedViewSlug: savedViewSlug,
+                  savedViews: savedViews,
+                  changingSavedView: changingSavedView,
                 };
                 router.history.location.state.state = newState;
 
@@ -203,10 +208,10 @@ const useSetView = (
                     viewCls: dataset.viewCls,
                     selected: [],
                     selectedLabels: [],
-                    viewName,
-                    savedViews,
-                    savedViewSlug,
-                    changingSavedView,
+                    viewName: viewName,
+                    savedViews: savedViews,
+                    savedViewSlug: savedViewSlug,
+                    changingSavedView: changingSavedView,
                   },
                 });
               } else {

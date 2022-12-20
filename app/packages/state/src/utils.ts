@@ -126,5 +126,5 @@ export const getSavedViewName = (context: RoutingContext<any>): string => {
     }
   }
 
-  return "";
+  return null;
 };

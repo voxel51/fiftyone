@@ -72,6 +72,9 @@ export namespace State {
     description?: string;
     color?: string;
     viewStages: Stage[];
+    createdAt: DateTime;
+    lastLoadedAt: DateTime;
+    lastModifiedAt?: DateTime;
   }
 
   export interface AnnotationRun extends Run {

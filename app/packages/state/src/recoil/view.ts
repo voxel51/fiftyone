@@ -1,6 +1,7 @@
 import { atom, selector } from "recoil";
 
 import { State } from "./types";
+import * as atoms from "./atoms";
 
 export const view = atom<State.Stage[]>({
   key: "view",
@@ -126,5 +127,21 @@ export const isFramesView = selector<boolean>({
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
+  },
+});
+
+export const selectedViewName = selector<string>({
+  key: "currentViewName",
+  get: ({ get }) => {
+    return get(viewName);
+  },
+});
+
+export const currentViewSlug = selector<string>({
+  key: "currentViewSlug",
+  get: () => {
+    const params = new URLSearchParams(window.location.search);
+    console.log(params.get("view"));
+    return params.get("view") || null;
   },
 });
