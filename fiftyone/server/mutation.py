@@ -90,6 +90,7 @@ class Mutation:
     async def set_sidebar_groups(
         self,
         subscription: str,
+        session: t.Optional[str],
         dataset: str,
         stages: BSONArray,
         sidebar_groups: t.List[SidebarGroupInput],
