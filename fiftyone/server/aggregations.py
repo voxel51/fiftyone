@@ -5,6 +5,7 @@ FiftyOne Server aggregations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 from dataclasses import asdict
 from datetime import date, datetime
 import typing as t
@@ -118,6 +119,9 @@ AggregateResult = gql.union(
 async def aggregate_resolver(
     form: AggregationForm,
 ) -> t.List[AggregateResult]:
+    if not form.dataset:
+        raise ValueError("Aggregate form missing dataset")
+
     view = fosv.get_dataset_view(
         form.dataset,
         view_name=form.view_name,
@@ -128,9 +132,7 @@ async def aggregate_resolver(
             group=GroupElementFilter(id=form.group_id, slice=form.slice)
         ),
     )
-    if not view._root_dataset.persistent:
-        raise ValueError("Aggregate called for non-permanent dataset")
-        return []
+    slice_view = view if form.mixed and "" in form.paths else None
 
     if form.sample_ids:
         view = fov.make_optimized_select_view(view, form.sample_ids)
@@ -150,33 +152,15 @@ async def aggregate_resolver(
 
     if form.mixed:
         view = view.select_group_slices(_allow_mixed=True)
-    # for path in form.paths:
-    #     print("path", path)
+
     aggregations, deserializers = zip(
         *[_resolve_path_aggregation(path, view) for path in form.paths]
     )
-    # print("aggregations", aggregations)
-    # print("deserializers", deserializers)
-    # for path in form.paths:
-    #     print("-" * 80)
-    #     print(
-    #             "_resolve_path_aggregation(path, view)",
-    #             _resolve_path_aggregation(path, view),
-    #     )
     counts = [len(a) for a in aggregations]
-    flattened = []
-    for i, aggs in enumerate(aggregations):
-        print("aggs", aggs)
-        flattened += aggs
-        print("i, flattened", i, flattened)
-    print("-" * 100)
-    print(
-        "final flattened:{}\n\t\t----------\nfor view:{}:".format(
-            flattened, view
-        )
-    )
-    print("-" * 100)
+    flattened = [item for sublist in aggregations for item in sublist]
 
+    # TODO: stop aggregate resolver from being called for non-existent fields,
+    #  but fail silently for now by just returning empty results
     try:
         result = await view._async_aggregate(flattened)
     except:
@@ -185,31 +169,10 @@ async def aggregate_resolver(
     results = []
     offset = 0
     for length, deserialize in zip(counts, deserializers):
-        #     print("*" * 80)
-        #     print(
-        #         "result[offset: length + offset]",
-        #         result[offset : length + offset],
-        #         offset,
-        #         length,
-        #     )
-        #     print(
-        #         "deserialize(result[offset : length + offset])",
-        #         deserialize(result[offset : length + offset]),
-        #     )
         results.append(deserialize(result[offset : length + offset]))
         offset += length
-    # print("results:", results)
-    if form.mixed and "" in form.paths:
-        slice_view = fosv.get_dataset_view(
-            form.dataset,
-            stages=form.view,
-            filters=form.filters,
-            extended_stages=form.extended_stages,
-            sample_filter=SampleFilter(
-                group=GroupElementFilter(id=form.group_id, slice=form.slice)
-            ),
-        )
 
+    if slice_view:
         for result in results:
             if isinstance(result, RootAggregation):
                 result.slice = await slice_view._async_aggregate(foa.Count())
@@ -245,7 +208,12 @@ def _resolve_path_aggregation(
         foa.Count(path if path and path != "" else None)
     ]
     field = view.get_field(path)
-    print("[path={}, field={}]".format(path, field))
+
+    logging.debug(
+        "[server/aggregations.py: _resolve_path_aggregation] args:\n"
+        "view={}\npath={}\nfield={}\n".format(view, path, field)
+    )
+
     while isinstance(field, fof.ListField):
         field = field.field
 
@@ -272,9 +240,6 @@ def _resolve_path_aggregation(
 
     elif meets_type(field, (fof.ObjectIdField, fof.StringField)):
         aggregations.append(foa.CountValues(path, _first=LIST_LIMIT))
-
-    if isinstance(field, fof.ListField):
-        aggregations.append(_CountExists(path))
 
     data = {"path": path}
 
@@ -328,7 +293,11 @@ def _resolve_path_aggregation(
                         embedded_doc_type=fol.Label
                     )
                 )
-        print(data)
+        logging.debug(
+            "[server/aggregations.py: _resolve_path_aggregation] "
+            "data:\n{}\n".format(data)
+        )
+
         return from_dict(cls, data, config=Config(check_types=False))
 
     return aggregations, from_results
