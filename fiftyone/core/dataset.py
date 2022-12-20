@@ -2282,7 +2282,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         with contextlib.ExitStack() as exit_context:
             groups = self._iter_groups(group_slices=group_slices)
 
-            pb = fou.ProgressBar(total=len(self))
+            pb = fou.ProgressBar(total=len(self), progress=progress)
             exit_context.enter_context(pb)
             groups = pb(groups)
 
@@ -2407,7 +2407,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         dynamic=False,
         validate=True,
-        progress=None,
     ):
         """Adds the given sample to the dataset.
 
@@ -2424,9 +2423,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 document fields that are encountered
             validate (True): whether to validate that the fields of the sample
                 are compliant with the dataset schema before adding it
-            progress (None): whether to show the progress bar of the import.
-                If None this uses the global setting, otherwise it overwrites
-                the setting for this method.
 
         Returns:
             the ID of the sample in the dataset
@@ -2913,6 +2909,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             num_samples (None): the number of samples in ``samples``. If not
                 provided, this is computed via ``len(samples)``, if possible.
                 This value is optional and is used only for progress tracking
+            progress (None): whether to render a progress bar tracking the
+                progress
         """
         if fields is not None:
             if etau.is_str(fields):
@@ -2966,7 +2964,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             try:
                 tmp.add_samples(
-                    samples, dynamic=dynamic, num_samples=num_samples
+                    samples,
+                    dynamic=dynamic,
+                    num_samples=num_samples,
+                    progress=progress,
                 )
 
                 self.merge_samples(
