@@ -1,7 +1,8 @@
+import { DOMParser } from "@xmldom/xmldom";
 const domParser = new DOMParser();
 
 function HTMLToDom(html: string) {
-  const [node] = domParser.parseFromString(html, "text/xml").childNodes;
+  const node = domParser.parseFromString(html, "text/xml").childNodes;
   return node;
 }
 

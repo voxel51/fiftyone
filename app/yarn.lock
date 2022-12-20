@@ -4393,6 +4393,7 @@ __metadata:
   resolution: "@fiftyone/dataset@workspace:packages/dataset"
   dependencies:
     "@fiftyone/core": "*"
+    framer-motion: ^6.2.8
     prettier: ^2.7.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^3.4.0
@@ -4476,6 +4477,7 @@ __metadata:
     "@types/lru-cache": ^5.1.0
     "@types/uuid": ^8.3.0
     "@ungap/event-target": ^0.2.2
+    "@xmldom/xmldom": ^0.8.6
     buffer: ^6.0.3
     copy-to-clipboard: ^3.3.1
     fast-png: ^6.1.0
@@ -4552,17 +4554,14 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/state@workspace:packages/state"
   dependencies:
+    "@fiftyone/looker": "*"
     "@fiftyone/relay": "*"
     "@fiftyone/utilities": "*"
     "@microsoft/fetch-event-source": ^2.0.1
-    "@testing-library/react-hooks": latest
-    "@vitest/ui": ^0.25.2
-    babel-plugin-relay: ^14.1.0
     lodash: ^4.17.21
     prettier: ^2.7.1
     typescript: ^4.7.4
     vite: ^3.0.0
-    vitest: ^0.25.2
   peerDependencies:
     react: "*"
     react-error-boundary: "*"
@@ -6068,13 +6067,6 @@ __metadata:
     webpack-plugin-serve:
       optional: true
   checksum: c45beded9c56fbbdc7213a2c36131ace5db360ed704d462cc39d6678f980173a91c9a3f691e6bd3a026f25486644cd0027e8a12a0a4eced8e8b886a0472e7d34
-  languageName: node
-  linkType: hard
-
-"@polka/url@npm:^1.0.0-next.20":
-  version: 1.0.0-next.21
-  resolution: "@polka/url@npm:1.0.0-next.21"
-  checksum: c7654046d38984257dd639eab3dc770d1b0340916097b2fac03ce5d23506ada684e05574a69b255c32ea6a144a957c8cd84264159b545fca031c772289d88788
   languageName: node
   linkType: hard
 
@@ -8877,15 +8869,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/ui@npm:^0.25.2":
-  version: 0.25.8
-  resolution: "@vitest/ui@npm:0.25.8"
-  dependencies:
-    sirv: ^2.0.2
-  checksum: 2ef6e0e6eb95d9f857761b3a74edcf1290ac7b9d00078e752172078ee63c581f17c743e40098dabf9d4baa7f946303e9849ef45a96c50f1deba4a93f0c45890a
-  languageName: node
-  linkType: hard
-
 "@webassemblyjs/ast@npm:1.11.1":
   version: 1.11.1
   resolution: "@webassemblyjs/ast@npm:1.11.1"
@@ -9222,6 +9205,13 @@ __metadata:
   version: 0.0.15
   resolution: "@webgpu/glslang@npm:0.0.15"
   checksum: 0bb8c2e8e4533f95deeff09a24fa2551cdf984159f25cd8c3fc21e0e8ecfea54b88363bdcd04412f43669e199dcc8f6ea80a6a7ddd098005527567ec009d6881
+  languageName: node
+  linkType: hard
+
+"@xmldom/xmldom@npm:^0.8.6":
+  version: 0.8.6
+  resolution: "@xmldom/xmldom@npm:0.8.6"
+  checksum: f17ac6d99a971a6aeb831fcfc5cfa86f367664e45815046548814b2deb17ccc421fef4e0d5ba29e66179d112b552f6caa5680064f8e7bd8a389b788a60404c8e
   languageName: node
   linkType: hard
 
@@ -10248,17 +10238,6 @@ __metadata:
   peerDependencies:
     graphql: ^15.0.0
   checksum: adea54da7743576b49a3f5fd674e6bdde535439035d97270220944cc1a4d32f0095a98c22a787ab622c8952a3bc737ba2db6badf5dea35fc55549a3414f4f28b
-  languageName: node
-  linkType: hard
-
-"babel-plugin-relay@npm:^14.1.0":
-  version: 14.1.0
-  resolution: "babel-plugin-relay@npm:14.1.0"
-  dependencies:
-    babel-plugin-macros: ^2.0.0
-    cosmiconfig: ^5.0.5
-    graphql: 15.3.0
-  checksum: cc24529dfa55c2212b098f5766cbd9fb30b05f06f9909dde99f98ca0e988b86ae6295686716793344081c144f1b86d33a0ab88dfcfa3c5372526b8bfe1756848
   languageName: node
   linkType: hard
 
@@ -15379,13 +15358,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"graphql@npm:15.3.0":
-  version: 15.3.0
-  resolution: "graphql@npm:15.3.0"
-  checksum: df18079e3a1ecb875821a71531b74eb1e6099ec1fb8d6e79faff4b43561cb23acbb80c9e05845292e08b6321d507e55dc7d5a60d72cdd093720a6f0f00983d1e
-  languageName: node
-  linkType: hard
-
 "graphql@npm:^14.5.3":
   version: 14.7.0
   resolution: "graphql@npm:14.7.0"
@@ -18917,13 +18889,6 @@ __metadata:
     rimraf: ^2.5.4
     run-queue: ^1.0.3
   checksum: 4ea3296c150b09e798177847f673eb5783f8ca417ba806668d2c631739f653e1a735f19fb9b6e2f5e25ee2e4c0a6224732237a8e4f84c764e99d7462d258209e
-  languageName: node
-  linkType: hard
-
-"mrmime@npm:^1.0.0":
-  version: 1.0.1
-  resolution: "mrmime@npm:1.0.1"
-  checksum: cc979da44bbbffebaa8eaf7a45117e851f2d4cb46a3ada6ceb78130466a04c15a0de9a9ce1c8b8ba6f6e1b8618866b1352992bf1757d241c0ddca558b9f28a77
   languageName: node
   linkType: hard
 
@@ -22754,17 +22719,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sirv@npm:^2.0.2":
-  version: 2.0.2
-  resolution: "sirv@npm:2.0.2"
-  dependencies:
-    "@polka/url": ^1.0.0-next.20
-    mrmime: ^1.0.0
-    totalist: ^3.0.0
-  checksum: 6982f8ecee9392d246d7eeea8144e50334fe1b46a4fa942995a844ea88c2d518b17cce781bb09926c9a5692a7002a207d18dfd67af2aa538a15e733dc2042298
-  languageName: node
-  linkType: hard
-
 "sisteransi@npm:^1.0.5":
   version: 1.0.5
   resolution: "sisteransi@npm:1.0.5"
@@ -23990,13 +23944,6 @@ __metadata:
   version: 1.0.1
   resolution: "toidentifier@npm:1.0.1"
   checksum: 952c29e2a85d7123239b5cfdd889a0dde47ab0497f0913d70588f19c53f7e0b5327c95f4651e413c74b785147f9637b17410ac8c846d5d4a20a5a33eb6dc3a45
-  languageName: node
-  linkType: hard
-
-"totalist@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "totalist@npm:3.0.0"
-  checksum: ec499bddfc73d5b6c73f8ff68afd7bed286705797f928a11177fee5d1ee80e9052ffcb434638437702e16864bd5490f437a54f79bfea9564e875d34ed3254bca
   languageName: node
   linkType: hard
 

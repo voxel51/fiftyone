@@ -276,6 +276,10 @@ export const getEnvironment = () =>
     store: new Store(new RecordSource()),
   });
 
-export const RouterContext = React.createContext(
-  createRouter(getEnvironment(), [], { errors: false }).context
-);
+export let RouterContext: React.Context<RoutingContext<any>> = null;
+
+if (typeof window !== "undefined") {
+  RouterContext = React.createContext(
+    createRouter(getEnvironment(), [], { errors: false }).context
+  );
+}

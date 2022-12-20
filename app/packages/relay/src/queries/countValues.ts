@@ -1,6 +1,7 @@
 import { graphql } from "react-relay";
+import r from "../resolve";
 
-export default graphql`
+export default r(graphql`
   query countValuesQuery(
     $dataset: String!
     $view: BSONArray!
@@ -28,4 +29,4 @@ export default graphql`
       }
     }
   }
-`;
+`);

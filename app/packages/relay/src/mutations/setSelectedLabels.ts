@@ -1,6 +1,8 @@
 import { graphql } from "react-relay";
 
-export default graphql`
+import r from "../resolve";
+
+export default r(graphql`
   mutation setSelectedLabelsMutation(
     $subscription: String!
     $session: String
@@ -12,4 +14,4 @@ export default graphql`
       selectedLabels: $selectedLabels
     )
   }
-`;
+`);
