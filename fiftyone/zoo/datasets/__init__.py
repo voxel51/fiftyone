@@ -23,7 +23,7 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-def list_zoo_datasets(task=None, media_type=None, max_size=None):
+def list_zoo_datasets(tags=None, all=True, max_size=None):
 
     """Returns the list of available datasets in the FiftyOne Dataset Zoo
             fitting the specified conditions. If no conditions are given,
@@ -36,57 +36,49 @@ def list_zoo_datasets(task=None, media_type=None, max_size=None):
 
         #
         # List all zoo datasets with media_type "image", which support
-        # "detection" tasks, and which require at most 1GB download.
+        # "classification" tasks, and which require at most 1GB download.
         #
 
         foz.list_zoo_datasets(
-            task="detection",
-            media_type="image",
+            tags=["image", "classification"],
+            all=True,
             max_size=1.0,
+        )
+
+        #
+        # List all zoo datasets with media_type "image" or "video
+        #
+
+        foz.list_zoo_datasets(
+            tags=["image", "video"],
+            all=False,
         )
 
 
     Args:
-        task (None): Allowed values include
-            ``("detection", "temporal-detection", "classification",
-            "binary-classification", "multiclass-classification",
-            "segmentation", "action-recognition", "facial-recognition",
-            "semantic-segmentation", "instance-segmentation", "relationships")``
-        media_type (None): Allowed valus include
-            ``("image", "video", "location", "group", "point-cloud")``
+        tags (None): Which tags to search the Dataset Zoo for.
+        all (True): Allowed values include True/False
+
         max_size (None): Max allowed size of the dataset in GB, if full dataset
             download is required.
 
     """
-    allowed_tasks = [
-        "detection",
-        "temporal-detection",
-        "classification",
-        "binary-classification",
-        "multiclass-classification",
-        "segmentation",
-        "action-recognition",
-        "facial-recognition",
-        "semantic-segmentation",
-        "instance-segmentation",
-        "relationships",
-    ]
 
-    allowed_media_types = [
-        "image",
-        "video",
-        "location",
-        "group",
-        "point-cloud",
-    ]
+    def _has_all_tags(dataset, tags):
+        dtags = dataset.tags
+        for tag in tags:
+            if tag not in dtags:
+                return False
+        return True
 
-    if task is not None and task not in allowed_tasks:
-        return []
+    def _has_any_tags(dataset, tags):
+        dtags = dataset.tags
+        for tag in tags:
+            if tag in dtags:
+                return True
+        return False
 
-    if media_type is not None and media_type not in allowed_media_types:
-        return []
-
-    if task is None and media_type is None and max_size is None:
+    if tags is None and max_size is None:
         datasets = set()
         all_datasets = _get_zoo_datasets()
         for d in all_datasets.values():
@@ -94,7 +86,6 @@ def list_zoo_datasets(task=None, media_type=None, max_size=None):
 
         return sorted(datasets)
     else:
-
         from .base import AVAILABLE_DATASETS as BASE_DATASETS
         from .torch import AVAILABLE_DATASETS as TORCH_DATASETS
         from .tf import AVAILABLE_DATASETS as TF_DATASETS
@@ -108,11 +99,14 @@ def list_zoo_datasets(task=None, media_type=None, max_size=None):
             }.values()
         ]
 
-        if task is not None:
-            datasets = [d for d in datasets if task in d.tags]
+        if tags is not None:
+            if type(tags) != list:
+                tags = [tags]
 
-        if media_type is not None:
-            datasets = [d for d in datasets if media_type in d.tags]
+            if all:
+                datasets = [d for d in datasets if _has_all_tags(d, tags)]
+            else:
+                datasets = [d for d in datasets if _has_any_tags(d, tags)]
 
         if max_size is not None:
             datasets = [
