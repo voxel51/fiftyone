@@ -38,6 +38,13 @@ workflows.
 .. Add recipe cards below
 
 .. customcarditem::
+    :header: View stages
+    :description: Consolidate your understanding of View Stages.
+    :link: viewstages_cheat_sheet.html
+    :image: ../_static/images/recipes/pandas_vs_fiftyone.png
+    :tags: Basics,Cheat-Sheets,Dataset-Curation
+
+.. customcarditem::
     :header: pandas vs FiftyOne
     :description: See how to translate common pandas queries into FiftyOne's query syntax for computer vision.
     :link: pandas_vs_fiftyone.html
@@ -145,6 +152,7 @@ workflows.
    :maxdepth: 1
    :hidden:
 
+   View stages cheat sheet <viewstages_cheat_sheet>
    pandas vs FiftyOne <pandas_vs_fiftyone>
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
