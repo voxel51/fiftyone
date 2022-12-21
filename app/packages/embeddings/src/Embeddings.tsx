@@ -1,5 +1,10 @@
 import { useEffect, useState, useRef, useLayoutEffect } from "react";
-import { useRecoilState, useRecoilValue, useRecoilCallback, atom } from "recoil";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useRecoilCallback,
+  atom,
+} from "recoil";
 import * as fos from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import Plot from "react-plotly.js";
@@ -7,7 +12,6 @@ import { Button, Loading, Selector } from "@fiftyone/components";
 import styled from "styled-components";
 import { useToPatches } from "@fiftyone/state";
 import { usePanelState } from "@fiftyone/spaces";
-
 
 function usePanelField(field, defaultValue = null) {
   const [state, setState] = usePanelState();
@@ -18,10 +22,7 @@ function usePanelField(field, defaultValue = null) {
 
   const currentValue = state[field];
 
-  return [
-    currentValue === undefined ? defaultValue : currentValue,
-    setField,
-  ]
+  return [currentValue === undefined ? defaultValue : currentValue, setField];
 }
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
@@ -30,7 +31,7 @@ const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
 
 // a react hook that fetches a list of brain results
 // and has a loading state and an error state
-const useBrainResult = () => usePanelField('brainResult', null);
+const useBrainResult = () => usePanelField("brainResult", null);
 function useBrainResultsSelector() {
   const [selected, setSelected] = useBrainResult();
   const dataset = useRecoilValue(fos.dataset);
@@ -44,7 +45,7 @@ function useBrainResultsSelector() {
       values: dataset.brainMethods
         .filter((item) => item.key.toLowerCase().includes(search.toLowerCase()))
         .map((item) => {
-          return item.key
+          return item.key;
         }),
     }),
   };
@@ -101,7 +102,7 @@ function useLabelSelector() {
   const dataset = useRecoilValue(fos.dataset);
   const fullSchema = useRecoilValue(fos.fullSchema);
   const availableFields = getAvailableFieldsFromSchema({ fields: fullSchema });
-  const [label, setLabel] = usePanelField('colorByField', null);
+  const [label, setLabel] = usePanelField("colorByField", null);
   const isPatchesView = useRecoilValue(fos.isPatchesView);
 
   const handlers = {
@@ -126,13 +127,13 @@ function useLabelSelector() {
 }
 
 const SELECTION_MODES = [
-  { id: 'patches', label: 'Patches' },
-  { id: 'select', label: 'Select' },
-  { id: 'match', label: 'Match' },
-]
+  { id: "patches", label: "Patches" },
+  { id: "select", label: "Select" },
+  { id: "match", label: "Match" },
+];
 
 function useChooseSelectionMode({ onSelect }) {
-  const [mode, setMode] = usePanelField('selectionMode');
+  const [mode, setMode] = usePanelField("selectionMode");
   const info = useBrainResultInfo();
   const handlers = {
     onSelect(selected) {
@@ -142,13 +143,13 @@ function useChooseSelectionMode({ onSelect }) {
     value: mode,
     toKey: (item) => item.id,
     useSearch: (search) => ({
-      values: SELECTION_MODES.map(m => m.id)
+      values: SELECTION_MODES.map((m) => m.id),
     }),
   };
   return {
     mode,
     handlers,
-    show: info && !!info.config.patchesField
+    show: info && !!info.config.patchesField,
   };
 }
 
@@ -174,7 +175,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
       if (!mode) {
         setView([]);
       }
-    }
+    },
   });
   const brainResultInfo = useBrainResultInfo();
   const canSelect = brainResultSelector.canSelect && labelSelector.canSelect;
@@ -199,14 +200,15 @@ export default function Embeddings({ containerHeight, dimensions }) {
               component={Value}
             />
           )}
-          {brainResultSelector.hasSelection && (!modeSelector.show || modeSelector.mode) && (
-            <Selector
-              {...labelSelector.handlers}
-              placeholder={"Color By"}
-              overflow={true}
-              component={Value}
-            />
-          )}
+          {brainResultSelector.hasSelection &&
+            (!modeSelector.show || modeSelector.mode) && (
+              <Selector
+                {...labelSelector.handlers}
+                placeholder={"Color By"}
+                overflow={true}
+                component={Value}
+              />
+            )}
         </Selectors>
         {showPlot && (
           <EmbeddingsPlot
@@ -249,7 +251,9 @@ function tracesToData(traces, style, getColor, plotSelection) {
       //   .map((d, idx) => (d.selected ? idx : null))
       //   .filter((d) => d !== null);
       const selectedpoints = plotSelection.length
-        ? plotSelection.map((id) => findIndexByKeyValue(trace, "id", id)).filter(p => p !== null)
+        ? plotSelection
+            .map((id) => findIndexByKeyValue(trace, "id", id))
+            .filter((p) => p !== null)
         : null;
 
       // const color = Color.fromCSSRGBValues(r, g, b)
@@ -265,21 +269,24 @@ function tracesToData(traces, style, getColor, plotSelection) {
         marker: {
           color: isCategorical
             ? trace.map((d) => {
-              const selected = plotSelection.length == 0 || plotSelection.includes(d.id);
-              if (selected) {
-                return color.toCSSRGBString();
-              } else {
-                return color.setBrightness(color.getBrightness() * 0.05).toCSSRGBString();
-              }
-            })
+                const selected =
+                  plotSelection.length == 0 || plotSelection.includes(d.id);
+                if (selected) {
+                  return color.toCSSRGBString();
+                } else {
+                  return color
+                    .setBrightness(color.getBrightness() * 0.05)
+                    .toCSSRGBString();
+                }
+              })
             : trace.map((d) => d.label),
           size: 6,
           colorbar: !isCategorical
             ? {
-              lenmode: "fraction",
-              x: 1,
-              y: 0.5,
-            }
+                lenmode: "fraction",
+                x: 1,
+                y: 0.5,
+              }
             : undefined,
         },
         name: key,
@@ -292,7 +299,7 @@ function tracesToData(traces, style, getColor, plotSelection) {
         unselected: {
           marker: {
             // color: color.setBrightness(0.2).toCSSRGBString(),
-            opacity: 0.2
+            opacity: 0.2,
           },
         },
       };
@@ -327,14 +334,14 @@ function EmbeddingsPlot({ brainKey, labelField, el, bounds }) {
         <Plot
           data={data}
           onSelected={(selected) => {
-            let result = {}
-            let pointIds = []
+            let result = {};
+            let pointIds = [];
             for (const p of selected.points) {
               if (!result[p.fullData.name]) {
-                result[p.fullData.name] = []
+                result[p.fullData.name] = [];
               }
-              result[p.fullData.name].push(p.id)
-              pointIds.push(p.id)
+              result[p.fullData.name].push(p.id);
+              pointIds.push(p.id);
             }
             handleSelected(pointIds);
           }}
@@ -393,9 +400,9 @@ function useBrainResultInfo() {
 
   if (brainKey && dataset) {
     const info = dataset.brainMethods.find((d) => d.key === brainKey);
-    return info
+    return info;
   }
-  return null
+  return null;
 }
 
 function useEmbeddings(brainKey, labelField) {
@@ -403,7 +410,7 @@ function useEmbeddings(brainKey, labelField) {
   const filters = useRecoilValue(fos.filters);
   const extended = useRecoilValue(fos.extendedStagesUnsorted);
   const datasetName = useRecoilValue(fos.datasetName);
-  const [selectionMode] = usePanelField('selectionMode');
+  const [selectionMode] = usePanelField("selectionMode");
   const [extendedSelection, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
@@ -413,18 +420,23 @@ function useEmbeddings(brainKey, labelField) {
   const hasExtendedSelection =
     extendedSelection && extendedSelection.length > 0;
   const [state, setState] = usePanelState();
-  const [plotSelection, setPlotSelection] = usePanelField('plotSelection', []);
+  const [plotSelection, setPlotSelection] = usePanelField("plotSelection", []);
   function onLoaded({ traces, style, values_count, selected_ids }) {
-    setState({ ...(state || {}), traces, style, isLoading: false, valuesCount: values_count });
+    setState({
+      ...(state || {}),
+      traces,
+      style,
+      isLoading: false,
+      valuesCount: values_count,
+    });
     if (selected_ids) {
-      setPlotSelection([...plotSelection, ...selected_ids])
+      setPlotSelection([...plotSelection, ...selected_ids]);
     }
   }
   function clearSelection() {
     setExtendedSelection([]);
     setPlotSelection([]);
   }
-
 
   // TODO - split this into two effects, one is for initial load the is for update
   useEffect(() => {
@@ -442,7 +454,7 @@ function useEmbeddings(brainKey, labelField) {
       extendedSelection:
         selectedSamples && selectedSamples.size > 0
           ? Array.from(selectedSamples)
-          : null
+          : null,
     }).then(onLoaded);
   }, [datasetName, brainKey, labelField, view, filters, selectionMode]); // extended, selectedSamples
 
@@ -483,7 +495,7 @@ const fetchEmbeddings = async ({
   filters,
   extended,
   extendedSelection,
-  selectionMode
+  selectionMode,
 }) => {
   const res = await getFetchFunction()("POST", "/embeddings", {
     brainKey,
@@ -493,7 +505,7 @@ const fetchEmbeddings = async ({
     view,
     extended,
     extendedSelection,
-    selectionMode
+    selectionMode,
   });
   return res;
 };
@@ -505,60 +517,52 @@ class Color {
   setBrightness(n: number) {
     const brightness = this.getBrightness();
     const diff = n - brightness;
-    return new Color(
-      this.r + diff,
-      this.g + diff,
-      this.b + diff
-    )
+    return new Color(this.r + diff, this.g + diff, this.b + diff);
   }
   getBrightness() {
     return (this.r + this.g + this.b) / 3;
   }
-  constructor(public r: number, public g: number, public b: number) {
-
-  }
+  constructor(public r: number, public g: number, public b: number) {}
   toCSSRGBString() {
-    return `rgb(${this.r * 255}, ${this.g * 255}, ${this.b * 255})`
+    return `rgb(${this.r * 255}, ${this.g * 255}, ${this.b * 255})`;
   }
 }
 
-
 function useSetSelectionModeView() {
-  const [mode] = usePanelField('selectionMode');
-  const [plotSelection] = usePanelField('plotSelection');
+  const [mode] = usePanelField("selectionMode");
+  const [plotSelection] = usePanelField("plotSelection");
   const brainResultInfo = useBrainResultInfo();
-  const patchesField = brainResultInfo?.config?.patchesField
+  const patchesField = brainResultInfo?.config?.patchesField;
   const setFilterLabelIds = useSetFilterLabelIds();
   const toPatches = useToPatches();
 
   useEffect(() => {
-    if (mode === 'select' && plotSelection && plotSelection.length > 0) {
+    if (mode === "select" && plotSelection && plotSelection.length > 0) {
       // setFilterLabelIds(patchesField, plotSelection)
-    } else if (mode === 'patches') {
+    } else if (mode === "patches") {
       toPatches(patchesField);
     }
-  }, [mode, plotSelection, patchesField])
-};
+  }, [mode, plotSelection, patchesField]);
+}
 
 function useSetFilterLabelIds() {
   const setView = fos.useSetView();
   return useRecoilCallback(
     ({ set }) =>
       async (field, ids) => {
-        setView(
-          [{
-            '_cls': 'fiftyone.core.stages.FilterLabels',
-            'kwargs': [
-              ['field', field],
-              ['filter', { '$in': ['$$this._id', ids] }]
-            ]
-          }]
-        );
+        setView([
+          {
+            _cls: "fiftyone.core.stages.FilterLabels",
+            kwargs: [
+              ["field", field],
+              ["filter", { $in: ["$$this._id", ids] }],
+            ],
+          },
+        ]);
       },
     []
   );
-};
-
+}
 
 // selection mode
 /**
