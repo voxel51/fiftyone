@@ -5,6 +5,7 @@ FiftyOne Server mutations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 from dataclasses import asdict
 import strawberry as gql
 import typing as t
@@ -115,11 +116,7 @@ class Mutation:
             )
             for group in sidebar_groups
         ]
-        print(
-            "[mutations.py] set_siebar_groups:\n\t "
-            "view._dataset.app_config.sidebar_groups:",
-            view._dataset.app_config.sidebar_groups,
-        )
+
         view._dataset._doc.save()
         state.view = view
         await dispatch_event(subscription, StateUpdate(state=state))
@@ -164,10 +161,8 @@ class Mutation:
         form: t.Optional[StateForm],
         info: Info,
     ) -> ViewResponse:
-        print(
-            "set_view called for dataset_name:{}\nview:{}\nview_name:{}\nchanging_saved_view: {} \n".format(
-                dataset_name, view, view_name, changing_saved_view
-            )
+        logging.debug(
+            f"set_view called with args:\ndataset_name:{dataset_name}\nview:{view}\nview_name:{view_name}\nchanging_saved_view:{changing_saved_view} \n"
         )
         state = get_state()
         state.selected = []
@@ -181,7 +176,6 @@ class Mutation:
             if ds.has_saved_view(view_name):
                 # Load a saved dataset view by name
                 result_view = ds.load_saved_view(view_name)
-                print("result_view from view_name", result_view)
                 view = result_view._serialize()  # serialized view stages
                 # Set view state
                 state.view = result_view
@@ -283,7 +277,6 @@ class Mutation:
             use_state = False
             # teams is stateless so dataset will be null
             dataset = fo.load_dataset(dataset_name)
-            print("loaded dataset:", dataset)
 
         if dataset is None:
             raise ValueError(
@@ -303,7 +296,7 @@ class Mutation:
             await dispatch_event(subscription, StateUpdate(state=state))
         else:
             view = get_dataset_view(dataset_name, stages=view_stages)
-            print("stateless save_view called. created view:\n", view)
+            logging.debug("stateless save_view called. created view: {view}")
             dataset.save_view(
                 view_name, view, description=description, color=color
             )
