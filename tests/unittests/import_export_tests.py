@@ -2077,6 +2077,193 @@ class DICOMDatasetTests(ImageDatasetTests):
         self.assertIn("PatientName", dataset2.get_field_schema())
 
 
+class CSVDatasetTests(ImageDatasetTests):
+    def _make_dataset(self):
+        samples = [
+            fo.Sample(
+                filepath=self._new_image(),
+                tags=["foo", "bar"],
+                float_field=1.0,
+                weather=fo.Classification(label="sunny"),
+            ),
+            fo.Sample(
+                filepath=self._new_image(),
+                tags=["spam", "eggs"],
+                float_field=2.0,
+                weather=fo.Classification(label="sunny"),
+            ),
+            fo.Sample(filepath=self._new_image()),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        return dataset
+
+    @drop_datasets
+    def test_csv_dataset(self):
+        dataset = self._make_dataset()
+
+        field_parsers = {
+            "weather": lambda value: (
+                fo.Classification(label=value) if value is not None else None
+            ),
+            "filepath": None,  # default parser
+            "tags": lambda value: value.strip("").split(","),
+            "float_field": lambda value: float(value),
+        }
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+            fields=["filepath", "tags", "float_field", "weather.label"],
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+            fields=field_parsers,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(dataset.values("filepath")), set(dataset2.values("filepath"))
+        )
+        self.assertSetEqual(
+            set(dataset.values("tags", unwind=True)),
+            set(dataset2.values("tags", unwind=True)),
+        )
+        self.assertTrue(
+            np.isclose(
+                dataset.bounds("float_field"),
+                dataset2.bounds("float_field"),
+            )
+        )
+        self.assertSetEqual(
+            set(dataset.values("weather.label")),
+            set(dataset2.values("weather.label")),
+        )
+
+        # Labels-only
+
+        data_path = self.images_dir
+        labels_path = os.path.join(self._new_dir(), "labels.csv")
+
+        dataset.export(
+            labels_path=labels_path,
+            dataset_type=fo.types.CSVDataset,
+            fields=["filepath", "tags", "float_field", "weather.label"],
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            data_path=data_path,
+            labels_path=labels_path,
+            dataset_type=fo.types.CSVDataset,
+            fields=field_parsers,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(dataset.values("filepath")), set(dataset2.values("filepath"))
+        )
+        self.assertSetEqual(
+            set(dataset.values("tags", unwind=True)),
+            set(dataset2.values("tags", unwind=True)),
+        )
+        self.assertTrue(
+            np.isclose(
+                dataset.bounds("float_field"),
+                dataset2.bounds("float_field"),
+            )
+        )
+        self.assertSetEqual(
+            set(dataset.values("weather.label")),
+            set(dataset2.values("weather.label")),
+        )
+
+        # Labels-only (absolute paths)
+
+        labels_path = os.path.join(self._new_dir(), "labels.csv")
+
+        dataset.export(
+            labels_path=labels_path,
+            dataset_type=fo.types.CSVDataset,
+            fields=["filepath", "tags", "float_field", "weather.label"],
+            abs_paths=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            labels_path=labels_path,
+            dataset_type=fo.types.GeoJSONDataset,
+            fields=field_parsers,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(dataset.values("filepath")), set(dataset2.values("filepath"))
+        )
+        self.assertSetEqual(
+            set(dataset.values("tags", unwind=True)),
+            set(dataset2.values("tags", unwind=True)),
+        )
+        self.assertTrue(
+            np.isclose(
+                dataset.bounds("float_field"),
+                dataset2.bounds("float_field"),
+            )
+        )
+        self.assertSetEqual(
+            set(dataset.values("weather.label")),
+            set(dataset2.values("weather.label")),
+        )
+
+        # Standard format (with rel dir)
+
+        export_dir = self._new_dir()
+        rel_dir = self.root_dir
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+            rel_dir=rel_dir,
+            fields=["filepath", "tags", "float_field", "weather.label"],
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+            fields=field_parsers,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(dataset.values("filepath")), set(dataset2.values("filepath"))
+        )
+        self.assertSetEqual(
+            set(dataset.values("tags", unwind=True)),
+            set(dataset2.values("tags", unwind=True)),
+        )
+        self.assertTrue(
+            np.isclose(
+                dataset.bounds("float_field"),
+                dataset2.bounds("float_field"),
+            )
+        )
+        self.assertSetEqual(
+            set(dataset.values("weather.label")),
+            set(dataset2.values("weather.label")),
+        )
+
+        relpath = _relpath(dataset2.first().filepath, export_dir)
+
+        # data/_images/<filename>
+        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+
+
 class GeoLocationDatasetTests(ImageDatasetTests):
     def _make_dataset(self):
         samples = [
