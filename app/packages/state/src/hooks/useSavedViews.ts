@@ -44,7 +44,7 @@ export default function useSavedViews() {
         );
       }
     },
-    []
+    [datasetNameValue, deleteView, onError, send, subscription]
   );
 
   const handleCreateSavedView = useCallback(
@@ -78,7 +78,7 @@ export default function useSavedViews() {
         );
       }
     },
-    []
+    [datasetNameValue, saveView, onError, send, subscription]
   );
 
   const handleUpdateSavedView = useCallback(
@@ -111,7 +111,7 @@ export default function useSavedViews() {
         );
       }
     },
-    []
+    [datasetNameValue, updateView, onError, send, subscription]
   );
 
   return {

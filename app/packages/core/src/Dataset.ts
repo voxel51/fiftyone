@@ -152,7 +152,7 @@ export const usePreLoadedDataset = (
       });
       setReady(true);
     }
-  }, [dataset, router]);
+  }, [dataset, router, update]);
 
   return [dataset, ready];
 };

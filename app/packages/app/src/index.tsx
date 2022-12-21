@@ -55,7 +55,7 @@ const App: React.FC = ({}) => {
 
   useEffect(() => {
     readyState === AppReadyState.CLOSED && reset();
-  }, [readyState]);
+  }, [readyState, reset]);
 
   const screenshot = useScreenshot(
     new URLSearchParams(window.location.search).get("context")
@@ -170,7 +170,7 @@ const App: React.FC = ({}) => {
     );
 
     return () => controller.abort();
-  }, []);
+  }, [clearModal, handleError, refresh, screenshot, subscription]);
 
   const plugins = usePlugins();
   const loadingElement = <Loading>Pixelating...</Loading>;

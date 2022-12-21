@@ -24,7 +24,7 @@ export const useEventHandler = (
     return () => {
       target && target.removeEventListener(eventType, wrapper);
     };
-  }, [target, eventType]);
+  }, [target, eventType, useCapture]);
 };
 
 export const useObserve = (target, handler) => {
@@ -63,7 +63,7 @@ export const useOutsideClick = (ref, handler) => {
         handler(event);
       }
     },
-    [handler]
+    [handler, ref]
   );
 
   useEventHandler(document, "mousedown", handleOutsideClick, true);

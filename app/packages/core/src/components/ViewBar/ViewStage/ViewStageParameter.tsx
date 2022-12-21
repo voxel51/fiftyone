@@ -207,6 +207,9 @@ const ObjectEditor = ({
     active,
     stageState.matches("focusedViewBar.yes"),
     themeMode,
+    containerSet,
+    stageState,
+    state,
   ]);
 
   const attach = () => {
@@ -408,6 +411,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
                 switch (e.key) {
                   case "Tab":
                     send("COMMIT");
+                    break;
                   case "Escape":
                     send("COMMIT");
                     break;
