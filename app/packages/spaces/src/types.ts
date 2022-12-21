@@ -44,6 +44,7 @@ export type SpaceNodeJSON = {
 
 export type PanelProps = {
   node: SpaceNode;
+  spaceId: string;
 };
 
 export type PanelTabProps = {
