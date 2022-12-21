@@ -9,10 +9,13 @@ import glob
 import os
 import numpy as np
 
+
+
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone as fo
 from fiftyone.server.decorators import route
@@ -22,65 +25,41 @@ import fiftyone.server.view as fosv
 MAX_CATEGORIES = 100
 
 
+cache = dict()
+
 class Embeddings(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
-        print(data)
+
+        # print(data)
         datasetName = data["dataset"]
         key = data["brainKey"]
         labels_field = data["labelsField"]
         filters = data["filters"]
         extended_stages = data["extended"]
         extended_selection = data["extendedSelection"]
+        selection_mode = data["selectionMode"]
         stages = data["view"]
         dataset = fo.load_dataset(datasetName)
+        print(data)
 
-        # All available points in the index and their sample IDs
         results = dataset.load_brain_results(key)
+
         all_points = results.points
         all_sample_ids = results._sample_ids
-
-        ###############################################################################
-        # Now we need to figure out which points from `results` are in the view
-        # currently loaded in the view bar, which are the only points we want to
-        # display in the embeddings plot
-        ###############################################################################
-
+    
         # This is the view loaded in the view bar
         view = fosv.get_view(datasetName, stages=stages)
 
-        # One option is to let the `results` object do the math for us
         results.use_view(view, allow_missing=True)
         curr_points = results._curr_points
         curr_sample_ids = results._curr_sample_ids
+        curr_label_ids = results._curr_label_ids
         label_values = results.view.values(labels_field)
 
         # TODO optimize count
         values_count = len(set(label_values))
-
-        ###############################################################################
-        # Now we need to decide whether to render any points as selected/deselected
-        ###############################################################################
-
-        if filters or extended_stages:
-            # There's an extended view, so select points in the extended view and
-            # deselect all others
-            extended_view = fosv.get_view(
-                datasetName,
-                stages=stages,
-                filters=filters,
-                extended_stages=extended_stages,
-            )
-            extended_ids = extended_view.values("id")
-            selected_ids = set(curr_sample_ids) & set(extended_ids)
-        else:
-            # No filter is applied, everything can be selected
-            selected_ids = None
-
-        if selected_ids and extended_selection:
-            selected_ids = selected_ids & set(extended_selection)
-        elif extended_selection:
-            selected_ids = set(extended_selection)
+        selected_ids = get_selected_ids(datasetName, filters, extended_stages, extended_selection, stages, curr_sample_ids)
 
         distinct_values = set(label_values)
         style = (
@@ -89,15 +68,34 @@ class Embeddings(HTTPEndpoint):
             else "continuous"
         )
 
-        zipped = zip(curr_sample_ids, curr_points, label_values)
+        point_ids = curr_label_ids if selection_mode == "patches" else curr_sample_ids
+
+        zipped = zip(point_ids, curr_points, label_values)
         traces = {}
         for (id, points, label) in zipped:
             add_to_trace(traces, selected_ids, id, points, label, style)
 
-        print(traces)
+        return {"traces": traces, "style": style, "values_count": values_count, "selected_ids": None}
 
-        return {"traces": traces, "style": style, "values_count": values_count}
-
+def get_selected_ids(datasetName, filters, extended_stages, extended_selection, stages, curr_sample_ids):
+    if filters or extended_stages:
+        # There's an extended view, so select points in the extended view and
+        # deselect all others
+        extended_view = fosv.get_view(
+            datasetName,
+            stages=stages,
+            filters=filters,
+            extended_stages=extended_stages,
+        )
+        extended_ids = extended_view.values("id")
+        return set(curr_sample_ids) & set(extended_ids)
+    else:
+        # No filter is applied, everything can be selected
+        return None
+    if selected_ids and extended_selection:
+        return selected_ids & set(extended_selection)
+    elif extended_selection:
+        return set(extended_selection)
 
 def add_to_trace(traces, selected_ids, id, points, label, style):
     key = label if style == "categorical" else "points"
