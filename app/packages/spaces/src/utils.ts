@@ -23,7 +23,7 @@ export function getNodes(node: SpaceNode): SpaceNode[] {
   return nodes;
 }
 
-export function panelNotFoundError(name: SpaceNodeType) {
-  console.error(`Panel with name ${name} cannot be found`);
+export function warnPanelNotFound(name: SpaceNodeType) {
+  console.warn(`Panel with name ${name} cannot be found`);
   return null;
 }

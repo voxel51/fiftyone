@@ -70,12 +70,12 @@ export default function Space({ node, id }: SpaceProps) {
           )}
         </PanelTabs>
         {node.hasActiveChild() ? (
-          <Panel node={activeChild as SpaceNode} />
+          <Panel node={activeChild as SpaceNode} spaceId={id} />
         ) : null}
       </PanelContainer>
     );
   } else if (node.isPanel()) {
-    return <Panel node={node} />;
+    return <Panel node={node} spaceId={id} />;
   } else if (node.isEmpty()) {
     return (
       <PanelContainer data-type="panel-container">
