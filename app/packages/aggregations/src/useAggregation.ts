@@ -10,7 +10,7 @@ type AggregationParams = {
   dataset?: any;
   sample_ids?: any;
 };
-// TODO: remove after removing from useGeoLocation
+
 export default function useAggregation({
   view,
   filters,

@@ -405,7 +405,7 @@ const getFieldAndValue = (
   for (const key of path.split(".")) {
     field = schema[key];
 
-    if (field?.embeddedDocType === "fiftyone.core.frames.FrameSample") {
+    if (field && field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
       return [null, null, false];
     }
 

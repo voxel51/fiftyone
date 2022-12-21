@@ -93,7 +93,7 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
               cursor
               node {
                 name
-                # TODO: @mani, can the view selector rely on this fragment instead of creating a new db call?
+                # TODO: can the view selector reuse this fragment instead?
                 #                savedViews {
                 #                  viewName
                 #                  slug

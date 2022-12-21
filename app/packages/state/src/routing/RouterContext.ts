@@ -255,7 +255,11 @@ async function fetchGraphQL(
   );
 
   if ("errors" in data && data.errors) {
-    console.log("graphql error", data.errors, data);
+    // TODO: figure out how why the aggregationQuery is getting
+    //  triggered for non-existent datasets and handle this upstream, but
+    //  silence the error for now since the no data from the failed query
+    //  is required/expected
+    console.error("GraphQLResponse data returned errors:", data.errors, data);
     return null;
     // throw new GraphQLError(data.errors as unknown as GraphQLError[]);
   }
@@ -263,7 +267,6 @@ async function fetchGraphQL(
 }
 
 const fetchRelay: FetchFunction = async (params, variables) => {
-  // console.log("fetchRelay", params.text, variables);
   return fetchGraphQL(params.text, variables);
 };
 

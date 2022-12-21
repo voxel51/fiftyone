@@ -22,7 +22,8 @@ export const createStage = (
   parameters,
   submitted,
   loading,
-  prevStage
+  prevStage,
+  added?
 ) => ({
   id: id || uuid(),
   stage: stage,
@@ -37,12 +38,10 @@ export const createStage = (
   loading: loading,
   fieldNames: fieldNames,
   prevStage: prevStage || "",
+  added: added || false,
 });
 
 function getStageInfo(context) {
-  // if (context?.stageInfo) {
-  //   return context.stageInfo;
-  // }
   return getFetchFunction()("GET", "/stages");
 }
 
@@ -108,7 +107,6 @@ function makeEmptyView(fieldNames, stageInfo) {
 
 function setStages(ctx, stageInfo) {
   const view = ctx.view;
-  console.log("setStages with ctx, stageInfo", ctx, stageInfo);
   const stageMap = Object.fromEntries(stageInfo.map((s) => [s.name, s.params]));
   if (
     viewsAreEqual(view, serializeView(ctx.stages, stageMap, ctx.fieldNames))
@@ -203,20 +201,8 @@ const viewBarMachine = Machine(
           onDone: {
             target: "running",
             actions: assign({
-              stageInfo: (_, e) => {
-                console.log(
-                  "[viewBarMachine.ts]" +
-                    " loading.invoke.onDone.actions.stageInfo",
-                  e.data.stages
-                );
-                return e.data.stages;
-              },
+              stageInfo: (_, e) => e.data.stages,
               stages: (ctx, e) => {
-                console.log(
-                  "[viewBarMachine.ts]" +
-                    " loading.invoke.onDone.actions.stages view=",
-                  ctx.view
-                );
                 const view = ctx.view;
                 if (view.length === 0)
                   return makeEmptyView(ctx.fieldNames, e.data.stages);

@@ -82,7 +82,6 @@ export const aggregation = selectorFamily({
       const result = get(
         aggregations({ ...params, paths: get(schemaAtoms.filterFields(path)) })
       ).filter((data) => data.path === path);
-      // console.log("aggregation selector result", result[0]);
       // Avoid downstream errors due to undefined.map by returning an
       // object for failed graphQL aggregations
       return result

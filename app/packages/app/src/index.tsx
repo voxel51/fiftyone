@@ -89,7 +89,6 @@ const App: React.FC = ({}) => {
               break;
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
-              // console.log(payload);
               const { colorscale, config, ...data } = payload.state;
               payload.refresh && refresh();
               const isAnUpdate = payload.update;
