@@ -5,7 +5,7 @@ import {
   Switch,
   Typography,
 } from "@mui/material";
-import { selectorFamily } from "recoil";
+import { atom, selectorFamily, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { usePanelState, usePanelTitle } from "./hooks";
 
@@ -22,6 +22,11 @@ export const fieldSchema = selectorFamily({
   get: () => () => {
     return [];
   },
+});
+
+export const excludedPluginsAtom = atom({
+  key: "excludedPluginsAtom",
+  default: new Set(),
 });
 
 export enum PluginComponentType {
@@ -56,8 +61,9 @@ export function FormPluginComponent() {
 }
 
 export function useActivePlugins(type: PluginComponentType) {
+  const excludedPlugins = useRecoilValue(excludedPluginsAtom);
   if (type !== PluginComponentType.Panel) return [];
-  return [
+  const plugins = [
     {
       name: "Samples",
       label: "Samples",
@@ -100,6 +106,7 @@ export function useActivePlugins(type: PluginComponentType) {
       type: PluginComponentType.Panel,
     },
   ];
+  return plugins.filter(({ name }) => !excludedPlugins.has(name));
 }
 
 export function useOutsideClick() {
@@ -124,7 +131,6 @@ export function IconButton(props: IconButtonProps) {
         p: 0.5,
         ml: 0.5,
         color: "#fff",
-        ":hover": { backgroundColor: "hsl(200, 0%, 25%)" },
         ...props.sx,
       }}
     />
