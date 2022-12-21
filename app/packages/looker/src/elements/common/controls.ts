@@ -4,7 +4,6 @@
 
 import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
-import { ICONS } from "../util";
 import {
   fullscreen,
   help,
@@ -305,6 +304,7 @@ export class PlusElement<State extends BaseState> extends BaseElement<
     element.style.display = "flex";
     element.title = "Zoom in (+)";
     element.style.gridArea = "2 / 10 / 2 / 10";
+    console.log(plus);
     element.appendChild(plus);
     return element;
   }
