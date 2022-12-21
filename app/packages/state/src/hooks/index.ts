@@ -6,6 +6,7 @@ export {
 } from "./useBeforeScreenshot";
 export { default as useClearModal } from "./useClearModal";
 export { default as useCreateLooker } from "./useCreateLooker";
+export { default as useDimensions } from "./useDimensions";
 export { default as useExpandSample } from "./useExpandSample";
 export { default as useHelpPanel } from "./useHelpPanel";
 export { default as useHover } from "./useHover";
@@ -34,5 +35,7 @@ export { default as useTooltip } from "./useTooltip";
 export * from "./useOnSelectLabel";
 export * from "./useStateUpdate";
 export { default as useTo } from "./useTo";
+export { default as useToClips } from "./useToClips";
+export { default as useToEvaluationPatches } from "./useToEvaluationPatches";
+export { default as useToPatches } from "./useToPatches";
 export { default as useUpdateSample } from "./useUpdateSample";
-export { default as useDimensions } from "./useDimensions";
