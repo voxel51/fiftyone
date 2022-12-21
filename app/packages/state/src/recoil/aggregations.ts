@@ -251,9 +251,9 @@ export const values = selectorFamily<
     (params) =>
     ({ get }) => {
       if (params) {
-        console.log("values {{get}} params", params);
+        // console.log("values {{get}} params", params);
         const result = get(aggregation(params));
-        console.log("values {{get}} result:)", result);
+        // console.log("values {{get}} result:)", result);
         if (result && result.values) {
           return result.values.map(({ value }) => value).sort() || [];
         }
