@@ -24,6 +24,7 @@ import * as fos from "@fiftyone/state";
 import withSuspense from "./withSuspense";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import FilterOption from "./FilterOption";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -171,8 +172,14 @@ const Wrapper = ({
       {Boolean(selectedSet.size) && (
         <>
           {totalCount > 3 && excludeAtom && (
-            <ExcludeOption
-              excludeAtom={excludeAtom}
+            // <ExcludeOption
+            //   excludeAtom={excludeAtom}
+            //   valueName={name}
+            //   color={color}
+            // />
+            <FilterOption
+              // excludeAtom={excludeAtom}
+              labels={Array.from(selectedSet) as string[]}
               valueName={name}
               color={color}
             />
