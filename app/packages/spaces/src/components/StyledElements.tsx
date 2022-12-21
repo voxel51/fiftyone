@@ -12,7 +12,7 @@ export const PanelContainer = styled.div`
 
 export const PanelTabs = styled.div`
   display: flex;
-  background: #252525;
+  background: var(--joy-palette-background-header);
   padding-bottom: 0px;
 `;
 
@@ -31,7 +31,7 @@ export const StyledPanelItem = styled.div`
   padding: 4px 8px;
 
   &:hover {
-    background: #2b2b2b;
+    background: var(--joy-palette-background-body);
   }
 `;
 
@@ -39,8 +39,15 @@ export const StyledTab = styled.button<{ active?: boolean }>`
   display: flex;
   align-items: center;
   cursor: pointer;
-  background: ${(props) => (props.active ? "#1a1a1a" : "#2c2c2c")};
+  background: ${(props) =>
+    props.active
+      ? "var(--joy-palette-background-level2)"
+      : "var(--joy-palette-background-button)"};
   border: none;
-  color: #fff;
+  color: ${(props) =>
+    props.active
+      ? "var(--joy-palette-text-primary)"
+      : "var(--joy-palette-text-secondary)"};
   padding: 0px 12px 4px 12px;
+  border-right: 1px solid var(--joy-palette-background-level3);
 `;

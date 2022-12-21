@@ -12,7 +12,7 @@ export type AddPanelItemProps = {
   name: SpaceNodeType;
   label: string;
   Icon?: React.ComponentType;
-  onClick?: Function;
+  onClick?: () => void;
   spaceId: string;
 };
 

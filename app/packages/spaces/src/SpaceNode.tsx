@@ -42,6 +42,20 @@ export default class SpaceNode {
   getActiveChild() {
     return this.children.find((child) => child.id === this.activeChild);
   }
+  getNodeIndex() {
+    return this.parent?.children.findIndex((child) => child.id === this.id);
+  }
+  getNodeBefore() {
+    const nodeIndex = this.getNodeIndex() as number;
+    return this.parent?.children[nodeIndex - 1];
+  }
+  getNodeAfter() {
+    const nodeIndex = this.getNodeIndex() as number;
+    return this.parent?.children[nodeIndex + 1];
+  }
+  isActive() {
+    return this.parent?.activeChild === this.id;
+  }
   isRoot() {
     return !this.parent;
   }
