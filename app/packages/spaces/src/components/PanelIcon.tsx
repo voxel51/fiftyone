@@ -1,12 +1,12 @@
 import ExtensionIcon from "@mui/icons-material/Extension";
 import { usePanel } from "../hooks";
 import { PanelIconProps } from "../types";
-import { panelNotFoundError } from "../utils";
+import { warnPanelNotFound } from "../utils";
 
 export default function PanelIcon(props: PanelIconProps) {
   const { name } = props;
   const panel = usePanel(name);
-  if (!panel) return panelNotFoundError(name);
+  if (!panel) return warnPanelNotFound(name);
   const { Icon } = panel;
   const PanelTabIcon = Icon || ExtensionIcon;
   return (
