@@ -95,7 +95,7 @@ const useStateUpdate = () => {
         if (
           !previousDataset ||
           previousDataset.id !== dataset.id ||
-          dataset.groupSlice != previousDataset.groupSlice
+          dataset.groupSlice !== previousDataset.groupSlice
         ) {
           if (dataset?.name !== previousDataset?.name) {
             reset(sidebarMode(false));
@@ -135,6 +135,7 @@ const useStateUpdate = () => {
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
         }
+
         set(datasetAtom, dataset);
       }
 

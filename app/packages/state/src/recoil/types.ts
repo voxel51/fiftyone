@@ -39,6 +39,19 @@ export namespace State {
     [key: number]: string;
   }
 
+  export interface SavedView {
+    id: string;
+    datasetId: string;
+    name: string;
+    slug: string;
+    description?: string;
+    color?: string;
+    viewStages: Stage[];
+    createdAt: DateTime;
+    lastLoadedAt: DateTime;
+    lastModifiedAt?: DateTime;
+  }
+
   export interface Evaluation {}
 
   export interface Run {
@@ -62,19 +75,6 @@ export namespace State {
       gtField: string;
       predField: string;
     };
-  }
-
-  export interface SavedView {
-    id: string;
-    datasetId: string;
-    name: string;
-    slug: string;
-    description?: string;
-    color?: string;
-    viewStages: Stage[];
-    createdAt: DateTime;
-    lastLoadedAt: DateTime;
-    lastModifiedAt?: DateTime;
   }
 
   export interface AnnotationRun extends Run {

@@ -325,19 +325,19 @@ class SampleCollection(object):
     # @tags.setter
     # def tags(self, tags):
     #     raise NotImplementedError("Subclass must implement tags")
-
-    @property
-    def description(self):
-        """A description of the underlying dataset.
-
-        See :meth:`fiftyone.core.dataset.Dataset.description` for more
-        information.
-        """
-        raise NotImplementedError("Subclass must implement description")
-
-    @description.setter
-    def description(self, description):
-        raise NotImplementedError("Subclass must implement description")
+    #
+    # @property
+    # def description(self):
+    #     """A description of the underlying dataset.
+    #
+    #     See :meth:`fiftyone.core.dataset.Dataset.description` for more
+    #     information.
+    #     """
+    #     raise NotImplementedError("Subclass must implement description")
+    #
+    # @description.setter
+    # def description(self, description):
+    #     raise NotImplementedError("Subclass must implement description")
 
     @property
     def info(self):
