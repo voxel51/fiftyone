@@ -82,8 +82,17 @@ export const aggregation = selectorFamily({
       const result = get(
         aggregations({ ...params, paths: get(schemaAtoms.filterFields(path)) })
       ).filter((data) => data.path === path);
-      console.log("aggregation selector result", result[0]);
-      return result ? result[0] : [];
+      // console.log("aggregation selector result", result[0]);
+      // Avoid downstream errors due to undefined.map by returning an
+      // object for failed graphQL aggregations
+      return result
+        ? result[0]
+        : {
+            path: path,
+            count: 0,
+            exists: 0,
+            values: [],
+          };
     },
 });
 
@@ -245,11 +254,13 @@ export const values = selectorFamily<
       if (params) {
         console.log("values {{get}} params", params);
 
-        return get(aggregation(params)).values
+        const result = get(aggregation(params)).values
           ? get(aggregation(params))
               .values.map(({ value }) => value)
               .sort()
           : [];
+        console.log("values {{get}} result:)", result);
+        return result;
       }
       return [];
     },

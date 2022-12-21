@@ -218,11 +218,14 @@ const ObjectEditor = ({
       const { x, y } = state.matches("editing")
         ? followRef.current.getBoundingClientRect()
         : { x: 0, y: 0 };
-      // containerRef.current.style null
-      containerRef.current.style.top = state.matches("editing")
+
+      // containerRef.current.style is undefined
+      // containerRef.current
+      followRef.current.style.top = state.matches("editing")
         ? `${y}px`
         : "unset";
-      containerRef.current.style.left = state.matches("editing")
+      // containerRef.current
+      followRef.current.style.left = state.matches("editing")
         ? `${x}px`
         : "unset";
       const { x: barX, width: barWidth } =

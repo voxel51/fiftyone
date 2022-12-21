@@ -265,7 +265,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
   useEffect(() => {
     isEditing && inputRef.current && inputRef.current.focus();
     !isEditing && inputRef.current && inputRef.current.blur();
-  }, [isEditing]);
+  }, [isEditing, inputRef.current]);
 
   return (
     <ViewStageContainer

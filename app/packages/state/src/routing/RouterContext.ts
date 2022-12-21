@@ -263,7 +263,7 @@ async function fetchGraphQL(
 }
 
 const fetchRelay: FetchFunction = async (params, variables) => {
-  console.log("fetchRelay", params.text, variables);
+  // console.log("fetchRelay", params.text, variables);
   return fetchGraphQL(params.text, variables);
 };
 
