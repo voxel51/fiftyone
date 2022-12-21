@@ -40,6 +40,7 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
         onClick={() => {
           setOpen(!open);
         }}
+        title="New panel"
       >
         <Add sx={{ fontSize: 16 }} />
       </IconButton>
@@ -47,6 +48,7 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
         <Popout style={{ top: "80%", left: "16%", padding: 0 }}>
           {availablePanels.map((panel) => (
             <AddPanelItem
+              key={panel.name}
               spaceId={spaceId}
               {...panel}
               node={node}
