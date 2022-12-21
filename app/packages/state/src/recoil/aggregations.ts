@@ -252,14 +252,11 @@ export const values = selectorFamily<
     ({ get }) => {
       if (params) {
         console.log("values {{get}} params", params);
-
-        const result = get(aggregation(params)).values
-          ? get(aggregation(params))
-              .values.map(({ value }) => value)
-              .sort()
-          : [];
+        const result = get(aggregation(params));
         console.log("values {{get}} result:)", result);
-        return result;
+        if (result && result.values) {
+          return result.values.map(({ value }) => value).sort() || [];
+        }
       }
       return [];
     },
