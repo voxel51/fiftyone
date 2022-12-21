@@ -3297,16 +3297,6 @@ class ImageSegmentationDirectoryExporter(
         self._media_exporter.close()
 
 
-def _write_mask(mask, mask_path):
-    if mask.dtype not in (np.uint8, np.uint16):
-        if mask.max() <= 255:
-            mask = mask.astype(np.uint8)
-        else:
-            mask = mask.astype(np.uint16)
-
-    etai.write(mask, mask_path)
-
-
 class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
     """Exporter that writes a labeled image dataset to disk with labels stored
     in `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.

@@ -130,8 +130,6 @@ def objects_to_segmentations(
 
             image[out_field] = segmentation
 
-        sample.save()
-
     if mask_targets is not None:
         if not sample_collection.default_mask_targets:
             sample_collection.default_mask_targets = mask_targets
@@ -321,8 +319,6 @@ def segmentations_to_detections(
                 mask_targets=mask_targets, mask_types=mask_types
             )
 
-        sample.save()
-
 
 def instances_to_polylines(
     sample_collection, in_field, out_field, tolerance=2, filled=True
@@ -369,8 +365,6 @@ def instances_to_polylines(
             image[out_field] = label.to_polylines(
                 tolerance=tolerance, filled=filled
             )
-
-        sample.save()
 
 
 def segmentations_to_polylines(
@@ -442,8 +436,6 @@ def segmentations_to_polylines(
                 tolerance=tolerance,
             )
 
-        sample.save()
-
 
 def classification_to_detections(sample_collection, in_field, out_field):
     """Converts the :class:`fiftyone.core.labels.Classification` field of the
@@ -483,8 +475,6 @@ def classification_to_detections(sample_collection, in_field, out_field):
                 confidence=label.confidence,
             )
             image[out_field] = fol.Detections(detections=[detection])
-
-        sample.save()
 
 
 def classifications_to_detections(sample_collection, in_field, out_field):
@@ -533,5 +523,3 @@ def classifications_to_detections(sample_collection, in_field, out_field):
                 detections.append(detection)
 
             image[out_field] = fol.Detections(detections=detections)
-
-        sample.save()

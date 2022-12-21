@@ -30,7 +30,6 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
-import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
@@ -1359,16 +1358,12 @@ class SampleCollection(object):
         """Validates that the collection has a field of the given type.
 
         Args:
-            field_name: the field name
-            ftype: the expected field type. Must be a subclass of
-                :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): the
-                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
-                field. Used only when ``ftype`` is an embedded
-                :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            subfield (None): the type of the contained field. Used only when
-                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
-                :class:`fiftyone.core.fields.DictField`
+            path: a field name or ``embedded.field.name``
+            ftype (None): an optional field type to enforce. Must be a subclass
+                of :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to enforce. Must be a subclass(es) of
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
 
         Raises:
             ValueError: if the field does not exist or does not have the
