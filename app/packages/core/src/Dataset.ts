@@ -1,14 +1,14 @@
 import * as fos from "@fiftyone/state";
 import { toCamelCase } from "@fiftyone/utilities";
-import { useContext, useLayoutEffect, useState } from "react";
-import { graphql, usePreloadedQuery, useQueryLoader } from "react-relay";
-
+import React, { useState } from "react";
+import { usePreloadedQuery } from "react-relay";
+import { graphql } from "relay-runtime";
 import {
   DatasetQuery,
   DatasetQuery$data,
 } from "./__generated__/DatasetQuery.graphql";
 
-const DatasetQuery = graphql`
+export const DatasetNodeQuery = graphql`
   query DatasetQuery($name: String!, $view: BSONArray = null) {
     dataset(name: $name, view: $view) {
       id
@@ -45,6 +45,8 @@ const DatasetQuery = graphql`
         embeddedDocType
         path
         dbField
+        description
+        info
       }
       maskTargets {
         name
@@ -94,8 +96,9 @@ const DatasetQuery = graphql`
       version
       viewCls
       appConfig {
-        mediaFields
         gridMediaField
+        mediaFields
+        modalMediaField
         plugins
         sidebarGroups {
           name
@@ -108,12 +111,22 @@ const DatasetQuery = graphql`
   }
 `;
 
-export function usePrepareDataset(dataset, setReady) {
-  const update = fos.useStateUpdate();
-  const router = useContext(fos.RouterContext);
+export const usePreLoadedDataset = (
+  queryRef
+): [DatasetQuery$data["dataset"], boolean] => {
+  const [ready, setReady] = useState(false);
 
-  useLayoutEffect(() => {
+  const { dataset } = usePreloadedQuery<DatasetQuery>(
+    DatasetNodeQuery,
+    queryRef
+  );
+  const update = fos.useStateUpdate();
+  const router = React.useContext(fos.RouterContext);
+
+  React.useLayoutEffect(() => {
+
     const { colorscale, config, state } = router?.state || {};
+
     if (dataset) {
       update(() => {
         return {
@@ -128,22 +141,6 @@ export function usePrepareDataset(dataset, setReady) {
       setReady(true);
     }
   }, [dataset, router]);
-}
-export function usePreLoadedDataset(
-  queryRef
-): [DatasetQuery$data["dataset"], boolean] {
-  const [ready, setReady] = useState(false);
 
-  const { dataset } = usePreloadedQuery<DatasetQuery>(DatasetQuery, queryRef);
-  usePrepareDataset(dataset, setReady);
   return [dataset, ready];
-}
-export function useDatasetLoader() {
-  const [queryRef, loadQuery] = useQueryLoader(DatasetQuery);
-  return [
-    queryRef,
-    (name) => {
-      loadQuery({ name });
-    },
-  ];
-}
+};

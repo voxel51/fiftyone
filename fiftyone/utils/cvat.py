@@ -4328,9 +4328,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     # whenever possible, we prefer to maintain the order of the
                     # users view, since they may have intentionally sorted it in a
                     # particular way that they want to preserve in CVAT.
-                    samples_batch = self._sort_by_media_field(
-                        samples_batch, media_field
-                    )
+                    samples_batch = samples_batch.sort_by(media_field)
 
                 anno_tags = []
                 anno_shapes = []
@@ -6580,13 +6578,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             track["attributes"] = attrs
 
         return tracks
-
-    def _sort_by_media_field(self, samples, media_field):
-        filepaths, ids = samples.values([media_field, "id"])
-        filenames = [os.path.basename(f) for f in filepaths]
-
-        _, sorted_ids = zip(*sorted(zip(filenames, ids), key=lambda x: x[0]))
-        return samples.select(sorted_ids, ordered=True)
 
     def _parse_local_files(self, paths, data):
         files = {}

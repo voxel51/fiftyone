@@ -191,14 +191,13 @@ const MediaFields = ({ modal }) => {
   const [selectedMediaField, setSelectedMediaField] = useRecoilState(
     fos.selectedMediaField(modal)
   );
-
   const mediaFields = useRecoilValue(fos.mediaFields);
 
   if (mediaFields.length <= 1) return null;
 
   return (
     <>
-      <PopoutSectionTitle>Media Field</PopoutSectionTitle>
+      <PopoutSectionTitle>Media field</PopoutSectionTitle>
       <RadioGroup
         choices={mediaFields}
         value={selectedMediaField}

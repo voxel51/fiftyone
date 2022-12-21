@@ -154,11 +154,6 @@ export const alpha = atomFamily<number, boolean>({
   default: DEFAULT_ALPHA,
 });
 
-export const colorPool = atom<string[]>({
-  key: "colorPool",
-  default: [],
-});
-
 export const colorSeed = atomFamily<number, boolean>({
   key: "colorSeed",
   default: 1,
@@ -172,16 +167,6 @@ export const appTeamsIsOpen = atom({
 export const savedLookerOptions = atom({
   key: "savedLookerOptions",
   default: {},
-});
-
-export const appConfig = atom<State.Config>({
-  key: "appConfig",
-  default: null,
-});
-
-export const colorscale = atom<RGB[]>({
-  key: "colorscale",
-  default: null,
 });
 
 export const patching = atom<boolean>({

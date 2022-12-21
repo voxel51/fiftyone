@@ -22,10 +22,13 @@ const Grid: React.FC<{}> = () => {
   const expandSample = useExpandSample(store);
   const initialized = useRef(false);
   const deferred = deferrer(initialized);
+
   const lookerOptions = fos.useLookerOptions(false);
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
+
   const selected = useRecoilValue(fos.selectedSamples);
   const [next, pager] = usePage(false, store);
+
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
 
@@ -82,6 +85,30 @@ const Grid: React.FC<{}> = () => {
     return flashlight;
   });
 
+  useLayoutEffect(
+    deferred(() => {
+      if (isTagging || !flashlight.isAttached()) {
+        return;
+      }
+
+      next.current = 0;
+      flashlight.reset();
+      store.reset();
+      freeVideos();
+    }),
+    [
+      stringifyObj(useRecoilValue(fos.filters)),
+      useRecoilValue(fos.datasetName),
+      useRecoilValue(fos.cropToContent(false)),
+      fos.filterView(useRecoilValue(fos.view)),
+      useRecoilValue(fos.groupSlice(false)),
+      useRecoilValue(fos.refresher),
+      useRecoilValue(fos.similarityParameters),
+      useRecoilValue(fos.selectedMediaField(false)),
+      useRecoilValue(fos.extendedStagesUnsorted),
+    ]
+  );
+
   const select = fos.useSelectFlashlightSample();
   const selectSample = useRef(select);
   selectSample.current = select;
@@ -118,44 +145,19 @@ const Grid: React.FC<{}> = () => {
   );
   const isTagging = taggingLabels || taggingSamples;
 
-  useLayoutEffect(
-    deferred(() => {
-      if (isTagging || !flashlight.isAttached()) {
-        return;
-      }
-
-      next.current = 0;
-      flashlight.reset();
-      store.reset();
-      freeVideos();
-    }),
-    [
-      stringifyObj(useRecoilValue(fos.filters)),
-      useRecoilValue(fos.datasetName),
-      useRecoilValue(fos.cropToContent(false)),
-      fos.filterView(useRecoilValue(fos.view)),
-      useRecoilValue(fos.groupSlice(false)),
-      useRecoilValue(fos.refresher),
-      useRecoilValue(fos.similarityParameters),
-      useRecoilValue(fos.selectedMediaField(false)),
-      useRecoilValue(fos.extendedStagesUnsorted),
-    ]
-  );
-
   useEventHandler(
     document,
     "keydown",
     useRecoilCallback(
-      ({ snapshot, set }) =>
-        async (event: KeyboardEvent) => {
-          if (event.key !== "Escape") {
-            return;
-          }
+      ({ snapshot, set }) => async (event: KeyboardEvent) => {
+        if (event.key !== "Escape") {
+          return;
+        }
 
-          if (!(await snapshot.getPromise(fos.modal))) {
-            set(fos.selectedSamples, new Set());
-          }
-        },
+        if (!(await snapshot.getPromise(fos.modal))) {
+          set(fos.selectedSamples, new Set());
+        }
+      },
       []
     )
   );

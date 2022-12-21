@@ -421,12 +421,15 @@ export const mergeUpdates = <State extends BaseState>(
   return mergeWith(merger, state, updates);
 };
 
-const ERRORS = {
-  AppError: AppError,
-  GraphQLError: GraphQLError,
-  NetworkError: NetworkError,
-  ServerError: ServerError,
-};
+const ERRORS = [AppError, GraphQLError, NetworkError, ServerError].reduce(
+  (acc, cur) => {
+    return {
+      ...acc,
+      [cur.constructor.name]: cur,
+    };
+  },
+  {}
+);
 
 export const createWorker = (
   listeners?: {

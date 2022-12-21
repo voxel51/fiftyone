@@ -5000,7 +5000,7 @@ __metadata:
     "@babel/preset-typescript": ^7.9.0
     "@babel/register": ^7.9.0
     cross-env: ^7.0.3
-    electron: 18.2.3
+    electron: 18.3.7
     electron-builder: ^23.0.3
     electron-devtools-installer: ^3.2.0
     typescript: ^4.7.4
@@ -6948,16 +6948,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron@npm:18.2.3":
-  version: 18.2.3
-  resolution: "electron@npm:18.2.3"
+"electron@npm:18.3.7":
+  version: 18.3.7
+  resolution: "electron@npm:18.3.7"
   dependencies:
     "@electron/get": ^1.13.0
     "@types/node": ^16.11.26
     extract-zip: ^1.0.3
   bin:
     electron: cli.js
-  checksum: d60fcebd13d133ec6d40392700ea18e9afd3a1d212ddb18dd3ccdf3aae3c2fc7b573a36ef6c4b8be9eb471e26996edb8da79984e5056ef619b1a4713041072f7
+  checksum: 365a82082926ccf062e9dcc7d997e43988c9d2a1b1bf9ea1e5c3f00d0ec05c9e45d3382cbfa51673a50e0f0127cabc3c4eb5ced0bd797ea2eebe36f1a27e0ecb
   languageName: node
   linkType: hard
 
