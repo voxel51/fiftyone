@@ -6,7 +6,7 @@ export default function IconButton(props: IconButtonProps) {
       disableRipple
       {...props}
       sx={{
-        color: (theme) => theme.palette.text.primary,
+        color: (theme) => theme.palette.text.secondary,
         p: 0.5,
         ml: 0.5,
         ...props.sx,

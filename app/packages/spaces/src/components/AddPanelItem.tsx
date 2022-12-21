@@ -22,7 +22,7 @@ export default function AddPanelItem({
       }}
     >
       <PanelIcon name={name} />
-      {label}
+      {label || (name as string)}
     </StyledPanelItem>
   );
 }
