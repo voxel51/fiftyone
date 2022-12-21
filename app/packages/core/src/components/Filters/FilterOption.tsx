@@ -77,48 +77,7 @@ const currentSelection = (
   }
 };
 
-const Item = React.memo(
-  React.forwardRef(({ icon, value, tooltip }: Option, ref) => {
-    if (!icon) {
-      <StyledPanelItem>
-        <div>{value}</div>
-      </StyledPanelItem>;
-    }
-
-    const getIcon = (icon: string) => {
-      switch (icon.toLowerCase()) {
-        case "filteralticon":
-          return <FilterAltIcon />;
-        case "filteraltofficon":
-          return <FilterAltOffIcon />;
-        case "imageicon":
-          return <ImageIcon />;
-        case "hideimageicon":
-          return <HideImageIcon />;
-      }
-    };
-
-    const children = (
-      <div style={{ display: "flex", flexDirection: "row" }} ref={ref}>
-        <span>{getIcon(icon!)}</span>
-        <span>{value}</span>
-      </div>
-    );
-
-    return (
-      <StyledPanelItem>
-        {tooltip ? (
-          <Tooltip text={tooltip!}>{children}</Tooltip>
-        ) : (
-          <>{children}</>
-        )}
-      </StyledPanelItem>
-    );
-  })
-);
-
 const FilterOption: React.FC<Props> = ({ labels, color, valueName }) => {
-  console.info(labels, valueName, color);
   const [key, setKey] = React.useState("Filter labels");
   const [open, setOpen] = React.useState(false);
   const theme = useTheme();
@@ -128,6 +87,11 @@ const FilterOption: React.FC<Props> = ({ labels, color, valueName }) => {
   useOutsideClick(popoutRef, () => {
     setOpen(false);
   });
+
+  const onSelectItem = (value: string) => {
+    setKey(value);
+    setOpen(false);
+  };
 
   const Selected = () => {
     // render the icon for selected filter method
@@ -170,7 +134,7 @@ const FilterOption: React.FC<Props> = ({ labels, color, valueName }) => {
       {open && (
         <Popout style={{ padding: 0 }}>
           {options.map((option: Option) => (
-            <Item {...option} />
+            <Item {...option} onClick={() => onSelectItem(option.value)} />
           ))}
         </Popout>
       )}
@@ -179,6 +143,56 @@ const FilterOption: React.FC<Props> = ({ labels, color, valueName }) => {
 };
 
 export default FilterOption;
+
+type ItemProp = {
+  icon?: string;
+  value: string;
+  tooltip: string;
+  onClick: () => void;
+};
+const Item = React.memo(
+  React.forwardRef(({ icon, value, tooltip, onClick }: ItemProp, ref) => {
+    if (!icon) {
+      <StyledPanelItem>
+        <div>{value}</div>
+      </StyledPanelItem>;
+    }
+
+    const getIcon = (icon: string) => {
+      switch (icon.toLowerCase()) {
+        case "filteralticon":
+          return <FilterAltIcon />;
+        case "filteraltofficon":
+          return <FilterAltOffIcon />;
+        case "imageicon":
+          return <ImageIcon />;
+        case "hideimageicon":
+          return <HideImageIcon />;
+      }
+    };
+
+    const children = (
+      <div
+        style={{ display: "flex", flexDirection: "row" }}
+        ref={ref}
+        onClick={() => onClick(value)}
+      >
+        <span>{getIcon(icon!)}</span>
+        <span>{value}</span>
+      </div>
+    );
+
+    return (
+      <StyledPanelItem>
+        {tooltip ? (
+          <Tooltip text={tooltip!}>{children}</Tooltip>
+        ) : (
+          <>{children}</>
+        )}
+      </StyledPanelItem>
+    );
+  })
+);
 
 // TODO: once feat-space-embeddings branch is merged, the bottom should be removed. It's a duplciate.
 export type PopoutProps = PropsWithChildren<{
@@ -202,7 +216,7 @@ function Popout({ children, style = {}, modal }: PopoutProps) {
       style={{
         ...show,
         ...style,
-        zIndex: 1000000000001,
+        zIndex: "200000 !important",
         right: modal ? 0 : "unset",
       }}
     >
