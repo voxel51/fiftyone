@@ -4,9 +4,10 @@ import useSetView from "./useSetView";
 
 export default function useToEvaluationPatches() {
   const onComplete = useRecoilCallback(
-    ({ set }) => () => {
-      set(patching, false);
-    },
+    ({ set }) =>
+      () => {
+        set(patching, false);
+      },
     []
   );
   const setView = useSetView(true, true, onComplete);
@@ -29,4 +30,4 @@ export default function useToEvaluationPatches() {
       },
     []
   );
-};
+}

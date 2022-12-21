@@ -1,7 +1,11 @@
 import React, { useContext, useState } from "react";
 import { selector, Snapshot, useRecoilCallback, useRecoilValue } from "recoil";
 import { useSpring } from "@react-spring/web";
-import {useToClips, useToPatches, useToEvaluationPatches} from "@fiftyone/state";
+import {
+  useToClips,
+  useToPatches,
+  useToEvaluationPatches,
+} from "@fiftyone/state";
 
 import {
   CLIPS_FRAME_FIELDS,
@@ -90,7 +94,6 @@ const evaluationKeys = selector<string[]>({
     return keys;
   },
 });
-
 
 const LabelsClips = ({ close }) => {
   const fields = useRecoilValue(clipsFields);
