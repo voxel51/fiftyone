@@ -1,14 +1,18 @@
 import { PanelContext } from "../contexts";
-import { usePanel } from "../hooks";
+import { usePanel, useSpaces } from "../hooks";
 import { PanelProps } from "../types";
-import { panelNotFoundError } from "../utils";
+import { warnPanelNotFound } from "../utils";
 import { StyledPanel } from "./StyledElements";
 import React from "react";
 
-function Panel({ node }: PanelProps) {
+function Panel({ node, spaceId }: PanelProps) {
+  const { spaces } = useSpaces(spaceId);
   const panelName = node.type;
   const panel = usePanel(panelName);
-  if (!panel) return panelNotFoundError(panelName);
+  if (!panel) {
+    spaces.removeNode(node);
+    return warnPanelNotFound(panelName);
+  }
   const { component: Component } = panel;
   return (
     <StyledPanel id={node.id}>
