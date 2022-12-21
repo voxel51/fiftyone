@@ -19,8 +19,7 @@
         "README.md"
     ],
     "dependencies": {
-        "@fiftyone/core": "*",
-        "framer-motion": "^6.2.8"
+        "@fiftyone/core": "*"
     },
     "devDependencies": {
         "prettier": "^2.7.1",
