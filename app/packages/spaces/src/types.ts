@@ -12,7 +12,7 @@ export type AddPanelItemProps = {
   name: SpaceNodeType;
   label: string;
   Icon?: React.ComponentType;
-  onClick?: Function;
+  onClick?: () => void;
   spaceId: string;
 };
 
@@ -34,10 +34,10 @@ export type SplitPanelButtonProps = {
 };
 
 export type SpaceNodeJSON = {
-  activeChild: SpaceNode["activeChild"];
+  activeChild?: SpaceNode["activeChild"];
   children: Array<SpaceNodeJSON>;
   id: SpaceNode["id"];
-  layout: SpaceNode["layout"];
+  layout?: SpaceNode["layout"];
   type?: SpaceNode["type"];
   pinned?: SpaceNode["pinned"];
 };

@@ -1,6 +1,9 @@
 import { Layout } from "./enums";
 import SpaceNode from "./SpaceNode";
+import { SpaceNodeJSON } from "./types";
 import { spaceNodeFromJSON } from "./utils";
+
+type SpaceTreeUpdateCallback = (rootNode: SpaceNodeJSON) => void;
 
 // a class for querying and manipulating the space tree
 // the space tree has a root node and each node has a list of children
@@ -9,10 +12,15 @@ import { spaceNodeFromJSON } from "./utils";
 export default class SpaceTree {
   // the root node of the tree
   root: SpaceNode;
-  onUpdate: Function = () => {};
+  onUpdate: SpaceTreeUpdateCallback = () => {
+    // do nothing
+  };
 
   // the constructor takes the root node, the selected node, and the layout
-  constructor(serializedTree?: any, onTreeUpdate?: Function) {
+  constructor(
+    serializedTree?: SpaceNodeJSON,
+    onTreeUpdate?: SpaceTreeUpdateCallback
+  ) {
     this.root = serializedTree
       ? spaceNodeFromJSON(serializedTree)
       : new SpaceNode("root");
@@ -56,8 +64,11 @@ export default class SpaceTree {
       parentNode?.remove();
       this.joinNode(ancestorNode);
     } else if (ancestorNode) {
+      const nextPotentialActiveNode =
+        node.getNodeAfter() || node.getNodeBefore();
       node.remove();
-      ancestorNode.activeChild = ancestorNode?.getLastPanel()?.id;
+      if (node.isActive())
+        ancestorNode.activeChild = nextPotentialActiveNode?.id;
     }
     if (ancestorNode) this.updateTree(ancestorNode);
   }
