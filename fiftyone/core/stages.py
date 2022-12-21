@@ -908,21 +908,20 @@ class ExcludeGroups(ViewStage):
         dataset = foz.load_zoo_dataset("quickstart-groups")
 
         #
-        # Select some specific groups by ID
+        # Exclude some specific groups by ID
         #
 
         group_ids = dataset.take(10).values("group.id")
 
         stage = fo.ExcludeGroups(group_ids)
-        view = dataset.add_stage(stage)
+        all_other_groups_view = dataset.add_stage(stage)
 
-
-        view_group_ids = set(view.values("group.id"))
+        excluded_group_ids = set(group_ids)
+        all_other_group_ids = set(all_other_groups_view.values("group.id"))
         dataset_group_ids = set(dataset.values("group.id"))
 
-
-        assert view_group_ids == set(group_ids)
-        assert set() = view_group_ids.intersection(dataset_group_ids)
+        assert set() == all_other_group_ids.intersection(excluded_group_ids)
+        assert dataset_group_ids == all_other_group_ids.union(excluded_group_ids)
 
 
     Args:
@@ -967,6 +966,10 @@ class ExcludeGroups(ViewStage):
                 "placeholder": "list,of,group,ids",
             }
         ]
+
+    def validate(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            raise ValueError("%s has no groups" % type(sample_collection))
 
 
 class ExcludeLabels(ViewStage):

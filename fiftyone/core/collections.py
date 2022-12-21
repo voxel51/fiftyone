@@ -3250,21 +3250,26 @@ class SampleCollection(object):
             dataset = foz.load_zoo_dataset("quickstart-groups")
 
             #
-            # Select some specific groups by ID
+            # Exclude some specific groups by ID
             #
 
-            group_ids = dataset.take(10).values("group.id")
+            view = dataset.take(2)
+            group_ids = view.values("group.id")
+            all_other_groups = dataset.exclude_groups(group_ids)
 
-            view = dataset.exclude_groups(group_ids)
+            #
+            # Verify set complements
+            #
 
-            view_group_ids = set(view.values("group.id"))
+            excluded_group_ids = set(group_ids)
+            all_other_group_ids = set(all_other_groups.values("group.id"))
             dataset_group_ids = set(dataset.values("group.id"))
 
-            assert view_group_ids == set(group_ids)
-            assert set() = view_group_ids.intersection(dataset_group_ids)
+            assert set() == all_other_group_ids.intersection(excluded_group_ids)
+            assert dataset_group_ids == all_other_group_ids.union(excluded_group_ids)
 
         Args:
-            groups_ids: the groups to select. Can be any of the following:
+            groups_ids: the groups to exclude. Can be any of the following:
 
                 -   a group ID
                 -   an iterable of group IDs
