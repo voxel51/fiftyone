@@ -46,8 +46,6 @@ export function useSpaceNodes(spaceId: string) {
   }, [spaces]);
 }
 
-// Hook to use currently available panels
-// todo: add can duplicate logic
 export function usePanels() {
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
@@ -57,17 +55,17 @@ export function usePanels() {
   return panels.concat(plots);
 }
 
-// Hook to use a panel matching id provided
-export function usePanel(id: SpaceNodeType) {
+export function usePanel(name: SpaceNodeType) {
   const panels = usePanels();
-  return panels.find(({ name }) => name === id);
+  return panels.find((panel) => panel.name === name);
 }
 
 /**
- * Dynamically set the title of a panel from the component of a panel. If `id`
- *  is not provided, `node.id` from panel context will be used
+ * Get and set title of a panel
+ *
+ * Note: `id` is optional if hook is used within the component of a panel.
  */
-export function usePanelTitle(id?: string) {
+export function usePanelTitle(id?: string): [string, (title: string) => void] {
   const panelContext = useContext(PanelContext);
   const [panelTitles, setPanelTitles] = useRecoilState(panelTitlesState);
 
@@ -86,10 +84,15 @@ export function usePanelContext() {
   return useContext(PanelContext);
 }
 
-export function usePanelState(defaultState?: any, id?: string) {
+/**
+ * Get and set state of a panel
+ *
+ * Note: `id` is optional if hook is used within the component of a panel.
+ */
+export function usePanelState<T>(defaultState?: T, id?: string) {
   const panelContext = usePanelContext();
   const panelId = id || (panelContext?.node?.id as string);
-  const [state, setState] = useRecoilState(panelStateSelector(panelId));
+  const [state, setState] = useRecoilState<T>(panelStateSelector(panelId));
   const computedState = state || defaultState;
 
   return [computedState, setState];
@@ -98,7 +101,7 @@ export function usePanelState(defaultState?: any, id?: string) {
 /**
  * Can only be used within a panel component
  */
-export function usePanelStateCallback(callback: (panelState: any) => void) {
+export function usePanelStateCallback<T>(callback: (panelState: T) => void) {
   const panelContext = usePanelContext();
   const panelId = panelContext?.node?.id as string;
   return useRecoilCallback(
@@ -115,7 +118,8 @@ export function usePanelStateCallback(callback: (panelState: any) => void) {
 
 /**
  * Lazily read panel state on demand
- * @returns a promise which resolves to current state of a panel
+ * @returns a state resolver function which return promise that resolves to the
+ * current state of a panel
  */
 export function usePanelStateLazy() {
   const panelContext = usePanelContext();
@@ -136,10 +140,10 @@ export function usePanelStateLazy() {
  * Should only be used within a panel component whose state is an object or
  *  an array
  */
-export function usePanelStatePartial(key: string, defaultState: any) {
+export function usePanelStatePartial<T>(key: string, defaultState: T) {
   const panelContext = usePanelContext();
   const panelId = panelContext?.node?.id as string;
-  const [state, setState] = useRecoilState(
+  const [state, setState] = useRecoilState<T>(
     panelStatePartialSelector({ panelId, key })
   );
   const computedState = state || defaultState;
