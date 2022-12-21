@@ -313,17 +313,18 @@ class SampleCollection(object):
             "Subclass must implement default_group_slice"
         )
 
-    @property
-    def tags(self):
-        """The list of tags of the underlying dataset.
-
-        See :meth:`fiftyone.core.dataset.Dataset.tags` for more information.
-        """
-        raise NotImplementedError("Subclass must implement tags")
-
-    @tags.setter
-    def tags(self, tags):
-        raise NotImplementedError("Subclass must implement tags")
+    # TODO: this is not in develop. Should it be? Or should it be removed here?
+    # @property
+    # def tags(self):
+    #     """The list of tags of the underlying dataset.
+    #
+    #     See :meth:`fiftyone.core.dataset.Dataset.tags` for more information.
+    #     """
+    #     raise NotImplementedError("Subclass must implement tags")
+    #
+    # @tags.setter
+    # def tags(self, tags):
+    #     raise NotImplementedError("Subclass must implement tags")
 
     @property
     def description(self):
@@ -1352,16 +1353,22 @@ class SampleCollection(object):
     #                 "Field '%s' must be an instance of %s; found %s"
     #                 % (field_name, ftype, field)
     #             )
-    def validate_field_type(self, path, ftype=None, embedded_doc_type=None):
+    def validate_field_type(
+        self, path, ftype=None, embedded_doc_type=None, subfield=None
+    ):
         """Validates that the collection has a field of the given type.
 
         Args:
-            path: a field name or ``embedded.field.name``
-            ftype (None): an optional field type to enforce. Must be a subclass
-                of :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type or
-                iterable of types to enforce. Must be a subclass(es) of
-                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            field_name: the field name
+            ftype: the expected field type. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): the
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
+                field. Used only when ``ftype`` is an embedded
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            subfield (None): the type of the contained field. Used only when
+                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
+                :class:`fiftyone.core.fields.DictField`
 
         Raises:
             ValueError: if the field does not exist or does not have the
@@ -9429,18 +9436,14 @@ def _parse_field_name(
 
         if sample_collection.get_field(prefix + root_field_name) is None:
             # ftype = "frame field" if is_frame_field else "field"
-            # raise ValueError(
-            #     "%s has no %s '%s'"
-            #     % (
-            #         sample_collection.__class__.__name__,
-            #         ftype,
-            #         root_field_name,
-            #     )
-            # )
             ftype = "Frame field" if is_frame_field else "Field"
             raise ValueError(
                 "%s '%s' does not exist on collection '%s'"
-                % (ftype, root_field_name, sample_collection.name)
+                % (
+                    ftype,
+                    root_field_name,
+                    sample_collection.__class__.__name__,
+                )
             )
 
     # Detect list fields in schema

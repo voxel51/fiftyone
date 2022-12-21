@@ -336,8 +336,8 @@ class Session(object):
 
         self.plots = plots
 
-        final_view_name = None
-        if view and view.name:
+        final_view_name = view_name
+        if not final_view_name and view and view.name:
             final_view_name = view.name
 
         self._state = StateDescription(

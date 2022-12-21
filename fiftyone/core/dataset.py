@@ -646,7 +646,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def tags(self):
-        """A list of tags on the dataset.
+        """A list of tags given to the dataset.
 
         Examples::
 
