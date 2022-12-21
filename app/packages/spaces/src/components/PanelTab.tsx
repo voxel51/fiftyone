@@ -2,7 +2,7 @@ import { IconButton } from "@fiftyone/components";
 import { Close } from "@mui/icons-material";
 import { usePanel, usePanelTitle, useSpaces } from "../hooks";
 import { PanelTabProps } from "../types";
-import { panelNotFoundError } from "../utils";
+import { warnPanelNotFound } from "../utils";
 import PanelIcon from "./PanelIcon";
 import { StyledTab } from "./StyledElements";
 
@@ -12,7 +12,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
   const panel = usePanel(panelName);
   const [title] = usePanelTitle(node.id);
 
-  if (!panel) return panelNotFoundError(panelName);
+  if (!panel) return warnPanelNotFound(panelName);
 
   return (
     <StyledTab
