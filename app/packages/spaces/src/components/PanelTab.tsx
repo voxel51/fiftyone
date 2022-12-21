@@ -22,7 +22,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
       active={active}
     >
       <PanelIcon name={panelName as string} />
-      {title || panel.label}
+      {title || panel.label || panel.name}
       {!node.pinned && (
         <IconButton
           onClick={(e) => {
@@ -30,6 +30,8 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
             e.stopPropagation();
             spaces.removeNode(node);
           }}
+          sx={{ pb: 0 }}
+          title="Close"
         >
           <Close sx={{ fontSize: 16 }} />
         </IconButton>
