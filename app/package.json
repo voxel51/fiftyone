@@ -18,6 +18,7 @@
         "gen:schema": "strawberry export-schema fiftyone.server.app:schema > schema.graphql"
     },
     "devDependencies": {
+        "@testing-library/jest-dom": "latest",
         "@testing-library/react": "latest",
         "@testing-library/react-hooks": "latest",
         "@typescript-eslint/eslint-plugin": "^5.44.0",

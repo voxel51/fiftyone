@@ -1,4 +1,3 @@
-import ReactDOM from "react-dom/client";
 import { RecoilRoot, useRecoilState } from "recoil";
 import { SpacesRoot } from "./";
 import "./App.css";
@@ -73,21 +72,17 @@ function App() {
         onClick={() => toggleExclude("Map")}
       />
       <label htmlFor="map">Map</label>
-      <div style={{ height: "calc(100vh - 25px)", width: "100vw" }}>
+      <div style={{ height: "calc(100vh - 30px)", width: "100vw" }}>
         <SpacesRoot id="main" defaultState={defaultState} />
       </div>
     </div>
   );
 }
 
-function RecoilApp() {
+export default function RecoilApp() {
   return (
     <RecoilRoot>
       <App />
     </RecoilRoot>
   );
 }
-
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <RecoilApp />
-);

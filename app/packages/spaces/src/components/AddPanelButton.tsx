@@ -45,7 +45,10 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
         <Add sx={{ fontSize: 16 }} />
       </IconButton>
       {open && (
-        <Popout style={{ top: "80%", left: "16%", padding: 0 }}>
+        <Popout
+          style={{ top: "80%", left: "16%", padding: 0 }}
+          data-testid="addPanelPopup"
+        >
           {availablePanels.map((panel) => (
             <AddPanelItem
               key={panel.name}
