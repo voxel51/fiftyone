@@ -10,7 +10,6 @@ import os
 import numpy as np
 
 
-
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
@@ -26,6 +25,7 @@ MAX_CATEGORIES = 100
 
 
 cache = dict()
+
 
 class Embeddings(HTTPEndpoint):
     @route
@@ -47,7 +47,7 @@ class Embeddings(HTTPEndpoint):
 
         all_points = results.points
         all_sample_ids = results._sample_ids
-    
+
         # This is the view loaded in the view bar
         view = fosv.get_view(datasetName, stages=stages)
 
@@ -59,7 +59,14 @@ class Embeddings(HTTPEndpoint):
 
         # TODO optimize count
         values_count = len(set(label_values))
-        selected_ids = get_selected_ids(datasetName, filters, extended_stages, extended_selection, stages, curr_sample_ids)
+        selected_ids = get_selected_ids(
+            datasetName,
+            filters,
+            extended_stages,
+            extended_selection,
+            stages,
+            curr_sample_ids,
+        )
 
         distinct_values = set(label_values)
         style = (
@@ -68,16 +75,31 @@ class Embeddings(HTTPEndpoint):
             else "continuous"
         )
 
-        point_ids = curr_label_ids if selection_mode == "patches" else curr_sample_ids
+        point_ids = (
+            curr_label_ids if selection_mode == "patches" else curr_sample_ids
+        )
 
         zipped = zip(point_ids, curr_points, label_values)
         traces = {}
         for (id, points, label) in zipped:
             add_to_trace(traces, selected_ids, id, points, label, style)
 
-        return {"traces": traces, "style": style, "values_count": values_count, "selected_ids": None}
+        return {
+            "traces": traces,
+            "style": style,
+            "values_count": values_count,
+            "selected_ids": None,
+        }
 
-def get_selected_ids(datasetName, filters, extended_stages, extended_selection, stages, curr_sample_ids):
+
+def get_selected_ids(
+    datasetName,
+    filters,
+    extended_stages,
+    extended_selection,
+    stages,
+    curr_sample_ids,
+):
     if filters or extended_stages:
         # There's an extended view, so select points in the extended view and
         # deselect all others
@@ -96,6 +118,7 @@ def get_selected_ids(datasetName, filters, extended_stages, extended_selection, 
         return selected_ids & set(extended_selection)
     elif extended_selection:
         return set(extended_selection)
+
 
 def add_to_trace(traces, selected_ids, id, points, label, style):
     key = label if style == "categorical" else "points"
