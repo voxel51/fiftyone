@@ -30,7 +30,6 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
-import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
@@ -1262,71 +1261,31 @@ class SampleCollection(object):
                         "Frame field '%s' does not exist" % field_name
                     )
 
-    def validate_field_type(
-        self, field_name, ftype, embedded_doc_type=None, subfield=None
-    ):
+    def validate_field_type(self, path, ftype=None, embedded_doc_type=None):
         """Validates that the collection has a field of the given type.
 
         Args:
-            field_name: the field name
-            ftype: the expected field type. Must be a subclass of
-                :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): the
-                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
-                field. Used only when ``ftype`` is an embedded
-                :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            subfield (None): the type of the contained field. Used only when
-                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
-                :class:`fiftyone.core.fields.DictField`
+            path: a field name or ``embedded.field.name``
+            ftype (None): an optional field type to enforce. Must be a subclass
+                of :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to enforce. Must be a subclass(es) of
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
 
         Raises:
             ValueError: if the field does not exist or does not have the
                 expected type
         """
-        field_name, _ = self._handle_group_field(field_name)
-        field_name, is_frame_field = self._handle_frame_field(field_name)
-        if is_frame_field:
-            schema = self.get_frame_field_schema()
-        else:
-            schema = self.get_field_schema()
+        field = self.get_field(
+            path, ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
 
-        if field_name not in schema:
-            ftype = "Frame field" if is_frame_field else "Field"
+        if field is None:
+            _path, is_frame_field = self._handle_frame_field(path)
+            ftype = "frame field" if is_frame_field else "field"
             raise ValueError(
-                "%s '%s' does not exist on collection '%s'"
-                % (ftype, field_name, self.name)
+                "%s has no %s '%s'" % (self.__class__.__name__, ftype, _path)
             )
-
-        field = schema[field_name]
-
-        if embedded_doc_type is not None:
-            if not isinstance(field, fof.EmbeddedDocumentField) or (
-                field.document_type is not embedded_doc_type
-            ):
-                raise ValueError(
-                    "Field '%s' must be an instance of %s; found %s"
-                    % (field_name, ftype(embedded_doc_type), field)
-                )
-        elif subfield is not None:
-            if not isinstance(field, (fof.ListField, fof.DictField)):
-                raise ValueError(
-                    "Field type %s must be an instance of %s when a subfield "
-                    "is provided" % (ftype, (fof.ListField, fof.DictField))
-                )
-
-            if not isinstance(field, ftype) or not isinstance(
-                field.field, subfield
-            ):
-                raise ValueError(
-                    "Field '%s' must be an instance of %s; found %s"
-                    % (field_name, ftype(field=subfield()), field)
-                )
-        else:
-            if not isinstance(field, ftype):
-                raise ValueError(
-                    "Field '%s' must be an instance of %s; found %s"
-                    % (field_name, ftype, field)
-                )
 
     def tag_samples(self, tags):
         """Adds the tag(s) to all samples in this collection, if necessary.
@@ -2253,6 +2212,8 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        output_dir=None,
+        rel_dir=None,
         **kwargs,
     ):
         """Applies the :class:`FiftyOne model <fiftyone.core.models.Model>` or
@@ -2290,6 +2251,17 @@ class SampleCollection(object):
                 raising an error if predictions cannot be generated for a
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
+            output_dir (None): an optional output directory in which to write
+                segmentation images. Only applicable if the model generates
+                segmentations. If none is provided, the segmentations are
+                stored in the database
+            rel_dir (None): an optional relative directory to strip from each
+                input filepath to generate a unique identifier that is joined
+                with ``output_dir`` to generate an output path for each
+                segmentation image. This argument allows for populating nested
+                subdirectories in ``output_dir`` that match the shape of the
+                input paths. The path is converted to an absolute path (if
+                necessary) via :func:`fiftyone.core.utils.normalize_path`
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
         """
@@ -2302,6 +2274,8 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            output_dir=output_dir,
+            rel_dir=rel_dir,
             **kwargs,
         )
 
@@ -8696,6 +8670,41 @@ class SampleCollection(object):
         # @todo handle "groups.<slice>.field.name", if it becomes necessary
         db_fields_map = self._get_db_fields_map(frames=frames)
         return [db_fields_map.get(p, p) for p in paths]
+
+    def _get_media_fields(
+        self, include_filepath=True, whitelist=None, frames=False
+    ):
+        media_fields = {}
+
+        if frames:
+            schema = self.get_frame_field_schema()
+            app_media_fields = set()
+        else:
+            schema = self.get_field_schema()
+            app_media_fields = set(self._dataset.app_config.media_fields)
+
+        if not include_filepath:
+            app_media_fields.discard("filepath")
+
+        for field_name, field in schema.items():
+            if field_name in app_media_fields:
+                media_fields[field_name] = None
+            elif isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+                field.document_type, fol._HasMedia
+            ):
+                media_fields[field_name] = field.document_type
+
+        if whitelist is not None:
+            if etau.is_container(whitelist):
+                whitelist = set(whitelist)
+            else:
+                whitelist = {whitelist}
+
+            media_fields = {
+                k: v for k, v in media_fields.items() if k in whitelist
+            }
+
+        return media_fields
 
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
