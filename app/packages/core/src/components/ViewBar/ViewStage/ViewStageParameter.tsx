@@ -215,6 +215,7 @@ const ObjectEditor = ({
   const attach = () => {
     request && window.cancelAnimationFrame(request);
     request = window.requestAnimationFrame(() => {
+      if (!containerRef.current) return;
       const { x, y } = state.matches("editing")
         ? followRef.current.getBoundingClientRect()
         : { x: 0, y: 0 };
