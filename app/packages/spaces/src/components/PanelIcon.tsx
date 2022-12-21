@@ -15,7 +15,6 @@ export default function PanelIcon(props: PanelIconProps) {
         width: "1rem",
         height: "1rem",
         marginRight: "0.5rem",
-        verticalAlign: "sub",
       }}
     />
   );
