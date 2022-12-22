@@ -29,12 +29,14 @@ from typing import List, Optional
 
 _LABEL_TAGS = "_label_tags"
 
+
 @gql.input
 class ExtendedViewForm:
     filters: Optional[JSON] = None
     mixed: Optional[bool] = None
-    samples_ids: Optional[List[str]] = None
+    sample_ids: Optional[List[str]] = None
     slice: Optional[str] = None
+
 
 async def load_saved_views(cls, object_ids):
     if len(object_ids) < 1:
@@ -169,8 +171,8 @@ def get_saved_view_stages(identifier):
 async def load_view(
     dataset_name: str,
     serialized_view: BSONArray,
+    form: ExtendedViewForm,
     view_name: Optional[str] = None,
-    form: ExtendedViewForm
 ) -> foc.SampleCollection:
     def run() -> foc.SampleCollection:
         dataset = fo.load_dataset(dataset_name)
@@ -178,20 +180,22 @@ async def load_view(
         if view_name:
             return dataset.load_saved_view(view_name)
         else:
-            view = get_dataset_view(
+            view = get_view(
                 dataset_name,
-                serialized_view,
+                stages=serialized_view,
                 filters=form.filters,
                 sample_filter=SampleFilter(
                     group=GroupElementFilter(slice=form.slice)
                 ),
             )
 
-        if form.sample_ids:
-            view = fov.make_optimized_select_view(view, form.sample_ids)
+            if form.sample_ids:
+                view = fov.make_optimized_select_view(view, form.sample_ids)
 
-        if form.mixed:
-            view = view.select_group_slices(_allow_mixed=True)
+            if form.mixed:
+                view = view.select_group_slices(_allow_mixed=True)
+
+            return view
 
     loop = asyncio.get_running_loop()
 

@@ -189,7 +189,7 @@ type EvaluationRunConfig implements RunConfig {
 input ExtendedViewForm {
   filters: JSON = null
   mixed: Boolean = null
-  samplesIds: [String!] = null
+  sampleIds: [String!] = null
   slice: String = null
 }
 

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ad0cd4b8c23a8ce64694a94f1cddb890>>
+ * @generated SignedSource<<0cb770c001251345fcf2f0a021830c27>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,7 +12,7 @@ import { ConcreteRequest, Query } from 'relay-runtime';
 export type ExtendedViewForm = {
   filters?: object | null;
   mixed?: boolean | null;
-  samplesIds?: ReadonlyArray<string> | null;
+  sampleIds?: ReadonlyArray<string> | null;
   slice?: string | null;
 };
 export type countValuesQuery$variables = {

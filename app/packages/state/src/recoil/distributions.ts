@@ -50,7 +50,7 @@ const extendedViewForm = selector({
       sampleIds: get(extendedSelection),
       filters: get(filters),
       slice: get(groupSlice(false)),
-      mixed: get(groupStatistics(false)) === "slice",
+      mixed: get(groupStatistics(false)) === "group",
     };
   },
 });

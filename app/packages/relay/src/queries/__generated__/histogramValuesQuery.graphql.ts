@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b1ed3d137c02cc3ad1ef8b07690e45ec>>
+ * @generated SignedSource<<d68c3a1a06fcb4ed1c0112f12fbe57a9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,7 +12,7 @@ import { ConcreteRequest, Query } from 'relay-runtime';
 export type ExtendedViewForm = {
   filters?: object | null;
   mixed?: boolean | null;
-  samplesIds?: ReadonlyArray<string> | null;
+  sampleIds?: ReadonlyArray<string> | null;
   slice?: string | null;
 };
 export type histogramValuesQuery$variables = {
