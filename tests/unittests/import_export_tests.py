@@ -2793,7 +2793,9 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset2.count("predictions.detections"),
         )
 
+        print("dataset2.first().filepath", dataset2.first().filepath)
         relpath = _relpath(dataset2.first().filepath, export_dir)
+        print("relpath=", relpath)
 
         # data/_images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
@@ -2821,7 +2823,11 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset.count("filepath2"), dataset2.count("filepath2")
         )
         for filepath in dataset2.values("filepath2"):
-            self.assertTrue(filepath.startswith(field_dir))
+            # error here
+            # filepath=/var/folders/8f/wbp6tz9j19z4nff5zt3d1_k80000gn/T/tmp_u2i5qrj/_images/jnk9st45irjtx3be59d8ydtf.jpg
+            # export_dir=/var/folders/8f/wbp6tz9j19z4nff5zt3d1_k80000gn/T/tmp_u2i5qrj/n0luidwmog2rca4b41e7wua1
+            print("filepath={} export_dir={}".format(filepath, export_dir))
+            self.assertTrue(filepath.startswith(export_dir))
 
         # Alternate media (don't export media)
 

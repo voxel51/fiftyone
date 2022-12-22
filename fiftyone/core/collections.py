@@ -1287,98 +1287,71 @@ class SampleCollection(object):
                         "Frame field '%s' does not exist" % field_name
                     )
 
-    # def validate_field_type(
-    #     self, field_name, ftype, embedded_doc_type=None, subfield=None
-    # ):
-    #     """Validates that the collection has a field of the given type.
-    #
-    #     Args:
-    #         field_name: the field name
-    #         ftype: the expected field type. Must be a subclass of
-    #             :class:`fiftyone.core.fields.Field`
-    #         embedded_doc_type (None): the
-    #             :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
-    #             field. Used only when ``ftype`` is an embedded
-    #             :class:`fiftyone.core.fields.EmbeddedDocumentField`
-    #         subfield (None): the type of the contained field. Used only when
-    #             ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
-    #             :class:`fiftyone.core.fields.DictField`
-    #
-    #     Raises:
-    #         ValueError: if the field does not exist or does not have the
-    #             expected type
-    #     """
-    #     field_name, _ = self._handle_group_field(field_name)
-    #     field_name, is_frame_field = self._handle_frame_field(field_name)
-    #     if is_frame_field:
-    #         schema = self.get_frame_field_schema()
-    #     else:
-    #         schema = self.get_field_schema()
-    #
-    #     if field_name not in schema:
-    #         ftype = "frame field" if is_frame_field else "field"
-    #         raise ValueError(
-    #             "%s has no %s '%s'"
-    #             % (self.__class__.__name__, ftype, field_name)
-    #         )
-    #
-    #     field = schema[field_name]
-    #
-    #     if embedded_doc_type is not None:
-    #         if not isinstance(field, fof.EmbeddedDocumentField) or (
-    #             field.document_type is not embedded_doc_type
-    #         ):
-    #             raise ValueError(
-    #                 "Field '%s' must be an instance of %s; found %s"
-    #                 % (field_name, ftype(embedded_doc_type), field)
-    #             )
-    #     elif subfield is not None:
-    #         if not isinstance(field, (fof.ListField, fof.DictField)):
-    #             raise ValueError(
-    #                 "Field type %s must be an instance of %s when a subfield "
-    #                 "is provided" % (ftype, (fof.ListField, fof.DictField))
-    #             )
-    #
-    #         if not isinstance(field, ftype) or not isinstance(
-    #             field.field, subfield
-    #         ):
-    #             raise ValueError(
-    #                 "Field '%s' must be an instance of %s; found %s"
-    #                 % (field_name, ftype(field=subfield()), field)
-    #             )
-    #     else:
-    #         if not isinstance(field, ftype):
-    #             raise ValueError(
-    #                 "Field '%s' must be an instance of %s; found %s"
-    #                 % (field_name, ftype, field)
-    #             )
     def validate_field_type(
-        self, path, ftype=None, embedded_doc_type=None, subfield=None
+        self, field_name, ftype, embedded_doc_type=None, subfield=None
     ):
         """Validates that the collection has a field of the given type.
 
         Args:
-            path: a field name or ``embedded.field.name``
-            ftype (None): an optional field type to enforce. Must be a subclass
-                of :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type or
-                iterable of types to enforce. Must be a subclass(es) of
-                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            field_name: the field name
+            ftype: the expected field type. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): the
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
+                field. Used only when ``ftype`` is an embedded
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            subfield (None): the type of the contained field. Used only when
+                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
+                :class:`fiftyone.core.fields.DictField`
 
         Raises:
             ValueError: if the field does not exist or does not have the
                 expected type
         """
-        field = self.get_field(
-            path, ftype=ftype, embedded_doc_type=embedded_doc_type
-        )
+        field_name, _ = self._handle_group_field(field_name)
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+        if is_frame_field:
+            schema = self.get_frame_field_schema()
+        else:
+            schema = self.get_field_schema()
 
-        if field is None:
-            _path, is_frame_field = self._handle_frame_field(path)
+        if field_name not in schema:
             ftype = "frame field" if is_frame_field else "field"
             raise ValueError(
-                "%s has no %s '%s'" % (self.__class__.__name__, ftype, _path)
+                "%s has no %s '%s'"
+                % (self.__class__.__name__, ftype, field_name)
             )
+
+        field = schema[field_name]
+
+        if embedded_doc_type is not None:
+            if not isinstance(field, fof.EmbeddedDocumentField) or (
+                field.document_type is not embedded_doc_type
+            ):
+                raise ValueError(
+                    "Field '%s' must be an instance of %s; found %s"
+                    % (field_name, ftype(embedded_doc_type), field)
+                )
+        elif subfield is not None:
+            if not isinstance(field, (fof.ListField, fof.DictField)):
+                raise ValueError(
+                    "Field type %s must be an instance of %s when a subfield "
+                    "is provided" % (ftype, (fof.ListField, fof.DictField))
+                )
+
+            if not isinstance(field, ftype) or not isinstance(
+                field.field, subfield
+            ):
+                raise ValueError(
+                    "Field '%s' must be an instance of %s; found %s"
+                    % (field_name, ftype(field=subfield()), field)
+                )
+        else:
+            if not isinstance(field, ftype):
+                raise ValueError(
+                    "Field '%s' must be an instance of %s; found %s"
+                    % (field_name, ftype, field)
+                )
 
     def tag_samples(self, tags):
         """Adds the tag(s) to all samples in this collection, if necessary.
@@ -9430,8 +9403,7 @@ def _parse_field_name(
         root_field_name = field_name.split(".", 1)[0]
 
         if sample_collection.get_field(prefix + root_field_name) is None:
-            # ftype = "frame field" if is_frame_field else "field"
-            ftype = "Frame field" if is_frame_field else "Field"
+            ftype = "frame field" if is_frame_field else "field"
             raise ValueError(
                 "%s '%s' does not exist on collection '%s'"
                 % (
@@ -9726,6 +9698,10 @@ def _export(
 
     # If no dataset exporter was provided, construct one
     if dataset_exporter is None:
+        print(
+            "no data exporter provided. constructing one using export_dir=",
+            export_dir,
+        )
         dataset_exporter, kwargs = foud.build_dataset_exporter(
             dataset_type,
             warn_unused=False,  # don't warn yet, might be patches kwargs
@@ -9786,6 +9762,7 @@ def _handle_existing_dirs(
     export_media=False,
     overwrite=False,
 ):
+    print("_handle_existing_dirs")
     if dataset_exporter is not None:
         try:
             export_dir = dataset_exporter.export_dir
@@ -9809,7 +9786,9 @@ def _handle_existing_dirs(
 
     if export_dir is not None and os.path.isdir(export_dir):
         if overwrite:
+            print("overwrite attempt")
             etau.delete_dir(export_dir)
+            print("os.path.isdir(export_dir) = ", os.path.isdir(export_dir))
         else:
             logger.warning(
                 "Directory '%s' already exists; export will be merged with "

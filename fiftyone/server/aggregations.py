@@ -293,13 +293,6 @@ def _resolve_path_aggregation(
                         embedded_doc_type=fol.Label
                     )
                 )
-        logging.debug(
-            "[server/aggregations.py: _resolve_path_aggregation]\n"
-            "data.path={}\ndata.count={}".format(
-                data.get("path", "null"), data.get("count", "null")
-            )
-        )
-
         return from_dict(cls, data, config=Config(check_types=False))
 
     return aggregations, from_results

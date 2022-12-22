@@ -515,6 +515,7 @@ class DatasetMixin(object):
         schema_paths = []
 
         for path, new_path in zip(paths, new_paths):
+            print("_clone_fields path={},newpath={}".format(path, new_path))
             is_root_field = "." not in path
             field = cls._get_field(path, allow_missing=True)
             existing_field = cls._get_field(new_path, allow_missing=True)

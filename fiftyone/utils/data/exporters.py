@@ -1680,11 +1680,11 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         # Package extras into `info`, since the import API only supports
         # checking for `info`...
 
-        if sample_collection.tags:
-            info["tags"] = sample_collection.tags
-
-        if sample_collection.description:
-            info["description"] = sample_collection.description
+        # if sample_collection.tags:
+        #     info["tags"] = sample_collection.tags
+        #
+        # if sample_collection.description:
+        #     info["description"] = sample_collection.description
 
         if sample_collection.classes:
             info["classes"] = sample_collection.classes
@@ -1726,35 +1726,33 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         # Exporting the information below only makes sense when exporting an
         # entire dataset
         d = dataset._doc.to_dict(no_dereference=True)
+        # print('d = dataset._doc.to_dict(no_dereference=True)\n', d)
+        # print('dataset._doc=', dataset._doc)
 
         if dataset.has_saved_views:
-            self._metadata["saved_views"] = d.get("saved_views", [])
+            self._metadata["saved_views"] = [
+                json_util.dumps(v.to_dict()) for v in dataset._doc.saved_views
+            ]
 
         if dataset.has_annotation_runs:
-            self._metadata["annotation_runs"] = d.get("annotation_runs", {})
-            print(self._metadata["annotation_runs"])
-            #     {
-            #     k: json_util.dumps(v.to_dict())
-            #     for k, v in dataset._doc.annotation_runs.items()
-            # }
+            self._metadata["annotation_runs"] = {
+                k: json_util.dumps(v.to_dict())
+                for k, v in dataset._doc.annotation_runs.items()
+            }
             _export_annotation_results(dataset, self._anno_dir)
 
         if dataset.has_brain_runs:
-            self._metadata["brain_methods"] = d.get("brain_methods", {})
-            print(self._metadata["brain_methods"])
-            #     {
-            #     k: json_util.dumps(v.to_dict())
-            #     for k, v in dataset._doc.brain_methods.items()
-            # }
+            self._metadata["brain_methods"] = {
+                k: json_util.dumps(v.to_dict())
+                for k, v in dataset._doc.brain_methods.items()
+            }
             _export_brain_results(dataset, self._brain_dir)
 
         if dataset.has_evaluations:
-            self._metadata["evaluations"] = d.get("evaluations", {})
-            print(self._metadata["brain_methods"])
-            # {
-            #     k: json_util.dumps(v.to_dict())
-            #     for k, v in dataset._doc.evaluations.items()
-            # }
+            self._metadata["evaluations"] = {
+                k: json_util.dumps(v.to_dict())
+                for k, v in dataset._doc.evaluations.items()
+            }
             _export_evaluation_results(dataset, self._eval_dir)
 
     def export_sample(self, sample):
@@ -1781,16 +1779,13 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._samples.append(sd)
 
     def close(self, *args):
-        # samples = {"samples": self._samples}
+        samples = {"samples": self._samples}
         etas.write_json(
             self._metadata, self._metadata_path, pretty_print=self.pretty_print
         )
         etas.write_json(
-            {"samples": self._samples},
-            self._samples_path,
-            pretty_print=self.pretty_print,
+            samples, self._samples_path, pretty_print=self.pretty_print
         )
-
         self._media_exporter.close()
         for media_exporter in self._media_field_exporters.values():
             media_exporter.close()
@@ -1961,21 +1956,21 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._media_fields = sample_collection._get_media_fields(
             include_filepath=False
         )
-        # inpaths = _sample_collection.values("filepath")
-        #
-        # if self.export_media != False:
-        #     _outpaths = []
-        #     for inpath in inpaths:
-        #         _, uuid = self._media_exporter.export(inpath)
-        #         _outpaths.append(os.path.join("data", uuid))
-        # elif self.rel_dir is not None:
-        #     # Remove `rel_dir` prefix from filepaths
-        #     _outpaths = [
-        #         fou.safe_relpath(p, self.rel_dir, default=p) for p in inpaths
-        #     ]
-        # else:
-        #     # Export raw filepaths
-        #     _outpaths = inpaths
+        inpaths = _sample_collection.values("filepath")
+
+        if self.export_media != False:
+            _outpaths = []
+            for inpath in inpaths:
+                _, uuid = self._media_exporter.export(inpath)
+                _outpaths.append(os.path.join("data", uuid))
+        elif self.rel_dir is not None:
+            # Remove `rel_dir` prefix from filepaths
+            _outpaths = [
+                fou.safe_relpath(p, self.rel_dir, default=p) for p in inpaths
+            ]
+        else:
+            # Export raw filepaths
+            _outpaths = inpaths
 
         logger.info("Exporting samples...")
 
@@ -1983,22 +1978,9 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         num_samples = foo.count_documents(coll, pipeline)
         _samples = foo.aggregate(coll, pipeline)
 
-        def _prep_sample(sd):
-            filepath = sd["filepath"]
-            if self.export_media != False:
-                # Store relative path
-                _, uuid = self._media_exporter.export(filepath)
-                sd["filepath"] = os.path.join("data", uuid)
-            elif self.rel_dir is not None:
-                # Remove `rel_dir` prefix from filepath
-                sd["filepath"] = fou.safe_relpath(
-                    filepath, self.rel_dir, default=filepath
-                )
-
-            if self._media_fields:
-                self._export_media_fields(sd)
-
-            return sd
+        def _prep_sample(sample, outpath):
+            sample["filepath"] = outpath
+            return sample
 
         if self.use_dirs:
             if self.ordered:
@@ -2009,7 +1991,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             patt = None
 
         foo.export_collection(
-            map(_prep_sample, _samples),
+            map(_prep_sample, _samples, _outpaths),
             self._samples_path,
             key="samples",
             patt=patt,
@@ -2045,20 +2027,9 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         dataset = sample_collection._dataset
         dataset_dict = dataset._doc.to_dict()
         dataset_dict["saved_views"] = {}
-
-        # Exporting runs only makes sense if the entire dataset is being
-        # exported, otherwise the view for the run cannot be reconstructed
-        # based on the information encoded in the run's document
-
-        export_runs = (
-            self.export_runs
-            and sample_collection == sample_collection._root_dataset
-        )
-
-        if not export_runs:
-            dataset_dict["annotation_runs"] = {}
-            dataset_dict["brain_methods"] = {}
-            dataset_dict["evaluations"] = {}
+        dataset_dict["annotation_runs"] = {}
+        dataset_dict["brain_methods"] = {}
+        dataset_dict["evaluations"] = {}
 
         #
         # Exporting saved views/runs only makes sense if the entire dataset is
@@ -2071,44 +2042,35 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             and sample_collection == sample_collection._root_dataset
         )
 
-        # _export_runs = (
-        #     self.export_runs
-        #     and sample_collection == sample_collection._root_dataset
-        # )
+        _export_runs = (
+            self.export_runs
+            and sample_collection == sample_collection._root_dataset
+        )
 
         if _export_saved_views and dataset.has_saved_views:
             dataset_dict["saved_views"] = [
                 v.to_dict() for v in dataset._doc.saved_views
             ]
 
-        # if _export_runs and dataset.has_annotation_runs:
-        #     dataset_dict["annotation_runs"] = {
-        #         k: v.to_dict() for k, v in dataset._doc.annotation_runs.items()
-        #     }
-        #     _export_annotation_results(dataset, self._anno_dir)
-        #
-        # if _export_runs and dataset.has_brain_runs:
-        #     dataset_dict["brain_methods"] = {
-        #         k: v.to_dict() for k, v in dataset._doc.brain_methods.items()
-        #     }
-        #     _export_brain_results(dataset, self._brain_dir)
-        #
-        # if _export_runs and dataset.has_evaluations:
-        #     dataset_dict["evaluations"] = {
-        #         k: v.to_dict() for k, v in dataset._doc.evaluations.items()
-        #     }
-        #     _export_evaluation_results(dataset, self._eval_dir)
+        if _export_runs and dataset.has_annotation_runs:
+            dataset_dict["annotation_runs"] = {
+                k: v.to_dict() for k, v in dataset._doc.annotation_runs.items()
+            }
+            _export_annotation_results(dataset, self._anno_dir)
+
+        if _export_runs and dataset.has_brain_runs:
+            dataset_dict["brain_methods"] = {
+                k: v.to_dict() for k, v in dataset._doc.brain_methods.items()
+            }
+            _export_brain_results(dataset, self._brain_dir)
+
+        if _export_runs and dataset.has_evaluations:
+            dataset_dict["evaluations"] = {
+                k: v.to_dict() for k, v in dataset._doc.evaluations.items()
+            }
+            _export_evaluation_results(dataset, self._eval_dir)
 
         foo.export_document(dataset_dict, self._metadata_path)
-
-        if export_runs and sample_collection.has_annotation_runs:
-            _export_annotation_results(sample_collection, self._anno_dir)
-
-        if export_runs and sample_collection.has_brain_runs:
-            _export_brain_results(sample_collection, self._brain_dir)
-
-        if export_runs and sample_collection.has_evaluations:
-            _export_evaluation_results(sample_collection, self._eval_dir)
 
         self._media_exporter.close()
         for media_exporter in self._media_field_exporters.values():
