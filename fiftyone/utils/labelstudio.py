@@ -234,6 +234,10 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         )
         filepaths = foc.media_cache.get_local_paths(filepaths)
 
+        media_fields = samples._get_media_fields(whitelist=label_schema)
+        if media_fields:
+            samples.download_media(media_fields=media_fields)
+
         tasks = [
             {
                 "source_id": _id,
@@ -787,7 +791,7 @@ def _to_segmentation(label):
         "label_studio_converter.brush",
         callback=lambda: fou.ensure_import("label_studio_converter.brush"),
     )
-    rle = brush.mask2rle(label.mask)
+    rle = brush.mask2rle(label.get_mask())
     result = {"format": "rle", "rle": rle, "brushlabels": [label.label]}
     return result, "brushlabels", label.id
 
