@@ -191,6 +191,12 @@ class FramesView(fov.DatasetView):
         field = field_name.split(".", 1)[0]
         self._sync_source(fields=[field], ids=ids)
 
+    def set_label_values(self, field_name, *args, **kwargs):
+        super().set_label_values(field_name, *args, **kwargs)
+
+        frame_field = self._source_collection._FRAMES_PREFIX + field_name
+        self._source_collection.set_label_values(frame_field, *args, **kwargs)
+
     def save(self, fields=None):
         """Saves the frames in this view to the underlying dataset.
 

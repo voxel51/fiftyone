@@ -905,6 +905,8 @@ in the sense that:
 -   Any modifications to the patch labels that you make by iterating over the
     contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    or
+    :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
     will be reflected on the source dataset
 -   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save>`,
     :meth:`keep() <fiftyone.core.patches.PatchesView.keep>`, or
@@ -1018,6 +1020,8 @@ Evaluation patches views are just like any other
     patches view that you make by iterating over the contents of the view or
     calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    or
+    :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
     will be reflected on the source dataset
 -   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save>`,
     :meth:`keep() <fiftyone.core.patches.EvaluationPatchesView.keep>`, or
@@ -1313,6 +1317,8 @@ sense that:
 -   Any modifications to the frame-level labels in a clips view that you make
     by iterating over the contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    or
+    :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
     will be reflected on the source dataset
 -   Calling :meth:`save() <fiftyone.core.clips.ClipsView.save>`,
     :meth:`keep() <fiftyone.core.clips.ClipsView.keep>`, or
@@ -1472,6 +1478,8 @@ Frame views are just like any other image collection view in the sense that:
     of the samples in a frames view that you make by iterating over the
     contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    or
+    :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
     will be reflected on the source dataset
 -   Calling :meth:`save() <fiftyone.core.video.FramesView.save>`,
     :meth:`keep() <fiftyone.core.video.FramesView.keep>`, or
@@ -1945,6 +1953,26 @@ save the updated data in a single batch operation:
 
     print(dataset.count_label_tags())
     # {'low_confidence': 447}
+
+In the particular case of updating the attributes of a |Label| field of your
+dataset, the edits may be most naturally represented as a mapping between label
+IDs and corresponding attribute values to set on each label. In such cases, you
+can use
+:meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
+to conveniently perform the updates:
+
+.. code-block:: python
+    :linenos:
+
+    # Grab the IDs of all labels in `view`
+    label_ids = view.values("predictions.detections.id", unwind=True)
+
+    # Populate an `is_low_conf` attribute on all of the labels
+    values = {_id: True for _id in label_ids}
+    dataset.set_label_values("predictions.detections.is_low_conf", values)
+
+    print(dataset.count_values("predictions.detections.is_low_conf"))
+    # {True: 447, None: 5173}
 
 .. _transforming-view-fields:
 

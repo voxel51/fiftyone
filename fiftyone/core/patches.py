@@ -215,6 +215,21 @@ class _PatchesView(fov.DatasetView):
 
         self._sync_source_field(field, ids=ids)
 
+    def set_label_values(self, field_name, *args, **kwargs):
+        field = field_name.split(".", 1)[0]
+        must_sync = field in self._label_fields
+
+        super().set_label_values(field_name, *args, **kwargs)
+
+        if must_sync:
+            _, root = self._get_label_field_path(field)
+            _, src_root = self._source_collection._get_label_field_path(field)
+            _field_name = src_root + field_name[len(root) :]
+
+            self._source_collection.set_label_values(
+                _field_name, *args, **kwargs
+            )
+
     def save(self, fields=None):
         """Saves the patches in this view to the underlying dataset.
 
