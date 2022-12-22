@@ -1,5 +1,5 @@
 import { atom, selectorFamily } from "recoil";
-import { SpaceNodeJSON } from "./types";
+import { PanelStatePartialParameter, SpaceNodeJSON } from "./types";
 
 // a react hook for managing the state of all spaces in the app
 // it should use recoil to persist the tree
@@ -33,4 +33,38 @@ export const panelTitlesState = atom({
 export const panelsStateAtom = atom({
   key: "panelsState",
   default: new Map(),
+});
+
+export const panelStateSelector = selectorFamily({
+  key: "panelStateSelector",
+  get:
+    (panelId: string) =>
+    ({ get }) => {
+      return get(panelsStateAtom).get(panelId);
+    },
+  set:
+    (panelId: string) =>
+    ({ get, set }, newValue) => {
+      const newState = new Map(get(panelsStateAtom));
+      newState.set(panelId, newValue);
+      set(panelsStateAtom, newState);
+    },
+});
+
+export const panelStatePartialSelector = selectorFamily({
+  key: "panelStatePartialSelector",
+  get:
+    (params: PanelStatePartialParameter) =>
+    ({ get }) => {
+      const { panelId, key } = params;
+      return get(panelStateSelector(panelId))?.[key];
+    },
+  set:
+    (params: PanelStatePartialParameter) =>
+    ({ get, set }, newValue) => {
+      const { panelId, key } = params;
+      const currentState = get(panelStateSelector(panelId)) || {};
+      const updatedState = { ...currentState, [key]: newValue };
+      set(panelStateSelector(panelId), updatedState);
+    },
 });
