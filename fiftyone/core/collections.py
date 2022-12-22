@@ -1992,6 +1992,9 @@ class SampleCollection(object):
 
         id_map = {}
 
+        # We only need `view` to contain labels we actually want to process, so
+        # if the number of values is small enough that `select_labels()` may
+        # optimize, we use it
         if len(values) <= 100000:
             view = self.select_labels(ids=list(values), fields=label_field)
         else:
