@@ -1,11 +1,16 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { useContext, useMemo } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
 import { PanelContext } from "./contexts";
 import SpaceNode from "./SpaceNode";
 import SpaceTree from "./SpaceTree";
-import { panelsStateAtom, panelTitlesState, spaceSelector } from "./state";
+import {
+  panelStatePartialSelector,
+  panelStateSelector,
+  panelTitlesState,
+  spaceSelector,
+} from "./state";
 import { SpaceNodeJSON, SpaceNodeType } from "./types";
 import { getNodes } from "./utils";
 
@@ -77,17 +82,67 @@ export function usePanelTitle(id?: string) {
   return [panelTitle, setPanelTitle];
 }
 
-export function usePanelState(id?: string) {
-  const panelContext = useContext(PanelContext);
-  const [panelsState, setPanelsState] = useRecoilState(panelsStateAtom);
-  const panelId = id || panelContext?.node?.id;
-  const panelState = panelsState.get(panelId) || {};
+export function usePanelContext() {
+  return useContext(PanelContext);
+}
 
-  function setPanelState(state: any) {
-    const updatedPanelsState = new Map(panelsState);
-    updatedPanelsState.set(panelId, state);
-    setPanelsState(updatedPanelsState);
-  }
+export function usePanelState(defaultState?: any, id?: string) {
+  const panelContext = usePanelContext();
+  const panelId = id || (panelContext?.node?.id as string);
+  const [state, setState] = useRecoilState(panelStateSelector(panelId));
+  const computedState = state || defaultState;
 
-  return [panelState, setPanelState];
+  return [computedState, setState];
+}
+
+/**
+ * Can only be used within a panel component
+ */
+export function usePanelStateCallback(callback: (panelState: any) => void) {
+  const panelContext = usePanelContext();
+  const panelId = panelContext?.node?.id as string;
+  return useRecoilCallback(
+    ({ snapshot }) =>
+      async () => {
+        const panelState = await snapshot.getPromise(
+          panelStateSelector(panelId)
+        );
+        callback(panelState);
+      },
+    []
+  );
+}
+
+/**
+ * Lazily read panel state on demand
+ * @returns a promise which resolves to current state of a panel
+ */
+export function usePanelStateLazy() {
+  const panelContext = usePanelContext();
+  const panelId = panelContext?.node?.id as string;
+
+  const resolvePanelState = useRecoilCallback(
+    ({ snapshot }) =>
+      async () =>
+        snapshot.getPromise(panelStateSelector(panelId))
+  );
+
+  return () => resolvePanelState();
+}
+
+/**
+ * Get partial state of current panel (i.e. property of an object state)
+ *
+ * Should only be used within a panel component whose state is an object or
+ *  an array
+ */
+export function usePanelStatePartial(key: string, defaultState: any) {
+  const panelContext = usePanelContext();
+  const panelId = panelContext?.node?.id as string;
+  const [state, setState] = useRecoilState(
+    panelStatePartialSelector({ panelId, key })
+  );
+  const computedState = state || defaultState;
+
+  return [computedState, setState];
 }
