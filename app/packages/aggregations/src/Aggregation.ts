@@ -10,7 +10,7 @@ export default class Aggregation {
     const kwargs = [];
     if (this.params) {
       for (const [paramName, paramValue] of Object.entries(this.params)) {
-        if (paramName && paramValue !== null && paramValue !== undefined) {
+        if (paramName) {
           kwargs.push([this._getSerializedName(paramName), paramValue]);
         }
       }

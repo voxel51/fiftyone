@@ -93,13 +93,7 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
               cursor
               node {
                 name
-                # TODO: can the view selector reuse this fragment instead?
-                #                savedViews {
-                #                  viewName
-                #                  slug
-                #                  color
-                #                  description
-                #                }
+                # can the view selector reuse the savedViews {} fragment?
               }
             }
           }

@@ -169,7 +169,7 @@ const App: React.FC = ({}) => {
     );
 
     return () => controller.abort();
-  }, [clearModal, handleError, refresh, screenshot, subscription]);
+  }, []);
 
   const plugins = usePlugins();
   const loadingElement = <Loading>Pixelating...</Loading>;
