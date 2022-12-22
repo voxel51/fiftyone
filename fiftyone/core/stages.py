@@ -7000,10 +7000,11 @@ class ToFrames(ViewStage):
     omitted from the returned view.
 
     When ``sample_frames`` is True, this method samples each video in the
-    collection into a directory of per-frame images with filenames specified by
-    ``frames_patt``. By default, each folder of images is written using the
-    same basename as the input video. For example, if
-    ``frames_patt = "%%06d.jpg"``, then videos with the following paths::
+    collection into a directory of per-frame images and stores the filepaths in
+    the ``filepath`` frame field of the source dataset. By default, each folder
+    of images is written using the same basename as the input video. For
+    example, if ``frames_patt = "%%06d.jpg"``, then videos with the following
+    paths::
 
         /path/to/video1.mp4
         /path/to/video2.mp4

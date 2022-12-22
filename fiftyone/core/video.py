@@ -460,10 +460,11 @@ def make_frames_dataset(
     omitted from the frames dataset.
 
     When ``sample_frames`` is True, this method samples each video in the
-    collection into a directory of per-frame images with filenames specified by
-    ``frames_patt``. By default, each folder of images is written using the
-    same basename as the input video. For example, if
-    ``frames_patt = "%%06d.jpg"``, then videos with the following paths::
+    collection into a directory of per-frame images and stores the filepaths in
+    the ``filepath`` frame field of the source dataset. By default, each folder
+    of images is written using the same basename as the input video. For
+    example, if ``frames_patt = "%%06d.jpg"``, then videos with the following
+    paths::
 
         /path/to/video1.mp4
         /path/to/video2.mp4
@@ -641,7 +642,10 @@ def make_frames_dataset(
             skip_failures=skip_failures,
         )
 
+    #
     # Merge frame data
+    #
+
     pipeline = []
 
     if sample_frames == "dynamic":
@@ -659,10 +663,6 @@ def make_frames_dataset(
     )
 
     sample_collection._aggregate(frames_only=True, post_pipeline=pipeline)
-
-    # Delete samples for frames without filepaths
-    if sample_frames == True:
-        dataset._sample_collection.delete_many({"filepath": None})
 
     if sample_frames == False and not dataset:
         logger.warning(
@@ -728,6 +728,29 @@ def _init_frames(
     else:
         view = src_collection.select_fields()
 
+    # If we're sampling frames on a view that may have filtered frames, we must
+    # consult the full dataset to see which frames already have docs/filepaths
+    has_docs_map = None
+    has_filepaths_map = None
+    if (
+        sample_frames == True
+        and not sparse
+        and isinstance(src_collection, fov.DatasetView)
+        and src_collection._needs_frames()
+    ):
+        id_field = "sample_id" if is_clips else "id"
+        _view = src_dataset.select(src_collection.values(id_field))
+        ids, fns = _view.values(["_id", "frames.frame_number"])
+
+        has_docs_map = {_id: set(_fns) for _id, _fns in zip(ids, fns)}
+
+        if src_dataset.has_frame_field("filepath"):
+            ids, fns = _view.match_frames(
+                fo.ViewField("filepath") != None,
+                omit_empty=False,
+            ).values(["_id", "frames.frame_number"])
+            has_filepaths_map = {_id: set(_fns) for _id, _fns in zip(ids, fns)}
+
     for sample in view._aggregate(attach_frames=True):
         video_path = sample["filepath"]
         tags = sample.get("tags", [])
@@ -737,17 +760,20 @@ def _init_frames(
         frames = sample.get("frames", [])
 
         frame_ids_map = {}
+        frames_with_docs = set()
         frames_with_filepaths = set()
         for frame in frames:
             _frame_id = frame["_id"]
             fn = frame["frame_number"]
             filepath = frame.get("filepath", None)
 
-            if sample_frames != False or filepath:
+            if sample_frames != False or filepath is not None:
                 frame_ids_map[fn] = _frame_id
 
-            if sample_frames == True and filepath:
-                frames_with_filepaths.add(fn)
+            if sample_frames == True:
+                frames_with_docs.add(fn)
+                if filepath is not None:
+                    frames_with_filepaths.add(fn)
 
         if is_clips:
             _sample_id = sample["_sample_id"]
@@ -788,19 +814,20 @@ def _init_frames(
             elif sample_map[video_path] is not None:
                 sample_map[video_path].update(sample_frame_numbers)
 
-        # Record any already-sampled frames whose `filepath` need to be stored
-        # on the source dataset
-        if sample_frames == True and sample_frame_numbers is not None:
-            missing_fns = (
-                set(doc_frame_numbers)
-                - set(sample_frame_numbers)
-                - frames_with_filepaths
-            )
-        else:
-            missing_fns = set()
+        # Determine if any docs/filepaths are missing from the source dataset
+        if sample_frames == True:
+            if has_docs_map is not None:
+                frames_with_docs = has_docs_map[_sample_id]
 
-        for fn in missing_fns:
-            missing_filepaths.append((_sample_id, fn, images_patt % fn))
+            if has_filepaths_map is not None:
+                frames_with_filepaths = has_filepaths_map[_sample_id]
+
+            target_frames = set(doc_frame_numbers)
+            missing_docs = target_frames - frames_with_docs
+            missing_fps = target_frames - frames_with_filepaths
+        else:
+            missing_docs = None
+            missing_fps = None
 
         # Create necessary frame documents
         for fn in doc_frame_numbers:
@@ -812,11 +839,18 @@ def _init_frames(
                 fns.add(fn)
 
             _id = frame_ids_map.get(fn, None)
+            _filepath = images_patt % fn
+            _rand = foos._generate_rand(_filepath)
+
+            if missing_fps is not None and fn in missing_fps:
+                missing_filepaths.append((_sample_id, fn, _filepath))
 
             if sample_frames == "dynamic":
                 filepath = video_path
             else:
-                filepath = None  # will be populated later
+                # This will be overwritten in the final merge if the actual
+                # filepath is different
+                filepath = _filepath
 
             doc = {
                 "filepath": filepath,
@@ -824,17 +858,17 @@ def _init_frames(
                 "metadata": None,
                 "frame_number": fn,
                 "_media_type": "image",
-                "_rand": foos._generate_rand(images_patt % fn),
+                "_rand": _rand,
                 "_sample_id": _sample_id,
             }
 
             if _id is not None:
                 doc["_id"] = _id
-            elif fn in missing_fns:
-                # Found a frame whose image is already sampled but for which
-                # there is no frame in the source collection. We now need to
-                # create a frame so that the missing filepath can be added and
-                # the frames dataset can use the same frame ID
+            elif missing_docs is not None and fn in missing_docs:
+                # Found a frame that we want to include in the frames dataset
+                # whose image is already sampled but for which there is no
+                # frame doc in the source collection. We need to create a frame
+                # doc so that the frames dataset can use the same frame ID
                 src_docs.append({"_sample_id": _sample_id, "frame_number": fn})
                 src_inds.append(len(docs))
 
