@@ -14,10 +14,12 @@ import strawberry as gql
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
+import fiftyone.core.view as fov
 
+from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import T
-from fiftyone.server.scalars import BSONArray
+from fiftyone.server.scalars import BSONArray, JSON
 from fiftyone.server.view import load_view
 
 
@@ -121,6 +123,7 @@ class AggregateQuery:
         view: t.Optional[BSONArray],
         aggregations: t.List[Aggregate],
         view_name: t.Optional[str] = None,
+        form: t.Optional[ExtendedViewForm] = None,
     ) -> t.List[
         gql.union(
             "AggregationResponses",
@@ -138,6 +141,7 @@ class AggregateQuery:
             dataset_name=dataset_name,
             serialized_view=view,
             view_name=view_name,
+            form=(form or ExtendedViewForm())
         )
 
         resolvers = []

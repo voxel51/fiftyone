@@ -5,29 +5,36 @@ FiftyOne Server view
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from typing import List, Optional
 
 import asyncio
-from bson import ObjectId, json_util
-from dacite import Config, from_dict
-
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
-from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-from fiftyone.server.scalars import BSONArray
+import strawberry as gql
 
+from bson import ObjectId, json_util
+from dacite import Config, from_dict
+from fiftyone.core.expressions import ViewField as F, VALUE
+from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
+from fiftyone.server.scalars import BSONArray, JSON
 from fiftyone.server.utils import iter_label_fields
-import fiftyone.core.odm as foo
+from typing import List, Optional
 
 _LABEL_TAGS = "_label_tags"
 
+@gql.input
+class ExtendedViewForm:
+    filters: Optional[JSON] = None
+    mixed: Optional[bool] = None
+    samples_ids: Optional[List[str]] = None
+    slice: Optional[str] = None
 
 async def load_saved_views(cls, object_ids):
     if len(object_ids) < 1:
@@ -163,6 +170,7 @@ async def load_view(
     dataset_name: str,
     serialized_view: BSONArray,
     view_name: Optional[str] = None,
+    form: ExtendedViewForm
 ) -> foc.SampleCollection:
     def run() -> foc.SampleCollection:
         dataset = fo.load_dataset(dataset_name)
@@ -170,7 +178,20 @@ async def load_view(
         if view_name:
             return dataset.load_saved_view(view_name)
         else:
-            return fo.DatasetView._build(dataset, serialized_view or [])
+            view = get_dataset_view(
+                dataset_name,
+                serialized_view,
+                filters=form.filters,
+                sample_filter=SampleFilter(
+                    group=GroupElementFilter(slice=form.slice)
+                ),
+            )
+
+        if form.sample_ids:
+            view = fov.make_optimized_select_view(view, form.sample_ids)
+
+        if form.mixed:
+            view = view.select_group_slices(_allow_mixed=True)
 
     loop = asyncio.get_running_loop()
 
