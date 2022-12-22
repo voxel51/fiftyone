@@ -67,7 +67,6 @@ export const SearchBox = ({
           setSearchTerm(val);
           debouncedSearch(val);
         }}
-        // defaultValue={searchValue}
         onKeyDown={(e) => {
           e.stopPropagation();
         }}

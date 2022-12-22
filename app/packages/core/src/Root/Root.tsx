@@ -60,7 +60,7 @@ export const DatasetSavedViewsQuery = graphql`
 
 export const DatasetSavedViewsFragment = graphql`
   fragment RootDatasetSavedViewsFragment on Query
-  @refetchable(queryName: "EootDatasetSavedViewsQuery") {
+  @refetchable(queryName: "RootDatasetSavedViewsFragmentQuery") {
     savedViews(datasetName: $name) {
       id
       datasetId

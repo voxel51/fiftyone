@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c952d68c5a85ad26b856ee2185570f98>>
+ * @generated SignedSource<<24e53aa5329ce0917b1c6346800c5909>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -30,7 +30,7 @@ export type RootDatasetSavedViewsFragment$key = {
   readonly " $fragmentSpreads": FragmentRefs<"RootDatasetSavedViewsFragment">;
 };
 
-import EootDatasetSavedViewsQuery_graphql from './EootDatasetSavedViewsQuery.graphql';
+import RootDatasetSavedViewsFragmentQuery_graphql from './RootDatasetSavedViewsFragmentQuery.graphql';
 
 const node: ReaderFragment = {
   "argumentDefinitions": [
@@ -44,7 +44,7 @@ const node: ReaderFragment = {
     "refetch": {
       "connection": null,
       "fragmentPathInResult": [],
-      "operation": EootDatasetSavedViewsQuery_graphql
+      "operation": RootDatasetSavedViewsFragmentQuery_graphql
     }
   },
   "name": "RootDatasetSavedViewsFragment",
@@ -141,6 +141,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "b69e4e143a106d1fc02b949d1a7d3810";
+(node as any).hash = "00069e3f8442bb208462d061c825cab3";
 
 export default node;
