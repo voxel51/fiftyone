@@ -1544,6 +1544,19 @@ class VideoTests(unittest.TestCase):
             {"meeting": 2, "party": 2},
         )
 
+        values = {
+            _id: v
+            for _id, v in zip(*view2.values(["events.id", "events.label"]))
+        }
+        view.set_label_values("events.also_label", values)
+
+        self.assertEqual(view.count("events.also_label"), 2)
+        self.assertEqual(dataset.count("events.detections.also_label"), 2)
+        self.assertDictEqual(
+            view.count_values("events.also_label"),
+            dataset.count_values("events.detections.also_label"),
+        )
+
         view2.save()
 
         self.assertEqual(len(view), 4)
@@ -1879,6 +1892,29 @@ class VideoTests(unittest.TestCase):
             {"cat": 1, "dog": 2, "rabbit": 1},
         )
 
+        values = {
+            _id: v
+            for _id, v in zip(
+                *view2.values(
+                    [
+                        "ground_truth.detections.id",
+                        "ground_truth.detections.label",
+                    ],
+                    unwind=True,
+                )
+            )
+        }
+        view.set_label_values("ground_truth.detections.also_label", values)
+
+        self.assertEqual(view.count("ground_truth.detections.also_label"), 2)
+        self.assertEqual(
+            dataset.count("frames.ground_truth.detections.also_label"), 2
+        )
+        self.assertDictEqual(
+            view.count_values("ground_truth.detections.also_label"),
+            dataset.count_values("frames.ground_truth.detections.also_label"),
+        )
+
         view2.save()
 
         self.assertEqual(len(view), 6)
@@ -1995,42 +2031,41 @@ class VideoTests(unittest.TestCase):
             filepath="video1.mp4",
             metadata=fo.VideoMetadata(total_frame_count=4),
         )
-        sample1.frames[1] = fo.Frame()
+        sample1.frames[1] = fo.Frame(filepath="image11.jpg")
         sample1.frames[2] = fo.Frame(
+            filepath="image12.jpg",
             ground_truth=fo.Detections(
                 detections=[
                     fo.Detection(label="cat"),
                     fo.Detection(label="dog"),
                 ]
-            )
+            ),
         )
-        sample1.frames[3] = fo.Frame(hello="goodbye")
+        sample1.frames[3] = fo.Frame(filepath="image13.jpg", hello="goodbye")
 
         sample2 = fo.Sample(
             filepath="video2.mp4",
             metadata=fo.VideoMetadata(total_frame_count=5),
         )
         sample2.frames[1] = fo.Frame(
+            filepath="image21.jpg",
             ground_truth=fo.Detections(
-                detections=[
-                    fo.Detection(label="dog"),
-                    fo.Detection(label="rabbit"),
-                ]
+                detections=[fo.Detection(label="rabbit")]
             ),
         )
-        sample2.frames[3] = fo.Frame()
-        sample2.frames[5] = fo.Frame(hello="there")
+        sample2.frames[3] = fo.Frame(filepath="image23.jpg")
+        sample2.frames[5] = fo.Frame(filepath="image25.jpg", hello="there")
 
         dataset.add_samples([sample1, sample2])
 
-        frames = dataset.to_frames(sample_frames="dynamic", sparse=True)
-
+        # `sparse=True` would only be needed here if `sample_frames=True`
+        frames = dataset.to_frames()
         self.assertEqual(len(frames), 6)
 
-        view = dataset.match_frames(F("ground_truth.detections").length() > 0)
-        frames = view.to_frames(sample_frames="dynamic", sparse=True)
-
-        self.assertEqual(len(frames), 2)
+        # `sparse=True` would only be needed here if `sample_frames=True`
+        view = dataset.match_frames(F("ground_truth.detections").length() > 1)
+        frames = view.to_frames()
+        self.assertEqual(len(frames), 1)
 
     @drop_datasets
     def test_to_frames_filepaths(self):
@@ -2507,6 +2542,28 @@ class VideoTests(unittest.TestCase):
         )
         self.assertEqual(patches.count("ground_truth.label_upper"), 2)
         self.assertEqual(view2.count("ground_truth.label_upper"), 2)
+
+        values = {
+            _id: v
+            for _id, v in zip(
+                *view2.values(["ground_truth.id", "ground_truth.label"])
+            )
+        }
+        patches.set_label_values("ground_truth.also_label", values)
+
+        self.assertEqual(patches.count("ground_truth.also_label"), 2)
+        self.assertEqual(frames.count("ground_truth.detections.also_label"), 2)
+        self.assertEqual(
+            dataset.count("frames.ground_truth.detections.also_label"), 2
+        )
+        self.assertDictEqual(
+            patches.count_values("ground_truth.also_label"),
+            dataset.count_values("frames.ground_truth.detections.also_label"),
+        )
+        self.assertDictEqual(
+            frames.count_values("ground_truth.detections.also_label"),
+            dataset.count_values("frames.ground_truth.detections.also_label"),
+        )
 
         view3 = patches.skip(2).set_field(
             "ground_truth.label", F("label").upper()

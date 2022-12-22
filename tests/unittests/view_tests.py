@@ -1127,8 +1127,552 @@ class SetValuesTests(unittest.TestCase):
             [[], ["0"], ["0", "ONE"], ["0", "ONE", "2"]],
         )
 
+    def test_set_values_dynamic1(self):
+        dataset = _make_labels_dataset()
 
-class ViewSaveTest(unittest.TestCase):
+        values = dataset.values("labels.classifications.label")
+
+        dataset.set_values("labels.classifications.also_label", values)
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("labels.classifications.also_label", schema)
+
+        also_values = dataset.values("labels.classifications.also_label")
+        self.assertEqual(values, also_values)
+
+        dataset.set_values(
+            "labels.classifications.still_label", values, dynamic=True
+        )
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("labels.classifications.still_label", schema)
+
+        still_values = dataset.values("labels.classifications.still_label")
+        self.assertEqual(values, still_values)
+
+    def test_set_values_dynamic2(self):
+        dataset = _make_labels_dataset()
+
+        values = [
+            [fo.Classification(label=v) for v in vv]
+            if vv is not None
+            else None
+            for vv in dataset.values("labels.classifications.label")
+        ]
+
+        dataset.set_values("labels.classifications.also_label", values)
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("labels.classifications.also_label", schema)
+
+        # Since this field is not in the schema, the values are loaded as dicts
+        also_values = [
+            [fo.Classification.from_dict(d) for d in dd]
+            if dd is not None
+            else None
+            for dd in dataset.values("labels.classifications.also_label")
+        ]
+        self.assertEqual(values, also_values)
+
+        dataset.set_values(
+            "labels.classifications.still_label", values, dynamic=True
+        )
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("labels.classifications.still_label", schema)
+
+        # Now the field is in the schema, so `Classification`s are loaded
+        still_values = dataset.values("labels.classifications.still_label")
+        self.assertEqual(values, still_values)
+
+    def test_set_values_dynamic3(self):
+        dataset = _make_labels_dataset()
+        values = dataset.values("labels")
+
+        dataset.set_values("also_labels", values)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertNotIn("also_labels.classifications.mood", schema)
+        self.assertNotIn("also_labels.classifications.age", schema)
+        self.assertNotIn("also_labels.classifications.fluffy", schema)
+
+        self.assertListEqual(
+            dataset.values("labels.classifications.mood"),
+            dataset.values("also_labels.classifications.mood"),
+        )
+        self.assertListEqual(
+            dataset.values("labels.classifications.age"),
+            dataset.values("also_labels.classifications.age"),
+        )
+        self.assertListEqual(
+            dataset.values("labels.classifications.fluffy"),
+            dataset.values("also_labels.classifications.fluffy"),
+        )
+
+        dataset.set_values("still_labels", values, dynamic=True)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("still_labels.classifications.mood", schema)
+        self.assertIn("still_labels.classifications.age", schema)
+        self.assertIn("still_labels.classifications.fluffy", schema)
+
+        self.assertListEqual(
+            dataset.values("labels.classifications.mood"),
+            dataset.values("still_labels.classifications.mood"),
+        )
+        self.assertListEqual(
+            dataset.values("labels.classifications.age"),
+            dataset.values("still_labels.classifications.age"),
+        )
+        self.assertListEqual(
+            dataset.values("labels.classifications.fluffy"),
+            dataset.values("still_labels.classifications.fluffy"),
+        )
+
+    def test_set_frame_values_dynamic1(self):
+        dataset = _make_frame_labels_dataset()
+
+        values = dataset.values("frames.labels.classifications.label")
+
+        dataset.set_values("frames.labels.classifications.also_label", values)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertNotIn("labels.classifications.also_label", schema)
+
+        also_values = dataset.values(
+            "frames.labels.classifications.also_label"
+        )
+        self.assertEqual(values, also_values)
+
+        dataset.set_values(
+            "frames.labels.classifications.still_label", values, dynamic=True
+        )
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("labels.classifications.still_label", schema)
+
+        still_values = dataset.values(
+            "frames.labels.classifications.still_label"
+        )
+        self.assertEqual(values, still_values)
+
+    def test_set_frame_values_dynamic2(self):
+        dataset = _make_frame_labels_dataset()
+
+        values = [
+            [
+                [fo.Classification(label=v) for v in vv]
+                if vv is not None
+                else None
+                for vv in ff
+            ]
+            for ff in dataset.values("frames.labels.classifications.label")
+        ]
+
+        dataset.set_values("frames.labels.classifications.also_label", values)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertNotIn("labels.classifications.also_label", schema)
+
+        # Since this field is not in the schema, the values are loaded as dicts
+        also_values = [
+            [
+                [fo.Classification.from_dict(d) for d in dd]
+                if dd is not None
+                else None
+                for dd in ff
+            ]
+            for ff in dataset.values(
+                "frames.labels.classifications.also_label"
+            )
+        ]
+        self.assertEqual(values, also_values)
+
+        dataset.set_values(
+            "frames.labels.classifications.still_label", values, dynamic=True
+        )
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("labels.classifications.still_label", schema)
+
+        # Now the field is in the schema, so `Classification`s are loaded
+        still_values = dataset.values(
+            "frames.labels.classifications.still_label"
+        )
+        self.assertEqual(values, still_values)
+
+    def test_set_frame_values_dynamic3(self):
+        dataset = _make_frame_labels_dataset()
+        values = dataset.values("frames.labels")
+
+        dataset.set_values("frames.also_labels", values)
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertNotIn("also_labels.classifications.mood", schema)
+        self.assertNotIn("also_labels.classifications.age", schema)
+        self.assertNotIn("also_labels.classifications.fluffy", schema)
+
+        self.assertListEqual(
+            dataset.values("frames.labels.classifications.mood"),
+            dataset.values("frames.also_labels.classifications.mood"),
+        )
+        self.assertListEqual(
+            dataset.values("frames.labels.classifications.age"),
+            dataset.values("frames.also_labels.classifications.age"),
+        )
+        self.assertListEqual(
+            dataset.values("frames.labels.classifications.fluffy"),
+            dataset.values("frames.also_labels.classifications.fluffy"),
+        )
+
+        dataset.set_values("frames.still_labels", values, dynamic=True)
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertIn("still_labels.classifications.mood", schema)
+        self.assertIn("still_labels.classifications.age", schema)
+        self.assertIn("still_labels.classifications.fluffy", schema)
+
+        self.assertListEqual(
+            dataset.values("frames.labels.classifications.mood"),
+            dataset.values("frames.still_labels.classifications.mood"),
+        )
+        self.assertListEqual(
+            dataset.values("frames.labels.classifications.age"),
+            dataset.values("frames.still_labels.classifications.age"),
+        )
+        self.assertListEqual(
+            dataset.values("frames.labels.classifications.fluffy"),
+            dataset.values("frames.still_labels.classifications.fluffy"),
+        )
+
+
+class SetLabelValuesTests(unittest.TestCase):
+    @drop_datasets
+    def test_set_label_values(self):
+        dataset = _make_classification_dataset()
+
+        view = dataset.match(F("label.label") == "cat")
+        cat_ids = set(view.values("label.id"))
+
+        values = {_id: True for _id in cat_ids}
+
+        dataset.set_label_values("label.is_cat1", values)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertNotIn("label.is_cat1", schema)
+        self.assertDictEqual(
+            dataset.count_values("label.is_cat1"), {True: 1, None: 4}
+        )
+
+        dataset.set_label_values("label.is_cat2", values, dynamic=True)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("label.is_cat2", schema)
+        self.assertDictEqual(
+            dataset.count_values("label.is_cat2"), {True: 1, None: 4}
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_label_values("wrong_field.id", values)
+
+        all_ids = dataset.exists("label").values("label.id", unwind=True)
+        values = {_id: _id in cat_ids for _id in all_ids}
+        dataset.set_label_values("label.is_cat3", values)
+
+        self.assertDictEqual(
+            dataset.count_values("label.is_cat3"),
+            {True: 1, False: 2, None: 2},
+        )
+
+        cats_view = dataset.filter_labels("label", F("is_cat3") == True)
+        self.assertListEqual(cats_view.distinct("label.label"), ["cat"])
+
+    @drop_datasets
+    def test_set_label_list_values(self):
+        dataset = _make_labels_dataset()
+
+        view = dataset.filter_labels("labels", F("label") == "cat")
+        cat_ids = set(view.values("labels.classifications.id", unwind=True))
+
+        values = {_id: True for _id in cat_ids}
+
+        dataset.set_label_values("labels.classifications.is_cat1", values)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertNotIn("labels.classifications.is_cat1", schema)
+        self.assertDictEqual(
+            dataset.count_values("labels.classifications.is_cat1"),
+            {True: 2, None: 4},
+        )
+
+        dataset.set_label_values(
+            "labels.classifications.is_cat2", values, dynamic=True
+        )
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("labels.classifications.is_cat2", schema)
+        self.assertDictEqual(
+            dataset.count_values("labels.classifications.is_cat2"),
+            {True: 2, None: 4},
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_label_values("wrong_field.classifications.id", values)
+
+        all_ids = dataset.values("labels.classifications.id", unwind=True)
+        values = {_id: _id in cat_ids for _id in all_ids}
+        dataset.set_label_values(
+            "labels.classifications.is_cat3",
+            values,
+        )
+
+        self.assertDictEqual(
+            dataset.count_values("labels.classifications.is_cat3"),
+            {True: 2, False: 4},
+        )
+
+        cats_view = dataset.filter_labels("labels", F("is_cat3") == True)
+        self.assertListEqual(
+            cats_view.distinct("labels.classifications.label"),
+            ["cat"],
+        )
+
+    @drop_datasets
+    def test_set_frame_label_values(self):
+        dataset = _make_frame_classification_dataset()
+
+        view = dataset.match_frames(F("label.label") == "cat")
+        cat_ids = set(view.values("frames.label.id", unwind=True))
+
+        values = {_id: True for _id in cat_ids}
+
+        dataset.set_label_values("frames.label.is_cat1", values)
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertNotIn("label.is_cat1", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.label.is_cat1"), {True: 1, None: 3}
+        )
+
+        dataset.set_label_values("frames.label.is_cat2", values, dynamic=True)
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertIn("label.is_cat2", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.label.is_cat2"), {True: 1, None: 3}
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_label_values("frames.wrong_field.id", values)
+
+        all_ids = dataset.match_frames(F("label") != None).values(
+            "frames.label.id", unwind=True
+        )
+        values = {_id: _id in cat_ids for _id in all_ids}
+        dataset.set_label_values("frames.label.is_cat3", values)
+
+        self.assertDictEqual(
+            dataset.count_values("frames.label.is_cat3"),
+            {True: 1, False: 2, None: 1},
+        )
+
+        cats_view = dataset.filter_labels("frames.label", F("is_cat3") == True)
+        self.assertListEqual(cats_view.distinct("frames.label.label"), ["cat"])
+
+    @drop_datasets
+    def test_set_frame_label_list_values(self):
+        dataset = _make_frame_labels_dataset()
+
+        view = dataset.filter_labels("frames.labels", F("label") == "cat")
+        cat_ids = set(
+            view.values("frames.labels.classifications.id", unwind=True)
+        )
+
+        values = {_id: True for _id in cat_ids}
+
+        dataset.set_label_values(
+            "frames.labels.classifications.is_cat1", values
+        )
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertNotIn("labels.classifications.is_cat1", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.labels.classifications.is_cat1"),
+            {True: 2, None: 4},
+        )
+
+        dataset.set_label_values(
+            "frames.labels.classifications.is_cat2", values, dynamic=True
+        )
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertIn("labels.classifications.is_cat2", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.labels.classifications.is_cat2"),
+            {True: 2, None: 4},
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_label_values(
+                "frames.wrong_field.classifications.id", values
+            )
+
+        all_ids = dataset.values(
+            "frames.labels.classifications.id", unwind=True
+        )
+        values = {_id: _id in cat_ids for _id in all_ids}
+        dataset.set_label_values(
+            "frames.labels.classifications.is_cat3",
+            values,
+        )
+
+        self.assertDictEqual(
+            dataset.count_values("frames.labels.classifications.is_cat3"),
+            {True: 2, False: 4},
+        )
+
+        cats_view = dataset.filter_labels(
+            "frames.labels", F("is_cat3") == True
+        )
+        self.assertListEqual(
+            cats_view.distinct("frames.labels.classifications.label"),
+            ["cat"],
+        )
+
+
+def _make_classification_dataset():
+    sample1 = fo.Sample(
+        filepath="image1.jpg",
+        label=fo.Classification(label="cat", mood="surly"),
+    )
+
+    sample2 = fo.Sample(filepath="image2.jpg")
+
+    sample3 = fo.Sample(
+        filepath="image3.jpg",
+        label=fo.Classification(label="dog", age=51),
+    )
+
+    sample4 = fo.Sample(
+        filepath="image4.jpg",
+        label=fo.Classification(label="squirrel", fluffy=True),
+    )
+
+    sample5 = fo.Sample(filepath="image5.jpg")
+
+    dataset = fo.Dataset()
+    dataset.add_samples([sample1, sample2, sample3, sample4, sample5])
+
+    return dataset
+
+
+def _make_frame_classification_dataset():
+    sample1 = fo.Sample("video1.mp4")
+    sample1.frames[1] = fo.Frame(
+        label=fo.Classification(label="cat", mood="surly"),
+    )
+
+    sample2 = fo.Sample("video2.mp4")
+    sample2.frames[2] = fo.Frame()
+
+    sample3 = fo.Sample("video3.mp4")
+    sample3.frames[3] = fo.Frame(
+        label=fo.Classification(label="dog", age=51),
+    )
+
+    sample4 = fo.Sample("video4.mp4")
+    sample4.frames[4] = fo.Frame(
+        label=fo.Classification(label="squirrel", fluffy=True)
+    )
+
+    sample5 = fo.Sample("video5.mp4")
+
+    dataset = fo.Dataset()
+    dataset.add_samples([sample1, sample2, sample3, sample4, sample5])
+
+    return dataset
+
+
+def _make_labels_dataset():
+    sample1 = fo.Sample(
+        filepath="image1.jpg",
+        labels=fo.Classifications(
+            classifications=[fo.Classification(label="cat", mood="surly")]
+        ),
+    )
+
+    sample2 = fo.Sample(filepath="image2.jpg")
+
+    sample3 = fo.Sample(
+        filepath="image3.jpg",
+        labels=fo.Classifications(
+            classifications=[
+                fo.Classification(label="cat"),
+                fo.Classification(label="dog", age=51),
+            ]
+        ),
+    )
+
+    sample4 = fo.Sample(
+        filepath="image4.jpg",
+        labels=fo.Classifications(
+            classifications=[
+                fo.Classification(label="rabbit"),
+                fo.Classification(label="squirrel", fluffy=True),
+                fo.Classification(label="frog"),
+            ]
+        ),
+    )
+
+    sample5 = fo.Sample(filepath="image5.jpg")
+
+    dataset = fo.Dataset()
+    dataset.add_samples([sample1, sample2, sample3, sample4, sample5])
+
+    return dataset
+
+
+def _make_frame_labels_dataset():
+    sample1 = fo.Sample(filepath="video1.mp4")
+    sample1.frames[1] = fo.Frame(
+        labels=fo.Classifications(
+            classifications=[fo.Classification(label="cat", mood="surly")]
+        )
+    )
+
+    sample2 = fo.Sample(filepath="video2.mp4")
+    sample2.frames[2] = fo.Frame()
+
+    sample3 = fo.Sample(filepath="video3.mp4")
+    sample3.frames[3] = fo.Frame(
+        labels=fo.Classifications(
+            classifications=[
+                fo.Classification(label="cat"),
+                fo.Classification(label="dog", age=51),
+            ]
+        )
+    )
+
+    sample4 = fo.Sample(filepath="video4.mp4")
+    sample4.frames[4] = fo.Frame(
+        labels=fo.Classifications(
+            classifications=[
+                fo.Classification(label="rabbit"),
+                fo.Classification(label="squirrel", fluffy=True),
+                fo.Classification(label="frog"),
+            ]
+        )
+    )
+
+    sample5 = fo.Sample(filepath="video5.mp4")
+
+    dataset = fo.Dataset()
+    dataset.add_samples([sample1, sample2, sample3, sample4, sample5])
+
+    return dataset
+
+
+class ViewSaveTests(unittest.TestCase):
     @drop_datasets
     def setUp(self):
         self.dataset = fo.Dataset()

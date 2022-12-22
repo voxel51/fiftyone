@@ -1187,7 +1187,7 @@ class DatasetView(foc.SampleCollection):
 
             # Generate stage's pipeline
             _pipelines.append(stage.to_mongo(_view))
-            _view = _view.add_stage(stage)
+            _view = _view._add_view_stage(stage, validate=False)
 
         if _attach_frames_idx is None and (attach_frames or frames_only):
             _attach_frames_idx = len(_pipelines)
@@ -1358,8 +1358,9 @@ class DatasetView(foc.SampleCollection):
 
         return self.skip(start).limit(stop - start)
 
-    def _add_view_stage(self, stage):
-        stage.validate(self)
+    def _add_view_stage(self, stage, validate=True):
+        if validate:
+            stage.validate(self)
 
         if stage.has_view:
             view = stage.load_view(self)
@@ -1396,9 +1397,9 @@ class DatasetView(foc.SampleCollection):
         selected_fields = None
         excluded_fields = None
 
-        dataset = self._dataset
+        _view = self._base_view
         for stage in self._stages:
-            sf = stage.get_selected_fields(dataset, frames=frames)
+            sf = stage.get_selected_fields(_view, frames=frames)
             if sf:
                 if roots_only:
                     sf = {f.split(".", 1)[0] for f in sf}
@@ -1408,7 +1409,7 @@ class DatasetView(foc.SampleCollection):
                 else:
                     selected_fields.intersection_update(sf)
 
-            ef = stage.get_excluded_fields(dataset, frames=frames)
+            ef = stage.get_excluded_fields(_view, frames=frames)
             if ef:
                 if roots_only:
                     ef = {f for f in ef if "." not in f}
@@ -1417,6 +1418,8 @@ class DatasetView(foc.SampleCollection):
                     excluded_fields = set(ef)
                 else:
                     excluded_fields.update(ef)
+
+            _view = _view._add_view_stage(stage, validate=False)
 
         if (
             roots_only
@@ -1431,14 +1434,16 @@ class DatasetView(foc.SampleCollection):
     def _get_filtered_fields(self, frames=False):
         filtered_fields = None
 
-        dataset = self._dataset
+        _view = self._base_view
         for stage in self._stages:
-            ff = stage.get_filtered_fields(dataset, frames=frames)
+            ff = stage.get_filtered_fields(_view, frames=frames)
             if ff:
                 if filtered_fields is None:
                     filtered_fields = set(ff)
                 else:
                     filtered_fields.update(ff)
+
+            _view = _view._add_view_stage(stage, validate=False)
 
         return filtered_fields
 

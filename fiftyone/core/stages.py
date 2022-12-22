@@ -897,6 +897,76 @@ class ExcludeFrames(ViewStage):
         fova.validate_video_collection(sample_collection)
 
 
+class ExcludeGroups(ViewStage):
+    """Excludes the groups with the given IDs from a grouped collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-groups")
+
+        #
+        # Exclude some specific groups by ID
+        #
+
+        view = dataset.take(2)
+        group_ids = view.values("group.id")
+
+        stage = fo.ExcludeGroups(group_ids)
+        other_groups = dataset.add_stage(stage)
+
+        assert len(set(group_ids) & set(other_groups.values("group.id"))) == 0
+
+    Args:
+        groups_ids: the groups to select. Can be any of the following:
+
+            -   a group ID
+            -   an iterable of group IDs
+            -   a :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView`
+            -   a group dict returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView` instances
+            -   an iterable of group dicts returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   a :class:`fiftyone.core.collections.SampleCollection`
+    """
+
+    def __init__(self, group_ids, ordered=False):
+        self._group_ids = _parse_group_ids(group_ids)
+
+    @property
+    def group_ids(self):
+        """The list of group IDs to exclude."""
+        return self._group_ids
+
+    def to_mongo(self, sample_collection):
+        id_path = sample_collection.group_field + "._id"
+        ids = [ObjectId(_id) for _id in self._group_ids]
+
+        return [{"$match": {id_path: {"$not": {"$in": ids}}}}]
+
+    def _kwargs(self):
+        return [["group_ids", self._group_ids]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "group_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,group,ids",
+            }
+        ]
+
+    def validate(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            raise ValueError("%s has no groups" % type(sample_collection))
+
+
 class ExcludeLabels(ViewStage):
     """Excludes the specified labels from a collection.
 
@@ -6925,10 +6995,11 @@ class ToFrames(ViewStage):
     omitted from the returned view.
 
     When ``sample_frames`` is True, this method samples each video in the
-    collection into a directory of per-frame images with filenames specified by
-    ``frames_patt``. By default, each folder of images is written using the
-    same basename as the input video. For example, if
-    ``frames_patt = "%%06d.jpg"``, then videos with the following paths::
+    collection into a directory of per-frame images and stores the filepaths in
+    the ``filepath`` frame field of the source dataset. By default, each folder
+    of images is written using the same basename as the input video. For
+    example, if ``frames_patt = "%%06d.jpg"``, then videos with the following
+    paths::
 
         /path/to/video1.mp4
         /path/to/video2.mp4
@@ -7385,6 +7456,7 @@ _STAGES = [
     ExcludeBy,
     ExcludeFields,
     ExcludeFrames,
+    ExcludeGroups,
     ExcludeLabels,
     Exists,
     FilterField,
