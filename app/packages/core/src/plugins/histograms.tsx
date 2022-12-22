@@ -1,6 +1,6 @@
 import { Selector } from "@fiftyone/components";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
-import { usePanelState, usePanelTitle } from "@fiftyone/spaces";
+import { usePanelStatePartial, usePanelTitle } from "@fiftyone/spaces";
 import { BarChart } from "@mui/icons-material";
 import React, { useEffect } from "react";
 import styled from "styled-components";
@@ -15,9 +15,8 @@ const DistributionsContainer = styled.div`
 const plots = ["Sample tags", "Label tags", "Labels", "Other fields"];
 
 function Plots() {
-  const [state, setState] = usePanelState();
   const [_, setTitle] = usePanelTitle();
-  const { plot = plots[0] } = state;
+  const [plot, setPlot] = usePanelStatePartial("plot", plots[0]);
 
   useEffect(() => {
     setTitle(plot);
@@ -36,7 +35,7 @@ function Plots() {
           width: "12rem",
         }}
         onSelect={(plot) => {
-          setState({ ...state, plot });
+          setPlot(plot);
         }}
         overflow={true}
         placeholder={"Select histogram"}
