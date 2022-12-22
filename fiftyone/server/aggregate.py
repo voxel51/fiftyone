@@ -14,10 +14,13 @@ import strawberry as gql
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
+import fiftyone.core.view as fov
 
+from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import T
-from fiftyone.server.scalars import BSONArray
+from fiftyone.server.scalars import BSONArray, JSON
+from fiftyone.server.view import get_view
 
 
 _DEFAULT_NUM_HISTOGRAM_BINS = 25
@@ -111,6 +114,14 @@ HISTOGRAM_VALUES_TYPES = {
 }
 
 
+@gql.input
+class ExtendedViewForm:
+    filters: t.Optional[JSON] = None
+    mixed: t.Optional[bool] = None
+    samples_ids: t.Optional[t.List[str]] = None
+    slice: t.Optional[str] = None
+
+
 @gql.type
 class AggregateQuery:
     @gql.field
@@ -119,6 +130,7 @@ class AggregateQuery:
         dataset_name: str,
         view: BSONArray,
         aggregations: t.List[Aggregate],
+        form: t.Optional[ExtendedViewForm] = None,
     ) -> t.List[
         gql.union(
             "AggregationResponses",
@@ -132,7 +144,7 @@ class AggregateQuery:
             ),
         )
     ]:
-        view = await load_view(dataset_name, view)
+        view = await load_view(dataset_name, view, form or ExtendedViewForm())
 
         resolvers = []
         aggs = []
@@ -157,12 +169,25 @@ class AggregateQuery:
 
 
 async def load_view(
-    name: str, serialized_view: BSONArray
+    name: str, serialized_view: BSONArray, form: ExtendedViewForm
 ) -> foc.SampleCollection:
     def run() -> foc.SampleCollection:
         dataset = fo.load_dataset(name)
         dataset.reload()
-        return fo.DatasetView._build(dataset, serialized_view or [])
+        view = get_view(
+            name,
+            serialized_view,
+            filters=form.filters,
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(slice=form.slice)
+            ),
+        )
+
+        if form.sample_ids:
+            view = fov.make_optimized_select_view(view, form.sample_ids)
+
+        if form.mixed:
+            view = view.select_group_slices(_allow_mixed=True)
 
     loop = asyncio.get_running_loop()
 
