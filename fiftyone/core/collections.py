@@ -3239,6 +3239,56 @@ class SampleCollection(object):
         )
 
     @view_stage
+    def exclude_groups(self, group_ids):
+        """Excludes the groups with the given IDs from the grouped collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            #
+            # Exclude some specific groups by ID
+            #
+
+            view = dataset.take(2)
+            group_ids = view.values("group.id")
+            all_other_groups = dataset.exclude_groups(group_ids)
+
+            #
+            # Verify set complements
+            #
+
+            excluded_group_ids = set(group_ids)
+            all_other_group_ids = set(all_other_groups.values("group.id"))
+            dataset_group_ids = set(dataset.values("group.id"))
+
+            assert set() == all_other_group_ids.intersection(excluded_group_ids)
+            assert dataset_group_ids == all_other_group_ids.union(excluded_group_ids)
+
+        Args:
+            groups_ids: the groups to exclude. Can be any of the following:
+
+                -   a group ID
+                -   an iterable of group IDs
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView`
+                -   a group dict returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances
+                -   an iterable of group dicts returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.ExcludeGroups(group_ids))
+
+    @view_stage
     def exclude_labels(
         self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
     ):

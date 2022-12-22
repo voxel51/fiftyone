@@ -813,6 +813,33 @@ to create a view that contains certain group(s) of interest by their IDs:
     same_order = dataset.select_groups(group_ids, ordered=True)
     assert view.values("id") == same_order.values("id")
 
+.. _groups-excluding-groups:
+
+Excluding groups
+----------------
+
+You can use
+:meth:`exclude_groups() <fiftyone.core.collections.SampleCollection.exclude_groups>`
+to create a view that excludes certain group(s) of interest by their IDs:
+
+.. code-block:: python
+    :linenos:
+
+    # Exclude two groups at random
+    view = dataset.take(2)
+
+    group_ids = view.values("group.id")
+    all_other_groups = dataset.exclude_groups(group_ids)
+
+    ## Verify set complements:
+    
+    excluded_group_ids = set(group_ids)
+    all_other_group_ids = set(all_other_groups.values("group.id"))
+    dataset_group_ids = set(dataset.values("group.id"))
+
+    assert set() == all_other_group_ids.intersection(excluded_group_ids)
+    assert dataset_group_ids == all_other_group_ids.union(excluded_group_ids)
+
 .. _groups-selecting-slices:
 
 Selecting slices
