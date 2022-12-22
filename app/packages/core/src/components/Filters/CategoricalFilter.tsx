@@ -17,7 +17,6 @@ import { genSort } from "../../utils/generic";
 import Checkbox from "../Common/Checkbox";
 import { Button } from "../utils";
 
-import ExcludeOption from "./Exclude";
 import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
@@ -178,7 +177,8 @@ const Wrapper = ({
             //   color={color}
             // />
             <FilterOption
-              // excludeAtom={excludeAtom}
+              excludeAtom={excludeAtom}
+              selectedValuesAtom={selectedValuesAtom}
               labels={Array.from(selectedSet) as string[]}
               valueName={name}
               color={color}
