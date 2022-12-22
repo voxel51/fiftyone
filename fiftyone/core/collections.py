@@ -2142,12 +2142,12 @@ class SampleCollection(object):
                         "Group fields can only be added to entire datasets"
                     )
 
+                media_type = self.media_type
                 self._dataset._add_group_field(field_name)
 
                 if not new_root_field:
                     return None, False
 
-                media_type = self.media_type
                 slice_names = set()
                 for _value in values:
                     if isinstance(_value, fog.Group):
