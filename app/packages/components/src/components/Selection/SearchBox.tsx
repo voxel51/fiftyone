@@ -15,7 +15,8 @@ const SearchInput = styled.input`
   width: 100%;
   margin: 0.5rem 0.75rem;
   border-radius: 4px;
-  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
+  cursor: ${({ disabled }) =>
+    disabled ? "not-allowed" : "pointer"} !important;
   padding: 0.25rem 0.5rem;
   color: ${({ theme }) => theme.text.primary};
   background: ${({ theme }) => theme.background.level3};
@@ -32,25 +33,33 @@ export const SearchBox = ({
   setSearchTerm,
   debouncedSearch,
   searchValue,
+  disabled = false,
 }: {
   searchTerm: string;
   searchPlaceholder?: string;
   setSearchTerm: (term: string) => void;
   debouncedSearch: (term: string) => void;
   searchValue?: string;
+  disabled?: boolean;
 }) => {
   const theme = useTheme();
+  const {
+    background: { level1 },
+    primary: { plainBorder },
+    text: { secondary },
+  } = theme;
   return (
     <Box
       style={{
         position: "sticky",
         top: 0,
         zIndex: 9999,
-        background: theme.background.level1,
-        borderBottom: `1px solid ${theme.primary.plainBorder}`,
+        background: level1,
+        borderBottom: `1px solid ${plainBorder}`,
       }}
     >
       <SearchInput
+        disabled={disabled}
         value={searchTerm}
         placeholder={searchPlaceholder}
         onChange={(e) => {
@@ -75,7 +84,7 @@ export const SearchBox = ({
           fontSize="small"
           style={{
             cursor: "pointer",
-            color: theme.text.secondary,
+            color: secondary,
             position: "absolute",
             right: 20,
           }}

@@ -175,6 +175,7 @@ export default function Selection(props: SelectionProps) {
             setSearchTerm={setSearchTerm}
             searchPlaceholder={searchPlaceholder}
             searchValue={searchValue}
+            disabled={items?.length <= 1}
           />
         )}
         {!onSearch && headerComponent}
