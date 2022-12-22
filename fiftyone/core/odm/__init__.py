@@ -39,7 +39,6 @@ from .database import (
     bulk_write,
 )
 from .dataset import (
-    create_field,
     SampleFieldDocument,
     KeypointSkeleton,
     DatasetAppConfig,
@@ -50,7 +49,11 @@ from .document import (
     Document,
     SerializableDocument,
 )
-from .embedded_document import DynamicEmbeddedDocument, EmbeddedDocument
+from .embedded_document import (
+    BaseEmbeddedDocument,
+    DynamicEmbeddedDocument,
+    EmbeddedDocument,
+)
 from .frame import (
     DatasetFrameDocument,
     NoDatasetFrameDocument,
@@ -65,6 +68,8 @@ from .utils import (
     serialize_value,
     deserialize_value,
     validate_field_name,
+    create_field,
+    create_implied_field,
     get_field_kwargs,
     get_implied_field_kwargs,
     validate_fields_match,

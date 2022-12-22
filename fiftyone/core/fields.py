@@ -60,27 +60,47 @@ def validate_type_constraints(ftype=None, embedded_doc_type=None):
     """Validates the given type constraints.
 
     Args:
-        ftype (None): an optional field type to enforce. Must be a subclass of
-            :class:`Field`
-        embedded_doc_type (None): an optional embedded document type to
-            enforce. Must be a subclass of
+        ftype (None): an optional field type or iterable of types to enforce.
+            Must be subclass(es) of :class:`Field`
+        embedded_doc_type (None): an optional embedded document type or
+            iterable of types to enforce. Must be subclass(es) of
             :class:`fiftyone.core.odm.BaseEmbeddedDocument`
 
     Raises:
         ValueError: if the constraints are not valid
     """
-    if ftype is not None and not issubclass(ftype, Field):
-        raise ValueError(
-            "Field type %s must be subclass of %s" % (ftype, Field)
-        )
+    if ftype is not None:
+        if etau.is_container(ftype):
+            ftype = tuple(ftype)
+        else:
+            ftype = (ftype,)
 
-    if embedded_doc_type is not None and (
-        ftype is not None and not issubclass(ftype, EmbeddedDocumentField)
-    ):
-        raise ValueError(
-            "embedded_doc_type can only be specified if ftype is a subclass "
-            "of %s" % EmbeddedDocumentField
-        )
+        for _ftype in ftype:
+            if not issubclass(_ftype, Field):
+                raise ValueError(
+                    "Field type %s is not a subclass of %s" % (_ftype, Field)
+                )
+
+            if embedded_doc_type is not None and not issubclass(
+                _ftype, EmbeddedDocumentField
+            ):
+                raise ValueError(
+                    "embedded_doc_type can only be specified if ftype is a "
+                    "subclass of %s" % EmbeddedDocumentField
+                )
+
+    if embedded_doc_type is not None:
+        if etau.is_container(embedded_doc_type):
+            embedded_doc_type = tuple(embedded_doc_type)
+        else:
+            embedded_doc_type = (embedded_doc_type,)
+
+        for _embedded_doc_type in embedded_doc_type:
+            if not issubclass(_embedded_doc_type, foo.BaseEmbeddedDocument):
+                raise ValueError(
+                    "Embedded doc type %s is not a subclass of %s"
+                    % (_embedded_doc_type, foo.BaseEmbeddedDocument)
+                )
 
 
 def matches_type_constraints(field, ftype=None, embedded_doc_type=None):
@@ -88,23 +108,30 @@ def matches_type_constraints(field, ftype=None, embedded_doc_type=None):
 
     Args:
         field: a :class:`Field`
-        ftype (None): an optional field type to enforce. Must be a subclass of
-            :class:`Field`
-        embedded_doc_type (None): an optional embedded document type to
-            enforce. Must be a subclass of
+        ftype (None): an optional field type or iterable of types to enforce.
+            Must be subclass(es) of :class:`Field`
+        embedded_doc_type (None): an optional embedded document type or
+            iterable of types to enforce. Must be subclass(es) of
             :class:`fiftyone.core.odm.BaseEmbeddedDocument`
 
     Returns:
         True/False
     """
-    if ftype is not None and not isinstance(field, ftype):
-        return False
+    if ftype is not None:
+        if etau.is_container(ftype):
+            ftype = tuple(ftype)
 
-    if embedded_doc_type is not None and (
-        not isinstance(field, EmbeddedDocumentField)
-        or not issubclass(field.document_type, embedded_doc_type)
-    ):
-        return False
+        if not isinstance(field, ftype):
+            return False
+
+    if embedded_doc_type is not None:
+        if etau.is_container(embedded_doc_type):
+            embedded_doc_type = tuple(embedded_doc_type)
+
+        if not isinstance(field, EmbeddedDocumentField) or not issubclass(
+            field.document_type, embedded_doc_type
+        ):
+            return False
 
     return True
 
@@ -116,10 +143,10 @@ def validate_field(field, path=None, ftype=None, embedded_doc_type=None):
         field: a :class:`Field`
         path (None): the field or ``embedded.field.name``. Only used to
             generate more informative error messages
-        ftype (None): an optional field type to enforce. Must be a subclass of
-            :class:`Field`
-        embedded_doc_type (None): an optional embedded document type to
-            enforce. Must be a subclass of
+        ftype (None): an optional field type or iterable of types to enforce.
+            Must be subclass(es) of :class:`Field`
+        embedded_doc_type (None): an optional embedded document type or
+            iterable of types to enforce. Must be subclass(es) of
             :class:`fiftyone.core.odm.BaseEmbeddedDocument`
 
     Raises:
@@ -131,26 +158,31 @@ def validate_field(field, path=None, ftype=None, embedded_doc_type=None):
     if field is None:
         raise ValueError("%s does not exist" % _make_prefix(path))
 
-    if ftype is not None and not isinstance(field, ftype):
-        raise ValueError(
-            "%s has type %s, not %s" % (_make_prefix(path), type(field), ftype)
-        )
+    if ftype is not None:
+        if etau.is_container(ftype):
+            ftype = tuple(ftype)
 
-    if embedded_doc_type is not None and not isinstance(
-        field, EmbeddedDocumentField
-    ):
-        raise ValueError(
-            "%s has type %s, not %s"
-            % (_make_prefix(path), type(field), EmbeddedDocumentField)
-        )
+        if not isinstance(field, ftype):
+            raise ValueError(
+                "%s has type %s, not %s"
+                % (_make_prefix(path), type(field), ftype)
+            )
 
-    if embedded_doc_type is not None and not issubclass(
-        field.document_type, embedded_doc_type
-    ):
-        raise ValueError(
-            "%s has type %s, not %s"
-            % (_make_prefix(path), field.document_type, embedded_doc_type)
-        )
+    if embedded_doc_type is not None:
+        if etau.is_container(embedded_doc_type):
+            embedded_doc_type = tuple(embedded_doc_type)
+
+        if not isinstance(field, EmbeddedDocumentField):
+            raise ValueError(
+                "%s has type %s, not %s"
+                % (_make_prefix(path), type(field), EmbeddedDocumentField)
+            )
+
+        if not issubclass(field.document_type, embedded_doc_type):
+            raise ValueError(
+                "%s has document type %s, not %s"
+                % (_make_prefix(path), field.document_type, embedded_doc_type)
+            )
 
 
 def _make_prefix(path):
@@ -171,11 +203,12 @@ def flatten_schema(
 
     Args:
         schema: a dict mapping keys to :class:`Field` instances
-        ftype (None): an optional field type to which to restrict the returned
-            schema. Must be a subclass of :class:`Field`
-        embedded_doc_type (None): an optional embedded document type to which
-            to restrict the returned schema. Must be a subclass of
-            :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+        ftype (None): an optional field type or iterable of types to which to
+            restrict the returned schema. Must be subclass(es) of
+            :class:`Field`
+        embedded_doc_type (None): an optional embedded document type or
+            iterable of types to which to restrict the returned schema. Must be
+            subclass(es) of :class:`fiftyone.core.odm.BaseEmbeddedDocument`
         include_private (False): whether to include fields that start with
             ``_`` in the returned schema
 
@@ -1227,11 +1260,12 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         document field.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema

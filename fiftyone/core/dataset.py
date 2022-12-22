@@ -1112,11 +1112,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         the dataset.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -1155,11 +1156,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Only applicable for datasets that contain videos.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -1247,12 +1249,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def _add_implied_sample_field(self, field_name, value, dynamic=False):
+    def _add_implied_sample_field(
+        self, field_name, value, dynamic=False, validate=True
+    ):
         if isinstance(value, fog.Group):
             expanded = self._add_group_field(field_name, default=value.name)
         else:
             expanded = self._sample_doc_cls.add_implied_field(
-                field_name, value, dynamic=dynamic
+                field_name, value, dynamic=dynamic, validate=validate
             )
 
         if expanded:
@@ -1350,14 +1354,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def _add_implied_frame_field(self, field_name, value, dynamic=False):
+    def _add_implied_frame_field(
+        self, field_name, value, dynamic=False, validate=True
+    ):
         if not self._has_frame_fields():
             raise ValueError(
                 "Only datasets that contain videos may have frame fields"
             )
 
         expanded = self._frame_doc_cls.add_implied_field(
-            field_name, value, dynamic=dynamic
+            field_name, value, dynamic=dynamic, validate=validate
         )
 
         if expanded:
@@ -5877,7 +5883,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     continue
 
                 if isinstance(value, fog.Group):
-                    self._expand_group_schema(sample, field_name, value)
+                    self._expand_group_schema(
+                        field_name, value.name, sample.media_type
+                    )
 
                 if not dynamic and field_name in schema:
                     continue
@@ -5900,12 +5908,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def _expand_group_schema(self, sample, field_name, value):
+    def _expand_group_schema(self, field_name, slice_name, media_type):
         if self.group_field is not None and field_name != self.group_field:
             raise ValueError("Dataset has no group field '%s'" % field_name)
-
-        slice_name = value.name
-        media_type = sample.media_type
 
         if slice_name not in self._doc.group_media_types:
             # If this is the first video slice, we need to initialize the frame

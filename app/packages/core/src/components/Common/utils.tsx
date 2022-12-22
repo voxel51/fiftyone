@@ -1,5 +1,5 @@
-import React from "react";
 import numeral from "numeral";
+import React from "react";
 
 import {
   DATE_FIELD,

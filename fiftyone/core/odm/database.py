@@ -85,6 +85,11 @@ def get_db_config():
     except moe.DoesNotExist:
         config = DatabaseConfigDocument()
         save = True
+    except moe.MultipleObjectsReturned:
+        cleanup_multiple_config_docs()
+
+        # pylint: disable=no-member
+        config = DatabaseConfigDocument.objects.first()
 
     if config.version is None:
         #
@@ -116,6 +121,41 @@ def get_db_config():
         config.save()
 
     return config
+
+
+def cleanup_multiple_config_docs():
+    """Internal utility that ensures that there is only one
+    :class:`DatabaseConfigDocument` in the database.
+    """
+
+    # We use mongoengine here because `get_db_conn()` will not currently work
+    # until `import fiftyone` succeeds, which requires a single config doc
+    # pylint: disable=no-member
+    docs = list(DatabaseConfigDocument.objects)
+    if len(docs) <= 1:
+        return
+
+    logger.warning(
+        "Unexpectedly found %d documents in the 'config' collection; assuming "
+        "the one with latest 'version' is the correct one",
+        len(docs),
+    )
+
+    versions = []
+    for doc in docs:
+        try:
+            versions.append((doc.id, Version(doc.version)))
+        except:
+            pass
+
+    try:
+        keep_id = max(versions, key=lambda kv: kv[1])[0]
+    except:
+        keep_id = docs[0].id
+
+    for doc in docs:
+        if doc.id != keep_id:
+            doc.delete()
 
 
 def establish_db_conn(config):

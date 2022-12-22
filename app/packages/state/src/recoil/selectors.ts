@@ -85,6 +85,11 @@ export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
   }
 );
 
+export const datasetAppConfig = selector<State.DatasetAppConfig>({
+  key: "datasetAppConfig",
+  get: ({ get }) => get(atoms.dataset)?.appConfig,
+});
+
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {

@@ -1379,10 +1379,9 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
-        rel_dir (None): a relative directory to prepend to the ``filepath`` of
-            each sample if the filepath is not absolute. This path is converted
-            to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+        rel_dir (None): a relative directory to prepend to each filepath if it
+            is not absolute. This path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1409,6 +1408,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         self._metadata = None
         self._rel_dir = None
+        self._fields_dir = None
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
@@ -1417,6 +1417,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self._iter_samples = None
         self._num_samples = None
         self._media_type = None
+        self._media_fields = None
 
     def __iter__(self):
         self._iter_samples = iter(self._samples)
@@ -1430,6 +1431,9 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         if not os.path.isabs(sd["filepath"]):
             sd["filepath"] = os.path.join(self._rel_dir, sd["filepath"])
+
+        if self._media_fields:
+            _parse_media_fields(sd, self._media_fields, self._rel_dir)
 
         if (self._media_type == fomm.VIDEO) or (
             self._media_type == fomm.GROUP
@@ -1475,10 +1479,14 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         else:
             self._rel_dir = self.dataset_dir
 
+        self._fields_dir = os.path.join(self.dataset_dir, "fields")
         self._anno_dir = os.path.join(self.dataset_dir, "annotations")
         self._brain_dir = os.path.join(self.dataset_dir, "brain")
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
         self._frame_labels_dir = os.path.join(self.dataset_dir, "frames")
+
+        if os.path.isdir(self._fields_dir):
+            self._media_fields = etau.list_subdirs(self._fields_dir)
 
         samples_path = os.path.join(self.dataset_dir, "samples.json")
         samples = etas.read_json(samples_path).get("samples", [])
@@ -1620,6 +1628,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self.ordered = ordered
 
         self._data_dir = None
+        self._fields_dir = None
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
@@ -1627,13 +1636,18 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._samples_path = None
         self._frames_path = None
         self._has_frames = None
+        self._media_fields = None
 
     def setup(self):
         self._data_dir = os.path.join(self.dataset_dir, "data")
+        self._fields_dir = os.path.join(self.dataset_dir, "fields")
         self._anno_dir = os.path.join(self.dataset_dir, "annotations")
         self._brain_dir = os.path.join(self.dataset_dir, "brain")
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
+
+        if os.path.isdir(self._fields_dir):
+            self._media_fields = etau.list_subdirs(self._fields_dir)
 
         self._samples_path = os.path.join(self.dataset_dir, "samples.json")
         if not os.path.isfile(self._samples_path):
@@ -1747,17 +1761,22 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             # Prepend `dataset_dir` to all relative paths
             rel_dir = self.dataset_dir
 
-        def parse_sample(sample):
-            if not os.path.isabs(sample["filepath"]):
-                sample["filepath"] = os.path.join(rel_dir, sample["filepath"])
+        media_fields = self._media_fields
+
+        def _parse_sample(sd):
+            if not os.path.isabs(sd["filepath"]):
+                sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
 
             if tags is not None:
-                sample["tags"].extend(tags)
+                sd["tags"].extend(tags)
 
-            return sample
+            if media_fields:
+                _parse_media_fields(sd, media_fields, rel_dir)
+
+            return sd
 
         sample_ids = foo.insert_documents(
-            map(parse_sample, samples),
+            map(_parse_sample, samples),
             dataset._sample_collection,
             ordered=self.ordered,
             progress=True,
@@ -1923,6 +1942,27 @@ def _import_runs(dataset, runs, results_dir, run_cls):
             d = etas.read_json(json_path)
             results = fors.RunResults.from_dict(d, view, run_info.config)
             run_cls.save_run_results(dataset, key, results, cache=False)
+
+
+def _parse_media_fields(sd, media_fields, rel_dir):
+    for field_name in media_fields:
+        value = sd.get(field_name, None)
+        if value is None:
+            continue
+
+        if isinstance(value, dict):
+            label_type = value.get("_cls", None)
+            if label_type == "Segmentation":
+                mask_path = value.get("mask_path", None)
+                if mask_path is not None and not os.path.isabs(mask_path):
+                    value["mask_path"] = os.path.join(rel_dir, mask_path)
+            elif label_type == "Heatmap":
+                map_path = value.get("map_path", None)
+                if map_path is not None and not os.path.isabs(map_path):
+                    value["map_path"] = os.path.join(rel_dir, map_path)
+        elif etau.is_str(value):
+            if not os.path.isabs(value):
+                sd[field_name] = os.path.join(rel_dir, value)
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
@@ -2980,6 +3020,8 @@ class ImageSegmentationDirectoryImporter(
                 ``dataset_dir`` has no effect on the location of the labels
 
             If None, the parameter will default to ``labels/``
+        load_masks (False): whether to load the masks into the database (True)
+            or simply record the paths to the masks (False)
         force_grayscale (False): whether to load RGB masks as grayscale by
             storing only the first channel
         compute_metadata (False): whether to produce
@@ -3000,8 +3042,9 @@ class ImageSegmentationDirectoryImporter(
         dataset_dir=None,
         data_path=None,
         labels_path=None,
-        compute_metadata=False,
+        load_masks=False,
         force_grayscale=False,
+        compute_metadata=False,
         include_all_data=False,
         shuffle=False,
         seed=None,
@@ -3034,6 +3077,7 @@ class ImageSegmentationDirectoryImporter(
 
         self.data_path = data_path
         self.labels_path = labels_path
+        self.load_masks = load_masks
         self.force_grayscale = force_grayscale
         self.compute_metadata = compute_metadata
         self.include_all_data = include_all_data
@@ -3063,8 +3107,11 @@ class ImageSegmentationDirectoryImporter(
             image_metadata = None
 
         if mask_path is not None:
-            mask = _read_mask(mask_path, force_grayscale=self.force_grayscale)
-            label = fol.Segmentation(mask=mask)
+            label = fol.Segmentation(mask_path=mask_path)
+            if self.load_masks:
+                label.import_mask(update=True)
+                if self.force_grayscale and label.mask.ndim > 1:
+                    label.mask = label.mask[:, :, 0]
         else:
             label = None
 
@@ -3109,15 +3156,6 @@ class ImageSegmentationDirectoryImporter(
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
         return len(etau.list_files(os.path.join(dataset_dir, "data")))
-
-
-def _read_mask(mask_path, force_grayscale=False):
-    # pylint: disable=no-member
-    mask = etai.read(mask_path, cv2.IMREAD_UNCHANGED)
-    if force_grayscale and mask.ndim > 1:
-        mask = mask[:, :, 0]
-
-    return mask
 
 
 class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):

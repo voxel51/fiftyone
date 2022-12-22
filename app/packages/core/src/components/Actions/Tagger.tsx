@@ -1,11 +1,11 @@
+import { useSpring } from "@react-spring/web";
+import numeral from "numeral";
 import React, {
   MutableRefObject,
   Suspense,
   useLayoutEffect,
   useState,
 } from "react";
-import numeral from "numeral";
-import { CircularProgress } from "@mui/material";
 import {
   RecoilState,
   RecoilValue,
@@ -16,24 +16,9 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import { useSpring } from "@react-spring/web";
 
-import Checker, { CheckState } from "./Checker";
-import Popout from "./Popout";
-import {
-  tagStats,
-  SwitchDiv,
-  SwitcherDiv,
-  tagStatistics,
-  numItemsInSelection,
-  selectedSamplesCount,
-  tagParameters,
-} from "./utils";
-import { Button } from "../utils";
-import { PopoutSectionTitle } from "@fiftyone/components";
+import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { getFetchFunction } from "@fiftyone/utilities";
-import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
   currentSlice,
@@ -42,38 +27,20 @@ import {
   Lookers,
   refresher,
 } from "@fiftyone/state";
-
-const IconDiv = styled.div`
-  position: absolute;
-  top: 0.25rem;
-  right: -0.75rem;
-  height: 2rem;
-  width: 2rem;
-
-  & > svg {
-    margin-top: 0.5rem;
-    margin-right: 0.25rem;
-    color: ${({ theme }) => theme.text.primary};
-  }
-`;
-
-const Loading = React.memo(({ loading }: { loading: boolean }) => {
-  const theme = useTheme();
-  return (
-    <IconDiv>
-      {loading && (
-        <CircularProgress
-          style={{
-            color: theme.text.secondary,
-            height: 16,
-            width: 16,
-            marginTop: "0.25rem",
-          }}
-        />
-      )}
-    </IconDiv>
-  );
-});
+import { getFetchFunction } from "@fiftyone/utilities";
+import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import { Button } from "../utils";
+import Checker, { CheckState } from "./Checker";
+import Popout from "./Popout";
+import {
+  numItemsInSelection,
+  selectedSamplesCount,
+  SwitchDiv,
+  SwitcherDiv,
+  tagParameters,
+  tagStatistics,
+  tagStats,
+} from "./utils";
 
 const TaggingContainerInput = styled.div`
   font-size: 14px;
@@ -124,6 +91,7 @@ const Section = ({
 }: SectionProps) => {
   const items = useRecoilValue(itemsAtom);
   const elementNames = useRecoilValue(fos.elementNames);
+  const theme = useTheme();
   const [tagging, setTagging] = useRecoilState(taggingAtom);
   const [value, setValue] = useState("");
   const [count, placeholder] = countAndPlaceholder();
@@ -158,66 +126,70 @@ const Section = ({
   };
 
   if (!items) {
-    return <Loader />;
+    return <LoadingDots text="" color={theme.text.secondary} />;
   }
 
   const hasChanges = Object.keys(changes).length > 0;
 
   const hasCreate = value.length > 0 && !(value in changes || value in items);
+  const isLoading = Boolean(tagging || typeof count !== "number");
 
   return (
     <>
       <TaggingContainerInput>
-        <TaggingInput
-          placeholder={
-            count == 0
-              ? `No ${labels ? "labels" : elementNames.plural}`
-              : disabled
-              ? count === null
-                ? "loading..."
-                : "saving..."
-              : placeholder
-          }
-          value={value}
-          onChange={(e) => {
-            setValue(e.target.value);
-            if (e.target.value.length) {
-              const results = Array.from(
-                new Set(Object.keys({ ...items, ...changes }))
-              )
-                .sort()
-                .filter((v) =>
-                  v.toLocaleLowerCase().includes(e.target.value.toLowerCase())
-                );
-              results.length && setActive(results[0]);
+        {isLoading ? (
+          <LoadingDots text="" color={theme.text.secondary} />
+        ) : (
+          <TaggingInput
+            placeholder={
+              count == 0
+                ? `No ${labels ? "labels" : elementNames.plural}`
+                : disabled
+                ? count === null
+                  ? "loading..."
+                  : "saving..."
+                : placeholder
             }
-          }}
-          title={
-            hasCreate
-              ? `Enter to add "${value}" tag to ${count} ${
-                  labels && count > 1
-                    ? "labels"
-                    : labels
-                    ? "label"
-                    : count > 1
-                    ? elementNames.plural
-                    : elementNames.singular
-                }`
-              : null
-          }
-          onKeyPress={(e) => {
-            if (e.key === "Enter" && hasCreate) {
-              setValue("");
-              setChanges({ ...changes, [value]: CheckState.ADD });
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value);
+              if (e.target.value.length) {
+                const results = Array.from(
+                  new Set(Object.keys({ ...items, ...changes }))
+                )
+                  .sort()
+                  .filter((v) =>
+                    v.toLocaleLowerCase().includes(e.target.value.toLowerCase())
+                  );
+                results.length && setActive(results[0]);
+              }
+            }}
+            title={
+              hasCreate
+                ? `Enter to add "${value}" tag to ${count} ${
+                    labels && count > 1
+                      ? "labels"
+                      : labels
+                      ? "label"
+                      : count > 1
+                      ? elementNames.plural
+                      : elementNames.singular
+                  }`
+                : null
             }
-          }}
-          focused={!disabled}
-          disabled={disabled || count === 0}
-          autoFocus
-          onBlur={({ target }) => target.focus()}
-          type={"text"}
-        />
-        <Loading loading={Boolean(tagging || typeof count !== "number")} />
+            onKeyPress={(e) => {
+              if (e.key === "Enter" && hasCreate) {
+                setValue("");
+                setChanges({ ...changes, [value]: CheckState.ADD });
+              }
+            }}
+            focused={!disabled}
+            disabled={disabled || count === 0}
+            autoFocus
+            onBlur={({ target }) => target.focus()}
+            type={"text"}
+          />
+        )}
       </TaggingContainerInput>
       {count > 0 && (
         <Checker
@@ -339,7 +311,7 @@ const useTagCallback = (
   targetLabels,
   lookerRef?: React.MutableRefObject<Lookers | undefined>
 ) => {
-  const setAggs = useSetRecoilState(fos.aggregationsTick);
+  const setAggs = useSetRecoilState(fos.refresher);
   const setLabels = fos.useSetSelectedLabels();
   const setSamples = fos.useSetSelected();
   const updateSample = fos.useUpdateSample();
@@ -414,17 +386,6 @@ const useTagCallback = (
   );
 };
 
-const Loader = () => {
-  const theme = useTheme();
-  return (
-    <div style={{ display: "flex", justifyContent: "center" }}>
-      <CircularProgress
-        style={{ color: theme.text.secondary, margin: "1rem 0" }}
-      />
-    </div>
-  );
-};
-
 const useLabelPlaceHolder = (
   modal: boolean,
   elementNames: { plural: string; singular: string }
@@ -475,16 +436,10 @@ const useSamplePlaceHolder = (
 };
 
 const SuspenseLoading = () => {
+  const theme = useTheme();
   return (
     <TaggingContainerInput>
-      <TaggingInput
-        placeholder={"Loading..."}
-        title={"Loading..."}
-        focused={false}
-        disabled={true}
-        type={"text"}
-      />
-      <Loading loading={true} />
+      <LoadingDots text="Loading" color={theme.text.secondary} />
     </TaggingContainerInput>
   );
 };
