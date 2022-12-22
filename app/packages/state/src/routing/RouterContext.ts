@@ -12,7 +12,6 @@ import {
 } from "relay-runtime";
 
 import {
-  FetchFunction,
   getFetchFunction,
   GraphQLError,
   isElectron,
@@ -260,7 +259,7 @@ async function fetchGraphQL(
   return data;
 }
 
-const fetchRelay: FetchFunction = async (params, variables) => {
+const fetchRelay = async (params, variables) => {
   return fetchGraphQL(params.text, variables);
 };
 

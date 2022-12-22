@@ -2584,10 +2584,10 @@ __metadata:
     "@types/mime": ^2.0.3
     "@types/react": ^18.0.9
     "@types/react-dom": ^18.0.3
-    "@types/react-relay": ^13.0.0
+    "@types/react-relay": ^14.1.0
     "@types/react-router": ^5.1.18
     "@types/relay-compiler": ^8.0.2
-    "@types/relay-runtime": ^13.0.1
+    "@types/relay-runtime": ^14.1.0
     "@types/styled-components": ^5.1.23
     "@use-gesture/react": 10.1.1
     "@vitejs/plugin-react-refresh": ^1.3.3
@@ -2677,10 +2677,10 @@ __metadata:
     "@types/mime": ^2.0.3
     "@types/react": ^18.0.9
     "@types/react-dom": ^18.0.3
-    "@types/react-relay": ^13.0.0
+    "@types/react-relay": ^14.1.0
     "@types/react-router": ^5.1.18
     "@types/relay-compiler": ^8.0.2
-    "@types/relay-runtime": ^13.0.1
+    "@types/relay-runtime": ^14.1.0
     "@types/styled-components": ^5.1.23
     "@use-gesture/react": 10.1.1
     "@vitejs/plugin-react-refresh": ^1.3.3
@@ -4675,16 +4675,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react-relay@npm:^13.0.0":
-  version: 13.0.2
-  resolution: "@types/react-relay@npm:13.0.2"
-  dependencies:
-    "@types/react": "*"
-    "@types/relay-runtime": "*"
-  checksum: fc60d29ed2be3350051383958583b0da9328cef74f11da29456b5719b2cd04cdd343485cf77c4c9e835928572e36ad7c81fcd542e4e36b57707a94eb89985189
-  languageName: node
-  linkType: hard
-
 "@types/react-relay@npm:^14.1.0":
   version: 14.1.2
   resolution: "@types/react-relay@npm:14.1.2"
@@ -4768,10 +4758,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/relay-runtime@npm:*, @types/relay-runtime@npm:^13.0.1":
+"@types/relay-runtime@npm:*":
   version: 13.0.3
   resolution: "@types/relay-runtime@npm:13.0.3"
   checksum: b6151ddc74bd306873a854afaa651f972c7ca6e7685c9fe791f32f3ce1cff56e30c64db457abfa8488957af6a8e3462a5097d4b87ae2076d25e0ec59a115ac5f
+  languageName: node
+  linkType: hard
+
+"@types/relay-runtime@npm:^14.1.0":
+  version: 14.1.5
+  resolution: "@types/relay-runtime@npm:14.1.5"
+  checksum: ead50a42ed6d1a218a5be524401ebdaf1c52f4a81aa57b8e8f383306b1dcaef6b2c4f8ec9488ee30adde93aa47c28f769429bd2cebdc19e17986495a60d5db23
   languageName: node
   linkType: hard
 
