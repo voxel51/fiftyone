@@ -154,6 +154,7 @@ from .core.stages import (
     ExcludeBy,
     ExcludeFields,
     ExcludeFrames,
+    ExcludeGroups,
     ExcludeLabels,
     Exists,
     FilterField,

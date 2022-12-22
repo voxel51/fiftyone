@@ -5,12 +5,9 @@ Documents that track datasets and their sample schemas in the database.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import inspect
-
 import eta.core.utils as etau
 
 from fiftyone.core.fields import (
-    Field,
     BooleanField,
     ClassesField,
     DateTimeField,
@@ -28,112 +25,13 @@ from fiftyone.core.fields import (
 import fiftyone.core.utils as fou
 
 from .document import Document
-from .embedded_document import EmbeddedDocument, BaseEmbeddedDocument
+from .embedded_document import EmbeddedDocument
 from .runs import RunDocument
 from .views import SavedViewDocument
+from .utils import create_field
 
 fol = fou.lazy_import("fiftyone.core.labels")
 fom = fou.lazy_import("fiftyone.core.metadata")
-
-
-def create_field(
-    name,
-    ftype,
-    embedded_doc_type=None,
-    subfield=None,
-    fields=None,
-    db_field=None,
-    description=None,
-    info=None,
-    **kwargs,
-):
-    """Creates the field defined by the given specification.
-
-    .. note::
-
-        This method is used exclusively to create user-defined (non-default)
-        fields. Any parameters accepted here must be stored on
-        :class:`SampleFieldDocument` or else datasets will "lose" any
-        additional decorations when they are loaded from the database.
-
-    Args:
-        name: the field name
-        ftype: the field type to create. Must be a subclass of
-            :class:`fiftyone.core.fields.Field`
-        embedded_doc_type (None): the
-            :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the field.
-            Only applicable when ``ftype`` is
-            :class:`fiftyone.core.fields.EmbeddedDocumentField`
-        subfield (None): the :class:`fiftyone.core.fields.Field` type of the
-            contained field. Only applicable when ``ftype`` is
-            :class:`fiftyone.core.fields.ListField` or
-            :class:`fiftyone.core.fields.DictField`
-        fields (None): a list of :class:`fiftyone.core.fields.Field` instances
-            defining embedded document attributes. Only applicable when
-            ``ftype`` is :class:`fiftyone.core.fields.EmbeddedDocumentField`
-        db_field (None): the database field to store this field in. By default,
-            ``name`` is used
-        description (None): an optional description
-        info (None): an optional info dict
-
-    Returns:
-        a :class:`fiftyone.core.fields.Field`
-    """
-    if db_field is None:
-        if issubclass(ftype, ObjectIdField) and not name.startswith("_"):
-            db_field = "_" + name
-        else:
-            db_field = name
-
-    # All user-defined fields are nullable
-    field_kwargs = dict(
-        null=True, db_field=db_field, description=description, info=info
-    )
-    field_kwargs.update(kwargs)
-
-    if fields is not None:
-        fields = [
-            create_field(**f) if not isinstance(f, Field) else f
-            for f in fields
-        ]
-
-    if issubclass(ftype, (ListField, DictField)):
-        if subfield is not None:
-            if inspect.isclass(subfield):
-                if issubclass(subfield, EmbeddedDocumentField):
-                    subfield = subfield(embedded_doc_type)
-                else:
-                    subfield = subfield()
-
-            if not isinstance(subfield, Field):
-                raise ValueError(
-                    "Invalid subfield type %s; must be a subclass of %s"
-                    % (type(subfield), Field)
-                )
-
-            if (
-                isinstance(subfield, EmbeddedDocumentField)
-                and fields is not None
-            ):
-                subfield.fields = fields
-
-            field_kwargs["field"] = subfield
-    elif issubclass(ftype, EmbeddedDocumentField):
-        if embedded_doc_type is None or not issubclass(
-            embedded_doc_type, BaseEmbeddedDocument
-        ):
-            raise ValueError(
-                "Invalid embedded_doc_type %s; must be a subclass of %s"
-                % (embedded_doc_type, BaseEmbeddedDocument)
-            )
-
-        field_kwargs["document_type"] = embedded_doc_type
-        field_kwargs["fields"] = fields or []
-
-    field = ftype(**field_kwargs)
-    field.name = name
-
-    return field
 
 
 class SampleFieldDocument(EmbeddedDocument):

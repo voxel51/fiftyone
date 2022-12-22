@@ -3933,3 +3933,28 @@ save the updated data in a single batch operation:
 
     print(dataset.count_label_tags())
     # {'low_confidence': 447}
+
+.. _set-label-values:
+
+Setting label values
+--------------------
+
+Often when working with |Label| fields, the edits you want to make may be
+naturally represented as a mapping between label IDs and corresponding
+attribute values to set on each |Label| instance. In such cases, you can use
+:meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
+to conveniently perform the updates:
+
+.. code-block:: python
+    :linenos:
+
+    # Grab some random label IDs
+    view = dataset.take(5, seed=51)
+    label_ids = view.values("predictions.detections.id", unwind=True)
+
+    # Populate a `random` attribute on all labels
+    values = {_id: True for _id in label_ids}
+    dataset.set_label_values("predictions.detections.random", values)
+
+    print(dataset.count_values("predictions.detections.random"))
+    # {True: 111, None: 5509}
