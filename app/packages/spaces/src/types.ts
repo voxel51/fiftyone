@@ -56,3 +56,8 @@ export type SpaceProps = {
   node: SpaceNode;
   id: string;
 };
+
+export type PanelStatePartialParameter = {
+  panelId: string;
+  key: string;
+};
