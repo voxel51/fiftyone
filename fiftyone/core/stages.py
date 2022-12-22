@@ -897,6 +897,81 @@ class ExcludeFrames(ViewStage):
         fova.validate_video_collection(sample_collection)
 
 
+class ExcludeGroups(ViewStage):
+    """Excludes the groups with the given IDs from a grouped collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-groups")
+
+        #
+        # Exclude some specific groups by ID
+        #
+
+        group_ids = dataset.take(10).values("group.id")
+
+        stage = fo.ExcludeGroups(group_ids)
+        all_other_groups_view = dataset.add_stage(stage)
+
+        excluded_group_ids = set(group_ids)
+        all_other_group_ids = set(all_other_groups_view.values("group.id"))
+        dataset_group_ids = set(dataset.values("group.id"))
+
+        assert set() == all_other_group_ids.intersection(excluded_group_ids)
+        assert dataset_group_ids == all_other_group_ids.union(excluded_group_ids)
+
+
+    Args:
+        groups_ids: the groups to select. Can be any of the following:
+
+            -   a group ID
+            -   an iterable of group IDs
+            -   a :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView`
+            -   a group dict returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView` instances
+            -   an iterable of group dicts returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   a :class:`fiftyone.core.collections.SampleCollection`
+    """
+
+    def __init__(self, group_ids, ordered=False):
+        self._group_ids = _parse_group_ids(group_ids)
+
+    @property
+    def group_ids(self):
+        """The list of group IDs to exclude."""
+        return self._group_ids
+
+    def to_mongo(self, sample_collection):
+        id_path = sample_collection.group_field + "._id"
+        ids = [ObjectId(_id) for _id in self._group_ids]
+
+        return [{"$match": {id_path: {"$not": {"$in": ids}}}}]
+
+    def _kwargs(self):
+        return [["group_ids", self._group_ids]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "group_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,group,ids",
+            }
+        ]
+
+    def validate(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            raise ValueError("%s has no groups" % type(sample_collection))
+
+
 class ExcludeLabels(ViewStage):
     """Excludes the specified labels from a collection.
 
@@ -7385,6 +7460,7 @@ _STAGES = [
     ExcludeBy,
     ExcludeFields,
     ExcludeFrames,
+    ExcludeGroups,
     ExcludeLabels,
     Exists,
     FilterField,

@@ -17,8 +17,8 @@ import styled from "styled-components";
 
 import { prettify } from "../../../utils/generic";
 
-import { NameAndCountContainer } from "../../utils";
 import * as fos from "@fiftyone/state";
+import { NameAndCountContainer } from "../../utils";
 
 import RegularEntry from "./RegularEntry";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";

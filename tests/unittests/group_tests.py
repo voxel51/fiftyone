@@ -304,6 +304,14 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(sample.group_field.name, "ego")
         self.assertEqual(sample.media_type, "video")
 
+        group_ids_to_keep = dataset.take(2).values("group_field.id")
+        keep_view = dataset.select_groups(group_ids_to_keep)
+        self.assertEqual(len(keep_view), 2)
+
+        group_ids_to_exclude = dataset.take(2).values("group_field.id")
+        exclude_view = dataset.exclude_groups(group_ids_to_exclude)
+        self.assertEqual(len(exclude_view), len(dataset) - 2)
+
         group_id = sample.group_field.id
         group = view.get_group(group_id)
 
