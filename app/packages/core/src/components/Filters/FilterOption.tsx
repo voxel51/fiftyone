@@ -14,6 +14,7 @@ import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
 import { PopoutDiv } from "../utils";
 import { joinStringArray } from "./utils";
 import Tooltip from "@fiftyone/components/src/components/Tooltip";
+import { getRGB } from "@fiftyone/utilities";
 
 interface Props {
   //   excludeAtom: RecoilState<boolean>;
@@ -23,66 +24,22 @@ interface Props {
 }
 
 const Text = styled.div`
-  font-size: 14px;
-  margin: auto;
+  font-size: 1rem;
+  margin: auto auto auto 5px;
   ${({ theme }) => theme.text.secondary};
 `;
 
 type Option = { value: string; icon?: string; tooltip: string };
 
-const options = [
-  {
-    icon: "FilterAltIcon",
-    value: "Filter labels",
-    tooltip: "backend for filter labels",
-  },
-  {
-    icon: "ImageIcon",
-    value: "Show samples with lables",
-    tooltip: "backend for match samples",
-  },
-  {
-    icon: "FilterAltOffIcon",
-    value: "Exclude Labels",
-    tooltip: "backend for exclude labels",
-  },
-  {
-    icon: "HideImageIcon",
-    value: "Show samples that don't have labels",
-    tooltip: "backend for show negative match samples",
-  },
-];
-
-const currentSelection = (
-  key: string,
-  selectedLabels: string[],
-  valueName: string
-) => {
-  // returns the text for selected filter method
-
-  const item = selectedLabels.length > 1 ? valueName + "s" : valueName;
-  switch (key) {
-    case "Filter labels":
-      return `Filter ${joinStringArray(selectedLabels)} ${item}`;
-    case "Exclude Labels":
-      return `Exclude ${joinStringArray(selectedLabels)} ${item}`;
-    case "Show samples with lables":
-      return `Show samples with ${joinStringArray(selectedLabels)} ${item}`;
-    case "Show samples that don't have labels":
-      return `Show samples that don't have ${joinStringArray(
-        selectedLabels
-      )} ${item}`;
-    default:
-      return key;
-  }
-};
-
 const FilterOption: React.FC<Props> = ({ labels, color, valueName }) => {
-  const [key, setKey] = React.useState("Filter labels");
+  const [key, setKey] = React.useState("filter");
   const [open, setOpen] = React.useState(false);
   const theme = useTheme();
+  const [r, g, b] = getRGB(color);
+  const highlightedBGColor = `rgba(${r}, ${g}, ${b}, 0.25)`;
 
   const popoutRef = React.useRef();
+  const ref = React.useRef();
 
   useOutsideClick(popoutRef, () => {
     setOpen(false);
@@ -93,9 +50,63 @@ const FilterOption: React.FC<Props> = ({ labels, color, valueName }) => {
     setOpen(false);
   };
 
+  const options = [
+    {
+      icon: "FilterAltIcon",
+      key: "filter",
+      value: `Filter ${valueName}`,
+      tooltip: "dataset.filter_labels(field, condition, only_matches=True)",
+    },
+    {
+      icon: "FilterAltOffIcon",
+      key: "negativefilter",
+      value: `Exclude ${valueName}`,
+      tooltip: "dataset.filter_labels(field, condition, only_matches=False)",
+    },
+    {
+      icon: "ImageIcon",
+      key: "match",
+      value: `Show samples with ${valueName}`,
+      tooltip: "dataset.match_labels(fields=field, filter=condition)",
+    },
+    {
+      icon: "HideImageIcon",
+      key: "negativeMatch",
+      value: `Show samples without ${valueName}`,
+      tooltip:
+        "dataset.match_labels(fields=field, filter=condition, bool=False)",
+    },
+  ];
+  const selectedValue = options.find((o) => o.key === key)?.value;
+
+  const currentSelection = (
+    key: string,
+    selectedLabels: string[],
+    valueName: string
+  ) => {
+    // returns the text for selected filter method
+
+    const item = selectedLabels.length > 1 ? valueName + "s" : valueName;
+    switch (key) {
+      case options[0].key:
+        return `Filter ${joinStringArray(selectedLabels)} ${item}`;
+      case options[1].key:
+        return `Exclude ${joinStringArray(selectedLabels)} ${item}`;
+      case options[2].key:
+        return `Show samples with ${joinStringArray(selectedLabels)} ${item}`;
+      case options[3].key:
+        return `Show samples that don't have ${joinStringArray(
+          selectedLabels
+        )} ${item}`;
+      default:
+        return key;
+    }
+  };
+
   const Selected = () => {
     // render the icon for selected filter method
-    const icon = options.find((o) => o.value === key)?.icon;
+
+    const icon = options.find((o) => o.key === key)?.icon;
     if (!icon) return <>{key}</>;
 
     switch (icon.toLowerCase()) {
@@ -108,9 +119,11 @@ const FilterOption: React.FC<Props> = ({ labels, color, valueName }) => {
       case "hideimageicon":
         return <HideImageIcon />;
       default:
-        return <>{key}</>;
+        return <>{selectedValue}</>;
     }
   };
+
+  const children = <Text ref={ref}>{selectedValue}</Text>;
 
   return (
     <FilterOptionContainer ref={popoutRef}>
@@ -122,19 +135,22 @@ const FilterOption: React.FC<Props> = ({ labels, color, valueName }) => {
           marginTop: "5px",
         }}
       >
-        <IconButton
-          onClick={() => setOpen(!open)}
-          sx={{ color: color }}
-          // color="primary"
-        >
+        <IconButton onClick={() => setOpen(!open)} sx={{ color: color }}>
           <Selected />
         </IconButton>
-        <Text>{currentSelection(key, labels, valueName)}</Text>
+        <Tooltip text={currentSelection(key, labels, valueName)}>
+          {children}
+        </Tooltip>
       </div>
       {open && (
         <Popout style={{ padding: 0 }}>
           {options.map((option: Option) => (
-            <Item {...option} onClick={() => onSelectItem(option.value)} />
+            <Item
+              {...option}
+              color={color}
+              highlightedBGColor={highlightedBGColor}
+              onClick={() => onSelectItem(option.key)}
+            />
           ))}
         </Popout>
       )}
@@ -148,50 +164,68 @@ type ItemProp = {
   icon?: string;
   value: string;
   tooltip: string;
+  color: string; // icon color
+  highlightedBGColor: string; // background color onHover
   onClick: () => void;
 };
+
 const Item = React.memo(
-  React.forwardRef(({ icon, value, tooltip, onClick }: ItemProp, ref) => {
-    if (!icon) {
-      <StyledPanelItem>
-        <div>{value}</div>
-      </StyledPanelItem>;
-    }
+  React.forwardRef(
+    (
+      { icon, value, tooltip, color, highlightedBGColor, onClick }: ItemProp,
+      ref
+    ) => {
+      const StyledPanelItem = styled.div`
+        cursor: pointer;
+        padding: 4px 8px;
+        background-color: ${({ theme }) => theme.background.secondary};
+        &:hover {
+          background-color: ${({ theme }) => highlightedBGColor};
+        }
+      `;
 
-    const getIcon = (icon: string) => {
-      switch (icon.toLowerCase()) {
-        case "filteralticon":
-          return <FilterAltIcon />;
-        case "filteraltofficon":
-          return <FilterAltOffIcon />;
-        case "imageicon":
-          return <ImageIcon />;
-        case "hideimageicon":
-          return <HideImageIcon />;
+      if (!icon) {
+        <StyledPanelItem>
+          <div>{value}</div>
+        </StyledPanelItem>;
       }
-    };
 
-    const children = (
-      <div
-        style={{ display: "flex", flexDirection: "row" }}
-        ref={ref}
-        onClick={() => onClick(value)}
-      >
-        <span>{getIcon(icon!)}</span>
-        <span>{value}</span>
-      </div>
-    );
+      const getIcon = (icon: string) => {
+        switch (icon.toLowerCase()) {
+          case "filteralticon":
+            return <FilterAltIcon />;
+          case "filteraltofficon":
+            return <FilterAltOffIcon />;
+          case "imageicon":
+            return <ImageIcon />;
+          case "hideimageicon":
+            return <HideImageIcon />;
+        }
+      };
 
-    return (
-      <StyledPanelItem>
-        {tooltip ? (
-          <Tooltip text={tooltip!}>{children}</Tooltip>
-        ) : (
-          <>{children}</>
-        )}
-      </StyledPanelItem>
-    );
-  })
+      const children = (
+        <div
+          style={{ display: "flex", flexDirection: "row" }}
+          ref={ref}
+          onClick={onClick}
+        >
+          <IconButton sx={{ color: color }}>{getIcon(icon!)}</IconButton>
+
+          <Text>{value}</Text>
+        </div>
+      );
+
+      return (
+        <StyledPanelItem>
+          {tooltip ? (
+            <Tooltip text={tooltip!}>{children}</Tooltip>
+          ) : (
+            <>{children}</>
+          )}
+        </StyledPanelItem>
+      );
+    }
+  )
 );
 
 // TODO: once feat-space-embeddings branch is merged, the bottom should be removed. It's a duplciate.
@@ -216,8 +250,9 @@ function Popout({ children, style = {}, modal }: PopoutProps) {
       style={{
         ...show,
         ...style,
-        zIndex: "200000 !important",
+        zIndex: "200000",
         right: modal ? 0 : "unset",
+        position: "relative",
       }}
     >
       {children}
@@ -227,13 +262,4 @@ function Popout({ children, style = {}, modal }: PopoutProps) {
 
 const FilterOptionContainer = styled.div`
   position: relative;
-`;
-
-const StyledPanelItem = styled.div`
-  cursor: pointer;
-  padding: 4px 8px;
-  background-color: ${({ theme }) => theme.background.secondary};
-  &:hover {
-    background-color: ${({ theme }) => theme.background.secondary};
-  }
 `;
