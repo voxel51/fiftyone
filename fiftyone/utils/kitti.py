@@ -943,8 +943,27 @@ def _load_kitti_annotations(labels_path, frame_size):
         del detection["rotation_y"]
 
     for detection in gt3d.detections:
+        location = detection["location"]
+        dimensions = detection["dimensions"]
+        rotation = [0, detection["rotation_y"], 0]
+
+        # KITTI uses bottom-center; FiftyOne uses centroid
+        location[1] -= 0.5 * dimensions[1]
+
+        # Handle item rotation
+        rotation[1] += 0.5 * np.pi
+        rotation[2] -= 0.5 * np.pi
+
+        # Handle coordinate system
+        location = [-location[1], location[2], location[0]]
+        dimensions = [-dimensions[1], dimensions[2], dimensions[0]]
+        rotation = [-rotation[1], rotation[2], rotation[0]]
+
         detection["bounding_box"] = []
-        detection["rotation"] = [0, detection["rotation_y"], 0]
+        detection["location"] = location
+        detection["dimensions"] = dimensions
+        detection["rotation"] = rotation
+
         del detection["alpha"]
         del detection["rotation_y"]
         del detection["truncated"]
