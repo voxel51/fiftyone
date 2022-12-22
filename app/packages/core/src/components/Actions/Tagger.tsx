@@ -1,10 +1,11 @@
+import { useSpring } from "@react-spring/web";
+import numeral from "numeral";
 import React, {
   MutableRefObject,
   Suspense,
   useLayoutEffect,
   useState,
 } from "react";
-import numeral from "numeral";
 import {
   RecoilState,
   RecoilValue,
@@ -15,24 +16,9 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import { useSpring } from "@react-spring/web";
 
-import Checker, { CheckState } from "./Checker";
-import Popout from "./Popout";
-import {
-  tagStats,
-  SwitchDiv,
-  SwitcherDiv,
-  tagStatistics,
-  numItemsInSelection,
-  selectedSamplesCount,
-  tagParameters,
-} from "./utils";
-import { Button } from "../utils";
-import { PopoutSectionTitle } from "@fiftyone/components";
+import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { getFetchFunction } from "@fiftyone/utilities";
-import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
   currentSlice,
@@ -41,21 +27,20 @@ import {
   Lookers,
   refresher,
 } from "@fiftyone/state";
+import { getFetchFunction } from "@fiftyone/utilities";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
-
-const IconDiv = styled.div`
-  position: absolute;
-  top: 0.25rem;
-  right: -0.75rem;
-  height: 2rem;
-  width: 2rem;
-
-  & > svg {
-    margin-top: 0.5rem;
-    margin-right: 0.25rem;
-    color: ${({ theme }) => theme.text.primary};
-  }
-`;
+import { Button } from "../utils";
+import Checker, { CheckState } from "./Checker";
+import Popout from "./Popout";
+import {
+  numItemsInSelection,
+  selectedSamplesCount,
+  SwitchDiv,
+  SwitcherDiv,
+  tagParameters,
+  tagStatistics,
+  tagStats,
+} from "./utils";
 
 const TaggingContainerInput = styled.div`
   font-size: 14px;
@@ -326,7 +311,7 @@ const useTagCallback = (
   targetLabels,
   lookerRef?: React.MutableRefObject<Lookers | undefined>
 ) => {
-  const setAggs = useSetRecoilState(fos.aggregationsTick);
+  const setAggs = useSetRecoilState(fos.refresher);
   const setLabels = fos.useSetSelectedLabels();
   const setSamples = fos.useSetSelected();
   const updateSample = fos.useUpdateSample();

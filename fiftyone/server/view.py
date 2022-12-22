@@ -355,6 +355,12 @@ def _is_label(field):
 
 def _make_scalar_expression(f, args, field):
     expr = None
+    if isinstance(field, fof.ListField):
+        return (
+            f.filter(_make_scalar_expression(F(), args, field.field)).length()
+            > 0
+        )
+
     if isinstance(field, fof.BooleanField):
         true, false = args["true"], args["false"]
         if true and false:

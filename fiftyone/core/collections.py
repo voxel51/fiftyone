@@ -30,7 +30,6 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
-import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -953,23 +952,21 @@ class SampleCollection(object):
         does not exist.
 
         Args:
-            path: a field name or ``embedded.field.name``
-            ftype (None): an optional field type or iterable of types to
-                enforce. Must be subclass(es) of
-                :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type or
-                iterable of types to enforce. Must be a subclass(es) of
+            path: a field path
+            ftype (None): an optional field type to enforce. Must be a subclass
+                of :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type to
+                enforce. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             leaf (False): whether to return the subfield of list fields
 
         Returns:
-            a :class:`fiftyone.core.fields.Field` instance, or ``None``
+            a :class:`fiftyone.core.fields.Field` instance or ``None``
 
         Raises:
-            ValueError: if type constraints are provided and the field does not
-            exist or does not match the constraints
+            ValueError: if the field does not match provided type constraints
         """
         fof.validate_type_constraints(
             ftype=ftype, embedded_doc_type=embedded_doc_type
@@ -1051,12 +1048,11 @@ class SampleCollection(object):
         the collection.
 
         Args:
-            ftype (None): an optional field type or iterable of types to which
-                to restrict the returned schema. Must be subclass(es) of
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type or
-                iterable of types to which to restrict the returned schema.
-                Must be subclass(es) of
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -1081,12 +1077,11 @@ class SampleCollection(object):
         Only applicable for collections that contain videos.
 
         Args:
-            ftype (None): an optional field type or iterable of types to which
-                to restrict the returned schema. Must be subclass(es) of
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type or
-                iterable of types to which to restrict the returned schema.
-                Must be subclass(es) of
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -2266,6 +2261,8 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        output_dir=None,
+        rel_dir=None,
         **kwargs,
     ):
         """Applies the :class:`FiftyOne model <fiftyone.core.models.Model>` or
@@ -2303,6 +2300,17 @@ class SampleCollection(object):
                 raising an error if predictions cannot be generated for a
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
+            output_dir (None): an optional output directory in which to write
+                segmentation images. Only applicable if the model generates
+                segmentations. If none is provided, the segmentations are
+                stored in the database
+            rel_dir (None): an optional relative directory to strip from each
+                input filepath to generate a unique identifier that is joined
+                with ``output_dir`` to generate an output path for each
+                segmentation image. This argument allows for populating nested
+                subdirectories in ``output_dir`` that match the shape of the
+                input paths. The path is converted to an absolute path (if
+                necessary) via :func:`fiftyone.core.utils.normalize_path`
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
         """
@@ -2315,6 +2323,8 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            output_dir=output_dir,
+            rel_dir=rel_dir,
             **kwargs,
         )
 
@@ -3276,6 +3286,56 @@ class SampleCollection(object):
         return self._add_view_stage(
             fos.ExcludeFrames(frame_ids, omit_empty=omit_empty)
         )
+
+    @view_stage
+    def exclude_groups(self, group_ids):
+        """Excludes the groups with the given IDs from the grouped collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            #
+            # Exclude some specific groups by ID
+            #
+
+            view = dataset.take(2)
+            group_ids = view.values("group.id")
+            all_other_groups = dataset.exclude_groups(group_ids)
+
+            #
+            # Verify set complements
+            #
+
+            excluded_group_ids = set(group_ids)
+            all_other_group_ids = set(all_other_groups.values("group.id"))
+            dataset_group_ids = set(dataset.values("group.id"))
+
+            assert set() == all_other_group_ids.intersection(excluded_group_ids)
+            assert dataset_group_ids == all_other_group_ids.union(excluded_group_ids)
+
+        Args:
+            groups_ids: the groups to exclude. Can be any of the following:
+
+                -   a group ID
+                -   an iterable of group IDs
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView`
+                -   a group dict returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances
+                -   an iterable of group dicts returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.ExcludeGroups(group_ids))
 
     @view_stage
     def exclude_labels(
@@ -7281,8 +7341,7 @@ class SampleCollection(object):
                 ``export_dir``, ``dataset_type``, ``data_path``, and
                 ``labels_path`` have no effect
             label_field (None): controls the label field(s) to export. Only
-                applicable to labeled image datasets or labeled video datasets
-                with sample-level labels. Can be any of the following:
+                applicable to labeled datasets. Can be any of the following:
 
                 -   the name of a label field to export
                 -   a glob pattern of label field(s) to export
@@ -7292,10 +7351,12 @@ class SampleCollection(object):
 
                 Note that multiple fields can only be specified when the
                 exporter used can handle dictionaries of labels. By default,
-                the first field of compatible type for the exporter is used
+                the first field of compatible type for the exporter is used.
+                When exporting labeled video datasets, this argument may
+                contain frame fields prefixed by ``"frames."``
             frame_labels_field (None): controls the frame label field(s) to
-                export. Only applicable to labeled video datasets. Can be any
-                of the following:
+                export. The ``"frames."`` prefix is optional. Only applicable
+                to labeled video datasets. Can be any of the following:
 
                 -   the name of a frame label field to export
                 -   a glob pattern of frame label field(s) to export
@@ -8710,6 +8771,41 @@ class SampleCollection(object):
         db_fields_map = self._get_db_fields_map(frames=frames)
         return [db_fields_map.get(p, p) for p in paths]
 
+    def _get_media_fields(
+        self, include_filepath=True, whitelist=None, frames=False
+    ):
+        media_fields = {}
+
+        if frames:
+            schema = self.get_frame_field_schema()
+            app_media_fields = set()
+        else:
+            schema = self.get_field_schema()
+            app_media_fields = set(self._dataset.app_config.media_fields)
+
+        if not include_filepath:
+            app_media_fields.discard("filepath")
+
+        for field_name, field in schema.items():
+            if field_name in app_media_fields:
+                media_fields[field_name] = None
+            elif isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+                field.document_type, fol._HasMedia
+            ):
+                media_fields[field_name] = field.document_type
+
+        if whitelist is not None:
+            if etau.is_container(whitelist):
+                whitelist = set(whitelist)
+            else:
+                whitelist = {whitelist}
+
+            media_fields = {
+                k: v for k, v in media_fields.items() if k in whitelist
+            }
+
+        return media_fields
+
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
 
@@ -9655,6 +9751,10 @@ def _export(
         frame_labels_field = None
     elif isinstance(dataset_exporter, foud.LabeledVideoDatasetExporter):
         # Labeled videos
+        label_field, frame_labels_field = _parse_frame_label_fields(
+            sample_collection, label_field, frame_labels_field
+        )
+
         label_field = sample_collection._parse_label_field(
             label_field,
             dataset_exporter=dataset_exporter,
@@ -9682,6 +9782,67 @@ def _export(
         frame_labels_field=frame_labels_field,
         **kwargs,
     )
+
+
+def _parse_frame_label_fields(samples, label_field, frame_labels_field):
+    if not samples._has_frame_fields():
+        return label_field, frame_labels_field
+
+    force_dict, label_fields_dict = _to_label_fields_dict(label_field)
+    _force_dict, frame_labels_field_dict = _to_label_fields_dict(
+        frame_labels_field
+    )
+    force_dict &= _force_dict
+
+    updated = False
+
+    # Move frame fields to `frame_labels_field`
+    for k, v in list(label_fields_dict.items()):
+        _v, is_frame_field = samples._handle_frame_field(v)
+        if is_frame_field:
+            updated = True
+            frame_labels_field_dict[k] = _v
+            del label_fields_dict[k]
+
+    # Remove "frames." prefix from frame fields
+    for k, v in list(frame_labels_field_dict.items()):
+        _v, is_frame_field = samples._handle_frame_field(v)
+        if is_frame_field:
+            updated = True
+            frame_labels_field_dict[k] = _v
+            del frame_labels_field_dict[k]
+
+    if not updated:
+        return label_field, frame_labels_field
+
+    label_field = _finalize_label_fields(label_fields_dict, force_dict)
+    frame_labels_field = _finalize_label_fields(
+        frame_labels_field_dict, force_dict
+    )
+
+    return label_field, frame_labels_field
+
+
+def _to_label_fields_dict(label_field):
+    force_dict = isinstance(label_field, dict)
+
+    if label_field is None:
+        label_field = {}
+
+    if not isinstance(label_field, dict):
+        label_field = {label_field: label_field}
+
+    return force_dict, label_field
+
+
+def _finalize_label_fields(label_fields_dict, force_dict):
+    if not label_fields_dict:
+        return None
+
+    if len(label_fields_dict) == 1 and not force_dict:
+        return next(iter(label_fields_dict.values()))
+
+    return label_fields_dict
 
 
 def _handle_existing_dirs(

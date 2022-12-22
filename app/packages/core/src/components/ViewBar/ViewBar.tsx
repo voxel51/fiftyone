@@ -1,18 +1,19 @@
-import React, { useEffect, useCallback, useRef } from "react";
-import styled from "styled-components";
-import { useMachine } from "@xstate/react";
-import { useRecoilValue } from "recoil";
-import { GlobalHotKeys } from "react-hotkeys";
 import { Close, Help } from "@mui/icons-material";
+import { useMachine } from "@xstate/react";
+import Color from "color";
+import React, { useCallback, useEffect, useRef } from "react";
+import { GlobalHotKeys } from "react-hotkeys";
+import { useRecoilValue } from "recoil";
+import styled from "styled-components";
 
 import { useOutsideClick } from "@fiftyone/state";
 import { ExternalLink } from "../../utils/generic";
 
-import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
+import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 
-import * as fos from "@fiftyone/state";
 import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 
 const ViewBarDiv = styled.div`
   position: relative;
@@ -50,9 +51,9 @@ const IconsContainer = styled.div`
   right: 1px;
   background-image: linear-gradient(
     to right,
-    rgba(0, 0, 0, 0),
-    30%,
-    ${({ theme }) => theme.background.level2}
+    ${({ theme }) => Color(theme.background.mediaSpace).alpha(0.0).toString()}
+      0%,
+    ${({ theme }) => theme.background.mediaSpace} 100%
   );
   column-gap: 0.5rem;
   padding: 0 0.5rem;

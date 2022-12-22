@@ -2,16 +2,21 @@ import reactRefresh from "@vitejs/plugin-react-refresh";
 import nodePolyfills from "rollup-plugin-polyfill-node";
 import { defineConfig } from "vite";
 import relay from "vite-plugin-relay";
+import { basePlugins } from "../../vite.base.config";
+import pluginRewriteAll from "vite-plugin-rewrite-all";
 
 export default defineConfig(({ mode }) => {
   return {
     base: mode === "desktop" ? "" : "/",
     plugins: [
+      ...basePlugins,
       reactRefresh({
         parserPlugins: ["classProperties", "classPrivateProperties"],
       }),
       relay,
       nodePolyfills(),
+      // pluginRewriteAll to address this vite bug: https://github.com/vitejs/vite/issues/2415
+      pluginRewriteAll(),
     ],
     server: {
       proxy: {

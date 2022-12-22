@@ -23,4 +23,6 @@ dist/
 
 /bin
 /lib
+coverage.xml
+.coverage.*
 pyvenv.cfg

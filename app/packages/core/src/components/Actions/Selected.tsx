@@ -10,10 +10,10 @@ import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
 import { useEventHandler } from "@fiftyone/state";
 
-import { ActionOption } from "./Common";
-import Popout from "./Popout";
 import * as fos from "@fiftyone/state";
 import { State } from "@fiftyone/state";
+import { ActionOption } from "./Common";
+import Popout from "./Popout";
 
 const useClearSampleSelection = (close) => {
   return useRecoilTransaction_UNSTABLE(

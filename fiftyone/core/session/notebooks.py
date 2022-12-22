@@ -52,6 +52,7 @@ def display(
     funcs = {
         focx._COLAB: display_colab,
         focx._IPYTHON: display_ipython,
+        focx._DATABRICKS: display_databricks,
     }
     fn = funcs[focx._get_context()]
     fn(client, cell, reactivate)

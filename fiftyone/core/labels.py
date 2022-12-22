@@ -14,6 +14,7 @@ import numpy as np
 
 import eta.core.frameutils as etaf
 import eta.core.image as etai
+import eta.core.utils as etau
 
 from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
@@ -894,15 +895,80 @@ class Keypoints(_HasLabelList, Label):
     keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint))
 
 
-class Segmentation(_HasID, Label):
+class _HasMedia(object):
+    """Mixin for :class:`Label` classes that contain a media field."""
+
+    _MEDIA_FIELD = None
+
+
+class Segmentation(_HasID, _HasMedia, Label):
     """A semantic segmentation for an image.
+
+    Provide either the ``mask`` or ``mask_path`` argument to define the
+    segmentation.
 
     Args:
         mask (None): a 2D numpy array with integer values encoding the semantic
             labels
+        mask_path (None): the path to the segmentation image on disk
     """
 
+    _MEDIA_FIELD = "mask_path"
+
     mask = fof.ArrayField()
+    mask_path = fof.StringField()
+
+    @property
+    def has_mask(self):
+        """Whether this instance has a mask."""
+        return self.mask is not None or self.mask_path is not None
+
+    def get_mask(self):
+        """Returns the segmentation mask for this instance.
+
+        Returns:
+            a numpy array, or ``None``
+        """
+        if self.mask is not None:
+            return self.mask
+
+        if self.mask_path is not None:
+            return _read_mask(self.mask_path)
+
+        return None
+
+    def import_mask(self, update=False):
+        """Imports this instance's mask from disk to its :attr:`mask`
+        attribute.
+
+        Args:
+            outpath: the path to write the map
+            update (False): whether to clear this instance's :attr:`mask_path`
+                attribute after importing
+        """
+        if self.mask_path is not None:
+            self.mask = _read_mask(self.mask_path)
+
+            if update:
+                self.mask_path = None
+
+    def export_mask(self, outpath, update=False):
+        """Exports this instance's mask to the given path.
+
+        Args:
+            outpath: the path to write the mask
+            update (False): whether to clear this instance's :attr:`mask`
+                attribute and set its :attr:`mask_path` attribute when
+                exporting in-database segmentations
+        """
+        if self.mask_path is not None:
+            etau.copy_file(self.mask_path, outpath)
+        else:
+            _write_mask(self.mask, outpath)
+
+            if update:
+                self.mask = None
+                self.mask_path = outpath
 
     def to_detections(self, mask_targets=None, mask_types="stuff"):
         """Returns a :class:`Detections` representation of this instance with
@@ -971,19 +1037,78 @@ class Segmentation(_HasID, Label):
         return Polylines(polylines=polylines)
 
 
-class Heatmap(_HasID, Label):
+class Heatmap(_HasID, _HasMedia, Label):
     """A heatmap for an image.
+
+    Provide either the ``map`` or ``map_path`` argument to define the heatmap.
 
     Args:
         map (None): a 2D numpy array
+        map_path (None): the path to the heatmap image on disk
         range (None): an optional ``[min, max]`` range of the map's values. If
             None is provided, ``[0, 1]`` will be assumed if ``map`` contains
-            floating point values, and ``[0, 255]`` will be assumed if ``map``
-            contains integer values
+            floating point values, ``[0, 255]`` will be assumed if ``map``
+            contains integer values, and the dtype of the image will be assumed
+            if ``map_path`` is used
     """
 
+    _MEDIA_FIELD = "map_path"
+
     map = fof.ArrayField()
+    map_path = fof.StringField()
     range = fof.HeatmapRangeField()
+
+    @property
+    def has_map(self):
+        """Whether this instance has a map."""
+        return self.map is not None or self.map_path is not None
+
+    def get_map(self):
+        """Returns the map array for this instance.
+
+        Returns:
+            a numpy array, or ``None``
+        """
+        if self.map is not None:
+            return self.map
+
+        if self.map_path is not None:
+            return _read_heatmap(self.map_path)
+
+        return None
+
+    def import_map(self, update=False):
+        """Imports this instance's map from disk to its :attr:`map` attribute.
+
+        Args:
+            outpath: the path to write the map
+            update (False): whether to clear this instance's :attr:`map_path`
+                attribute after importing
+        """
+        if self.map_path is not None:
+            self.map = _read_heatmap(self.map_path)
+
+            if update:
+                self.map_path = None
+
+    def export_map(self, outpath, update=False):
+        """Exports this instance's map to the given path.
+
+        Args:
+            outpath: the path to write the map
+            update (False): whether to clear this instance's :attr:`map` and
+                :attr:`range` attributes and set its :attr:`map_path` attribute
+                when exporting in-database heatmaps
+        """
+        if self.map_path is not None:
+            etau.copy_file(self.map_path, outpath)
+        else:
+            _write_heatmap(self.map, outpath, range=self.range)
+
+            if update:
+                self.map = None
+                self.map_path = outpath
+                self.range = None
 
 
 class TemporalDetection(_HasID, Label):
@@ -1195,6 +1320,57 @@ _LABEL_LIST_TO_SINGLE_MAP = {
 }
 
 
+def _read_mask(mask_path):
+    # pylint: disable=no-member
+    return etai.read(mask_path, flag=cv2.IMREAD_UNCHANGED)
+
+
+def _write_mask(mask, mask_path):
+    mask = _mask_to_image(mask)
+    etai.write(mask, mask_path)
+
+
+def _mask_to_image(mask):
+    if mask.dtype in (np.uint8, np.uint16):
+        return mask
+
+    # Masks should contain integer values, so cast to the closest suitable
+    # unsigned type
+    if mask.max() <= 255:
+        return mask.astype(np.uint8)
+
+    return mask.astype(np.uint16)
+
+
+def _read_heatmap(map_path):
+    # pylint: disable=no-member
+    return etai.read(map_path, flag=cv2.IMREAD_UNCHANGED)
+
+
+def _write_heatmap(map, map_path, range):
+    map = _heatmap_to_image(map, range)
+    etai.write(map, map_path)
+
+
+def _heatmap_to_image(map, range):
+    if range is None:
+        if map.dtype in (np.uint8, np.uint16):
+            return map
+
+        range = (map.min(), map.max())
+    else:
+        range = tuple(range)
+
+    if map.dtype == np.uint8 and range == (0, 255):
+        return map
+
+    if map.dtype == np.uint16 and range == (0, 65535):
+        return map
+
+    map = (255.0 / (range[1] - range[0])) * ((map - range[0]))
+    return map.astype(np.uint8)
+
+
 def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
     if mask is None:
         if frame_size is None:
@@ -1252,7 +1428,7 @@ def _segmentation_to_detections(segmentation, mask_targets, mask_types):
         default = mask_types
         mask_types = {}
 
-    mask = segmentation.mask
+    mask = segmentation.get_mask()
 
     detections = []
     for target in np.unique(mask):
@@ -1302,7 +1478,7 @@ def _segmentation_to_polylines(
         default = mask_types
         mask_types = {}
 
-    mask = segmentation.mask
+    mask = segmentation.get_mask()
 
     polylines = []
     for target in np.unique(mask):
