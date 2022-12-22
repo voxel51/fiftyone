@@ -294,8 +294,10 @@ def _resolve_path_aggregation(
                     )
                 )
         logging.debug(
-            "[server/aggregations.py: _resolve_path_aggregation] "
-            "data:\n{}\n".format(data)
+            "[server/aggregations.py: _resolve_path_aggregation]\n"
+            "data.path={}\ndata.count={}".format(
+                data.get("path", "null"), data.get("count", "null")
+            )
         )
 
         return from_dict(cls, data, config=Config(check_types=False))

@@ -6373,13 +6373,19 @@ def _delete_dataset_doc(dataset_doc):
         if run_doc.results is not None:
             run_doc.results.delete()
 
+        run_doc.delete()
+
     for run_doc in dataset_doc.brain_methods.values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
+        run_doc.delete()
+
     for run_doc in dataset_doc.evaluations.values():
         if run_doc.results is not None:
             run_doc.results.delete()
+
+        run_doc.delete()
 
     dataset_doc.delete()
 
@@ -6810,78 +6816,30 @@ def _clone_extras(dst_dataset, src_doc):
 
         dst_doc.saved_views.append(view_doc)
 
-    #
-    # Clone annotation runs results
-    #
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
-    #
+    # Clone annotation runs
+    for anno_key, _run_doc in src_doc.annotation_runs.items():
+        run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
+        run_doc.save()
 
-    for anno_key, run_doc in src_doc.annotation_runs.items():
-        _run_doc = deepcopy(run_doc)
-        dst_doc.annotation_runs[anno_key] = _run_doc
-        results = foan.AnnotationMethod.load_run_results(
-            dst_dataset, anno_key, cache=False
-        )
-        _run_doc.results = None
-        foan.AnnotationMethod.save_run_results(
-            dst_dataset, anno_key, results, cache=False
-        )
-    # for anno_key, _run_doc in src_doc.annotation_runs.items():
-    # run_doc = _clone_run(_run_doc)
-    # run_doc.dataset_id = dst_doc.id
-    # run_doc.save()
-    #
-    # dst_doc.annotation_runs[anno_key] = run_doc
+        dst_doc.annotation_runs[anno_key] = run_doc
 
-    #
-    # Clone brain results
-    #
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
-    #
-    # for brain_key, _run_doc in src_doc.brain_methods.items():
-    # run_doc = _clone_run(_run_doc)
-    # run_doc.dataset_id = dst_doc.id
-    # run_doc.save()
-    #
-    # dst_doc.brain_methods[brain_key] = run_doc
-    for brain_key, run_doc in src_doc.brain_methods.items():
-        _run_doc = deepcopy(run_doc)
-        dst_doc.brain_methods[brain_key] = _run_doc
-        results = fob.BrainMethod.load_run_results(
-            dst_dataset, brain_key, cache=False
-        )
-        _run_doc.results = None
-        fob.BrainMethod.save_run_results(
-            dst_dataset, brain_key, results, cache=False
-        )
+    # Clone brain method runs
+    for brain_key, _run_doc in src_doc.brain_methods.items():
+        run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
+        run_doc.save()
 
-    #
-    # Clone evaluation results
-    #
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
-    #
-    # for eval_key, _run_doc in src_doc.evaluations.items():
-    #     run_doc = _clone_run(_run_doc)
-    #     run_doc.dataset_id = dst_doc.id
-    #     run_doc.save()
-    #
-    #     dst_doc.evaluations[eval_key] = run_doc
-    for eval_key, run_doc in src_doc.evaluations.items():
-        _run_doc = deepcopy(run_doc)
-        dst_doc.evaluations[eval_key] = _run_doc
-        results = foe.EvaluationMethod.load_run_results(
-            dst_dataset, eval_key, cache=False
-        )
-        _run_doc.results = None
-        foe.EvaluationMethod.save_run_results(
-            dst_dataset, eval_key, results, cache=False
-        )
+        dst_doc.brain_methods[brain_key] = run_doc
+
+    # Clone evaluation runs
+    for eval_key, _run_doc in src_doc.evaluations.items():
+        run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
+        run_doc.save()
+
+        dst_doc.evaluations[eval_key] = run_doc
+
     dst_doc.save()
 
 
@@ -6891,18 +6849,18 @@ def _clone_view_doc(view_doc):
     return _view_doc
 
 
-# def _clone_run(run_doc):
-#     _run_doc = run_doc.copy()
-#     _run_doc.id = ObjectId()
-#
-#     # Unfortunately the only way to copy GridFS files is to read-write them...
-#     # https://jira.mongodb.org/browse/TOOLS-2208
-#     run_doc.results.seek(0)
-#     results_bytes = run_doc.results.read()
-#     _run_doc.results = None
-#     _run_doc.results.put(results_bytes, content_type="application/json")
-#
-#     return _run_doc
+def _clone_run(run_doc):
+    _run_doc = run_doc.copy()
+    _run_doc.id = ObjectId()
+
+    # Unfortunately the only way to copy GridFS files is to read-write them...
+    # https://jira.mongodb.org/browse/TOOLS-2208
+    run_doc.results.seek(0)
+    results_bytes = run_doc.results.read()
+    _run_doc.results = None
+    _run_doc.results.put(results_bytes, content_type="application/json")
+
+    return _run_doc
 
 
 def _ensure_index(dataset, db_field, unique=False):

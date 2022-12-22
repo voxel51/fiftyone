@@ -14,6 +14,8 @@ from hypercorn.config import Config
 import logging
 
 if os.environ.get("FIFTYONE_ENABLE_DEBUG_LOGGING", False):
+    # logging.basicConfig(level=logging.DEBUG)
+    # logging.getLogger("sse_starlette.sse").setLevel(logging.WARN)
     logging.getLogger("asyncio").setLevel(logging.DEBUG)
 
 if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):

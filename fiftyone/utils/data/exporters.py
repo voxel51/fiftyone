@@ -1725,38 +1725,36 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
         # Exporting the information below only makes sense when exporting an
         # entire dataset
+        d = dataset._doc.to_dict(no_dereference=True)
 
         if dataset.has_saved_views:
-            self._metadata["saved_views"] = [
-                json_util.dumps(v.to_dict()) for v in dataset._doc.saved_views
-            ]
+            self._metadata["saved_views"] = d.get("saved_views", [])
 
         if dataset.has_annotation_runs:
-            self._metadata["annotation_runs"] = {
-                k: json_util.dumps(v.to_dict())
-                for k, v in dataset._doc.field_to_mongo(
-                    "annotation_runs"
-                ).items()
-                # dataset._doc.annotation_runs
-                .items()
-            }
+            self._metadata["annotation_runs"] = d.get("annotation_runs", {})
+            print(self._metadata["annotation_runs"])
+            #     {
+            #     k: json_util.dumps(v.to_dict())
+            #     for k, v in dataset._doc.annotation_runs.items()
+            # }
             _export_annotation_results(dataset, self._anno_dir)
 
         if dataset.has_brain_runs:
-            self._metadata["brain_methods"] = {
-                k: json_util.dumps(v.to_dict())
-                for k, v in dataset._doc.field_to_mongo("brain_methods")
-                .items()  # dataset._doc.brain_methods
-                .items()
-            }
+            self._metadata["brain_methods"] = d.get("brain_methods", {})
+            print(self._metadata["brain_methods"])
+            #     {
+            #     k: json_util.dumps(v.to_dict())
+            #     for k, v in dataset._doc.brain_methods.items()
+            # }
             _export_brain_results(dataset, self._brain_dir)
 
         if dataset.has_evaluations:
-            self._metadata["evaluations"] = {
-                k: json_util.dumps(v.to_dict())
-                for k, v in dataset._doc.field_to_mongo("evaluations").items()
-                # dataset._doc.evaluations.items()
-            }
+            self._metadata["evaluations"] = d.get("evaluations", {})
+            print(self._metadata["brain_methods"])
+            # {
+            #     k: json_util.dumps(v.to_dict())
+            #     for k, v in dataset._doc.evaluations.items()
+            # }
             _export_evaluation_results(dataset, self._eval_dir)
 
     def export_sample(self, sample):

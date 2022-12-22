@@ -207,7 +207,8 @@ def establish_db_conn(config):
                 )
 
             raise error
-
+    # uuidRepresentation required. Use 'pythonLegacy' for pymongo 3.x, but 'standard' for compatibility with other drivers.
+    _connection_kwargs["uuidRepresentation"] = "pythonLegacy"
     _client = pymongo.MongoClient(
         **_connection_kwargs, appname=foc.DATABASE_APPNAME
     )

@@ -10,7 +10,6 @@ from typing import List, Optional
 import asyncio
 from bson import ObjectId, json_util
 from dacite import Config, from_dict
-import strawberry as gql
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
@@ -104,9 +103,7 @@ def load_saved_views_by_dataset(cls, dataset_id: str):
     ]
 
 
-def get_saved_views(
-    cls, object_ids, data_loader: Optional[gql.dataloader.DataLoader] = None
-):
+def get_saved_views(cls, object_ids):
     # Called by serialize_dataset > modifier
     if len(object_ids) < 1:
         return None
