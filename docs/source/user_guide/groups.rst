@@ -618,15 +618,7 @@ detections represented as |Detection| instances with their `label`, `location`,
     # Object label
     label = "vehicle"
 
-    #
     # Object center `[x, y, z]` in scene coordinates
-    #
-    # Note that, when `useLegacyCoordinates=True` (the default), the y coordinate
-    # of location is offset by half of the object's y dimension.
-    #
-    # Set `useLegacyCoordinates=False` (recommended) to treat location as the
-    # true centroid of the object
-    #
     location = [0.47, 1.49, 69.44]
 
     # Object dimensions `[x, y, z]` in scene units
@@ -1095,40 +1087,16 @@ shown below under the `plugins.3d` key of your
                 // Whether to show the 3D visualizer
                 "enabled": true,
 
-                // Whether to use legacy coordinates, where the y coordinate of
-                // the `location` of 3D detections is offset by half of the
-                // object's y size
-                "useLegacyCoordinates": true,
-
                 // The initial camera position in the 3D scene
                 "defaultCameraPosition": {"x": 0, "y": 0, "z": 0},
 
-                // Transformation from PCD -> scene coordinates
                 "pointCloud": {
-                    // A rotation to apply to the PCD's coordinate system
-                    "rotation": [0, 0, 0],
-
                     // Don't render points below this z value
                     "minZ": null
-                },
-
-                // Transformation from Label -> scene coorindates
-                "overlay": {
-                    // A rotation to apply to the Label's coordinate system
-                    "rotation": [0, 0, 0],
-
-                    // A rotation to apply to each object's local coordinates
-                    "itemRotation": [0, 0, 0]
                 }
             }
         }
     }
-
-.. note::
-
-    All `rotations <https://threejs.org/docs/#api/en/core/Object3D.rotation>`_
-    above are expressed using
-    `Euler angles <https://en.wikipedia.org/wiki/Euler_angles>`_, in degrees.
 
 You can also store dataset-specific plugin settings by storing any subset of
 the above values on a :ref:`dataset's App config <custom-app-config>`:
@@ -1139,14 +1107,6 @@ the above values on a :ref:`dataset's App config <custom-app-config>`:
     # Configure the 3D visualuzer for a dataset's PCD/Label data
     dataset.app_config.plugins["3d"] = {
         "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
-        "pointCloud": {
-            "rotation": [0, 0, 90],
-            "minZ": -2.1
-        },
-        "overlay": {
-            "rotation": [-90, 0, 0],
-            "itemRotation": [0, 90, 0]
-        }
     }
     dataset.save()
 
