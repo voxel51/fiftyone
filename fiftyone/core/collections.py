@@ -7292,8 +7292,7 @@ class SampleCollection(object):
                 ``export_dir``, ``dataset_type``, ``data_path``, and
                 ``labels_path`` have no effect
             label_field (None): controls the label field(s) to export. Only
-                applicable to labeled image datasets or labeled video datasets
-                with sample-level labels. Can be any of the following:
+                applicable to labeled datasets. Can be any of the following:
 
                 -   the name of a label field to export
                 -   a glob pattern of label field(s) to export
@@ -7303,10 +7302,12 @@ class SampleCollection(object):
 
                 Note that multiple fields can only be specified when the
                 exporter used can handle dictionaries of labels. By default,
-                the first field of compatible type for the exporter is used
+                the first field of compatible type for the exporter is used.
+                When exporting labeled video datasets, this argument may
+                contain frame fields prefixed by ``"frames."``
             frame_labels_field (None): controls the frame label field(s) to
-                export. Only applicable to labeled video datasets. Can be any
-                of the following:
+                export. The ``"frames."`` prefix is optional. Only applicable
+                to labeled video datasets. Can be any of the following:
 
                 -   the name of a frame label field to export
                 -   a glob pattern of frame label field(s) to export
@@ -9701,6 +9702,10 @@ def _export(
         frame_labels_field = None
     elif isinstance(dataset_exporter, foud.LabeledVideoDatasetExporter):
         # Labeled videos
+        label_field, frame_labels_field = _parse_frame_label_fields(
+            sample_collection, label_field, frame_labels_field
+        )
+
         label_field = sample_collection._parse_label_field(
             label_field,
             dataset_exporter=dataset_exporter,
@@ -9728,6 +9733,67 @@ def _export(
         frame_labels_field=frame_labels_field,
         **kwargs,
     )
+
+
+def _parse_frame_label_fields(samples, label_field, frame_labels_field):
+    if not samples._has_frame_fields():
+        return label_field, frame_labels_field
+
+    force_dict, label_fields_dict = _to_label_fields_dict(label_field)
+    _force_dict, frame_labels_field_dict = _to_label_fields_dict(
+        frame_labels_field
+    )
+    force_dict &= _force_dict
+
+    updated = False
+
+    # Move frame fields to `frame_labels_field`
+    for k, v in list(label_fields_dict.items()):
+        _v, is_frame_field = samples._handle_frame_field(v)
+        if is_frame_field:
+            updated = True
+            frame_labels_field_dict[k] = _v
+            del label_fields_dict[k]
+
+    # Remove "frames." prefix from frame fields
+    for k, v in list(frame_labels_field_dict.items()):
+        _v, is_frame_field = samples._handle_frame_field(v)
+        if is_frame_field:
+            updated = True
+            frame_labels_field_dict[k] = _v
+            del frame_labels_field_dict[k]
+
+    if not updated:
+        return label_field, frame_labels_field
+
+    label_field = _finalize_label_fields(label_fields_dict, force_dict)
+    frame_labels_field = _finalize_label_fields(
+        frame_labels_field_dict, force_dict
+    )
+
+    return label_field, frame_labels_field
+
+
+def _to_label_fields_dict(label_field):
+    force_dict = isinstance(label_field, dict)
+
+    if label_field is None:
+        label_field = {}
+
+    if not isinstance(label_field, dict):
+        label_field = {label_field: label_field}
+
+    return force_dict, label_field
+
+
+def _finalize_label_fields(label_fields_dict, force_dict):
+    if not label_fields_dict:
+        return None
+
+    if len(label_fields_dict) == 1 and not force_dict:
+        return next(iter(label_fields_dict.values()))
+
+    return label_fields_dict
 
 
 def _handle_existing_dirs(
