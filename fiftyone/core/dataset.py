@@ -5604,7 +5604,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     continue
 
                 if isinstance(value, fog.Group):
-                    self._expand_group_schema(sample, field_name, value)
+                    self._expand_group_schema(
+                        field_name, value.name, sample.media_type
+                    )
 
                 if not dynamic and field_name in schema:
                     continue
@@ -5627,12 +5629,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def _expand_group_schema(self, sample, field_name, value):
+    def _expand_group_schema(self, field_name, slice_name, media_type):
         if self.group_field is not None and field_name != self.group_field:
             raise ValueError("Dataset has no group field '%s'" % field_name)
-
-        slice_name = value.name
-        media_type = sample.media_type
 
         if slice_name not in self._doc.group_media_types:
             # If this is the first video slice, we need to initialize the frame
