@@ -22,7 +22,9 @@ import ntpath
 import os
 import posixpath
 import platform
+import re
 import signal
+import string
 import struct
 import subprocess
 import sys
@@ -1648,3 +1650,102 @@ class ResponseStream(object):
                 current_position += self._bytes.write(next(self._iterator))
             except StopIteration:
                 break
+
+
+_SAFE_CHARS = set(string.ascii_letters) | set(string.digits)
+_HYPHEN_CHARS = set(string.whitespace) | set("+_.-")
+_NAME_LENGTH_RANGE = (1, 100)
+
+
+def _sanitize_char(c):
+    if c in _SAFE_CHARS:
+        return c
+
+    if c in _HYPHEN_CHARS:
+        return "-"
+
+    return ""
+
+
+def to_slug(name):
+    """Returns the URL-friendly slug for the given string.
+
+    The following strategy is used to generate slugs:
+
+        -   The characters ``A-Za-z0-9`` are converted to lowercase
+        -   Whitespace and ``+_.-`` are converted to ``-``
+        -   All other characters are omitted
+        -   All consecutive ``-`` characters are reduced to a single ``-``
+        -   All leading and trailing ``-`` are stripped
+        -   Both the input name and the resulting string must be ``[1, 100]``
+            characters in length
+
+    Examples::
+
+        name                             | slug
+        ---------------------------------+-----------------------
+        coco_2017                        | coco-2017
+        c+o+c+o 2-0-1-7                  | c-o-c-o-2-0-1-7
+        cat.DOG                          | cat-dog
+        ---name----                      | name
+        Brian's #$&@ (Awesome?) Dataset! | brians-awesome-dataset
+        sPaM     aNd  EgGs               | spam-and-eggs
+
+    Args:
+        name: a string
+
+    Returns:
+        the slug string
+
+    Raises:
+        ValueError: if the name is invalid
+    """
+    if not etau.is_str(name):
+        raise ValueError("Expected string; found %s: %s" % (type(name), name))
+
+    if len(name) > _NAME_LENGTH_RANGE[1]:
+        raise ValueError(
+            "'%s' is too long; length %d > %d"
+            % (name, len(name), _NAME_LENGTH_RANGE[1])
+        )
+
+    safe = []
+    last = ""
+    for c in name:
+        s = _sanitize_char(c)
+        if s and (s != "-" or last != "-"):
+            safe.append(s)
+            last = s
+
+    slug = "".join(safe).strip("-").lower()
+
+    if len(slug) < _NAME_LENGTH_RANGE[0]:
+        raise ValueError(
+            "'%s' has invalid slug-friendly name '%s'; length %d < %d"
+            % (name, slug, len(slug), _NAME_LENGTH_RANGE[0])
+        )
+
+    if len(slug) > _NAME_LENGTH_RANGE[1]:
+        raise ValueError(
+            "'%s' has invalid slug-friendly name '%s'; length %d > %d"
+            % (name, slug, len(slug), _NAME_LENGTH_RANGE[1])
+        )
+
+    return slug
+
+
+def validate_hex_color(value):
+    """Validates that the given value is a hex color string.
+
+    Args:
+        value: a value
+
+    Raises:
+        ValueError: if ``value`` is not a hex color string
+    """
+    if not etau.is_str(value) or not re.search(
+        r"^#(?:[0-9a-fA-F]{3}){1,2}$", value
+    ):
+        raise ValueError(
+            "%s is not a valid hex color string (ex: '#FF6D04')" % value
+        )

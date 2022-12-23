@@ -89,15 +89,18 @@ const ViewBar = React.memo(() => {
   const barRef = useRef(null);
 
   const handlers = {
-    VIEW_BAR_NEXT: useCallback(() => send("NEXT"), []),
-    VIEW_BAR_PREVIOUS: useCallback(() => send("PREVIOUS"), []),
-    VIEW_BAR_NEXT_STAGE: useCallback(() => send("NEXT_STAGE"), []),
-    VIEW_BAR_PREVIOUS_STAGE: useCallback(() => send("PREVIOUS_STAGE"), []),
-    VIEW_BAR_DELETE: useCallback(() => send("DELETE_ACTIVE_STAGE"), []),
-    VIEW_BAR_ENTER: useCallback((e) => {
-      e.preventDefault();
-      send("ENTER");
-    }, []),
+    VIEW_BAR_NEXT: useCallback(() => send("NEXT"), [send]),
+    VIEW_BAR_PREVIOUS: useCallback(() => send("PREVIOUS"), [send]),
+    VIEW_BAR_NEXT_STAGE: useCallback(() => send("NEXT_STAGE"), [send]),
+    VIEW_BAR_PREVIOUS_STAGE: useCallback(() => send("PREVIOUS_STAGE"), [send]),
+    VIEW_BAR_DELETE: useCallback(() => send("DELETE_ACTIVE_STAGE"), [send]),
+    VIEW_BAR_ENTER: useCallback(
+      (e) => {
+        e.preventDefault();
+        send("ENTER");
+      },
+      [send]
+    ),
   };
 
   const theme = useTheme();

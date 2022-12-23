@@ -31,6 +31,44 @@ class DatasetTests(unittest.TestCase):
         self.assertIsInstance(fo.list_datasets(), list)
 
     @drop_datasets
+    def test_dataset_names(self):
+        dataset = fo.Dataset("test dataset names!?!")
+
+        self.assertEqual(dataset.name, "test dataset names!?!")
+        self.assertEqual(dataset.slug, "test-dataset-names")
+
+        dataset.name = "test-dataset-names"
+
+        self.assertEqual(dataset.name, "test-dataset-names")
+        self.assertEqual(dataset.slug, "test-dataset-names")
+
+        # name clashes
+        with self.assertRaises(ValueError):
+            fo.Dataset("test dataset names!?!")
+
+        # slug clashes
+        with self.assertRaises(ValueError):
+            fo.Dataset("test dataset names!?!")
+
+        dataset = fo.Dataset()
+        name = dataset.name
+        slug = dataset.slug
+
+        # name clashes
+        with self.assertRaises(ValueError):
+            dataset.name = "test-dataset-names"
+
+        self.assertEqual(dataset.name, name)
+        self.assertEqual(dataset.slug, slug)
+
+        # slug clashes
+        with self.assertRaises(ValueError):
+            dataset.name = "test dataset names!?!"
+
+        self.assertEqual(dataset.name, name)
+        self.assertEqual(dataset.slug, slug)
+
+    @drop_datasets
     def test_delete_dataset(self):
         IGNORED_DATASET_NAMES = fo.list_datasets()
 
@@ -133,6 +171,20 @@ class DatasetTests(unittest.TestCase):
         dataset.reload()
 
         self.assertEqual(dataset.tags, ["cat", "dog", "rabbit"])
+
+    @drop_datasets
+    def test_dataset_description(self):
+        dataset_name = self.test_dataset_description.__name__
+
+        dataset = fo.Dataset(dataset_name)
+
+        self.assertIsNone(dataset.description)
+
+        dataset.description = "Hello, world!"
+
+        dataset.reload()
+
+        self.assertEqual(dataset.description, "Hello, world!")
 
     @drop_datasets
     def test_dataset_info(self):
@@ -2446,6 +2498,234 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(
                 dataset3.default_skeleton, dataset.default_skeleton
             )
+
+
+class DatasetExtrasTests(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.png",
+                    ground_truth=fo.Classification(label="cat"),
+                    predictions=fo.Classification(label="dog", confidence=0.9),
+                ),
+                fo.Sample(
+                    filepath="image2.png",
+                    ground_truth=fo.Classification(label="dog"),
+                    predictions=fo.Classification(label="dog", confidence=0.8),
+                ),
+                fo.Sample(
+                    filepath="image3.png",
+                    ground_truth=fo.Classification(label="dog"),
+                    predictions=fo.Classification(label="pig", confidence=0.1),
+                ),
+            ]
+        )
+
+    def test_saved_views(self):
+        dataset = self.dataset
+
+        self.assertFalse(dataset.has_saved_views)
+        self.assertListEqual(dataset.list_saved_views(), [])
+
+        view = dataset.match(F("filepath").contains_str("image2"))
+
+        self.assertIsNone(view.name)
+        self.assertFalse(view.is_saved)
+        self.assertEqual(len(view), 1)
+        self.assertTrue("image2" in view.first().filepath)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+
+        last_loaded_at1 = dataset._doc.saved_views[0].last_loaded_at
+        last_modified_at1 = dataset._doc.saved_views[0].last_modified_at
+
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+        self.assertTrue(dataset.has_saved_views)
+        self.assertTrue(dataset.has_saved_view(view_name))
+        self.assertListEqual(dataset.list_saved_views(), [view_name])
+
+        self.assertIsNone(last_loaded_at1)
+        self.assertIsNotNone(last_modified_at1)
+
+        still_saved_view = deepcopy(view)
+        self.assertEqual(still_saved_view.name, view_name)
+        self.assertTrue(still_saved_view.is_saved)
+        self.assertEqual(still_saved_view, view)
+
+        not_saved_view = view.limit(1)
+        self.assertIsNone(not_saved_view.name)
+        self.assertFalse(not_saved_view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        last_loaded_at2 = dataset._doc.saved_views[0].last_loaded_at
+
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertIsNotNone(last_loaded_at2)
+
+        info = dataset.get_saved_view_info(view_name)
+        new_view_name = "new-name"
+        info["name"] = new_view_name
+
+        dataset.update_saved_view_info(view_name, info)
+        last_modified_at2 = dataset._doc.saved_views[0].last_modified_at
+
+        self.assertTrue(last_modified_at2 > last_modified_at1)
+        self.assertFalse(dataset.has_saved_view(view_name))
+        self.assertTrue(dataset.has_saved_view(new_view_name))
+
+        updated_view = dataset.load_saved_view(new_view_name)
+        self.assertEqual(updated_view.name, new_view_name)
+        dataset.update_saved_view_info(new_view_name, {"name": view_name})
+
+        #
+        # Verify that saved views are included in clones
+        #
+
+        dataset2 = dataset.clone()
+
+        self.assertTrue(dataset2.has_saved_views)
+        self.assertTrue(dataset2.has_saved_view(view_name))
+        self.assertListEqual(dataset2.list_saved_views(), [view_name])
+
+        view2 = dataset2.load_saved_view(view_name)
+
+        self.assertEqual(len(view2), 1)
+        self.assertTrue("image2" in view2.first().filepath)
+
+        dataset.delete_saved_view(view_name)
+
+        self.assertFalse(dataset.has_saved_views)
+        self.assertFalse(dataset.has_saved_view(view_name))
+        self.assertListEqual(dataset.list_saved_views(), [])
+
+        # Verify that cloned data is properly decoupled from source dataset
+        also_view2 = dataset2.load_saved_view(view_name)
+        self.assertIsNotNone(also_view2)
+
+        #
+        # Verify that saved views are deleted when a dataset is deleted
+        #
+
+        view_id = dataset2._doc.saved_views[0].id
+
+        db = foo.get_db_conn()
+
+        self.assertEqual(len(list(db.views.find({"_id": view_id}))), 1)
+
+        dataset2.delete()
+
+        self.assertEqual(len(list(db.views.find({"_id": view_id}))), 0)
+
+    def test_saved_views_for_app(self):
+        dataset = self.dataset
+
+        names = ["my-view1", "my_view2", "My  %&#  View3!"]
+        slugs = ["my-view1", "my-view2", "my-view3"]
+
+        for idx, name in enumerate(names, 1):
+            dataset.save_view(name, dataset.limit(idx))
+
+        # Can't use duplicate name when saving a view
+        with self.assertRaises(ValueError):
+            dataset.save_view("my-view1", dataset.limit(1))
+
+        # Can't use duplicate slug when saving a view
+        with self.assertRaises(ValueError):
+            dataset.save_view("my   view1", dataset.limit(1))
+
+        # Can't rename a view to an existing name
+        with self.assertRaises(ValueError):
+            dataset.update_saved_view_info("my-view1", {"name": "my_view2"})
+
+        # Can't rename a view to an existing slug
+        with self.assertRaises(ValueError):
+            dataset.update_saved_view_info("my-view1", {"name": "my_view2!"})
+
+        view_docs = dataset._saved_views()
+
+        self.assertListEqual([v.name for v in view_docs], names)
+        self.assertListEqual([v.slug for v in view_docs], slugs)
+
+        dataset.delete_saved_view("my_view2")
+
+        self.assertSetEqual(
+            {v.name for v in dataset._saved_views()},
+            {names[0], names[2]},
+        )
+
+        dataset.delete_saved_views()
+
+        self.assertListEqual(dataset._saved_views(), [])
+
+    def test_runs(self):
+        dataset = self.dataset
+
+        self.assertFalse(dataset.has_evaluations)
+        self.assertListEqual(dataset.list_evaluations(), [])
+
+        # We currently use only evaluations as a proxy for all run types
+        dataset.evaluate_classifications(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+        )
+
+        self.assertTrue(dataset.has_evaluations)
+        self.assertTrue(dataset.has_evaluation("eval"))
+        self.assertListEqual(dataset.list_evaluations(), ["eval"])
+
+        results = dataset.load_evaluation_results("eval")
+
+        self.assertIsNotNone(results)
+
+        #
+        # Verify that runs are included in clones
+        #
+
+        dataset2 = dataset.clone()
+
+        self.assertTrue(dataset2.has_evaluations)
+        self.assertTrue(dataset2.has_evaluation("eval"))
+        self.assertListEqual(dataset2.list_evaluations(), ["eval"])
+
+        results = dataset.load_evaluation_results("eval")
+
+        self.assertIsNotNone(results)
+
+        dataset.delete_evaluation("eval")
+
+        self.assertFalse(dataset.has_evaluations)
+        self.assertFalse(dataset.has_evaluation("eval"))
+        self.assertListEqual(dataset.list_evaluations(), [])
+
+        # Verify that cloned data is properly decoupled from source dataset
+        info = dataset2.get_evaluation_info("eval")
+        results = dataset2.load_evaluation_results("eval")
+        self.assertIsNotNone(info)
+        self.assertIsNotNone(results)
+
+        #
+        # Verify that runs are deleted when a dataset is deleted
+        #
+
+        run_id = dataset2._doc.evaluations["eval"].id
+        result_id = dataset2._doc.evaluations["eval"].results.grid_id
+
+        db = foo.get_db_conn()
+
+        self.assertEqual(len(list(db.runs.find({"_id": run_id}))), 1)
+        self.assertEqual(len(list(db.fs.files.find({"_id": result_id}))), 1)
+
+        dataset2.delete()
+
+        self.assertEqual(len(list(db.runs.find({"_id": run_id}))), 0)
+        self.assertEqual(len(list(db.fs.files.find({"_id": result_id}))), 0)
 
 
 class DatasetSerializationTests(unittest.TestCase):

@@ -58,7 +58,12 @@ class DatasetView(foc.SampleCollection):
     """
 
     def __init__(
-        self, dataset, _stages=None, _media_type=None, _group_slice=None
+        self,
+        dataset,
+        _stages=None,
+        _media_type=None,
+        _group_slice=None,
+        _name=None,
     ):
         if _stages is None:
             _stages = []
@@ -67,6 +72,7 @@ class DatasetView(foc.SampleCollection):
         self.__stages = _stages
         self.__media_type = _media_type
         self.__group_slice = _group_slice
+        self.__name = _name
 
     def __eq__(self, other):
         if type(other) != type(self):
@@ -124,6 +130,7 @@ class DatasetView(foc.SampleCollection):
             _stages=deepcopy(self.__stages),
             _media_type=self.__media_type,
             _group_slice=self.__group_slice,
+            _name=self.__name,
         )
 
     @property
@@ -239,13 +246,34 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def name(self):
-        """The name of the view."""
-        return self.dataset_name + "-view"
+        """The name of the view if it is a saved view; otherwise None."""
+        return self.__name
+
+    @property
+    def is_saved(self):
+        """Whether the view is a saved view or not."""
+        return self.__name is not None
 
     @property
     def dataset_name(self):
         """The name of the underlying dataset."""
         return self._root_dataset.name
+
+    @property
+    def tags(self):
+        return self._root_dataset.tags
+
+    @tags.setter
+    def tags(self, tags):
+        self._root_dataset.tags = tags
+
+    @property
+    def description(self):
+        return self._root_dataset.description
+
+    @description.setter
+    def description(self, description):
+        self._root_dataset.description = description
 
     @property
     def info(self):
@@ -325,6 +353,9 @@ class DatasetView(foc.SampleCollection):
 
         if self.media_type == fom.GROUP:
             elements.insert(2, ("Group slice:", self.group_slice))
+
+        if self.is_saved:
+            elements.insert(1, ("View name: ", self.name))
 
         elements = fou.justify_headings(elements)
         lines = ["%s %s" % tuple(e) for e in elements]
@@ -1372,6 +1403,8 @@ class DatasetView(foc.SampleCollection):
             if media_type is not None:
                 view._set_media_type(media_type)
 
+        view._set_name(None)
+
         return view
 
     def _set_media_type(self, media_type):
@@ -1379,6 +1412,9 @@ class DatasetView(foc.SampleCollection):
 
         if media_type != fom.GROUP:
             self.__group_slice = None
+
+    def _set_name(self, name):
+        self.__name = name
 
     def _get_filtered_schema(self, schema, frames=False):
         if schema is None:

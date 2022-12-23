@@ -26,7 +26,7 @@ class Aggregate(HTTPEndpoint):
         stages = data.get("view", None)
         aggregations = data.get("aggregations", [])
 
-        view = fosv.get_view(dataset, stages=stages, filters=filters)
+        view = fosv.get_dataset_view(dataset, stages=stages, filters=filters)
 
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)

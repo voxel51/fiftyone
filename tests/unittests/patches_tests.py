@@ -5,6 +5,8 @@ FiftyOne patches-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
+
 from bson import ObjectId
 import unittest
 
@@ -281,6 +283,25 @@ class PatchesTests(unittest.TestCase):
         sample = dataset.first()
         with self.assertRaises(KeyError):
             sample["ground_truth"]
+
+        # Test saving a patches view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
 
     @drop_datasets
     def test_to_evaluation_patches(self):
@@ -588,6 +609,25 @@ class PatchesTests(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             sample["predictions"]
+
+        # Test saving an evaluation patches view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
 
 
 if __name__ == "__main__":

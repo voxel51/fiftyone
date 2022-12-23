@@ -1,4 +1,10 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
 
@@ -11,6 +17,10 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { Box } from "@mui/material";
+import ViewSelection from "./ViewSelection";
+import { DatasetSavedViewsQuery } from "../../Root/Root";
+import { useQueryLoader } from "react-relay";
 const MARGIN = 3;
 
 const fn = (
@@ -431,6 +441,7 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
+  const loadedDatasetName = useRecoilValue<string>(fos.datasetName);
 
   if (entries instanceof Error) {
     throw entries;
@@ -678,6 +689,14 @@ const InteractiveSidebar = ({
   );
   const theme = useTheme();
 
+  const [savedViewsQueryRef, loadSavedViewsQuery] = useQueryLoader(
+    DatasetSavedViewsQuery
+  );
+
+  useEffect(() => {
+    loadSavedViewsQuery({ name: loadedDatasetName });
+  }, [loadSavedViewsQuery]);
+
   return shown ? (
     <Resizable
       size={{ height: "100%", width }}
@@ -705,6 +724,18 @@ const InteractiveSidebar = ({
           : undefined,
       }}
     >
+      {!modal && (
+        <Suspense>
+          <Box style={{ padding: 8, paddingLeft: 16, paddingRight: 16 }}>
+            {savedViewsQueryRef !== null && (
+              <ViewSelection
+                datasetName={loadedDatasetName}
+                queryRef={savedViewsQueryRef}
+              />
+            )}
+          </Box>
+        </Suspense>
+      )}
       <SidebarColumn
         ref={container}
         onScroll={({ target }) => {

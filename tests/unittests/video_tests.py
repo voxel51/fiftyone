@@ -5,6 +5,7 @@ FiftyOne video-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
 from datetime import date, datetime
 
 from bson import ObjectId
@@ -1632,6 +1633,25 @@ class VideoTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             sample["events"]
 
+        # Test saving a clips view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
+
     @drop_datasets
     def test_to_clips_expr(self):
         dataset = fo.Dataset()
@@ -1997,6 +2017,25 @@ class VideoTests(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             frame["ground_truth"]
+
+        # Test saving a frame view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
 
     @drop_datasets
     def test_to_frames_schema(self):
