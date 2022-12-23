@@ -6,12 +6,14 @@ FiftyOne Zoo Datasets provided natively by the library.
 |
 """
 import logging
+import numpy as np
 import os
 import shutil
 
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.dataset as fod
 import fiftyone.types as fot
 import fiftyone.utils.activitynet as foua
 import fiftyone.utils.bdd as foub
@@ -2692,6 +2694,74 @@ class QuickstartGroupsDataset(FiftyOneDataset):
     def supported_splits(self):
         return None
 
+    def _swap_location_coordinates(self, vec):
+        return [vec[2], -vec[0], -vec[1]]
+
+    def _swap_dimension_coordinates(self, vec):
+        return [-vec[1], vec[0], vec[2]]
+
+    def _rotate(self, rotation):
+        rotation[0] -= 0.5 * np.pi
+        return rotation
+
+    def _transform_single_detection(self, detection):
+        location = detection["location"]
+        dimensions = detection["dimensions"]
+        rotation = detection["rotation"]
+
+        # Handle coordinate system
+        location = self._swap_location_coordinates(location)
+        dimensions = self._swap_dimension_coordinates(dimensions)
+
+        location[2] += 0.5 * dimensions[1]
+        location[1] += 0.5 * dimensions[1]
+        location[0] -= 0.5 * dimensions[0]
+
+        rotation = self._rotate(rotation)
+
+        detection["location"] = location
+        detection["dimensions"] = dimensions
+        detection["rotation"] = rotation
+
+    def _normalize_3d_detections(self, dataset):
+        dataset.group_slice = "pcd"
+        for sample in dataset.select_fields("ground_truth").iter_samples(
+            progress=True
+        ):
+            for detection in sample.ground_truth.detections:
+                self._transform_single_detection(detection)
+            sample.save()
+        dataset.group_slice = "left"
+        dataset.save()
+
+    def _normalize_app_config(self, dataset):
+        app_config = dataset.app_config.copy()
+        dataset.app_config = None
+
+        if "pointCloud" in app_config.plugins["3d"]:
+            app_config.plugins["3d"].pop("pointCloud")
+        if "overlay" in app_config.plugins["3d"]:
+            app_config.plugins["3d"].pop("overlay")
+        app_config.plugins["3d"]["useLegacyCoordinates"] = False
+
+        dataset.app_config = app_config
+        dataset.save()
+
+    def _normalize_dataset(self, dataset_dir, dataset_type):
+        dataset = fod.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=dataset_type,
+            name="quickstart-groups",
+        )
+        self._normalize_3d_detections(dataset)
+        self._normalize_app_config(dataset)
+
+        dataset.export(
+            export_dir=dataset_dir,
+            dataset_type=dataset_type,
+            export_media=False,
+        )
+
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
         _download_and_extract_archive(
             self._GDRIVE_ID,
@@ -2707,6 +2777,8 @@ class QuickstartGroupsDataset(FiftyOneDataset):
         classes = importer._get_classes(dataset_dir)
         num_samples = importer._get_num_samples(dataset_dir)
         logger.info("Found %d samples", num_samples)
+
+        self._normalize_dataset(dataset_dir, dataset_type)
 
         return dataset_type, num_samples, classes
 
