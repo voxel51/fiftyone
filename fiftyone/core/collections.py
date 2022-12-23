@@ -314,6 +314,31 @@ class SampleCollection(object):
         )
 
     @property
+    def tags(self):
+        """The list of tags of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.tags` for more information.
+        """
+        raise NotImplementedError("Subclass must implement tags")
+
+    @tags.setter
+    def tags(self, tags):
+        raise NotImplementedError("Subclass must implement tags")
+
+    @property
+    def description(self):
+        """A description of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.description` for more
+        information.
+        """
+        raise NotImplementedError("Subclass must implement description")
+
+    @description.setter
+    def description(self, description):
+        raise NotImplementedError("Subclass must implement description")
+
+    @property
     def info(self):
         """The info dict of the underlying dataset.
 
@@ -8184,7 +8209,7 @@ class SampleCollection(object):
         )
 
         d = {
-            "name": self.name,
+            "name": self._dataset.name,
             "version": self._dataset.version,
             "media_type": self.media_type,
         }
@@ -9655,10 +9680,14 @@ def _parse_field_name(
         root_field_name = field_name.split(".", 1)[0]
 
         if sample_collection.get_field(prefix + root_field_name) is None:
-            ftype = "Frame field" if is_frame_field else "Field"
+            ftype = "frame field" if is_frame_field else "field"
             raise ValueError(
-                "%s '%s' does not exist on collection '%s'"
-                % (ftype, root_field_name, sample_collection.name)
+                "%s has no %s '%s'"
+                % (
+                    sample_collection.__class__.__name__,
+                    ftype,
+                    root_field_name,
+                )
             )
 
     # Detect list fields in schema

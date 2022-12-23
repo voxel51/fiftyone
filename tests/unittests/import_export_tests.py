@@ -22,7 +22,7 @@ import fiftyone as fo
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
-from fiftyone.core.expressions import ViewField as F
+from fiftyone import ViewField as F
 
 from decorators import drop_datasets
 
@@ -2832,7 +2832,33 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         self.assertIn("predictions.detections.cute", schema)
         self.assertIn("predictions.detections.mood", schema)
 
-        # Test import/export of run results
+        # Test import/export of saved views
+
+        view = dataset.match(F("weather.label") == "sunny")
+        dataset.save_view("test", view)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertTrue("test" in dataset.list_saved_views())
+        self.assertTrue("test" in dataset2.list_saved_views())
+
+        view_doc = dataset2._get_saved_view_doc("test")
+        self.assertEqual(str(dataset2._doc.id), view_doc.dataset_id)
+
+        view2 = dataset2.load_saved_view("test")
+        self.assertEqual(len(view), len(view2))
+
+        # Test import/export of runs
 
         dataset.clone_sample_field("predictions", "ground_truth")
 
@@ -2855,6 +2881,9 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         self.assertTrue("test" in dataset.list_evaluations())
         self.assertTrue("test" in dataset2.list_evaluations())
+
+        run_doc = dataset2._doc.evaluations["test"]
+        self.assertEqual(str(dataset2._doc.id), run_doc.dataset_id)
 
         view2 = dataset2.load_evaluation_view("test")
         self.assertEqual(len(view), len(view2))
@@ -3043,6 +3072,32 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset2.count("predictions.detections"),
         )
 
+        # Test import/export of saved views
+
+        view = dataset.match(F("weather.label") == "sunny")
+        dataset.save_view("test", view)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertTrue("test" in dataset.list_saved_views())
+        self.assertTrue("test" in dataset2.list_saved_views())
+
+        view_doc = dataset2._get_saved_view_doc("test")
+        self.assertEqual(str(dataset2._doc.id), view_doc.dataset_id)
+
+        view2 = dataset2.load_saved_view("test")
+        self.assertEqual(len(view), len(view2))
+
         # Test import/export of runs
 
         dataset.clone_sample_field("predictions", "ground_truth")
@@ -3066,6 +3121,9 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         self.assertTrue("test" in dataset.list_evaluations())
         self.assertTrue("test" in dataset2.list_evaluations())
+
+        run_doc = dataset2._doc.evaluations["test"]
+        self.assertEqual(str(dataset2._doc.id), run_doc.dataset_id)
 
         view2 = dataset2.load_evaluation_view("test")
         self.assertEqual(len(view), len(view2))

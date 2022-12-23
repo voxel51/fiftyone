@@ -11,7 +11,7 @@ import logging
 import os
 import random
 
-from bson import json_util
+from bson import json_util, ObjectId
 import cv2
 
 import eta.core.datasets as etad
@@ -152,7 +152,7 @@ def import_samples(
                 parse_dataset_info(dataset, info)
 
         if isinstance(dataset_importer, LegacyFiftyOneDatasetImporter):
-            dataset_importer.import_run_results(dataset)
+            dataset_importer.import_extras(dataset)
 
     return sample_ids
 
@@ -347,7 +347,7 @@ def merge_samples(
                 parse_dataset_info(dataset, info)
 
         if isinstance(dataset_importer, LegacyFiftyOneDatasetImporter):
-            dataset_importer.import_run_results(dataset)
+            dataset_importer.import_extras(dataset)
 
 
 def _handle_legacy_formats(dataset_importer):
@@ -616,6 +616,18 @@ def parse_dataset_info(dataset, info, overwrite=True):
         info: an info dict
         overwrite (True): whether to overwrite existing dataset info fields
     """
+    tags = info.pop("tags", None)
+    if tags is not None:
+        if overwrite:
+            dataset.tags = tags
+        else:
+            _update_no_overwrite(dataset.tags, tags)
+
+    description = info.pop("description", None)
+    if description is not None:
+        if overwrite or not dataset.description:
+            dataset.description = description
+
     classes = info.pop("classes", None)
     if isinstance(classes, dict):
         if overwrite:
@@ -685,7 +697,10 @@ def parse_dataset_info(dataset, info, overwrite=True):
 
 
 def _update_no_overwrite(d, dnew):
-    d.update({k: v for k, v in dnew.items() if k not in d})
+    if isinstance(d, list):
+        d.extend([v for v in dnew if v not in d])
+    else:
+        d.update({k: v for k, v in dnew.items() if k not in d})
 
 
 class ImportPathsMixin(object):
@@ -1485,86 +1500,64 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
     def get_dataset_info(self):
         return self._metadata.get("info", {})
 
-    def import_run_results(self, sample_collection):
+    def import_extras(self, sample_collection):
         dataset = sample_collection._dataset
 
-        #
-        # Import annotation runs
-        #
+        # Import saved views
+        saved_views = self._metadata.get("saved_views", None)
+        if saved_views:
+            _import_saved_views(dataset, saved_views)
 
+        # Import annotation runs
         annotation_runs = self._metadata.get("annotation_runs", None)
         if annotation_runs:
-            d = {k: json_util.loads(v) for k, v in annotation_runs.items()}
-            d = dataset._doc.field_to_python("annotation_runs", d)
-            for anno_key, run_doc in d.items():
-                # Results are stored in GridFS, which we import separately next
-                run_doc["results"] = None
-
+            for anno_key in annotation_runs.keys():
                 if dataset.has_annotation_run(anno_key):
                     logger.warning(
                         "Overwriting existing annotation run '%s'", anno_key
                     )
                     dataset.delete_annotation_run(anno_key)
 
-            dataset._doc.annotation_runs.update(d)
-            _import_run_results(
+            _import_runs(
                 dataset,
+                annotation_runs,
                 self._anno_dir,
                 foa.AnnotationMethod,
-                keys=list(d.keys()),
             )
-            dataset._doc.save()
 
-        #
         # Import brain method runs
-        #
-
         brain_methods = self._metadata.get("brain_methods", None)
         if brain_methods:
-            d = {k: json_util.loads(v) for k, v in brain_methods.items()}
-            d = dataset._doc.field_to_python("brain_methods", d)
-            for brain_key, run_doc in d.items():
-                # Results are stored in GridFS, which we import separately next
-                run_doc["results"] = None
-
+            for brain_key in brain_methods.keys():
                 if dataset.has_brain_run(brain_key):
                     logger.warning(
-                        "Overwriting existing brain run '%s'", brain_key
+                        "Overwriting existing brain method run '%s'", brain_key
                     )
                     dataset.delete_brain_run(brain_key)
 
-            dataset._doc.brain_methods.update(d)
-            _import_run_results(
-                dataset, self._brain_dir, fob.BrainMethod, keys=list(d.keys())
+            _import_runs(
+                dataset,
+                brain_methods,
+                self._brain_dir,
+                fob.BrainMethod,
             )
-            dataset._doc.save()
 
-        #
-        # Import evaluations
-        #
-
+        # Import evaluation runs
         evaluations = self._metadata.get("evaluations", None)
         if evaluations:
-            d = {k: json_util.loads(v) for k, v in evaluations.items()}
-            d = dataset._doc.field_to_python("evaluations", d)
-            for eval_key, run_doc in d.items():
-                # Results are stored in GridFS, which we import separately next
-                run_doc["results"] = None
-
+            for eval_key in evaluations.keys():
                 if dataset.has_evaluation(eval_key):
                     logger.warning(
-                        "Overwriting existing evaluation '%s'", eval_key
+                        "Overwriting existing evaluation run '%s'", eval_key
                     )
                     dataset.delete_evaluation(eval_key)
 
-            dataset._doc.evaluations.update(d)
-            _import_run_results(
+            _import_runs(
                 dataset,
+                evaluations,
                 self._eval_dir,
                 foe.EvaluationMethod,
-                keys=list(d.keys()),
             )
-            dataset._doc.save()
 
     @staticmethod
     def _get_classes(dataset_dir):
@@ -1706,6 +1699,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         #   - `dataset` is non-empty but no migration is required
         #
 
+        views = dataset_dict.pop("saved_views", {})
+        annotations = dataset_dict.pop("annotation_runs", {})
+        brain_methods = dataset_dict.pop("brain_methods", {})
+        evaluations = dataset_dict.pop("evaluations", {})
+
         if empty_import:
             #
             # The `dataset` we're importing into is empty, so we replace its
@@ -1720,6 +1718,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 dict(
                     _id=doc.id,
                     name=doc.name,
+                    slug=doc.slug,
                     persistent=doc.persistent,
                     created_at=doc.created_at,
                     last_loaded_at=doc.last_loaded_at,
@@ -1727,14 +1726,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                     frame_collection_name=doc.frame_collection_name,
                 )
             )
-
-            # Run results are imported separately
-
-            for run_doc in dataset_dict.get("evaluations", {}).values():
-                run_doc["results"] = None
-
-            for run_doc in dataset_dict.get("brain_methods", {}).values():
-                run_doc["results"] = None
 
             conn = foo.get_db_conn()
             conn.datasets.replace_one({"name": name}, dataset_dict)
@@ -1817,22 +1808,37 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             )
 
         #
-        # Import run results
+        # Import saved views
         #
 
         if empty_import:
-            if os.path.isdir(self._anno_dir):
-                _import_run_results(
-                    dataset, self._anno_dir, foa.AnnotationMethod
-                )
+            _import_saved_views(dataset, views)
 
-            if os.path.isdir(self._brain_dir):
-                _import_run_results(dataset, self._brain_dir, fob.BrainMethod)
+        #
+        # Import runs
+        #
 
-            if os.path.isdir(self._eval_dir):
-                _import_run_results(
-                    dataset, self._eval_dir, foe.EvaluationMethod
-                )
+        if empty_import:
+            _import_runs(
+                dataset,
+                annotations,
+                self._anno_dir,
+                foa.AnnotationMethod,
+            )
+
+            _import_runs(
+                dataset,
+                brain_methods,
+                self._brain_dir,
+                fob.BrainMethod,
+            )
+
+            _import_runs(
+                dataset,
+                evaluations,
+                self._eval_dir,
+                foe.EvaluationMethod,
+            )
 
         #
         # Migrate dataset if necessary
@@ -1886,6 +1892,58 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         )
 
 
+def _import_saved_views(dataset, views):
+    dataset_doc = dataset._doc
+
+    for d in views:
+        if etau.is_str(d):
+            d = json_util.loads(d)
+
+        name = d["name"]
+        if dataset.has_saved_view(name):
+            logger.warning("Overwriting existing view '%s'", name)
+            dataset.delete_saved_view(name)
+
+        d.pop("_id", None)
+        view_doc = foo.SavedViewDocument.from_dict(d)
+        view_doc.dataset_id = str(dataset_doc.id)
+        view_doc.save()
+
+        dataset_doc.saved_views.append(view_doc)
+
+    dataset_doc.save()
+
+
+def _import_runs(dataset, runs, results_dir, run_cls):
+    dataset_doc = dataset._doc
+
+    # Import run documents
+    for key, d in runs.items():
+        if etau.is_str(d):
+            d = json_util.loads(d)
+
+        d.pop("_id", None)
+        run_doc = foo.RunDocument.from_dict(d)
+        run_doc.dataset_id = str(dataset_doc.id)
+        run_doc.results = None
+        run_doc.save()
+
+        runs = getattr(dataset_doc, run_cls._runs_field())
+        runs[key] = run_doc
+
+    dataset_doc.save()
+
+    # Import run results
+    for key in runs.keys():
+        json_path = os.path.join(results_dir, key + ".json")
+        if os.path.isfile(json_path):
+            view = run_cls.load_run_view(dataset, key)
+            run_info = run_cls.get_run_info(dataset, key)
+            d = etas.read_json(json_path)
+            results = fors.RunResults.from_dict(d, view, run_info.config)
+            run_cls.save_run_results(dataset, key, results, cache=False)
+
+
 def _parse_media_fields(sd, media_fields, rel_dir):
     for field_name in media_fields:
         value = sd.get(field_name, None)
@@ -1905,21 +1963,6 @@ def _parse_media_fields(sd, media_fields, rel_dir):
         elif etau.is_str(value):
             if not os.path.isabs(value):
                 sd[field_name] = os.path.join(rel_dir, value)
-
-
-def _import_run_results(dataset, run_dir, run_cls, keys=None):
-    if keys is None:
-        keys = [os.path.splitext(f)[0] for f in etau.list_files(run_dir)]
-
-    for key in keys:
-        json_path = os.path.join(run_dir, key + ".json")
-        if os.path.isfile(json_path):
-            view = run_cls.load_run_view(dataset, key)
-            run_info = run_cls.get_run_info(dataset, key)
-            config = run_info.config
-            d = etas.read_json(json_path)
-            results = fors.RunResults.from_dict(d, view, config)
-            run_cls.save_run_results(dataset, key, results, cache=False)
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):

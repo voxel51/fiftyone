@@ -10,6 +10,15 @@ FiftyOne provides methods that allow you to sort, slice, and search your
 Performing these actions returns a |DatasetView| into your |Dataset| that will
 show only the samples and labels therein that match your criteria.
 
+.. note::
+
+    |DatasetView| does not hold its contents in-memory. Views simply store the
+    rule(s) that are applied to extract the content of interest from the
+    underlying |Dataset| when the view is iterated/aggregated on.
+
+    This means, for example, that the contents of a |DatasetView| may change
+    as the underlying |Dataset| is modified.
+
 Overview
 ________
 
@@ -57,12 +66,6 @@ You can access specific information about a view in the natural ways:
     view.media_type
     # "image"
 
-.. note::
-
-    |DatasetView| does not hold its contents in-memory; it contains a pipeline
-    of operations that define what samples will be loaded when the contents of
-    the view are accessed.
-
 Like datasets, you access the samples in a view by iterating over it:
 
 .. code-block:: python
@@ -94,6 +97,69 @@ Or, you can access individual samples in a view by their ID or filepath:
     |SampleView| provides some extra features. See
     :ref:`filtering sample contents <filtering-sample-contents>` for more
     details.
+
+.. _saving-views:
+
+Saving views
+____________
+
+If you find yourself frequently using/recreating certain views, you can use
+:meth:`save_view() <fiftyone.core.dataset.Dataset.save_view>` to save them on
+your dataset under a name of your choice:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.persistent = True
+
+    # Create a view
+    cats_view = (
+        dataset
+        .select_fields("ground_truth")
+        .filter_labels("ground_truth", F("label") == "cat")
+        .sort_by(F("ground_truth.detections").length(), reverse=True)
+    )
+
+    # Save the view
+    dataset.save_view("cats-view", cats_view)
+
+Then you can conveniently use
+:meth:`load_saved_view() <fiftyone.core.dataset.Dataset.load_saved_view>`
+to load the view in a future session:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("quickstart")
+
+    # Retrieve a saved view
+    cats_view = dataset.load_saved_view("cats-view")
+    print(cats_view)
+
+    # Cleanup
+    dataset.delete()
+
+You can also use
+:meth:`has_saved_view() <fiftyone.core.dataset.Dataset.has_saved_view>`
+and
+:meth:`delete_saved_view() <fiftyone.core.dataset.Dataset.delete_saved_view>`
+to manage your saved views.
+
+.. note::
+
+    Remember that |DatasetView| objects only store the rule(s) used to extract
+    content from the underlying |Dataset|, not the actual content itself.
+    Saving views is cheap. Don't worry about storage space!
+
+    Keep in mind though, the contents of a |DatasetView| may change as the
+    underlying |Dataset| is modified.
 
 .. _view-stages:
 
