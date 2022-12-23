@@ -59,7 +59,7 @@ class Group:
 
 @gql.type
 class Target:
-    target: int
+    target: str
     value: str
 
 
@@ -409,7 +409,7 @@ def _flatten_fields(
 
 
 def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
-    return [Target(target=int(k), value=v) for k, v in targets.items()]
+    return [Target(target=k, value=v) for k, v in targets.items()]
 
 
 async def serialize_dataset(
