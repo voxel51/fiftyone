@@ -3300,9 +3300,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self._doc.saved_views[idx]
 
-    def _saved_views(self):
-        return self._doc.saved_views
-
     def _validate_saved_view_name(self, name, skip=None, overwrite=False):
         slug = fou.to_slug(name)
 
