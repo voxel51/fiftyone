@@ -17,9 +17,9 @@ export interface FetchFunction {
     method: string,
     path: string,
     body?: A,
-    result?: "json" | "blob",
+    result?: "json" | "blob" | "arrayBuffer",
     retries?: number,
-    retryDelay?: number
+    retryCodes?: number[] | "arrayBuffer"
   ): Promise<R>;
 }
 
@@ -32,13 +32,18 @@ export const getFetchHeaders = () => {
 };
 
 export const getFetchOrigin = () => {
-  if (window.FIFTYONE_SERVER_ADDRESS) {
+  // window is not defined in the web worker
+  if (typeof window !== "undefined" && window.FIFTYONE_SERVER_ADDRESS) {
     return window.FIFTYONE_SERVER_ADDRESS;
   }
   return fetchOrigin;
 };
 export function getFetchPathPrefix(): string {
-  if (typeof window.FIFTYONE_SERVER_PATH_PREFIX === "string") {
+  // window is not defined in the web worker
+  if (
+    typeof window !== "undefined" &&
+    typeof window.FIFTYONE_SERVER_PATH_PREFIX === "string"
+  ) {
     return window.FIFTYONE_SERVER_PATH_PREFIX;
   }
   return "";
@@ -65,8 +70,8 @@ export const setFetchFunction = (
     path,
     body = null,
     result = "json",
-    retries = 0,
-    retryDelay = 0
+    retries = 2,
+    retryCodes = [502, 503, 504]
   ) => {
     let url: string;
 
@@ -89,11 +94,11 @@ export const setFetchFunction = (
     const fetchCall = retries
       ? fetchRetry(fetch, {
           retries,
-          retryDelay,
+          retryDelay: 0,
           retryOn: (attempt, error, response) => {
             if (
               error !== null ||
-              (response.status >= 400 && attempt < retries)
+              (retryCodes.includes(response.status) && attempt < retries)
             ) {
               return true;
             }

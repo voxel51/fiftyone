@@ -1,8 +1,8 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { config, animated, useSpring } from "@react-spring/web";
-import styled, { ThemeContext } from "styled-components";
-import { useService } from "@xstate/react";
 import { ReportProblem } from "@mui/icons-material";
+import { animated, config, useSpring } from "@react-spring/web";
+import { useService } from "@xstate/react";
+import React, { useContext, useEffect, useRef, useState } from "react";
+import styled, { ThemeContext } from "styled-components";
 
 import { useFollow, useOutsideClick } from "@fiftyone/state";
 

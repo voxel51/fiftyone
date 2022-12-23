@@ -1,9 +1,7 @@
+import { animated, useSpring } from "@react-spring/web";
 import React, { useState } from "react";
 import styled from "styled-components";
-import { animated, useSpring } from "@react-spring/web";
 
-import { scrollbarStyles } from "../components/utils";
-import { isElectron } from "@fiftyone/utilities";
 import {
   DocsLink,
   GitHubLink,
@@ -12,8 +10,10 @@ import {
   SlackLink,
   useTheme,
 } from "@fiftyone/components";
-import { useRecoilValue } from "recoil";
 import { isNotebook } from "@fiftyone/state";
+import { isElectron } from "@fiftyone/utilities";
+import { useRecoilValue } from "recoil";
+import { scrollbarStyles } from "../components/utils";
 
 const SectionTitle = styled.div`
   font-size: 2rem;

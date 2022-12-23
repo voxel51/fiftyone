@@ -29,6 +29,7 @@ input AggregationForm {
   sampleIds: [ID!]!
   slice: String
   view: BSONArray!
+  viewName: String = null
 }
 
 union AggregationResponses =
@@ -125,10 +126,12 @@ type Dataset {
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!
   frameFields: [SampleField!]
-  brainMethods: [BrainRun!]!
-  evaluations: [EvaluationRun!]!
+  brainMethods: [BrainRun!]
+  evaluations: [EvaluationRun!]
+  savedViews: [SavedView!]
   version: String
   viewCls: String
+  viewName: String
   defaultSkeleton: KeypointSkeleton
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
@@ -264,8 +267,15 @@ type MediaURL {
 }
 
 type Mutation {
-  setDataset(subscription: String!, session: String, name: String): Boolean!
+  setDataset(
+    subscription: String!
+    session: String
+    name: String
+    viewName: String
+  ): Boolean!
   setSidebarGroups(
+    subscription: String!
+    session: String
     dataset: String!
     stages: BSONArray!
     sidebarGroups: [SidebarGroupInput!]!
@@ -283,8 +293,11 @@ type Mutation {
   setView(
     subscription: String!
     session: String
-    view: BSONArray!
-    dataset: String!
+    datasetName: String!
+    view: BSONArray
+    viewName: String
+    savedViewSlug: String
+    changingSavedView: Boolean
     form: StateForm
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
@@ -292,8 +305,31 @@ type Mutation {
     subscription: String!
     session: String
     view: BSONArray!
+    viewName: String
     slice: String!
   ): Dataset!
+  createSavedView(
+    subscription: String!
+    session: String
+    viewName: String!
+    viewStages: BSONArray = null
+    datasetName: String = null
+    description: String = null
+    color: String = null
+  ): SavedView
+  deleteSavedView(
+    subscription: String!
+    session: String
+    viewName: String!
+    datasetName: String = null
+  ): String
+  updateSavedView(
+    viewName: String!
+    subscription: String
+    session: String
+    updatedInfo: SavedViewInfo!
+    datasetName: String = null
+  ): SavedView
 }
 
 type NamedKeypointSkeleton {
@@ -316,9 +352,11 @@ type PointCloudSample implements Sample {
 type Query {
   aggregate(
     datasetName: String!
-    view: BSONArray!
+    view: BSONArray
     aggregations: [Aggregate!]!
+    viewName: String
   ): [AggregationResponses!]!
+  dataset(name: String!, view: BSONArray, viewName: String): Dataset
   datasets(
     search: String
     first: Int = 200
@@ -330,7 +368,6 @@ type Query {
   context: String!
   dev: Boolean!
   doNotTrack: Boolean!
-  dataset(name: String!, view: BSONArray): Dataset
   samples(
     dataset: String!
     view: BSONArray!
@@ -342,6 +379,7 @@ type Query {
   teamsSubmission: Boolean!
   uid: String!
   version: String!
+  savedViews(datasetName: String!): [SavedView!]
 }
 
 type RootAggregation implements Aggregation {
@@ -404,6 +442,27 @@ type SampleItemStrPageInfo {
   hasPreviousPage: Boolean!
   startCursor: String
   endCursor: String
+}
+
+type SavedView {
+  id: String
+  datasetId: String
+  name: String
+  slug: String
+  description: String
+  color: String
+  viewStages: [String!]
+  createdAt: datetime
+  lastModifiedAt: datetime
+  lastLoadedAt: datetime
+  viewName: String
+  stageDicts: BSONArray
+}
+
+input SavedViewInfo {
+  name: String = null
+  description: String = null
+  color: String = null
 }
 
 input SelectedLabel {
@@ -483,6 +542,9 @@ type VideoSample implements Sample {
 type ViewResponse {
   view: BSONArray!
   dataset: Dataset!
+  viewName: String
+  savedViewSlug: String
+  changingSavedView: Boolean
 }
 
 scalar date

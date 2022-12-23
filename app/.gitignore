@@ -3,6 +3,7 @@
 !.yarn/plugins
 !.yarn/sdks
 !.yarn/versions
+coverage
 node_modules
 .snowpack
 build

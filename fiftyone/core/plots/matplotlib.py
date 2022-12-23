@@ -1029,9 +1029,7 @@ def _parse_locations(locations, samples):
     else:
         location_field = locations
         samples.validate_field_type(
-            location_field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.GeoLocation,
+            location_field, embedded_doc_type=fol.GeoLocation
         )
 
     locations = samples.values(location_field + ".point.coordinates")

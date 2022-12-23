@@ -203,6 +203,8 @@ class TorchImageModel(
     :class:`torch:torch.nn.Module` whose ``__call__()`` method directly accepts
     Torch tensors (NCHW) as input.
 
+    See :ref:`this page <model-zoo-custom-models>` for example usage.
+
     Args:
         config: an :class:`TorchImageModelConfig`
     """

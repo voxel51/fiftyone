@@ -24,4 +24,6 @@ dist/
 /docker/README.pdf
 /bin
 /lib
+coverage.xml
+.coverage.*
 pyvenv.cfg
