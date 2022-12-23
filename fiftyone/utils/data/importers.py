@@ -1699,7 +1699,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         #   - `dataset` is non-empty but no migration is required
         #
 
-        views = dataset_dict.pop("saved_views", {})
+        views = dataset_dict.pop("saved_views", [])
         annotations = dataset_dict.pop("annotation_runs", {})
         brain_methods = dataset_dict.pop("brain_methods", {})
         evaluations = dataset_dict.pop("evaluations", {})
