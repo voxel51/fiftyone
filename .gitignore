@@ -26,3 +26,5 @@ dist/
 coverage.xml
 .coverage.*
 pyvenv.cfg
+.prettierrc.js
+app/.gitignore

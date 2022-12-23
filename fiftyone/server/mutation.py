@@ -162,7 +162,8 @@ class Mutation:
         info: Info,
     ) -> ViewResponse:
         logging.debug(
-            f"set_view called with args:\ndataset_name:{dataset_name}\nview:{view}\nview_name:{view_name}\nchanging_saved_view:{changing_saved_view} \n"
+            f"[mutation.py] set_view called with args:\ndataset_name"
+            f":{dataset_name}\nview:{view}\nview_name:{view_name}\nchanging_saved_view:{changing_saved_view} \n"
         )
         state = get_state()
         state.selected = []
@@ -296,7 +297,6 @@ class Mutation:
             await dispatch_event(subscription, StateUpdate(state=state))
         else:
             view = get_dataset_view(dataset_name, stages=view_stages)
-            logging.debug("stateless save_view called. created view: {view}")
             dataset.save_view(
                 view_name, view, description=description, color=color
             )

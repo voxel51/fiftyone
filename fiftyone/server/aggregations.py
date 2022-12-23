@@ -209,11 +209,6 @@ def _resolve_path_aggregation(
     ]
     field = view.get_field(path)
 
-    logging.debug(
-        "[server/aggregations.py: _resolve_path_aggregation] args:\n"
-        "view={}\npath={}\nfield={}\n".format(view, path, field)
-    )
-
     while isinstance(field, fof.ListField):
         field = field.field
 
