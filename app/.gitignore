@@ -11,5 +11,3 @@ dist
 .yarnrc
 yarn-error.log
 tsconfig.tsbuildinfo
-.eslintignore
-.eslintrc.js
