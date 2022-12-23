@@ -547,10 +547,11 @@ class DatasetView(foc.SampleCollection):
 
         virtual_fields = self._get_virtual_fields()
         if virtual_fields:
+            fields = [f.copy() for f in self.get_field_schema().values()]
             sample_doc_cls = fod._create_sample_document_cls(
                 self._dataset,
                 "virtual." + str(ObjectId()),
-                fields=list(self.get_field_schema().values()),
+                fields=fields,
             )
         else:
             sample_doc_cls = self._dataset._sample_doc_cls
@@ -582,10 +583,11 @@ class DatasetView(foc.SampleCollection):
 
         virtual_fields = self._get_virtual_fields(frames=True)
         if virtual_fields:
+            fields = [f.copy() for f in self.get_frame_field_schema().values()]
             frame_doc_cls = fod._create_frame_document_cls(
                 self._dataset,
                 "virtual." + str(ObjectId()),
-                fields=list(self.get_frame_field_schema().values()),
+                fields=fields,
             )
         else:
             frame_doc_cls = self._dataset._frame_doc_cls
