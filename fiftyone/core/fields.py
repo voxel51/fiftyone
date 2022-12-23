@@ -711,52 +711,12 @@ class DictField(mongoengine.fields.DictField, Field):
             self.field._set_dataset(dataset, path)
 
     def validate(self, value):
-        if not all(map(lambda k: etau.is_str(k), value)):
-            self.error("Dict fields must have string keys")
-
         if self.field is not None:
             for _value in value.values():
                 self.field.validate(_value)
 
         if value is not None and not isinstance(value, dict):
             self.error("Value must be a dict")
-
-
-class IntDictField(DictField):
-    """A :class:`DictField` whose keys are integers.
-
-    If this field is not set, its default value is ``{}``.
-
-    Args:
-        field (None): an optional :class:`Field` instance describing the type
-            of the values in the dict
-        description (None): an optional description
-        info (None): an optional info dict
-    """
-
-    def to_mongo(self, value):
-        if value is None:
-            return None
-
-        value = {str(k): v for k, v in value.items()}
-        return super().to_mongo(value)
-
-    def to_python(self, value):
-        if value is None:
-            return None
-
-        return {int(k): v for k, v in value.items()}
-
-    def validate(self, value):
-        if not isinstance(value, dict):
-            self.error("Value must be a dict")
-
-        if not all(map(lambda k: isinstance(k, numbers.Integral), value)):
-            self.error("Int dict fields must have integer keys")
-
-        if self.field is not None:
-            for _value in value.values():
-                self.field.validate(_value)
 
 
 class KeypointsField(ListField):
@@ -1131,9 +1091,9 @@ class ClassesField(ListField):
         return etau.get_class_name(self)
 
 
-class TargetsField(IntDictField):
-    """A :class:`DictField` that stores mapping between integer keys and string
-    targets.
+class MaskTargetsField(DictField):
+    """A :class:`DictField` that stores mapping between integer keys or
+    RGB string hex keys and string targets.
 
     If this field is not set, its default value is ``{}``.
 
@@ -1142,14 +1102,53 @@ class TargetsField(IntDictField):
         info (None): an optional info dict
     """
 
-    def __init__(self, **kwargs):
-        if "field" not in kwargs:
-            kwargs["field"] = StringField()
+    def _is_integer_mask_target(self, value):
+        return all(
+            map(
+                lambda k: isinstance(k, numbers.Integral)
+                or (isinstance(k, str) and k.isdigit()),
+                value,
+            )
+        )
 
-        super().__init__(**kwargs)
+    def _is_rgb_mask_target(self, value):
+        def is_valid_rgb_hex(color):
+            return re.search(r"^#(?:[0-9a-fA-F]{6})$", color) is not None
 
-    def __str__(self):
-        return etau.get_class_name(self)
+        return all(
+            map(
+                lambda k: isinstance(k, str) and is_valid_rgb_hex(k),
+                value,
+            )
+        )
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        value = {str(k): v for k, v in value.items()}
+        return value
+        # todo: why is this erroring? return super().to_mongo(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        if self._is_integer_mask_target(value):
+            return {int(k): v for k, v in value.items()}
+
+        return value
+
+    def validate(self, value):
+        super().validate(value)
+
+        if not (
+            self._is_integer_mask_target(value)
+            or self._is_rgb_mask_target(value)
+        ):
+            self.error(
+                "Mask target fields must all either be integer keys or string RGB hex keys (like #012abc)"
+            )
 
 
 class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
