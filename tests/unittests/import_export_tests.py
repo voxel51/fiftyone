@@ -3061,50 +3061,6 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset.values("filepath2"), dataset2.values("filepath2")
         )
 
-        # Alternate media
-
-        export_dir = self._new_dir()
-        field_dir = os.path.join(export_dir, "fields", "filepath2")
-
-        dataset.clone_sample_field("filepath", "filepath2")
-        dataset.app_config.media_fields.append("filepath2")
-        dataset.save()
-
-        dataset.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.FiftyOneDataset,
-        )
-
-        dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir,
-            dataset_type=fo.types.FiftyOneDataset,
-        )
-
-        self.assertEqual(
-            dataset.count("filepath2"), dataset2.count("filepath2")
-        )
-        for filepath in dataset2.values("filepath2"):
-            self.assertTrue(filepath.startswith(field_dir))
-
-        # Alternate media (don't export media)
-
-        export_dir = self._new_dir()
-
-        dataset.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.FiftyOneDataset,
-            export_media=False,
-        )
-
-        dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir,
-            dataset_type=fo.types.FiftyOneDataset,
-        )
-
-        self.assertListEqual(
-            dataset.values("filepath2"), dataset2.values("filepath2")
-        )
-
     @skipwindows
     @drop_datasets
     def test_legacy_fiftyone_dataset(self):
@@ -3273,50 +3229,6 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         # data/_images/<filename>
         self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
-
-        # Alternate media
-
-        export_dir = self._new_dir()
-        field_dir = os.path.join(export_dir, "fields", "filepath2")
-
-        dataset.clone_sample_field("filepath", "filepath2")
-        dataset.app_config.media_fields.append("filepath2")
-        dataset.save()
-
-        dataset.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.LegacyFiftyOneDataset,
-        )
-
-        dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir,
-            dataset_type=fo.types.LegacyFiftyOneDataset,
-        )
-
-        self.assertEqual(
-            dataset.count("filepath2"), dataset2.count("filepath2")
-        )
-        for filepath in dataset2.values("filepath2"):
-            self.assertTrue(filepath.startswith(field_dir))
-
-        # Alternate media (don't export media)
-
-        export_dir = self._new_dir()
-
-        dataset.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.LegacyFiftyOneDataset,
-            export_media=False,
-        )
-
-        dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir,
-            dataset_type=fo.types.LegacyFiftyOneDataset,
-        )
-
-        self.assertListEqual(
-            dataset.values("filepath2"), dataset2.values("filepath2")
-        )
 
         # Alternate media
 
