@@ -2858,7 +2858,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         view2 = dataset2.load_saved_view("test")
         self.assertEqual(len(view), len(view2))
 
-        # Test import/export of runs
+        # Test import/export of run results
 
         dataset.clone_sample_field("predictions", "ground_truth")
 

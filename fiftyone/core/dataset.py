@@ -3104,8 +3104,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def save_view(
         self,
-        name,
-        view,
+        name=name,
+        view=view,
         description=None,
         color=None,
         overwrite=False,
@@ -3257,8 +3257,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name: the name of a saved view
         """
         view_doc = self._get_saved_view_doc(name, pop=True)
+        deleted_id = view_doc.id
+
         view_doc.delete()
         self._doc.save()
+        return str(deleted_id)
 
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
@@ -5437,6 +5440,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if name is None:
             name = d.get("name", None)
+            if name is None:
+                raise ValueError("Attempting to load a Dataset with no name.")
 
         if rel_dir is not None:
             rel_dir = fou.normalize_path(rel_dir)

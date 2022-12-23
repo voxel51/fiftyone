@@ -11,7 +11,7 @@ import motor.motor_asyncio as mtr
 import typing as t
 
 import strawberry as gql
-from strawberry.arguments import UNSET
+from strawberry.unset import UNSET
 
 import fiftyone.core.odm as foo
 

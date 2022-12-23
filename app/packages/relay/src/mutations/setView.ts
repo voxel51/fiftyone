@@ -5,14 +5,20 @@ export default graphql`
     $subscription: String!
     $session: String
     $view: BSONArray!
-    $dataset: String!
+    $viewName: String
+    $savedViewSlug: String
+    $changingSavedView: Boolean
+    $datasetName: String!
     $form: StateForm!
   ) {
     setView(
       subscription: $subscription
       session: $session
       view: $view
-      dataset: $dataset
+      viewName: $viewName
+      savedViewSlug: $savedViewSlug
+      changingSavedView: $changingSavedView
+      datasetName: $datasetName
       form: $form
     ) {
       dataset {
@@ -54,6 +60,17 @@ export default graphql`
         defaultMaskTargets {
           target
           value
+        }
+        savedViews {
+          id
+          name
+          slug
+          description
+          color
+          viewStages
+          createdAt
+          lastModifiedAt
+          lastLoadedAt
         }
         evaluations {
           key
@@ -105,6 +122,9 @@ export default graphql`
         }
       }
       view
+      viewName
+      savedViewSlug
+      changingSavedView
     }
   }
 `;
