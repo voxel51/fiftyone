@@ -9,9 +9,11 @@ import logging
 import os
 import shutil
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.dataset as fod
 import fiftyone.types as fot
 import fiftyone.utils.activitynet as foua
 import fiftyone.utils.bdd as foub
@@ -2701,6 +2703,8 @@ class QuickstartGroupsDataset(FiftyOneDataset):
             scratch_dir,
         )
 
+        self._patch_dataset_if_necessary(dataset_dir)
+
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
         importer = foud.FiftyOneDatasetImporter
@@ -2709,6 +2713,45 @@ class QuickstartGroupsDataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
+
+    def _patch_dataset_if_necessary(self, dataset_dir):
+        try:
+            metadata_path = os.path.join(dataset_dir, "metadata.json")
+            metadata = etas.read_json(metadata_path)
+            config = metadata["info"]["app_config"]["plugins"]["3d"]
+            should_patch = "itemRotation" in config["overlay"]
+        except:
+            should_patch = False
+
+        if not should_patch:
+            return
+
+        logger.info("Patching legacy quickstart-groups dataset...")
+
+        dataset = fod.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fot.FiftyOneDataset,
+        )
+
+        view = dataset.select_group_slices(media_type="point-cloud")
+        view.set_values(
+            "ground_truth",
+            [
+                foukt._normalize_kitti_3d_detections(d)
+                for d in view.values("ground_truth")
+            ],
+        )
+
+        dataset.app_config.plugins["3d"] = {
+            "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
+        }
+        dataset.save()
+
+        dataset.export(
+            export_dir=dataset_dir,
+            dataset_type=fot.FiftyOneDataset,
+            export_media=False,
+        )
 
 
 class UCF101Dataset(FiftyOneDataset):

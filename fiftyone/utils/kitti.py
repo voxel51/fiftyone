@@ -834,13 +834,6 @@ def _prepare_kitti_split(split_dir, overwrite=False):
 
     dataset.app_config.plugins["3d"] = {
         "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
-        "pointCloud": {
-            "rotation": [0, 0, 90],
-        },
-        "overlay": {
-            "rotation": [-90, 0, 0],
-            "itemRotation": [0, 90, 90],
-        },
     }
     dataset.save()
 
@@ -913,7 +906,7 @@ def _prepare_kitti_split(split_dir, overwrite=False):
                 right_sample["metadata"] = right_metadata
                 right_sample[label_field] = gt_right
 
-                pcd_sample[label_field] = gt_3d
+                pcd_sample[label_field] = _normalize_kitti_3d_detections(gt_3d)
 
             samples.extend([left_sample, right_sample, pcd_sample])
 
@@ -943,33 +936,36 @@ def _load_kitti_annotations(labels_path, frame_size):
         del detection["rotation_y"]
 
     for detection in gt3d.detections:
-        location = detection["location"]
-        dimensions = detection["dimensions"]
-        rotation = [0, detection["rotation_y"], 0]
-
-        # KITTI uses bottom-center; FiftyOne uses centroid
-        location[1] -= 0.5 * dimensions[1]
-
-        # Handle item rotation
-        rotation[1] += 0.5 * np.pi
-        rotation[2] -= 0.5 * np.pi
-
-        # Handle coordinate system
-        location = [-location[1], location[2], location[0]]
-        dimensions = [-dimensions[1], dimensions[2], dimensions[0]]
-        rotation = [-rotation[1], rotation[2], rotation[0]]
-
         detection["bounding_box"] = []
-        detection["location"] = location
-        detection["dimensions"] = dimensions
-        detection["rotation"] = rotation
-
+        detection["rotation"] = [0, detection["rotation_y"], 0]
         del detection["alpha"]
         del detection["rotation_y"]
         del detection["truncated"]
         del detection["occluded"]
 
     return gt2d, gt3d
+
+
+def _normalize_kitti_3d_detections(detections):
+    for detection in detections.detections:
+        location = detection["location"]
+        dimensions = detection["dimensions"]
+        rotation = detection["rotation"]
+
+        location = [location[2], -location[0], -location[1]]
+        dimensions = [-dimensions[1], dimensions[0], dimensions[2]]
+
+        location[2] += 0.5 * dimensions[1]
+        location[1] += 0.5 * dimensions[1]
+        location[0] -= 0.5 * dimensions[0]
+
+        rotation[0] -= 0.5 * np.pi
+
+        detection["location"] = location
+        detection["dimensions"] = dimensions
+        detection["rotation"] = rotation
+
+    return detections
 
 
 def _load_calibration_matrices(inpath):
