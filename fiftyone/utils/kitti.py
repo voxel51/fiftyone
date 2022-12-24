@@ -952,13 +952,16 @@ def _normalize_kitti_3d_detections(detections):
         dimensions = detection["dimensions"]
         rotation = detection["rotation"]
 
+        # Handle coordinate system
         location = [location[2], -location[0], -location[1]]
         dimensions = [-dimensions[1], dimensions[0], dimensions[2]]
 
+        # KITTI uses bottom-center; FiftyOne uses centroid
         location[2] += 0.5 * dimensions[1]
         location[1] += 0.5 * dimensions[1]
         location[0] -= 0.5 * dimensions[0]
 
+        # Handle item rotation
         rotation[0] -= 0.5 * np.pi
 
         detection["location"] = location
