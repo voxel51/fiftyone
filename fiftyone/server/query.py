@@ -132,11 +132,13 @@ class SavedView:
 
     @classmethod
     def from_doc(cls, doc: SavedViewDocument):
+        d = doc.to_dict()
+        d["id"] = str(d.pop("_id"))
+        d["dataset_id"] = str(d.pop("_dataset_id"))
+
         stage_dicts = [json_util.loads(x) for x in doc.view_stages]
-        saved_view = from_dict(
-            data_class=cls,
-            data=doc.serialize(),
-        )
+
+        saved_view = from_dict(data_class=cls, data=d)
         saved_view.stage_dicts = stage_dicts
         return saved_view
 
@@ -221,6 +223,13 @@ class Dataset:
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
         doc["saved_views"] = doc.get("saved_views", [])
+
+        for d in doc["saved_views"]:
+            # @todo I think this shouldn't be required, but currently data with
+            # no_dereference=False is getting here somehow... bug?
+            if isinstance(d, dict):
+                d["id"] = str(d.pop("_id"))
+                d["dataset_id"] = str(d.pop("_dataset_id"))
 
         doc["skeletons"] = list(
             dict(name=name, **data)

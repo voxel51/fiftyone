@@ -463,3 +463,22 @@ class DatasetDocument(Document):
     annotation_runs = DictField(ReferenceField(RunDocument))
     brain_methods = DictField(ReferenceField(RunDocument))
     evaluations = DictField(ReferenceField(RunDocument))
+
+    def to_dict(self, *args, no_dereference=False, **kwargs):
+        d = super().to_dict(*args, **kwargs)
+
+        # Sadly there appears to be no builtin way to tell mongoengine to
+        # serialize reference fields like this
+        if no_dereference:
+            d["saved_views"] = [v.to_dict() for v in self.saved_views]
+            d["annotation_runs"] = {
+                k: v.to_dict() for k, v in self.annotation_runs.items()
+            }
+            d["brain_methods"] = {
+                k: v.to_dict() for k, v in self.brain_methods.items()
+            }
+            d["evaluations"] = {
+                k: v.to_dict() for k, v in self.evaluations.items()
+            }
+
+        return d
