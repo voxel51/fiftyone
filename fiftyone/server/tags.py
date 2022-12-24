@@ -17,6 +17,7 @@ import fiftyone.server.view as fosv
 
 def get_tag_view(
     dataset: str,
+    *,
     stages: t.List,
     filters: t.Dict,
     slice: str = None,
@@ -29,10 +30,10 @@ def get_tag_view(
     target_labels: bool = False,
     modal: bool = False,
 ) -> foc.SampleCollection:
-    view = fosv.get_view(
+    view = fosv.get_dataset_view(
         dataset,
-        stages,
-        filters,
+        stages=stages,
+        filters=filters,
         extended_stages=extended_stages,
         sample_filter=sample_filter,
     )

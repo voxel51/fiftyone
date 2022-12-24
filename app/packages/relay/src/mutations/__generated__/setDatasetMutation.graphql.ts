@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<64dc42978810a57aebdcb1e6729518b4>>
+ * @generated SignedSource<<92b4ae0159bdd91cff3b805b6ad94093>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,7 @@ export type setDatasetMutation$variables = {
   name?: string | null;
   session?: string | null;
   subscription: string;
+  viewName?: string | null;
 };
 export type setDatasetMutation$data = {
   readonly setDataset: boolean;
@@ -38,7 +39,12 @@ v2 = {
   "kind": "LocalArgument",
   "name": "subscription"
 },
-v3 = [
+v3 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "viewName"
+},
+v4 = [
   {
     "alias": null,
     "args": [
@@ -56,6 +62,11 @@ v3 = [
         "kind": "Variable",
         "name": "subscription",
         "variableName": "subscription"
+      },
+      {
+        "kind": "Variable",
+        "name": "viewName",
+        "variableName": "viewName"
       }
     ],
     "kind": "ScalarField",
@@ -68,12 +79,13 @@ return {
     "argumentDefinitions": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v2/*: any*/)
+      (v2/*: any*/),
+      (v3/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "setDatasetMutation",
-    "selections": (v3/*: any*/),
+    "selections": (v4/*: any*/),
     "type": "Mutation",
     "abstractKey": null
   },
@@ -82,23 +94,24 @@ return {
     "argumentDefinitions": [
       (v2/*: any*/),
       (v1/*: any*/),
-      (v0/*: any*/)
+      (v0/*: any*/),
+      (v3/*: any*/)
     ],
     "kind": "Operation",
     "name": "setDatasetMutation",
-    "selections": (v3/*: any*/)
+    "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "f3cdf3dc95b6a967d5734cd2e25ae04d",
+    "cacheID": "b8246404b2379055b0649609c9052b2b",
     "id": null,
     "metadata": {},
     "name": "setDatasetMutation",
     "operationKind": "mutation",
-    "text": "mutation setDatasetMutation(\n  $subscription: String!\n  $session: String\n  $name: String\n) {\n  setDataset(subscription: $subscription, session: $session, name: $name)\n}\n"
+    "text": "mutation setDatasetMutation(\n  $subscription: String!\n  $session: String\n  $name: String\n  $viewName: String\n) {\n  setDataset(subscription: $subscription, session: $session, name: $name, viewName: $viewName)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "321f49f2b80ef0d0170c5038fe79bba5";
+(node as any).hash = "df5142387370bffa4344b8eb530e05f7";
 
 export default node;
