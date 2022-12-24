@@ -225,8 +225,9 @@ class Dataset:
         doc["saved_views"] = doc.get("saved_views", [])
 
         for d in doc["saved_views"]:
-            # @todo I think this shouldn't be required, but currently data with
-            # no_dereference=False is getting here somehow... bug?
+            # @todo I think the `isinstance(d, dict)` check shouldn't be
+            # required, but currently data with no_dereference=False is getting
+            # here somehow... bug?
             if isinstance(d, dict):
                 d["id"] = str(d.pop("_id"))
                 d["dataset_id"] = str(d.pop("_dataset_id"))
