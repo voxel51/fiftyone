@@ -2694,6 +2694,10 @@ class QuickstartGroupsDataset(FiftyOneDataset):
     def supported_splits(self):
         return None
 
+    @property
+    def has_patches(self):
+        return True
+
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
         _download_and_extract_archive(
             self._GDRIVE_ID,
@@ -2702,8 +2706,6 @@ class QuickstartGroupsDataset(FiftyOneDataset):
             dataset_dir,
             scratch_dir,
         )
-
-        self._patch_dataset_if_necessary(dataset_dir)
 
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
@@ -2726,7 +2728,7 @@ class QuickstartGroupsDataset(FiftyOneDataset):
         if not should_patch:
             return
 
-        logger.info("Patching legacy quickstart-groups dataset...")
+        logger.info("Normalizing 3D detections...")
 
         dataset = fod.Dataset.from_dir(
             dataset_dir=dataset_dir,
