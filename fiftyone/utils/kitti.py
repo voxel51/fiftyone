@@ -14,6 +14,7 @@ import os
 
 import numpy as np
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -473,9 +474,6 @@ def download_kitti_multiview_dataset(
     if scratch_dir is None:
         scratch_dir = os.path.join(dataset_dir, "tmp-download")
 
-    train_dir = os.path.join(dataset_dir, "train")
-    test_dir = os.path.join(dataset_dir, "test")
-
     if "train" in splits:
         _download_and_unpack_kitti_zip(
             _LABELS,
@@ -906,7 +904,7 @@ def _prepare_kitti_split(split_dir, overwrite=False):
                 right_sample["metadata"] = right_metadata
                 right_sample[label_field] = gt_right
 
-                pcd_sample[label_field] = _normalize_kitti_3d_detections(gt_3d)
+                pcd_sample[label_field] = _normalize_3d_detections(gt_3d)
 
             samples.extend([left_sample, right_sample, pcd_sample])
 
@@ -946,7 +944,10 @@ def _load_kitti_annotations(labels_path, frame_size):
     return gt2d, gt3d
 
 
-def _normalize_kitti_3d_detections(detections):
+def _normalize_3d_detections(detections):
+    if detections is None:
+        return None
+
     for detection in detections.detections:
         location = detection["location"]
         dimensions = detection["dimensions"]
@@ -969,6 +970,45 @@ def _normalize_kitti_3d_detections(detections):
         detection["rotation"] = rotation
 
     return detections
+
+
+def _normalize_dataset_if_necessary(dataset_dir):
+    try:
+        metadata_path = os.path.join(dataset_dir, "metadata.json")
+        metadata = etas.read_json(metadata_path)
+        config = metadata["info"]["app_config"]["plugins"]["3d"]
+        should_normalize = "itemRotation" in config["overlay"]
+    except:
+        should_normalize = False
+
+    if not should_normalize:
+        return
+
+    logger.info("Normalizing 3D detections...")
+
+    dataset = fo.Dataset.from_dir(
+        dataset_dir=dataset_dir,
+        dataset_type=fo.types.FiftyOneDataset,
+    )
+
+    view = dataset.select_group_slices(media_type="point-cloud")
+    schema = view.get_field_schema(embedded_doc_type=fo.Detections)
+    for label_field in schema.keys():
+        view.set_values(
+            label_field,
+            [_normalize_3d_detections(d) for d in view.values(label_field)],
+        )
+
+    dataset.app_config.plugins["3d"] = {
+        "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
+    }
+    dataset.save()
+
+    dataset.export(
+        export_dir=dataset_dir,
+        dataset_type=fo.types.FiftyOneDataset,
+        export_media=False,
+    )
 
 
 def _load_calibration_matrices(inpath):

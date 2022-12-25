@@ -9,11 +9,9 @@ import logging
 import os
 import shutil
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
-import fiftyone.core.dataset as fod
 import fiftyone.types as fot
 import fiftyone.utils.activitynet as foua
 import fiftyone.utils.bdd as foub
@@ -2217,6 +2215,10 @@ class KITTIMultiviewDataset(FiftyOneDataset):
     def supports_partial_downloads(self):
         return True
 
+    @property
+    def has_patches(self):
+        return True
+
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
@@ -2235,6 +2237,9 @@ class KITTIMultiviewDataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, None
+
+    def _patch_dataset_if_necessary(self, dataset_dir):
+        foukt._normalize_dataset_if_necessary(dataset_dir)
 
 
 class LabeledFacesInTheWildDataset(FiftyOneDataset):
@@ -2717,43 +2722,7 @@ class QuickstartGroupsDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
     def _patch_dataset_if_necessary(self, dataset_dir):
-        try:
-            metadata_path = os.path.join(dataset_dir, "metadata.json")
-            metadata = etas.read_json(metadata_path)
-            config = metadata["info"]["app_config"]["plugins"]["3d"]
-            should_patch = "itemRotation" in config["overlay"]
-        except:
-            should_patch = False
-
-        if not should_patch:
-            return
-
-        logger.info("Normalizing 3D detections...")
-
-        dataset = fod.Dataset.from_dir(
-            dataset_dir=dataset_dir,
-            dataset_type=fot.FiftyOneDataset,
-        )
-
-        view = dataset.select_group_slices(media_type="point-cloud")
-        view.set_values(
-            "ground_truth",
-            [
-                foukt._normalize_kitti_3d_detections(d)
-                for d in view.values("ground_truth")
-            ],
-        )
-
-        dataset.app_config.plugins["3d"] = {
-            "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
-        }
-        dataset.save()
-
-        dataset.export(
-            export_dir=dataset_dir,
-            dataset_type=fot.FiftyOneDataset,
-            export_media=False,
-        )
+        foukt._normalize_dataset_if_necessary(dataset_dir)
 
 
 class UCF101Dataset(FiftyOneDataset):
