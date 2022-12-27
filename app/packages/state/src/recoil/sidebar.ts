@@ -212,28 +212,34 @@ const DEFAULT_VIDEO_GROUPS = [
   { name: "other", paths: [] },
 ];
 
+const NONE = [null, undefined];
+
 export const resolveGroups = (
   dataset: State.Dataset,
   current?: State.SidebarGroup[]
 ): State.SidebarGroup[] => {
   // when expanded is null in sidebarGroups, use default settings
-  const sidebarGroups = dataset?.appConfig?.sidebarGroups.map((group) => {
-    if (group.expanded === null) {
-      group.expanded = [
-        "label tags",
-        "tags",
-        "labels",
-        "primitives",
-        "metadata",
-      ].includes(group.name)
-        ? true
-        : undefined;
-      return group;
-    }
-    return group;
-  });
+  const sidebarGroups = dataset?.appConfig?.sidebarGroups
+    ? dataset?.appConfig?.sidebarGroups.map((group) => {
+        if (group.expanded === null) {
+          group.expanded = [
+            "label tags",
+            "tags",
+            "labels",
+            "primitives",
+            "metadata",
+          ].includes(group.name)
+            ? true
+            : undefined;
+          return group;
+        }
+        return group;
+      })
+    : dataset?.appConfig?.sidebarGroups;
 
-  let groups = JSON.parse(JSON.stringify(sidebarGroups));
+  let groups = sidebarGroups
+    ? JSON.parse(JSON.stringify(sidebarGroups))
+    : undefined;
 
   const expanded = current
     ? current.reduce((map, { name, expanded }) => {
@@ -383,16 +389,16 @@ export const sidebarGroups = selectorFamily<
         if (
           video &&
           groups[framesIndex] &&
-          groups[framesIndex].expanded === undefined
+          NONE.includes(groups[framesIndex].expanded)
         ) {
           groups[framesIndex].expanded = !largeVideo;
         }
 
-        if (groups[tagsIndex].expanded === undefined) {
+        if (NONE.includes(groups[tagsIndex].expanded)) {
           groups[tagsIndex].expanded =
             get(resolvedSidebarMode(false)) === "all";
         }
-        if (groups[labelTagsIndex].expanded === undefined) {
+        if (NONE.includes(groups[labelTagsIndex].expanded)) {
           groups[labelTagsIndex].expanded =
             get(resolvedSidebarMode(false)) === "all" ? !largeVideo : false;
         }
@@ -416,19 +422,19 @@ export const sidebarGroups = selectorFamily<
             .filter((tag) => !filtered || tag.includes(f))
             .map((tag) => `_label_tags.${tag}`));
       } else {
-        if (groups[labelTagsIndex].expanded === undefined) {
+        if (NONE.includes(groups[labelTagsIndex].expanded)) {
           groups[labelTagsIndex].expanded = false;
         }
 
         if (
           video &&
           groups[framesIndex] &&
-          groups[framesIndex].expanded === undefined
+          NONE.includes(groups[framesIndex].expanded)
         ) {
           groups[framesIndex].expanded = false;
         }
 
-        if (groups[tagsIndex].expanded === undefined) {
+        if (NONE.includes(groups[tagsIndex].expanded)) {
           groups[tagsIndex].expanded = false;
         }
       }
