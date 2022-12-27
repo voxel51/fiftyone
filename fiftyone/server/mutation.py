@@ -246,9 +246,9 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         view: BSONArray,
-        view_name: t.Optional[str],
         slice: str,
         info: Info,
+        view_name: t.Optional[str] = None,
     ) -> Dataset:
         state = get_state()
         state.dataset.group_slice = slice
@@ -256,7 +256,11 @@ class Mutation:
         return await Dataset.resolver(
             name=state.dataset.name,
             view=view,
-            view_name=view_name if view_name else state.view.name,
+            view_name=view_name
+            if view_name
+            else state.view.name
+            if state.view
+            else None,
             info=info,
         )
 

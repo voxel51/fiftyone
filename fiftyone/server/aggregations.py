@@ -124,7 +124,7 @@ async def aggregate_resolver(
 
     view = fosv.get_dataset_view(
         form.dataset,
-        view_name=form.view_name,
+        view_name=form.view_name if form.view_name else None,
         stages=form.view,
         filters=form.filters,
         extended_stages=form.extended_stages,
