@@ -305,8 +305,8 @@ type Mutation {
     subscription: String!
     session: String
     view: BSONArray!
-    viewName: String
     slice: String!
+    viewName: String = null
   ): Dataset!
   createSavedView(
     subscription: String!
