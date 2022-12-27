@@ -8,6 +8,7 @@ import { State } from "./types";
 import { toSnakeCase } from "@fiftyone/utilities";
 import { config } from "./config";
 import { fieldSchema } from "./schema";
+import { StateForm } from "@fiftyone/relay";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -373,4 +374,10 @@ export const modalNavigation = selector<atoms.ModalNavigation>({
   get: ({ get }) => get(atoms.modal).navigation,
 });
 
-export const viewStateForm = selector < StateForm;
+export const viewStateForm = selector<StateForm>({
+  key: "viewStateForm",
+  get: ({ get }) => {
+    // todo
+    return;
+  },
+});

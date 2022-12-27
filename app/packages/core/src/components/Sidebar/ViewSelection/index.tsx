@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { Suspense, useEffect, useMemo } from "react";
 import { filter, map } from "lodash";
 import {
   atom,
@@ -134,7 +134,7 @@ export default function ViewSelection(props: Props) {
   }, [searchData, selected]);
 
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
-  const isEmptyView = !loadedView?.length;
+  const isEmptyView = false; // !loadedView?.length;
 
   // special case for electron app to clear the selection
   // when there is no loaded view
@@ -216,84 +216,86 @@ export default function ViewSelection(props: Props) {
   }, [isEmptyView]);
 
   return (
-    <Box>
-      <ViewDialog
-        savedViews={items}
-        onEditSuccess={(
-          createSavedView: fos.State.SavedView,
-          reload?: boolean
-        ) => {
-          refetch(
-            { name: datasetName },
-            {
-              fetchPolicy: "network-only",
-              onComplete: (newOptions) => {
-                if (createSavedView && reload) {
-                  setSavedViewParam(createSavedView.slug);
-                  setSelected({
-                    ...createSavedView,
-                    label: createSavedView.name,
-                  });
-                }
-              },
-            }
-          );
-        }}
-        onDeleteSuccess={(deletedSavedViewName: string) => {
-          refetch(
-            { name: datasetName },
-            {
-              fetchPolicy: "network-only",
-              onComplete: () => {
-                if (selected?.label === deletedSavedViewName) {
-                  setSavedViewParam(null);
-
-                  if (isDesktop) {
-                    setSelected(DEFAULT_SELECTED);
+    <Suspense fallback="Loading saved views...">
+      <Box>
+        <ViewDialog
+          savedViews={items}
+          onEditSuccess={(
+            createSavedView: fos.State.SavedView,
+            reload?: boolean
+          ) => {
+            refetch(
+              { name: datasetName },
+              {
+                fetchPolicy: "network-only",
+                onComplete: (newOptions) => {
+                  if (createSavedView && reload) {
+                    setSavedViewParam(createSavedView.slug);
+                    setSelected({
+                      ...createSavedView,
+                      label: createSavedView.name,
+                    });
                   }
-                }
-              },
-            }
-          );
-        }}
-      />
-      <Selection
-        selected={selected}
-        setSelected={(item: DatasetViewOption) => {
-          setSelected(item);
-          setView([], [], item.label, true, item.slug);
-        }}
-        items={searchData}
-        onEdit={(item) => {
-          setEditView({
-            color: item.color || "",
-            description: item.description || "",
-            isCreating: false,
-            name: item.label,
-          });
-          setIsOpen(true);
-        }}
-        search={{
-          value: viewSearch,
-          placeholder: "Search views...",
-          onSearch: (term: string) => {
-            setViewSearch(term);
-          },
-        }}
-        lastFixedOption={
-          <LastOption
-            onClick={() => !isEmptyView && setIsOpen(true)}
-            disabled={isEmptyView}
-          >
-            <Box style={{ width: "12%" }}>
-              <AddIcon fontSize="small" disabled={isEmptyView} />
-            </Box>
-            <TextContainer disabled={isEmptyView}>
-              Save current filters as view
-            </TextContainer>
-          </LastOption>
-        }
-      />
-    </Box>
+                },
+              }
+            );
+          }}
+          onDeleteSuccess={(deletedSavedViewName: string) => {
+            refetch(
+              { name: datasetName },
+              {
+                fetchPolicy: "network-only",
+                onComplete: () => {
+                  if (selected?.label === deletedSavedViewName) {
+                    setSavedViewParam(null);
+
+                    if (isDesktop) {
+                      setSelected(DEFAULT_SELECTED);
+                    }
+                  }
+                },
+              }
+            );
+          }}
+        />
+        <Selection
+          selected={selected}
+          setSelected={(item: DatasetViewOption) => {
+            setSelected(item);
+            setView([], [], item.label, true, item.slug);
+          }}
+          items={searchData}
+          onEdit={(item) => {
+            setEditView({
+              color: item.color || "",
+              description: item.description || "",
+              isCreating: false,
+              name: item.label,
+            });
+            setIsOpen(true);
+          }}
+          search={{
+            value: viewSearch,
+            placeholder: "Search views...",
+            onSearch: (term: string) => {
+              setViewSearch(term);
+            },
+          }}
+          lastFixedOption={
+            <LastOption
+              onClick={() => !isEmptyView && setIsOpen(true)}
+              disabled={isEmptyView}
+            >
+              <Box style={{ width: "12%" }}>
+                <AddIcon fontSize="small" disabled={isEmptyView} />
+              </Box>
+              <TextContainer disabled={isEmptyView}>
+                Save current filters as view
+              </TextContainer>
+            </LastOption>
+          }
+        />
+      </Box>
+    </Suspense>
   );
 }

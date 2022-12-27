@@ -1,10 +1,20 @@
 import { useCallback } from "react";
-import { useRecoilRefresher_UNSTABLE, useRecoilValue } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilRefresher_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
 import { useMutation } from "react-relay";
 import { useErrorHandler } from "react-error-boundary";
 
 import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
+import {
+  filters,
+  resolvedGroupSlice,
+  selectedLabelList,
+  selectedSamples,
+} from "@fiftyone/state";
 
 export default function useSavedViews() {
   const savedViews = useRecoilValue(fos.savedViewsSelector);
@@ -47,37 +57,51 @@ export default function useSavedViews() {
     [datasetNameValue, deleteView, onError, send, subscription]
   );
 
-  const handleCreateSavedView = useCallback(
-    (
-      name: string,
-      description: string,
-      color: string,
-      view: fos.State.Stage[],
-      onSuccess: (saveView) => void
-    ) => {
-      if (name && view.length) {
-        send((session) =>
-          saveView({
-            onError,
-            variables: {
-              viewName: name,
-              datasetName: datasetNameValue,
-              viewStages: view,
-              description,
-              color,
-              subscription,
-              session,
-            },
-            onCompleted: (data, err) => {
-              if (err) {
-                console.log("handleCreateSavedView response error:", err);
-              }
-              onSuccess(data?.createSavedView);
-            },
-          })
-        );
-      }
-    },
+  const handleCreateSavedView = useRecoilCallback(
+    ({ snapshot }) =>
+      (
+        name: string,
+        description: string,
+        color: string,
+        view: fos.State.Stage[],
+        onSuccess: (saveView) => void
+      ) => {
+        if (name) {
+          // if (name && view.length) {
+
+          send((session) =>
+            saveView({
+              onError,
+              variables: {
+                viewName: name,
+                datasetName: datasetNameValue,
+                viewStages: view,
+                form: {
+                  filters: snapshot.getLoadable(filters).contents,
+                  sampleIds: [
+                    ...snapshot.getLoadable(selectedSamples).contents,
+                  ],
+                  labels: snapshot.getLoadable(selectedLabelList).contents,
+                  extended: snapshot.getLoadable(fos.extendedStages).contents,
+                  slice:
+                    snapshot.getLoadable(resolvedGroupSlice(false)).contents ||
+                    null,
+                },
+                description,
+                color,
+                subscription,
+                session,
+              },
+              onCompleted: (data, err) => {
+                if (err) {
+                  console.log("handleCreateSavedView response error:", err);
+                }
+                onSuccess(data?.createSavedView);
+              },
+            })
+          );
+        }
+      },
     [datasetNameValue, saveView, onError, send, subscription]
   );
 

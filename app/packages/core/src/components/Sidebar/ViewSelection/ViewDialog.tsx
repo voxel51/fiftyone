@@ -132,7 +132,8 @@ export default function ViewDialog(props: Props) {
   }, [nameValue]);
 
   const onSaveView = useCallback(() => {
-    if (isCreating && view?.length) {
+    // if (isCreating && view?.length) {
+    if (isCreating) {
       handleCreateSavedView(
         nameValue,
         descriptionValue,
@@ -278,7 +279,8 @@ export default function ViewDialog(props: Props) {
                 isDeletingSavedView ||
                 !!nameError ||
                 !nameValue ||
-                (isCreating && !view?.length) ||
+                !isCreating ||
+                // (isCreating && !view?.length) ||
                 (initialName === nameValue &&
                   descriptionValue === initialDescription &&
                   colorOption?.color === initialColor)
