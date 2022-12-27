@@ -136,6 +136,13 @@ const Wrapper = ({
 
   allValues = [...new Set(allValues)];
 
+  // only show all four options the field is a nested ListField. Otherwise, only show the match options
+  const fieldPath = path.split(".").slice(0, -1).join(".");
+  const fieldSchema = useRecoilValue(fos.field(fieldPath));
+  const shouldShowAllOptions: boolean = Boolean(
+    fieldSchema?.ftype.includes("ListField")
+  );
+
   return (
     <>
       {allValues.sort(nullSort(sorting)).map(({ value, count }) => (
@@ -177,6 +184,7 @@ const Wrapper = ({
             //   color={color}
             // />
             <FilterOption
+              shouldShowAllOptions={shouldShowAllOptions}
               excludeAtom={excludeAtom}
               selectedValuesAtom={selectedValuesAtom}
               labels={Array.from(selectedSet) as string[]}
