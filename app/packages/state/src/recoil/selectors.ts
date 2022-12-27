@@ -372,3 +372,5 @@ export const modalNavigation = selector<atoms.ModalNavigation>({
   key: "modalNavigation",
   get: ({ get }) => get(atoms.modal).navigation,
 });
+
+export const viewStateForm = selector < StateForm;

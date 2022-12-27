@@ -226,8 +226,9 @@ const ObjectEditor = ({
       containerRef.current.style.left = state.matches("editing")
         ? `${x}px`
         : "unset";
-      const { x: barX, width: barWidth } =
-        barRef.current.getBoundingClientRect();
+      const { x: barX, width: barWidth } = barRef.current
+        ? barRef.current.getBoundingClientRect()
+        : { x: unset, width: unset };
       const barRight = barX + barWidth;
       containerRef.current.style.width = state.matches("editing")
         ? `${Math.min(barRight - x, 400)}px`
