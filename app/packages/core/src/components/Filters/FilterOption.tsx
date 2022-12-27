@@ -14,10 +14,12 @@ import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
 import { PopoutDiv } from "../utils";
 import { joinStringArray } from "./utils";
 import Tooltip from "@fiftyone/components/src/components/Tooltip";
-import { getRGB } from "@fiftyone/utilities";
+import Color from "color";
 
 interface Props {
-  //   excludeAtom: RecoilState<boolean>;
+  shouldShowAllOptions: boolean;
+  selectedValuesAtom: RecoilState<string[]>;
+  excludeAtom: RecoilState<boolean>;
   labels: string[];
   valueName: string;
   color: string;
@@ -31,12 +33,20 @@ const Text = styled.div`
 
 type Option = { value: string; icon?: string; tooltip: string };
 
-const FilterOption: React.FC<Props> = ({ labels, color, valueName }) => {
+const FilterOption: React.FC<Props> = ({
+  labels,
+  color,
+  valueName,
+  shouldShowAllOptions,
+  excludeAtom,
+  selectedValuesAtom,
+}) => {
   const [key, setKey] = React.useState("filter");
   const [open, setOpen] = React.useState(false);
+  const [excluded, setExcluded] = useRecoilState(excludeAtom);
+
   const theme = useTheme();
-  const [r, g, b] = getRGB(color);
-  const highlightedBGColor = `rgba(${r}, ${g}, ${b}, 0.25)`;
+  const highlightedBGColor = Color(color).alpha(0.25).string();
 
   const popoutRef = React.useRef();
   const ref = React.useRef();
@@ -45,24 +55,42 @@ const FilterOption: React.FC<Props> = ({ labels, color, valueName }) => {
     setOpen(false);
   });
 
-  const onSelectItem = (value: string) => {
-    setKey(value);
+  const onSelectItem = (key: string) => {
+    setKey(key);
     setOpen(false);
+
+    // apply filter
+    switch (key) {
+      case "filter":
+        excluded && setExcluded(false);
+      case "negativefilter":
+        !excluded && setExcluded(true);
+      case "match":
+      case "negativeMatch":
+    }
   };
 
-  const options = [
-    {
-      icon: "FilterAltIcon",
-      key: "filter",
-      value: `Filter ${valueName}`,
-      tooltip: "dataset.filter_labels(field, condition, only_matches=True)",
-    },
-    {
-      icon: "FilterAltOffIcon",
-      key: "negativefilter",
-      value: `Exclude ${valueName}`,
-      tooltip: "dataset.filter_labels(field, condition, only_matches=False)",
-    },
+  // only nested ListField items should have the filter and negative filter options:
+
+  const options = shouldShowAllOptions
+    ? [
+        {
+          icon: "FilterAltIcon",
+          key: "filter",
+          value: `Filter ${valueName}`,
+          tooltip: "dataset.filter_labels(field, condition, only_matches=True)",
+        },
+        {
+          icon: "FilterAltOffIcon",
+          key: "negativefilter",
+          value: `Exclude ${valueName}`,
+          tooltip:
+            "dataset.filter_labels(field, condition, only_matches=False)",
+        },
+      ]
+    : [];
+
+  options.concat([
     {
       icon: "ImageIcon",
       key: "match",
@@ -76,7 +104,8 @@ const FilterOption: React.FC<Props> = ({ labels, color, valueName }) => {
       tooltip:
         "dataset.match_labels(fields=field, filter=condition, bool=False)",
     },
-  ];
+  ]);
+
   const selectedValue = options.find((o) => o.key === key)?.value;
 
   const currentSelection = (
@@ -138,7 +167,10 @@ const FilterOption: React.FC<Props> = ({ labels, color, valueName }) => {
         <IconButton onClick={() => setOpen(!open)} sx={{ color: color }}>
           <Selected />
         </IconButton>
-        <Tooltip text={currentSelection(key, labels, valueName)}>
+        <Tooltip
+          text={currentSelection(key, labels, valueName)}
+          placement="right-start"
+        >
           {children}
         </Tooltip>
       </div>
@@ -180,7 +212,7 @@ const Item = React.memo(
         padding: 4px 8px;
         background-color: ${({ theme }) => theme.background.secondary};
         &:hover {
-          background-color: ${({ theme }) => highlightedBGColor};
+          background-color: ${() => highlightedBGColor};
         }
       `;
 
@@ -218,7 +250,9 @@ const Item = React.memo(
       return (
         <StyledPanelItem>
           {tooltip ? (
-            <Tooltip text={tooltip!}>{children}</Tooltip>
+            <Tooltip text={tooltip!} placement="right-start">
+              {children}
+            </Tooltip>
           ) : (
             <>{children}</>
           )}
