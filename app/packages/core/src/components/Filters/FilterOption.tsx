@@ -41,7 +41,9 @@ const FilterOption: React.FC<Props> = ({
   excludeAtom,
   selectedValuesAtom,
 }) => {
-  const [key, setKey] = React.useState("filter");
+  const [key, setKey] = React.useState(
+    shouldShowAllOptions ? "filter" : "match"
+  );
   const [open, setOpen] = React.useState(false);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
 
@@ -72,7 +74,7 @@ const FilterOption: React.FC<Props> = ({
 
   // only nested ListField items should have the filter and negative filter options:
 
-  const options = shouldShowAllOptions
+  let options = shouldShowAllOptions
     ? [
         {
           icon: "FilterAltIcon",
@@ -90,7 +92,7 @@ const FilterOption: React.FC<Props> = ({
       ]
     : [];
 
-  options.concat([
+  options = options.concat([
     {
       icon: "ImageIcon",
       key: "match",
@@ -106,6 +108,8 @@ const FilterOption: React.FC<Props> = ({
     },
   ]);
 
+  console.info(options);
+
   const selectedValue = options.find((o) => o.key === key)?.value;
 
   const currentSelection = (
@@ -117,13 +121,13 @@ const FilterOption: React.FC<Props> = ({
 
     const item = selectedLabels.length > 1 ? valueName + "s" : valueName;
     switch (key) {
-      case options[0].key:
+      case "filter":
         return `Filter ${joinStringArray(selectedLabels)} ${item}`;
-      case options[1].key:
+      case "negativefilter":
         return `Exclude ${joinStringArray(selectedLabels)} ${item}`;
-      case options[2].key:
+      case "match":
         return `Show samples with ${joinStringArray(selectedLabels)} ${item}`;
-      case options[3].key:
+      case "negativeMatch":
         return `Show samples that don't have ${joinStringArray(
           selectedLabels
         )} ${item}`;
