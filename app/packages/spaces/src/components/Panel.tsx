@@ -3,8 +3,9 @@ import { usePanel } from "../hooks";
 import { PanelProps } from "../types";
 import { panelNotFoundError } from "../utils";
 import { StyledPanel } from "./StyledElements";
+import React from "react";
 
-export default function Panel({ node }: PanelProps) {
+function Panel({ node }: PanelProps) {
   const panelName = node.type;
   const panel = usePanel(panelName);
   if (!panel) return panelNotFoundError(panelName);
@@ -17,3 +18,7 @@ export default function Panel({ node }: PanelProps) {
     </StyledPanel>
   );
 }
+
+export default React.memo(Panel, (prevProps, nextProps) => {
+  return prevProps?.node?.id === nextProps?.node?.id;
+});
