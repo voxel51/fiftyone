@@ -24,6 +24,7 @@ interface Props {
   labels: string[];
   valueName: string;
   color: string;
+  isRangeLabel?: boolean;
 }
 
 const Text = styled.div`
@@ -42,6 +43,7 @@ const FilterOption: React.FC<Props> = ({
   excludeAtom,
   onlyMatchAtom,
   isMatchingAtom,
+  isRangeLabel = false,
 }) => {
   const [key, setKey] = React.useState(
     shouldShowAllOptions ? "filter" : "match"
@@ -109,13 +111,17 @@ const FilterOption: React.FC<Props> = ({
     {
       icon: "ImageIcon",
       key: "match",
-      value: `Show samples with ${valueName}`,
+      value: isRangeLabel
+        ? `Show samples in the range`
+        : `Show samples with ${valueName}`,
       tooltip: "dataset.match_labels(fields=field, filter=condition)",
     },
     {
       icon: "HideImageIcon",
       key: "negativeMatch",
-      value: `Show samples without ${valueName}`,
+      value: isRangeLabel
+        ? `Show samples outside the range`
+        : `Show samples without ${valueName}`,
       tooltip:
         "dataset.match_labels(fields=field, filter=condition, bool=False)",
     },
@@ -137,11 +143,15 @@ const FilterOption: React.FC<Props> = ({
       case "negativefilter":
         return `Exclude ${joinStringArray(selectedLabels)} ${item}`;
       case "match":
-        return `Show samples with ${joinStringArray(selectedLabels)} ${item}`;
+        return isRangeLabel
+          ? `Show samples within the selected range`
+          : `Show samples with ${joinStringArray(selectedLabels)} ${item}`;
       case "negativeMatch":
-        return `Show samples that don't have ${joinStringArray(
-          selectedLabels
-        )} ${item}`;
+        return isRangeLabel
+          ? `Show samples outside the selected range`
+          : `Show samples that don't have ${joinStringArray(
+              selectedLabels
+            )} ${item}`;
       default:
         return key;
     }

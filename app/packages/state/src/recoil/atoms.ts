@@ -127,6 +127,7 @@ export const selectedViewName = atom<string>({
   default: null,
 });
 
+// only used in extended view, for tagging purpose
 export const selectedLabels = atom<State.SelectedLabelMap>({
   key: "selectedLabels",
   default: {},
@@ -137,6 +138,7 @@ export const selectedSamples = atom<Set<string>>({
   default: new Set(),
 });
 
+// only used in extended view, for tagging purpose
 export const hiddenLabels = atom<State.SelectedLabelMap>({
   key: "hiddenLabels",
   default: {},

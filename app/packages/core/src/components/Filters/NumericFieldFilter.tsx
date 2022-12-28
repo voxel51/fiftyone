@@ -10,7 +10,6 @@ import styled from "styled-components";
 
 import * as fos from "@fiftyone/state";
 
-import ExcludeOption from "./Exclude";
 import RangeSlider from "../Common/RangeSlider";
 import Checkbox from "../Common/Checkbox";
 import { Button } from "../utils";
@@ -18,6 +17,7 @@ import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
 import { formatDateTime } from "../../utils/generic";
 import withSuspense from "./withSuspense";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
+import FilterOption from "./FilterOption";
 
 const NamedRangeSliderContainer = styled.div`
   margin: 3px;
@@ -39,9 +39,9 @@ const RangeSliderContainer = styled.div`
 `;
 
 const NONFINITES = {
-  nan: "nan",
-  ninf: "-inf",
-  inf: "inf",
+  nan: "nan", // python NaN
+  ninf: "-inf", // negative infinity
+  inf: "inf", // inifinity
   none: null,
 };
 
@@ -126,6 +126,26 @@ const NumericFieldFilter = ({
 }: Props) => {
   const color = useRecoilValue(fos.pathColor({ modal, path }));
   const name = path.split(".").slice(-1)[0];
+  const excludeAtom = fos.numericExcludeAtom({
+    path,
+    modal,
+    defaultRange,
+  });
+  const isMatchingAtom = fos.numericIsMatchingAtom({
+    path,
+    modal,
+    defaultRange,
+  });
+  const onlyMatchAtom = fos.numericOnlyMatchAtom({
+    path,
+    modal,
+    defaultRange,
+  });
+  const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
+  const setOnlyMatch = onlyMatchAtom ? useSetRecoilState(onlyMatchAtom) : null;
+  const setIsMatching = isMatchingAtom
+    ? useSetRecoilState(isMatchingAtom)
+    : null;
 
   const setFilter = useSetRecoilState(fos.filter({ modal, path }));
   const bounds = useRecoilValue(fos.boundsAtom({ path, defaultRange }));
@@ -161,6 +181,19 @@ const NumericFieldFilter = ({
   if (!hasNonfinites && !hasBounds && named) {
     return null;
   }
+
+  const fieldPath = path.split(".").slice(0, -1).join(".");
+  const fieldSchema = useRecoilValue(fos.field(fieldPath));
+  const shouldShowAllOptions = Boolean(
+    fieldSchema?.ftype.includes("ListField")
+  );
+
+  const initializeSettings = () => {
+    setFilter(null);
+    setExcluded && setExcluded(false);
+    setOnlyMatch && setOnlyMatch(true);
+    setIsMatching && setIsMatching(!shouldShowAllOptions);
+  };
 
   return (
     <NamedRangeSliderContainer
@@ -250,13 +283,14 @@ const NumericFieldFilter = ({
             />
           ))}
         {isFiltered && nonfinites.length > 0 && hasBounds && (
-          <ExcludeOption
-            excludeAtom={fos.excludeAtom({
-              path,
-              modal,
-              defaultRange,
-            })}
-            valueName={""}
+          <FilterOption
+            shouldShowAllOptions={shouldShowAllOptions}
+            excludeAtom={excludeAtom}
+            onlyMatchAtom={onlyMatchAtom}
+            isMatchingAtom={isMatchingAtom}
+            isRangeLabel={true}
+            labels={[]}
+            valueName={field?.name ?? ""}
             color={color}
           />
         )}
@@ -264,7 +298,7 @@ const NumericFieldFilter = ({
           <Button
             text={"Reset"}
             color={color}
-            onClick={() => setFilter(null)}
+            onClick={initializeSettings}
             style={{
               margin: "0.25rem -0.5rem",
               height: "2rem",
