@@ -16,6 +16,7 @@ import fiftyone.server.view as fosv
 
 
 MAX_CATEGORIES = 100
+_DATASET_CACHE = {}
 
 
 class Embeddings(HTTPEndpoint):
@@ -31,7 +32,7 @@ class Embeddings(HTTPEndpoint):
         extended_selection = data["extendedSelection"]
         stages = data["view"]
 
-        dataset = fo.load_dataset(dataset_name)
+        dataset = _load_dataset(dataset_name)
         results = dataset.load_brain_results(brain_key)
 
         # This is the view loaded in the view bar
@@ -111,7 +112,7 @@ class Embeddings(HTTPEndpoint):
 
         traces = {}
         for data in zip(curr_ids, curr_points, label_values, selected):
-            add_to_trace(traces, style, *data)
+            _add_to_trace(traces, style, *data)
 
         return {
             "traces": traces,
@@ -130,7 +131,7 @@ class Embeddings(HTTPEndpoint):
         stages = data["view"]
         labels_field = data["labelsField"]
 
-        dataset = fo.load_dataset(dataset_name)
+        dataset = _load_dataset(dataset_name)
         results = dataset.load_brain_results(brain_key)
 
         # This is the view loaded in the view bar
@@ -172,7 +173,7 @@ class Embeddings(HTTPEndpoint):
 
         traces = {}
         for data in zip(curr_ids, curr_points, label_values, selected):
-            add_to_trace(traces, style, *data)
+            _add_to_trace(traces, style, *data)
 
         return {
             "traces": traces,
@@ -198,10 +199,10 @@ class Embeddings(HTTPEndpoint):
         if not filters and not extended_stages and not extended_selection:
             return {"selected": None}
 
-        dataset = fo.load_dataset(dataset_name)
+        dataset = _load_dataset(dataset_name)
         results = dataset.load_brain_results(brain_key)
 
-        # Assume `results.use_view()` was updated by `on_plot_load()`
+        # Assume `results.use_view()` was already updated by `on_plot_load()`
         # view = fosv.get_view(dataset_name, stages=stages)
         # results.use_view(view, allow_missing=True)
 
@@ -279,7 +280,13 @@ class Embeddings(HTTPEndpoint):
         return {"_cls": d["_cls"], "kwargs": dict(d["kwargs"])}
 
 
-def add_to_trace(traces, style, id, points, label, selected):
+def _load_dataset(dataset_name):
+    dataset = fo.load_dataset(dataset_name)
+    _DATASET_CACHE[dataset_name] = dataset
+    return dataset
+
+
+def _add_to_trace(traces, style, id, points, label, selected):
     key = label if style == "categorical" else "points"
     if key not in traces:
         traces[key] = []
