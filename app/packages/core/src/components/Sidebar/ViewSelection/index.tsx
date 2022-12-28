@@ -134,7 +134,11 @@ export default function ViewSelection(props: Props) {
   }, [searchData, selected]);
 
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
-  const isEmptyView = false; // !loadedView?.length;
+  const [selectedSavedView] = useRecoilState<DatasetViewOption | null>(
+    selectedSavedViewState
+  );
+  const isEmptyView = false; //selectedSavedView.label !== "Unsaved view"; //
+  // !loadedView?.length;
 
   // special case for electron app to clear the selection
   // when there is no loaded view

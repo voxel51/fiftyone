@@ -7,16 +7,7 @@ import {
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
 } from "recoil";
-import {
-  filters,
-  groupSlice,
-  resolvedGroupSlice,
-  selectedLabelList,
-  selectedSamples,
-  State,
-  stateSubscription,
-  view,
-} from "../recoil";
+import { State, stateSubscription, view, viewStateForm } from "../recoil";
 import { RouterContext } from "../routing";
 import { transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
@@ -108,21 +99,7 @@ const useSetView = (
               session: session,
               view: value,
               datasetName: dataset.name,
-              form: patch
-                ? {
-                    filters: snapshot.getLoadable(filters).contents,
-                    sampleIds: [
-                      ...snapshot.getLoadable(selectedSamples).contents,
-                    ],
-                    labels: snapshot.getLoadable(selectedLabelList).contents,
-                    extended: snapshot.getLoadable(fos.extendedStages).contents,
-                    addStages,
-                    slice: selectSlice
-                      ? snapshot.getLoadable(resolvedGroupSlice(false)).contents
-                      : null,
-                  }
-                : {},
-
+              form: patch ? snapshot.getLoadable(viewStateForm).contents : {},
               changingSavedView: changingSavedView,
               savedViewSlug: savedViewSlug,
               viewName: viewName,

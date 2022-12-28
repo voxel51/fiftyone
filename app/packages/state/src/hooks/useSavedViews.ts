@@ -9,12 +9,7 @@ import { useErrorHandler } from "react-error-boundary";
 
 import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
-import {
-  filters,
-  resolvedGroupSlice,
-  selectedLabelList,
-  selectedSamples,
-} from "@fiftyone/state";
+import { viewStateForm } from "@fiftyone/state";
 
 export default function useSavedViews() {
   const savedViews = useRecoilValue(fos.savedViewsSelector);
@@ -68,7 +63,7 @@ export default function useSavedViews() {
       ) => {
         if (name) {
           // if (name && view.length) {
-
+          console.log(snapshot.getLoadable(viewStateForm).contents);
           send((session) =>
             saveView({
               onError,
@@ -76,17 +71,7 @@ export default function useSavedViews() {
                 viewName: name,
                 datasetName: datasetNameValue,
                 viewStages: view,
-                form: {
-                  filters: snapshot.getLoadable(filters).contents,
-                  sampleIds: [
-                    ...snapshot.getLoadable(selectedSamples).contents,
-                  ],
-                  labels: snapshot.getLoadable(selectedLabelList).contents,
-                  extended: snapshot.getLoadable(fos.extendedStages).contents,
-                  slice:
-                    snapshot.getLoadable(resolvedGroupSlice(false)).contents ||
-                    null,
-                },
+                form: snapshot.getLoadable(viewStateForm).contents,
                 description,
                 color,
                 subscription,
