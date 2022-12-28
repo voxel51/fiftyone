@@ -6,15 +6,9 @@ FiftyOne Server ``/embeddings`` route.
 |
 """
 import itertools
-import glob
-import os
-
-import numpy as np
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
-
-import eta.core.serial as etas
 
 import fiftyone as fo
 from fiftyone.server.decorators import route
@@ -261,7 +255,6 @@ class Embeddings(HTTPEndpoint):
         patches_field = data["patchesField"]  # patches field of plot, or None
         selected_ids = data["selection"]  # selected IDs in plot
 
-        dataset = fo.load_dataset(dataset_name)
         view = fosv.get_view(dataset_name, stages=stages)
 
         is_patches_view = view._is_patches
