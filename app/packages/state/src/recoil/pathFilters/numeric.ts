@@ -14,6 +14,8 @@ export interface NumericFilter {
   ninf: boolean;
   inf: boolean;
   exclude: boolean;
+  isMatching: boolean;
+  onlyMatch: boolean;
   _CLS: string;
 }
 export type Range = [number | null | undefined, number | null | undefined];
@@ -31,6 +33,8 @@ const getFilter = (
     inf: true,
     ninf: true,
     exclude: false,
+    isMatching: true,
+    onlyMatch: true,
     ...get(modal ? filterAtoms.modalFilters : filterAtoms.filters)[path],
   };
 
@@ -162,7 +166,7 @@ export const nonfiniteAtom = selectorFamily<
       setFilter(get, set, modal, path, key, value),
 });
 
-export const excludeAtom = selectorFamily<
+export const numericExcludeAtom = selectorFamily<
   boolean,
   {
     defaultRange?: Range;
@@ -180,6 +184,48 @@ export const excludeAtom = selectorFamily<
     ({ modal, path, defaultRange }) =>
     ({ get, set }, value) => {
       setFilter(get, set, modal, path, "exclude", value);
+    },
+});
+
+export const numericOnlyMatchAtom = selectorFamily<
+  boolean,
+  {
+    defaultRange?: Range;
+    modal: boolean;
+    path: string;
+  }
+>({
+  key: "numericFilterOnlyMatch",
+  get:
+    ({ modal, path }) =>
+    ({ get }) => {
+      return getFilter(get, modal, path).onlyMatch;
+    },
+  set:
+    ({ modal, path, defaultRange }) =>
+    ({ get, set }, value) => {
+      setFilter(get, set, modal, path, "onlyMatch", value);
+    },
+});
+
+export const numericIsMatchingAtom = selectorFamily<
+  boolean,
+  {
+    defaultRange?: Range;
+    modal: boolean;
+    path: string;
+  }
+>({
+  key: "numericFilterIsMatching",
+  get:
+    ({ modal, path }) =>
+    ({ get }) => {
+      return getFilter(get, modal, path).isMatching;
+    },
+  set:
+    ({ modal, path, defaultRange }) =>
+    ({ get, set }, value) => {
+      setFilter(get, set, modal, path, "isMatching", value);
     },
 });
 
@@ -223,6 +269,9 @@ export const numeric = selectorFamily<
     (params) =>
     ({ get }) => {
       const exclude = get(excludeAtom(params));
+      const onlyMatch = get(onlyMatchAtom(params));
+      const isMatching = get(isMatchingAtom(params));
+
       const [start, end] = get(rangeAtom(params));
       const none = get(nonfiniteAtom({ ...params, key: "none" }));
       const inf = get(nonfiniteAtom({ ...params, key: "inf" }));
