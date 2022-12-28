@@ -18,8 +18,9 @@ import Color from "color";
 
 interface Props {
   shouldShowAllOptions: boolean;
-  selectedValuesAtom: RecoilState<string[]>;
   excludeAtom: RecoilState<boolean>;
+  onlyMatchAtom: RecoilState<boolean>;
+  isMatchingAtom: RecoilState<boolean>;
   labels: string[];
   valueName: string;
   color: string;
@@ -39,13 +40,16 @@ const FilterOption: React.FC<Props> = ({
   valueName,
   shouldShowAllOptions,
   excludeAtom,
-  selectedValuesAtom,
+  onlyMatchAtom,
+  isMatchingAtom,
 }) => {
   const [key, setKey] = React.useState(
     shouldShowAllOptions ? "filter" : "match"
   );
   const [open, setOpen] = React.useState(false);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
+  const [onlyMatch, setOnlyMatch] = useRecoilState(onlyMatchAtom);
+  const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
 
   const theme = useTheme();
   const highlightedBGColor = Color(color).alpha(0.25).string();
@@ -65,15 +69,24 @@ const FilterOption: React.FC<Props> = ({
     switch (key) {
       case "filter":
         excluded && setExcluded(false);
+        isMatching && setIsMatching(false);
+        !onlyMatch && setOnlyMatch(true);
       case "negativefilter":
         !excluded && setExcluded(true);
+        isMatching && setIsMatching(false);
+        onlyMatch && setOnlyMatch(false);
       case "match":
+        excluded && setExcluded(false);
+        !isMatching && setIsMatching(true);
+        onlyMatch && setOnlyMatch(true);
       case "negativeMatch":
+        !excluded && setExcluded(false);
+        !isMatching && setIsMatching(true);
+        onlyMatch && setOnlyMatch(true);
     }
   };
 
   // only nested ListField items should have the filter and negative filter options:
-
   let options = shouldShowAllOptions
     ? [
         {
@@ -108,8 +121,6 @@ const FilterOption: React.FC<Props> = ({
     },
   ]);
 
-  console.info(options);
-
   const selectedValue = options.find((o) => o.key === key)?.value;
 
   const currentSelection = (
@@ -138,7 +149,6 @@ const FilterOption: React.FC<Props> = ({
 
   const Selected = () => {
     // render the icon for selected filter method
-
     const icon = options.find((o) => o.key === key)?.icon;
     if (!icon) return <>{key}</>;
 
