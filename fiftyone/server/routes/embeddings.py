@@ -44,10 +44,21 @@ class Embeddings(HTTPEndpoint):
         # Determines which points from `results` are in `view`, which are the
         # only points we want to display in the embeddings plot
         results.use_view(view, allow_missing=True)
+        curr_view = results.view
 
         # Color by data
-        label_values = results.view.values(labels_field, unwind=True)
-        values_count = len(set(label_values))
+        label_values = curr_view.values(labels_field, unwind=True)
+        field = curr_view.get_field(labels_field)
+        if isinstance(field, fo.FloatField):
+            style = "continuous"
+            values_count = None
+        else:
+            values_count = len(set(label_values))
+            style = (
+                "categorical"
+                if values_count <= MAX_CATEGORIES
+                else "continuous"
+            )
 
         # This is the total number of embeddings in `results`
         index_size = results.total_index_size
@@ -106,10 +117,6 @@ class Embeddings(HTTPEndpoint):
         else:
             selected = itertools.repeat(True)
 
-        style = (
-            "categorical" if values_count <= MAX_CATEGORIES else "continuous"
-        )
-
         traces = {}
         for data in zip(curr_ids, curr_points, label_values, selected):
             _add_to_trace(traces, style, *data)
@@ -143,10 +150,21 @@ class Embeddings(HTTPEndpoint):
         # Determines which points from `results` are in `view`, which are the
         # only points we want to display in the embeddings plot
         results.use_view(view, allow_missing=True)
+        curr_view = results.view
 
         # Color by data
-        label_values = results.view.values(labels_field, unwind=True)
-        values_count = len(set(label_values))
+        label_values = curr_view.values(labels_field, unwind=True)
+        field = curr_view.get_field(labels_field)
+        if isinstance(field, fo.FloatField):
+            style = "continuous"
+            values_count = None
+        else:
+            values_count = len(set(label_values))
+            style = (
+                "categorical"
+                if values_count <= MAX_CATEGORIES
+                else "continuous"
+            )
 
         # This is the total number of embeddings in `results`
         index_size = results.total_index_size
@@ -166,10 +184,6 @@ class Embeddings(HTTPEndpoint):
             curr_ids = results._curr_sample_ids
 
         selected = itertools.repeat(True)
-
-        style = (
-            "categorical" if values_count <= MAX_CATEGORIES else "continuous"
-        )
 
         traces = {}
         for data in zip(curr_ids, curr_points, label_values, selected):
