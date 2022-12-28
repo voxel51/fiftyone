@@ -169,11 +169,13 @@ export default function Embeddings({ containerHeight, dimensions }) {
   const brainResultSelector = useBrainResultsSelector();
   const labelSelector = useLabelSelector();
   const setView = fos.useSetView();
-  useSetSelectionModeView();
+  const setSelectionModeView = useSetSelectionModeView();
   const modeSelector = useChooseSelectionMode({
     onSelect: (mode) => {
       if (!mode) {
         setView([]);
+      } else {
+        setSelectionModeView(mode);
       }
     },
   });
@@ -529,20 +531,21 @@ class Color {
 }
 
 function useSetSelectionModeView() {
-  const [mode] = usePanelField("selectionMode");
   const [plotSelection] = usePanelField("plotSelection");
   const brainResultInfo = useBrainResultInfo();
   const patchesField = brainResultInfo?.config?.patchesField;
   const setFilterLabelIds = useSetFilterLabelIds();
   const toPatches = useToPatches();
 
-  useEffect(() => {
+  const setView = (mode) => {
     if (mode === "select" && plotSelection && plotSelection.length > 0) {
       // setFilterLabelIds(patchesField, plotSelection)
     } else if (mode === "patches") {
       toPatches(patchesField);
     }
-  }, [mode, plotSelection, patchesField]);
+  };
+
+  return setView;
 }
 
 function useSetFilterLabelIds() {
