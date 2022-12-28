@@ -10,6 +10,8 @@ export interface StringFilter {
   values: string[];
   exclude: boolean;
   _CLS: "str";
+  onlyMatches: boolean;
+  isMatching: boolean; // match_labels vs filter_labels mode
 }
 
 const getFilter = (
@@ -20,6 +22,8 @@ const getFilter = (
   return {
     values: [],
     exclude: false,
+    onlyMatches: true,
+    isMatching: false,
     _CLS: "str",
     ...get(filterAtoms.filter({ modal, path })),
   };
@@ -40,8 +44,11 @@ const setFilter = (
     ...getFilter(get, modal, path),
     [key]: value,
   };
+
   if (filter.values.length === 0) {
     filter.exclude = false;
+    filter.isMatching = false;
+    filter.onlyMatches = true;
   }
 
   if (meetsDefault(filter)) {
@@ -51,11 +58,12 @@ const setFilter = (
   set(filterAtoms.filter({ modal, path }), filter);
 };
 
+// updates the string values in the filter
 export const stringSelectedValuesAtom = selectorFamily<
   (string | null)[],
   { modal: boolean; path: string }
 >({
-  key: "stringSelectedValuesAtom",
+  key: "stringFilterLabelsAtom",
   get:
     ({ modal, path }) =>
     ({ get }) =>
@@ -66,6 +74,7 @@ export const stringSelectedValuesAtom = selectorFamily<
       setFilter(get, set, modal, path, "values", value),
 });
 
+// updates if the filter is excluding or not
 export const stringExcludeAtom = selectorFamily<
   boolean,
   { modal: boolean; path: string }
@@ -77,8 +86,41 @@ export const stringExcludeAtom = selectorFamily<
       getFilter(get, modal, path).exclude,
   set:
     ({ modal, path }) =>
+    ({ get, set }, value) => {
+      setFilter(get, set, modal, path, "exclude", value);
+    },
+});
+
+// updates if the filter should use onlyMatches (omit empty samples)
+export const onlyMatchAtom = selectorFamily<
+  boolean,
+  { modal: boolean; path: string }
+>({
+  key: "onlyMatch",
+  get:
+    ({ modal, path }) =>
+    ({ get }) =>
+      getFilter(get, modal, path).onlyMatches,
+  set:
+    ({ modal, path }) =>
     ({ get, set }, value) =>
-      setFilter(get, set, modal, path, "exclude", value),
+      setFilter(get, set, modal, path, "onlyMatch", value),
+});
+
+// updates if it is filter or match model
+export const isMatchingAtom = selectorFamily<
+  boolean,
+  { modal: boolean; path: string }
+>({
+  key: "isMatching",
+  get:
+    ({ modal, path }) =>
+    ({ get }) =>
+      getFilter(get, modal, path).isMatching,
+  set:
+    ({ modal, path }) =>
+    ({ get, set }, value) =>
+      setFilter(get, set, modal, path, "isMatching", value),
 });
 
 const NONE = new Set<string | null | undefined>([undefined, null]);
@@ -94,8 +136,9 @@ export const string = selectorFamily<
       if (!get(filterAtoms.filter(params))) {
         return (value) => true;
       }
+
       const exclude = get(stringExcludeAtom(params));
-      const values = get(stringSelectedValuesAtom(params));
+      const values = get(stringSelectedValuesAtom({ ...params }));
       const none = values.includes(null);
 
       return (value) => {
