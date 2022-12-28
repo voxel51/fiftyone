@@ -2,12 +2,14 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
-import { State, stateSubscription, view, viewStateForm } from "../recoil";
+  modal,
+  State,
+  stateSubscription,
+  view,
+  viewStateForm,
+} from "../recoil";
 import { RouterContext } from "../routing";
 import { transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
@@ -99,7 +101,9 @@ const useSetView = (
               session: session,
               view: value,
               datasetName: dataset.name,
-              form: patch ? snapshot.getLoadable(viewStateForm).contents : {},
+              form: patch
+                ? snapshot.getLoadable(viewStateForm(false)).contents
+                : {},
               changingSavedView: changingSavedView,
               savedViewSlug: savedViewSlug,
               viewName: viewName,

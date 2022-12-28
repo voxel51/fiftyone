@@ -22,30 +22,36 @@ export const aggregationQuery = graphQLSelectorFamily<
 >({
   key: "aggregationQuery",
   environment: RelayEnvironmentKey,
-  mapResponse: (response) => response,
+  mapResponse: (response) => {
+    console.log(response);
+    return response;
+  },
   query: foq.aggregation,
   variables:
     ({ extended, modal, paths, root = false }) =>
     ({ get }) => {
       const mixed = get(groupStatistics(modal)) === "group";
+      const aggForm = {
+        index: get(refresher),
+        dataset: get(selectors.datasetName),
+        extendedStages: root ? [] : get(selectors.extendedStagesUnsorted),
+        filters:
+          extended && !root
+            ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
+            : null,
+        groupId: !root && modal && mixed ? get(groupId) : null,
+        hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
+        paths,
+        mixed,
+        sampleIds: !root && modal && !mixed ? [get(sidebarSampleId)] : [],
+        slice: get(currentSlice(modal)),
+        view: !root ? get(viewAtoms.view) : [],
+      };
+      console.log("aggregationQuery params", extended, modal, paths, root);
+      console.log("aggregationQuery form", aggForm);
 
       return {
-        form: {
-          index: get(refresher),
-          dataset: get(selectors.datasetName),
-          extendedStages: root ? [] : get(selectors.extendedStagesUnsorted),
-          filters:
-            extended && !root
-              ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
-              : null,
-          groupId: !root && modal && mixed ? get(groupId) : null,
-          hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
-          paths,
-          mixed,
-          sampleIds: !root && modal && !mixed ? [get(sidebarSampleId)] : [],
-          slice: get(currentSlice(modal)),
-          view: !root ? get(viewAtoms.view) : [],
-        },
+        form: aggForm,
       };
     },
 });
@@ -79,6 +85,11 @@ export const aggregation = selectorFamily({
       path: string;
     }) =>
     ({ get }) => {
+      console.log(
+        "aggregation: path, get(schemaAtoms.filterFields(path))",
+        path,
+        get(schemaAtoms.filterFields(path))
+      );
       const result = get(
         aggregations({ ...params, paths: get(schemaAtoms.filterFields(path)) })
       ).filter((data) => data.path === path);

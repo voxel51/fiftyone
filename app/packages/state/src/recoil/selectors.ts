@@ -9,7 +9,7 @@ import { toSnakeCase } from "@fiftyone/utilities";
 import { config } from "./config";
 import { fieldSchema } from "./schema";
 import { StateForm } from "@fiftyone/relay";
-import { filters } from "./filters";
+import { filters, modalFilters } from "./filters";
 import { selectedSamples } from "./atoms";
 import { resolvedGroupSlice } from "./groups";
 
@@ -377,15 +377,17 @@ export const modalNavigation = selector<atoms.ModalNavigation>({
   get: ({ get }) => get(atoms.modal).navigation,
 });
 
-export const viewStateForm = selector<StateForm>({
+export const viewStateForm = selectorFamily<StateForm, boolean>({
   key: "viewStateForm",
-  get: ({ get }) => {
-    return {
-      filters: get(filters),
-      sampleIds: [...get(selectedSamples)],
-      labels: get(selectedLabelList),
-      extended: get(extendedStages),
-      slice: get(resolvedGroupSlice(false)) || null,
-    };
-  },
+  get:
+    (modal) =>
+    ({ get }) => {
+      return {
+        filters: get(modal ? modalFilters : filters),
+        sampleIds: [...get(selectedSamples)],
+        labels: get(selectedLabelList),
+        extended: get(extendedStages),
+        slice: get(resolvedGroupSlice(modal)) || undefined,
+      };
+    },
 });
