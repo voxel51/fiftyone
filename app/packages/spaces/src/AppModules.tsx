@@ -1,9 +1,15 @@
 import { Apps, Ballot, BarChart, Map, ScatterPlot } from "@mui/icons-material";
-import { IconButton as MuiIconButton, Typography } from "@mui/material";
+import {
+  IconButton as MuiIconButton,
+  IconButtonProps,
+  Switch,
+  Typography,
+} from "@mui/material";
 import { selectorFamily } from "recoil";
 import styled from "styled-components";
-import { usePanelTitle } from "./hooks";
+import { usePanelState, usePanelTitle } from "./hooks";
 
+// eslint-disable-next-line
 export namespace State {
   export enum SPACE {
     FRAME = "FRAME",
@@ -24,17 +30,38 @@ export enum PluginComponentType {
   Panel,
 }
 
+function BasicPluginComponent(props: BasicPluginComponentProps) {
+  const { name } = props;
+  const [state, setState] = usePanelState(false);
+
+  console.log(name, state);
+
+  return (
+    <Typography variant="h3" component="span">
+      <Switch
+        checked={state}
+        onChange={() => {
+          setState(!state);
+        }}
+        color="warning"
+      />
+      {name}
+    </Typography>
+  );
+}
+
+export function FormPluginComponent() {
+  const [_, setTitle] = usePanelTitle();
+  return <input type="text" onChange={(e) => setTitle(e.target.value)} />;
+}
+
 export function useActivePlugins(type: PluginComponentType) {
   if (type !== PluginComponentType.Panel) return [];
   return [
     {
       name: "Samples",
       label: "Samples",
-      component: () => (
-        <Typography variant="h3" component="span">
-          Samples
-        </Typography>
-      ),
+      component: () => <BasicPluginComponent name="Samples" />,
       panelOptions: {
         allowDuplicates: false,
       },
@@ -44,11 +71,7 @@ export function useActivePlugins(type: PluginComponentType) {
     {
       name: "Map",
       label: "Map",
-      component: () => (
-        <Typography variant="h3" component="span">
-          Map
-        </Typography>
-      ),
+      component: () => <BasicPluginComponent name="Map" />,
       panelOptions: {
         allowDuplicates: false,
       },
@@ -58,39 +81,30 @@ export function useActivePlugins(type: PluginComponentType) {
     {
       name: "Histograms",
       label: "Histograms",
-      component: () => (
-        <Typography variant="h3" component="span" sx={{ m: 2 }}>
-          Histograms
-        </Typography>
-      ),
+      component: () => <BasicPluginComponent name="Histogram" />,
       Icon: BarChart,
       type: PluginComponentType.Panel,
     },
     {
       name: "Embeddings",
       label: "Embeddings",
-      component: () => (
-        <Typography variant="h3" component="span" sx={{ m: 2 }}>
-          Embeddings
-        </Typography>
-      ),
+      component: () => <BasicPluginComponent name="Embeddings" />,
       Icon: ScatterPlot,
       type: PluginComponentType.Panel,
     },
     {
       name: "Form",
       label: "Form",
-      component: () => {
-        const [_, setTitle] = usePanelTitle();
-        return <input type="text" onChange={(e) => setTitle(e.target.value)} />;
-      },
+      component: FormPluginComponent,
       Icon: Ballot,
       type: PluginComponentType.Panel,
     },
   ];
 }
 
-export function useOutsideClick() {}
+export function useOutsideClick() {
+  // do nothing
+}
 
 export const Popout = styled.div`
   position: absolute;
@@ -101,7 +115,7 @@ export const Popout = styled.div`
   top: 95%;
 `;
 
-export function IconButton(props) {
+export function IconButton(props: IconButtonProps) {
   return (
     <MuiIconButton
       disableRipple
@@ -116,3 +130,11 @@ export function IconButton(props) {
     />
   );
 }
+
+/**
+ * Types
+ */
+
+type BasicPluginComponentProps = {
+  name: string;
+};
