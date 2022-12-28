@@ -374,10 +374,10 @@ export const modalNavigation = selector<atoms.ModalNavigation>({
   get: ({ get }) => get(atoms.modal).navigation,
 });
 
-export const viewStateForm = selector<StateForm>({
-  key: "viewStateForm",
-  get: ({ get }) => {
-    // todo
-    return;
-  },
-});
+// export const viewStateForm = selector<StateForm>({
+//   key: "viewStateForm",
+//   get: ({ get }) => {
+//     // todo
+//     return;
+//   },
+// });

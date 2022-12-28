@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import { actions, assign, Machine, send, spawn } from "xstate";
+import { actions, assign, createMachine, Machine, send, spawn } from "xstate";
 
 import { viewsAreEqual } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
@@ -164,7 +164,7 @@ function setStages(ctx, stageInfo) {
   }
 }
 
-const viewBarMachine = Machine(
+const viewBarMachine = createMachine(
   {
     id: "stages",
     context: {
