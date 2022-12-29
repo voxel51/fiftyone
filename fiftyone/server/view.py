@@ -160,7 +160,6 @@ def get_saved_view_stages(identifier):
 
 
 async def load_view(
-    *,
     dataset_name: str,
     serialized_view: BSONArray,
     view_name: Optional[str] = None,
@@ -178,9 +177,9 @@ async def load_view(
     return await loop.run_in_executor(None, run)
 
 
-def get_dataset_view(
+def get_view(
     dataset_name,
-    *,
+    view_name=None,
     stages=None,
     filters=None,
     count_label_tags=False,
@@ -188,23 +187,20 @@ def get_dataset_view(
     extended_stages=None,
     sample_filter=None,
     sort=False,
-    view_name=None,
 ):
-    """Construct a new view using the request parameters or load a previously
-    saved view by name.
+    """Gets the view defined by the given request parameters.
 
     Args:
         dataset_name: the dataset name
-        view_name (str): an optional str used for loading a previously saved
-        view by name
+        view_name (None): the name of a saved view to load
         stages (None): an optional list of serialized
             :class:`fiftyone.core.stages.ViewStage` instances
         filters (None): an optional ``dict`` of App defined filters
-        extended_stages (None): extended view stages
         count_label_tags (False): whether to set the hidden ``_label_tags``
             field with counts of tags with respect to all label fields
         only_matches (True): whether to filter unmatches samples when filtering
             labels
+        extended_stages (None): extended view stages
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
         sort (False): whether to include sort extended stages
@@ -213,19 +209,15 @@ def get_dataset_view(
         a :class:`fiftyone.core.view.DatasetView`
     """
     dataset = fod.load_dataset(dataset_name)
+    dataset.reload()
 
-    # Load a previously saved view
-    if view_name is not None and dataset.has_saved_view(view_name):
-        view = dataset.load_saved_view(view_name)
-        view.reload()
-        return
-
-    # Construct a new view
-    view = dataset.view()
-    view.reload()
+    if view_name is not None:
+        return dataset.load_saved_view(view_name)
 
     if stages:
-        view = fov.DatasetView._build(view, stages)
+        view = fov.DatasetView._build(dataset, stages)
+    else:
+        view = dataset.view()
 
     if sample_filter is not None:
         if sample_filter.group:

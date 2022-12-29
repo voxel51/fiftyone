@@ -25,7 +25,7 @@ from fiftyone.server.events import get_state, dispatch_event
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.query import Dataset, SidebarGroup, SavedView
 from fiftyone.server.scalars import BSON, BSONArray, JSON
-from fiftyone.server.view import get_dataset_view, extend_view
+from fiftyone.server.view import get_view, extend_view
 
 
 @gql.input
@@ -97,7 +97,7 @@ class Mutation:
         sidebar_groups: t.List[SidebarGroupInput],
     ) -> bool:
         state = get_state()
-        view = get_dataset_view(dataset, stages=stages)
+        view = get_view(dataset, stages=stages)
 
         current = (
             {
@@ -185,7 +185,7 @@ class Mutation:
 
         if result_view is None:
             # Update current view with form parameters
-            result_view = get_dataset_view(
+            result_view = get_view(
                 dataset_name,
                 stages=view if view else None,
                 filters=form.filters if form else None,
@@ -300,7 +300,7 @@ class Mutation:
             state.view_name = view_name
             await dispatch_event(subscription, StateUpdate(state=state))
         else:
-            view = get_dataset_view(dataset_name, stages=view_stages)
+            view = get_view(dataset_name, stages=view_stages)
             dataset.save_view(
                 view_name, view, description=description, color=color
             )

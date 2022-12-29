@@ -117,7 +117,6 @@ class AggregateQuery:
     @gql.field
     async def aggregate(
         self,
-        *,
         dataset_name: str,
         view: t.Optional[BSONArray],
         aggregations: t.List[Aggregate],

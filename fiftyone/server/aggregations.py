@@ -122,9 +122,9 @@ async def aggregate_resolver(
     if not form.dataset:
         raise ValueError("Aggregate form missing dataset")
 
-    view = fosv.get_dataset_view(
+    view = fosv.get_view(
         form.dataset,
-        view_name=form.view_name if form.view_name else None,
+        view_name=form.view_name or None,
         stages=form.view,
         filters=form.filters,
         extended_stages=form.extended_stages,
@@ -132,6 +132,7 @@ async def aggregate_resolver(
             group=GroupElementFilter(id=form.group_id, slice=form.slice)
         ),
     )
+
     slice_view = view if form.mixed and "" in form.paths else None
 
     if form.sample_ids:

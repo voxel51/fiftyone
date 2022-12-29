@@ -413,15 +413,12 @@ def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
 
 
 async def serialize_dataset(
-    *,
-    dataset_name: str,
-    serialized_view: BSONArray,
-    view_name: t.Optional[str]
+    dataset_name: str, serialized_view: BSONArray, view_name: t.Optional[str]
 ) -> Dataset:
     def run():
         dataset = fo.load_dataset(dataset_name)
-
         dataset.reload()
+
         if view_name is not None and dataset.has_saved_view(view_name):
             view = dataset.load_saved_view(view_name)
         else:

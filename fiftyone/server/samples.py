@@ -73,7 +73,7 @@ async def paginate_samples(
     extended_stages: t.Optional[BSON] = None,
     sample_filter: t.Optional[SampleFilter] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
-    view = fosv.get_dataset_view(
+    view = fosv.get_view(
         dataset,
         stages=stages,
         filters=filters,
@@ -84,10 +84,7 @@ async def paginate_samples(
         sample_filter=sample_filter,
     )
 
-    root_view = fosv.get_dataset_view(
-        dataset,
-        stages=stages,
-    )
+    root_view = fosv.get_view(dataset, stages=stages)
 
     media = view.media_type
     if media == fom.MIXED:
