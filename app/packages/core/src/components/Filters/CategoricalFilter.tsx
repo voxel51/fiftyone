@@ -24,7 +24,6 @@ import withSuspense from "./withSuspense";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 import FilterOption from "./FilterOption";
-import { isMatchingAtom } from "@fiftyone/state";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};

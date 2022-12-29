@@ -10,7 +10,7 @@ export interface StringFilter {
   values: string[];
   exclude: boolean;
   _CLS: "str";
-  onlyMatches: boolean;
+  onlyMatch: boolean;
   isMatching: boolean; // match_labels vs filter_labels mode
 }
 
@@ -22,11 +22,11 @@ const getFilter = (
   return {
     values: [],
     exclude: false,
-    onlyMatches: true,
-    isMatching: false,
+    onlyMatch: true,
+    isMatching: true,
     _CLS: "str",
     ...get(filterAtoms.filter({ modal, path })),
-  };
+  } as StringFilter;
 };
 
 const meetsDefault = (filter: StringFilter) =>
@@ -48,7 +48,7 @@ const setFilter = (
   if (filter.values.length === 0) {
     filter.exclude = false;
     filter.isMatching = false;
-    filter.onlyMatches = true;
+    filter.onlyMatch = true;
   }
 
   if (meetsDefault(filter)) {
@@ -91,7 +91,7 @@ export const stringExcludeAtom = selectorFamily<
     },
 });
 
-// updates if the filter should use onlyMatches (omit empty samples)
+// updates if the filter should use onlyMatch (omit empty samples)
 export const onlyMatchAtom = selectorFamily<
   boolean,
   { modal: boolean; path: string }
@@ -100,7 +100,7 @@ export const onlyMatchAtom = selectorFamily<
   get:
     ({ modal, path }) =>
     ({ get }) =>
-      getFilter(get, modal, path).onlyMatches,
+      getFilter(get, modal, path).onlyMatch,
   set:
     ({ modal, path }) =>
     ({ get, set }, value) =>

@@ -1,4 +1,4 @@
-import React, { PropsWithChildren } from "react";
+import React, { PropsWithChildren, useEffect } from "react";
 import styled from "styled-components";
 import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
@@ -33,7 +33,13 @@ const Text = styled.div`
   ${({ theme }) => theme.text.secondary};
 `;
 
-type Option = { value: string; icon?: string; tooltip: string };
+type Option = {
+  key: string;
+  value: string;
+  icon?: string;
+  tooltip: string;
+  onClick: () => void;
+};
 
 const FilterOption: React.FC<Props> = ({
   labels,
@@ -63,30 +69,17 @@ const FilterOption: React.FC<Props> = ({
     setOpen(false);
   });
 
-  const onSelectItem = (key: string) => {
-    setKey(key);
-    setOpen(false);
-
-    // apply filter
-    switch (key) {
-      case "filter":
-        excluded && setExcluded(false);
-        isMatching && setIsMatching(false);
-        !onlyMatch && setOnlyMatch(true);
-      case "negativefilter":
-        !excluded && setExcluded(true);
-        isMatching && setIsMatching(false);
-        onlyMatch && setOnlyMatch(false);
-      case "match":
-        excluded && setExcluded(false);
-        !isMatching && setIsMatching(true);
-        onlyMatch && setOnlyMatch(true);
-      case "negativeMatch":
-        !excluded && setExcluded(false);
-        !isMatching && setIsMatching(true);
-        onlyMatch && setOnlyMatch(true);
+  useEffect(() => {
+    if (key === "filter") {
+      onSelectFilter();
+    } else if (key === "negativefilter") {
+      onSelectNegativeFilter();
+    } else if (key === "match") {
+      onSelectMatch();
+    } else if (key === "negativeMatch") {
+      onSelectNegativeMatch();
     }
-  };
+  }, [key]);
 
   // only nested ListField items should have the filter and negative filter options:
   let options = shouldShowAllOptions
@@ -96,6 +89,7 @@ const FilterOption: React.FC<Props> = ({
           key: "filter",
           value: `Filter ${valueName}`,
           tooltip: "dataset.filter_labels(field, condition, only_matches=True)",
+          onClick: () => onSelectFilter(),
         },
         {
           icon: "FilterAltOffIcon",
@@ -103,6 +97,7 @@ const FilterOption: React.FC<Props> = ({
           value: `Exclude ${valueName}`,
           tooltip:
             "dataset.filter_labels(field, condition, only_matches=False)",
+          onClick: () => onSelectNegativeFilter(),
         },
       ]
     : [];
@@ -115,6 +110,7 @@ const FilterOption: React.FC<Props> = ({
         ? `Show samples in the range`
         : `Show samples with ${valueName}`,
       tooltip: "dataset.match_labels(fields=field, filter=condition)",
+      onClick: () => onSelectMatch(),
     },
     {
       icon: "HideImageIcon",
@@ -124,6 +120,7 @@ const FilterOption: React.FC<Props> = ({
         : `Show samples without ${valueName}`,
       tooltip:
         "dataset.match_labels(fields=field, filter=condition, bool=False)",
+      onClick: () => onSelectNegativeMatch(),
     },
   ]);
 
@@ -174,6 +171,35 @@ const FilterOption: React.FC<Props> = ({
       default:
         return <>{selectedValue}</>;
     }
+  };
+
+  const onSelectItem = (key: string) => {
+    setKey(key);
+    setOpen(false);
+  };
+
+  const onSelectFilter = () => {
+    setExcluded(false);
+    setIsMatching(false);
+    setOnlyMatch(true);
+  };
+
+  const onSelectNegativeFilter = () => {
+    setExcluded(true);
+    setIsMatching(false);
+    setOnlyMatch(false);
+  };
+
+  const onSelectMatch = () => {
+    setExcluded(false);
+    setIsMatching(true);
+    setOnlyMatch(true);
+  };
+
+  const onSelectNegativeMatch = () => {
+    setExcluded(true);
+    setIsMatching(true);
+    setOnlyMatch(true);
   };
 
   const children = <Text ref={ref}>{selectedValue}</Text>;
