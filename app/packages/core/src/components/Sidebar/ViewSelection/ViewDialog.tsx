@@ -17,7 +17,7 @@ import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useTheme } from "@fiftyone/components";
-import { selectedSavedViewState, viewDialogOpen } from ".";
+import { viewDialogOpen } from ".";
 import { DatasetViewOption } from "@fiftyone/components/src/components/Selection/Option";
 import * as fos from "@fiftyone/state";
 import {

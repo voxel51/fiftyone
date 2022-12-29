@@ -2,9 +2,17 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
-  modal,
+  useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
+import {
+  filters,
+  groupSlice,
+  resolvedGroupSlice,
+  selectedLabelList,
+  selectedSamples,
   State,
   stateSubscription,
   view,
@@ -90,6 +98,29 @@ const useSetView = (
         const dataset = snapshot.getLoadable(fos.dataset).contents;
         const savedViews = dataset.savedViews || [];
 
+        const formValue = {
+          filters: snapshot.getLoadable(filters).contents,
+          sampleIds: [...snapshot.getLoadable(selectedSamples).contents],
+          labels: snapshot.getLoadable(selectedLabelList).contents,
+          extended: snapshot.getLoadable(fos.extendedStages).contents,
+          addStages,
+          slice: selectSlice
+            ? snapshot.getLoadable(resolvedGroupSlice(false)).contents
+            : null,
+        };
+        const viewStateFormValue = snapshot.getLoadable(
+          viewStateForm({
+            addStages: JSON.stringify(addStages),
+            modal: false,
+            selectSlice: selectSlice,
+          })
+        ).contents;
+        console.log(
+          "useSetView: [patch , viewStateForm]",
+          patch,
+          viewStateFormValue
+        );
+        console.log("useSetView: formValue", formValue);
         send((session) => {
           const value =
             viewOrUpdater instanceof Function
@@ -102,8 +133,16 @@ const useSetView = (
               view: value,
               datasetName: dataset.name,
               form: patch
-                ? snapshot.getLoadable(viewStateForm(false)).contents
+                ? snapshot.getLoadable(
+                    viewStateForm({
+                      addStages: addStages ? JSON.stringify(addStages) : null,
+                      modal: false,
+                      selectSlice: selectSlice,
+                    })
+                  ).contents
                 : {},
+              // ? snapshot.getLoadable(viewStateForm(false)).contents
+              // : {},
               changingSavedView: changingSavedView,
               savedViewSlug: savedViewSlug,
               viewName: viewName,

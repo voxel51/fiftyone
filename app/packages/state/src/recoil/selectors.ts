@@ -377,17 +377,21 @@ export const modalNavigation = selector<atoms.ModalNavigation>({
   get: ({ get }) => get(atoms.modal).navigation,
 });
 
-export const viewStateForm = selectorFamily<StateForm, boolean>({
+export const viewStateForm = selectorFamily<
+  StateForm,
+  { addStages?: string; modal?: boolean; selectSlice?: boolean }
+>({
   key: "viewStateForm",
   get:
-    (modal) =>
+    ({ addStages, modal, selectSlice }) =>
     ({ get }) => {
       return {
         filters: get(modal ? modalFilters : filters),
         sampleIds: [...get(selectedSamples)],
         labels: get(selectedLabelList),
         extended: get(extendedStages),
-        slice: get(resolvedGroupSlice(modal)) || undefined,
+        slice: selectSlice ? get(resolvedGroupSlice(modal)) : null,
+        addStages: addStages ? JSON.parse(addStages) : [],
       };
     },
 });

@@ -63,7 +63,9 @@ export default function useSavedViews() {
       ) => {
         if (name) {
           // if (name && view.length) {
-          console.log(snapshot.getLoadable(viewStateForm(false)).contents);
+          console.log(
+            snapshot.getLoadable(viewStateForm({ modal: false })).contents
+          );
           send((session) =>
             saveView({
               onError,
@@ -71,7 +73,8 @@ export default function useSavedViews() {
                 viewName: name,
                 datasetName: datasetNameValue,
                 viewStages: view,
-                form: snapshot.getLoadable(viewStateForm(false)).contents,
+                form: snapshot.getLoadable(viewStateForm({ modal: false }))
+                  .contents,
                 description,
                 color,
                 subscription,
