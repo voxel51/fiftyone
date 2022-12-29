@@ -108,20 +108,42 @@ function getAvailableFieldsFromSchema({ fields }, results = []) {
   return results.sort((a, b) => a.localeCompare(b));
 }
 
+function useColorByChoices() {
+  const datasetName = useRecoilValue(fos.datasetName);
+  const [brainKey] = useBrainResult();
+  const [isLoading, setIsLoading] = useState(false);
+  const [availableFields, setAvailableFields] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (brainKey) {
+      setIsLoading(true);
+      fetchColorByChoices({ datasetName, brainKey })
+        .then((r) => {
+          setIsLoading(false);
+          setAvailableFields(r.fields);
+        })
+        .catch((e) => {
+          setIsLoading(false);
+          setError(e);
+        });
+    }
+  }, [datasetName, brainKey]);
+
+  return {
+    availableFields,
+    isLoading,
+  };
+}
+
 // a react hook that allows for selecting a label
 // based on the available labels in the given sample
 const useColorByField = () => usePanelField("colorByField", null);
 function useLabelSelector() {
   const dataset = useRecoilValue(fos.dataset);
   const fullSchema = useRecoilValue(fos.fullSchema);
-  const [availableFields, setAvailableFields] = usePanelField(
-    "availableFields",
-    []
-  );
   const [label, setLabel] = useColorByField();
-  const isPatchesView = useRecoilValue(fos.isPatchesView);
-
-  useEffect(() => {});
+  const { availableFields, isLoading } = useColorByChoices();
 
   const handlers = {
     onSelect(selected) {
@@ -130,16 +152,19 @@ function useLabelSelector() {
     value: label,
     toKey: (item) => item,
     useSearch: (search) => ({
-      values: availableFields.filter((item) =>
-        item.toLowerCase().includes(search.toLowerCase())
-      ),
+      values:
+        availableFields &&
+        availableFields.filter((item) =>
+          item.toLowerCase().includes(search.toLowerCase())
+        ),
     }),
   };
 
   return {
     label,
     handlers,
-    canSelect: availableFields.length > 0,
+    isLoading,
+    canSelect: !isLoading && availableFields && availableFields.length > 0,
     hasSelection: label !== null,
   };
 }
@@ -198,7 +223,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
     },
   });
   const brainResultInfo = useBrainResultInfo();
-  const canSelect = brainResultSelector.canSelect && labelSelector.canSelect;
+  const canSelect = brainResultSelector.canSelect;
   const showPlot =
     brainResultSelector.hasSelection && labelSelector.hasSelection;
 
@@ -212,23 +237,15 @@ export default function Embeddings({ containerHeight, dimensions }) {
             overflow={true}
             component={Value}
           />
-          {modeSelector.show && (
+          {labelSelector.isLoading && <Loading />}
+          {brainResultSelector.hasSelection && !labelSelector.isLoading && (
             <Selector
-              {...modeSelector.handlers}
-              placeholder={"Selection Mode"}
+              {...labelSelector.handlers}
+              placeholder={"Color By"}
               overflow={true}
               component={Value}
             />
           )}
-          {brainResultSelector.hasSelection &&
-            (!modeSelector.show || modeSelector.mode) && (
-              <Selector
-                {...labelSelector.handlers}
-                placeholder={"Color By"}
-                overflow={true}
-                component={Value}
-              />
-            )}
         </Selectors>
         {showPlot && (
           <EmbeddingsPlot
@@ -607,6 +624,10 @@ async function fetchExtendedStage(params) {
   return getFetchFunction()("POST", "/embeddings/extended-stage", params);
 }
 
+async function fetchColorByChoices(params) {
+  const { datasetName, brainKey } = params;
+  return getFetchFunction()("POST", "/embeddings/color-by-choices", params);
+}
 class Color {
   static fromCSSRGBValues(r, g, b) {
     return new Color(r / 255, g / 255, b / 255);
