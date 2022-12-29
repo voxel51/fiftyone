@@ -1,6 +1,6 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { useContext, useMemo } from "react";
+import { useContext, useMemo, useRef } from "react";
 import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
 import { PanelContext } from "./contexts";
 import SpaceNode from "./SpaceNode";
@@ -146,7 +146,8 @@ export function usePanelStatePartial<T>(key: string, defaultState: T) {
   const [state, setState] = useRecoilState<T>(
     panelStatePartialSelector({ panelId, key })
   );
-  const computedState = state || defaultState;
+  const defaultRef = useRef(defaultState);
+  const computedState = state === undefined ? defaultRef.current : state;
 
   return [computedState, setState];
 }
