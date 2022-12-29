@@ -48,7 +48,7 @@ export const ErrorText = styled(Box)`
 `;
 
 export const SecondaryContainer = styled(TextContainer)`
-  color: ${({ theme }) => theme.text.secondary};
+  color: ${({ theme }) => theme.text.secondary} !important;
 `;
 
 export const DialogBody = styled(Box)`
@@ -73,7 +73,7 @@ export const DescriptionInput = styled.textarea`
   padding: 0.5rem;
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   color: ${({ theme }) => theme.text.primary};
-  background: ${({ theme }) => theme.background.level1};
+  background: ${({ theme }) => theme.background.level3};
   font-family: "Palanquin", sans-serif;
 
   &:focus {
@@ -91,7 +91,7 @@ export const NameInput = styled.input<{ error?: string }>`
       error ? theme.error.main : theme.primary.plainBorder};
   padding: 0.5rem;
   color: ${({ theme }) => theme.text.primary};
-  background: ${({ theme }) => theme.background.level1};
+  background: ${({ theme }) => theme.background.level3};
   font-family: "Palanquin", sans-serif;
 
   &:focus {
