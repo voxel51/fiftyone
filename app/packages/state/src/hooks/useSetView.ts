@@ -2,22 +2,8 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import {
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
-import {
-  filters,
-  groupSlice,
-  resolvedGroupSlice,
-  selectedLabelList,
-  selectedSamples,
-  State,
-  stateSubscription,
-  view,
-  viewStateForm,
-} from "../recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
+import { State, stateSubscription, view, viewStateForm } from "../recoil";
 import { RouterContext } from "../routing";
 import { transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
@@ -98,29 +84,6 @@ const useSetView = (
         const dataset = snapshot.getLoadable(fos.dataset).contents;
         const savedViews = dataset.savedViews || [];
 
-        const formValue = {
-          filters: snapshot.getLoadable(filters).contents,
-          sampleIds: [...snapshot.getLoadable(selectedSamples).contents],
-          labels: snapshot.getLoadable(selectedLabelList).contents,
-          extended: snapshot.getLoadable(fos.extendedStages).contents,
-          addStages,
-          slice: selectSlice
-            ? snapshot.getLoadable(resolvedGroupSlice(false)).contents
-            : null,
-        };
-        const viewStateFormValue = snapshot.getLoadable(
-          viewStateForm({
-            addStages: JSON.stringify(addStages),
-            modal: false,
-            selectSlice: selectSlice,
-          })
-        ).contents;
-        console.log(
-          "useSetView: [patch , viewStateForm]",
-          patch,
-          viewStateFormValue
-        );
-        console.log("useSetView: formValue", formValue);
         send((session) => {
           const value =
             viewOrUpdater instanceof Function
@@ -141,8 +104,6 @@ const useSetView = (
                     })
                   ).contents
                 : {},
-              // ? snapshot.getLoadable(viewStateForm(false)).contents
-              // : {},
               changingSavedView: changingSavedView,
               savedViewSlug: savedViewSlug,
               viewName: viewName,
