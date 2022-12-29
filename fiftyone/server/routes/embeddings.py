@@ -18,7 +18,9 @@ from starlette.routing import Mount, Route
 
 
 MAX_CATEGORIES = 100
-_DATASET_CACHE = {}
+COLOR_BY_TYPES = (fo.StringField, fo.BooleanField, fo.IntField, fo.FloatField)
+
+dataset_cache = {}
 
 
 class OnPlotLoad(HTTPEndpoint):
@@ -191,16 +193,59 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
         return {"_cls": d["_cls"], "kwargs": dict(d["kwargs"])}
 
 
+class ColorByChoices(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
+        """Generates a list of color-by options for an embeddings plot."""
+        dataset_name = data["datasetName"]
+        brain_key = data["brainKey"]
+
+        dataset = _load_dataset(dataset_name)
+        results = dataset.load_brain_results(brain_key)
+
+        patches_field = results.config.patches_field
+        is_patches_plot = patches_field is not None
+
+        schema = dataset.get_field_schema(flat=True)
+
+        if is_patches_plot:
+            _, root = dataset._get_label_field_path(patches_field)
+            root += "."
+            schema = {k: v for k, v in schema.items() if k.startswith(root)}
+
+        nested_fields = set(
+            k for k, v in schema.items() if isinstance(v, fo.ListField)
+        )
+
+        fields = [
+            k
+            for k, v in schema.items()
+            if (
+                isinstance(v, COLOR_BY_TYPES)
+                and not any(
+                    k == r or k.startswith(r + ".") for r in nested_fields
+                )
+            )
+        ]
+
+        # Remove fields with no values
+        counts = dataset.count(fields)
+        fields = [f for f, c in zip(fields, counts) if c > 0]
+
+        return {"fields": fields}
+
+
 Embeddings = [
     Route("/embeddings/plot", OnPlotLoad),
     Route("/embeddings/selection", EmbeddingsSelection),
     Route("/embeddings/extended-stage", EmbeddingsExtendedStage),
+    Route("/embeddings/color-by-choices", ColorByChoices),
 ]
 
 
 def _load_dataset(dataset_name):
     dataset = fo.load_dataset(dataset_name)
-    _DATASET_CACHE[dataset_name] = dataset
+    dataset_cache[dataset_name] = dataset
     return dataset
 
 
