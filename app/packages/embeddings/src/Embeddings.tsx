@@ -11,31 +11,7 @@ import Plot from "react-plotly.js";
 import { Button, Loading, Selector } from "@fiftyone/components";
 import styled from "styled-components";
 import { useToPatches } from "@fiftyone/state";
-// import { usePanelState } from "@fiftyone/spaces";
-
-const placeholderPanelStateAtom = atom({
-  key: "placeholderPanelStateAtom",
-  default: {},
-});
-
-function usePanelState_PLACEHOLDER() {
-  const [state, setState] = useRecoilState(placeholderPanelStateAtom);
-  return [state, setState];
-}
-
-const usePanelState = usePanelState_PLACEHOLDER;
-
-function usePanelField(field, defaultValue = null) {
-  const [state, setState] = usePanelState();
-
-  function setField(value) {
-    setState((s) => ({ ...(s || {}), [field]: value }));
-  }
-
-  const currentValue = state[field];
-
-  return [currentValue === undefined ? defaultValue : currentValue, setField];
-}
+import { usePanelState, usePanelStatePartial } from "@fiftyone/spaces";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -43,7 +19,7 @@ const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
 
 // a react hook that fetches a list of brain results
 // and has a loading state and an error state
-const useBrainResult = () => usePanelField("brainResult", null);
+const useBrainResult = () => usePanelStatePartial("brainResult", null);
 function useBrainResultsSelector() {
   const [selected, setSelected] = useBrainResult();
   const dataset = useRecoilValue(fos.dataset);
@@ -102,7 +78,7 @@ function useColorByChoices() {
 
 // a react hook that allows for selecting a label
 // based on the available labels in the given sample
-const useColorByField = () => usePanelField("colorByField", null);
+const useColorByField = () => usePanelStatePartial("colorByField", null);
 function useLabelSelector() {
   const dataset = useRecoilValue(fos.dataset);
   const fullSchema = useRecoilValue(fos.fullSchema);
@@ -142,7 +118,7 @@ const SELECTION_MODES = [
 ];
 
 function useChooseSelectionMode({ onSelect }) {
-  const [mode, setMode] = usePanelField("selectionMode");
+  const [mode, setMode] = usePanelStatePartial("selectionMode");
   const info = useBrainResultInfo();
   const handlers = {
     onSelect(selected) {
@@ -426,7 +402,10 @@ function useEmbeddings(brainKey, labelField) {
   );
   const hasExtendedSelection =
     extendedSelection && extendedSelection.length > 0;
-  const [plotSelection, setPlotSelection] = usePanelField("plotSelection", []);
+  const [plotSelection, setPlotSelection] = usePanelStatePartial(
+    "plotSelection",
+    []
+  );
   const [overrideStage, setOverrideStage] = useRecoilState(
     fos.extendedSelectionOverrideStage
   );
@@ -481,13 +460,16 @@ function useLoadedPlot(onLoaded) {
   const [brainKey] = useBrainResult();
   const [labelField] = useColorByField();
   const view = useRecoilValue(fos.view);
-  const [loadedPlot, setLoadedPlot] = usePanelField("loadedPlot", null);
-  const [loadingPlot, setLoadingPlot] = usePanelField("loadingPlot", true);
-  const [plotSelection, setPlotSelection] = usePanelField(
+  const [loadedPlot, setLoadedPlot] = usePanelStatePartial("loadedPlot", null);
+  const [loadingPlot, setLoadingPlot] = usePanelStatePartial(
+    "loadingPlot",
+    true
+  );
+  const [plotSelection, setPlotSelection] = usePanelStatePartial(
     "plotSelection",
     EMPTY_ARRAY
   );
-  const [loadingPlotError, setLoadingPlotError] = usePanelField(
+  const [loadingPlotError, setLoadingPlotError] = usePanelStatePartial(
     "loadingPlotError",
     null
   );
@@ -616,7 +598,7 @@ class Color {
 }
 
 function useSetSelectionModeView() {
-  const [plotSelection] = usePanelField("plotSelection");
+  const [plotSelection] = usePanelStatePartial("plotSelection");
   const brainResultInfo = useBrainResultInfo();
   const patchesField = brainResultInfo?.config?.patchesField;
   const setFilterLabelIds = useSetFilterLabelIds();
