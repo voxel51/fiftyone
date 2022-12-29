@@ -198,6 +198,10 @@ export const extendedSelection = atom<string[]>({
   key: "extendedSelection",
   default: null,
 });
+export const extendedSelectionOverrideStage = atom<any>({
+  key: "extendedSelectionOverrideStage",
+  default: null,
+});
 
 export const similarityParameters = atom<
   State.SortBySimilarityParameters & { queryIds: string[] }
