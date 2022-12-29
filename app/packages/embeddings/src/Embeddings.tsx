@@ -47,9 +47,11 @@ const useBrainResult = () => usePanelField("brainResult", null);
 function useBrainResultsSelector() {
   const [selected, setSelected] = useBrainResult();
   const dataset = useRecoilValue(fos.dataset);
+  const [colorByField, setColorByField] = useColorByField();
   const handlers = {
     onSelect(selected) {
       setSelected(selected);
+      setColorByField(null);
     },
     value: selected,
     toKey: (item) => item.key,
@@ -70,44 +72,6 @@ function useBrainResultsSelector() {
   };
 }
 
-// const TYPES_NOT_VISUALIZABLE = ["EmbeddedDocument", "Array", "List", "Dict", "Set", "Tuple"];
-const ALLOWED_TYPES = ["Int", "String", "Float", "Boolean"];
-const LIST_TYPES = [
-  "List",
-  "Dict",
-  "Set",
-  "Tuple",
-  "Detections",
-  "Classifications",
-];
-
-function getFieldTypeName(field) {
-  let type = field.ftype.split(".").pop();
-  return type.replace("Field", "");
-}
-function isVisualizableField(field) {
-  if (field.name === "filepath") return false;
-  const type = getFieldTypeName(field);
-  return ALLOWED_TYPES.includes(type);
-}
-function isListField(field) {
-  const type = getFieldTypeName(field);
-  return LIST_TYPES.includes(type);
-}
-
-function getAvailableFieldsFromSchema({ fields }, results = []) {
-  for (const field of Object.values(fields)) {
-    if (isListField(field)) continue;
-    if (isVisualizableField(field)) {
-      results.push(field.path);
-    }
-    if (field.fields) {
-      getAvailableFieldsFromSchema(field, results);
-    }
-  }
-  return results.sort((a, b) => a.localeCompare(b));
-}
-
 function useColorByChoices() {
   const datasetName = useRecoilValue(fos.datasetName);
   const [brainKey] = useBrainResult();
@@ -121,7 +85,7 @@ function useColorByChoices() {
       fetchColorByChoices({ datasetName, brainKey })
         .then((r) => {
           setIsLoading(false);
-          setAvailableFields(r.fields);
+          setAvailableFields(["uncolored", ...r.fields]);
         })
         .catch((e) => {
           setIsLoading(false);
@@ -147,6 +111,9 @@ function useLabelSelector() {
 
   const handlers = {
     onSelect(selected) {
+      if (selected === "uncolored") {
+        selected = null;
+      }
       setLabel(selected);
     },
     value: label,
@@ -165,7 +132,6 @@ function useLabelSelector() {
     handlers,
     isLoading,
     canSelect: !isLoading && availableFields && availableFields.length > 0,
-    hasSelection: label !== null,
   };
 }
 
@@ -224,8 +190,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
   });
   const brainResultInfo = useBrainResultInfo();
   const canSelect = brainResultSelector.canSelect;
-  const showPlot =
-    brainResultSelector.hasSelection && labelSelector.hasSelection;
+  const showPlot = brainResultSelector.hasSelection && !labelSelector.isLoading;
 
   if (canSelect)
     return (
@@ -281,6 +246,7 @@ function findIndexByKeyValue(array, key, value) {
 
 function tracesToData(traces, style, getColor, plotSelection) {
   const isCategorical = style === "categorical";
+  const isUncolored = style === "uncolored";
   return Object.entries(traces)
     .sort((a, b) => sortStringsAlphabetically(a[0], b[0]))
     .map(([key, trace]) => {
@@ -307,7 +273,7 @@ function tracesToData(traces, style, getColor, plotSelection) {
           color: isCategorical
             ? trace.map((d) => {
                 const selected =
-                  plotSelection.length == 0 || plotSelection.includes(d.id);
+                  plotSelection?.length == 0 || plotSelection?.includes(d.id);
                 if (selected) {
                   return color.toCSSRGBString();
                 } else {
@@ -316,15 +282,18 @@ function tracesToData(traces, style, getColor, plotSelection) {
                     .toCSSRGBString();
                 }
               })
+            : isUncolored
+            ? null
             : trace.map((d) => d.label),
           size: 6,
-          colorbar: !isCategorical
-            ? {
-                lenmode: "fraction",
-                x: 1,
-                y: 0.5,
-              }
-            : undefined,
+          colorbar:
+            isCategorical || isUncolored
+              ? undefined
+              : {
+                  lenmode: "fraction",
+                  x: 1,
+                  y: 0.5,
+                },
         },
         name: key,
         selectedpoints,
@@ -366,10 +335,10 @@ function EmbeddingsPlot({ brainKey, labelField, el, bounds }) {
       {bounds?.width && (
         <Plot
           data={data}
-          onSelected={(selected) => {
-            if (selected.points.length === 0) return;
+          onSelected={(selected, foo) => {
+            console.log("on selected", { selected, foo });
+            if (!selected || selected?.points?.length === 0) return;
 
-            console.log("on selected");
             let result = {};
             let pointIds = [];
             for (const p of selected.points) {
@@ -392,7 +361,7 @@ function EmbeddingsPlot({ brainKey, labelField, el, bounds }) {
               family: "var(--joy-fontFamily-body)",
               size: 14,
             },
-            showlegend: isCategorical && valuesCount > 0,
+            showlegend: isCategorical,
             width: bounds.width - 150, // TODO - remove magic value!
             height: bounds.height - 100, // TODO - remove magic value!
             hovermode: false,
@@ -477,7 +446,7 @@ function useEmbeddings(brainKey, labelField) {
     } else if (extendedSelection && extendedSelection.length) {
       setPlotSelection(extendedSelection);
     } else {
-      setPlotSelection([]);
+      setPlotSelection(null);
     }
   }, [selectedSamples, extendedSelection]);
 
@@ -541,9 +510,7 @@ function useLoadedPlot(onLoaded) {
         setLoadedPlot(res);
       })
       .finally(() => setLoadingPlot(false));
-  }, []);
-
-  console.log({ filters });
+  }, [datasetName, brainKey, labelField]);
 
   // updated the selection when the extended view updates
   useEffect(() => {
@@ -568,7 +535,7 @@ function useLoadedPlot(onLoaded) {
         setPlotSelection(res.selected);
       });
     }
-  }, [view, filters, extendedSelection]);
+  }, [datasetName, brainKey, view, filters, extendedSelection]);
 
   // update the extended stages based on the current view
   useEffect(() => {
@@ -577,7 +544,7 @@ function useLoadedPlot(onLoaded) {
       view,
       plotSelection
     );
-    if (loadedPlot) {
+    if (loadedPlot && Array.isArray(extendedSelection)) {
       fetchExtendedStage({
         datasetName,
         view,
@@ -589,7 +556,7 @@ function useLoadedPlot(onLoaded) {
         });
       });
     }
-  }, [view, extendedSelection]);
+  }, [datasetName, loadedPlot?.patches_field, view, extendedSelection]);
   return {
     ...(loadedPlot || {}),
     isLoading: loadingPlot,

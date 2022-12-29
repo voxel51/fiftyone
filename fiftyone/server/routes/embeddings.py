@@ -46,19 +46,27 @@ class OnPlotLoad(HTTPEndpoint):
         results.use_view(view, allow_missing=True)
         curr_view = results.view
 
+        uncolored_iter = itertools.repeat("uncolored")
+
         # Color by data
-        label_values = curr_view.values(label_field, unwind=True)
-        field = curr_view.get_field(label_field)
-        if isinstance(field, fo.FloatField):
+        label_values = (
+            curr_view.values(label_field, unwind=True)
+            if label_field
+            else uncolored_iter
+        )
+        field = curr_view.get_field(label_field) if label_field else None
+        if field and isinstance(field, fo.FloatField):
             style = "continuous"
             values_count = None
-        else:
+        elif field:
             values_count = len(set(label_values))
             style = (
                 "categorical"
                 if values_count <= MAX_CATEGORIES
                 else "continuous"
             )
+        else:
+            style = "uncolored"
 
         # This is the total number of embeddings in `results`
         index_size = results.total_index_size
@@ -86,7 +94,6 @@ class OnPlotLoad(HTTPEndpoint):
         return {
             "traces": traces,
             "style": style,
-            "values_count": values_count,
             "index_size": index_size,
             "available_count": available_count,
             "missing_count": missing_count,
