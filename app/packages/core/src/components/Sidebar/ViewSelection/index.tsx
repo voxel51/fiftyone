@@ -196,7 +196,7 @@ export default function ViewSelection(props: Props) {
       }
     } else {
       // no view param
-      if (selected && selected.slug !== DEFAULT_SELECTED.slug) {
+      if (!isIPython && selected && selected.slug !== DEFAULT_SELECTED.slug) {
         setSelected(DEFAULT_SELECTED);
         setView(loadedView, [], "", false, "");
       }

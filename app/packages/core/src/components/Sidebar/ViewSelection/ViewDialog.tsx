@@ -278,8 +278,7 @@ export default function ViewDialog(props: Props) {
                 isDeletingSavedView ||
                 !!nameError ||
                 !nameValue ||
-                !isCreating ||
-                // (isCreating && !view?.length) ||
+                (isCreating && !view?.length) ||
                 (initialName === nameValue &&
                   descriptionValue === initialDescription &&
                   colorOption?.color === initialColor)
