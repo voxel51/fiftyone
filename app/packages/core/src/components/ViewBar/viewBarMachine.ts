@@ -287,7 +287,10 @@ const viewBarMachine = createMachine(
                     actions: [
                       assign({
                         activeStage: ({ stages, activeStage }) =>
-                          Math.max(Math.ceil(activeStage - 1), 0),
+                          Math.max(
+                            Math.ceil(activeStage - 1),
+                            stages.length - 1
+                          ),
                       }),
                       "sendStagesUpdate",
                     ],
@@ -323,7 +326,9 @@ const viewBarMachine = createMachine(
                         },
                         {
                           actions: send(({ stages, activeStage }) => {
-                            stages[activeStage].ref.send({ type: "EDIT" });
+                            return stages[activeStage].ref.send({
+                              type: "EDIT",
+                            });
                           }),
                         },
                       ]),
