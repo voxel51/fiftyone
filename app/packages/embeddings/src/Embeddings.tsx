@@ -417,6 +417,7 @@ function useBrainResultInfo() {
 function useEmbeddings(brainKey, labelField) {
   const plot = useLoadedPlot(onLoaded);
   const datasetName = useRecoilValue(fos.datasetName);
+  const [filters, setFilters] = useRecoilState(fos.filters);
   const [extendedSelection, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
@@ -458,6 +459,7 @@ function useEmbeddings(brainKey, labelField) {
     if (selectedResults === null) {
       setOverrideStage(null);
       setSelectedSamples(new Set());
+      setFilters({});
     }
   }
 
