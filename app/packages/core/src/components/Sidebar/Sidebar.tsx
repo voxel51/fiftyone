@@ -379,7 +379,7 @@ enum Direction {
 const SidebarColumn = styled.div`
   position: relative;
   max-height: 100%;
-  height: 100%;
+  height: 92%;
   width: 100%;
 
   overflow-y: scroll;
