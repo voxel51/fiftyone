@@ -11,13 +11,25 @@ import Plot from "react-plotly.js";
 import { Button, Loading, Selector } from "@fiftyone/components";
 import styled from "styled-components";
 import { useToPatches } from "@fiftyone/state";
-import { usePanelState } from "@fiftyone/spaces";
+// import { usePanelState } from "@fiftyone/spaces";
+
+const placeholderPanelStateAtom = atom({
+  key: "placeholderPanelStateAtom",
+  default: {},
+});
+
+function usePanelState_PLACEHOLDER() {
+  const [state, setState] = useRecoilState(placeholderPanelStateAtom);
+  return [state, setState];
+}
+
+const usePanelState = usePanelState_PLACEHOLDER;
 
 function usePanelField(field, defaultValue = null) {
   const [state, setState] = usePanelState();
 
   function setField(value) {
-    setState({ ...state, [field]: value });
+    setState((s) => ({ ...(s || {}), [field]: value }));
   }
 
   const currentValue = state[field];
@@ -98,12 +110,18 @@ function getAvailableFieldsFromSchema({ fields }, results = []) {
 
 // a react hook that allows for selecting a label
 // based on the available labels in the given sample
+const useColorByField = () => usePanelField("colorByField", null);
 function useLabelSelector() {
   const dataset = useRecoilValue(fos.dataset);
   const fullSchema = useRecoilValue(fos.fullSchema);
-  const availableFields = getAvailableFieldsFromSchema({ fields: fullSchema });
-  const [label, setLabel] = usePanelField("colorByField", null);
+  const [availableFields, setAvailableFields] = usePanelField(
+    "availableFields",
+    []
+  );
+  const [label, setLabel] = useColorByField();
   const isPatchesView = useRecoilValue(fos.isPatchesView);
+
+  useEffect(() => {});
 
   const handlers = {
     onSelect(selected) {
@@ -252,7 +270,7 @@ function tracesToData(traces, style, getColor, plotSelection) {
       // const selectedpoints = trace
       //   .map((d, idx) => (d.selected ? idx : null))
       //   .filter((d) => d !== null);
-      const selectedpoints = plotSelection.length
+      const selectedpoints = plotSelection?.length
         ? plotSelection
             .map((id) => findIndexByKeyValue(trace, "id", id))
             .filter((p) => p !== null)
@@ -310,32 +328,31 @@ function tracesToData(traces, style, getColor, plotSelection) {
 
 function EmbeddingsPlot({ brainKey, labelField, el, bounds }) {
   const getColor = useRecoilValue(fos.colorMapRGB(true));
-  const isPatchesView = useRecoilValue(fos.isPatchesView);
 
   const {
     traces,
     style,
     valuesCount,
     isLoading,
-    datasetName,
     handleSelected,
     hasExtendedSelection,
     clearSelection,
     plotSelection,
   } = useEmbeddings(brainKey, labelField);
+
   if (isLoading || !traces) return <h3>Pixelating...</h3>;
   const data = tracesToData(traces, style, getColor, plotSelection);
   const isCategorical = style === "categorical";
 
   return (
     <div style={{ height: "100%" }}>
-      {hasExtendedSelection && (
-        <Button onClick={() => clearSelection()}>Clear Selection</Button>
-      )}
       {bounds?.width && (
         <Plot
           data={data}
           onSelected={(selected) => {
+            if (selected.points.length === 0) return;
+
+            console.log("on selected");
             let result = {};
             let pointIds = [];
             for (const p of selected.points) {
@@ -346,6 +363,10 @@ function EmbeddingsPlot({ brainKey, labelField, el, bounds }) {
               pointIds.push(p.id);
             }
             handleSelected(pointIds);
+          }}
+          onDeselect={() => {
+            console.log("on deselected");
+            handleSelected(null);
           }}
           config={{ scrollZoom: true, displaylogo: false, responsive: true }}
           layout={{
@@ -408,11 +429,8 @@ function useBrainResultInfo() {
 }
 
 function useEmbeddings(brainKey, labelField) {
-  const view = useRecoilValue(fos.view);
-  const filters = useRecoilValue(fos.filters);
-  const extended = useRecoilValue(fos.extendedStagesUnsorted);
+  const plot = useLoadedPlot(onLoaded);
   const datasetName = useRecoilValue(fos.datasetName);
-  const [selectionMode] = usePanelField("selectionMode");
   const [extendedSelection, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
@@ -421,44 +439,18 @@ function useEmbeddings(brainKey, labelField) {
   );
   const hasExtendedSelection =
     extendedSelection && extendedSelection.length > 0;
-  const [state, setState] = usePanelState();
   const [plotSelection, setPlotSelection] = usePanelField("plotSelection", []);
-  function onLoaded({ traces, style, values_count, selected_ids }) {
-    setState({
-      ...(state || {}),
-      traces,
-      style,
-      isLoading: false,
-      valuesCount: values_count,
-    });
-    if (selected_ids) {
-      setPlotSelection([...plotSelection, ...selected_ids]);
-    }
+  const [overrideStage, setOverrideStage] = useRecoilState(
+    fos.extendedSelectionOverrideStage
+  );
+
+  function onLoaded({ selected_ids }) {
+    setPlotSelection(selected_ids);
   }
   function clearSelection() {
-    setExtendedSelection([]);
-    setPlotSelection([]);
+    setExtendedSelection(null);
+    setPlotSelection(null);
   }
-
-  // TODO - split this into two effects, one is for initial load the is for update
-  useEffect(() => {
-    const shouldFetch = brainKey && labelField && datasetName;
-    if (shouldFetch === false) return;
-    setState({ isLoading: true });
-    fetchEmbeddings({
-      dataset: datasetName,
-      brainKey,
-      labelsField: labelField,
-      view,
-      filters,
-      extended,
-      selectionMode,
-      extendedSelection:
-        selectedSamples && selectedSamples.size > 0
-          ? Array.from(selectedSamples)
-          : null,
-    }).then(onLoaded);
-  }, [datasetName, brainKey, labelField, view, filters, selectionMode]); // extended, selectedSamples
 
   useEffect(() => {
     const selected = Array.from(selectedSamples);
@@ -473,13 +465,18 @@ function useEmbeddings(brainKey, labelField) {
   }, [selectedSamples, extendedSelection]);
 
   function handleSelected(selectedResults) {
-    if (selectedResults.length === 0) return;
-    setPlotSelection(selectedResults);
+    // if (selectedResults.length === 0) return;
+    // setPlotSelection(selectedResults);
+    console.log("setting extended selection", selectedResults);
     setExtendedSelection(selectedResults);
+    if (selectedResults === null) {
+      setOverrideStage(null);
+      setSelectedSamples(new Set());
+    }
   }
 
   return {
-    ...state,
+    ...plot,
     datasetName,
     brainKey,
     handleSelected,
@@ -489,28 +486,126 @@ function useEmbeddings(brainKey, labelField) {
   };
 }
 
-const fetchEmbeddings = async ({
-  dataset,
+const EMPTY_ARRAY = [];
+
+function useLoadedPlot(onLoaded) {
+  const datasetName = useRecoilValue(fos.datasetName);
+  const [brainKey] = useBrainResult();
+  const [labelField] = useColorByField();
+  const view = useRecoilValue(fos.view);
+  const [loadedPlot, setLoadedPlot] = usePanelField("loadedPlot", null);
+  const [loadingPlot, setLoadingPlot] = usePanelField("loadingPlot", true);
+  const [plotSelection, setPlotSelection] = usePanelField(
+    "plotSelection",
+    EMPTY_ARRAY
+  );
+  const [loadingPlotError, setLoadingPlotError] = usePanelField(
+    "loadingPlotError",
+    null
+  );
+  const filters = useRecoilValue(fos.filters);
+  const extended = useRecoilValue(fos.extendedStagesUnsorted);
+  const [overrideStage, setOverrideStage] = useRecoilState(
+    fos.extendedSelectionOverrideStage
+  );
+  const [extendedSelection, setExtendedSelection] = useRecoilState(
+    fos.extendedSelection
+  );
+
+  // build the initial plot on load
+  useEffect(() => {
+    console.log("initial load");
+    setLoadingPlot(true);
+    handleInitialPlotLoad({ datasetName, brainKey, view, labelField })
+      .catch((err) => setLoadingPlotError(err))
+      .then((res) => {
+        onLoaded(res);
+        setLoadingPlotError(null);
+        setLoadedPlot(res);
+      })
+      .finally(() => setLoadingPlot(false));
+  }, []);
+
+  console.log({ filters });
+
+  // updated the selection when the extended view updates
+  useEffect(() => {
+    console.log("updated the selection when the extended view updates", {
+      view,
+      extended,
+      filters,
+      extendedSelection,
+    });
+
+    if (loadedPlot) {
+      const resolvedExtended = extendedSelection ? extended : null;
+      fetchUpdatedSelection({
+        datasetName,
+        brainKey,
+        view,
+        filters,
+        extended: resolvedExtended,
+        extendedSelection,
+      }).then((res) => {
+        console.log("setting plot selection to", res.selected);
+        setPlotSelection(res.selected);
+      });
+    }
+  }, [view, filters, extendedSelection]);
+
+  // update the extended stages based on the current view
+  useEffect(() => {
+    console.log(
+      "update the extended stages based on the current view",
+      view,
+      plotSelection
+    );
+    if (loadedPlot) {
+      fetchExtendedStage({
+        datasetName,
+        view,
+        patchesField: loadedPlot.patches_field,
+        selection: extendedSelection,
+      }).then((res) => {
+        setOverrideStage({
+          [res._cls]: res.kwargs,
+        });
+      });
+    }
+  }, [view, extendedSelection]);
+  return {
+    ...(loadedPlot || {}),
+    isLoading: loadingPlot,
+    error: loadingPlotError,
+  };
+}
+
+async function handleInitialPlotLoad({
+  datasetName,
   brainKey,
-  labelsField,
   view,
-  filters,
-  extended,
-  extendedSelection,
-  selectionMode,
-}) => {
-  const res = await getFetchFunction()("POST", "/embeddings", {
+  labelField,
+}) {
+  const res = await getFetchFunction()("POST", "/embeddings/plot", {
+    datasetName,
     brainKey,
-    labelsField,
-    filters,
-    dataset,
     view,
-    extended,
-    extendedSelection,
-    selectionMode,
+    labelField,
   });
   return res;
-};
+}
+
+async function fetchUpdatedSelection(params) {
+  const { dataset, brainKey, view, filters, extended, extendedSelection } =
+    params;
+
+  return getFetchFunction()("POST", "/embeddings/selection", params);
+}
+
+async function fetchExtendedStage(params) {
+  const { datasetName, view, patchesField, selection } = params;
+  return getFetchFunction()("POST", "/embeddings/extended-stage", params);
+}
 
 class Color {
   static fromCSSRGBValues(r, g, b) {
@@ -541,7 +636,7 @@ function useSetSelectionModeView() {
     if (mode === "select" && plotSelection && plotSelection.length > 0) {
       // setFilterLabelIds(patchesField, plotSelection)
     } else if (mode === "patches") {
-      toPatches(patchesField);
+      // toPatches(patchesField);
     }
   };
 

@@ -333,6 +333,12 @@ export const extendedStagesUnsorted = selector({
   key: "extendedStagesUnsorted",
   get: ({ get }) => {
     const sampleIds = get(atoms.extendedSelection);
+    const extendedSelectionOverrideStage = get(
+      atoms.extendedSelectionOverrideStage
+    );
+    if (extendedSelectionOverrideStage) {
+      return extendedSelectionOverrideStage;
+    }
     return {
       "fiftyone.core.stages.Select":
         sampleIds && sampleIds.length
