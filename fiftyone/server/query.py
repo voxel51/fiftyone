@@ -133,10 +133,7 @@ class SavedView:
     @classmethod
     def from_doc(cls, doc: SavedViewDocument):
         stage_dicts = [json_util.loads(x) for x in doc.view_stages]
-        saved_view = from_dict(
-            data_class=cls,
-            data=doc.serialize(),
-        )
+        saved_view = from_dict(data_class=cls, data=doc.to_dict())
         saved_view.stage_dicts = stage_dicts
         return saved_view
 
@@ -221,7 +218,6 @@ class Dataset:
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
         doc["saved_views"] = doc.get("saved_views", [])
-
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -417,15 +413,12 @@ def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
 
 
 async def serialize_dataset(
-    *,
-    dataset_name: str,
-    serialized_view: BSONArray,
-    view_name: t.Optional[str]
+    dataset_name: str, serialized_view: BSONArray, view_name: t.Optional[str]
 ) -> Dataset:
     def run():
         dataset = fo.load_dataset(dataset_name)
-
         dataset.reload()
+
         if view_name is not None and dataset.has_saved_view(view_name):
             view = dataset.load_saved_view(view_name)
         else:

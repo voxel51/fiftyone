@@ -2025,7 +2025,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         dataset = sample_collection._dataset
         dataset_dict = dataset._doc.to_dict()
-        dataset_dict["saved_views"] = {}
+        dataset_dict["saved_views"] = []
         dataset_dict["annotation_runs"] = {}
         dataset_dict["brain_methods"] = {}
         dataset_dict["evaluations"] = {}

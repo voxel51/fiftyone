@@ -143,11 +143,36 @@ to load the view in a future session:
     cats_view = dataset.load_saved_view("cats-view")
     print(cats_view)
 
-    # Cleanup
-    dataset.delete()
+.. note::
+
+    Did you know? You can also save, load, and edit saved views directly
+    :ref:`from the App <app-saving-views>`!
+
+Saved views have certain editable metadata such as a description that you can
+view via
+:meth:`get_saved_view_info() <fiftyone.core.dataset.Dataset.get_saved_view_info>`
+and update via
+:meth:`update_saved_view_info() <fiftyone.core.dataset.Dataset.get_saved_view_info>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Get a saved view's editable info
+    print(dataset.get_saved_view_info("cats-view"))
+
+    # Update the saved view's name and add a description
+    info = dict(
+        name="still-cats-view",
+        description="a view that only contains cats",
+    )
+    dataset.update_saved_view_info("cats-view", info)
+
+    # Verify that the info has been updated
+    print(dataset.get_saved_view_info("still-cats-view"))
 
 You can also use
-:meth:`has_saved_view() <fiftyone.core.dataset.Dataset.has_saved_view>`
+:meth:`list_saved_views() <fiftyone.core.dataset.Dataset.list_saved_views>`,
+:meth:`has_saved_view() <fiftyone.core.dataset.Dataset.has_saved_view>`,
 and
 :meth:`delete_saved_view() <fiftyone.core.dataset.Dataset.delete_saved_view>`
 to manage your saved views.
