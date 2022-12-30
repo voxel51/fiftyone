@@ -9,12 +9,11 @@ import itertools
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
+from starlette.routing import Route
 
 import fiftyone as fo
 from fiftyone.server.decorators import route
 import fiftyone.server.view as fosv
-
-from starlette.routing import Mount, Route
 
 
 MAX_CATEGORIES = 100
@@ -26,7 +25,7 @@ dataset_cache = {}
 class OnPlotLoad(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        """Loads an embeddings plot based on the curent view."""
+        """Loads an embeddings plot based on the current view."""
         dataset_name = data["datasetName"]
         brain_key = data["brainKey"]
         stages = data["view"]
@@ -35,7 +34,6 @@ class OnPlotLoad(HTTPEndpoint):
         dataset = _load_dataset(dataset_name)
         results = dataset.load_brain_results(brain_key)
 
-        # This is the view loaded in the view bar
         view = fosv.get_view(dataset_name, stages=stages)
 
         patches_field = results.config.patches_field
@@ -44,39 +42,31 @@ class OnPlotLoad(HTTPEndpoint):
         # Determines which points from `results` are in `view`, which are the
         # only points we want to display in the embeddings plot
         results.use_view(view, allow_missing=True)
-        curr_view = results.view
-
-        uncolored_iter = itertools.repeat("uncolored")
 
         # Color by data
-        label_values = (
-            curr_view.values(label_field, unwind=True)
-            if label_field
-            else uncolored_iter
-        )
-        field = curr_view.get_field(label_field) if label_field else None
-        if field and isinstance(field, fo.FloatField):
-            style = "continuous"
-            values_count = None
-        elif field:
-            values_count = len(set(label_values))
-            style = (
-                "categorical"
-                if values_count <= MAX_CATEGORIES
-                else "continuous"
-            )
+        if label_field:
+            labels = results.view.values(label_field, unwind=True)
+            field = results.view.get_field(label_field)
+            if isinstance(field, fo.FloatField):
+                style = "continuous"
+            else:
+                if len(set(labels)) <= MAX_CATEGORIES:
+                    style = "categorical"
+                else:
+                    style = "continuous"
         else:
+            labels = itertools.repeat("uncolored")
             style = "uncolored"
 
-        # This is the total number of embeddings in `results`
+        # The total number of embeddings in `results`
         index_size = results.total_index_size
 
-        # This is the number of embeddings in `results` that exist in `view`.
-        # Any operations that we do with `results` can only work with this data
+        # The number of embeddings in `results` that exist in `view`. Any
+        # operations that we do with `results` can only work with this data
         available_count = results.index_size
 
-        # This is the number of samples/patches in `view` that `results`
-        # doesn't have embeddings for
+        # The number of samples/patches in `view` that `results` doesn't have
+        # embeddings for
         missing_count = results.missing_size
 
         curr_points = results._curr_points
@@ -88,7 +78,7 @@ class OnPlotLoad(HTTPEndpoint):
         selected = itertools.repeat(True)
 
         traces = {}
-        for data in zip(curr_ids, curr_points, label_values, selected):
+        for data in zip(curr_ids, curr_points, labels, selected):
             _add_to_trace(traces, style, *data)
 
         return {
@@ -120,9 +110,9 @@ class EmbeddingsSelection(HTTPEndpoint):
         dataset = _load_dataset(dataset_name)
         results = dataset.load_brain_results(brain_key)
 
-        # Assume `results.use_view()` was already updated by `on_plot_load()`
-        # view = fosv.get_view(dataset_name, stages=stages)
-        # results.use_view(view, allow_missing=True)
+        view = fosv.get_view(dataset_name, stages=stages)
+        if results.view != view:
+            results.use_view(view, allow_missing=True)
 
         patches_field = results.config.patches_field
         is_patches_plot = patches_field is not None
@@ -133,7 +123,6 @@ class EmbeddingsSelection(HTTPEndpoint):
             curr_ids = results._curr_sample_ids
 
         if filters or extended_stages:
-            # Select points in extended view and deselect others
             extended_view = fosv.get_view(
                 dataset_name,
                 stages=stages,
@@ -203,14 +192,14 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
 class ColorByChoices(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        """Generates a list of color-by options for an embeddings plot."""
+        """Generates a list of color-by field choices for an embeddings plot."""
         dataset_name = data["datasetName"]
         brain_key = data["brainKey"]
 
         dataset = _load_dataset(dataset_name)
-        results = dataset.load_brain_results(brain_key)
+        info = dataset.get_brain_info(brain_key)
 
-        patches_field = results.config.patches_field
+        patches_field = info.config.patches_field
         is_patches_plot = patches_field is not None
 
         schema = dataset.get_field_schema(flat=True)
