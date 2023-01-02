@@ -1080,9 +1080,6 @@ class ZooDataset(object):
         if cleanup:
             etau.delete_dir(scratch_dir)
 
-        if self.has_patches:
-            self._patch_dataset_if_necessary(dataset_dir)
-
         return info, dataset_dir
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
@@ -1110,15 +1107,17 @@ class ZooDataset(object):
             "subclasses must implement _download_and_prepare()"
         )
 
-    def _patch_dataset_if_necessary(self, dataset_dir):
+    def _patch_if_necessary(self, dataset_dir, split):
         """Internal method called when an already downloaded dataset may need
         to be patched.
 
         Args:
             dataset_dir: the directory containing the dataset
+            split: the split to patch, or None if the dataset does not have
+                splits
         """
         raise NotImplementedError(
-            "subclasses must implement _patch_dataset_if_necessary()"
+            "subclasses must implement _patch_if_necessary()"
         )
 
     def _get_splits_to_download(
@@ -1150,6 +1149,9 @@ class ZooDataset(object):
         if self.supports_partial_downloads:
             return False
 
+        if self.has_patches:
+            self._patch_if_necessary(dataset_dir, split)
+
         if self.requires_manual_download:
             logger.info("Split '%s' already prepared", split)
         else:
@@ -1171,6 +1173,9 @@ class ZooDataset(object):
 
         if self.supports_partial_downloads:
             return False
+
+        if self.has_patches:
+            self._patch_if_necessary(dataset_dir, None)
 
         if self.requires_manual_download:
             logger.info("Dataset already prepared")

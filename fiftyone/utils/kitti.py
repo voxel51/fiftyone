@@ -14,7 +14,6 @@ import os
 
 import numpy as np
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -972,45 +971,6 @@ def _normalize_3d_detections(detections):
 
 def _swap_coordinates(vec):
     return [vec[0], vec[2], -vec[1]]
-
-
-def _normalize_dataset_if_necessary(dataset_dir):
-    try:
-        metadata_path = os.path.join(dataset_dir, "metadata.json")
-        metadata = etas.read_json(metadata_path)
-        config = metadata["info"]["app_config"]["plugins"]["3d"]
-        should_normalize = "itemRotation" in config["overlay"]
-    except:
-        should_normalize = False
-
-    if not should_normalize:
-        return
-
-    logger.info("Normalizing 3D detections...")
-
-    dataset = fo.Dataset.from_dir(
-        dataset_dir=dataset_dir,
-        dataset_type=fo.types.FiftyOneDataset,
-    )
-
-    view = dataset.select_group_slices(media_type="point-cloud")
-    schema = view.get_field_schema(embedded_doc_type=fo.Detections)
-    for label_field in schema.keys():
-        view.set_values(
-            label_field,
-            [_normalize_3d_detections(d) for d in view.values(label_field)],
-        )
-
-    dataset.app_config.plugins["3d"] = {
-        "defaultCameraPosition": {"x": 0, "y": 0, "z": 100}
-    }
-    dataset.save()
-
-    dataset.export(
-        export_dir=dataset_dir,
-        dataset_type=fo.types.FiftyOneDataset,
-        export_media=False,
-    )
 
 
 def _load_calibration_matrices(inpath):

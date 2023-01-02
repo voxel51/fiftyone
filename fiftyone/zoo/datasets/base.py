@@ -9,6 +9,7 @@ import logging
 import os
 import shutil
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -2238,8 +2239,19 @@ class KITTIMultiviewDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, None
 
-    def _patch_dataset_if_necessary(self, dataset_dir):
-        foukt._normalize_dataset_if_necessary(dataset_dir)
+    def _patch_if_necessary(self, dataset_dir, split):
+        try:
+            split_dir = os.path.join(dataset_dir, split)
+            metadata_path = os.path.join(split_dir, "metadata.json")
+            metadata = etas.read_json(metadata_path)
+            config = metadata["info"]["app_config"]["plugins"]["3d"]
+            is_legacy = "itemRotation" in config["overlay"]
+        except:
+            is_legacy = False
+
+        if is_legacy:
+            logger.info("Patching existing download...")
+            foukt._prepare_kitti_split(split_dir, overwrite=True)
 
 
 class LabeledFacesInTheWildDataset(FiftyOneDataset):
@@ -2721,8 +2733,20 @@ class QuickstartGroupsDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, classes
 
-    def _patch_dataset_if_necessary(self, dataset_dir):
-        foukt._normalize_dataset_if_necessary(dataset_dir)
+    def _patch_if_necessary(self, dataset_dir, _):
+        try:
+            metadata_path = os.path.join(dataset_dir, "metadata.json")
+            metadata = etas.read_json(metadata_path)
+            config = metadata["info"]["app_config"]["plugins"]["3d"]
+            is_legacy = "itemRotation" in config["overlay"]
+        except:
+            is_legacy = False
+
+        if is_legacy:
+            logger.info("Downloading patched dataset...")
+            scratch_dir = os.path.join(dataset_dir, "tmp-download")
+            self._download_and_prepare(dataset_dir, scratch_dir, None)
+            etau.delete_dir(scratch_dir)
 
 
 class UCF101Dataset(FiftyOneDataset):
