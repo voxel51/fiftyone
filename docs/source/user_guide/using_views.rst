@@ -2437,19 +2437,8 @@ to do this:
 
 .. note::
 
-    In order to populate a *new field* using
-    :meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>`,
-    you must first declare the new field on the dataset via
-    :meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`:
-
-    .. code-block:: python
-
-        # Record the number of predictions in each sample in a new field
-        dataset.add_sample_field("num_predictions", fo.IntField)
-        view = dataset.set_field("num_predictions", F("predictions.detections").length())
-
-        view.save("num_predictions")  # save the new field's values on the dataset
-        print(dataset.bounds("num_predictions"))  # (1, 100)
+    You can use :ref:`virtual fields <virtual-view-fields>` to add new fields
+    to views that do not exist on the underlying dataset!
 
 The |ViewExpression| language is quite powerful, allowing you to define complex
 operations without needing to write an explicit Python loop to perform the
@@ -2484,6 +2473,208 @@ passing the name(s) of specific field(s) that you want to save:
 
     # Saves `predictions` field's contents in the view permanently to dataset
     top5_view.save("predictions")
+
+.. _virtual-view-fields:
+
+Virtual view fields
+___________________
+
+You can use
+:meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>` to
+declare :ref:`virtual fields <virtual-fields>` on views whose values are
+derived from other fields of the collection.
+
+Unlike ordinary fields, virtual field values are not stored in the database;
+they are dynamically computed and attached to samples when the view is
+iterated/aggregated/etc. Thus adding virtual fields to views has no affect on
+the underlying dataset.
+
+.. note::
+
+    Did you know? You can also declare virtual fields directly
+    :ref:`on datasets <virtual-fields>`.
+
+To add a virtual field to a view, simply include the `ftype` argument to
+:meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>` to
+identify the type of values your expression generates:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.compute_metadata()
+
+    bbox_area = (
+        F("$metadata.width") * F("bounding_box")[2] *
+        F("$metadata.height") * F("bounding_box")[3]
+    )
+
+    #
+    # Add two virtual fields
+    # - a top-level virtual field that counts the number of objects in the
+    #   `ground_truth` field
+    # - a nested virtual field that contains the area of each ground truth
+    #   bounding box, in pixels
+    #
+    virtual_view = (
+        dataset
+        .set_field(
+            "num_objects",
+            F("ground_truth.detections").length(),
+            ftype=fo.IntField,
+        )
+        .set_field(
+            "ground_truth.detections.area_pixels",
+            bbox_area,
+            ftype=fo.FloatField,
+        )
+    )
+
+The `expr` defining a virtual field may be any valid |ViewExpression|. Refer to
+:meth:`this section <view-filtering>` for more information about view
+expressions.
+
+When declaring top-level virtual fields, `expr` is interpreted relative to the
+root of the |Sample|; when declaring nested virtual fields, `expr` is
+interpreted relative to the root of the nested object on which the field is
+being declared.
+
+.. note::
+
+    Using
+    :meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>`
+    as described in :ref:`this section <transforming-view-fields>` without the
+    `ftype` argument does not create virtual fields; it simply modifies the
+    existing field or populates an undeclared embedded attribute.
+
+Virtual fields are included in the view's schema, just like regular fields:
+
+.. code-block:: python
+    :linenos:
+
+    assert "num_objects" in virtual_view.get_field_schema()
+    assert "ground_truth.detections.area_pixels" in virtual_view.get_field_schema(flat=True)
+
+You can also use
+:meth:`get_virtual_field_schema() <fiftyone.core.collections.SampleCollection.get_virtual_field_schema>`
+to retrieve only the virtual fields of a view:
+
+.. code-block:: python
+    :linenos:
+
+    print(list(virtual_view.get_virtual_field_schema()))
+    # ['num_objects', 'ground_truth.detections.area_pixels']
+
+Since virtual fields are dynamically computed, they are read-only on samples:
+
+.. code-block:: python
+    :linenos:
+
+    sample = virtual_view.first()
+    print(sample.num_objects)  # 3
+
+    sample.num_objects = 4
+    # ValueError: Virtual fields cannot be edited
+
+Virtual fields are computed *after* all view stages. So, for example, if you
+filter a view that contains virtual fields, its virtual fields will reflect the
+contents of the view after filtering:
+
+.. code-block:: python
+    :linenos:
+
+    print(virtual_view.bounds("num_objects"))
+    # (0, 39)
+
+    print(virtual_view.bounds("ground_truth.detections.area_pixels"))
+    # (6.37, 353569.23)
+
+    view = virtual_view.filter_labels("ground_truth", F("label") == "carrot")
+
+    print(view.bounds("num_objects"))
+    # (1, 13)
+
+    print(view.bounds("ground_truth.detections.area_pixels"))
+    # (155.34, 118266.53)
+
+However, if you need to write a view that explicitly filters on a virtual
+field, you can use
+:meth:`materialize() <fiftyone.core.collections.SampleCollection.materialize>`
+to inject the virtual field's values so they can be filtered on:
+
+.. code-block:: python
+    :linenos:
+
+    view = (
+        virtual_view
+        .filter_labels("ground_truth", F("label") == "person")
+        .materialize("num_objects")
+        .match(F("num_objects") > 10)
+        .sort_by(F("num_objects"), reverse=True)
+    )
+
+    print(view.values("num_objects"))
+    # [14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 13, 13, 13, 11]
+
+.. note::
+
+    The values of materialized virtual fields are always recomputed after the
+    final view stage is applied, as their contents may be affected by view
+    stages after
+    :meth:`materialize() <fiftyone.core.collections.SampleCollection.materialize>`.
+
+Virtual view fields can be selected/excluded from schemas as usual:
+
+.. code-block:: python
+    :linenos:
+
+    view = virtual_view.exclude_fields("num_objects")
+    assert "num_objects" not in view.get_field_schema()
+
+    view = virtual_view.exclude_fields("ground_truth")
+    assert "ground_truth" not in view.get_field_schema()
+
+    view = virtual_view.exclude_fields("ground_truth.detections.area_pixels")
+    assert "ground_truth.detections.area_pixels" not in view.get_field_schema(flat=True)
+
+Virtual view fields can also be permanently added to the underlying dataset by
+calling :meth:`save() <fiftyone.core.view.DatasetView.save>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Save virtual field to the underlying dataset
+    virtual_view.save(fields="num_objects")
+
+    assert "num_objects" in dataset.get_virtual_field_schema()
+
+You can also convert virtual view fields into regular fields whose values are
+stored in the database by passing the `materialize=True` flag to
+:meth:`save() <fiftyone.core.view.DatasetView.save>`::
+
+.. code-block:: python
+    :linenos:
+
+    # Converts all remaining virtual view fields into regular fields on the
+    # underlying dataset
+    virtual_view.save(materialize=True)
+
+    assert "ground_truth.detections.area_pixels" in dataset.get_field_schema(flat=True)
+    assert "ground_truth.detections.area_pixels" not in dataset.get_virtual_field_schema()
+
+    # Fields are no longer virtual; the values are now stored in the database
+    print(dataset.bounds("num_objects"))  # (0, 39)
+    print(dataset.bounds("ground_truth.detections.area_pixels"))  # (6.37, 353569.23)
+
+When working with :ref:`video views <video-views>`, you can also declare
+virtual frame fields using
+:meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>` and
+view virtual frame schemas using
+:meth:`get_virtual_frame_field_schema() <fiftyone.core.collections.SampleCollection.get_virtual_frame_field_schema>`.
 
 .. _saving-and-cloning-views:
 
