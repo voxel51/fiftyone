@@ -2468,7 +2468,7 @@ class OpenImagesV6Dataset(FiftyOneDataset):
     def supports_partial_downloads(self):
         return True
 
-    def _download_and_prepare(self, dataset_dir, version, split):
+    def _download_and_prepare(self, dataset_dir, _, split):
         num_samples, classes, downloaded = fouo.download_open_images_split(
             dataset_dir,
             split,
@@ -2496,7 +2496,7 @@ class OpenImagesV7Dataset(FiftyOneDataset):
     which are annotated and available via this zoo dataset.
 
     The dataset contains annotations for classification, detection,
-    segmentation, and visual relationship tasks for the 600 boxable object
+    segmentation, point labels, and visual relationship tasks for the 600 boxable object
     classes.
 
     This dataset supports partial downloads:
@@ -2648,7 +2648,7 @@ class OpenImagesV7Dataset(FiftyOneDataset):
         return (
             "image",
             "detection",
-            "point",
+            "keypoint",
             "segmentation",
             "classification",
         )

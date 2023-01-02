@@ -101,9 +101,9 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
                 os.path.split(f)[1]
                 for f in glob(os.path.join(dataset_dir, "labels/*"))
             ]:
-                label_types = _SUPPORTED_LABEL_TYPES_v7
+                label_types = _SUPPORTED_LABEL_TYPES_V7
             else:
-                label_types = _SUPPORTED_LABEL_TYPES_v6
+                label_types = _SUPPORTED_LABEL_TYPES_V6
         elif type(label_types) != list:
             label_types = [label_types]
 
@@ -383,9 +383,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         return self._info
 
 
-################################################################
-
-
 def get_attributes(version="v7", dataset_dir=None):
     """Gets the list of relationship attributes in the Open Images dataset.
 
@@ -417,8 +414,8 @@ def get_attributes(version="v7", dataset_dir=None):
 
 
 def get_classes(version="v7", dataset_dir=None):
-    """Gets the boxable classes that exist in classifications, detections, points, and
-    relationships in the Open Images dataset.
+    """Gets the boxable classes that exist in classifications, detections,
+    points, and relationships in the Open Images dataset.
 
     This method can be called in isolation without downloading the dataset.
 
@@ -514,13 +511,13 @@ def get_point_classes(version="v7", dataset_dir=None):
         # Download file to temporary location
         with etau.TempDir() as tmp_dir:
             pnt_classes_map, _ = _get_pnt_classes_map(tmp_dir, download=True)
-    # return pnt_classes
     return pnt_classes_map
 
 
 def download_open_images_split(
     dataset_dir,
     split,
+    version="v6",
     label_types=None,
     classes=None,
     attrs=None,
@@ -529,10 +526,10 @@ def download_open_images_split(
     shuffle=None,
     seed=None,
     max_samples=None,
-    version="v7",
 ):
     """Utility that downloads full or partial splits of the
-    `Open Images dataset <https://storage.googleapis.com/openimages/web/index.html>`_.
+    `Open Images dataset
+    <https://storage.googleapis.com/openimages/web/index.html>`_.
 
     See :class:`fiftyone.types.OpenImagesDataset` for the format in which
     ``dataset_dir`` will be arranged.
@@ -552,7 +549,8 @@ def download_open_images_split(
             Supported values are ``("v6", "v7")``
         label_types (None): a label type or list of label types to load. The
             supported values are
-            ``("detections", "classifications", "relationships", "segmentations")``
+            ``("detections", "classifications", "relationships",
+            "segmentations")``
             for ``"v6"`` and
             ``("detections", "classifications", "points", "relationships",
             "segmentations")`` for ``"v7"``.
@@ -992,27 +990,27 @@ def _parse_and_verify_image_ids(image_ids, dataset_dir, split, download=True):
 
 
 def _parse_label_types(version, label_types):
-    _SLT = _SUPPORTED_LABEL_TYPES[version]
+    slt = _SUPPORTED_LABEL_TYPES[version]
     if label_types is None:
-        return _SLT
+        return slt
 
     if etau.is_str(label_types):
         label_types = [label_types]
     else:
         label_types = list(label_types)
 
-    bad_types = [l for l in label_types if l not in _SLT]
+    bad_types = [l for l in label_types if l not in slt]
 
     if len(bad_types) == 1:
         raise ValueError(
             "Unsupported label type '%s'. Supported types are %s"
-            % (bad_types[0], _SLT)
+            % (bad_types[0], slt)
         )
 
     if len(bad_types) > 1:
         raise ValueError(
             "Unsupported label types %s. Supported types are %s"
-            % (bad_types, _SLT)
+            % (bad_types, slt)
         )
 
     return label_types
@@ -1530,7 +1528,8 @@ def _create_detections(det_data, image_id, classes_map):
         return fol.Detections()
 
     def _make_label(row):
-        # ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside
+        # ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,
+        #   IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside
 
         xmin = float(row["XMin"])
         xmax = float(row["XMax"])
@@ -1565,7 +1564,8 @@ def _create_relationships(rel_data, image_id, classes_map, attrs_map):
         return fol.Detections()
 
     def _make_label(row):
-        # ImageID,LabelName1,LabelName2,XMin1,XMax1,YMin1,YMax1,XMin2,XMax2,YMin2,YMax2,RelationshipLabel
+        # ImageID,LabelName1,LabelName2,XMin1,XMax1,YMin1,YMax1,XMin2,
+        #   XMax2,YMin2,YMax2,RelationshipLabel
 
         oi_label1 = row["LabelName1"]
         xmin1 = float(row["XMin1"])
@@ -1663,7 +1663,8 @@ def _create_segmentations(seg_data, image_id, classes_map, dataset_dir):
         return fol.Detections()
 
     def _make_label(row):
-        # MaskPath,ImageID,LabelName,BoxID,BoxXMin,BoxXMax,BoxYMin,BoxYMax,PredictedIoU,Clicks
+        # MaskPath,ImageID,LabelName,BoxID,BoxXMin,BoxXMax,BoxYMin,BoxYMax,
+        #   PredictedIoU,Clicks
 
         mask_path = row["MaskPath"]
         label = classes_map[row["LabelName"]]
@@ -1915,14 +1916,14 @@ _BUCKET_NAME = "open-images-dataset"
 
 _CSV_DELIMITERS = [",", ";", ":", " ", "\t", "\n"]
 
-_SUPPORTED_LABEL_TYPES_v6 = [
+_SUPPORTED_LABEL_TYPES_V6 = [
     "classifications",
     "detections",
     "relationships",
     "segmentations",
 ]
 
-_SUPPORTED_LABEL_TYPES_v7 = [
+_SUPPORTED_LABEL_TYPES_V7 = [
     "classifications",
     "detections",
     "points",
@@ -1931,8 +1932,8 @@ _SUPPORTED_LABEL_TYPES_v7 = [
 ]
 
 _SUPPORTED_LABEL_TYPES = {
-    "v6": _SUPPORTED_LABEL_TYPES_v6,
-    "v7": _SUPPORTED_LABEL_TYPES_v7,
+    "v6": _SUPPORTED_LABEL_TYPES_V6,
+    "v7": _SUPPORTED_LABEL_TYPES_V7,
 }
 
 
