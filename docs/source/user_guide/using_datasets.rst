@@ -1138,8 +1138,8 @@ New fields can be added to a |Sample| using item assignment:
     sample["integer_field"] = 51
     sample.save()
 
-If the |Sample| belongs to a |Dataset|, the dataset's field schema will be
-updated to reflect the new field:
+If the |Sample| belongs to a |Dataset|, the dataset's schema will automatically
+be updated to reflect the new field:
 
 .. code-block:: python
     :linenos:
@@ -1167,7 +1167,7 @@ A |Field| can be any primitive type, such as `bool`, `int`, `float`, `str`,
 .. code-block:: python
     :linenos:
 
-    sample["ground_truth"] = fo.Classification(label="alligator")
+    sample["animals"] = fo.Classification(label="alligator")
     sample.save()
 
 Whenever a new field is added to a sample in a dataset, the field is available
@@ -1449,6 +1449,83 @@ removed from every |Sample| in the dataset:
     sample.integer_field
     # AttributeError: Sample has no field 'integer_field'
 
+.. _adding-dataset-fields:
+
+Adding fields to a dataset
+--------------------------
+
+You can use
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>` to
+declare new fields on a dataset before populating any samples with values for
+the fields:
+
+.. code-block:: python
+    :linenos:
+
+    # Declare a new primitive field
+    dataset.add_sample_field("float_field", fo.FloatField)
+
+    # Delcare a new Label field
+    dataset.add_sample_field(
+        "ground_truth",
+        fo.EmbeddedDocumentField,
+        embedded_doc_type=fo.Detections,
+    )
+
+    print(dataset)
+
+.. code-block:: text
+
+    Name:           a_dataset
+    Media type:     image
+    Num samples:    1
+    Persistent:     False
+    Tags:           []
+    Sample fields:
+        id:            fiftyone.core.fields.ObjectIdField
+        filepath:      fiftyone.core.fields.StringField
+        tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        float_field:   fiftyone.core.fields.FloatField
+        ground_truth:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+
+Any fields you declare will automatically be available on all samples in the
+dataset with default value `None`:
+
+.. code-block:: python
+    :linenos:
+
+    print(dataset.first())
+
+.. code-block:: text
+
+    <Sample: {
+        'id': '63b30625ccf3be2b3cd51569',
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'float_field': None,
+        'ground_truth': None,
+    }>
+
+.. note::
+
+    Did you know? You can also declare :meth:`virtual fields <virtual-fields>`
+    on datasets whose values are dynamically computed from other fields rather
+    than being explicitly stored in the database.
+
+You can use
+:meth:`delete_sample_field() <fiftyone.core.dataset.Dataset.delete_sample_field>`
+and
+:meth:`delete_sample_fields() <fiftyone.core.dataset.Dataset.delete_sample_fields>`
+to delete fields from a dataset (and thus all samples in it):
+
+.. code-block:: python
+    :linenos:
+
+    dataset.delete_sample_fields(["float_field", "ground_truth"])
+
 .. _using-media-type:
 
 Media type
@@ -1459,23 +1536,21 @@ the source media and available via the `media_type` attribute of the sample,
 which is read-only.
 
 Media type is inferred from the
-`MIME type <https://en.wikipedia.org/wiki/Media_type>`__ of the file on disk,
-as per the table below:
+`MIME type <https://en.wikipedia.org/wiki/Media_type>`__ or file extension the
+file on disk, as per the table below:
 
 .. table::
-    :widths: 35 30 35
+    :widths: 25 25 25 25
 
-    +---------------------+----------------+----------------------------------+
-    | MIME type/extension | `media_type`   | Description                      |
-    +=====================+================+==================================+
-    | `image/*`           | `image`        | Image sample                     |
-    +---------------------+----------------+----------------------------------+
-    | `video/*`           | `video`        | Video sample                     |
-    +---------------------+----------------+----------------------------------+
-    | `*.pcd`             | `point-cloud`  | Point cloud sample               |
-    +---------------------+----------------+----------------------------------+
-    | other               | `-`            | Generic sample                   |
-    +---------------------+----------------+----------------------------------+
+    +----------------+------------+----------------+---------------------+
+    | File extension | MIME type  | `media_type`   | Description         |
+    +================+============+================+=====================+
+    |                | `image/*`  | `image`        | Image sample        |
+    +----------------+------------+----------------+---------------------+
+    |                | `video/*`  | `video`        | Video sample        |
+    +----------------+------------+----------------+---------------------+
+    | `*.pcd`        |            | `point-cloud`  | Point cloud sample  |
+    +----------------+------------+----------------+---------------------+
 
 .. note::
 
