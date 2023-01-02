@@ -2878,4 +2878,10 @@ def _download_and_extract_archive(
 
 def _move_dir(src, dst):
     for f in os.listdir(src):
+        _dst = os.path.join(dst, f)
+        if os.path.isfile(_dst):
+            os.remove(_dst)
+        elif os.path.isdir(_dst):
+            shutil.rmtree(_dst, ignore_errors=True)
+
         shutil.move(os.path.join(src, f), dst)
