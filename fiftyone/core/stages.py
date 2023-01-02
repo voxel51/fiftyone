@@ -913,8 +913,7 @@ class ExcludeFields(ViewStage):
             return
 
         # Validate that all root fields exist
-        # Using dataset here allows a field to be excluded multiple times
-        sample_collection._dataset.validate_fields_exist(self._field_names)
+        sample_collection.validate_fields_exist(self._field_names)
 
         if sample_collection._contains_videos():
             paths, frame_paths = fou.split_frame_fields(self._field_names)

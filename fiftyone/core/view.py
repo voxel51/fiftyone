@@ -2063,6 +2063,9 @@ def _filter_schema(schema, selected_fields, excluded_fields, virtual_fields):
     ef = excluded_fields.get("", None)
     vf = virtual_fields.get("", None)
 
+    if vf is not None:
+        schema.update(vf)
+
     if sf is not None:
         for name in tuple(schema.keys()):
             if name not in sf:
@@ -2072,9 +2075,6 @@ def _filter_schema(schema, selected_fields, excluded_fields, virtual_fields):
         for name in tuple(schema.keys()):
             if name in ef:
                 del schema[name]
-
-    if vf is not None:
-        schema.update(vf)
 
     if filtered_roots:
         for name, field in schema.items():

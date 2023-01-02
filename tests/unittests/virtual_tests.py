@@ -1089,6 +1089,22 @@ class VirtualSetFieldTests(unittest.TestCase):
         sample = view4.first()
         self.assertEqual(sample.num_objects, 0)
 
+        view5 = view.exclude_fields(
+            ["num_objects", "ground_truth.detections.area"]
+        )
+
+        schema = view5.get_field_schema(flat=True)
+        self.assertNotIn("num_objects", schema)
+        self.assertNotIn("ground_truth.detections.area", schema)
+
+        sample = view5.first()
+
+        with self.assertRaises(AttributeError):
+            sample.num_objects
+
+        with self.assertRaises(AttributeError):
+            sample.ground_truth.detections[0].area
+
     @drop_datasets
     def test_clone(self):
         _, view = self._make_view()
@@ -1437,6 +1453,23 @@ class VirtualSetFrameFieldTests(unittest.TestCase):
         sample = view4.first()
         frame = sample.frames.first()
         self.assertEqual(frame.num_objects, 0)
+
+        view5 = view.exclude_fields(
+            ["frames.num_objects", "frames.ground_truth.detections.area"]
+        )
+
+        schema = view5.get_frame_field_schema(flat=True)
+        self.assertNotIn("num_objects", schema)
+        self.assertNotIn("ground_truth.detections.area", schema)
+
+        sample = view5.first()
+        frame = sample.frames.first()
+
+        with self.assertRaises(AttributeError):
+            frame.num_objects
+
+        with self.assertRaises(AttributeError):
+            frame.ground_truth.detections[0].area
 
     @drop_datasets
     def test_clone(self):
