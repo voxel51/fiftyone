@@ -65,8 +65,7 @@ This page lists all of the datasets available in the Dataset Zoo.
     | :ref:`MNIST <dataset-zoo-mnist>`                                   | image, classification                                                     |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Open Images V6 <dataset-zoo-open-images-v6>`                 | image, classification, detection, segmentation, relationships             |
-    +--------------------------------------------------------------------+------
-    ---------------------------------------------------------------------+
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Open Images V7 <dataset-zoo-open-images-v7>`                 | image, classification, detection, segmentation, keypoints, relationships  |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Quickstart <dataset-zoo-quickstart>`                         | image, quickstart                                                         |
@@ -2985,8 +2984,7 @@ Images V7 by passing them to
 
 -   **label_types** (*None*): a label type or list of label types to load.
     Supported values are
-    ``("detections", "classifications", "relationships", "points", 
-        segmentations")``.
+    ``("detections", "classifications", "relationships", "points", segmentations")``.
     By default, all labels types are loaded
 
 -   **classes** (*None*): a string or list of strings specifying required
@@ -3159,9 +3157,6 @@ Images V7 by passing them to
 
         fiftyone app launch open-images-v7-validation
 
-.. image:: /images/dataset_zoo/open-images-v7.png
-   :alt: open-images-v7
-   :align: center
 
 .. _dataset-zoo-quickstart:
 
