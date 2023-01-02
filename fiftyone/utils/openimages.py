@@ -9,6 +9,7 @@ dataset.
 """
 from collections import defaultdict
 import csv
+from glob import glob
 import logging
 import os
 import random
@@ -96,7 +97,13 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
     ):
 
         if label_types == None:
-            label_types = []
+            if "points.csv" in [
+                os.path.split(f)[1]
+                for f in glob(os.path.join(dataset_dir, "labels/*"))
+            ]:
+                label_types = _SUPPORTED_LABEL_TYPES_v7
+            else:
+                label_types = _SUPPORTED_LABEL_TYPES_v6
         elif type(label_types) != list:
             label_types = [label_types]
 
@@ -673,7 +680,6 @@ def _setup(
 
     did_download = False
     _label_types = label_types
-    # _label_types = _parse_label_types(version, label_types)
     if etau.is_str(classes):
         classes = [classes]
 
@@ -1155,6 +1161,10 @@ def _get_all_label_data(
             track_all_ids=track_all_ids,
             only_matching=only_matching,
         )
+        did_download |= _did_download
+
+        all_classes_ids &= pnt_all_ids
+        any_classes_ids |= pnt_any_ids
 
     if "relationships" in _label_types:
         if download:
