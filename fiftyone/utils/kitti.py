@@ -950,11 +950,28 @@ def _normalize_3d_detections(detections):
     if detections is None:
         return None
 
+    # DontCare labels don't have valid coordinates
+    detections.detections = [
+        d for d in detections.detections if d["label"] != "DontCare"
+    ]
+
     for detection in detections.detections:
         # KITTI uses bottom-center; FiftyOne uses centroid
         detection["location"][1] -= 0.5 * detection["dimensions"][1]
 
+        # Resolve yaw mismatch between LIDAR and scene
+        detection["rotation"][1] -= 0.5 * np.pi
+
+        # Switch to z-up coordinates
+        detection["location"] = _swap_coordinates(detection["location"])
+        detection["dimensions"] = _swap_coordinates(detection["dimensions"])
+        detection["rotation"] = _swap_coordinates(detection["rotation"])
+
     return detections
+
+
+def _swap_coordinates(vec):
+    return [vec[0], vec[2], -vec[1]]
 
 
 def _normalize_dataset_if_necessary(dataset_dir):
@@ -1025,10 +1042,19 @@ def _roty(t):
 
 
 def _proj_3d_to_right_camera(detections3d, calib, frame_size):
+    if detections3d is None:
+        return None
+
     P = calib["P3"]
     width, height = frame_size
 
     detections2d = detections3d.copy()
+
+    # DontCare labels don't have valid coordinates
+    detections2d.detections = [
+        d for d in detections2d.detections if d["label"] != "DontCare"
+    ]
+
     for detection in detections2d.detections:
         h, w, l = detection["dimensions"]
         t = np.array(detection["location"])
@@ -1113,10 +1139,13 @@ def _do_conversion(input):
     points = np.array(list_points)
     colors = np.array(list_colors)
 
+    # Transform to camera coordinates
     calib = _load_calibration_matrices(calib_path)
-
     P = calib["R0_rect"] @ calib["Tr_velo_to_cam"]
     points = np.hstack((points, np.ones((len(points), 1)))) @ P.T
+
+    # Switch to z-up coordinates
+    points = np.stack((points[:, 0], points[:, 2], -points[:, 1]), axis=1)
 
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points)
