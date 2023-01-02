@@ -3157,6 +3157,9 @@ Images V7 by passing them to
 
         fiftyone app launch open-images-v7-validation
 
+.. image:: /images/dataset_zoo/open-images-v7.png
+   :alt: open-images-v7
+   :align: center
 
 .. _dataset-zoo-quickstart:
 
