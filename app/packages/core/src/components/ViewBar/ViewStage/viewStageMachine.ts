@@ -56,6 +56,8 @@ const viewStageMachine = Machine(
       length: undefined,
       inputRef: {},
       fieldNames: [],
+      // submitted: undefined,
+      // loading: undefined,
     },
     type: "parallel",
     states: {

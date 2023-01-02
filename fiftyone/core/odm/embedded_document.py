@@ -7,12 +7,7 @@ Base classes for documents that back dataset contents.
 """
 import mongoengine
 
-import fiftyone.core.utils as fou
-
 from .document import DynamicMixin, MongoEngineBaseDocument
-
-
-food = fou.lazy_import("fiftyone.core.odm.dataset")
 
 
 class BaseEmbeddedDocument(MongoEngineBaseDocument):

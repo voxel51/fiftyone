@@ -84,10 +84,7 @@ async def paginate_samples(
         sample_filter=sample_filter,
     )
 
-    root_view = fosv.get_view(
-        dataset,
-        stages=stages,
-    )
+    root_view = fosv.get_view(dataset, stages=stages)
 
     media = view.media_type
     if media == fom.MIXED:
