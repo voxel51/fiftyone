@@ -146,8 +146,11 @@ export function usePanelStatePartial<T>(key: string, defaultState: T) {
   const [state, setState] = useRecoilState<T>(
     panelStatePartialSelector({ panelId, key })
   );
-  const defaultRef = useRef(defaultState);
-  const computedState = state === undefined ? defaultRef.current : state;
-
+  const computedState = useComputedState(state, defaultState);
   return [computedState, setState];
+}
+
+function useComputedState(state: any, defaultState: any) {
+  const defaultRef = useRef(defaultState);
+  return state === undefined ? defaultRef.current : state;
 }
