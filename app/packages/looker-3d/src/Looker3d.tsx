@@ -36,8 +36,6 @@ import {
 import { colorMap, dataset, useBeforeScreenshot } from "@fiftyone/state";
 import { removeListener } from "process";
 
-THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
-
 const deg2rad = (degrees) => degrees * (Math.PI / 180);
 const hasFocusAtom = recoil.atom({
   key: "looker3dHasFocus",
@@ -275,7 +273,10 @@ export function Looker3d(props) {
 }
 
 function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
-  const settings = fop.usePluginSettings("3d", { useLegacyCoordinates: false });
+  const settings = fop.usePluginSettings("3d", {
+    useLegacyCoordinates: false,
+    defaultUp: [0, 0, 1],
+  });
 
   const modal = true;
   // @ts-ignore
@@ -291,6 +292,10 @@ function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
   const { coloring } = recoil.useRecoilValue(
     fos.lookerOptions({ withFilter: true, modal })
   );
+
+  useEffect(() => {
+    THREE.Object3D.DefaultUp = new THREE.Vector3(...settings.defaultUp);
+  }, []);
 
   const overlays = load3dOverlays(sample, selectedLabels)
     .map((l) => {
