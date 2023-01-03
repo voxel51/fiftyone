@@ -295,6 +295,7 @@ class Session(object):
         auto: bool = True,
         config: AppConfig = None,
     ) -> None:
+        focx.init_context()
         # Allow `dataset` to be a view
         if isinstance(dataset, fov.DatasetView):
             view = dataset

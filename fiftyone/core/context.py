@@ -20,10 +20,15 @@ _DATABRICKS = "DATABRICKS"
 _IPYTHON = "IPYTHON"
 _NONE = "NONE"
 
-_DATABRICKS_PROXY = None
-_DATABRICKS_HOST = None
+_DATABRICKS_PROXY = os.environ.get("FIFTYONE_DATABRICKS_PROXY", None)
+_DATABRICKS_HOST = os.environ.get("FIFTYONE_DATABRICKS_HOST", None)
 
 _context = None
+
+
+def init_context():
+    """Initializes context settings."""
+    _get_context()
 
 
 def is_notebook_context():
@@ -190,10 +195,12 @@ def _set_databricks() -> str:
     )["tags"]
 
     _DATABRICKS_HOST = data["browserHostName"]
+    os.environ["FIFTYONE_DATABRICKS_HOST"] = _DATABRICKS_HOST
 
     org_id = data["orgId"]
     cluster_id = data["clusterId"]
     _DATABRICKS_PROXY = f"/driver-proxy/o/{org_id}/{cluster_id}/"
+    os.environ["FIFTYONE_DATABRICKS_PROXY"] = _DATABRICKS_PROXY
 
 
 class ContextError(EnvironmentError):
