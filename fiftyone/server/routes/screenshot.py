@@ -5,6 +5,8 @@ FiftyOne Server /screenshot route
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import typing as t
+
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
@@ -19,7 +21,7 @@ from fiftyone.server.events import get_port
 
 class Screenshot(HTTPEndpoint):
     @route
-    async def get(self, request: Request) -> Response:
+    async def get(self, request: Request, data: t.Dict) -> Response:
         img = request.path_params["img"]
         subscription, ext = img.split(".")
         screenshot = get_screenshot(subscription, False)
