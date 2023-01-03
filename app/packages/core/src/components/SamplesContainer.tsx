@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
@@ -14,9 +14,10 @@ const Container = styled.div`
   background: ${({ theme }) => theme.background.mediaSpace};
 `;
 
-const SamplesContainer = React.memo(() => {
+function SamplesContainer() {
   const showSidebar = useRecoilValue(fos.sidebarVisible(false));
   const disabled = useRecoilValue(fos.disabledPaths);
+  const datasetName = useRecoilValue(fos.datasetName);
 
   const renderGridEntry = useCallback(
     (
@@ -150,9 +151,12 @@ const SamplesContainer = React.memo(() => {
   return (
     <Container>
       {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}
-      <SpacesRoot id="primary" defaultState={defaultSpacesState} />
+      <SpacesRoot
+        id={`primary-${datasetName}`}
+        defaultState={defaultSpacesState}
+      />
     </Container>
   );
-});
+}
 
-export default SamplesContainer;
+export default React.memo(SamplesContainer);
