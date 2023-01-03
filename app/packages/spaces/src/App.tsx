@@ -1,10 +1,12 @@
 import ReactDOM from "react-dom/client";
 import { RecoilRoot, useRecoilState } from "recoil";
-import { SpacesRoot } from "./";
+import { Layout, SpacesRoot } from "./";
 import "./App.css";
 import { excludedPluginsAtom } from "./AppModules";
+import { useState } from "react";
 
 function App() {
+  const [datasetName, setDatasetName] = useState("quickstart");
   const [state, setState] = useRecoilState(excludedPluginsAtom);
   const defaultState = {
     id: "root",
@@ -36,7 +38,7 @@ function App() {
       },
     ],
     type: "panel-container",
-    layout: "horizontal",
+    layout: Layout.Horizontal,
   };
 
   function toggleExclude(name: string) {
@@ -73,8 +75,18 @@ function App() {
         onClick={() => toggleExclude("Map")}
       />
       <label htmlFor="map">Map</label>
+      <select
+        name="dataset"
+        id="dataset"
+        style={{ marginLeft: 16 }}
+        onChange={(e) => setDatasetName(e.target.value)}
+      >
+        <option value="quickstart">quickstart</option>
+        <option value="quickstart-geo">quickstart-geo</option>
+        <option value="quickstart-video">quickstart-video</option>
+      </select>
       <div style={{ height: "calc(100vh - 25px)", width: "100vw" }}>
-        <SpacesRoot id="main" defaultState={defaultState} />
+        <SpacesRoot id={`main-${datasetName}`} defaultState={defaultState} />
       </div>
     </div>
   );
