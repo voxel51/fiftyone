@@ -3022,8 +3022,8 @@ class GroupBy(ViewStage):
             in each group. Only applicable when ``flat=True``
         reverse (False): whether to return the results in descending order.
             Only applicable when ``flat=True``
-        flat (True): whether to return a flattened view (True) or a grouped
-            collection (False)
+        flat (True): whether to return a flattened collection (True) or a
+            grouped collection (False)
     """
 
     def __init__(
@@ -3121,10 +3121,10 @@ class GroupBy(ViewStage):
         return group_expr
 
     def get_media_type(self, sample_collection):
-        if not self._flat:
-            return fom.GROUP
+        if self._flat:
+            return None
 
-        return None
+        return fom.GROUP
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():

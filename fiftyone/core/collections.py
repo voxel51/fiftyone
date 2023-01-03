@@ -4433,8 +4433,8 @@ class SampleCollection(object):
                 samples in each group. Only applicable when ``flat=True``
             reverse (False): whether to return the results in descending order.
                 Only applicable when ``flat=True``
-            flat (True): whether to return a flattened view (True) or a grouped
-                collection (False)
+            flat (True): whether to return a flattened collection (True) or a
+                grouped collection (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`

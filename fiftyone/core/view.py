@@ -628,9 +628,7 @@ class DatasetView(foc.SampleCollection):
 
         try:
             for d in self._aggregate(
-                detach_frames=True,
-                detach_groups=True,
-                post_pipeline=post_pipeline,
+                detach_frames=True, post_pipeline=post_pipeline
             ):
                 group_expr = d.pop("_group_expr", None)
                 sample = make_sample(d)
@@ -1242,6 +1240,8 @@ class DatasetView(foc.SampleCollection):
         if group_expr is None:
             return None
 
+        # Extracts samples for the current group as emitted just *before* the
+        # `group_by()` stage in the view
         pipeline = _view._pipeline(detach_frames=True)
         pipeline.append(
             {"$match": {"$expr": {"$eq": ["$$group_expr", group_expr]}}}
