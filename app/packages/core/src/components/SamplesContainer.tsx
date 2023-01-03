@@ -4,7 +4,7 @@ import { Controller } from "@react-spring/web";
 import styled from "styled-components";
 import Sidebar, { Entries } from "./Sidebar";
 import * as fos from "@fiftyone/state";
-import { SpacesRoot } from "@fiftyone/spaces";
+import { SpaceNodeJSON, SpacesRoot, usePanels } from "@fiftyone/spaces";
 
 const Container = styled.div`
   display: flex;
@@ -134,18 +134,34 @@ function SamplesContainer() {
     []
   );
 
+  const panels = usePanels();
+  const defaultPanelTypes = useMemo(
+    () => ["Embeddings", "Histograms", "Map", "Samples"],
+    []
+  );
+  const defaultSpacePanels = useMemo(() => {
+    const spacePanels: SpaceNodeJSON[] = [];
+    for (const panel of panels) {
+      const { name } = panel;
+      const isSamplesPanel = name === "Samples";
+      if (defaultPanelTypes.includes(name)) {
+        const panelNode = {
+          type: name,
+          id: `${datasetName}-${name}`,
+          children: [],
+          pinned: isSamplesPanel,
+        };
+        if (isSamplesPanel) spacePanels.unshift(panelNode);
+        else spacePanels.push(panelNode);
+      }
+    }
+    return spacePanels;
+  }, [panels, datasetName, defaultPanelTypes]);
   const defaultSpacesState = {
     id: "root",
-    children: [
-      {
-        id: "default-samples-node",
-        children: [],
-        type: "Samples",
-        pinned: true,
-      },
-    ],
+    children: defaultSpacePanels,
     type: "panel-container",
-    activeChild: "default-samples-node",
+    activeChild: `${datasetName}-Samples`,
   };
 
   return (
