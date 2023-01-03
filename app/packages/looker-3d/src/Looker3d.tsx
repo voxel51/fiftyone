@@ -36,8 +36,6 @@ import {
 import { colorMap, dataset, useBeforeScreenshot } from "@fiftyone/state";
 import { removeListener } from "process";
 
-THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
-
 const deg2rad = (degrees) => degrees * (Math.PI / 180);
 const hasFocusAtom = recoil.atom({
   key: "looker3dHasFocus",
@@ -126,8 +124,6 @@ function Cuboid({
   dimensions,
   opacity,
   rotation,
-  rotation_y = 0,
-  rotation_z = 0,
   location,
   selected,
   onClick,
@@ -140,13 +136,9 @@ function Cuboid({
   const y2 = y - 0.5 * dimensions[1];
   const loc = useLegacyCoordinates ? [x, y2, z] : [x, y, z];
   const itemRotationVec = new THREE.Vector3(...itemRotation);
-  const rawLegacyRotation = [0, rotation_y, rotation_z];
-  const resolvedRotation = new THREE.Vector3(
-    ...(rotation || rawLegacyRotation)
-  );
+  const resolvedRotation = new THREE.Vector3(...rotation);
   const actualRotation = resolvedRotation.add(itemRotationVec).toArray();
 
-  // [0, rotation_y + Math.PI / 2, rotation_z]
   const geo = React.useMemo(() => new THREE.BoxGeometry(...dimensions), []);
   return (
     <Fragment>
@@ -281,7 +273,10 @@ export function Looker3d(props) {
 }
 
 function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
-  const settings = fop.usePluginSettings("3d", { useLegacyCoordinates: false });
+  const settings = fop.usePluginSettings("3d", {
+    useLegacyCoordinates: false,
+    defaultUp: [0, 0, 1],
+  });
 
   const modal = true;
   // @ts-ignore
@@ -297,6 +292,10 @@ function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
   const { coloring } = recoil.useRecoilValue(
     fos.lookerOptions({ withFilter: true, modal })
   );
+
+  useEffect(() => {
+    THREE.Object3D.DefaultUp = new THREE.Vector3(...settings.defaultUp);
+  }, []);
 
   const overlays = load3dOverlays(sample, selectedLabels)
     .map((l) => {
