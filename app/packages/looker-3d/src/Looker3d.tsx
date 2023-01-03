@@ -126,8 +126,6 @@ function Cuboid({
   dimensions,
   opacity,
   rotation,
-  rotation_y = 0,
-  rotation_z = 0,
   location,
   selected,
   onClick,
@@ -140,13 +138,9 @@ function Cuboid({
   const y2 = y - 0.5 * dimensions[1];
   const loc = useLegacyCoordinates ? [x, y2, z] : [x, y, z];
   const itemRotationVec = new THREE.Vector3(...itemRotation);
-  const rawLegacyRotation = [0, rotation_y, rotation_z];
-  const resolvedRotation = new THREE.Vector3(
-    ...(rotation || rawLegacyRotation)
-  );
+  const resolvedRotation = new THREE.Vector3(...rotation);
   const actualRotation = resolvedRotation.add(itemRotationVec).toArray();
 
-  // [0, rotation_y + Math.PI / 2, rotation_z]
   const geo = React.useMemo(() => new THREE.BoxGeometry(...dimensions), []);
   return (
     <Fragment>
