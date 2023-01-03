@@ -38,7 +38,6 @@ type Option = {
   value: string;
   icon?: string;
   tooltip: string;
-  onClick: () => void;
 };
 
 const FilterOption: React.FC<Props> = ({
@@ -89,7 +88,6 @@ const FilterOption: React.FC<Props> = ({
           key: "filter",
           value: `Filter ${valueName}`,
           tooltip: "dataset.filter_labels(field, condition, only_matches=True)",
-          onClick: () => onSelectFilter(),
         },
         {
           icon: "FilterAltOffIcon",
@@ -97,7 +95,6 @@ const FilterOption: React.FC<Props> = ({
           value: `Exclude ${valueName}`,
           tooltip:
             "dataset.filter_labels(field, condition, only_matches=False)",
-          onClick: () => onSelectNegativeFilter(),
         },
       ]
     : [];
@@ -110,7 +107,6 @@ const FilterOption: React.FC<Props> = ({
         ? `Show samples in the range`
         : `Show samples with ${valueName}`,
       tooltip: "dataset.match_labels(fields=field, filter=condition)",
-      onClick: () => onSelectMatch(),
     },
     {
       icon: "HideImageIcon",
@@ -120,7 +116,6 @@ const FilterOption: React.FC<Props> = ({
         : `Show samples without ${valueName}`,
       tooltip:
         "dataset.match_labels(fields=field, filter=condition, bool=False)",
-      onClick: () => onSelectNegativeMatch(),
     },
   ]);
 
@@ -199,7 +194,7 @@ const FilterOption: React.FC<Props> = ({
   const onSelectNegativeMatch = () => {
     setExcluded(true);
     setIsMatching(true);
-    setOnlyMatch(true);
+    setOnlyMatch(false);
   };
 
   const children = <Text ref={ref}>{selectedValue}</Text>;
