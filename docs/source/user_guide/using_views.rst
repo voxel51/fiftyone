@@ -2514,7 +2514,7 @@ identify the type of values your expression generates:
     )
 
     #
-    # Add two virtual fields
+    # Add two virtual fields:
     # - a top-level virtual field that counts the number of objects in the
     #   `ground_truth` field
     # - a nested virtual field that contains the area of each ground truth
@@ -2535,7 +2535,7 @@ identify the type of values your expression generates:
     )
 
 The `expr` defining a virtual field may be any valid |ViewExpression|. Refer to
-:meth:`this section <view-filtering>` for more information about view
+:ref:`this section <view-filtering>` for more information about view
 expressions.
 
 When declaring top-level virtual fields, `expr` is interpreted relative to the
@@ -2549,7 +2549,7 @@ being declared.
     :meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>`
     as described in :ref:`this section <transforming-view-fields>` without the
     `ftype` argument does not create virtual fields; it simply modifies the
-    existing field or populates an undeclared embedded attribute.
+    existing field or populates a new undeclared embedded attribute.
 
 Virtual fields are included in the view's schema, just like regular fields:
 
@@ -2654,27 +2654,23 @@ calling :meth:`save() <fiftyone.core.view.DatasetView.save>`:
 
 You can also convert virtual view fields into regular fields whose values are
 stored in the database by passing the `materialize=True` flag to
-:meth:`save() <fiftyone.core.view.DatasetView.save>`::
+:meth:`save() <fiftyone.core.view.DatasetView.save>`:
 
 .. code-block:: python
     :linenos:
 
-    # Converts all remaining virtual view fields into regular fields on the
+    # Convert all remaining virtual view fields into regular fields on the
     # underlying dataset
     virtual_view.save(materialize=True)
 
     assert "ground_truth.detections.area_pixels" in dataset.get_field_schema(flat=True)
     assert "ground_truth.detections.area_pixels" not in dataset.get_virtual_field_schema()
 
-    # Fields are no longer virtual; the values are now stored in the database
-    print(dataset.bounds("num_objects"))  # (0, 39)
-    print(dataset.bounds("ground_truth.detections.area_pixels"))  # (6.37, 353569.23)
-
-When working with :ref:`video views <video-views>`, you can also declare
-virtual frame fields using
-:meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>` and
-view virtual frame schemas using
-:meth:`get_virtual_frame_field_schema() <fiftyone.core.collections.SampleCollection.get_virtual_frame_field_schema>`.
+When working with :ref:`video views <video-views>`, you can use
+:meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>` to
+declare virtual frame fields and
+:meth:`get_virtual_frame_field_schema() <fiftyone.core.collections.SampleCollection.get_virtual_frame_field_schema>`
+to view the virtual frame schema.
 
 .. _saving-and-cloning-views:
 

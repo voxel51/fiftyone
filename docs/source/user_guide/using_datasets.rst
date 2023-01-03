@@ -1511,7 +1511,7 @@ dataset with default value `None`:
 
 .. note::
 
-    Did you know? You can also declare :meth:`virtual fields <virtual-fields>`
+    Did you know? You can also declare :ref:`virtual fields <virtual-fields>`
     on datasets whose values are dynamically computed from other fields rather
     than being explicitly stored in the database.
 
@@ -1542,15 +1542,15 @@ file on disk, as per the table below:
 .. table::
     :widths: 25 25 25 25
 
-    +----------------+------------+----------------+---------------------+
-    | File extension | MIME type  | `media_type`   | Description         |
-    +================+============+================+=====================+
-    |                | `image/*`  | `image`        | Image sample        |
-    +----------------+------------+----------------+---------------------+
-    |                | `video/*`  | `video`        | Video sample        |
-    +----------------+------------+----------------+---------------------+
-    | `*.pcd`        |            | `point-cloud`  | Point cloud sample  |
-    +----------------+------------+----------------+---------------------+
+    +------------+----------------+----------------+---------------------+
+    | MIME type  | File extension | `media_type`   | Description         |
+    +============+================+================+=====================+
+    | `image/*`  |                | `image`        | Image sample        |
+    +------------+----------------+----------------+---------------------+
+    | `video/*`  |                | `video`        | Video sample        |
+    +------------+----------------+----------------+---------------------+
+    |            | `*.pcd`        | `point-cloud`  | Point cloud sample  |
+    +------------+----------------+----------------+---------------------+
 
 .. note::
 
@@ -3947,7 +3947,7 @@ attributes from your dataset and its schema:
 .. _virtual-fields:
 
 Virtual fields
---------------
+______________
 
 In some circumstances, you may want to work with fields whose values can be
 dervied from other fields of your dataset. For example, you may want to see
@@ -3955,11 +3955,12 @@ statistics for and filter by the number of objects in a |Detections| field.
 You can achieve this by declaring **virtual fields** on your dataset.
 
 Unlike ordinary fields, virtual field values are not stored in the database;
-they are dynamically computed and attached to your samples when the collection
+they are dynamically computed and attached to your samples when the dataset
 is iterated/aggregated/etc.
 
 Virtual fields are defined by including an `expr` when declaring them via
-:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`:
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`
+on a dataset:
 
 .. code-block:: python
     :linenos:
@@ -3993,7 +3994,7 @@ Virtual fields are defined by including an `expr` when declaring them via
     )
 
 The `expr` defining a virtual field may be any valid |ViewExpression|. Refer to
-:meth:`this section <view-filtering>` for more information about view
+:ref:`this section <view-filtering>` for more information about view
 expressions.
 
 When declaring top-level virtual fields, `expr` is interpreted relative to the
@@ -4109,13 +4110,13 @@ the database by passing the `materialize=True` flag to
     dataset.save(fields="num_objects")
     # Skipping virtual field 'num_objects' when materialize=False
 
-    # Converts a virtual field into a regular field
+    # Convert a virtual field into a regular field
     dataset.save(fields="num_objects", materialize=True)
 
     assert "num_objects" not in dataset.get_virtual_field_schema()
     assert dataset.get_field("num_objects").is_virtual == False
 
-    # Converts all virtual fields into regular fields
+    # Convert all remaining virtual fields into regular fields
     dataset.save(materialize=True)
 
     assert len(dataset.get_virtual_field_schema()) == 0
@@ -4125,11 +4126,11 @@ the database by passing the `materialize=True` flag to
     print(dataset.bounds("num_objects"))  # (0, 39)
     print(dataset.bounds("ground_truth.detections.area_pixels"))  # (6.37, 353569.23)
 
-When working with :ref:`video datasets <video-frame-labels>`, you can also
-declare virtual frame fields using
-:meth:`add_frame_field() <fiftyone.core.dataset.Dataset.add_frame_field>` and
-view virtual frame schemas using
-:meth:`get_virtual_frame_field_schema() <fiftyone.core.collections.SampleCollection.get_virtual_frame_field_schema>`.
+When working with :ref:`video datasets <video-frame-labels>`, you can also use
+:meth:`add_frame_field() <fiftyone.core.dataset.Dataset.add_frame_field>` to
+declare virtual frame fields and
+:meth:`get_virtual_frame_field_schema() <fiftyone.core.collections.SampleCollection.get_virtual_frame_field_schema>`
+to view the virtual frame schema.
 
 .. _custom-embedded-documents:
 
