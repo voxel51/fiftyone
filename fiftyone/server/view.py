@@ -313,6 +313,8 @@ def get_extended_view(
             only_matches=only_matches,
         )
 
+        print("stages", stages)
+
         for stage in stages:
             view = view.add_stage(stage)
 
@@ -411,11 +413,9 @@ def _make_filter_stages(
     filtered_labels = set()
     for path in sorted(filters):
         args = filters[path]
-        # use FE filter only_match setting if BE only_matches is not set
-        if only_matches == None:
-            only_matches = (
-                True if args["onlyMatch"] is None else args["onlyMatch"]
-            )
+        # use FE filter only_match and match label setting
+        only_matches = args["onlyMatch"]
+        isMatching = args["isMatching"]
 
         if path == "tags" or path.startswith("_"):
             continue
@@ -453,6 +453,8 @@ def _make_filter_stages(
                 if keypoints
                 else _make_scalar_expression(view_field, args, field)
             )
+            exprAlt = _make_match_label_expression(view_field, args, field)
+
             if expr is not None:
                 if hide_result:
                     new_field = "__%s" % path.split(".")[1 if frames else 0]
@@ -470,6 +472,13 @@ def _make_filter_stages(
                         _new_field=new_field,
                         **expr,
                     )
+
+                elif not (isMatching):
+                    stage = fosg.MatchLabels(
+                        cache.get(prefix + parent.name, prefix + parent.name),
+                        exprAlt,
+                    )
+
                 else:
                     stage = fosg.FilterLabels(
                         cache.get(prefix + parent.name, prefix + parent.name),
@@ -545,6 +554,15 @@ def _is_label(field):
     return isinstance(field, fof.EmbeddedDocumentField) and issubclass(
         field.document_type, fol.Label
     )
+
+
+def _make_match_label_expression(f, args, field):
+    expr = None
+    values = args["values"]
+    if not values:
+        return None
+    print("match label", f, args, field)
+    return f[field].is_in(values)
 
 
 def _make_scalar_expression(f, args, field):
