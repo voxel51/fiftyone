@@ -6,12 +6,13 @@ import {
   atom,
 } from "recoil";
 import * as fos from "@fiftyone/state";
-import { getFetchFunction } from "@fiftyone/utilities";
+import { getFetchFunction, useExternalLink } from "@fiftyone/utilities";
 import Plot from "react-plotly.js";
-import { Button, Loading, Selector } from "@fiftyone/components";
+import { Loading, Selector, useTheme, Link } from "@fiftyone/components";
 import styled from "styled-components";
 import { useToPatches } from "@fiftyone/state";
 import { usePanelState, usePanelStatePartial } from "@fiftyone/spaces";
+import { HighlightAlt, Close, Help, OpenWith } from "@mui/icons-material";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -139,57 +140,120 @@ function useChooseSelectionMode({ onSelect }) {
 }
 
 const EmbeddingsContainer = styled.div`
-  margin: 0 2rem;
+  margin: 0;
   height: 100%;
+  width: 100%;
 `;
 
 const Selectors = styled.div`
-  width: 10rem;
   display: flex;
   gap: 1rem;
+  position: absolute;
+  top: 1rem;
+  display: flex;
+  column-gap: 1rem;
+  z-index: 999;
+  padding: 0 1rem;
+  // width: 100%;
+  // justify-content: space-between;
+  > div {
+    display: flex;
+    column-gap: 1rem;
+    margin: 0 1rem;
+  }
+`;
+
+const PlotOption = styled(Link)`
+  display: flex;
+  color: var(--joy-palette-primary-plainColor);
+  align-items: center;
+  cursor: pointer;
+  border-bottom: 1px var(--joy-palette-primary-plainColor) solid;
+  background: var(--joy-palette-neutral-softBg);
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+  padding: 0.25rem;
 `;
 
 export default function Embeddings({ containerHeight, dimensions }) {
   const el = useRef();
+  const theme = useTheme();
   const brainResultSelector = useBrainResultsSelector();
   const labelSelector = useLabelSelector();
   const setView = fos.useSetView();
-  const setSelectionModeView = useSetSelectionModeView();
-  const modeSelector = useChooseSelectionMode({
-    onSelect: (mode) => {
-      if (!mode) {
-        setView([]);
-      } else {
-        setSelectionModeView(mode);
-      }
-    },
-  });
   const brainResultInfo = useBrainResultInfo();
   const canSelect = brainResultSelector.canSelect;
   const showPlot = brainResultSelector.hasSelection && !labelSelector.isLoading;
+  const plotSelection = usePlotSelection();
+  const [dragMode, setDragMode] = usePanelStatePartial("dragMode", "lasso");
+
+  const selectorStyle = {
+    background: theme.neutral.softBg,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+    padding: "0.25rem",
+  };
 
   if (canSelect)
     return (
       <EmbeddingsContainer ref={el}>
         <Selectors>
-          <Selector
-            {...brainResultSelector.handlers}
-            placeholder={"Brain Result"}
-            overflow={true}
-            component={Value}
-          />
-          {labelSelector.isLoading && <Loading />}
-          {brainResultSelector.hasSelection && !labelSelector.isLoading && (
+          <div>
             <Selector
-              {...labelSelector.handlers}
-              placeholder={"Color By"}
+              {...brainResultSelector.handlers}
+              placeholder={"Brain Result"}
               overflow={true}
               component={Value}
+              containerStyle={selectorStyle}
             />
-          )}
+            {labelSelector.isLoading && <Loading />}
+            {brainResultSelector.hasSelection && !labelSelector.isLoading && (
+              <Selector
+                {...labelSelector.handlers}
+                placeholder={"Color By"}
+                overflow={true}
+                component={Value}
+                containerStyle={selectorStyle}
+              />
+            )}
+            {plotSelection.hasSelection && (
+              <PlotOption
+                to={plotSelection.clearSelection}
+                title={"Reset (Esc)"}
+              >
+                <Close />
+              </PlotOption>
+            )}
+
+            <PlotOption
+              style={{ opacity: dragMode !== "lasso" ? 0.5 : 1 }}
+              to={() => setDragMode("lasso")}
+              title={"Select (s)"}
+            >
+              <HighlightAlt />
+            </PlotOption>
+
+            <PlotOption
+              style={{ opacity: dragMode !== "pan" ? 0.5 : 1 }}
+              to={() => setDragMode("pan")}
+              title={"Pan (g)"}
+            >
+              <OpenWith />
+            </PlotOption>
+
+            <PlotOption
+              href={"https://voxel51.com/docs/fiftyone/user_guide/plots.html"}
+              title={"Help"}
+              to={useExternalLink("https://docs.voxel51.com")}
+              target={"_blank"}
+            >
+              <Help />
+            </PlotOption>
+          </div>
         </Selectors>
         {showPlot && (
           <EmbeddingsPlot
+            plotSelection={plotSelection}
             bounds={dimensions.bounds}
             el={el}
             brainKey={brainResultSelector.brainKey}
@@ -249,7 +313,8 @@ function tracesToData(traces, style, getColor, plotSelection) {
           color: isCategorical
             ? trace.map((d) => {
                 const selected =
-                  plotSelection?.length == 0 || plotSelection?.includes(d.id);
+                  plotSelection?.length == 0 ||
+                  (plotSelection && plotSelection.includes(d.id));
                 if (selected) {
                   return color.toCSSRGBString();
                 } else {
@@ -288,22 +353,43 @@ function tracesToData(traces, style, getColor, plotSelection) {
     });
 }
 
-function EmbeddingsPlot({ brainKey, labelField, el, bounds }) {
+// a react hook that returns true when the given key is down
+function useKeyDown(key, handler) {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      console.log(e.key, e);
+      if (e.key === key) {
+        handler(true);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [key]);
+}
+
+function EmbeddingsPlot({ brainKey, labelField, el, bounds, plotSelection }) {
   const getColor = useRecoilValue(fos.colorMapRGB(true));
-
+  const { isLoading, traces, style } = useLoadedPlot();
+  const datasetName = useRecoilValue(fos.datasetName);
   const {
-    traces,
-    style,
-    valuesCount,
-    isLoading,
-    handleSelected,
-    hasExtendedSelection,
+    setPlotSelection,
+    resolvedSelection,
     clearSelection,
-    plotSelection,
-  } = useEmbeddings(brainKey, labelField);
+    handleSelected,
+  } = plotSelection;
+  const [dragMode, setDragMode] = usePanelStatePartial("dragMode", "lasso");
+  useKeyDown("s", () => setDragMode("lasso"));
+  useKeyDown("g", () => setDragMode("pan"));
+  useKeyDown("Escape", clearSelection);
 
-  if (isLoading || !traces) return <h3>Pixelating...</h3>;
-  const data = tracesToData(traces, style, getColor, plotSelection);
+  useEffect(() => {
+    setPlotSelection(resolvedSelection);
+  }, [resolvedSelection]);
+
+  if (isLoading || !traces) return <Loading>Pixelating...</Loading>;
+  const data = tracesToData(traces, style, getColor, resolvedSelection);
   const isCategorical = style === "categorical";
 
   return (
@@ -311,6 +397,7 @@ function EmbeddingsPlot({ brainKey, labelField, el, bounds }) {
       {bounds?.width && (
         <Plot
           data={data}
+          style={{ zIndex: 1 }}
           onSelected={(selected, foo) => {
             console.log("on selected", { selected, foo });
             if (!selected || selected?.points?.length === 0) return;
@@ -330,16 +417,22 @@ function EmbeddingsPlot({ brainKey, labelField, el, bounds }) {
             console.log("on deselected");
             handleSelected(null);
           }}
-          config={{ scrollZoom: true, displaylogo: false, responsive: true }}
+          config={{
+            scrollZoom: true,
+            displaylogo: false,
+            responsive: true,
+            displayModeBar: false,
+          }}
           layout={{
+            dragmode: dragMode,
             uirevision: true,
             font: {
               family: "var(--joy-fontFamily-body)",
               size: 14,
             },
             showlegend: isCategorical,
-            width: bounds.width - 150, // TODO - remove magic value!
-            height: bounds.height - 100, // TODO - remove magic value!
+            width: bounds.width,
+            height: bounds.height,
             hovermode: false,
             xaxis: {
               showgrid: false,
@@ -390,10 +483,11 @@ function useBrainResultInfo() {
   return null;
 }
 
-function useEmbeddings(brainKey, labelField) {
-  const plot = useLoadedPlot(onLoaded);
-  const datasetName = useRecoilValue(fos.datasetName);
+function usePlotSelection() {
   const [filters, setFilters] = useRecoilState(fos.filters);
+  const [overrideStage, setOverrideStage] = useRecoilState(
+    fos.extendedSelectionOverrideStage
+  );
   const [extendedSelection, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
@@ -406,57 +500,43 @@ function useEmbeddings(brainKey, labelField) {
     "plotSelection",
     []
   );
-  const [overrideStage, setOverrideStage] = useRecoilState(
-    fos.extendedSelectionOverrideStage
-  );
-
-  function onLoaded({ selected_ids }) {
-    setPlotSelection(selected_ids);
+  function handleSelected(selectedResults) {
+    setExtendedSelection(selectedResults);
+    if (selectedResults === null) {
+      clearSelection();
+    }
   }
+
   function clearSelection() {
     setExtendedSelection(null);
     setPlotSelection(null);
+    setOverrideStage(null);
+    setSelectedSamples(new Set());
+    setFilters({});
+  }
+  const selected = Array.from(selectedSamples);
+  let resolvedSelection = null;
+  if (selected && selected.length) {
+    resolvedSelection = selected;
+  } else if (extendedSelection && extendedSelection.length) {
+    resolvedSelection = extendedSelection;
   }
 
-  useEffect(() => {
-    const selected = Array.from(selectedSamples);
-
-    if (selected && selected.length) {
-      setPlotSelection(selected);
-    } else if (extendedSelection && extendedSelection.length) {
-      setPlotSelection(extendedSelection);
-    } else {
-      setPlotSelection(null);
-    }
-  }, [selectedSamples, extendedSelection]);
-
-  function handleSelected(selectedResults) {
-    // if (selectedResults.length === 0) return;
-    // setPlotSelection(selectedResults);
-    console.log("setting extended selection", selectedResults);
-    setExtendedSelection(selectedResults);
-    if (selectedResults === null) {
-      setOverrideStage(null);
-      setSelectedSamples(new Set());
-      setFilters({});
-    }
-  }
-
+  const hasSelection = resolvedSelection !== null;
   return {
-    ...plot,
-    datasetName,
-    brainKey,
+    setPlotSelection,
     handleSelected,
-    hasExtendedSelection,
     clearSelection,
-    plotSelection,
+    resolvedSelection,
+    hasSelection,
   };
 }
 
 const EMPTY_ARRAY = [];
 
-function useLoadedPlot(onLoaded) {
+function useLoadedPlot() {
   const datasetName = useRecoilValue(fos.datasetName);
+  const { clearSelection, setPlotSelection } = usePlotSelection();
   const [brainKey] = useBrainResult();
   const [labelField] = useColorByField();
   const view = useRecoilValue(fos.view);
@@ -464,10 +544,6 @@ function useLoadedPlot(onLoaded) {
   const [loadingPlot, setLoadingPlot] = usePanelStatePartial(
     "loadingPlot",
     true
-  );
-  const [plotSelection, setPlotSelection] = usePanelStatePartial(
-    "plotSelection",
-    EMPTY_ARRAY
   );
   const [loadingPlotError, setLoadingPlotError] = usePanelStatePartial(
     "loadingPlotError",
@@ -485,12 +561,14 @@ function useLoadedPlot(onLoaded) {
   // build the initial plot on load
   useEffect(() => {
     console.log("initial load");
+    clearSelection();
+    setOverrideStage(null);
     setLoadingPlot(true);
     handleInitialPlotLoad({ datasetName, brainKey, view, labelField })
       .catch((err) => setLoadingPlotError(err))
       .then((res) => {
-        onLoaded(res);
         setLoadingPlotError(null);
+        setPlotSelection(res.selected_ids);
         setLoadedPlot(res);
       })
       .finally(() => setLoadingPlot(false));
@@ -523,11 +601,6 @@ function useLoadedPlot(onLoaded) {
 
   // update the extended stages based on the current view
   useEffect(() => {
-    console.log(
-      "update the extended stages based on the current view",
-      view,
-      plotSelection
-    );
     if (loadedPlot && Array.isArray(extendedSelection)) {
       fetchExtendedStage({
         datasetName,
@@ -595,24 +668,6 @@ class Color {
   toCSSRGBString() {
     return `rgb(${this.r * 255}, ${this.g * 255}, ${this.b * 255})`;
   }
-}
-
-function useSetSelectionModeView() {
-  const [plotSelection] = usePanelStatePartial("plotSelection");
-  const brainResultInfo = useBrainResultInfo();
-  const patchesField = brainResultInfo?.config?.patchesField;
-  const setFilterLabelIds = useSetFilterLabelIds();
-  const toPatches = useToPatches();
-
-  const setView = (mode) => {
-    if (mode === "select" && plotSelection && plotSelection.length > 0) {
-      // setFilterLabelIds(patchesField, plotSelection)
-    } else if (mode === "patches") {
-      // toPatches(patchesField);
-    }
-  };
-
-  return setView;
 }
 
 function useSetFilterLabelIds() {
