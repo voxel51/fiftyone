@@ -9539,12 +9539,20 @@ class SampleCollection(object):
             "default_skeleton", default_skeleton
         )
 
-    def _to_fields_str(self, field_schema):
-        max_len = max([len(field_name) for field_name in field_schema]) + 1
-        return "\n".join(
-            "    %s %s" % ((field_name + ":").ljust(max_len), str(field))
-            for field_name, field in field_schema.items()
-        )
+    def _to_fields_str(self, schema):
+        ljust = 0
+        data = []
+        for field_name, field in schema.items():
+            k = field_name + ":"
+
+            v = str(field)
+            if field.is_virtual:
+                v += " (*)"
+
+            ljust = max(ljust, len(k))
+            data.append((k, v))
+
+        return "\n".join("    %s %s" % (k.ljust(ljust), v) for k, v in data)
 
     def _split_frame_fields(self, fields):
         if etau.is_str(fields):
