@@ -12,7 +12,13 @@ import { Loading, Selector, useTheme, Link } from "@fiftyone/components";
 import styled from "styled-components";
 import { useToPatches } from "@fiftyone/state";
 import { usePanelState, usePanelStatePartial } from "@fiftyone/spaces";
-import { HighlightAlt, Close, Help, OpenWith } from "@mui/icons-material";
+import {
+  HighlightAlt,
+  Close,
+  Help,
+  OpenWith,
+  Warning,
+} from "@mui/icons-material";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -175,6 +181,53 @@ const PlotOption = styled(Link)`
   padding: 0.25rem;
 `;
 
+const WarningsContainer = styled.ul`
+  position: absolute;
+  top: 2rem;
+  z-index: 999;
+  list-style: none;
+  padding-inline-start: 0;
+  background: var(--joy-palette-background-level1);
+`;
+
+const WarningItem = styled.li`
+  display: flex;
+  column-gap: 1rem;
+  color: var(--joy-palette-text-plainColor);
+  padding: 1rem 2rem 1rem 1rem;
+  border-radius: 3px;
+  list-style: none;
+  svg {
+    position: relative;
+    top: 3px;
+  }
+`;
+
+const WarningClose = styled.div`
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  cursor: pointer;
+`;
+
+function Warnings() {
+  return (
+    <WarningsContainer>
+      <WarningClose>
+        <Close />
+      </WarningClose>
+      <WarningItem>
+        <div>
+          <Warning />
+        </div>
+        <div>
+          <strong>285</strong> samples are in the blah but no in the blah.
+        </div>
+      </WarningItem>
+    </WarningsContainer>
+  );
+}
+
 export default function Embeddings({ containerHeight, dimensions }) {
   const el = useRef();
   const theme = useTheme();
@@ -241,6 +294,11 @@ export default function Embeddings({ containerHeight, dimensions }) {
               <OpenWith />
             </PlotOption>
 
+            <PlotOption to={() => alert("placeholder")} title={"Warnings"}>
+              <Warning />
+            </PlotOption>
+            <Warnings />
+
             <PlotOption
               href={"https://voxel51.com/docs/fiftyone/user_guide/plots.html"}
               title={"Help"}
@@ -284,7 +342,7 @@ function findIndexByKeyValue(array, key, value) {
   return null;
 }
 
-function tracesToData(traces, style, getColor, plotSelection) {
+function tracesToData(traces, style, getColor, plotSelection, selectionStyle) {
   const isCategorical = style === "categorical";
   const isUncolored = style === "uncolored";
   return Object.entries(traces)
@@ -341,6 +399,8 @@ function tracesToData(traces, style, getColor, plotSelection) {
         selected: {
           marker: {
             opacity: 1,
+            size: selectionStyle === "selected" ? 10 : 6,
+            color: selectionStyle === "selected" ? "orange" : undefined,
           },
         },
         unselected: {
@@ -371,25 +431,29 @@ function useKeyDown(key, handler) {
 
 function EmbeddingsPlot({ brainKey, labelField, el, bounds, plotSelection }) {
   const getColor = useRecoilValue(fos.colorMapRGB(true));
-  const { isLoading, traces, style } = useLoadedPlot();
   const datasetName = useRecoilValue(fos.datasetName);
   const {
     setPlotSelection,
     resolvedSelection,
     clearSelection,
     handleSelected,
+    selectionStyle,
   } = plotSelection;
+  const { isLoading, traces, style } = useLoadedPlot(plotSelection);
   const [dragMode, setDragMode] = usePanelStatePartial("dragMode", "lasso");
   useKeyDown("s", () => setDragMode("lasso"));
   useKeyDown("g", () => setDragMode("pan"));
   useKeyDown("Escape", clearSelection);
 
-  useEffect(() => {
-    setPlotSelection(resolvedSelection);
-  }, [resolvedSelection]);
-
   if (isLoading || !traces) return <Loading>Pixelating...</Loading>;
-  const data = tracesToData(traces, style, getColor, resolvedSelection);
+  console.log({ resolvedSelection });
+  const data = tracesToData(
+    traces,
+    style,
+    getColor,
+    resolvedSelection,
+    selectionStyle
+  );
   const isCategorical = style === "categorical";
 
   return (
@@ -501,6 +565,7 @@ function usePlotSelection() {
     []
   );
   function handleSelected(selectedResults) {
+    setSelectedSamples(new Set());
     setExtendedSelection(selectedResults);
     if (selectedResults === null) {
       clearSelection();
@@ -514,14 +579,21 @@ function usePlotSelection() {
     setSelectedSamples(new Set());
     setFilters({});
   }
+  let selectionStyle = null;
   const selected = Array.from(selectedSamples);
   let resolvedSelection = null;
   if (selected && selected.length) {
     resolvedSelection = selected;
+    selectionStyle = "selected";
   } else if (extendedSelection && extendedSelection.length) {
     resolvedSelection = extendedSelection;
+    selectionStyle = "extended";
   }
 
+  useEffect(() => {
+    console.log("setting plot selection", resolvedSelection);
+    setPlotSelection(resolvedSelection);
+  }, [selectedSamples, extendedSelection]);
   const hasSelection = resolvedSelection !== null;
   return {
     setPlotSelection,
@@ -529,14 +601,17 @@ function usePlotSelection() {
     clearSelection,
     resolvedSelection,
     hasSelection,
+    selectionStyle,
   };
 }
 
 const EMPTY_ARRAY = [];
 
-function useLoadedPlot() {
+function useLoadedPlot({ clearSelection, setPlotSelection }) {
   const datasetName = useRecoilValue(fos.datasetName);
-  const { clearSelection, setPlotSelection } = usePlotSelection();
+  const [selectedSamples, setSelectedSamples] = useRecoilState(
+    fos.selectedSamples
+  );
   const [brainKey] = useBrainResult();
   const [labelField] = useColorByField();
   const view = useRecoilValue(fos.view);
@@ -593,11 +668,20 @@ function useLoadedPlot() {
         extended: resolvedExtended,
         extendedSelection,
       }).then((res) => {
-        console.log("setting plot selection to", res.selected);
-        setPlotSelection(res.selected);
+        const resolved =
+          res.selected || selectedSamples ? Array.from(selectedSamples) : null;
+        console.log("setting plot selection to", resolved);
+        setPlotSelection(resolved);
       });
     }
-  }, [datasetName, brainKey, view, filters, extendedSelection]);
+  }, [
+    datasetName,
+    brainKey,
+    view,
+    filters,
+    extendedSelection,
+    selectedSamples,
+  ]);
 
   // update the extended stages based on the current view
   useEffect(() => {
