@@ -10,6 +10,7 @@ import os
 import typing as t
 
 try:
+    import IPython
     import IPython.display
 except:
     pass
@@ -88,7 +89,6 @@ def _get_context():
     # by `IPython.get_ipython` does not have a `get_trait` method.
     try:
         import google.colab  # noqa: F401
-        import IPython
     except ImportError:
         pass
     else:
@@ -103,7 +103,6 @@ def _get_context():
     # via the `get_trait` method.
     try:
         # Location: /databricks/python_shell/dbruntime
-        import IPython
         from dbruntime.dbutils import DBUtils  # noqa: F401
     except ImportError:
         pass
