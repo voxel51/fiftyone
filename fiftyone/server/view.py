@@ -273,7 +273,7 @@ def get_extended_view(
     view,
     filters=None,
     count_label_tags=False,
-    only_matches=True,
+    only_matches=None,
     extended_stages=None,
     sort=False,
 ):
@@ -284,8 +284,8 @@ def get_extended_view(
         filters: an optional ``dict`` of App defined filters
         count_label_tags (False): whether to set the hidden ``_label_tags``
             field with counts of tags with respect to all label fields
-        only_matches (True): whether to filter unmatches samples when filtering
-            labels
+        only_matches (None): whether to filter unmatches samples when filtering
+            labels, defaults to None to check FE filter setting
         extended_stages (None): extended view stages
         sort (False): wheter to include sort extended stages
     """
@@ -394,7 +394,7 @@ def _make_expression(field, path, args):
 
 
 def _make_filter_stages(
-    view, filters, label_tags=None, hide_result=False, only_matches=True
+    view, filters, label_tags=None, hide_result=False, only_matches=None
 ):
     field_schema = view.get_field_schema()
     if view.media_type != fom.IMAGE:
@@ -406,12 +406,17 @@ def _make_filter_stages(
         F("tags").contains(label_tags), None
     )
     cache = {}
-
     stages = []
     cleanup = set()
     filtered_labels = set()
     for path in sorted(filters):
         args = filters[path]
+        # use FE filter only_match setting if BE only_matches is not set
+        if only_matches == None:
+            only_matches = (
+                True if args["onlyMatch"] is None else args["onlyMatch"]
+            )
+
         if path == "tags" or path.startswith("_"):
             continue
 
