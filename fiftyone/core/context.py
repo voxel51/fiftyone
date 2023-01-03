@@ -181,6 +181,8 @@ def _set_databricks() -> str:
     if _DATABRICKS_PROXY:
         return
 
+    import IPython
+
     shell = IPython.get_ipython()
     dbutils = shell.user_ns["dbutils"]
     data = json.loads(
