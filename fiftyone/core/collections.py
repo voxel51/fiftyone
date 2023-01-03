@@ -4367,6 +4367,7 @@ class SampleCollection(object):
         match_expr=None,
         sort_expr=None,
         reverse=False,
+        flat=True,
     ):
         """Creates a view that reorganizes the samples in the collection so
         that they are grouped by a specified field or expression.
@@ -4379,8 +4380,11 @@ class SampleCollection(object):
 
             dataset = foz.load_zoo_dataset("cifar10", split="test")
 
+            #
             # Take a random sample of 1000 samples and organize them by ground
             # truth label with groups arranged in decreasing order of size
+            #
+
             view = dataset.take(1000).group_by(
                 "ground_truth.label",
                 sort_expr=F().length(),
@@ -4396,6 +4400,20 @@ class SampleCollection(object):
                 )
             )
 
+            #
+            # Variation of above operation that creates a grouped collection
+            # rather than a flattened one
+            #
+
+            view = dataset.take(1000).group_by("ground_truth.label", flat=False)
+
+            print(len(view))
+
+            label = view.take(1).first().ground_truth.label
+            group = view.get_group(label)
+
+            print("%s: %d" % (label, len(group)))
+
         Args:
             field_or_expr: the field or ``embedded.field.name`` to group by, or
                 a :class:`fiftyone.core.expressions.ViewExpression` or
@@ -4406,14 +4424,17 @@ class SampleCollection(object):
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines which groups to include in the output view. If
                 provided, this expression will be evaluated on the list of
-                samples in each group
+                samples in each group. Only applicable when ``flat=True``
             sort_expr (None): an optional
                 :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines how to sort the groups in the output view. If
                 provided, this expression will be evaluated on the list of
-                samples in each group
-            reverse (False): whether to return the results in descending order
+                samples in each group. Only applicable when ``flat=True``
+            reverse (False): whether to return the results in descending order.
+                Only applicable when ``flat=True``
+            flat (True): whether to return a flattened view (True) or a grouped
+                collection (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4424,6 +4445,7 @@ class SampleCollection(object):
                 match_expr=match_expr,
                 sort_expr=sort_expr,
                 reverse=reverse,
+                flat=flat,
             )
         )
 
@@ -8901,6 +8923,9 @@ class SampleCollection(object):
             return True
 
         if self.media_type == fom.GROUP:
+            if self.group_media_types is None:
+                return self._dataset.media_type == fom.VIDEO
+
             if any_slice:
                 return any(
                     slice_media_type == fom.VIDEO

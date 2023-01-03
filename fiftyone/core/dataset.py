@@ -5712,7 +5712,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return [{"$match": {"$expr": {"$eq": ["$" + name_field, slice_name]}}}]
 
     def _attach_groups_pipeline(self, group_slices=None):
-        """A pipeline that attaches the reuested group slice(s) for each
+        """A pipeline that attaches the requested group slice(s) for each
         document and stores them in under ``groups.<slice>`` keys.
         """
         if self.group_field is None:

@@ -558,7 +558,10 @@ class DatasetView(foc.SampleCollection):
             raise ValueError("%s does not contain groups" % type(self))
 
         with contextlib.ExitStack() as exit_context:
-            groups = self._iter_groups()
+            if self.group_field is not None:
+                groups = self._iter_groups()
+            else:
+                groups = self._iter_dynamic_groups()
 
             if progress:
                 pb = fou.ProgressBar(total=len(self))
@@ -615,6 +618,49 @@ class DatasetView(foc.SampleCollection):
             for group in view._iter_groups():
                 yield group
 
+    def _iter_dynamic_groups(self):
+        make_sample = self._make_sample_fcn()
+        index = 0
+
+        post_pipeline = self._groups_only_pipeline("_group_expr")
+        curr_expr = None
+        group = []
+
+        try:
+            for d in self._aggregate(
+                detach_frames=True,
+                detach_groups=True,
+                post_pipeline=post_pipeline,
+            ):
+                group_expr = d.pop("_group_expr", None)
+                sample = make_sample(d)
+
+                if curr_expr is None:
+                    # First overall element
+                    curr_expr = group_expr
+                    group.append(sample)
+                elif group_expr == curr_expr:
+                    # Add element to group
+                    group.append(sample)
+                else:
+                    # Flush last group
+                    index += 1
+                    yield group
+
+                    # First element of new group
+                    curr_expr = group_expr
+                    group = []
+                    group.append(sample)
+
+            if group:
+                yield group
+        except CursorNotFound:
+            # The cursor has timed out so we yield from a new one after
+            # skipping to the last offset
+            view = self.skip(index)
+            for group in view._iter_dynamic_groups():
+                yield group
+
     def get_group(self, group_id):
         """Returns a dict containing the samples for the given group ID.
 
@@ -631,9 +677,12 @@ class DatasetView(foc.SampleCollection):
         if self.media_type != fom.GROUP:
             raise ValueError("%s does not contain groups" % type(self))
 
-        if self.group_field is None:
-            raise ValueError("%s has no group field" % type(self))
+        if self.group_field is not None:
+            return self._get_group(group_id)
 
+        return self._get_dynamic_group(group_id)
+
+    def _get_group(self, group_id):
         group_field = self.group_field
         id_field = group_field + "._id"
 
@@ -645,6 +694,17 @@ class DatasetView(foc.SampleCollection):
             raise KeyError(
                 "No group found with ID '%s' in field '%s'"
                 % (group_id, group_field)
+            )
+
+    def _get_dynamic_group(self, group_value):
+        match_expr = {"$expr": {"$eq": [self._group_expr(), group_value]}}
+        view = self.match(match_expr)
+
+        try:
+            return next(iter(view._iter_dynamic_groups()))
+        except StopIteration:
+            raise KeyError(
+                "No group found matching value '%s'" % (group_value)
             )
 
     def get_field_schema(
@@ -1156,6 +1216,51 @@ class DatasetView(foc.SampleCollection):
                 return True
 
         return False
+
+    def _group_expr(self):
+        group_expr = None
+
+        for stage in self._stages:
+            if isinstance(stage, fost.GroupBy):
+                group_expr = stage._group_expr()
+                if group_expr is not None:
+                    break
+
+        return group_expr
+
+    def _groups_only_pipeline(self, expr_field):
+        group_expr = None
+        _view = self._base_view
+        for stage in self._stages:
+            if isinstance(stage, fost.GroupBy):
+                group_expr = stage._group_expr()
+                if group_expr is not None:
+                    break
+
+            _view = _view._add_view_stage(stage, validate=False)
+
+        if group_expr is None:
+            return None
+
+        pipeline = _view._pipeline(detach_frames=True)
+        pipeline.append(
+            {"$match": {"$expr": {"$eq": ["$$group_expr", group_expr]}}}
+        )
+
+        return [
+            {"$project": {expr_field: group_expr}},
+            {
+                "$lookup": {
+                    "from": self._dataset._sample_collection_name,
+                    "let": {"group_expr": "$" + expr_field},
+                    "pipeline": pipeline,
+                    "as": "groups",
+                }
+            },
+            {"$unwind": "$groups"},
+            {"$set": {"groups." + expr_field: "$" + expr_field}},
+            {"$replaceRoot": {"newRoot": "$groups"}},
+        ]
 
     def _pipeline(
         self,

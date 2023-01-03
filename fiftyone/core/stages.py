@@ -2967,8 +2967,11 @@ class GroupBy(ViewStage):
 
         dataset = foz.load_zoo_dataset("cifar10", split="test")
 
+        #
         # Take a random sample of 1000 samples and organize them by ground
         # truth label with groups arranged in decreasing order of size
+        #
+
         stage = fo.GroupBy(
             "ground_truth.label",
             sort_expr=F().length(),
@@ -2985,6 +2988,21 @@ class GroupBy(ViewStage):
             )
         )
 
+        #
+        # Variation of above operation that creates a grouped collection rather
+        # than a flattened one
+        #
+
+        stage = fo.GroupBy("ground_truth.label", flat=False)
+        view = dataset.take(1000).add_stage(stage)
+
+        print(len(view))
+
+        label = view.take(1).first().ground_truth.label
+        group = view.get_group(label)
+
+        print("%s: %d" % (label, len(group)))
+
     Args:
         field_or_expr: the field or ``embedded.field.name`` to group by, or a
             :class:`fiftyone.core.expressions.ViewExpression` or
@@ -2995,14 +3013,17 @@ class GroupBy(ViewStage):
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines which groups to include in the output view. If
             provided, this expression will be evaluated on the list of samples
-            in each group
+            in each group. Only applicable when ``flat=True``
         sort_expr (None): an optional
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines how to sort the groups in the output view. If
             provided, this expression will be evaluated on the list of samples
-            in each group
-        reverse (False): whether to return the results in descending order
+            in each group. Only applicable when ``flat=True``
+        reverse (False): whether to return the results in descending order.
+            Only applicable when ``flat=True``
+        flat (True): whether to return a flattened view (True) or a grouped
+            collection (False)
     """
 
     def __init__(
@@ -3011,11 +3032,13 @@ class GroupBy(ViewStage):
         match_expr=None,
         sort_expr=None,
         reverse=False,
+        flat=True,
     ):
         self._field_or_expr = field_or_expr
         self._match_expr = match_expr
         self._sort_expr = sort_expr
         self._reverse = reverse
+        self._flat = flat
 
     @property
     def field_or_expr(self):
@@ -3037,15 +3060,21 @@ class GroupBy(ViewStage):
         """Whether to sort the groups in descending order."""
         return self._reverse
 
+    @property
+    def flat(self):
+        """Whether to generate a flattened collection."""
+        return self._flat
+
     def to_mongo(self, _):
-        field_or_expr = self._get_mongo_field_or_expr()
+        if self._flat:
+            return self._make_flat_pipeline()
+
+        return self._make_grouped_pipeline()
+
+    def _make_flat_pipeline(self):
+        group_expr = self._group_expr()
         match_expr = self._get_mongo_match_expr()
         sort_expr = self._get_mongo_sort_expr()
-
-        if etau.is_str(field_or_expr):
-            group_expr = "$" + field_or_expr
-        else:
-            group_expr = field_or_expr
 
         pipeline = [
             {"$group": {"_id": group_expr, "docs": {"$push": "$$ROOT"}}}
@@ -3069,6 +3098,33 @@ class GroupBy(ViewStage):
         )
 
         return pipeline
+
+    def _make_grouped_pipeline(self):
+        group_expr = self._group_expr()
+
+        return [
+            {"$group": {"_id": group_expr, "doc": {"$first": "$$ROOT"}}},
+            {"$replaceRoot": {"newRoot": "$doc"}},
+        ]
+
+    def _group_expr(self):
+        if self._flat:
+            return None
+
+        field_or_expr = self._get_mongo_field_or_expr()
+
+        if etau.is_str(field_or_expr):
+            group_expr = "$" + field_or_expr
+        else:
+            group_expr = field_or_expr
+
+        return group_expr
+
+    def get_media_type(self, sample_collection):
+        if not self._flat:
+            return fom.GROUP
+
+        return None
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -3119,6 +3175,7 @@ class GroupBy(ViewStage):
             ["match_expr", self._get_mongo_match_expr()],
             ["sort_expr", self._get_mongo_sort_expr()],
             ["reverse", self._reverse],
+            ["flat", self._flat],
         ]
 
     @classmethod
@@ -3146,6 +3203,12 @@ class GroupBy(ViewStage):
                 "type": "bool",
                 "default": "False",
                 "placeholder": "reverse (default=False)",
+            },
+            {
+                "name": "flat",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "flat (default=True)",
             },
         ]
 
