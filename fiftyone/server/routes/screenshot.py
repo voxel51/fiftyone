@@ -31,7 +31,6 @@ class Screenshot(HTTPEndpoint):
                 subscription=subscription,
                 image=f"{str(request.url)[:-4]}jpeg",
                 url=url,
-                session_url=focx.get_url("localhost", get_port()),
                 max_width=screenshot.max_width,
             )
             media_type = "text/html"

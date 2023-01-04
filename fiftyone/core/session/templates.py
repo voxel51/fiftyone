@@ -149,10 +149,13 @@ SCREENSHOT_DATABRICKS_SCRIPT = """
    (function() {
      var container = document.getElementById("focontainer-{{ subscription }}");
      var overlay = document.getElementById("fooverlay-{{ subscription }}");
+     var proxy = new URLSearchParams(window.location.search);
+     var url = new URL(window.location.toString());
+     url.pathname = proxy;
      fetch(`{{ url }}fiftyone`)
      .then(() => {
         overlay.addEventListener("click", () => {
-          window.location = "{{ session_url }}"
+          window.location = url.toString();
         });
         container.addEventListener("mouseenter", () => overlay.style.display = "block");
         container.addEventListener("mouseleave", () => overlay.style.display = "none");
