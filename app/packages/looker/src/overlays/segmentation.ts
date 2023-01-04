@@ -3,8 +3,9 @@
  */
 
 import { getColor } from "@fiftyone/utilities";
-import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
+import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
+import { isRgbMaskTargets } from "../util";
 import {
   BaseLabel,
   CONTAINS,
@@ -17,7 +18,7 @@ import { sizeBytes, strokeCanvasRect, t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
   mask?: {
-    data: NumpyResult;
+    data: OverlayMask;
     image: ArrayBuffer;
   };
 }
@@ -119,7 +120,6 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   getPointInfo(state: Readonly<State>): PointInfo<SegmentationInfo> {
-    const target = this.getTarget(state);
     const coloring = state.options.coloring;
     let maskTargets = coloring.maskTargets[this.field];
     if (maskTargets) {
@@ -130,29 +130,50 @@ export default class SegmentationOverlay<State extends BaseState>
       maskTargets = coloring.defaultMaskTargets;
     }
 
-    const color =
-      maskTargets && Object.keys(maskTargets).length === 1
-        ? getColor(
-            state.options.coloring.pool,
-            state.options.coloring.seed,
-            this.field
-          )
-        : coloring.targets[
-            Math.round(Math.abs(target)) % coloring.targets.length
-          ];
+    const target = this.getTarget(state);
 
-    return {
-      color,
-      label: {
-        ...this.label,
-        mask: {
-          shape: this.label.mask.data.shape ? this.label.mask.data.shape : null,
+    if (isRgbMaskTargets(maskTargets) && this.label.mask.data.channels > 2) {
+      return {
+        color: Object.entries(maskTargets).find(
+          ([_, el]) => el.intTarget === target
+        )[0],
+        label: {
+          ...this.label,
+          mask: {
+            shape: this.label.mask.data.shape
+              ? this.label.mask.data.shape
+              : null,
+          },
         },
-      },
-      field: this.field,
-      target,
-      type: "Segmentation",
-    };
+        field: this.field,
+        target,
+        type: "Segmentation",
+      };
+    } else {
+      return {
+        color:
+          maskTargets && Object.keys(maskTargets).length === 1
+            ? getColor(
+                state.options.coloring.pool,
+                state.options.coloring.seed,
+                this.field
+              )
+            : coloring.targets[
+                Math.round(Math.abs(target)) % coloring.targets.length
+              ],
+        label: {
+          ...this.label,
+          mask: {
+            shape: this.label.mask.data.shape
+              ? this.label.mask.data.shape
+              : null,
+          },
+        },
+        field: this.field,
+        target,
+        type: "Segmentation",
+      };
+    }
   }
 
   getSelectData(): SelectData {

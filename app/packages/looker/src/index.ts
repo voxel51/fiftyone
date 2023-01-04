@@ -647,9 +647,10 @@ export abstract class Looker<
     const labelsWorker = getLabelsWorker((event, detail) =>
       this.dispatchEvent(event, detail)
     );
-    const listener = ({ data: { sample, uuid } }) => {
+    const listener = ({ data: { sample, coloring, uuid } }) => {
       if (uuid === messageUUID) {
         this.sample = sample;
+        this.state.options.coloring = coloring;
         this.loadOverlays(sample);
         this.updater({
           overlaysPrepared: true,
