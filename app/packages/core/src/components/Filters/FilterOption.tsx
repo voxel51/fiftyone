@@ -25,6 +25,7 @@ interface Props {
   valueName: string;
   color: string;
   isRangeLabel?: boolean;
+  modal: boolean;
 }
 
 const Text = styled.div`
@@ -43,6 +44,7 @@ type Option = {
 const FilterOption: React.FC<Props> = ({
   labels,
   color,
+  modal,
   valueName,
   shouldShowAllOptions,
   excludeAtom,
@@ -99,25 +101,28 @@ const FilterOption: React.FC<Props> = ({
       ]
     : [];
 
-  options = options.concat([
-    {
-      icon: "ImageIcon",
-      key: "match",
-      value: isRangeLabel
-        ? `Show samples in the range`
-        : `Show samples with ${valueName}`,
-      tooltip: "dataset.match_labels(fields=field, filter=condition)",
-    },
-    {
-      icon: "HideImageIcon",
-      key: "negativeMatch",
-      value: isRangeLabel
-        ? `Show samples outside the range`
-        : `Show samples without ${valueName}`,
-      tooltip:
-        "dataset.match_labels(fields=field, filter=condition, bool=False)",
-    },
-  ]);
+  // label fields in extended view should not have match label (select samples) options
+  options = modal
+    ? options
+    : options.concat([
+        {
+          icon: "ImageIcon",
+          key: "match",
+          value: isRangeLabel
+            ? `Show samples in the range`
+            : `Show samples with ${valueName}`,
+          tooltip: "dataset.match_labels(fields=field, filter=condition)",
+        },
+        {
+          icon: "HideImageIcon",
+          key: "negativeMatch",
+          value: isRangeLabel
+            ? `Show samples outside the range`
+            : `Show samples without ${valueName}`,
+          tooltip:
+            "dataset.match_labels(fields=field, filter=condition, bool=False)",
+        },
+      ]);
 
   const selectedValue = options.find((o) => o.key === key)?.value;
 
@@ -127,7 +132,6 @@ const FilterOption: React.FC<Props> = ({
     valueName: string
   ) => {
     // returns the text for selected filter method
-
     const item = selectedLabels.length > 1 ? valueName + "s" : valueName;
     switch (key) {
       case "filter":

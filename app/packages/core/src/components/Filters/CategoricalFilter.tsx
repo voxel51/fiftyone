@@ -200,6 +200,7 @@ const Wrapper = ({
               labels={Array.from(selectedSet) as string[]}
               valueName={name}
               color={color}
+              modal={modal}
             />
           )}
           <Button
