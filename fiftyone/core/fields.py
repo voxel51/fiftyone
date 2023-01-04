@@ -1142,12 +1142,19 @@ class MaskTargetsField(DictField):
     def validate(self, value):
         super().validate(value)
 
+        is_all_targets_string = all(
+            map(lambda kv: isinstance(kv[1], str), value.items())
+        )
+
+        if not is_all_targets_string:
+            self.error("Mask target labels must all be string values")
+
         if not (
             self._is_integer_mask_target(value)
             or self._is_rgb_mask_target(value)
         ):
             self.error(
-                "Mask target fields must all either be integer keys or string RGB hex keys (like #012abc)"
+                "Mask target field keys must all either be integer keys or string RGB hex keys (like #012abc)"
             )
 
 
