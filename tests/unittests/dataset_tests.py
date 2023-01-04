@@ -5,24 +5,23 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+import unittest
 from copy import copy, deepcopy
 from datetime import date, datetime
-import os
-
-from bson import ObjectId
-import numpy as np
-import pytz
-import unittest
 
 import eta.core.utils as etau
+import numpy as np
+import pytz
+from bson import ObjectId
+from decorators import drop_datasets, skip_windows
+from mongoengine import ValidationError
 
 import fiftyone as fo
-from fiftyone import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
-
-from decorators import drop_datasets, skip_windows
+from fiftyone import ViewField as F
 
 
 class DatasetTests(unittest.TestCase):
@@ -2314,14 +2313,37 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         default_mask_targets = {1: "cat", 2: "dog"}
+        default_mask_targets_str_keys = {"1": "cat", "2": "dog"}
+
         dataset.default_mask_targets = default_mask_targets
+        dataset.default_mask_targets = default_mask_targets_str_keys
+
+        default_mask_targets_invalid_str_keys = {"1hi": "cat", "2": "dog"}
+
+        with self.assertRaises(ValidationError):
+            dataset.default_mask_targets = (
+                default_mask_targets_invalid_str_keys
+            )
 
         dataset.reload()
         self.assertDictEqual(
             dataset.default_mask_targets, default_mask_targets
         )
 
-        with self.assertRaises(Exception):
+        # test rgb mask targets
+        default_mask_targets_rgb = {
+            "#ff0034": "label1",
+            "#00dd32": "label2",
+            "#AABB23": "label3",
+        }
+        dataset.default_mask_targets = default_mask_targets_rgb
+
+        default_mask_targets_rgb_invalid = {"ff0034": "label1"}
+
+        with self.assertRaises(ValidationError):
+            dataset.default_mask_targets = default_mask_targets_rgb_invalid
+
+        with self.assertRaises(ValidationError):
             dataset.default_mask_targets["hi"] = "there"
             dataset.save()  # error
 
@@ -2334,28 +2356,28 @@ class DatasetTests(unittest.TestCase):
         dataset.reload()
         self.assertDictEqual(dataset.mask_targets, mask_targets)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             dataset.mask_targets["hi"] = "there"
             dataset.save()  # error
 
         dataset.mask_targets.pop("hi")
         dataset.save()  # success
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             dataset.mask_targets[1] = {1: "cat", 2: "dog"}
             dataset.save()  # error
 
         dataset.mask_targets.pop(1)
         dataset.save()  # success
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             dataset.mask_targets["ground_truth"]["hi"] = "there"
             dataset.save()  # error
 
         dataset.mask_targets["ground_truth"].pop("hi")
         dataset.save()  # success
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             dataset.mask_targets["predictions"] = {1: {"too": "many"}}
             dataset.save()  # error
 
