@@ -149,8 +149,13 @@ SCREENSHOT_DATABRICKS_SCRIPT = """
    (function() {
      var container = document.getElementById("focontainer-{{ subscription }}");
      var overlay = document.getElementById("fooverlay-{{ subscription }}");
-     var proxy = new URLSearchParams(window.location.search);
+     var params = new URLSearchParams(window.location.search)
+     var proxy = params.get("proxy");
      var url = new URL(window.location.toString());
+     params.set("context", "databricks");
+     params.set("polling", true);
+     params.set("subscription", "{{ subscription }}");
+     url.search = params.toString();
      url.pathname = proxy;
      fetch(`{{ proxy }}fiftyone`)
      .then(() => {
