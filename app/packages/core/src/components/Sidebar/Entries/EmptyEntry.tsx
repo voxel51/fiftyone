@@ -1,8 +1,8 @@
+import React from "react";
 import { useTheme } from "@fiftyone/components";
 import { useSpring } from "@react-spring/core";
-import React from "react";
-import LoadingDots from "../../Common/LoadingDots";
 
+import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
 

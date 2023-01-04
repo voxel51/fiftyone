@@ -14,6 +14,7 @@ import numpy as np
 
 import eta.core.frameutils as etaf
 import eta.core.image as etai
+import eta.core.utils as etau
 
 import fiftyone.core.cache as foc
 from fiftyone.core.odm import DynamicEmbeddedDocument

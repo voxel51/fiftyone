@@ -1,18 +1,15 @@
-import React, { Suspense, useLayoutEffect, useMemo } from "react";
-import { Checkbox } from "@mui/material";
 import {
   KeyboardArrowDown,
   KeyboardArrowUp,
   VisibilityOff,
 } from "@mui/icons-material";
-import { useSpring } from "@react-spring/web";
+import { Checkbox } from "@mui/material";
+import React, { useMemo } from "react";
 import {
-  atomFamily,
   DefaultValue,
   selectorFamily,
   useRecoilState,
   useRecoilValue,
-  useRecoilValueLoadable,
 } from "recoil";
 
 import {
@@ -44,15 +41,15 @@ import {
   StringFieldFilter,
 } from "../../Filters";
 
-import { PathEntryCounts } from "./EntryCounts";
-import RegularEntry from "./RegularEntry";
-import { NameAndCountContainer, PillButton } from "../../utils";
 import { useTheme } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import Color from "color";
-import { pathIsExpanded } from "./utils";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import { NameAndCountContainer, PillButton } from "../../utils";
+import { PathEntryCounts } from "./EntryCounts";
+import RegularEntry from "./RegularEntry";
+import { pathIsExpanded } from "./utils";
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,

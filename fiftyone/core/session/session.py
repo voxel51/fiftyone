@@ -287,6 +287,7 @@ class Session(object):
         self,
         dataset: t.Union[fod.Dataset, fov.DatasetView] = None,
         view: fov.DatasetView = None,
+        view_name: str = None,
         plots: fop.PlotManager = None,
         port: int = None,
         address: str = None,
@@ -335,10 +336,15 @@ class Session(object):
 
         self.plots = plots
 
+        final_view_name = view_name
+        if not final_view_name and view and view.name:
+            final_view_name = view.name
+
         self._state = StateDescription(
             config=config,
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
+            view_name=final_view_name,
         )
         self._client = fosc.Client(
             address=address,
@@ -555,6 +561,7 @@ class Session(object):
         if view is not None:
             view._root_dataset._reload()
             self._state.dataset = view._root_dataset
+            self._state.view_name = view.name
 
         self._state.selected = []
         self._state.selected_labels = []
@@ -881,7 +888,7 @@ class Session(object):
             height = self.config.notebook_height
 
         uuid = str(uuid4())
-        self._notebook_cells[uuid] = fosn.NotebookCell(
+        cell = fosn.NotebookCell(
             address=self.server_address,
             handle=IPython.display.DisplayHandle(display_id=uuid),
             height=height,
@@ -889,7 +896,8 @@ class Session(object):
             subscription=uuid,
         )
 
-        fosn.display(self._client, self._notebook_cells[uuid])
+        self._notebook_cells[uuid] = cell
+        fosn.display(self._client, cell)
 
     def no_show(self) -> fou.SetAttributes:
         """Returns a context manager that temporarily prevents new App
@@ -990,18 +998,18 @@ def _attach_listeners(session: "Session"):
     if focx.is_notebook_context() and not focx.is_colab_context():
 
         def on_capture_notebook_cell(event: CaptureNotebookCell) -> None:
-            fosn.capture(session._notebook_cells[event.subscription], event)
+            cell = session._notebook_cells.get(event.subscription, None)
+            if cell is not None:
+                fosn.capture(cell, event)
 
         session._client.add_event_listener(
             "capture_notebook_cell", on_capture_notebook_cell
         )
 
         def on_reactivate_notebook_cell(event: ReactivateNotebookCell) -> None:
-            fosn.display(
-                session._client,
-                session._notebook_cells[event.subscription],
-                reactivate=True,
-            )
+            cell = session._notebook_cells.get(event.subscription, None)
+            if cell is not None:
+                fosn.display(session._client, cell, reactivate=True)
 
         session._client.add_event_listener(
             "reactivate_notebook_cell", on_reactivate_notebook_cell

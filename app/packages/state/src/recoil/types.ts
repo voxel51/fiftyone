@@ -39,6 +39,19 @@ export namespace State {
     [key: number]: string;
   }
 
+  export interface SavedView {
+    id: string;
+    datasetId: string;
+    name: string;
+    slug: string;
+    description?: string;
+    color?: string;
+    viewStages: Stage[];
+    createdAt: DateTime;
+    lastLoadedAt: DateTime;
+    lastModifiedAt?: DateTime;
+  }
+
   export interface Evaluation {}
 
   export interface Run {
@@ -97,6 +110,7 @@ export namespace State {
     createdAt: DateTime;
     defaultMaskTargets: Targets;
     evaluations: EvaluationRun[];
+    savedViews: SavedView[];
     frameFields: StrictField[];
     lastLoadedAt: DateTime;
     maskTargets: {
@@ -165,5 +179,9 @@ export namespace State {
     selectedLabels: SelectedLabel[];
     view: Stage[];
     viewCls: string | null;
+    viewName: string | null;
+    savedViews: SavedView[];
+    savedViewSlug: string | null;
+    changingSavedView: Boolean | null;
   }
 }

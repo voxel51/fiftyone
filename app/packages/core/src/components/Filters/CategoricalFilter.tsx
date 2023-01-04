@@ -23,6 +23,7 @@ import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import withSuspense from "./withSuspense";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
+import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -96,8 +97,8 @@ const Wrapper = ({
   selectedCounts,
 }: WrapperProps) => {
   const name = path.split(".").slice(-1)[0];
+  const schema = useRecoilValue(fos.field(path));
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
-
   const selectedSet = new Set(selected);
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
@@ -107,8 +108,9 @@ const Wrapper = ({
     count: counts[String(value)] ?? 0,
   }));
   const skeleton = useRecoilValue(isKeypointLabel(path));
+  const neverShowExpansion = schema?.ftype.includes("ObjectIdField");
 
-  if (results.length <= CHECKBOX_LIMIT || skeleton) {
+  if ((results.length <= CHECKBOX_LIMIT && !neverShowExpansion) || skeleton) {
     allValues = [
       ...allValues,
       ...results
@@ -360,6 +362,8 @@ const CategoricalFilter = <T extends V = V>({
   const theme = useTheme();
   const field = useRecoilValue(fos.field(path));
   const countsLoadable = useRecoilValueLoadable(countsAtom);
+  const schema = useRecoilValue(fos.field(path));
+  const neverShowExpansion = schema?.ftype.includes("ObjectIdField");
 
   if (countsLoadable.state !== "hasValue") return null;
 
@@ -396,23 +400,24 @@ const CategoricalFilter = <T extends V = V>({
       <CategoricalFilterContainer
         onMouseDown={(event) => event.stopPropagation()}
       >
-        {results.length > CHECKBOX_LIMIT && !skeleton && (
-          <Selector
-            useSearch={useSearch}
-            placeholder={
-              results === null ? "Loading..." : `+ filter by ${name}`
-            }
-            component={ResultComponent}
-            onSelect={onSelect}
-            inputStyle={{
-              color: theme.text.secondary,
-              fontSize: "1rem",
-              width: "100%",
-            }}
-            containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
-            toKey={({ value }) => String(value)}
-          />
-        )}
+        {results === null && <LoadingDots text="" />}
+        {results !== null &&
+          (results.length > CHECKBOX_LIMIT || neverShowExpansion) &&
+          !skeleton && (
+            <Selector
+              useSearch={useSearch}
+              placeholder={`+ filter by ${name}`}
+              component={ResultComponent}
+              onSelect={onSelect}
+              inputStyle={{
+                color: theme.text.secondary,
+                fontSize: "1rem",
+                width: "100%",
+              }}
+              containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
+              toKey={({ value }) => String(value)}
+            />
+          )}
         <Wrapper
           path={path}
           color={color}
