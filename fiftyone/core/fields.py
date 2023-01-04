@@ -1092,8 +1092,8 @@ class ClassesField(ListField):
 
 
 class MaskTargetsField(DictField):
-    """A :class:`DictField` that stores mapping between integer keys or
-    RGB string hex keys and string targets.
+    """A :class:`DictField` that stores mapping between integer keys or RGB
+    string hex keys and string targets.
 
     If this field is not set, its default value is ``{}``.
 
@@ -1154,7 +1154,8 @@ class MaskTargetsField(DictField):
             or self._is_rgb_mask_target(value)
         ):
             self.error(
-                "Mask target field keys must all either be integer keys or string RGB hex keys (like #012abc)"
+                "Mask target field keys must all either be integer keys or "
+                "string RGB hex keys (like #012abc)"
             )
 
 
