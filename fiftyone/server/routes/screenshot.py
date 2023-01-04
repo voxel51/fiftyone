@@ -29,7 +29,7 @@ class Screenshot(HTTPEndpoint):
         if ext == "html":
             content = SCREENSHOT_DATABRICKS.render(
                 subscription=subscription,
-                image=f"{proxy}screenshot/{subscription}.jpeg",
+                image=f"{proxy}screenshot/{subscription}.jpeg?proxy={proxy}",
                 proxy=proxy,
                 max_width=screenshot.max_width,
             )
