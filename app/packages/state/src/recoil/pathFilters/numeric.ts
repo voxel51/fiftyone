@@ -268,9 +268,9 @@ export const numeric = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const exclude = get(excludeAtom(params));
-      const onlyMatch = get(onlyMatchAtom(params));
-      const isMatching = get(isMatchingAtom(params));
+      const exclude = get(numericExcludeAtom(params));
+      const onlyMatch = get(numericOnlyMatchAtom(params));
+      const isMatching = get(numericIsMatchingAtom(params));
 
       const [start, end] = get(rangeAtom(params));
       const none = get(nonfiniteAtom({ ...params, key: "none" }));
