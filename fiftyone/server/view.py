@@ -473,10 +473,13 @@ def _make_filter_stages(
                         **expr,
                     )
 
-                elif not (isMatching):
+                elif isMatching:
                     stage = fosg.MatchLabels(
-                        cache.get(prefix + parent.name, prefix + parent.name),
-                        exprAlt,
+                        fields=cache.get(
+                            prefix + parent.name, prefix + parent.name
+                        ),
+                        filter=exprAlt,
+                        bool=not (args["exclude"]),
                     )
 
                 else:
@@ -488,7 +491,9 @@ def _make_filter_stages(
                     )
 
                 stages.append(stage)
-                filtered_labels.add(path)
+                if not (isMatching):
+                    filtered_labels.add(path)
+
                 if new_field:
                     cache[prefix + parent.name] = new_field
                     cleanup.add(new_field)
@@ -559,10 +564,21 @@ def _is_label(field):
 def _make_match_label_expression(f, args, field):
     expr = None
     values = args["values"]
+    exclude = args["exclude"]
     if not values:
         return None
-    print("match label", f, args, field)
-    return f[field].is_in(values)
+    if isinstance(field, fof.ObjectIdField):
+        f = f.to_string()
+    none = any(map(lambda v: v is None, values))
+    values = filter(lambda v: v is not None, values)
+    expr = f.is_in(values)
+
+    if none:
+        if exclude:
+            expr &= f.exists()
+        else:
+            expr |= ~(f.exists())
+    return expr
 
 
 def _make_scalar_expression(f, args, field):
