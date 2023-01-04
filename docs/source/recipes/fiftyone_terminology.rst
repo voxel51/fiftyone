@@ -48,7 +48,7 @@ _______________________
        | directly compatible with
 
 
-.. _fiftyone-components-terminology:
+.. _data-schema-terminology:
 
 Data Schema
 _________________
@@ -90,7 +90,6 @@ _________________
      - | A class encapsulating the computation of an aggregate statistic about a
        | dataset.
 
-
 .. _app-terminology:
 
 The FiftyOne App
@@ -99,6 +98,9 @@ _______________________
 .. list-table::
    :widths: 20 80
 
+   * - **Session**
+     - | An instance of the FiftyOne App connected to a specific dataset, via 
+       | which you can use to programmatically interact with the app.
    * - **Sample grid**
      - | The rectangular grid of images or videos you can scroll through. You 
        | can click on any image or video in the grid to expand
@@ -108,5 +110,9 @@ _______________________
    * - **Viewbar**
      - | Horizontal bar at the top of the app where you can create and compose
        | view stages via point and click operations
+
+
+
+
 
 
