@@ -121,7 +121,7 @@ export const useScreenshot = (
             const proxy = params.get("proxy");
 
             window.location.assign(
-              `${proxy || "/"}screenshot/${subscription}.html`
+              `${proxy || "/"}screenshot/${subscription}.html?proxy=${proxy}`
             );
           }
         });
