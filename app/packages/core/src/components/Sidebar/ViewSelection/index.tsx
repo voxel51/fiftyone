@@ -134,9 +134,6 @@ export default function ViewSelection(props: Props) {
   }, [searchData, selected]);
 
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
-  const [selectedSavedView] = useRecoilState<DatasetViewOption | null>(
-    selectedSavedViewState
-  );
   const isEmptyView = false; //selectedSavedView.label !== "Unsaved view"; //
   // !loadedView?.length;
 
@@ -155,9 +152,12 @@ export default function ViewSelection(props: Props) {
         (v) => v.slug === savedViewParam
       )?.[0];
       if (potentialView) {
+        if (selected && selected.id === potentialView.id) {
+          return;
+        }
         setSelected(potentialView);
         setView(
-          potentialView?.viewStages,
+          potentialView.viewStages,
           [],
           potentialView.label,
           true,
@@ -198,7 +198,7 @@ export default function ViewSelection(props: Props) {
       // no view param
       if (!isIPython && selected && selected.slug !== DEFAULT_SELECTED.slug) {
         setSelected(DEFAULT_SELECTED);
-        setView(loadedView, [], "", false, "");
+        // do not reset view to [] again. The viewbar sets it once.
       }
     }
   }, [savedViewParam]);
@@ -266,7 +266,7 @@ export default function ViewSelection(props: Props) {
           selected={selected}
           setSelected={(item: DatasetViewOption) => {
             setSelected(item);
-            setView([], [], item.label, true, item.slug);
+            setView(item.viewStages, [], item.label, true, item.slug);
           }}
           items={searchData}
           onEdit={(item) => {

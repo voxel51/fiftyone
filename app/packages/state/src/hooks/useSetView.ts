@@ -91,8 +91,8 @@ const useSetView = (
               : viewOrUpdater;
           commit({
             variables: {
-              subscription: subscription,
-              session: session,
+              subscription,
+              session,
               view: value,
               datasetName: dataset.name,
               form: patch
@@ -100,23 +100,26 @@ const useSetView = (
                     viewStateForm({
                       addStages: addStages ? JSON.stringify(addStages) : null,
                       modal: false,
-                      selectSlice: selectSlice,
+                      selectSlice,
                     })
                   ).contents
                 : {},
-              changingSavedView: changingSavedView,
-              savedViewSlug: savedViewSlug,
-              viewName: viewName,
+              changingSavedView,
+              savedViewSlug,
+              viewName,
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
               const isDesktop = isElectron();
               // TODO: rm logging when done debugging
-              console.log(
-                "useSetView onComplete current state:",
-                router.history.location.state
-              );
-              if (router.history.location.state.state) {
+              // console.log(
+              //   "useSetView onComplete current state:",
+              //   router.history.location.state
+              // );
+              if (
+                router.history.location.state &&
+                router.history.location.state.state
+              ) {
                 const newState = {
                   ...router.history.location.state.state,
                   view: value,
@@ -129,10 +132,10 @@ const useSetView = (
                   changingSavedView: changingSavedView,
                 };
                 router.history.location.state.state = newState;
-                console.log(
-                  "useSetView onComplete new state:",
-                  router.history.location.state
-                );
+                // console.log(
+                //   "useSetView onComplete new state:",
+                //   router.history.location.state
+                // );
 
                 const url = new URL(window.location.toString());
                 const currentSlug = url.searchParams.get("view");
@@ -198,12 +201,14 @@ const useSetView = (
                     viewCls: dataset.viewCls,
                     selected: [],
                     selectedLabels: [],
-                    viewName: viewName,
-                    savedViews: savedViews,
-                    savedViewSlug: savedViewSlug,
-                    changingSavedView: changingSavedView,
+                    viewName,
+                    savedViews,
+                    savedViewSlug,
+                    changingSavedView,
                   },
                 });
+                onComplete && onComplete();
+                return;
               } else {
                 // stateless use in teams / embedded app
                 const url = new URL(window.location.toString());
@@ -237,10 +242,10 @@ const useSetView = (
                   viewCls: dataset.viewCls,
                   selected: [],
                   selectedLabels: [],
-                  viewName: viewName,
-                  savedViews: savedViews,
-                  savedViewSlug: savedViewSlug,
-                  changingSavedView: changingSavedView,
+                  viewName,
+                  savedViews,
+                  savedViewSlug,
+                  changingSavedView,
                 },
               });
 
