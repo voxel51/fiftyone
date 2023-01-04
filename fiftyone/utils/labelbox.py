@@ -1629,6 +1629,8 @@ def export_to_labelbox(
                 "for video datasets"
             )
 
+    sample_collection.compute_metadata()
+
     etau.ensure_empty_file(ndjson_path)
 
     # Export the labels
@@ -1642,16 +1644,6 @@ def export_to_labelbox(
                     labelbox_id_field,
                 )
                 continue
-
-            # Compute metadata if necessary
-            if sample.metadata is None:
-                if is_video:
-                    metadata = fom.VideoMetadata.build_for(sample.filepath)
-                else:
-                    metadata = fom.ImageMetadata.build_for(sample.filepath)
-
-                sample.metadata = metadata
-                sample.save()
 
             # Get frame size
             if is_video:
@@ -1970,7 +1962,7 @@ def _get_nested_classifications(label):
 
 # https://labelbox.com/docs/automation/model-assisted-labeling#mask_annotations
 def _to_mask(name, label, data_row_id):
-    mask = np.asarray(label.mask)
+    mask = np.asarray(label.get_mask())
     if mask.ndim < 3 or mask.dtype != np.uint8:
         raise ValueError(
             "Segmentation masks must be stored as RGB color uint8 images"

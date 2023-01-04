@@ -9,6 +9,7 @@ from datetime import date, datetime
 import os
 import pathlib
 
+import eta.core.utils as etau
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.base import (
@@ -31,6 +32,9 @@ from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
 from fiftyone.server.routes import routes
 from fiftyone.server.scalars import Date, DateTime
+
+
+etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
 
 
 class Static(StaticFiles):

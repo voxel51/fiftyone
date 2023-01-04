@@ -42,6 +42,14 @@ export const mediaType = selector({
   },
 });
 
+export const savedViewsSelector = selector<State.SavedView[]>({
+  key: "datasetViews",
+  get: ({ get }) => get(atoms.dataset)?.savedViews || [],
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
 export const isVideoDataset = selector({
   key: "isVideoDataset",
   get: ({ get }) => get(mediaType) === "video",
@@ -84,6 +92,11 @@ export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
     default: appConfigDefault,
   }
 );
+
+export const datasetAppConfig = selector<State.DatasetAppConfig>({
+  key: "datasetAppConfig",
+  get: ({ get }) => get(atoms.dataset)?.appConfig,
+});
 
 export const defaultTargets = selector({
   key: "defaultTargets",

@@ -13,6 +13,7 @@ import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
 import { sidebarSampleId } from "./modal";
 import { refresher } from "./atoms";
+import { field } from "./schema";
 
 export const aggregationQuery = graphQLSelectorFamily<
   VariablesOf<foq.aggregationsQuery>,
@@ -54,12 +55,15 @@ export const aggregations = selectorFamily({
   get:
     (params: { extended: boolean; modal: boolean; paths: string[] }) =>
     ({ get }) => {
-      let extended = params.extended;
-      if (extended && !get(filterAtoms.hasFilters(params.modal))) {
-        extended = false;
-      }
+      if (params) {
+        let extended = params.extended;
+        if (extended && !get(filterAtoms.hasFilters(params.modal))) {
+          extended = false;
+        }
 
-      return get(aggregationQuery({ ...params, extended })).aggregations;
+        return get(aggregationQuery({ ...params, extended })).aggregations;
+      }
+      return [];
     },
 });
 
@@ -75,9 +79,19 @@ export const aggregation = selectorFamily({
       path: string;
     }) =>
     ({ get }) => {
-      return get(
+      const result = get(
         aggregations({ ...params, paths: get(schemaAtoms.filterFields(path)) })
-      ).filter((data) => data.path === path)[0];
+      ).filter((data) => data.path === path);
+      // Avoid downstream errors due to undefined.map by returning an
+      // object for failed graphQL aggregations
+      return result?.length
+        ? result[0]
+        : {
+            path: path,
+            count: 0,
+            exists: 0,
+            values: [],
+          };
     },
 });
 
@@ -91,7 +105,13 @@ export const noneCount = selectorFamily<
     ({ get }) => {
       const data = get(aggregation(params));
       const parent = params.path.split(".").slice(0, -1).join(".");
-      return (get(count({ ...params, path: parent })) as number) - data.count;
+
+      // for ListField, set noneCount to zero (so that it is the none option is omitted in display)
+      const schema = get(field(params.path));
+      const isListField = schema.ftype.includes("ListField");
+      return isListField
+        ? 0
+        : (get(count({ ...params, path: parent })) as number) - data.count;
     },
 });
 
@@ -230,9 +250,13 @@ export const values = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      return get(aggregation(params))
-        .values.map(({ value }) => value)
-        .sort();
+      if (params) {
+        const result = get(aggregation(params));
+        if (result && result.values) {
+          return result.values.map(({ value }) => value).sort() || [];
+        }
+      }
+      return [];
     },
 });
 
@@ -287,7 +311,7 @@ export const count = selectorFamily({
         return get(counts(params))[value] || 0;
       }
 
-      return get(aggregation(params)).count as number;
+      return get(aggregation(params))?.count as number;
     },
 });
 

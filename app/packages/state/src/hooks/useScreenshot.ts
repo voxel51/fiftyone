@@ -126,7 +126,7 @@ export const useScreenshot = (
           }
         });
       });
-  }, []);
+  }, [captureCallbacks, context, subscription]);
 
   const run = () => {
     if (!context) return;
