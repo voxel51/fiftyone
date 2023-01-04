@@ -7,14 +7,14 @@ import ImageIcon from "@mui/icons-material/Image";
 import HideImageIcon from "@mui/icons-material/HideImage";
 import { IconButton } from "@mui/material";
 import { useSpring } from "framer-motion";
+import Color from "color";
 
 import { useOutsideClick } from "@fiftyone/state";
 import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
+import Tooltip from "@fiftyone/components/src/components/Tooltip";
 
 import { PopoutDiv } from "../utils";
 import { joinStringArray } from "./utils";
-import Tooltip from "@fiftyone/components/src/components/Tooltip";
-import Color from "color";
 
 interface Props {
   shouldShowAllOptions: boolean;
