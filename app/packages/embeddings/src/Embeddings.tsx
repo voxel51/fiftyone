@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useLayoutEffect } from "react";
+import { useEffect, useState, useRef, useLayoutEffect, Fragment } from "react";
 import {
   useRecoilState,
   useRecoilValue,
@@ -183,18 +183,21 @@ const PlotOption = styled(Link)`
 
 const WarningsContainer = styled.ul`
   position: absolute;
-  top: 2rem;
+  top: 3rem;
   z-index: 999;
   list-style: none;
   padding-inline-start: 0;
   background: var(--joy-palette-background-level1);
+  > li {
+    margin: 1rem 0;
+  }
 `;
 
 const WarningItem = styled.li`
   display: flex;
   column-gap: 1rem;
   color: var(--joy-palette-text-plainColor);
-  padding: 1rem 2rem 1rem 1rem;
+  padding: 0 2.5rem 0 1rem;
   border-radius: 3px;
   list-style: none;
   svg {
@@ -211,21 +214,56 @@ const WarningClose = styled.div`
 `;
 
 function Warnings() {
+  const warnings = useWarnings();
+  if (!warnings.visible) return null;
+
   return (
     <WarningsContainer>
       <WarningClose>
-        <Close />
+        <Close onClick={warnings.hide} />
       </WarningClose>
-      <WarningItem>
-        <div>
-          <Warning />
-        </div>
-        <div>
-          <strong>285</strong> samples are in the blah but no in the blah.
-        </div>
-      </WarningItem>
+      {warnings.items.map((msg) => (
+        <WarningItem>
+          <div>
+            <Warning />
+          </div>
+          <div>{msg}</div>
+        </WarningItem>
+      ))}
     </WarningsContainer>
   );
+}
+
+function useWarnings() {
+  const [state, _setState] = usePanelStatePartial("warnings", { warnings: [] });
+  const { warnings } = state;
+  const hasWarnings = Array.isArray(warnings) && warnings.length > 0;
+  const setState = (fn) => {
+    _setState((s) => fn(s || { warnings: [] }));
+  };
+
+  return {
+    hasWarnings,
+    items: warnings,
+    visible: hasWarnings && state.visible,
+    count: Array.isArray(warnings) ? warnings.length : null,
+    show() {
+      setState((s) => ({ ...s, visible: true }));
+    },
+    hide() {
+      setState((s) => ({ ...s, visible: false, userHidden: true }));
+    },
+    clear() {
+      setState((s) => ({ ...s, warnings: null }));
+    },
+    add(msg) {
+      setState((s) => ({
+        ...s,
+        visible: true,
+        warnings: [...(s.warnings || []), msg],
+      }));
+    },
+  };
 }
 
 export default function Embeddings({ containerHeight, dimensions }) {
@@ -239,6 +277,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
   const showPlot = brainResultSelector.hasSelection && !labelSelector.isLoading;
   const plotSelection = usePlotSelection();
   const [dragMode, setDragMode] = usePanelStatePartial("dragMode", "lasso");
+  const warnings = useWarnings();
 
   const selectorStyle = {
     background: theme.neutral.softBg,
@@ -277,36 +316,44 @@ export default function Embeddings({ containerHeight, dimensions }) {
                 <Close />
               </PlotOption>
             )}
+            {showPlot && (
+              <Fragment>
+                <PlotOption
+                  style={{ opacity: dragMode !== "lasso" ? 0.5 : 1 }}
+                  to={() => setDragMode("lasso")}
+                  title={"Select (s)"}
+                >
+                  <HighlightAlt />
+                </PlotOption>
 
-            <PlotOption
-              style={{ opacity: dragMode !== "lasso" ? 0.5 : 1 }}
-              to={() => setDragMode("lasso")}
-              title={"Select (s)"}
-            >
-              <HighlightAlt />
-            </PlotOption>
+                <PlotOption
+                  style={{ opacity: dragMode !== "pan" ? 0.5 : 1 }}
+                  to={() => setDragMode("pan")}
+                  title={"Pan (g)"}
+                >
+                  <OpenWith />
+                </PlotOption>
 
-            <PlotOption
-              style={{ opacity: dragMode !== "pan" ? 0.5 : 1 }}
-              to={() => setDragMode("pan")}
-              title={"Pan (g)"}
-            >
-              <OpenWith />
-            </PlotOption>
+                {warnings.count > 0 && (
+                  <PlotOption to={() => warnings.show()} title={"Warnings"}>
+                    <Warning style={{ marginRight: "0.5rem" }} />
+                    {warnings.count}
+                  </PlotOption>
+                )}
+                <Warnings />
 
-            <PlotOption to={() => alert("placeholder")} title={"Warnings"}>
-              <Warning />
-            </PlotOption>
-            <Warnings />
-
-            <PlotOption
-              href={"https://voxel51.com/docs/fiftyone/user_guide/plots.html"}
-              title={"Help"}
-              to={useExternalLink("https://docs.voxel51.com")}
-              target={"_blank"}
-            >
-              <Help />
-            </PlotOption>
+                <PlotOption
+                  href={
+                    "https://voxel51.com/docs/fiftyone/user_guide/plots.html"
+                  }
+                  title={"Help"}
+                  to={useExternalLink("https://docs.voxel51.com")}
+                  target={"_blank"}
+                >
+                  <Help />
+                </PlotOption>
+              </Fragment>
+            )}
           </div>
         </Selectors>
         {showPlot && (
@@ -417,7 +464,6 @@ function tracesToData(traces, style, getColor, plotSelection, selectionStyle) {
 function useKeyDown(key, handler) {
   useEffect(() => {
     const handleKeyDown = (e) => {
-      console.log(e.key, e);
       if (e.key === key) {
         handler(true);
       }
@@ -632,6 +678,7 @@ function useLoadedPlot({ clearSelection, setPlotSelection }) {
   const [extendedSelection, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
+  const warnings = useWarnings();
 
   // build the initial plot on load
   useEffect(() => {
@@ -642,6 +689,34 @@ function useLoadedPlot({ clearSelection, setPlotSelection }) {
     handleInitialPlotLoad({ datasetName, brainKey, view, labelField })
       .catch((err) => setLoadingPlotError(err))
       .then((res) => {
+        console.log(res);
+        /**
+         * 
+# not_used_count: num of embeddings not in current view
+not_used_count = index_size - available_count
+
+# missing_count: num of samples / patches in the current view but do not have corresponding embeddings
+
+         */
+        const notUsed = res.index_size - res.available_count;
+        const missing = res.missing_count;
+        const total = res.index_size;
+        const type = res.patches_field ? "patches" : "samples";
+
+        warnings.clear();
+
+        if (missing > 0) {
+          warnings.add(
+            `${missing} ${type} are included in the current view but do not have corresponding embeddings.`
+          );
+        }
+
+        if (notUsed > 0) {
+          warnings.add(
+            `Not all embeddings are used in the current view. ${notUsed} embeddings are not used.`
+          );
+        }
+
         setLoadingPlotError(null);
         setPlotSelection(res.selected_ids);
         setLoadedPlot(res);
