@@ -152,7 +152,7 @@ SCREENSHOT_DATABRICKS_SCRIPT = """
      var proxy = new URLSearchParams(window.location.search);
      var url = new URL(window.location.toString());
      url.pathname = proxy;
-     fetch(`{{ url }}fiftyone`)
+     fetch(`{{ proxy }}fiftyone`)
      .then(() => {
         overlay.addEventListener("click", () => {
           window.location = url.toString();

@@ -23,14 +23,14 @@ class Screenshot(HTTPEndpoint):
     @route
     async def get(self, request: Request, data: t.Dict) -> Response:
         img = request.path_params["img"]
+        proxy = request.query_params["proxy"]
         subscription, ext = img.split(".")
         screenshot = get_screenshot(subscription, False)
-        url = str(request.url)[: -len(f"screenshot/{subscription}.html")]
         if ext == "html":
             content = SCREENSHOT_DATABRICKS.render(
                 subscription=subscription,
-                image=f"{str(request.url)[:-4]}jpeg",
-                url=url,
+                image=f"{proxy}screenshot/{subscription}.jpeg",
+                proxy=proxy,
                 max_width=screenshot.max_width,
             )
             media_type = "text/html"
