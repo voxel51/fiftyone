@@ -34,7 +34,7 @@ from .core.aggregations import (
     Sum,
     Values,
 )
-from .core.collections import SaveContext
+from .core.collections import DownloadContext, SaveContext
 from .core.config import AppConfig
 from .core.dataset import (
     Dataset,

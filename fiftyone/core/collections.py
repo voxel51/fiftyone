@@ -41,6 +41,7 @@ import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 
+fo = fou.lazy_import("fiftyone")
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
 fov = fou.lazy_import("fiftyone.core.view")
@@ -70,6 +71,77 @@ view_stage = _make_registrar()
 
 # Keeps track of all `Aggregation` methods
 aggregation = _make_registrar()
+
+
+class DownloadContext(object):
+    """Context that can be used to pre-download media while iterating over a
+    collection.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        batch_size: the sample batch size to use
+        clear (None): whether to force clear the media from the cache when the
+            context exits
+        quiet (None): whether to display (False) or not display (True) a
+            progress bar tracking the status of any downloads. By default,
+            ``fiftyone.config.show_progress_bars`` is used to set this
+        **kwargs: valid keyword arguments for
+            :meth:`fiftyone.core.collections.SampleCollection.download_media`
+    """
+
+    def __init__(
+        self, sample_collection, batch_size, clear=False, quiet=None, **kwargs
+    ):
+        sample_collection._download_context = self
+
+        self.sample_collection = sample_collection
+        self.batch_size = batch_size
+        self.clear = clear
+        self.quiet = quiet
+        self.kwargs = kwargs
+
+        self._curr_batch_size = None
+        self._total = None
+
+    def __enter__(self):
+        self._curr_batch_size = self.batch_size
+        self._total = 0
+        return self
+
+    def __exit__(self, *args):
+        try:
+            delattr(self.sample_collection, "_download_context")
+        except:
+            pass
+
+        if self.clear:
+            self._clear_media()
+
+    def next(self):
+        if self._curr_batch_size >= self.batch_size:
+            self._download_batch()
+            self._curr_batch_size = 0
+
+        self._curr_batch_size += 1
+        self._total += 1
+
+    def _download_batch(self):
+        # @todo optimize to avoid appending `skip()`
+        view = self.sample_collection.skip(self._total).limit(self.batch_size)
+
+        if self.quiet:
+            with (
+                fou.SuppressLogging(level=logging.INFO),
+                fou.SetAttributes(fo.config, show_progress_bars=False),
+            ):
+                view.download_media(**self.kwargs)
+        else:
+            view.download_media(**self.kwargs)
+
+    def _clear_media(self):
+        media_fields = self.kwargs.get("media_fields", None)
+        self.sample_collection.clear_media(media_fields=media_fields)
 
 
 class SaveContext(object):
@@ -851,6 +923,42 @@ class SampleCollection(object):
             KeyError: if the group ID is not found
         """
         raise NotImplementedError("Subclass must implement get_group()")
+
+    def download_context(
+        self, batch_size=100, clear=False, quiet=None, **kwargs
+    ):
+        """Returns a context that can be used to automatically pre-download
+        media when iterating over samples in this collection.
+
+        Examples::
+
+            import time
+            import fiftyone as fo
+            import fiftyone.core.cache as foc
+
+            dataset = fo.load_dataset("a-cloud-backed-dataset")
+
+            with dataset.download_context(batch_size=100):
+                for sample in dataset.iter_samples(progress=True):
+                    assert foc.media_cache.is_local_or_cached(sample.filepath)
+                    time.sleep(0.01)
+
+        Args:
+            batch_size (100): the sample batch size to use when downloading
+                media
+            clear (False): whether to clear the media from the cache when the
+                context exits
+            quiet (None): whether to display (False) or not display (True) a
+                progress bar tracking the status of any downloads. By default,
+                ``fiftyone.config.show_progress_bars`` is used to set this
+            **kwargs: valid keyword arguments for :meth:`download_media`
+
+        Returns:
+            a :class:`DownloadContext`
+        """
+        return DownloadContext(
+            self, batch_size, clear=clear, quiet=quiet, **kwargs
+        )
 
     def save_context(self, batch_size=None):
         """Returns a context that can be used to save samples from this

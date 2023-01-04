@@ -452,11 +452,19 @@ class DatasetView(foc.SampleCollection):
                 exit_context.enter_context(pb)
                 samples = pb(samples)
 
+            download_context = getattr(self, "_download_context", None)
+            download = download_context is not None
+            if download:
+                exit_context.enter_context(download_context)
+
             if autosave:
                 save_context = foc.SaveContext(self, batch_size=batch_size)
                 exit_context.enter_context(save_context)
 
             for sample in samples:
+                if download:
+                    download_context.next()
+
                 yield sample
 
                 if autosave:
@@ -565,11 +573,19 @@ class DatasetView(foc.SampleCollection):
                 exit_context.enter_context(pb)
                 groups = pb(groups)
 
+            download_context = getattr(self, "_download_context", None)
+            download = download_context is not None
+            if download:
+                exit_context.enter_context(download_context)
+
             if autosave:
                 save_context = foc.SaveContext(self, batch_size=batch_size)
                 exit_context.enter_context(save_context)
 
             for group in groups:
+                if download:
+                    download_context.next()
+
                 yield group
 
                 if autosave:
