@@ -1,17 +1,17 @@
 import { atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 
-import { KeypointSkeleton } from "@fiftyone/looker/src/state";
+import { KeypointSkeleton, RgbMaskTargets } from "@fiftyone/looker/src/state";
 
-import * as atoms from "./atoms";
-import { State } from "./types";
-import { toSnakeCase } from "@fiftyone/utilities";
-import { config } from "./config";
-import { fieldSchema } from "./schema";
 import { StateForm } from "@fiftyone/relay";
-import { filters, modalFilters } from "./filters";
+import { toSnakeCase } from "@fiftyone/utilities";
+import * as atoms from "./atoms";
 import { selectedSamples } from "./atoms";
+import { config } from "./config";
+import { filters, modalFilters } from "./filters";
 import { resolvedGroupSlice } from "./groups";
+import { fieldSchema } from "./schema";
+import { State } from "./types";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -105,10 +105,7 @@ export const datasetAppConfig = selector<State.DatasetAppConfig>({
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
-    const targets = get(atoms.dataset).defaultMaskTargets || {};
-    return Object.fromEntries(
-      Object.entries(targets).map(([k, v]) => [parseInt(k, 10), v])
-    );
+    return get(atoms.dataset).defaultMaskTargets || {};
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -160,10 +157,20 @@ export const getTarget = selector({
   get: ({ get }) => {
     const { defaults, fields } = get(targets);
     return (field, target) => {
+      let maskTargets;
       if (field in fields) {
-        return fields[field][target];
+        maskTargets = fields[field];
+      } else {
+        maskTargets = defaults;
       }
-      return defaults[target];
+
+      if (Object.keys(maskTargets)[0].startsWith("#")) {
+        return Object.entries(maskTargets as RgbMaskTargets).find(
+          ([_, el]) => el.intTarget === target
+        )[1].label;
+      }
+
+      return maskTargets[target];
     };
   },
   cachePolicy_UNSTABLE: {
