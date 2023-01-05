@@ -3821,6 +3821,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return [pid for pid in project_ids if self._is_empty_project(pid)]
 
     def _is_empty_project(self, project_id):
+        if not self.project_exists(project_id):
+            return True
+
         resp = self.get(self.project_url(project_id)).json()
         return not resp["tasks"]
 
@@ -3869,15 +3872,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             True/False
         """
-        return (
-            self._get_value_from_search(
-                self.project_id_search_url,
-                project_id,
-                "id",
-                "id",
+        try:
+            response = self.get(
+                self.project_url(project_id), print_error_info=False
             )
-            is not None
-        )
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                return False
+            else:
+                raise e
+
+        return True
 
     def delete_project(self, project_id):
         """Deletes the given project from the CVAT server.
