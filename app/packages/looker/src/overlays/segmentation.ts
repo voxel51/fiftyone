@@ -4,8 +4,7 @@
 
 import { getColor } from "@fiftyone/utilities";
 import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
-import { BaseState, Coordinates } from "../state";
-import { isRgbMaskTargets } from "../util";
+import { BaseState, Coordinates, Optional } from "../state";
 import {
   BaseLabel,
   CONTAINS,
@@ -14,7 +13,7 @@ import {
   PointInfo,
   SelectData,
 } from "./base";
-import { sizeBytes, strokeCanvasRect, t } from "./util";
+import { isRgbMaskTargets, sizeBytes, strokeCanvasRect, t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
   mask?: {
@@ -119,7 +118,7 @@ export default class SegmentationOverlay<State extends BaseState>
     return Infinity;
   }
 
-  getPointInfo(state: Readonly<State>): PointInfo<SegmentationInfo> {
+  getPointInfo(state: Readonly<State>): Optional<PointInfo<SegmentationInfo>> {
     const coloring = state.options.coloring;
     let maskTargets = coloring.maskTargets[this.field];
     if (maskTargets) {
@@ -132,11 +131,18 @@ export default class SegmentationOverlay<State extends BaseState>
 
     const target = this.getTarget(state);
 
-    if (this.label.mask.data.channels > 2) {
+    if (this.label.mask.data.channels > 2 && isRgbMaskTargets(maskTargets)) {
+      // find corresponding color for target in mask targets
+      const rgbMaskTargetTuple = Object.entries(maskTargets).find(
+        ([_, el]) => el.intTarget === target
+      );
+
+      if (!rgbMaskTargetTuple) {
+        return undefined;
+      }
+
       return {
-        color: Object.entries(maskTargets).find(
-          ([_, el]) => el.intTarget === target
-        )[0],
+        color: rgbMaskTargetTuple[0],
         label: {
           ...this.label,
           mask: {
