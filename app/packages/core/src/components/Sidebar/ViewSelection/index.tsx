@@ -19,6 +19,7 @@ import {
 } from "../../../Root/Root";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 import { isElectron } from "@fiftyone/utilities";
+import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 
 const DEFAULT_SELECTED: DatasetViewOption = {
   id: "1",
@@ -134,7 +135,8 @@ export default function ViewSelection(props: Props) {
   }, [searchData, selected]);
 
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
-
+  const bookmarkIconOn = useRecoilValue(shouldToggleBookMarkIconOnSelector);
+  const isEmptyView = !bookmarkIconOn && !loadedView?.length;
   // special case for electron app to clear the selection
   // when there is no loaded view
   const isDesktop = isElectron();
@@ -206,7 +208,9 @@ export default function ViewSelection(props: Props) {
     const callback = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.code === "KeyS") {
         event.preventDefault();
-        setIsOpen(true);
+        if (!isEmptyView) {
+          setIsOpen(true);
+        }
       }
     };
 
@@ -214,7 +218,7 @@ export default function ViewSelection(props: Props) {
     return () => {
       document.removeEventListener("keydown", callback);
     };
-  }, []);
+  }, [isEmptyView]);
 
   return (
     <Suspense fallback="Loading saved views...">
@@ -284,11 +288,14 @@ export default function ViewSelection(props: Props) {
             },
           }}
           lastFixedOption={
-            <LastOption onClick={() => setIsOpen(true)} disabled={false}>
+            <LastOption
+              onClick={() => !isEmptyView && setIsOpen(true)}
+              disabled={isEmptyView}
+            >
               <Box style={{ width: "12%" }}>
-                <AddIcon fontSize="small" disabled={false} />
+                <AddIcon fontSize="small" disabled={isEmptyView} />
               </Box>
-              <TextContainer disabled={false}>
+              <TextContainer disabled={isEmptyView}>
                 Save current filters as view
               </TextContainer>
             </LastOption>

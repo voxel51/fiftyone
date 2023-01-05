@@ -36,6 +36,7 @@ import {
   COLOR_OPTIONS_MAP,
   DEFAULT_COLOR_OPTION,
 } from "@fiftyone/components/src/components/Selection/SelectionColors";
+import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 
 interface Props {
   savedViews: fos.State.SavedView[];
@@ -107,6 +108,8 @@ export default function ViewDialog(props: Props) {
   }, [viewContent]);
 
   const view = useRecoilValue(fos.view);
+  const extendedViewExists = useRecoilValue(shouldToggleBookMarkIconOnSelector);
+
   const {
     handleDeleteView,
     isDeletingSavedView,
@@ -278,6 +281,7 @@ export default function ViewDialog(props: Props) {
                 isDeletingSavedView ||
                 !!nameError ||
                 !nameValue ||
+                (isCreating && !view?.length && !extendedViewExists) ||
                 (initialName === nameValue &&
                   descriptionValue === initialDescription &&
                   colorOption?.color === initialColor)
