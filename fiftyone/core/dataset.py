@@ -808,12 +808,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def mask_targets(self):
         """A dict mapping field names to mask target dicts, each of which
-        defines a mapping between pixel values and label strings for the
-        segmentation masks in the corresponding field of the dataset.
+        defines a mapping between either pixel values or RGB hex codes and
+        label strings for the segmentation masks in the corresponding field
+        of the dataset.
 
         .. note::
 
-            The pixel value `0` is a reserved "background" class that is
+            - When using integer targets, the pixel value `0` is a reserved "background" class that is
             rendered as invisible in the App.
 
         Examples::
@@ -826,6 +827,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset.mask_targets = {
                 "ground_truth": {1: "cat", 2: "dog"},
                 "predictions": {1: "cat", 2: "dog", 255: "other"},
+            }
+
+            # Or, for RGB mask targets
+            dataset.mask_targets = {
+                "segmentations": {"#3f0a44": "road", "#eeffee": "building", "#ffffff": "other"}
             }
 
             # Edit an existing mask target
@@ -841,8 +847,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def default_mask_targets(self):
-        """A dict defining a default mapping between pixel values and label
-        strings for the segmentation masks of all
+        """A dict defining a default mapping between either pixel values or
+        RGB hex codes and label strings for the segmentation masks of all
         :class:`fiftyone.core.labels.Segmentation` fields of this dataset that
         do not have customized mask targets defined in :meth:`mask_targets`.
 
@@ -859,6 +865,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             # Set default mask targets
             dataset.default_mask_targets = {1: "cat", 2: "dog"}
+
+            # Or, for RGB mask targets
+            dataset.default_mask_targets = {"#3f0a44": "road", "#eeffee": "building", "#ffffff": "other"}
 
             # Edit the default mask targets
             dataset.default_mask_targets[255] = "other"
