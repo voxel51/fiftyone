@@ -13,9 +13,7 @@ import {
   Coordinates,
   Dimensions,
   DispatchEvent,
-  MaskTargets,
   Optional,
-  RgbMaskTargets,
 } from "./state";
 
 import {

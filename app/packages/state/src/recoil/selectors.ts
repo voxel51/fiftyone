@@ -1,8 +1,9 @@
 import { atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 
-import { KeypointSkeleton, RgbMaskTargets } from "@fiftyone/looker/src/state";
+import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
+import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
 import { toSnakeCase } from "@fiftyone/utilities";
 import * as atoms from "./atoms";
 import { config } from "./config";
@@ -160,10 +161,14 @@ export const getTarget = selector({
         maskTargets = defaults;
       }
 
-      if (Object.keys(maskTargets)[0].startsWith("#")) {
-        return Object.entries(maskTargets as RgbMaskTargets).find(
+      if (isRgbMaskTargets(maskTargets)) {
+        const maskTargetTuple = Object.entries(maskTargets).find(
           ([_, el]) => el.intTarget === target
-        )[1].label;
+        );
+
+        if (maskTargetTuple) {
+          return maskTargetTuple[1].label;
+        }
       }
 
       return maskTargets[target];

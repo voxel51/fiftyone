@@ -19,6 +19,7 @@ import {
 import { decode as decodePng } from "fast-png";
 import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize, OverlayMask } from "./numpy";
+import { isRgbMaskTargets } from "./overlays/util";
 import { Coloring, FrameChunk, MaskTargets, RgbMaskTargets } from "./state";
 
 interface ResolveColor {
@@ -28,23 +29,6 @@ interface ResolveColor {
 }
 
 type ResolveColorMethod = ReaderMethod & ResolveColor;
-
-/**
- * Returns true if mask targets is RGB
- */
-export function isRgbMaskTargets(
-  maskTargets: MaskTargets
-): maskTargets is RgbMaskTargets {
-  if (
-    !maskTargets ||
-    typeof maskTargets !== "object" ||
-    Object.keys(maskTargets).length === 0
-  ) {
-    throw new Error("mask targets is invalid");
-  }
-
-  return Object.keys(maskTargets)[0].startsWith("#");
-}
 
 const [requestColor, resolveColor] = ((): [
   (pool: string[], seed: number, key: string | number) => Promise<string>,
@@ -590,7 +574,10 @@ const UPDATE_LABEL = {
     // target map array
     const targets = new ARRAY_TYPES[maskData.arrayType](maskData.buffer);
 
-    if (isRgbMaskTargets(maskTargets) && maskData.channels > 2) {
+    if (maskData.channels > 2) {
+      const isMaskTargetsEmpty = Object.keys(maskTargets).length === 0;
+      const isRgbMaskTargetsComputed = isRgbMaskTargets(maskTargets);
+
       for (let i = 0; i < overlay.length; i++) {
         const r = targets[i * maskData.channels];
         const g = targets[i * maskData.channels + 1];
@@ -598,13 +585,22 @@ const UPDATE_LABEL = {
 
         const currentHexCode = rgbToHexCached(r, g, b);
 
-        // if hex is not in rgb mask targets, do not render them
-        if (!(currentHexCode in maskTargets)) {
+        if (
+          // #000000 is semantically treated as background
+          currentHexCode === "#000000" ||
+          // don't render color if hex is not in mask targets, unless mask targets is completely empty
+          (!isMaskTargetsEmpty && !(currentHexCode in maskTargets))
+        ) {
           continue;
         }
 
         overlay[i] = get32BitColor([r, g, b]);
-        targets[i] = maskTargets[currentHexCode].intTarget;
+
+        if (isRgbMaskTargetsComputed) {
+          targets[i] = (maskTargets as RgbMaskTargets)[
+            currentHexCode
+          ].intTarget;
+        }
       }
 
       // discard the buffer values of other channels
