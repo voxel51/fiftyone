@@ -17,13 +17,13 @@ import { genSort } from "../../utils/generic";
 import Checkbox from "../Common/Checkbox";
 import { Button } from "../utils";
 
-import ExcludeOption from "./Exclude";
 import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import withSuspense from "./withSuspense";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import FilterOption from "./filterOption/FilterOption";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -78,7 +78,9 @@ const nullSort = ({
 interface WrapperProps {
   results: [V["value"], number][];
   selectedValuesAtom: RecoilState<V["value"][]>;
-  excludeAtom?: RecoilState<boolean>;
+  excludeAtom: RecoilState<boolean>;
+  isMatchingAtom: RecoilState<boolean>;
+  onlyMatchAtom: RecoilState<boolean>;
   color: string;
   totalCount: number;
   modal: boolean;
@@ -92,6 +94,8 @@ const Wrapper = ({
   totalCount,
   selectedValuesAtom,
   excludeAtom,
+  isMatchingAtom,
+  onlyMatchAtom,
   modal,
   path,
   selectedCounts,
@@ -101,6 +105,10 @@ const Wrapper = ({
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const selectedSet = new Set(selected);
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
+  const setOnlyMatch = onlyMatchAtom ? useSetRecoilState(onlyMatchAtom) : null;
+  const setIsMatching = isMatchingAtom
+    ? useSetRecoilState(isMatchingAtom)
+    : null;
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
   const counts = Object.fromEntries(results);
   let allValues: V[] = selected.map<V>((value) => ({
@@ -136,6 +144,22 @@ const Wrapper = ({
 
   allValues = [...new Set(allValues)];
 
+  // only show all four options the field is a nested ListField. Otherwise, only show the match options
+  const fieldPath = path.split(".").slice(0, -1).join(".");
+  const fieldSchema = useRecoilValue(fos.field(fieldPath));
+  const shouldShowAllOptions: boolean = Boolean(
+    fieldSchema?.ftype.includes("ListField")
+  );
+
+  // if the field is a BooleanField, there is no need to show the exclude option
+  const shouldNotShowExclude = Boolean(schema?.ftype.includes("BooleanField"));
+
+  const initializeSettings = () => {
+    setExcluded && setExcluded(false);
+    setOnlyMatch && setOnlyMatch(true);
+    setIsMatching && setIsMatching(!shouldShowAllOptions);
+  };
+
   return (
     <>
       {allValues.sort(nullSort(sorting)).map(({ value, count }) => (
@@ -170,11 +194,17 @@ const Wrapper = ({
       ))}
       {Boolean(selectedSet.size) && (
         <>
-          {totalCount > 3 && excludeAtom && (
-            <ExcludeOption
+          {totalCount > 3 && (
+            <FilterOption
+              shouldShowAllOptions={shouldShowAllOptions}
+              shouldNotShowExclude={shouldNotShowExclude}
               excludeAtom={excludeAtom}
+              onlyMatchAtom={onlyMatchAtom}
+              isMatchingAtom={isMatchingAtom}
+              labels={Array.from(selectedSet) as string[]}
               valueName={name}
               color={color}
+              modal={modal}
             />
           )}
           <Button
@@ -182,7 +212,7 @@ const Wrapper = ({
             color={color}
             onClick={() => {
               setSelected([]);
-              setExcluded && setExcluded(false);
+              initializeSettings();
             }}
             style={{
               margin: "0.25rem -0.5rem",
@@ -286,7 +316,9 @@ const useOnSelect = (
 
 interface Props<T extends V = V> {
   selectedValuesAtom: RecoilState<T["value"][]>;
-  excludeAtom?: RecoilState<boolean>;
+  excludeAtom: RecoilState<boolean>; // toggles select or exclude
+  isMatchingAtom: RecoilState<boolean>; // toggles match or filter
+  onlyMatchAtom: RecoilState<boolean>; // toggles onlyMatch mode (omit empty samples)
   countsAtom: RecoilValue<{
     count: number;
     results: [T["value"], number][];
@@ -348,6 +380,8 @@ const CategoricalFilter = <T extends V = V>({
   countsAtom,
   selectedValuesAtom,
   excludeAtom,
+  onlyMatchAtom,
+  isMatchingAtom,
   path,
   modal,
   named = true,
@@ -362,8 +396,7 @@ const CategoricalFilter = <T extends V = V>({
   const theme = useTheme();
   const field = useRecoilValue(fos.field(path));
   const countsLoadable = useRecoilValueLoadable(countsAtom);
-  const schema = useRecoilValue(fos.field(path));
-  const neverShowExpansion = schema?.ftype.includes("ObjectIdField");
+  const neverShowExpansion = field?.ftype.includes("ObjectIdField");
 
   if (countsLoadable.state !== "hasValue") return null;
 
@@ -424,6 +457,8 @@ const CategoricalFilter = <T extends V = V>({
           results={results}
           selectedValuesAtom={selectedValuesAtom}
           excludeAtom={excludeAtom}
+          isMatchingAtom={isMatchingAtom}
+          onlyMatchAtom={onlyMatchAtom}
           modal={modal}
           totalCount={count}
           selectedCounts={selectedCounts}

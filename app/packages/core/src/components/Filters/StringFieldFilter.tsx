@@ -3,7 +3,12 @@ import React from "react";
 import * as fos from "@fiftyone/state";
 
 import CategoricalFilter from "./CategoricalFilter";
-import { stringExcludeAtom, stringSelectedValuesAtom } from "@fiftyone/state";
+import {
+  isMatchingAtom,
+  onlyMatchAtom,
+  stringExcludeAtom,
+  stringSelectedValuesAtom,
+} from "@fiftyone/state";
 
 const StringFieldFilter = ({
   path,
@@ -21,6 +26,8 @@ const StringFieldFilter = ({
     <CategoricalFilter<{ value: string | null; count: number }>
       selectedValuesAtom={stringSelectedValuesAtom({ modal, path })}
       excludeAtom={stringExcludeAtom({ modal, path })}
+      onlyMatchAtom={onlyMatchAtom({ modal, path })}
+      isMatchingAtom={isMatchingAtom({ modal, path })}
       countsAtom={fos.stringCountResults({
         modal,
         path,
