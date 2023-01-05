@@ -7,8 +7,8 @@ import ContainerHeader from "../components/ImageContainerHeader";
 
 const FlashlightContainer = styled.div`
   position: relative;
-  // todo: compute dynamically
-  height: 75vh;
+  padding: 0 0 0 1rem;
+  height: 100%;
 `;
 
 registerComponent({
@@ -20,7 +20,7 @@ registerComponent({
       <ContainerHeader key={"header"} />
     </FlashlightContainer>
   ),
-  type: PluginComponentType.Plot,
+  type: PluginComponentType.Panel,
   Icon: AppsIcon,
   activator: () => true,
 });
