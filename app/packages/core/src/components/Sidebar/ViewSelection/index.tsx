@@ -134,8 +134,6 @@ export default function ViewSelection(props: Props) {
   }, [searchData, selected]);
 
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
-  const isEmptyView = false; //selectedSavedView.label !== "Unsaved view"; //
-  // !loadedView?.length;
 
   // special case for electron app to clear the selection
   // when there is no loaded view
@@ -208,9 +206,7 @@ export default function ViewSelection(props: Props) {
     const callback = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.code === "KeyS") {
         event.preventDefault();
-        if (!isEmptyView) {
-          setIsOpen(true);
-        }
+        setIsOpen(true);
       }
     };
 
@@ -218,7 +214,7 @@ export default function ViewSelection(props: Props) {
     return () => {
       document.removeEventListener("keydown", callback);
     };
-  }, [isEmptyView]);
+  }, []);
 
   return (
     <Suspense fallback="Loading saved views...">
@@ -288,14 +284,11 @@ export default function ViewSelection(props: Props) {
             },
           }}
           lastFixedOption={
-            <LastOption
-              onClick={() => !isEmptyView && setIsOpen(true)}
-              disabled={isEmptyView}
-            >
+            <LastOption onClick={() => setIsOpen(true)} disabled={false}>
               <Box style={{ width: "12%" }}>
-                <AddIcon fontSize="small" disabled={isEmptyView} />
+                <AddIcon fontSize="small" disabled={false} />
               </Box>
-              <TextContainer disabled={isEmptyView}>
+              <TextContainer disabled={false}>
                 Save current filters as view
               </TextContainer>
             </LastOption>

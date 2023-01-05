@@ -62,10 +62,6 @@ export default function useSavedViews() {
         onSuccess: (saveView) => void
       ) => {
         if (name) {
-          // if (name && view.length) {
-          console.log(
-            snapshot.getLoadable(viewStateForm({ modal: false })).contents
-          );
           send((session) =>
             saveView({
               onError,

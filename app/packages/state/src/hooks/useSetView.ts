@@ -111,11 +111,6 @@ const useSetView = (
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
               const isDesktop = isElectron();
-              // TODO: rm logging when done debugging
-              // console.log(
-              //   "useSetView onComplete current state:",
-              //   router.history.location.state
-              // );
               if (
                 router.history.location.state &&
                 router.history.location.state.state
@@ -132,10 +127,6 @@ const useSetView = (
                   changingSavedView: changingSavedView,
                 };
                 router.history.location.state.state = newState;
-                // console.log(
-                //   "useSetView onComplete new state:",
-                //   router.history.location.state
-                // );
 
                 const url = new URL(window.location.toString());
                 const currentSlug = url.searchParams.get("view");
