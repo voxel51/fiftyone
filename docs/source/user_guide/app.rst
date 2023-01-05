@@ -21,6 +21,7 @@ a local IPython shell, to a remote machine or cloud instance, to a Jupyter or
 Colab notebook. Check out the :ref:`environments guide <environments>` for best
 practices when working in each environment.
 
+.. _app-session:
 Sessions
 ________
 

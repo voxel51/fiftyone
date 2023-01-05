@@ -1,3 +1,4 @@
+
 FiftyOne
 ========
 
@@ -231,6 +232,8 @@ _____________
 
 The FiftyOne tool has three components: the Python library, the App, and the
 Brain.
+
+.. _fiftyone-library:
 
 :doc:`FiftyOne Library <user_guide/basics>`
 -------------------------------------------

@@ -17,13 +17,13 @@ ____________
    :widths: 20 80
 
    * - **FiftyOne**
-     - The open-source framework, the core library, and the Python SDK
+     - The :ref:`open-source framework <fiftyone-library>`, the core library, and the Python SDK
    * - **FiftyOne App**
-     - | The GUI attached to FiftyOne for graphically viewing, filtering, and understanding 
+     - | The :ref:`GUI attached to FiftyOne <fiftyone-app>` for graphically viewing, filtering, and understanding 
        | your computer vision data. Can be launched within an IPython notebook, 
        | in the browser, or as a standalone desktop app.
    * - **FiftyOne Teams**
-     - | The enterprise-grade suite built on top of FiftyOne for collaboration,
+     - | `The enterprise-grade suite <https://voxel51.com/fiftyone-teams/>`_ built on top of FiftyOne for collaboration,
        | permissioning, and working with cloud-backed media
 
 .. _fiftyone-components-terminology:
@@ -35,17 +35,17 @@ _______________________
    :widths: 20 80
 
    * - **Brain**
-     - Library of ML-powered capabilities for computation and visualization
-   * - **Model Zoo**
-     - Collection of pre-trained models available for download and inference
+     - Library of :ref:`ML-powered capabilities <fiftyone-brain>` for computation and visualization
    * - **Dataset Zoo**
-     - | Collection of common datasets available for download and loading into 
+     - | :ref:`Collection of common datasets <dataset-zoo>` available for download and loading into 
        | FiftyOne
+   * - **Model Zoo**
+     - :ref:`Collection of pre-trained models <model-zoo>` available for download and inference
    * - **Plugin**
-     - A module you can use to customize and extend the behavior of FiftyOne
+     - A module you can use to :ref:`customize and extend the behavior of FiftyOne <app-plugins>`
    * - **Integration**
      - | A dataset, ML framework, annotation service, or other tool FiftyOne is 
-       | directly compatible with
+       | :ref:`directly compatible with <integrations>`
 
 
 .. _data-schema-terminology:
@@ -58,37 +58,37 @@ _________________
 
    * - **Sample**
      - | The atomic elements of a ``Dataset`` that store all the information 
-       | related to a given piece of data. Every sample has an associated 
-       | media file. Computer vision analog of a row in a table
+       | related to a given piece of data. Every :ref:`sample <basics-samples>` has an associated 
+       | media file. Computer vision analog of row in a table
    * - **Dataset**
-     - | Core data structure in FiftyOne, composed of ``Samples``. Consistent 
+     - | :ref:`Core data structure <basics-dataset>` in FiftyOne, composed of ``Samples``. Consistent 
        | interface for loading images, videos, annotations, and predictions.
        | Computer vision analog of a table of data
    * - **DatasetView**
-     - | A view into a ``Dataset``, which can be filtered, sorted, sampled, etc. 
-       | along various axes to obtain a desired subset of the samples.
+     - | :ref:`A view into <using-views>` a ``Dataset``, which can be filtered, sorted, sampled, etc. 
+       | along various axes to obtain a desired subset of the samples
    * - **ViewStage**
-     - | A logical operation, such as filtering, matching, or sorting, which can
+     - | :ref:`A logical operation <view-stages>`, such as filtering, matching, or sorting, which can
        | be used to generate a ``DatasetView``
    * - **Field**
-     - | Attributes of ``Sample`` instances that store customizable information
+     - | Attributes of ``Sample`` instances that :ref:`store customizable information <basics-field>`
        |  about the samples. Computer vision analog of a column in a table
    * - **Embedded Field**
-     - | A collection of related fields organized under a single top-level
-       | field, similar to a nested dictionary.
+     - | :ref:`A collection of related fields <custom-embedded-documents>` organized under a single top-level
+       | ``Field``, similar to a nested dictionary
    * - **Label**
-     - | Class hierarchy used to store semantic information about ground truth 
+     - | Class hierarchy used to :ref:`store semantic information <basics-label>` about ground truth 
        | or predicted labels in a sample. Built in ``Label`` types include 
        | ``Detections``, ``Classification``, and ``Keypoints`` among others
    * - **Tag**
      - | A field containing a list of strings representing relevant information.
-       | Tags can be on the dataset, sample, or label level.
+       | :ref:`Tags <basics-tag>` can be on the dataset, sample, or label level
    * - **Metadata**
      - | A ``Sample`` level field which can optionally store data type-specific
-       | metadata about the raw data in the sample.
+       | :ref:`metadata <basics-metadata>` about the raw data in the sample
    * - **Aggregation**
-     - | A class encapsulating the computation of an aggregate statistic about a
-       | dataset.
+     - | A class encapsulating the computation of an :ref:`aggregate statistic <basics-aggregation>` about a
+       | dataset
 
 .. _app-terminology:
 
@@ -99,16 +99,16 @@ _______________________
    :widths: 20 80
 
    * - **Session**
-     - | An instance of the FiftyOne App connected to a specific dataset, via 
+     - | :ref:`An instance of the FiftyOne App <app-session>` connected to a specific dataset, via 
        | which you can use to programmatically interact with the app.
    * - **Sample grid**
-     - | The rectangular grid of images or videos you can scroll through. You 
+     - | The rectangular :ref:`grid of images or videos <app-filtering>` you can scroll through. You 
        | can click on any image or video in the grid to expand
    * - **Sidebar**
-     - | Vertical component on left side of app which allows for toggling labels on/off, 
+     - | Vertical component on :ref:`left side of app <app-fields-sidebar>` which allows for toggling labels on/off, 
        | filtering by class or id, or by numerical value ranges
    * - **Viewbar**
-     - | Horizontal bar at the top of the app where you can create and compose
+     - | :ref:`Horizontal bar at the top of the app <app-create-view>` where you can create and compose
        | view stages via point and click operations
 
 
