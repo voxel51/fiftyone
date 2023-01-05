@@ -23,7 +23,7 @@ import * as fos from "@fiftyone/state";
 import withSuspense from "./withSuspense";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
-import FilterOption from "./FilterOption";
+import FilterOption from "./filterOption/FilterOption";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -78,9 +78,9 @@ const nullSort = ({
 interface WrapperProps {
   results: [V["value"], number][];
   selectedValuesAtom: RecoilState<V["value"][]>;
-  excludeAtom?: RecoilState<boolean>;
-  isMatchingAtom?: RecoilState<boolean>;
-  onlyMatchAtom?: RecoilState<boolean>;
+  excludeAtom: RecoilState<boolean>;
+  isMatchingAtom: RecoilState<boolean>;
+  onlyMatchAtom: RecoilState<boolean>;
   color: string;
   totalCount: number;
   modal: boolean;
@@ -151,6 +151,9 @@ const Wrapper = ({
     fieldSchema?.ftype.includes("ListField")
   );
 
+  // if the field is a BooleanField, there is no need to show the exclude option
+  const shouldNotShowExclude = Boolean(schema?.ftype.includes("BooleanField"));
+
   const initializeSettings = () => {
     setExcluded && setExcluded(false);
     setOnlyMatch && setOnlyMatch(true);
@@ -191,9 +194,10 @@ const Wrapper = ({
       ))}
       {Boolean(selectedSet.size) && (
         <>
-          {totalCount > 3 && excludeAtom && onlyMatchAtom && isMatchingAtom && (
+          {totalCount > 3 && (
             <FilterOption
               shouldShowAllOptions={shouldShowAllOptions}
+              shouldNotShowExclude={shouldNotShowExclude}
               excludeAtom={excludeAtom}
               onlyMatchAtom={onlyMatchAtom}
               isMatchingAtom={isMatchingAtom}
@@ -312,9 +316,9 @@ const useOnSelect = (
 
 interface Props<T extends V = V> {
   selectedValuesAtom: RecoilState<T["value"][]>;
-  excludeAtom?: RecoilState<boolean>; // toggles select or exclude
-  isMatchingAtom?: RecoilState<boolean>; // toggles match or filter
-  onlyMatchAtom?: RecoilState<boolean>; // toggles onlyMatch mode (omit empty samples)
+  excludeAtom: RecoilState<boolean>; // toggles select or exclude
+  isMatchingAtom: RecoilState<boolean>; // toggles match or filter
+  onlyMatchAtom: RecoilState<boolean>; // toggles onlyMatch mode (omit empty samples)
   countsAtom: RecoilValue<{
     count: number;
     results: [T["value"], number][];
@@ -392,8 +396,7 @@ const CategoricalFilter = <T extends V = V>({
   const theme = useTheme();
   const field = useRecoilValue(fos.field(path));
   const countsLoadable = useRecoilValueLoadable(countsAtom);
-  const schema = useRecoilValue(fos.field(path));
-  const neverShowExpansion = schema?.ftype.includes("ObjectIdField");
+  const neverShowExpansion = field?.ftype.includes("ObjectIdField");
 
   if (countsLoadable.state !== "hasValue") return null;
 

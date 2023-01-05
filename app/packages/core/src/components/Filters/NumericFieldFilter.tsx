@@ -17,7 +17,7 @@ import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
 import { formatDateTime } from "../../utils/generic";
 import withSuspense from "./withSuspense";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
-import FilterOption from "./FilterOption";
+import FilterOption from "./filterOption/FilterOption";
 
 const NamedRangeSliderContainer = styled.div`
   margin: 3px;
@@ -292,6 +292,7 @@ const NumericFieldFilter = ({
             labels={[]}
             valueName={field?.name ?? ""}
             color={color}
+            modal={modal}
           />
         )}
         {isFiltered && (

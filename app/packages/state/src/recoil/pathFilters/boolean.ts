@@ -10,6 +10,9 @@ interface BooleanFilter {
   false: boolean;
   true: boolean;
   none: boolean;
+  onlyMatch: boolean;
+  isMatching: boolean;
+  exclude: boolean;
   _CLS: "bool";
 }
 
@@ -23,6 +26,9 @@ const getFilter = (
     true: false,
     false: false,
     none: false,
+    onlyMatch: true,
+    isMatching: true,
+    exclude: false,
     ...get(filterAtoms.filter({ modal, path })),
   };
 };
@@ -39,6 +45,9 @@ const setFilter = (
   value: boolean | DefaultValue
 ) => {
   const filter = {
+    onlyMatch: true,
+    isMatching: true,
+    exclude: false,
     ...getFilter(get, modal, path),
     [key]: value,
   };
@@ -48,6 +57,66 @@ const setFilter = (
     set(filterAtoms.filter({ modal, path }), filter);
   }
 };
+
+export const boolIsMatchingAtom = selectorFamily<
+  boolean,
+  {
+    modal: boolean;
+    path: string;
+  }
+>({
+  key: "boolIsMatching",
+  get:
+    ({ modal, path }) =>
+    ({ get }) => {
+      return getFilter(get, modal, path).isMatching;
+    },
+  set:
+    ({ modal, path }) =>
+    ({ get, set }, value) => {
+      setFilter(get, set, modal, path, "isMatching", value);
+    },
+});
+
+export const boolOnlyMatchAtom = selectorFamily<
+  boolean,
+  {
+    modal: boolean;
+    path: string;
+  }
+>({
+  key: "boolOnlyMatch",
+  get:
+    ({ modal, path }) =>
+    ({ get }) => {
+      return getFilter(get, modal, path).onlyMatch;
+    },
+  set:
+    ({ modal, path }) =>
+    ({ get, set }, value) => {
+      setFilter(get, set, modal, path, "onlyMatch", value);
+    },
+});
+
+export const boolExcludeAtom = selectorFamily<
+  boolean,
+  {
+    modal: boolean;
+    path: string;
+  }
+>({
+  key: "boolExclude",
+  get:
+    ({ modal, path }) =>
+    ({ get }) => {
+      return getFilter(get, modal, path).exclude;
+    },
+  set:
+    ({ modal, path }) =>
+    ({ get, set }, value) => {
+      setFilter(get, set, modal, path, "exclude", value);
+    },
+});
 
 export const trueAtom = selectorFamily<
   boolean,
