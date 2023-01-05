@@ -24,9 +24,6 @@ from .values import Values
 
 routes = [
     ("/aggregate", Aggregate),
-    ("/aggregations", Aggregations),
-    ("/coloscales", Colorscales),
-    ("/distributions", Distributions),
     ("/embeddings", Embeddings),
     ("/event", Event),
     ("/events", Events),
