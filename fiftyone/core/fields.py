@@ -711,12 +711,15 @@ class DictField(mongoengine.fields.DictField, Field):
             self.field._set_dataset(dataset, path)
 
     def validate(self, value):
+        if not isinstance(value, dict):
+            self.error("Value must be a dict")
+
+        if not all(map(lambda k: etau.is_str(k), value)):
+            self.error("Dict fields must have string keys")
+
         if self.field is not None:
             for _value in value.values():
                 self.field.validate(_value)
-
-        if value is not None and not isinstance(value, dict):
-            self.error("Value must be a dict")
 
 
 class KeypointsField(ListField):
@@ -1144,14 +1147,8 @@ class MaskTargetsField(DictField):
         return value
 
     def validate(self, value):
-        super().validate(value)
-
-        is_all_targets_string = all(
-            map(lambda kv: isinstance(kv[1], str), value.items())
-        )
-
-        if not is_all_targets_string:
-            self.error("Mask target labels must all be string values")
+        if not isinstance(value, dict):
+            self.error("Value must be a dict")
 
         if not (
             self._is_integer_mask_target(value)
@@ -1161,6 +1158,10 @@ class MaskTargetsField(DictField):
                 "Mask target field keys must all either be integer keys or "
                 "string RGB hex keys (like #012abc)"
             )
+
+        if self.field is not None:
+            for _value in value.values():
+                self.field.validate(_value)
 
 
 class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
