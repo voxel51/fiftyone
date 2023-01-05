@@ -1111,26 +1111,6 @@ class MaskTargetsField(DictField):
 
         super().__init__(**kwargs)
 
-    def _is_integer_mask_target(self, value):
-        return all(
-            map(
-                lambda k: isinstance(k, numbers.Integral)
-                or (isinstance(k, str) and k.isdigit()),
-                value,
-            )
-        )
-
-    def _is_rgb_mask_target(self, value):
-        def is_valid_rgb_hex(color):
-            return re.search(r"^#(?:[0-9a-fA-F]{6})$", color) is not None
-
-        return all(
-            map(
-                lambda k: isinstance(k, str) and is_valid_rgb_hex(k),
-                value,
-            )
-        )
-
     def to_mongo(self, value):
         if value is None:
             return None
@@ -1141,7 +1121,7 @@ class MaskTargetsField(DictField):
         if value is None:
             return None
 
-        if self._is_integer_mask_target(value):
+        if is_integer_mask_targets(value):
             return {int(k): v for k, v in value.items()}
 
         return value
@@ -1150,10 +1130,7 @@ class MaskTargetsField(DictField):
         if not isinstance(value, dict):
             self.error("Value must be a dict")
 
-        if not (
-            self._is_integer_mask_target(value)
-            or self._is_rgb_mask_target(value)
-        ):
+        if not (is_integer_mask_targets(value) or is_rgb_mask_targets(value)):
             self.error(
                 "Mask target field keys must all either be integer keys or "
                 "string RGB hex keys (like #012abc)"
@@ -1162,6 +1139,29 @@ class MaskTargetsField(DictField):
         if self.field is not None:
             for _value in value.values():
                 self.field.validate(_value)
+
+
+def is_integer_mask_targets(mask_targets):
+    return all(
+        map(
+            lambda k: isinstance(k, numbers.Integral)
+            or (isinstance(k, str) and k.isdigit()),
+            mask_targets.keys(),
+        )
+    )
+
+
+def is_rgb_mask_targets(mask_targets):
+    return all(
+        map(
+            lambda k: isinstance(k, str) and _is_valid_rgb_hex(k),
+            mask_targets.keys(),
+        )
+    )
+
+
+def _is_valid_rgb_hex(color):
+    return re.search(r"^#(?:[0-9a-fA-F]{6})$", color) is not None
 
 
 class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
