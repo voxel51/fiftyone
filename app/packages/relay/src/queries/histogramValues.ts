@@ -5,11 +5,13 @@ export default graphql`
     $dataset: String!
     $view: BSONArray!
     $path: String!
+    $form: ExtendedViewForm
   ) {
     aggregate(
       datasetName: $dataset
       view: $view
       aggregations: [{ histogramValues: { field: $path } }]
+      form: $form
     ) {
       __typename
       ... on DatetimeHistogramValuesResponse {

@@ -11,6 +11,10 @@ import os
 import asyncio
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
+import logging
+
+if os.environ.get("FIFTYONE_ENABLE_DEBUG_LOGGING", False):
+    logging.getLogger("asyncio").setLevel(logging.DEBUG)
 
 if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
     del os.environ["FIFTYONE_DISABLE_SERVICES"]
@@ -34,4 +38,4 @@ if __name__ == "__main__":
     config.bind = [f"{args.address}:{args.port}"]
 
     config.use_reloader = foc.DEV_INSTALL
-    asyncio.run(serve(app, config))
+    asyncio.run(serve(app, config), debug=foc.DEV_INSTALL)
