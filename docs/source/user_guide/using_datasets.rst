@@ -513,8 +513,9 @@ properties that you can use to store label strings for the pixel values of
 
 The :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` property
 is a dictionary mapping field names to target dicts, each of which is a
-dictionary defining the mapping between pixel values and label strings for the
-|Segmentation| masks in the specified field of the dataset.
+dictionary defining the mapping between pixel values (2D masks) or RGB hex
+strings (3D masks) and label strings for the |Segmentation| masks in the
+specified field of the dataset.
 
 If all |Segmentation| fields in your dataset have the same semantics, you can
 store a single target dictionary in the
@@ -529,6 +530,8 @@ Mask targets are also automatically used, if available, by methods such as
 :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
 and :meth:`export() <fiftyone.core.collections.SampleCollection.export>` that
 require knowledge of the mask targets for a dataset or field(s).
+
+If you are working with 2D segmentation masks, specify target keys as integers:
 
 .. code-block:: python
     :linenos:
@@ -552,6 +555,35 @@ require knowledge of the mask targets for a dataset or field(s).
 
     # Edit an existing mask target
     dataset.mask_targets["ground_truth"][255] = "other"
+    dataset.save()  # must save after edits
+
+If you are working with RGB segmentation masks, specify target keys as RGB hex
+strings:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Set default mask targets
+    dataset.default_mask_targets = {"#499CEF": "cat", "#6D04FF": "dog"}
+
+    # Edit the default mask targets
+    dataset.default_mask_targets["#FF6D04"] = "person"
+    dataset.save()  # must save after edits
+
+    # Set mask targets for the `ground_truth` and `predictions` fields
+    dataset.mask_targets = {
+        "ground_truth": {"#499CEF": "cat", "#6D04FF": "dog"},
+        "predictions": {
+            "#499CEF": "cat", "#6D04FF": "dog", "#FF6D04": "person"
+        },
+    }
+
+    # Edit an existing mask target
+    dataset.mask_targets["ground_truth"]["#FF6D04"] = "person"
     dataset.save()  # must save after edits
 
 .. note::
@@ -2210,20 +2242,21 @@ with integer values encoding the semantic labels for each pixel in the image.
 The mask can either be stored on disk and referenced via the
 :attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>` attribute or
 stored directly in the database via the
-:attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute. When using the
-:attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>` attribute,
-segmentations must be 8-bit or 16-bit grayscale images. When using the
-:attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute, masks should
-be 2D numpy arrays with integer values.
-
-Segmentations can have any size; they are stretched as necessary to fit the
-image's extent when visualizing in the App.
+:attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute.
 
 .. note::
 
     It is recommended to store segmentations on disk and reference them via the
     :attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>` attribute,
     for efficiency.
+
+Segmentation masks can be stored in either of these formats:
+
+-   2D 8-bit or 16-bit images or numpy arrays
+-   3D 8-bit RGB images or numpy arrays
+
+Segmentation masks can have any size; they are stretched as necessary to fit
+the image's extent when visualizing in the App.
 
 .. code-block:: python
     :linenos:
@@ -2272,13 +2305,10 @@ image's extent when visualizing in the App.
         }>,
     }>
 
-When you load datasets with |Segmentation| fields in the App, each pixel value
-is rendered as a different color (if possible) from the App's color pool.
-
-.. note::
-
-    The mask value `0` is a reserved "background" class that is rendered as
-    invisible in the App.
+When you load datasets with |Segmentation| fields containing 2D masks in the
+App, each pixel value is rendered as a different color (if possible) from the
+App's color pool. When you view RGB segmentation masks in the App, the mask
+colors are always used.
 
 .. note::
 
@@ -2286,6 +2316,15 @@ is rendered as a different color (if possible) from the App's color pool.
     for your segmentation fields on your dataset. Then, when you view the
     dataset in the App, label strings will appear in the App's tooltip when you
     hover over pixels.
+
+.. note::
+
+    If no :ref:`mask targets <storing-mask-targets>` are provided, the pixel
+    value `0` and RGB value `#000000` are treated as "background" classes that
+    are rendered as invisible in the App.
+
+    If mask targets are provided, all observed values not present in the
+    targets are rendered as invisible in the App.
 
 .. _heatmaps:
 

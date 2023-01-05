@@ -41,10 +41,10 @@ def objects_to_segmentations(
         mask_size (None): the ``(width, height)`` at which to render the
             segmentation masks. If not provided, masks will be rendered to
             match the resolution of each input image
-        mask_targets (None): a dict mapping pixel values or RGB hex strings to
-            label strings defining which object classes to render and which
-            pixel values to use for each class. If omitted, all objects are
-            rendered with pixel value 255
+        mask_targets (None): a dict mapping pixel values (2D masks) or RGB hex
+            strings (3D masks) to label strings defining which object classes
+            to render and which pixel values to use for each class. If omitted,
+            all objects are rendered with pixel value 255
         thickness (1): the thickness, in pixels, at which to render
             (non-filled) polylines
         output_dir (None): an optional output directory in which to write the
@@ -282,9 +282,9 @@ def transform_segmentations(
             :class:`fiftyone.core.collections.SampleCollection`
         in_field: the name of the :class:`fiftyone.core.labels.Segmentation`
             field
-        targets_map: a dict mapping existing pixel values or RGB hex strings to
-            new pixel values or RGB hex strings to use. You may convert between
-            grayscale and RGB using this argument
+        targets_map: a dict mapping existing pixel values (2D masks) or RGB hex
+            strings (3D masks) to new pixel values or RGB hex strings to use.
+            You may convert between grayscale and RGB using this argument
         output_dir (None): an optional directory in which to write the
             transformed images
         rel_dir (None): an optional relative directory to strip from each input
@@ -385,10 +385,10 @@ def segmentations_to_detections(
             field to convert
         out_field: the name of the
             :class:`fiftyone.core.labels.Detections` field to populate
-        mask_targets (None): a dict mapping pixel values or RGB hex strings to
-            label strings defining which object classes to label and which
-            pixel values to use for each class. If omitted, all labels are
-            assigned to the pixel values
+        mask_targets (None): a dict mapping pixel values (2D masks) or RGB hex
+            strings (3D masks) to label strings defining which object classes
+            to label and which pixel values to use for each class. If omitted,
+            all labels are assigned to the pixel values
         mask_types ("stuff"): whether the classes are ``"stuff"`` (amorphous
             regions of pixels) or ``"thing"`` (connected regions, each
             representing an instance of the thing). Can be any of the
@@ -396,8 +396,8 @@ def segmentations_to_detections(
 
             -   ``"stuff"`` if all classes are stuff classes
             -   ``"thing"`` if all classes are thing classes
-            -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
-                for each class
+            -   a dict mapping pixel values (2D masks) or RGB hex strings (3D
+                masks) to ``"stuff"`` or ``"thing"`` for each class
     """
     fov.validate_collection_label_fields(
         sample_collection,
@@ -498,10 +498,10 @@ def segmentations_to_polylines(
             field to convert
         out_field: the name of the
             :class:`fiftyone.core.labels.Polylines` field to populate
-        mask_targets (None): a dict mapping pixel values or RGB hex strings to
-            label strings defining which object classes to label and which
-            pixel values to use for each class. If omitted, all labels are
-            assigned to the pixel values
+        mask_targets (None): a dict mapping pixel values (2D masks) or RGB hex
+            strings (3D masks) to label strings defining which object classes
+            to label and which pixel values to use for each class. If omitted,
+            all labels are assigned to the pixel values
         mask_types ("stuff"): whether the classes are ``"stuff"`` (amorphous
             regions of pixels) or ``"thing"`` (connected regions, each
             representing an instance of the thing). Can be any of the
@@ -509,8 +509,8 @@ def segmentations_to_polylines(
 
             -   ``"stuff"`` if all classes are stuff classes
             -   ``"thing"`` if all classes are thing classes
-            -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
-                for each class
+            -   a dict mapping pixel values (2D masks) or RGB hex strings (3D
+                masks) to ``"stuff"`` or ``"thing"`` for each class
         tolerance (2): a tolerance, in pixels, when generating approximate
                 polylines for each region. Typical values are 1-3 pixels
     """
