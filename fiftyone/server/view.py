@@ -572,14 +572,14 @@ def _is_label(field):
     )
 
 
-def _make_scalar_expression(f, args, field):
+def _make_scalar_expression(f, args, field, list_field=False):
     expr = None
     isMatching = False if args["isMatching"] is None else args["isMatching"]
     if isinstance(field, fof.ListField):
-        return (
-            f.filter(_make_scalar_expression(F(), args, field.field)).length()
-            > 0
-        )
+        expr = f.filter(
+            _make_scalar_expression(F(), args, field.field, list_field=True)
+        ).length()
+        return expr == 0 if args["exclude"] else expr > 0
 
     if isinstance(field, fof.BooleanField):
         true, false = args["true"], args["false"]
@@ -618,7 +618,7 @@ def _make_scalar_expression(f, args, field):
         expr = f.is_in(values)
         exclude = args["exclude"]
 
-        if exclude and not isMatching:
+        if exclude and not isMatching and not list_field:
             # pylint: disable=invalid-unary-operand-type
             expr = ~expr
 
