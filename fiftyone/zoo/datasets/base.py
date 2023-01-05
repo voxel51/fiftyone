@@ -2244,7 +2244,7 @@ class KITTIMultiviewDataset(FiftyOneDataset):
             split_dir = os.path.join(dataset_dir, split)
             metadata_path = os.path.join(split_dir, "metadata.json")
             metadata = etas.read_json(metadata_path)
-            config = metadata["info"]["app_config"]["plugins"]["3d"]
+            config = metadata["app_config"]["plugins"]["3d"]
             is_legacy = "itemRotation" in config["overlay"]
         except:
             is_legacy = False

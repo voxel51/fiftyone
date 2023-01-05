@@ -1146,11 +1146,11 @@ class ZooDataset(object):
         if split not in info.downloaded_splits:
             return False
 
-        if self.supports_partial_downloads:
-            return False
-
         if self.has_patches:
             self._patch_if_necessary(dataset_dir, split)
+
+        if self.supports_partial_downloads:
+            return False
 
         if self.requires_manual_download:
             logger.info("Split '%s' already prepared", split)
@@ -1171,11 +1171,11 @@ class ZooDataset(object):
         if info is None:
             return False
 
-        if self.supports_partial_downloads:
-            return False
-
         if self.has_patches:
             self._patch_if_necessary(dataset_dir, None)
+
+        if self.supports_partial_downloads:
+            return False
 
         if self.requires_manual_download:
             logger.info("Dataset already prepared")
