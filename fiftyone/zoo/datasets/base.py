@@ -2695,7 +2695,7 @@ class QuickstartGroupsDataset(FiftyOneDataset):
         516.3 MB
     """
 
-    _GDRIVE_ID = "1df8JucJwjHTkl3MgOJdH477vcv4McNCa"
+    _GDRIVE_ID = "1mLfmb0Bj9L7SaDwcgpKVetvKEGt-b7Lb"
     _ARCHIVE_NAME = "quickstart-groups.zip"
     _DIR_IN_ARCHIVE = "quickstart-groups"
 
