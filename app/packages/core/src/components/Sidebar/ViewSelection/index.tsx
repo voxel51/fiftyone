@@ -152,6 +152,7 @@ export default function ViewSelection(props: Props) {
         (v) => v.slug === savedViewParam
       )?.[0];
       if (potentialView) {
+        // no unnecessary setView call if selected has not changed
         if (selected && selected.id === potentialView.id) {
           return;
         }
@@ -252,6 +253,7 @@ export default function ViewSelection(props: Props) {
                 onComplete: () => {
                   if (selected?.label === deletedSavedViewName) {
                     setSavedViewParam(null);
+                    setView([], [], "", false, "");
 
                     if (isDesktop) {
                       setSelected(DEFAULT_SELECTED);

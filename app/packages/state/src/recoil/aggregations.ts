@@ -47,8 +47,6 @@ export const aggregationQuery = graphQLSelectorFamily<
         slice: get(currentSlice(modal)),
         view: !root ? get(viewAtoms.view) : [],
       };
-      console.log("aggregationQuery params", extended, modal, paths, root);
-      console.log("aggregationQuery form", aggForm);
 
       return {
         form: aggForm,
@@ -85,11 +83,6 @@ export const aggregation = selectorFamily({
       path: string;
     }) =>
     ({ get }) => {
-      console.log(
-        "aggregation: path, get(schemaAtoms.filterFields(path))",
-        path,
-        get(schemaAtoms.filterFields(path))
-      );
       const result = get(
         aggregations({ ...params, paths: get(schemaAtoms.filterFields(path)) })
       ).filter((data) => data.path === path);
