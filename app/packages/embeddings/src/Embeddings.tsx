@@ -389,6 +389,17 @@ function findIndexByKeyValue(array, key, value) {
   return null;
 }
 
+function getPointIndex(trace, id) {
+  let idx = findIndexByKeyValue(trace, "id", id);
+  if (idx === undefined || idx === null) {
+    idx = findIndexByKeyValue(trace, "sample_id", id);
+  }
+  if (idx === null) {
+    debugger;
+  }
+  return idx;
+}
+
 function tracesToData(traces, style, getColor, plotSelection, selectionStyle) {
   const isCategorical = style === "categorical";
   const isUncolored = style === "uncolored";
@@ -400,7 +411,7 @@ function tracesToData(traces, style, getColor, plotSelection, selectionStyle) {
       //   .filter((d) => d !== null);
       const selectedpoints = plotSelection?.length
         ? plotSelection
-            .map((id) => findIndexByKeyValue(trace, "id", id))
+            .map((id) => getPointIndex(trace, id))
             .filter((p) => p !== null)
         : null;
 
@@ -847,11 +858,3 @@ function useSetFilterLabelIds() {
     []
   );
 }
-
-// selection mode
-/**
- * Always show objects in the plot.
- * select - when lasso objects, add a filter_labels stage to the extended view
- * match - when lasso objects, add a match_labels stage to the extended view
- * patches - force the fos.view to be patches
- */
