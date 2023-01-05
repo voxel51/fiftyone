@@ -208,7 +208,6 @@ def get_view(
     stages=None,
     filters=None,
     count_label_tags=False,
-    only_matches=True,
     extended_stages=None,
     sample_filter=None,
     sort=False,
@@ -261,7 +260,6 @@ def get_view(
             view,
             filters,
             count_label_tags=count_label_tags,
-            only_matches=only_matches,
             extended_stages=extended_stages,
             sort=sort,
         )
@@ -273,7 +271,6 @@ def get_extended_view(
     view,
     filters=None,
     count_label_tags=False,
-    only_matches=None,
     extended_stages=None,
     sort=False,
 ):
@@ -310,7 +307,6 @@ def get_extended_view(
             filters,
             label_tags=label_tags,
             hide_result=count_label_tags,
-            only_matches=only_matches,
         )
 
         print("stages", stages)
@@ -396,7 +392,10 @@ def _make_expression(field, path, args):
 
 
 def _make_filter_stages(
-    view, filters, label_tags=None, hide_result=False, only_matches=None
+    view,
+    filters,
+    label_tags=None,
+    hide_result=False,
 ):
     field_schema = view.get_field_schema()
     if view.media_type != fom.IMAGE:
@@ -413,9 +412,10 @@ def _make_filter_stages(
     filtered_labels = set()
     for path in sorted(filters):
         args = filters[path]
-        # use FE filter only_match and match label setting
-        only_matches = args["onlyMatch"]
-        isMatching = args["isMatching"]
+        # we can assume only_matches to be true, unless args[]
+
+        isMatching = True if args["isMatching"] is None else args["isMatching"]
+        onlyMatches = True if args["onlyMatch"] is None else args["onlyMatch"]
 
         if path == "tags" or path.startswith("_"):
             continue
@@ -453,7 +453,8 @@ def _make_filter_stages(
                 if keypoints
                 else _make_scalar_expression(view_field, args, field)
             )
-            exprAlt = _make_match_label_expression(view_field, args, field)
+
+            print("condition expr:", expr)
 
             if expr is not None:
                 if hide_result:
@@ -472,27 +473,25 @@ def _make_filter_stages(
                         _new_field=new_field,
                         **expr,
                     )
-
                 elif isMatching:
-                    stage = fosg.MatchLabels(
-                        fields=cache.get(
-                            prefix + parent.name, prefix + parent.name
-                        ),
-                        filter=exprAlt,
-                        bool=not (args["exclude"]),
+                    field = (
+                        cache.get(prefix + parent.name, prefix + parent.name),
                     )
-
+                    stage = fosg.MatchLabels(
+                        fields=field[0],
+                        filter=expr,
+                        bool=(not args["exclude"]),
+                    )
                 else:
                     stage = fosg.FilterLabels(
                         cache.get(prefix + parent.name, prefix + parent.name),
                         expr,
-                        only_matches=only_matches,
+                        only_matches=onlyMatches,
                         _new_field=new_field,
                     )
 
                 stages.append(stage)
-                if not (isMatching):
-                    filtered_labels.add(path)
+                filtered_labels.add(path)
 
                 if new_field:
                     cache[prefix + parent.name] = new_field
@@ -500,9 +499,21 @@ def _make_filter_stages(
         else:
             expr = _make_expression(view, path, args)
             if expr is not None:
+
                 stages.append(fosg.Match(expr))
+                # field = cache.get(
+                #             prefix + parent.name, prefix + parent.name
+                #         ),
+                # stage = fosg.MatchLabels(
+                #         fields=field[0],
+                #         filter=expr,
+                #         bool=not (args["exclude"]),
+                #     )
 
     if label_tags is not None and hide_result:
+        print("label_tags", label_tags)
+        print("hide_result", hide_result)
+
         for path, _ in iter_label_fields(view):
             if hide_result:
                 new_field = _get_filtered_path(
@@ -561,28 +572,9 @@ def _is_label(field):
     )
 
 
-def _make_match_label_expression(f, args, field):
-    expr = None
-    values = args["values"]
-    exclude = args["exclude"]
-    if not values:
-        return None
-    if isinstance(field, fof.ObjectIdField):
-        f = f.to_string()
-    none = any(map(lambda v: v is None, values))
-    values = filter(lambda v: v is not None, values)
-    expr = f.is_in(values)
-
-    if none:
-        if exclude:
-            expr &= f.exists()
-        else:
-            expr |= ~(f.exists())
-    return expr
-
-
 def _make_scalar_expression(f, args, field):
     expr = None
+    isMatching = False if args["isMatching"] is None else args["isMatching"]
     if isinstance(field, fof.ListField):
         return (
             f.filter(_make_scalar_expression(F(), args, field.field)).length()
@@ -626,11 +618,11 @@ def _make_scalar_expression(f, args, field):
         expr = f.is_in(values)
         exclude = args["exclude"]
 
-        if exclude:
+        if exclude and not isMatching:
             # pylint: disable=invalid-unary-operand-type
             expr = ~expr
 
-        if none:
+        if none and not isMatching:
             if exclude:
                 expr &= f.exists()
             else:
@@ -661,6 +653,7 @@ def _make_keypoint_kwargs(args, view, points):
 
 
 def _apply_others(expr, f, args):
+    isMatching = False if args["isMatching"] is None else args["isMatching"]
     nonfinites = {
         "nan": float("nan"),
         "ninf": -float("inf"),
@@ -679,7 +672,7 @@ def _apply_others(expr, f, args):
     if "none" in args:
         expr = _apply_none(expr, f, args["none"])
 
-    if "exclude" in args and args["exclude"]:
+    if "exclude" in args and args["exclude"] and not isMatching:
         # pylint: disable=invalid-unary-operand-type
         expr = ~expr
 
