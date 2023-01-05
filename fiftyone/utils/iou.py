@@ -398,6 +398,55 @@ def _find_duplicates_greedy(ious, iou_thresh):
     return sorted(dup_inds)
 
 
+def _check_bbox_dim(gt):
+    """
+    Checks dimension of the bounding boxes
+    Returns:
+        2 if dim = 2
+        3 if dim = 3
+        -1 if not valid dimensionally
+    """
+    if "bounding_box" in gt and len(gt.bounding_box) == 4:
+        return 2
+
+    properties_3d = ["dimensions", "location", "rotation"]
+    for prop in properties_3d:
+        if prop not in gt or len(gt[prop]) != 3:
+            return -1
+    return 3
+
+
+def _compute_2d_bbox_iou(gt, gt_crowd, pred):
+    """
+    computes single IoU
+    """
+    gx, gy, gw, gh = gt.bounding_box
+    gt_area = gh * gw
+
+    px, py, pw, ph = pred.bounding_box
+    pred_area = ph * pw
+
+    # Width of intersection
+    w = min(px + pw, gx + gw) - max(px, gx)
+    if w <= 0:
+        return 0
+
+    # Height of intersection
+    h = min(py + ph, gy + gh) - max(py, gy)
+    if h <= 0:
+        return 0
+
+    inter = h * w
+
+    if gt_crowd:
+        union = pred_area
+    else:
+        union = pred_area + gt_area - inter
+
+    iou = min(etan.safe_divide(inter, union), 1)
+    return iou
+
+
 def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
     is_symmetric = preds is gts
 
@@ -414,11 +463,19 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
         else:
             gts = _polylines_to_detections(gts)
 
+    bbox_dim = _check_bbox_dim(gts[0])
+    if bbox_dim == -1:
+        return "Not a valid bounding box. Cannot compute IoU"
+    elif bbox_dim == 2:
+        bbox_iou_func = _compute_2d_bbox_iou
+    else:
+        from fiftyone.utils.eval.utils3d import _compute_3d_bbox_iou
+
+        bbox_iou_func = _compute_3d_bbox_iou
+
     ious = np.zeros((len(preds), len(gts)))
 
     for j, (gt, gt_crowd) in enumerate(zip(gts, gt_crowds)):
-        gx, gy, gw, gh = gt.bounding_box
-        gt_area = gh * gw
 
         for i, pred in enumerate(preds):
             if is_symmetric and i < j:
@@ -428,27 +485,7 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
             elif classwise and pred.label != gt.label:
                 continue
             else:
-                px, py, pw, ph = pred.bounding_box
-                pred_area = ph * pw
-
-                # Width of intersection
-                w = min(px + pw, gx + gw) - max(px, gx)
-                if w <= 0:
-                    continue
-
-                # Height of intersection
-                h = min(py + ph, gy + gh) - max(py, gy)
-                if h <= 0:
-                    continue
-
-                inter = h * w
-
-                if gt_crowd:
-                    union = pred_area
-                else:
-                    union = pred_area + gt_area - inter
-
-                iou = min(etan.safe_divide(inter, union), 1)
+                iou = bbox_iou_func(gt, gt_crowd, pred)
 
             ious[i, j] = iou
 

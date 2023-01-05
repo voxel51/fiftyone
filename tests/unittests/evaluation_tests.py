@@ -17,6 +17,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.utils.labels as foul
+import fiftyone.utils.iou as fouiou
 
 from decorators import drop_datasets
 
@@ -1494,6 +1495,121 @@ class DetectionsTests(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             detection["eval2"]
+
+
+class Detections3DTests(unittest.TestCase):
+    def _create_detections(self, dims, loc, rot):
+        detection = fo.Detection(
+            dimensions=list(dims),
+            location=list(loc),
+            rotation=list(rot),
+        )
+        detections = fo.Detections(detections=[detection])
+        return detections
+
+    def _make_3d_detections_dataset(self):
+        group = fo.Group()
+        samples = [
+            fo.Sample(
+                filepath="image.png",  # non-existent
+                group=group.element("image"),
+            ),
+            fo.Sample(
+                filepath="point-cloud.pcd",
+                group=group.element("pcd"),
+            ),
+        ]
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+        dataset.group_slice = "pcd"
+        sample = dataset.first()
+
+        ## test1 box1
+        ## unit box at origin
+        dims = np.array([1, 1, 1])
+        loc = np.array([0, 0, 0])
+        rot = np.array([0, 0, 0])
+        sample["test1_box1"] = self._create_detections(dims, loc, rot)
+
+        ## test1 box2
+        ## unit box offset from origin
+        loc = np.array([1, 1, 1])
+        sample["test1_box2"] = self._create_detections(dims, loc, rot)
+
+        ## test2 box1
+        ## unit box away from origin
+        loc = np.array([2, -3.5, 20])
+        sample["test2_box1"] = self._create_detections(dims, loc, rot)
+
+        ## test2 box2
+        ## x shift
+        sample["test2_box2"] = self._create_detections(
+            dims, loc + np.array([0.5, 0.0, 0.0]), rot
+        )
+
+        ## test2 box3
+        ## y shift
+        sample["test2_box3"] = self._create_detections(
+            dims, loc + np.array([0.0, 0.5, 0.0]), rot
+        )
+
+        ## test2 box4
+        ## z shift
+        sample["test2_box4"] = self._create_detections(
+            dims, loc + np.array([0.0, 0.0, 0.5]), rot
+        )
+
+        ## test3 box1
+        dims = np.array([5.0, 10.0, 15.0])
+        loc = np.array([1.0, 2.0, 3.0])
+        sample["test3_box1"] = self._create_detections(dims, loc, rot)
+
+        ## test3 box1
+        dims = np.array([10.0, 5.0, 20.0])
+        loc = np.array([4.0, 5.0, 6.0])
+        sample["test3_box2"] = self._create_detections(dims, loc, rot)
+
+        sample.save()
+        self.dataset = dataset
+
+    def _compute_iou(self, field1, field2):
+        dets1 = self.dataset.first()[field1].detections
+        dets2 = self.dataset.first()[field2].detections
+        return fouiou._compute_bbox_ious(dets1, dets2)[0][0]
+
+    def _run_test(self, field1, field2, expected_iou):
+        actual_iou = self._compute_iou(field1, field2)
+        self.assertAlmostEqual(actual_iou, expected_iou)
+
+    ### Test1
+    def _test_non_overlapping_boxes(self):
+        expected_iou = 0.0
+        self._run_test("test1_box1", "test1_box2", expected_iou)
+
+    ### Test2
+    def _test_shifted_boxes(self):
+        expected_iou = 1.0 / 3.0
+        self._run_test("test2_box1", "test2_box2", expected_iou)
+        self._run_test("test2_box1", "test2_box3", expected_iou)
+        self._run_test("test2_box1", "test2_box4", expected_iou)
+
+    ### Test3
+    def _test_shifted_and_scaled_boxes(self):
+        intersection = 4.5 * 4.5 * 14.5
+        union = 1000.0 + 750.0
+        expected_iou = intersection / (union - intersection)
+
+        self._run_test("test3_box1", "test3_box2", expected_iou)
+
+    def assertAlmostEqual(self, a, e):
+        assert np.isclose(a, e)
+
+    def run_all_tests(self):
+        self._make_3d_detections_dataset()
+
+        self._test_non_overlapping_boxes()
+        self._test_shifted_boxes()
+        self._test_shifted_and_scaled_boxes()
 
 
 class VideoDetectionsTests(unittest.TestCase):
