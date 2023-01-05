@@ -28,7 +28,7 @@ from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view, extend_view
 
 
-async def _build_result_view(result_view, form):
+def _build_result_view(result_view, form):
     if form.slice:
         result_view = result_view.select_group_slices([form.slice])
     if form.sample_ids:
@@ -206,7 +206,7 @@ class Mutation:
                 stages=view if view else None,
                 filters=form.filters if form else None,
             )
-        result_view = await _build_result_view(result_view, form)
+        result_view = _build_result_view(result_view, form)
         # Set view state
         state.view = result_view
 
@@ -291,31 +291,23 @@ class Mutation:
                 "reference for creating saved view with name = "
                 "{}".format(view_name)
             )
+
+        dataset_view = get_view(
+            dataset_name,
+            stages=view_stages if view_stages else None,
+            filters=form.filters if form else None,
+        )
         # view arg required to be an instance of
         # `fiftyone.core.view.DatasetView`
+        result_view = _build_result_view(dataset_view, form)
+        dataset.save_view(
+            view_name, result_view, description=description, color=color
+        )
         if use_state:
-            print("stateful create_saved_view dataset:", dataset)
-            result_view = get_view(
-                dataset.name,
-                stages=view_stages if view_stages else None,
-                filters=form.filters if form else None,
-            )
-            result_view = await _build_result_view(result_view, form)
-            dataset.save_view(
-                view_name, result_view, description=description, color=color
-            )
             dataset.reload()
             state.view = dataset.load_saved_view(view_name)
             state.view_name = view_name
             await dispatch_event(subscription, StateUpdate(state=state))
-        else:
-            print("create_saved_view dataset:", dataset)
-
-            view = await _build_result_view(dataset.view(), form)
-
-            dataset.save_view(
-                view_name, view, description=description, color=color
-            )
 
         return next(
             (

@@ -22,15 +22,13 @@ export const aggregationQuery = graphQLSelectorFamily<
 >({
   key: "aggregationQuery",
   environment: RelayEnvironmentKey,
-  mapResponse: (response) => {
-    console.log(response);
-    return response;
-  },
+  mapResponse: (response) => response,
   query: foq.aggregation,
   variables:
     ({ extended, modal, paths, root = false }) =>
     ({ get }) => {
       const mixed = get(groupStatistics(modal)) === "group";
+      //TODO: refactor to reuse viewStateForm here?
       const aggForm = {
         index: get(refresher),
         dataset: get(selectors.datasetName),
