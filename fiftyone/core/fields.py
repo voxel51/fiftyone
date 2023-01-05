@@ -1102,6 +1102,12 @@ class MaskTargetsField(DictField):
         info (None): an optional info dict
     """
 
+    def __init__(self, **kwargs):
+        if "field" not in kwargs:
+            kwargs["field"] = StringField()
+
+        super().__init__(**kwargs)
+
     def _is_integer_mask_target(self, value):
         return all(
             map(
@@ -1126,9 +1132,7 @@ class MaskTargetsField(DictField):
         if value is None:
             return None
 
-        value = {str(k): v for k, v in value.items()}
-        return value
-        # todo: why is this erroring? return super().to_mongo(value)
+        return super().to_mongo({str(k): v for k, v in value.items()})
 
     def to_python(self, value):
         if value is None:
