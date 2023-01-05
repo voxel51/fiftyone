@@ -47,8 +47,7 @@ const meetsDefault = (filter: NumericFilter) => {
     filter.none &&
     filter.nan &&
     filter.inf &&
-    filter.ninf &&
-    !filter.exclude
+    filter.ninf
   );
 };
 
@@ -62,9 +61,12 @@ const setFilter = (
 ) => {
   const filter = {
     range: [null, null] as Range,
-    ...getFilter(get, modal, path),
     [key]: value,
     _CLS: "numeric",
+    onlyMatch: true,
+    isMatching: true,
+    exclude: false,
+    ...getFilter(get, modal, path),
   };
 
   const check = {
@@ -73,10 +75,20 @@ const setFilter = (
   };
 
   const isDefault = meetsDefault(check);
+
+  if (filter.range[0] === null && filter.range[1] === null) {
+    filter.exclude = false;
+    filter.isMatching = false;
+    filter.onlyMatch = true;
+  }
+
   if (!isDefault && meetsDefault({ ...check, range: [null, null] })) {
     set(filterAtoms.filter({ modal, path }), {
       range: filter.range,
       _CLS: "numeric",
+      isMatching: true,
+      onlyMatch: true,
+      exclude: false,
     });
   } else if (isDefault) {
     set(filterAtoms.filter({ modal, path }), null);
@@ -289,6 +301,7 @@ export const numeric = selectorFamily<
         }
 
         if (nan && value === "nan") {
+          console.info(nan, exclude);
           return !exclude;
         }
 

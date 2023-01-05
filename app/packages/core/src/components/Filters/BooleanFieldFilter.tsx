@@ -5,6 +5,9 @@ import CategoricalFilter from "./CategoricalFilter";
 import {
   booleanCountResults,
   booleanSelectedValuesAtom,
+  boolIsMatchingAtom,
+  boolOnlyMatchAtom,
+  boolExcludeAtom,
 } from "@fiftyone/state";
 
 const BooleanFieldFilter = ({
@@ -22,6 +25,9 @@ const BooleanFieldFilter = ({
   return (
     <CategoricalFilter<{ value: boolean | null; count: number }>
       selectedValuesAtom={booleanSelectedValuesAtom({ path, modal })}
+      isMatchingAtom={boolIsMatchingAtom({ path, modal })}
+      onlyMatchAtom={boolOnlyMatchAtom({ path, modal })}
+      excludeAtom={boolExcludeAtom({ path, modal })}
       countsAtom={booleanCountResults({
         path,
         modal,
