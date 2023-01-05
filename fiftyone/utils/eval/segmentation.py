@@ -257,11 +257,15 @@ class SimpleEvaluation(SegmentationEvaluation):
         gt_field = self.config.gt_field
 
         if mask_targets is not None:
+            if fof.is_rgb_mask_targets(mask_targets):
+                mask_targets = {
+                    _hex_to_int(k): v for k, v in mask_targets.items()
+                }
+
             values, classes = zip(*sorted(mask_targets.items()))
         else:
             logger.info("Computing possible mask values...")
-            values = _get_mask_values(samples, pred_field, gt_field)
-            classes = [str(v) for v in values]
+            values, classes = _get_mask_values(samples, pred_field, gt_field)
 
         _samples = samples.select_fields([gt_field, pred_field])
         pred_field, processing_frames = samples._handle_frame_field(pred_field)
@@ -329,7 +333,7 @@ class SimpleEvaluation(SegmentationEvaluation):
                 sample.save()
 
         if nc > 0:
-            missing = classes[0] if values[0] == 0 else None
+            missing = classes[0] if values[0] in (0, "#000000") else None
         else:
             missing = None
 
@@ -441,6 +445,12 @@ def _parse_config(pred_field, gt_field, method, **kwargs):
 def _compute_pixel_confusion_matrix(
     pred_mask, gt_mask, values, bandwidth=None
 ):
+    if pred_mask.ndim == 3:
+        pred_mask = _rgb_array_to_int(pred_mask)
+
+    if gt_mask.ndim == 3:
+        gt_mask = _rgb_array_to_int(gt_mask)
+
     if pred_mask.shape != gt_mask.shape:
         msg = (
             "Resizing predicted mask with shape %s to match ground truth mask "
@@ -487,6 +497,7 @@ def _get_mask_values(samples, pred_field, gt_field):
     gt_field, _ = samples._handle_frame_field(gt_field)
 
     values = set()
+    is_rgb = False
 
     for sample in _samples.iter_samples(progress=True):
         if processing_frames:
@@ -498,6 +509,40 @@ def _get_mask_values(samples, pred_field, gt_field):
             for field in (pred_field, gt_field):
                 seg = image[field]
                 if seg is not None and seg.has_mask:
-                    values.update(seg.get_mask().ravel())
+                    mask = seg.get_mask()
+                    if mask.ndim == 3:
+                        is_rgb = True
+                        mask = _rgb_array_to_int(mask)
 
-    return sorted(values)
+                    values.update(mask.ravel())
+
+    values = sorted(values)
+
+    if is_rgb:
+        classes = [_int_to_hex(v) for v in values]
+    else:
+        classes = [str(v) for v in values]
+
+    return values, classes
+
+
+def _rgb_array_to_int(mask):
+    return (
+        np.left_shift(mask[:, :, 0], 16, dtype=int)
+        + np.left_shift(mask[:, :, 1], 8, dtype=int)
+        + mask[:, :, 2]
+    )
+
+
+def _hex_to_int(hex_str):
+    r = int(hex_str[1:3], 16)
+    g = int(hex_str[3:5], 16)
+    b = int(hex_str[5:7], 16)
+    return (r << 16) + (g << 8) + b
+
+
+def _int_to_hex(value):
+    r = 255 & (value >> 16)
+    g = 255 & (value >> 8)
+    b = 255 & value
+    return "#%02x%02x%02x" % (r, g, b)
