@@ -808,17 +808,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def mask_targets(self):
         """A dict mapping field names to mask target dicts, each of which
-        defines a mapping between pixel values and label strings for the
-        segmentation masks in the corresponding field of the dataset.
-
-        .. note::
-
-            The pixel values `0` and `#000000` are reserved "background"
-            classes that are rendered as invisible in the App.
+        defines a mapping between pixel values (2D masks) or RGB hex strings
+        (3D masks) and label strings for the segmentation masks in the
+        corresponding field of the dataset.
 
         Examples::
 
             import fiftyone as fo
+
+            #
+            # 2D masks
+            #
 
             dataset = fo.Dataset()
 
@@ -831,6 +831,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # Edit an existing mask target
             dataset.mask_targets["ground_truth"][255] = "other"
             dataset.save()  # must save after edits
+
+            #
+            # 3D masks
+            #
+
+            dataset = fo.Dataset()
+
+            # Set mask targets for the `ground_truth` and `predictions` fields
+            dataset.mask_targets = {
+                "ground_truth": {"#499CEF": "cat", "#6D04FF": "dog"},
+                "predictions": {
+                    "#499CEF": "cat", "#6D04FF": "dog", "#FF6D04": "person"
+                },
+            }
+
+            # Edit an existing mask target
+            dataset.mask_targets["ground_truth"]["#FF6D04"] = "person"
+            dataset.save()  # must save after edits
         """
         return self._doc.mask_targets
 
@@ -841,19 +859,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def default_mask_targets(self):
-        """A dict defining a default mapping between pixel values and label
-        strings for the segmentation masks of all
-        :class:`fiftyone.core.labels.Segmentation` fields of this dataset that
-        do not have customized mask targets defined in :meth:`mask_targets`.
-
-        .. note::
-
-            The pixel values `0` and `#000000` are reserved "background"
-            classes that are rendered as invisible in the App.
+        """A dict defining a default mapping between pixel values (2D masks) or
+        RGB hex strings (3D masks) and label strings for the segmentation masks
+        of all :class:`fiftyone.core.labels.Segmentation` fields of this
+        dataset that do not have customized mask targets defined in
+        :meth:`mask_targets`.
 
         Examples::
 
             import fiftyone as fo
+
+            #
+            # 2D masks
+            #
 
             dataset = fo.Dataset()
 
@@ -862,6 +880,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             # Edit the default mask targets
             dataset.default_mask_targets[255] = "other"
+            dataset.save()  # must save after edits
+
+            #
+            # 3D masks
+            #
+
+            dataset = fo.Dataset()
+
+            # Set default mask targets
+            dataset.default_mask_targets = {"#499CEF": "cat", "#6D04FF": "dog"}
+
+            # Edit the default mask targets
+            dataset.default_mask_targets["#FF6D04"] = "person"
             dataset.save()  # must save after edits
         """
         return self._doc.default_mask_targets

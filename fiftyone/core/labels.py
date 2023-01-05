@@ -561,10 +561,11 @@ class Detections(_HasLabelList, Label):
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            mask_targets (None): a dict mapping integer pixel values or RGB hex
-                strings to label strings defining which object classes to
-                render and which pixel values to use for each class. If
-                omitted, all objects are rendered with pixel value 255
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                object classes to render and which pixel values to use for each
+                class. If omitted, all objects are rendered with pixel value
+                255
 
         Returns:
             a :class:`Segmentation`
@@ -819,10 +820,11 @@ class Polylines(_HasLabelList, Label):
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            mask_targets (None): a dict mapping integer pixel values or RGB hex
-                strings to label strings defining which object classes to
-                render and which pixel values to use for each class. If
-                omitted, all objects are rendered with pixel value 255
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                object classes to render and which pixel values to use for each
+                class. If omitted, all objects are rendered with pixel value
+                255
             thickness (1): the thickness, in pixels, at which to render
                 (non-filled) polylines
 
@@ -983,9 +985,9 @@ class Segmentation(_HasID, _HasMedia, Label):
         transformed mask.
 
         Args:
-            targets_map: a dict mapping existing pixel values or RGB hex
-                strings to new pixel values or RGB hex strings. You may convert
-                between grayscale and RGB using this argument
+            targets_map: a dict mapping existing pixel values (2D masks) or RGB
+                hex strings (3D masks) to new pixel values or RGB hex strings.
+                You may convert between grayscale and RGB using this argument
             outpath (None): an optional path to write the transformed mask on
                 disk
             update (False): whether to save the transformed mask on this
@@ -1025,10 +1027,10 @@ class Segmentation(_HasID, _HasMedia, Label):
         per connected region of that class in the segmentation.
 
         Args:
-            mask_targets (None): a dict mapping integer pixel values or RGB hex
-                strings to label strings defining which classes to generate
-                detections for. If omitted, all labels are assigned to their
-                pixel values
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                classes to generate detections for. If omitted, all labels are
+                assigned to their pixel values
             mask_types ("stuff"): whether the classes are ``"stuff"``
                 (amorphous regions of pixels) or ``"thing"`` (connected
                 regions, each representing an instance of the thing). Can be
@@ -1036,8 +1038,8 @@ class Segmentation(_HasID, _HasMedia, Label):
 
                 -   ``"stuff"`` if all classes are stuff classes
                 -   ``"thing"`` if all classes are thing classes
-                -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
-                    for each class
+                -   a dict mapping pixel values (2D masks) or RGB hex strings
+                    (3D masks) to ``"stuff"`` or ``"thing"`` for each class
 
         Returns:
             a :class:`Detections`
@@ -1057,10 +1059,10 @@ class Segmentation(_HasID, _HasMedia, Label):
         per connected region of that class.
 
         Args:
-            mask_targets (None): a dict mapping integer pixel values or RGB hex
-                strings to label strings defining which object classes to
-                generate polylines for. If omitted, all labels are assigned to
-                their pixel values
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                classes to generate detections for. If omitted, all labels are
+                assigned to their pixel values
             mask_types ("stuff"): whether the classes are ``"stuff"``
                 (amorphous regions of pixels) or ``"thing"`` (connected
                 regions, each representing an instance of the thing). Can be
@@ -1068,8 +1070,8 @@ class Segmentation(_HasID, _HasMedia, Label):
 
                 -   ``"stuff"`` if all classes are stuff classes
                 -   ``"thing"`` if all classes are thing classes
-                -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
-                    for each class
+                -   a dict mapping pixel values (2D masks) or RGB hex strings
+                    (3D masks) to ``"stuff"`` or ``"thing"`` for each class
             tolerance (2): a tolerance, in pixels, when generating approximate
                 polylines for each region. Typical values are 1-3 pixels
 
