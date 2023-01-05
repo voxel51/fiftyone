@@ -72,13 +72,17 @@ class OnPlotLoad(HTTPEndpoint):
         curr_points = results._curr_points
         if is_patches_plot:
             curr_ids = results._curr_label_ids
+            curr_sample_ids = results._curr_sample_ids
         else:
             curr_ids = results._curr_sample_ids
+            curr_sample_ids = itertools.repeat(None)
 
         selected = itertools.repeat(True)
 
         traces = {}
-        for data in zip(curr_ids, curr_points, labels, selected):
+        for data in zip(
+            curr_ids, curr_points, labels, selected, curr_sample_ids
+        ):
             _add_to_trace(traces, style, *data)
 
         return {
@@ -245,7 +249,7 @@ def _load_dataset(dataset_name):
     return dataset
 
 
-def _add_to_trace(traces, style, id, points, label, selected):
+def _add_to_trace(traces, style, id, points, label, selected, sample_id):
     key = label if style == "categorical" else "points"
     if key not in traces:
         traces[key] = []
@@ -253,6 +257,7 @@ def _add_to_trace(traces, style, id, points, label, selected):
     traces[key].append(
         {
             "id": id,
+            "sample_id": sample_id or id,
             "points": points,
             "label": label,
             "selected": selected,
