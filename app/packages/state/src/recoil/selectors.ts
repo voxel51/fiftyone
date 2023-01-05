@@ -211,7 +211,7 @@ export const selectedLabelList = selector<State.SelectedLabel[]>({
 export const anyTagging = selector<boolean>({
   key: "anyTagging",
   get: ({ get }) => {
-    let values = [];
+    const values = [];
     [true, false].forEach((i) =>
       [true, false].forEach((j) => {
         values.push(get(atoms.tagging({ modal: i, labels: j })));
@@ -275,8 +275,8 @@ export const pathHiddenLabelsMap = selector<{
     const labels = get(atoms.hiddenLabels);
     const newLabels: State.SelectedLabelMap = {};
 
-    for (let sampleId in value) {
-      for (let field in value[sampleId]) {
+    for (const sampleId in value) {
+      for (const field in value[sampleId]) {
         for (let i = 0; i < value[sampleId][field].length; i++) {
           const labelId = value[sampleId][field][i];
           newLabels[labelId] = labels[labelId];
