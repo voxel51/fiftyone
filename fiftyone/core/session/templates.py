@@ -157,7 +157,7 @@ SCREENSHOT_DATABRICKS_SCRIPT = """
      params.set("subscription", "{{ subscription }}");
      url.search = params.toString();
      url.pathname = proxy;
-     fetch(`{{ proxy }}fiftyone`)
+     fetch(`{{ proxy }}screenshot/{{ subscription }}`)
      .then(() => {
         overlay.addEventListener("click", () => {
           window.location = url.toString();
