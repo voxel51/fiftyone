@@ -828,6 +828,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "predictions": {1: "cat", 2: "dog", 255: "other"},
             }
 
+            # Or, for RGB mask targets
+            dataset.mask_targets = {
+                "segmentations": {"#3f0a44": "road", "#eeffee": "building", "#ffffff": "other"}
+            }
+
             # Edit an existing mask target
             dataset.mask_targets["ground_truth"][255] = "other"
             dataset.save()  # must save after edits
@@ -877,6 +882,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             # Set default mask targets
             dataset.default_mask_targets = {1: "cat", 2: "dog"}
+
+            # Or, for RGB mask targets
+            dataset.default_mask_targets = {"#3f0a44": "road", "#eeffee": "building", "#ffffff": "other"}
 
             # Edit the default mask targets
             dataset.default_mask_targets[255] = "other"
