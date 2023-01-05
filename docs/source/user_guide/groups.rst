@@ -1180,7 +1180,7 @@ shown below under the `plugins.3d` key of your
                 // The initial camera position in the 3D scene
                 "defaultCameraPosition": {"x": 0, "y": 0, "z": 0},
 
-                // The default up direction for all objects in the 3D scene
+                // The default up direction for the scene
                 "defaultUp": [0, 0, 1],
 
                 "pointCloud": {
