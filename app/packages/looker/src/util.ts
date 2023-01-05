@@ -221,23 +221,6 @@ export function argMin<T>(array: T[]): number {
     .reduce((r, a) => (a[0] < r[0] ? a : r))[1];
 }
 
-/**
- * Returns true if mask targets is RGB
- */
-export function isRgbMaskTargets(
-  maskTargets: MaskTargets
-): maskTargets is RgbMaskTargets {
-  if (
-    !maskTargets ||
-    typeof maskTargets !== "object" ||
-    Object.keys(maskTargets).length === 0
-  ) {
-    throw new Error("mask targets is invalid");
-  }
-
-  return Object.keys(maskTargets)[0].startsWith("#");
-}
-
 export interface Timeouts {
   [key: string]: ReturnType<typeof setTimeout>;
 }
