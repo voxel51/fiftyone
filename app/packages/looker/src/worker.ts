@@ -19,8 +19,7 @@ import {
 import { decode as decodePng } from "fast-png";
 import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize, OverlayMask } from "./numpy";
-import { Coloring, FrameChunk, MaskTargets } from "./state";
-import { isRgbMaskTargets } from "./util";
+import { Coloring, FrameChunk, MaskTargets, RgbMaskTargets } from "./state";
 
 interface ResolveColor {
   key: string | number;
@@ -29,6 +28,23 @@ interface ResolveColor {
 }
 
 type ResolveColorMethod = ReaderMethod & ResolveColor;
+
+/**
+ * Returns true if mask targets is RGB
+ */
+export function isRgbMaskTargets(
+  maskTargets: MaskTargets
+): maskTargets is RgbMaskTargets {
+  if (
+    !maskTargets ||
+    typeof maskTargets !== "object" ||
+    Object.keys(maskTargets).length === 0
+  ) {
+    throw new Error("mask targets is invalid");
+  }
+
+  return Object.keys(maskTargets)[0].startsWith("#");
+}
 
 const [requestColor, resolveColor] = ((): [
   (pool: string[], seed: number, key: string | number) => Promise<string>,

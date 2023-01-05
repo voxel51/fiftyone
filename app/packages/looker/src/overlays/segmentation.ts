@@ -132,7 +132,7 @@ export default class SegmentationOverlay<State extends BaseState>
 
     const target = this.getTarget(state);
 
-    if (isRgbMaskTargets(maskTargets) && this.label.mask.data.channels > 2) {
+    if (this.label.mask.data.channels > 2) {
       return {
         color: Object.entries(maskTargets).find(
           ([_, el]) => el.intTarget === target
