@@ -5,7 +5,7 @@ import { Loading } from "@fiftyone/components";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { tracesToData } from "./tracesToData";
 import { useKeyDown } from "./useKeyDown";
-import { useLoadedPlot } from "./useLoadedPlot";
+import { usePlot } from "./usePlot";
 
 export function EmbeddingsPlot({
   brainKey,
@@ -23,7 +23,7 @@ export function EmbeddingsPlot({
     handleSelected,
     selectionStyle,
   } = plotSelection;
-  const { isLoading, traces, style } = useLoadedPlot(plotSelection);
+  const { isLoading, traces, style } = usePlot(plotSelection);
   const [dragMode, setDragMode] = usePanelStatePartial("dragMode", "lasso");
   useKeyDown("s", () => setDragMode("lasso"));
   useKeyDown("g", () => setDragMode("pan"));
