@@ -5,10 +5,9 @@ import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useBrainResult } from "./useBrainResult";
 import { useColorByField } from "./useLabelSelector";
 import { useWarnings } from "./useWarnings";
-import { fetchUpdatedSelection, fetchExtendedStage } from "./fetch";
-import { handleInitialPlotLoad } from "./handleInitialPlotLoad";
+import { fetchUpdatedSelection, fetchExtendedStage, fetchPlot } from "./fetch";
 
-export function useLoadedPlot({ clearSelection, setPlotSelection }) {
+export function usePlot({ clearSelection, setPlotSelection }) {
   const datasetName = useRecoilValue(fos.datasetName);
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     fos.selectedSamples
@@ -35,13 +34,11 @@ export function useLoadedPlot({ clearSelection, setPlotSelection }) {
   );
   const warnings = useWarnings();
 
-  // build the initial plot on load
+  // load the plot when the view changes
   useEffect(() => {
-    console.log("initial load");
-    clearSelection();
     setOverrideStage(null);
     setLoadingPlot(true);
-    handleInitialPlotLoad({ datasetName, brainKey, view, labelField })
+    fetchPlot({ datasetName, brainKey, view, labelField })
       .catch((err) => setLoadingPlotError(err))
       .then((res) => {
         console.log(res);
@@ -65,11 +62,10 @@ export function useLoadedPlot({ clearSelection, setPlotSelection }) {
         }
 
         setLoadingPlotError(null);
-        setPlotSelection(res.selected_ids);
         setLoadedPlot(res);
       })
       .finally(() => setLoadingPlot(false));
-  }, [datasetName, brainKey, labelField]);
+  }, [datasetName, brainKey, labelField, view]);
 
   // updated the selection when the extended view updates
   useEffect(() => {
@@ -90,9 +86,12 @@ export function useLoadedPlot({ clearSelection, setPlotSelection }) {
         extended: resolvedExtended,
         extendedSelection,
       }).then((res) => {
-        const resolved =
-          res.selected || selectedSamples ? Array.from(selectedSamples) : null;
-        console.log("setting plot selection to", resolved);
+        let resolved = null;
+        if (res.selected) {
+          resolved = res.selected;
+        } else if (selectedSamples && selectedSamples.size) {
+          resolved = Array.from(selectedSamples);
+        }
         setPlotSelection(resolved);
       });
     }

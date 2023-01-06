@@ -16,3 +16,13 @@ export async function fetchColorByChoices(params) {
   const { datasetName, brainKey } = params;
   return getFetchFunction()("POST", "/embeddings/color-by-choices", params);
 }
+
+export async function fetchPlot({ datasetName, brainKey, view, labelField }) {
+  const res = await getFetchFunction()("POST", "/embeddings/plot", {
+    datasetName,
+    brainKey,
+    view,
+    labelField,
+  });
+  return res;
+}
