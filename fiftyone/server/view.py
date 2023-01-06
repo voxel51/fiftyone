@@ -451,10 +451,10 @@ def _make_filter_stages(
                     path if path.endswith(".points") else None,
                 )
                 if keypoints
-                else _make_scalar_expression(view_field, args, field)
+                else _make_scalar_expression(
+                    view_field, args, field, is_label=True
+                )
             )
-
-            print("condition expr:", expr)
 
             if expr is not None:
                 if hide_result:
@@ -499,20 +499,9 @@ def _make_filter_stages(
         else:
             expr = _make_expression(view, path, args)
             if expr is not None:
-
                 stages.append(fosg.Match(expr))
-                # field = cache.get(
-                #             prefix + parent.name, prefix + parent.name
-                #         ),
-                # stage = fosg.MatchLabels(
-                #         fields=field[0],
-                #         filter=expr,
-                #         bool=not (args["exclude"]),
-                #     )
 
     if label_tags is not None and hide_result:
-        print("label_tags", label_tags)
-        print("hide_result", hide_result)
 
         for path, _ in iter_label_fields(view):
             if hide_result:
@@ -572,7 +561,7 @@ def _is_label(field):
     )
 
 
-def _make_scalar_expression(f, args, field, list_field=False):
+def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
     expr = None
     isMatching = False if args["isMatching"] is None else args["isMatching"]
     if isinstance(field, fof.ListField):
@@ -618,11 +607,12 @@ def _make_scalar_expression(f, args, field, list_field=False):
         expr = f.is_in(values)
         exclude = args["exclude"]
 
-        if exclude and not isMatching and not list_field:
+        # list_field handles exclude separately; matchLabel has exclude in the arg
+        if exclude and not list_field and not (is_label and isMatching):
             # pylint: disable=invalid-unary-operand-type
             expr = ~expr
 
-        if none and not isMatching:
+        if none and not list_field and not (is_label and isMatching):
             if exclude:
                 expr &= f.exists()
             else:
