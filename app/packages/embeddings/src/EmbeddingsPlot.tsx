@@ -1,7 +1,7 @@
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
 import Plot from "react-plotly.js";
-import { Loading } from "@fiftyone/components";
+import { Loading, useTheme } from "@fiftyone/components";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { tracesToData } from "./tracesToData";
 import { useKeyDown } from "./useKeyDown";
@@ -14,6 +14,7 @@ export function EmbeddingsPlot({
   bounds,
   plotSelection,
 }) {
+  const theme = useTheme();
   const getColor = useRecoilValue(fos.colorMapRGB(true));
   const datasetName = useRecoilValue(fos.datasetName);
   const {
@@ -105,9 +106,9 @@ export function EmbeddingsPlot({
             paper_bgcolor: "rgba(0,0,0,0)",
             plot_bgcolor: "rgba(0,0,0,0)",
             legend: {
-              x: 0.9,
-              y: 0.9,
-              bgcolor: "rgba(51,51,51, 1)",
+              x: 1,
+              y: 1,
+              bgcolor: theme.background.level1,
               font: {
                 color: "rgb(179, 179, 179)",
               },
