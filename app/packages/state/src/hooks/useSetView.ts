@@ -83,7 +83,6 @@ const useSetView = (
       ) => {
         const dataset = snapshot.getLoadable(fos.dataset).contents;
         const savedViews = dataset.savedViews || [];
-
         send((session) => {
           const value =
             viewOrUpdater instanceof Function

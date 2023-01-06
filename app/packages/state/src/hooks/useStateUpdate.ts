@@ -52,6 +52,9 @@ const useStateUpdate = () => {
 
       if (state) {
         const view = get(viewAtoms.view);
+        if (dataset.stages && !state.view) {
+          state.view = dataset.stages;
+        }
 
         if (!viewsAreEqual(view || [], state.view || [])) {
           set(viewAtoms.view, state.view || []);

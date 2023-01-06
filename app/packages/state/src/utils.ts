@@ -102,7 +102,8 @@ export const getDatasetName = (context: RoutingContext<any>): string => {
       path: "/datasets/:name",
       exact: true,
     },
-    {}
+    {},
+    ""
   );
 
   if (result) {

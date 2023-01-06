@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useMemo } from "react";
+import React, { Suspense, useContext, useEffect, useMemo } from "react";
 import { filter, map } from "lodash";
 import {
   atom,
@@ -13,13 +13,11 @@ import * as fos from "@fiftyone/state";
 import { Selection } from "@fiftyone/components";
 
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
-import {
-  DatasetSavedViewsQuery,
-  DatasetSavedViewsFragment,
-} from "../../../Root/Root";
+import { DatasetSavedViewsFragment } from "../../../Dataset";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 import { isElectron } from "@fiftyone/utilities";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
+import { DatasetQueryRef } from "../../../Root/Datasets/Dataset";
 
 const DEFAULT_SELECTED: DatasetViewOption = {
   id: "1",
@@ -73,7 +71,7 @@ export default function ViewSelection(props: Props) {
   });
   const isIPython = existingQueries?.["context"] === "ipython";
 
-  const { datasetName, queryRef } = props;
+  const { datasetName } = props;
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
   const [savedViewParam, setSavedViewParam] = fos.useQueryState("view");
   const setEditView = useSetRecoilState(viewDialogContent);
@@ -82,10 +80,12 @@ export default function ViewSelection(props: Props) {
 
   const { savedViews: savedViewsV2 = [] } = fos.useSavedViews();
 
-  const fragments = usePreloadedQuery(DatasetSavedViewsQuery, queryRef);
+  const fragmentRef = useContext(DatasetQueryRef);
+  if (!fragmentRef) throw new Error("ref not defined");
+
   const [data, refetch] = useRefetchableFragment(
     DatasetSavedViewsFragment,
-    fragments
+    fragmentRef
   );
 
   const items =
@@ -157,13 +157,6 @@ export default function ViewSelection(props: Props) {
           return;
         }
         setSelected(potentialView);
-        setView(
-          potentialView.viewStages,
-          [],
-          potentialView.label,
-          true,
-          potentialView.slug
-        );
       } else {
         const potentialUpdatedView = savedViewsV2.filter(
           (v) => v.slug === savedViewParam
@@ -179,20 +172,12 @@ export default function ViewSelection(props: Props) {
                   label: potentialUpdatedView.name,
                   slug: potentialUpdatedView.slug,
                 });
-                setView(
-                  [],
-                  [],
-                  potentialUpdatedView.name,
-                  true,
-                  potentialUpdatedView.slug
-                );
               },
             }
           );
         } else {
           // bad/old view param
           setSelected(DEFAULT_SELECTED);
-          setView(loadedView, [], "", false, "");
         }
       }
     } else {

@@ -256,10 +256,14 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
         _app_count += 1
 
     current = state.dataset.name if state.dataset else None
-    if is_app and payload.initializer != current:
+    current_saved_view = state.view_name
+    if not isinstance(payload.initializer, fos.StateDescription) and (
+        payload.initializer.dataset != current
+        or payload.initializer.view != current_saved_view
+    ):
         if payload.initializer:
             try:
-                state.dataset = fo.load_dataset(payload.initializer)
+                state.dataset = fo.load_dataset(payload.initializer.dataset)
             except:
                 state.dataset = None
             state.selected = []

@@ -8,13 +8,33 @@ import {
   DatasetQuery$data,
 } from "./__generated__/DatasetQuery.graphql";
 
+export const DatasetSavedViewsFragment = graphql`
+  fragment DatasetSavedViewsFragment on Query
+  @refetchable(queryName: "DatasetSavedViewsFragmentQuery") {
+    savedViews(datasetName: $name) {
+      id
+      datasetId
+      name
+      slug
+      description
+      color
+      viewStages
+      createdAt
+      lastModifiedAt
+      lastLoadedAt
+    }
+  }
+`;
+
 export const DatasetNodeQuery = graphql`
   query DatasetQuery(
     $name: String!
     $view: BSONArray = null
     $viewName: String = null
   ) {
+    ...DatasetSavedViewsFragment
     dataset(name: $name, view: $view, viewName: $viewName) {
+      stages(slug: $viewName)
       id
       name
       mediaType

@@ -201,6 +201,17 @@ class Dataset:
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
 
+    @gql.field
+    def stages(self, slug: t.Optional[str] = None) -> t.Optional[BSONArray]:
+        if not slug:
+            return None
+
+        for view in self.saved_views:
+            if view.slug == slug:
+                return view.stage_dicts()
+
+        return None
+
     @staticmethod
     def modifier(doc: dict) -> dict:
         doc["id"] = doc.pop("_id")

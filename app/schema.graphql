@@ -136,6 +136,7 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
+  stages(slug: String = null): BSONArray
 }
 
 type DatasetAppConfig {
@@ -362,7 +363,7 @@ type Query {
     datasetName: String!
     view: BSONArray
     aggregations: [Aggregate!]!
-    viewName: String
+    viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
   dataset(name: String!, view: BSONArray, viewName: String): Dataset

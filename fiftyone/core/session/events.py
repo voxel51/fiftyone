@@ -22,7 +22,6 @@ EventType = t.Union[
     "CloseSession",
     "DeactivateNotebookCell",
     "ReactivateNotebookCell",
-    "RefreshApp",
     "StateUpdate",
 ]
 
@@ -98,10 +97,16 @@ class Ping(Event):
 
 
 @dataclass
+class AppInitializer:
+    dataset: t.Optional[str] = None
+    view: t.Optional[str] = None
+
+
+@dataclass
 class ListenPayload:
     """A an initialization payload for an event listener request"""
 
-    initializer: t.Union[str, None, fos.StateDescription]
+    initializer: t.Union[AppInitializer, None, fos.StateDescription]
     events: t.List[str]
     subscription: str
     polling: t.Optional[bool] = False
@@ -110,7 +115,7 @@ class ListenPayload:
     def from_dict(cls, d: dict) -> "ListenPayload":
         init = d["initializer"]
 
-        if isinstance(init, dict):
+        if isinstance(init, dict) and "_cls" in init:
             d["initializer"] = fos.StateDescription.from_dict(d["initializer"])
 
         return from_dict(cls, d)

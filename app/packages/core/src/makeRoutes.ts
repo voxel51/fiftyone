@@ -28,7 +28,8 @@ const makeRoutes = (environment: Environment): RouteDefinition<any>[] => {
           exact: true,
         },
         {
-          path: "/datasets/:name?view=:viewName",
+          path: "/datasets/:name",
+          queryParams: { view: "viewName" },
           component: {
             name: "./Root/Datasets",
             loader: () =>

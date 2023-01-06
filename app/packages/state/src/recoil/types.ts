@@ -105,6 +105,7 @@ export namespace State {
     sidebarMode?: "all" | "best" | "fast";
   }
   export interface Dataset {
+    stages?: Stage[];
     id: string;
     brainMethods: BrainRun[];
     createdAt: DateTime;

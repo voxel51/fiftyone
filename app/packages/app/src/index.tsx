@@ -97,7 +97,8 @@ const App: React.FC = ({}) => {
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
-                viewName: getSavedViewName(contextRef.current),
+                viewName:
+                  getSavedViewName(contextRef.current) || data.view_name,
                 changingSavedView,
               } as State.Description;
               let dataset = getDatasetName(contextRef.current);
@@ -162,7 +163,10 @@ const App: React.FC = ({}) => {
       },
       controller.signal,
       {
-        initializer: getDatasetName(contextRef.current),
+        initializer: {
+          dataset: getDatasetName(contextRef.current),
+          view: getSavedViewName(contextRef.current),
+        },
         subscription,
         events: [Events.DEACTIVATE_NOTEBOOK_CELL, Events.STATE_UPDATE],
       }
