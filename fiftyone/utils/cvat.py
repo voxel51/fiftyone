@@ -7110,7 +7110,7 @@ def _parse_occlusion_value(value):
 
 
 # Track interpolation code sourced from CVAT:
-# https://github.com/openvinotoolkit/cvat/blob/31f6234b0cdc656c9dde4294c1008560611c6978/cvat/apps/dataset_manager/annotation.py#L431-L730
+# https://github.com/opencv/cvat/blob/31f6234b0cdc656c9dde4294c1008560611c6978/cvat/apps/dataset_manager/annotation.py#L431-L730
 def _get_interpolated_shapes(track_shapes):
     def copy_shape(source, frame, points=None):
         copied = deepcopy(source)
