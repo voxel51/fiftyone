@@ -238,6 +238,9 @@ export const booleanSelectedValuesAtom = selectorFamily<
     },
 });
 
+// this is where the final filtering for looker occurs in the App
+// it returns a boolean about whether labels are selected or not
+
 export const boolean = selectorFamily<
   (value: boolean | null) => boolean,
   { modal: boolean; path: string }
@@ -253,8 +256,12 @@ export const boolean = selectorFamily<
       const trueValue = get(trueAtom(params));
       const falseValue = get(falseAtom(params));
       const noneValue = get(noneAtom(params));
+      const isMatching = get(boolIsMatchingAtom(params));
 
       return (value) => {
+        if (isMatching) {
+          return true;
+        }
         if (value === true && trueValue) {
           return true;
         }

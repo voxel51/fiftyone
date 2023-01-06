@@ -272,6 +272,8 @@ export const isDefaultRange = selectorFamily<
     },
 });
 
+// this is where the final filtering for looker occurs in the App
+// it returns a boolean about whether labels are selected or not
 export const numeric = selectorFamily<
   (value: number | null) => boolean,
   { modal: boolean; path: string; defaultRange?: Range }
@@ -281,8 +283,11 @@ export const numeric = selectorFamily<
     (params) =>
     ({ get }) => {
       const exclude = get(numericExcludeAtom(params));
-      const onlyMatch = get(numericOnlyMatchAtom(params));
       const isMatching = get(numericIsMatchingAtom(params));
+
+      if (isMatching) {
+        return (value) => true;
+      }
 
       const [start, end] = get(rangeAtom(params));
       const none = get(nonfiniteAtom({ ...params, key: "none" }));

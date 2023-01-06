@@ -125,6 +125,8 @@ export const isMatchingAtom = selectorFamily<
 
 const NONE = new Set<string | null | undefined>([undefined, null]);
 
+// this is where the final filtering for looker occurs in the App
+// it returns a boolean about whether labels are selected or not
 export const string = selectorFamily<
   (value: string | null) => boolean,
   { modal: boolean; path: string }
@@ -136,14 +138,18 @@ export const string = selectorFamily<
       if (!get(filterAtoms.filter(params))) {
         return (value) => true;
       }
+      const isMatching = get(isMatchingAtom(params));
+      if (isMatching) {
+        return (value) => true;
+      }
 
       const exclude = get(stringExcludeAtom(params));
       const values = get(stringSelectedValuesAtom({ ...params }));
       const none = values.includes(null);
 
       return (value) => {
-        const result = values.includes(value) || (none && NONE.has(value));
-        return exclude ? !result : result;
+        const r = values.includes(value) || (none && NONE.has(value));
+        return exclude ? !r : r;
       };
     },
 });
