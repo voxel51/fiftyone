@@ -1470,7 +1470,7 @@ def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
             dtype = np.uint8
 
         width, height = frame_size
-        if is_rgb:
+        if mask_targets is not None and is_rgb:
             mask = np.zeros((height, width, 3), dtype=dtype)
         else:
             mask = np.zeros((height, width), dtype=dtype)
