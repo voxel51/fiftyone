@@ -43,6 +43,8 @@ class OnPlotLoad(HTTPEndpoint):
         # only points we want to display in the embeddings plot
         results.use_view(view, allow_missing=True)
 
+        print(label_field)
+
         # Color by data
         if label_field:
             labels = results.view.values(label_field, unwind=True)
@@ -51,6 +53,7 @@ class OnPlotLoad(HTTPEndpoint):
                 style = "continuous"
             else:
                 if len(set(labels)) <= MAX_CATEGORIES:
+                    print(len(set(labels)))
                     style = "categorical"
                 else:
                     style = "continuous"
