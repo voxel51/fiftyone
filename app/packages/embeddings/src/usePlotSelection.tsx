@@ -41,15 +41,18 @@ export function usePlotSelection() {
   if (selected && selected.length) {
     resolvedSelection = selected;
     selectionStyle = "selected";
+  } else if (plotSelection && plotSelection.length) {
+    resolvedSelection = plotSelection;
+    selectionStyle = "plot";
   } else if (extendedSelection && extendedSelection.length) {
     resolvedSelection = extendedSelection;
     selectionStyle = "extended";
   }
 
-  useEffect(() => {
-    console.log("setting plot selection", resolvedSelection);
-    setPlotSelection(resolvedSelection);
-  }, [selectedSamples, extendedSelection]);
+  // useEffect(() => {
+  //   console.log("setting plot selection", resolvedSelection);
+  //   setPlotSelection(resolvedSelection);
+  // }, [selectedSamples, extendedSelection]);
   const hasSelection = resolvedSelection !== null;
   return {
     setPlotSelection,
