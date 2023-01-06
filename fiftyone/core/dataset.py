@@ -6077,6 +6077,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._reload(hard=True)
         self._reload_docs(hard=True)
 
+    def clear_cache(self):
+        """Clears the dataset's in-memory cache."""
         self._annotation_cache.clear()
         self._brain_cache.clear()
         self._evaluation_cache.clear()

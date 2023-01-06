@@ -186,6 +186,13 @@ type EvaluationRunConfig implements RunConfig {
   method: String
 }
 
+input ExtendedViewForm {
+  filters: JSON = null
+  mixed: Boolean = null
+  sampleIds: [String!] = null
+  slice: String = null
+}
+
 type FloatAggregation implements Aggregation {
   path: String!
   count: Int!
@@ -355,6 +362,7 @@ type Query {
     view: BSONArray
     aggregations: [Aggregate!]!
     viewName: String
+    form: ExtendedViewForm = null
   ): [AggregationResponses!]!
   dataset(name: String!, view: BSONArray, viewName: String): Dataset
   datasets(
