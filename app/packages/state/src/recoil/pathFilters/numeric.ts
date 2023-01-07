@@ -60,13 +60,13 @@ const setFilter = (
   value: boolean | Range | DefaultValue
 ) => {
   const filter = {
-    range: [null, null] as Range,
-    [key]: value,
     _CLS: "numeric",
     onlyMatch: true,
     isMatching: true,
     exclude: false,
+    range: [null, null] as Range,
     ...getFilter(get, modal, path),
+    [key]: value,
   };
 
   const check = {
@@ -78,18 +78,12 @@ const setFilter = (
 
   if (filter.range[0] === null && filter.range[1] === null) {
     filter.exclude = false;
-    filter.isMatching = false;
+    filter.isMatching = true;
     filter.onlyMatch = true;
   }
 
   if (!isDefault && meetsDefault({ ...check, range: [null, null] })) {
-    set(filterAtoms.filter({ modal, path }), {
-      range: filter.range,
-      _CLS: "numeric",
-      isMatching: true,
-      onlyMatch: true,
-      exclude: false,
-    });
+    set(filterAtoms.filter({ modal, path }), filter);
   } else if (isDefault) {
     set(filterAtoms.filter({ modal, path }), null);
   } else {
