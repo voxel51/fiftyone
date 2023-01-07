@@ -1142,6 +1142,14 @@ class MaskTargetsField(DictField):
 
 
 def is_integer_mask_targets(mask_targets):
+    """Determines whether the provided mask targets use integer keys.
+
+    Args:
+        mask_targets: a mask targets dict
+
+    Returns:
+        True/False
+    """
     return all(
         map(
             lambda k: isinstance(k, numbers.Integral)
@@ -1152,6 +1160,14 @@ def is_integer_mask_targets(mask_targets):
 
 
 def is_rgb_mask_targets(mask_targets):
+    """Determines whether the provided mask targets use RBB hex sring keys.
+
+    Args:
+        mask_targets: a mask targets dict
+
+    Returns:
+        True/False
+    """
     return all(
         map(
             lambda k: isinstance(k, str) and _is_valid_rgb_hex(k),

@@ -2319,12 +2319,12 @@ colors are always used.
 
 .. note::
 
-    If no :ref:`mask targets <storing-mask-targets>` are provided, the pixel
-    value `0` and RGB value `#000000` are treated as "background" classes that
-    are rendered as invisible in the App.
+    The pixel value `0` and RGB value `#000000` are reserved "background"
+    classes that are always rendered as invisible in the App.
 
-    If mask targets are provided, all observed values not present in the
-    targets are rendered as invisible in the App.
+    If :ref:`mask targets <storing-mask-targets>` are provided, all observed
+    values not present in the targets are also rendered as invisible in the
+    App.
 
 .. _heatmaps:
 
