@@ -543,7 +543,7 @@ def _hex_to_int(hex_str):
 
 
 def _int_to_hex(value):
-    r = 255 & (value >> 16)
-    g = 255 & (value >> 8)
-    b = 255 & value
+    r = (value >> 16) & 255
+    g = (value >> 8) & 255
+    b = value & 255
     return "#%02x%02x%02x" % (r, g, b)
