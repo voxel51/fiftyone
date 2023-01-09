@@ -5,6 +5,7 @@ import {
   Switch,
   Typography,
 } from "@mui/material";
+import { useRef } from "react";
 import { atom, selectorFamily, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { usePanelState, usePanelTitle } from "./hooks";
@@ -111,6 +112,11 @@ export function useActivePlugins(type: PluginComponentType) {
 
 export function useOutsideClick() {
   // do nothing
+}
+
+export function useDimensions() {
+  const ref = useRef();
+  return { ref };
 }
 
 export const Popout = styled.div`
