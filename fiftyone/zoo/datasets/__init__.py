@@ -827,6 +827,13 @@ class ZooDataset(object):
         return self.supported_splits is not None
 
     @property
+    def has_patches(self):
+        """Whether the dataset has patches that may need to be applied to
+        already downloaded files.
+        """
+        return False
+
+    @property
     def supports_partial_downloads(self):
         """Whether the dataset supports downloading partial subsets of its
         splits.
@@ -963,7 +970,6 @@ class ZooDataset(object):
                         "Invalid split '%s'; supported values are %s"
                         % (split, self.supported_splits)
                     )
-
         elif self.has_splits:
             splits = self.supported_splits
 
@@ -1105,6 +1111,19 @@ class ZooDataset(object):
             "subclasses must implement _download_and_prepare()"
         )
 
+    def _patch_if_necessary(self, dataset_dir, split):
+        """Internal method called when an already downloaded dataset may need
+        to be patched.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            split: the split to patch, or None if the dataset does not have
+                splits
+        """
+        raise NotImplementedError(
+            "subclasses must implement _patch_if_necessary()"
+        )
+
     def _get_splits_to_download(
         self, splits, dataset_dir, info, overwrite=False
     ):
@@ -1131,6 +1150,9 @@ class ZooDataset(object):
         if split not in info.downloaded_splits:
             return False
 
+        if self.has_patches:
+            self._patch_if_necessary(dataset_dir, split)
+
         if self.supports_partial_downloads:
             return False
 
@@ -1152,6 +1174,9 @@ class ZooDataset(object):
 
         if info is None:
             return False
+
+        if self.has_patches:
+            self._patch_if_necessary(dataset_dir, None)
 
         if self.supports_partial_downloads:
             return False

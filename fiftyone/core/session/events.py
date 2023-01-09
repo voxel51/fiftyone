@@ -88,6 +88,8 @@ class StateUpdate(Event):
 
     state: fos.StateDescription
     refresh: bool = False
+    update: bool = False
+    changing_saved_view: bool = False
 
 
 @dataclass

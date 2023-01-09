@@ -14,11 +14,53 @@ import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-import fiftyone.core.uid as fou
-import fiftyone.core.utils as utils
+import fiftyone.core.utils as fou
+import fiftyone.core.uid as foui
 from fiftyone.migrations.runner import MigrationRunner
 
 from decorators import drop_datasets
+
+
+class CoreUtilsTests(unittest.TestCase):
+    def test_validate_hex_color(self):
+        # Valid colors
+        fou.validate_hex_color("#FF6D04")
+        fou.validate_hex_color("#ff6d04")
+        fou.validate_hex_color("#000")
+        fou.validate_hex_color("#eee")
+
+        # Invalid colors
+        with self.assertRaises(ValueError):
+            fou.validate_hex_color("aaaaaa")
+
+        with self.assertRaises(ValueError):
+            fou.validate_hex_color("#bcedfg")
+
+        with self.assertRaises(ValueError):
+            fou.validate_hex_color("#ggg")
+
+        with self.assertRaises(ValueError):
+            fou.validate_hex_color("#FFFF")
+
+    def test_to_slug(self):
+        self.assertEqual(fou.to_slug("coco_2017"), "coco-2017")
+        self.assertEqual(fou.to_slug("c+o+c+o 2-0-1-7"), "c-o-c-o-2-0-1-7")
+        self.assertEqual(fou.to_slug("cat.DOG"), "cat-dog")
+        self.assertEqual(fou.to_slug("---z----"), "z")
+        self.assertEqual(
+            fou.to_slug("Brian's #$&@ [awesome?] dataset!"),
+            "brians-awesome-dataset",
+        )
+        self.assertEqual(
+            fou.to_slug("     sPaM     aNd  EgGs    "),
+            "spam-and-eggs",
+        )
+
+        with self.assertRaises(ValueError):
+            fou.to_slug("------")  # too short
+
+        with self.assertRaises(ValueError):
+            fou.to_slug("a" * 101)  # too long
 
 
 class LabelsTests(unittest.TestCase):
@@ -242,9 +284,9 @@ class UIDTests(unittest.TestCase):
         fo.config.do_not_track = False
         foc.UA_ID = foc.UA_DEV
 
-        fou.log_import_if_allowed(test=True)
+        foui.log_import_if_allowed(test=True)
         time.sleep(2)
-        self.assertTrue(fou._import_logged)
+        self.assertTrue(foui._import_logged)
 
 
 class ConfigTests(unittest.TestCase):
@@ -268,7 +310,7 @@ class ConfigTests(unittest.TestCase):
 class ProgressBarTests(unittest.TestCase):
     def _test_correct_value(self, progress, global_progress, quiet, expected):
         fo.config.show_progress_bars = global_progress
-        with utils.ProgressBar(list(), progress=progress, quiet=quiet) as pb:
+        with fou.ProgressBar(list(), progress=progress, quiet=quiet) as pb:
             assert pb._progress == expected
 
     def test_progress_None_uses_global(self):
