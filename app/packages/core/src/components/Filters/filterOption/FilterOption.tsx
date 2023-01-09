@@ -230,7 +230,7 @@ const FilterOption: React.FC<Props> = ({
   const onSelectNegativeMatch = () => {
     setExcluded && setExcluded(true);
     setIsMatching && setIsMatching(true);
-    setOnlyMatch && setOnlyMatch(false);
+    setOnlyMatch && setOnlyMatch(true);
   };
 
   const children = <Text ref={ref}>{selectedValue}</Text>;
