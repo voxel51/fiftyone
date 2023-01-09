@@ -42,7 +42,6 @@ import {
   tagStats,
 } from "./utils";
 
-
 const TaggingContainerInput = styled.div`
   font-size: 14px;
   border-bottom: 1px ${({ theme }) => theme.primary.plainColor} solid;
@@ -328,61 +327,60 @@ const useTagCallback = (
   ];
 
   return useRecoilCallback(
-    ({ snapshot, set, reset }) =>
-      async ({ changes }) => {
-        const modalData = modal ? await snapshot.getPromise(fos.modal) : null;
-        const isGroup = await snapshot.getPromise(fos.isGroup);
+    ({ snapshot, set, reset }) => async ({ changes }) => {
+      const modalData = modal ? await snapshot.getPromise(fos.modal) : null;
+      const isGroup = await snapshot.getPromise(fos.isGroup);
 
-        const { samples } = await getFetchFunction()("POST", "/tag", {
-          ...tagParameters({
-            activeFields: await snapshot.getPromise(
-              fos.activeLabelFields({ modal })
-            ),
-            dataset: await snapshot.getPromise(fos.datasetName),
-            filters: await snapshot.getPromise(
-              modal ? fos.modalFilters : fos.filters
-            ),
-            hiddenLabels: await snapshot.getPromise(fos.hiddenLabelsArray),
-            groupData: isGroup
-              ? {
-                  id: modal ? await snapshot.getPromise(groupId) : null,
-                  slice: await snapshot.getPromise(currentSlice(modal)),
-                  mode: await snapshot.getPromise(groupStatistics(modal)),
-                }
-              : null,
-            modal,
-            sampleId: modal
-              ? await snapshot.getPromise(fos.sidebarSampleId)
-              : null,
-            selectedLabels: await snapshot.getPromise(fos.selectedLabelList),
-            selectedSamples: await snapshot.getPromise(fos.selectedSamples),
-            targetLabels,
-            view: await snapshot.getPromise(fos.view),
-          }),
-          current_frame: lookerRef?.current?.frameNumber,
-          changes,
+      const { samples } = await getFetchFunction()("POST", "/tag", {
+        ...tagParameters({
+          activeFields: await snapshot.getPromise(
+            fos.activeLabelFields({ modal })
+          ),
+          dataset: await snapshot.getPromise(fos.datasetName),
+          filters: await snapshot.getPromise(
+            modal ? fos.modalFilters : fos.filters
+          ),
+          hiddenLabels: await snapshot.getPromise(fos.hiddenLabelsArray),
+          groupData: isGroup
+            ? {
+                id: modal ? await snapshot.getPromise(groupId) : null,
+                slice: await snapshot.getPromise(currentSlice(modal)),
+                mode: await snapshot.getPromise(groupStatistics(modal)),
+              }
+            : null,
+          modal,
+          sampleId: modal
+            ? await snapshot.getPromise(fos.sidebarSampleId)
+            : null,
+          selectedLabels: await snapshot.getPromise(fos.selectedLabelList),
+          selectedSamples: await snapshot.getPromise(fos.selectedSamples),
+          targetLabels,
+          view: await snapshot.getPromise(fos.view),
+        }),
+        current_frame: lookerRef?.current?.frameNumber,
+        changes,
+      });
+      set(refresher, (i) => i + 1);
+
+      if (samples) {
+        set(fos.refreshGroupQuery, (cur) => cur + 1);
+        samples.forEach((sample) => {
+          if (modalData.sample._id === sample._id) {
+            set(fos.modal, { ...modalData, sample });
+            lookerRef &&
+              lookerRef.current &&
+              lookerRef.current.updateSample(sample);
+          }
+          updateSample(sample);
         });
-        set(refresher, (i) => i + 1);
+      }
 
-        if (samples) {
-          set(fos.refreshGroupQuery, (cur) => cur + 1);
-          samples.forEach((sample) => {
-            if (modalData.sample._id === sample._id) {
-              set(fos.modal, { ...modalData, sample });
-              lookerRef &&
-                lookerRef.current &&
-                lookerRef.current.updateSample(sample);
-            }
-            updateSample(sample);
-          });
-        }
+      set(fos.anyTagging, false);
+      reset(fos.selectedLabels);
+      reset(fos.selectedSamples);
 
-        set(fos.anyTagging, false);
-        reset(fos.selectedLabels);
-        reset(fos.selectedSamples);
-
-        finalize.forEach((r) => r());
-      },
+      finalize.forEach((r) => r());
+    },
     [modal, targetLabels, lookerRef, updateSample]
   );
 };
