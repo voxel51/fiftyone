@@ -73,7 +73,9 @@ const generateOptions = (
       value: isRangeLabel
         ? `Show samples in the range`
         : `Show samples with ${valueName}`,
-      tooltip: "dataset.match_labels(fields=field, filter=condition)",
+      tooltip: shouldShowAllOptions
+        ? "dataset.match_labels(fields=field, filter=condition)"
+        : "dataset.match(F(field).filter(condition).length() > 0)",
     });
   }
   if (!modal && !shouldNotShowExclude) {
@@ -83,8 +85,9 @@ const generateOptions = (
       value: isRangeLabel
         ? `Show samples outside the range`
         : `Show samples without ${valueName}`,
-      tooltip:
-        "dataset.match_labels(fields=field, filter=condition, bool=False)",
+      tooltip: shouldShowAllOptions
+        ? "dataset.match_labels(fields=field, filter=condition, bool=False)"
+        : "dataset.match(F(field).filter(condition).length() == 0))",
     });
   }
   return options;
