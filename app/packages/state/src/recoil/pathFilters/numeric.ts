@@ -82,8 +82,12 @@ const setFilter = (
     filter.onlyMatch = true;
   }
 
-  if (!isDefault && meetsDefault({ ...check, range: [null, null] })) {
-    set(filterAtoms.filter({ modal, path }), filter);
+  const bounds = get(boundsAtom({ path }));
+  const rangeIsNull =
+    !Boolean(filter.range) || filter.range.every((r) => r === null);
+
+  if (!isDefault && rangeIsNull) {
+    set(filterAtoms.filter({ modal, path }), { ...filter, range: bounds });
   } else if (isDefault) {
     set(filterAtoms.filter({ modal, path }), null);
   } else {

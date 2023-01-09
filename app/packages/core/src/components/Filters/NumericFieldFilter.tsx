@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   RecoilValueReadOnly,
   SetterOrUpdater,
@@ -141,6 +141,14 @@ const NumericFieldFilter = ({
     modal,
     defaultRange,
   });
+  const values = useRecoilValue(
+    fos.rangeAtom({
+      modal,
+      path,
+      defaultRange,
+      withBounds: true,
+    })
+  );
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
   const setOnlyMatch = onlyMatchAtom ? useSetRecoilState(onlyMatchAtom) : null;
   const setIsMatching = isMatchingAtom
@@ -151,9 +159,6 @@ const NumericFieldFilter = ({
   const bounds = useRecoilValue(fos.boundsAtom({ path, defaultRange }));
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const field = useRecoilValue(fos.field(path));
-  const hasDefaultRange = useRecoilValue(
-    fos.isDefaultRange({ modal, path, defaultRange })
-  );
   const hasBounds = bounds.every((b) => b !== null);
   const nonfinites = useNonfinites({
     modal,
@@ -177,11 +182,13 @@ const NumericFieldFilter = ({
   );
 
   const hasNone = nonfinites.some((x) => x[0] === "none");
+  const isSliderAtInitialPostion =
+    bounds[0] === values[0] && bounds[1] === values[1];
 
   if (!hasNonfinites && !hasBounds && named) {
     return null;
   }
-
+  // if none, inf, ninf are changed from default setting, but filter range is null, set to bounds
   const fieldPath = path.split(".").slice(0, -1).join(".");
   const fieldSchema = useRecoilValue(fos.field(fieldPath));
   const shouldShowAllOptions = Boolean(
@@ -189,7 +196,7 @@ const NumericFieldFilter = ({
   );
 
   const initializeSettings = () => {
-    setFilter(null);
+    setFilter([null, null]);
     setExcluded && setExcluded(false);
     setOnlyMatch && setOnlyMatch(true);
     setIsMatching && setIsMatching(!shouldShowAllOptions);
@@ -271,7 +278,7 @@ const NumericFieldFilter = ({
             value={false}
           />
         ) : null}
-        {((hasNone && hasDefaultRange) || !hasBounds) &&
+        {((hasNone && isSliderAtInitialPostion) || !hasBounds) &&
           nonfinites.map(([key, props]) => (
             <Checkbox
               key={key}
@@ -285,6 +292,7 @@ const NumericFieldFilter = ({
         {isFiltered && nonfinites.length > 0 && hasBounds && (
           <FilterOption
             shouldShowAllOptions={shouldShowAllOptions}
+            shouldNotShowExclude={false} // only boolean fields don't use exclude
             excludeAtom={excludeAtom}
             onlyMatchAtom={onlyMatchAtom}
             isMatchingAtom={isMatchingAtom}
