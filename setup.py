@@ -37,7 +37,7 @@ INSTALL_REQUIRES = [
     "Deprecated",
     "eventlet",
     "future",
-    "hypercorn>=0.13.2<14",
+    "hypercorn>=0.13.2,<14",
     "Jinja2>=3",
     "kaleido",
     "matplotlib",
