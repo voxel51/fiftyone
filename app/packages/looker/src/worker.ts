@@ -357,7 +357,7 @@ const createReader = ({
           } catch (error) {
             postMessage({
               error: {
-                cls: error.cls,
+                cls: error.constructor.name,
                 data: error.data,
                 message: error.message,
               },
