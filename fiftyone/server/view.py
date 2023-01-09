@@ -309,8 +309,6 @@ def get_extended_view(
             hide_result=count_label_tags,
         )
 
-        print("stages", stages)
-
         for stage in stages:
             view = view.add_stage(stage)
 
@@ -374,12 +372,20 @@ def _make_expression(field, path, args):
         field, fof.FrameSupportField
     ):
         new_field = field.field
-        expr = (
-            lambda subexpr: F(field.db_field or field.name)
-            .filter(subexpr)
-            .length()
-            > 0
-        )
+        if args["exclude"]:
+            expr = (
+                lambda subexpr: F(field.db_field or field.name)
+                .filter(subexpr)
+                .length()
+                == 0
+            )
+        else:
+            expr = (
+                lambda subexpr: F(field.db_field or field.name)
+                .filter(subexpr)
+                .length()
+                > 0
+            )
     else:
         new_field = field
         expr = lambda subexpr: F(field.db_field or field.name).apply(subexpr)
@@ -569,8 +575,7 @@ def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
             _make_scalar_expression(F(), args, field.field, list_field=True)
         ).length()
         return expr == 0 if args["exclude"] else expr > 0
-
-    if isinstance(field, fof.BooleanField):
+    elif isinstance(field, fof.BooleanField):
         true, false = args["true"], args["false"]
         if true and false:
             expr = f.is_in([True, False])
@@ -608,11 +613,11 @@ def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
         exclude = args["exclude"]
 
         # list_field handles exclude separately; matchLabel has exclude in the arg
-        if exclude and not list_field and not (is_label and isMatching):
+        if exclude and not (is_label and isMatching) and not list_field:
             # pylint: disable=invalid-unary-operand-type
             expr = ~expr
 
-        if none and not list_field and not (is_label and isMatching):
+        if none and not (is_label and isMatching) and not list_field:
             if exclude:
                 expr &= f.exists()
             else:
@@ -620,7 +625,7 @@ def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
 
         return expr
 
-    return _apply_others(expr, f, args)
+    return _apply_others(expr, f, args, is_label)
 
 
 def _make_keypoint_kwargs(args, view, points):
@@ -642,7 +647,7 @@ def _make_keypoint_kwargs(args, view, points):
     return {"filter": (f >= mn) & (f <= mx)}
 
 
-def _apply_others(expr, f, args):
+def _apply_others(expr, f, args, is_label):
     isMatching = False if args["isMatching"] is None else args["isMatching"]
     nonfinites = {
         "nan": float("nan"),
@@ -662,7 +667,7 @@ def _apply_others(expr, f, args):
     if "none" in args:
         expr = _apply_none(expr, f, args["none"])
 
-    if "exclude" in args and args["exclude"] and not isMatching:
+    if "exclude" in args and args["exclude"] and not (isMatching and is_label):
         # pylint: disable=invalid-unary-operand-type
         expr = ~expr
 
