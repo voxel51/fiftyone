@@ -131,13 +131,36 @@ export default class SegmentationOverlay<State extends BaseState>
 
     const target = this.getTarget(state);
 
-    if (this.label.mask.data.channels > 2 && isRgbMaskTargets(maskTargets)) {
+    if (this.label.mask.data.channels > 2) {
+      const rgbSegmentationInfoWithoutColor: Omit<
+        PointInfo<SegmentationInfo>,
+        "color"
+      > = {
+        label: {
+          ...this.label,
+          mask: {
+            shape: this.label.mask.data.shape
+              ? this.label.mask.data.shape
+              : null,
+          },
+        },
+        field: this.field,
+        target,
+        type: "Segmentation",
+      };
+
+      if (!isRgbMaskTargets(maskTargets)) {
+        // getting color here is computationally inefficient, return no color for this edge case
+        return rgbSegmentationInfoWithoutColor;
+      }
+
       // find corresponding color for target in mask targets
       const rgbMaskTargetTuple = Object.entries(maskTargets).find(
         ([_, el]) => el.intTarget === target
       );
 
       if (!rgbMaskTargetTuple) {
+        // color is not in mask targets, ignore it
         return undefined;
       }
 
