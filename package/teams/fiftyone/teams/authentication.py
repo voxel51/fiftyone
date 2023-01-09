@@ -57,7 +57,7 @@ def decode(token: str, rsa_key):
         rsa_key,
         algorithms=ALGORITHMS,
         audience=fot.teams_config.audience,
-        issuer=f"https://{fot.teams_config.domain}",
+        issuer=f"https://{fot.teams_config.domain}/",
     )
 
 
