@@ -2970,6 +2970,142 @@ schema of the attributes that you're storing.
     Did you know? You can view attribute values in the
     :ref:`App tooltip <app-sample-view>` by hovering over the objects.
 
+.. _label-conversions:
+
+Converting label types
+----------------------
+
+FiftyOne provides a number of utility methods to convert between different
+representations of certain label types, such as converting between
+:ref:`instance segmentations <instance-segmentation>`,
+:ref:`semantic segmentations <semantic-segmentation>`,
+and :ref:`polylines <polylines>`.
+
+Let's load some instance segmentations from the COCO dataset to see this in
+action:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        label_types=["segmentations"],
+        classes=["cat", "dog"],
+        label_field="instances",
+        max_samples=25,
+        only_matching=True,
+    )
+
+    sample = dataset.first()
+    detections = sample["instances"]
+
+For example, you can use
+:meth:`Detections.to_polylines() <fiftyone.core.labels.Detections.to_polylines>`
+to convert instance segmentations to polylines:
+
+.. code-block:: python
+    :linenos:
+
+    # Convert `Detections` to `Polylines`
+    polylines = detections.to_polylines(tolerance=2)
+    print(polylines)
+
+Or you can use
+:meth:`Detections.to_segmentation() <fiftyone.core.labels.Detections.to_segmentation>`
+to convert instance segmentations to semantic segmentation masks:
+
+.. code-block:: python
+    :linenos:
+
+    metadata = fo.ImageMetadata.build_for(sample.filepath)
+
+    # Convert `Detections` to `Segmentation`
+    segmentation = detections.to_segmentation(
+        frame_size=(metadata.width, metadata.height),
+        mask_targets={1: "cat", 2: "dog"},
+    )
+
+    # Export the segmentation to disk
+    segmentation.export_mask("/tmp/mask.png", update=True)
+
+    print(segmentation)
+
+Methods such as
+:meth:`Segmentation.to_detections() <fiftyone.core.labels.Segmentation.to_detections>`
+and :meth:`Segmentation.to_polylines() <fiftyone.core.labels.Segmentation.to_polylines>`
+also exist to transform semantic segmentations back into individual shapes.
+
+In addition, the :mod:`fiftyone.utils.labels` module contains a variety of
+utility methods for converting entire collections' labels between common
+formats:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.labels as foul
+
+    # Convert instance segmentations to semantic segmentations stored on disk
+    foul.objects_to_segmentations(
+        dataset,
+        "instances",
+        "segmentations",
+        output_dir="/tmp/segmentations",
+        mask_targets={1: "cat", 2: "dog"},
+    )
+
+    # Convert instance segmentations to polylines format
+    foul.instances_to_polylines(dataset, "instances", "polylines", tolerance=2)
+
+    # Convert semantic segmentations to instance segmentations
+    foul.segmentations_to_detections(
+        dataset,
+        "segmentations",
+        "instances2",
+        mask_targets={1: "cat", 2: "dog"},
+        mask_types="thing",  # give each connected region a separate instance
+    )
+
+    print(dataset)
+
+.. code-block:: shell
+
+    Name:        coco-2017-validation-25
+    Media type:  image
+    Num samples: 25
+    Persistent:  False
+    Tags:        []
+    Sample fields:
+        id:            fiftyone.core.fields.ObjectIdField
+        filepath:      fiftyone.core.fields.StringField
+        tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        instances:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        segmentations: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Segmentation)
+        polylines:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Polylines)
+        instances2:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+
+Note that, if your goal is to export the labels to disk, FiftyOne can
+:ref:`automatically coerce <export-label-coercion>` the labels into the correct
+format based on the type of the `label_field` and the `dataset_type` that you
+specify for the export without explicitly storing the transformed labels as a
+new field on your dataset:
+
+.. code-block:: python
+    :linenos:
+
+    # Export the instance segmentations in the `instances` field as semantic
+    # segmentation images on disk
+    dataset.export(
+        label_field="instances",
+        dataset_type=fo.types.ImageSegmentationDirectory,
+        labels_path="/tmp/masks",
+        mask_targets={1: "cat", 2: "dog"},
+    )
+
 .. _dynamic-attributes:
 
 Dynamic attributes
