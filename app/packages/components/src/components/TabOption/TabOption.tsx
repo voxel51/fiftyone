@@ -21,8 +21,12 @@ const TabOptionDiv = animated(styled.div`
     cursor: inherit;
     flex-grow: 1;
     flex-basis: 0;
-    text-align: center;Checkbox
     overflow: hidden;
+  }
+
+  & > div > div {
+    display: flex;
+    justify-content: center;
   }
 `);
 
@@ -81,7 +85,7 @@ export default ({ active, options, color }: TabOptionProps) => {
           }
           key={i}
         >
-          {text}
+          <div>{text}</div>
         </Tab>
       ))}
     </TabOptionDiv>

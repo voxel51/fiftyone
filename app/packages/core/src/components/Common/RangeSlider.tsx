@@ -1,19 +1,19 @@
+import { Slider as SliderUnstyled } from "@mui/material";
 import React, { ChangeEvent, useLayoutEffect, useState } from "react";
-import styled from "styled-components";
 import {
   RecoilState,
   RecoilValueReadOnly,
   useRecoilState,
   useRecoilValue,
 } from "recoil";
-import { Slider as SliderUnstyled } from "@mui/material";
+import styled from "styled-components";
 
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 
-import { getFormatter, getStep } from "./utils";
-import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
+import { getFormatter, getStep } from "./utils";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -49,6 +49,10 @@ const SliderStyled = styled(SliderUnstyled)`
     background: ${({ theme }) => theme.palette.primary.plainColor};
     box-shadow: none;
     color: transparent;
+  }
+
+  .thumb input {
+    visibility: hidden;
   }
 
   .thumb:hover,

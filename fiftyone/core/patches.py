@@ -88,7 +88,12 @@ class EvaluationPatchView(_PatchView):
 
 class _PatchesView(fov.DatasetView):
     def __init__(
-        self, source_collection, patches_stage, patches_dataset, _stages=None
+        self,
+        source_collection,
+        patches_stage,
+        patches_dataset,
+        _stages=None,
+        _name=None,
     ):
         if _stages is None:
             _stages = []
@@ -97,6 +102,7 @@ class _PatchesView(fov.DatasetView):
         self._patches_stage = patches_stage
         self._patches_dataset = patches_dataset
         self.__stages = _stages
+        self.__name = _name
 
     def __copy__(self):
         return self.__class__(
@@ -104,6 +110,7 @@ class _PatchesView(fov.DatasetView):
             deepcopy(self._patches_stage),
             self._patches_dataset,
             _stages=deepcopy(self.__stages),
+            _name=self.__name,
         )
 
     @property
@@ -144,10 +151,6 @@ class _PatchesView(fov.DatasetView):
     @property
     def _label_fields(self):
         raise NotImplementedError("subclass must implement _label_fields")
-
-    @property
-    def name(self):
-        return self.dataset_name + "-patches"
 
     @property
     def media_type(self):
@@ -214,6 +217,21 @@ class _PatchesView(fov.DatasetView):
         super().set_values(field_name, *args, **kwargs)
 
         self._sync_source_field(field, ids=ids)
+
+    def set_label_values(self, field_name, *args, **kwargs):
+        field = field_name.split(".", 1)[0]
+        must_sync = field in self._label_fields
+
+        super().set_label_values(field_name, *args, **kwargs)
+
+        if must_sync:
+            _, root = self._get_label_field_path(field)
+            _, src_root = self._source_collection._get_label_field_path(field)
+            _field_name = src_root + field_name[len(root) :]
+
+            self._source_collection.set_label_values(
+                _field_name, *args, **kwargs
+            )
 
     def save(self, fields=None):
         """Saves the patches in this view to the underlying dataset.
@@ -393,10 +411,19 @@ class PatchesView(_PatchesView):
     """
 
     def __init__(
-        self, source_collection, patches_stage, patches_dataset, _stages=None
+        self,
+        source_collection,
+        patches_stage,
+        patches_dataset,
+        _stages=None,
+        _name=None,
     ):
         super().__init__(
-            source_collection, patches_stage, patches_dataset, _stages=_stages
+            source_collection,
+            patches_stage,
+            patches_dataset,
+            _stages=_stages,
+            _name=_name,
         )
 
         self._patches_field = patches_stage.field
@@ -438,10 +465,19 @@ class EvaluationPatchesView(_PatchesView):
     """
 
     def __init__(
-        self, source_collection, patches_stage, patches_dataset, _stages=None
+        self,
+        source_collection,
+        patches_stage,
+        patches_dataset,
+        _stages=None,
+        _name=None,
     ):
         super().__init__(
-            source_collection, patches_stage, patches_dataset, _stages=_stages
+            source_collection,
+            patches_stage,
+            patches_dataset,
+            _stages=_stages,
+            _name=_name,
         )
 
         eval_key = patches_stage.eval_key

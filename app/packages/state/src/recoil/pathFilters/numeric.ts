@@ -204,10 +204,13 @@ export const isDefaultRange = selectorFamily<
 >({
   key: "isDefaultNumericFieldRange",
   get:
-    (params) =>
+    ({ modal, path, defaultRange }) =>
     ({ get }) => {
-      const range = get(rangeAtom(params));
-      return get(boundsAtom(params)).every((b, i) => b === range[i]);
+      const range = get(
+        rangeAtom({ modal, path, defaultRange, withBounds: true })
+      );
+      const values = get(boundsAtom({ path, defaultRange }));
+      return values.every((b, i) => b === range[i]);
     },
 });
 

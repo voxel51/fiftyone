@@ -22,6 +22,7 @@ import eta.core.web as etaw
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
@@ -53,6 +54,8 @@ def apply_model(
     batch_size=None,
     num_workers=None,
     skip_failures=True,
+    output_dir=None,
+    rel_dir=None,
     **kwargs,
 ):
     """Applies the :class:`FiftyOne model <Model>` or
@@ -85,6 +88,17 @@ def apply_model(
         skip_failures (True): whether to gracefully continue without raising an
             error if predictions cannot be generated for a sample. Only
             applicable to :class:`Model` instances
+        output_dir (None): an optional output directory in which to write
+            segmentation images. Only applicable if the model generates
+            segmentations. If none is provided, the segmentations are stored in
+            the database
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each segmentation
+            image. This argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.storage.normalize_path`
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
     """
@@ -97,6 +111,8 @@ def apply_model(
             store_logits=store_logits,
             batch_size=batch_size,
             num_workers=num_workers,
+            output_dir=output_dir,
+            rel_dir=rel_dir,
             **kwargs,
         )
 
@@ -141,9 +157,22 @@ def apply_model(
             "Ignoring `num_workers` parameter; only supported for Torch models"
         )
 
-    samples.download_media(skip_failures=skip_failures)
+    samples.download_media(
+        media_fields="filepath", skip_failures=skip_failures
+    )
 
     with contextlib.ExitStack() as context:
+        if output_dir is not None:
+            local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
+            filename_maker = fou.UniqueFilenameMaker(
+                output_dir=output_dir,
+                rel_dir=rel_dir,
+                alt_dir=local_dir,
+                idempotent=False,
+            )
+        else:
+            filename_maker = None
+
         try:
             if confidence_thresh is not None:
                 cthresh = confidence_thresh
@@ -170,7 +199,12 @@ def apply_model(
 
         if samples.media_type == fom.VIDEO and model.media_type == "video":
             return _apply_video_model(
-                samples, model, label_field, confidence_thresh, skip_failures
+                samples,
+                model,
+                label_field,
+                confidence_thresh,
+                skip_failures,
+                filename_maker,
             )
 
         batch_size = _parse_batch_size(batch_size, model, use_data_loader)
@@ -186,10 +220,16 @@ def apply_model(
                     confidence_thresh,
                     batch_size,
                     skip_failures,
+                    filename_maker,
                 )
 
             return _apply_image_model_to_frames_single(
-                samples, model, label_field, confidence_thresh, skip_failures
+                samples,
+                model,
+                label_field,
+                confidence_thresh,
+                skip_failures,
+                filename_maker,
             )
 
         if use_data_loader:
@@ -201,6 +241,7 @@ def apply_model(
                 batch_size,
                 num_workers,
                 skip_failures,
+                filename_maker,
             )
 
         if batch_size is not None:
@@ -211,10 +252,16 @@ def apply_model(
                 confidence_thresh,
                 batch_size,
                 skip_failures,
+                filename_maker,
             )
 
         return _apply_image_model_single(
-            samples, model, label_field, confidence_thresh, skip_failures
+            samples,
+            model,
+            label_field,
+            confidence_thresh,
+            skip_failures,
+            filename_maker,
         )
 
 
@@ -230,7 +277,12 @@ def _is_flash_model(model):
 
 
 def _apply_image_model_single(
-    samples, model, label_field, confidence_thresh, skip_failures
+    samples,
+    model,
+    label_field,
+    confidence_thresh,
+    skip_failures,
+    filename_maker,
 ):
     samples = samples.select_fields()
 
@@ -240,9 +292,15 @@ def _apply_image_model_single(
                 img = etai.read(sample.local_path)
                 labels = model.predict(img)
 
+                if filename_maker is not None:
+                    _export_arrays(labels, sample.filepath, filename_maker)
+
                 sample.add_labels(
-                    labels, label_field, confidence_thresh=confidence_thresh
+                    labels,
+                    label_field=label_field,
+                    confidence_thresh=confidence_thresh,
                 )
+                sample.save()
             except Exception as e:
                 if not skip_failures:
                     raise e
@@ -251,7 +309,13 @@ def _apply_image_model_single(
 
 
 def _apply_image_model_batch(
-    samples, model, label_field, confidence_thresh, batch_size, skip_failures
+    samples,
+    model,
+    label_field,
+    confidence_thresh,
+    batch_size,
+    skip_failures,
+    filename_maker,
 ):
     samples = samples.select_fields()
     samples_loader = fou.iter_batches(samples, batch_size)
@@ -265,11 +329,15 @@ def _apply_image_model_batch(
                 labels_batch = model.predict_all(imgs)
 
                 for sample, labels in zip(sample_batch, labels_batch):
+                    if filename_maker is not None:
+                        _export_arrays(labels, sample.filepath, filename_maker)
+
                     sample.add_labels(
                         labels,
-                        label_field,
+                        label_field=label_field,
                         confidence_thresh=confidence_thresh,
                     )
+                    sample.save()
 
             except Exception as e:
                 if not skip_failures:
@@ -293,6 +361,7 @@ def _apply_image_model_data_loader(
     batch_size,
     num_workers,
     skip_failures,
+    filename_maker,
 ):
     samples = samples.select_fields()
     samples_loader = fou.iter_batches(samples, batch_size)
@@ -309,11 +378,15 @@ def _apply_image_model_data_loader(
                 labels_batch = model.predict_all(imgs)
 
                 for sample, labels in zip(sample_batch, labels_batch):
+                    if filename_maker is not None:
+                        _export_arrays(labels, sample.filepath, filename_maker)
+
                     sample.add_labels(
                         labels,
-                        label_field,
+                        label_field=label_field,
                         confidence_thresh=confidence_thresh,
                     )
+                    sample.save()
 
             except Exception as e:
                 if not skip_failures:
@@ -330,7 +403,12 @@ def _apply_image_model_data_loader(
 
 
 def _apply_image_model_to_frames_single(
-    samples, model, label_field, confidence_thresh, skip_failures
+    samples,
+    model,
+    label_field,
+    confidence_thresh,
+    skip_failures,
+    filename_maker,
 ):
     samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
@@ -350,11 +428,17 @@ def _apply_image_model_to_frames_single(
                     for img in video_reader:
                         labels = model.predict(img)
 
+                        if filename_maker is not None:
+                            _export_arrays(
+                                labels, sample.filepath, filename_maker
+                            )
+
                         sample.add_labels(
                             {video_reader.frame_number: labels},
-                            label_field,
+                            label_field=label_field,
                             confidence_thresh=confidence_thresh,
                         )
+                        sample.save()
 
                         pb.update()
 
@@ -369,7 +453,13 @@ def _apply_image_model_to_frames_single(
 
 
 def _apply_image_model_to_frames_batch(
-    samples, model, label_field, confidence_thresh, batch_size, skip_failures
+    samples,
+    model,
+    label_field,
+    confidence_thresh,
+    batch_size,
+    skip_failures,
+    filename_maker,
 ):
     samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
@@ -389,14 +479,21 @@ def _apply_image_model_to_frames_batch(
                     for fns, imgs in _iter_batches(video_reader, batch_size):
                         labels_batch = model.predict_all(imgs)
 
+                        if filename_maker is not None:
+                            for labels in labels_batch:
+                                _export_arrays(
+                                    labels, sample.filepath, filename_maker
+                                )
+
                         sample.add_labels(
                             {
                                 fn: labels
                                 for fn, labels in zip(fns, labels_batch)
                             },
-                            label_field,
+                            label_field=label_field,
                             confidence_thresh=confidence_thresh,
                         )
+                        sample.save()
 
                         pb.update(len(imgs))
 
@@ -411,7 +508,12 @@ def _apply_image_model_to_frames_batch(
 
 
 def _apply_video_model(
-    samples, model, label_field, confidence_thresh, skip_failures
+    samples,
+    model,
+    label_field,
+    confidence_thresh,
+    skip_failures,
+    filename_maker,
 ):
     samples = samples.select_fields()
     is_clips = samples._dataset._is_clips
@@ -429,14 +531,45 @@ def _apply_video_model(
                 ) as video_reader:
                     labels = model.predict(video_reader)
 
+                if filename_maker is not None:
+                    _export_arrays(labels, sample.filepath, filename_maker)
+
                 sample.add_labels(
-                    labels, label_field, confidence_thresh=confidence_thresh
+                    labels,
+                    label_field=label_field,
+                    confidence_thresh=confidence_thresh,
                 )
+                sample.save()
             except Exception as e:
                 if not skip_failures:
                     raise e
 
                 logger.warning("Sample: %s\nError: %s\n", sample.id, e)
+
+
+def _export_arrays(label, input_path, filename_maker):
+    if isinstance(label, dict):
+        for _label in label.values():
+            _do_export_array(_label, input_path, filename_maker)
+    else:
+        _do_export_array(label, input_path, filename_maker)
+
+
+def _do_export_array(label, input_path, filename_maker):
+    if isinstance(label, fol.Segmentation):
+        mask_path = filename_maker.get_output_path(
+            input_path, output_ext=".png"
+        )
+        local_path = filename_maker.get_alt_path(mask_path)
+        label.export_mask(local_path, update=True)
+        label.mask_path = mask_path
+    elif isinstance(label, fol.Heatmap):
+        map_path = filename_maker.get_output_path(
+            input_path, output_ext=".png"
+        )
+        local_path = filename_maker.get_alt_path(map_path)
+        label.export_map(local_path, update=True)
+        label.map_path = map_path
 
 
 def _get_frame_counts(samples):
@@ -661,7 +794,9 @@ def compute_embeddings(
             "Ignoring `num_workers` parameter; only supported for Torch models"
         )
 
-    samples.download_media(skip_failures=skip_failures)
+    samples.download_media(
+        media_fields="filepath", skip_failures=skip_failures
+    )
 
     with contextlib.ExitStack() as context:
         if use_data_loader:
@@ -877,8 +1012,9 @@ def _compute_frame_embeddings_single(
                         if embeddings_field is not None:
                             sample.add_labels(
                                 {video_reader.frame_number: embedding},
-                                embeddings_field,
+                                label_field=embeddings_field,
                             )
+                            sample.save()
                         else:
                             embeddings.append(embedding)
 
@@ -940,8 +1076,9 @@ def _compute_frame_embeddings_batch(
                                         fns, embeddings_batch
                                     )
                                 },
-                                embeddings_field,
+                                label_field=embeddings_field,
                             )
+                            sample.save()
                         else:
                             embeddings.extend(embeddings_batch)
 
@@ -1149,7 +1286,9 @@ def compute_patch_embeddings(
 
     batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
-    samples.download_media(skip_failures=skip_failures)
+    samples.download_media(
+        media_fields="filepath", skip_failures=skip_failures
+    )
 
     with contextlib.ExitStack() as context:
         if use_data_loader:
@@ -1403,8 +1542,9 @@ def _embed_frame_patches(
                         if embeddings_field is not None:
                             sample.add_labels(
                                 {frame_number: embeddings},
-                                embeddings_field,
+                                label_field=embeddings_field,
                             )
+                            sample.save()
                         else:
                             frame_embeddings_dict[frame_number] = embeddings
 

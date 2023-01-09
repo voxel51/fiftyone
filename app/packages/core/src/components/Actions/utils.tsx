@@ -1,9 +1,8 @@
-import { useState } from "react";
-import { selector, selectorFamily } from "recoil";
 import { animated, useSpring } from "@react-spring/web";
+import { useState } from "react";
+import { selectorFamily } from "recoil";
 import styled from "styled-components";
 
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
@@ -13,6 +12,7 @@ import {
   isGroup,
   State,
 } from "@fiftyone/state";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background.body};
@@ -60,24 +60,6 @@ export const useHighlightHover = (disabled, override = null, color = null) => {
   };
 };
 
-export const allTags = selector<{ sample: string[]; label: string[] } | null>({
-  key: "tagAggs",
-  get: async ({ get }) => {
-    const labels = get(fos.labelTagCounts({ modal: false, extended: false }));
-
-    const sample = get(fos.sampleTagCounts({ modal: false, extended: false }));
-
-    if (!labels || !sample) {
-      return null;
-    }
-
-    return {
-      label: Object.keys(labels).sort(),
-      sample: Object.keys(sample).sort(),
-    };
-  },
-});
-
 export const tagStatistics = selectorFamily<
   {
     count: number;
@@ -87,58 +69,52 @@ export const tagStatistics = selectorFamily<
   { modal: boolean; labels: boolean }
 >({
   key: "tagStatistics",
-  get:
-    ({ modal, labels: count_labels }) =>
-    async ({ get }) => {
-      return await getFetchFunction()(
-        "POST",
-        "/tagging",
-        tagParameters({
-          activeFields: get(fos.activeLabelFields({ modal })),
+  get: ({ modal, labels: count_labels }) => async ({ get }) => {
+    return await getFetchFunction()(
+      "POST",
+      "/tagging",
+      tagParameters({
+        activeFields: get(fos.activeLabelFields({ modal })),
 
-          dataset: get(fos.datasetName),
-          filters: get(modal ? fos.modalFilters : fos.filters),
+        dataset: get(fos.datasetName),
+        filters: get(modal ? fos.modalFilters : fos.filters),
 
-          groupData: get(isGroup)
-            ? {
-                id: modal ? get(groupId) : null,
-                slice: get(currentSlice(modal)),
-                mode: get(groupStatistics(modal)),
-              }
-            : null,
-          hiddenLabels: get(fos.hiddenLabelsArray),
-          modal,
-          sampleId: modal ? get(fos.sidebarSampleId) : null,
-          selectedSamples: get(fos.selectedSamples),
-          selectedLabels: Object.entries(get(fos.selectedLabels)).map(
-            ([labelId, data]) => ({
-              labelId,
-              ...data,
-            })
-          ),
-          targetLabels: count_labels,
-          view: get(fos.view),
-        })
-      );
-    },
+        groupData: get(isGroup)
+          ? {
+              id: modal ? get(groupId) : null,
+              slice: get(currentSlice(modal)),
+              mode: get(groupStatistics(modal)),
+            }
+          : null,
+        hiddenLabels: get(fos.hiddenLabelsArray),
+        modal,
+        sampleId: modal ? get(fos.sidebarSampleId) : null,
+        selectedSamples: get(fos.selectedSamples),
+        selectedLabels: Object.entries(get(fos.selectedLabels)).map(
+          ([labelId, data]) => ({
+            labelId,
+            ...data,
+          })
+        ),
+        targetLabels: count_labels,
+        view: get(fos.view),
+      })
+    );
+  },
 });
 
 export const numItemsInSelection = selectorFamily<number, boolean>({
   key: "numLabelsInSelectedSamples",
-  get:
-    (labels) =>
-    ({ get }) => {
-      return get(tagStatistics({ modal: false, labels })).count;
-    },
+  get: (labels) => ({ get }) => {
+    return get(tagStatistics({ modal: false, labels })).count;
+  },
 });
 
 export const selectedSamplesCount = selectorFamily<number, boolean>({
   key: "selectedSampleCount",
-  get:
-    (modal) =>
-    ({ get }) => {
-      return get(tagStatistics({ modal, labels: false })).items;
-    },
+  get: (modal) => ({ get }) => {
+    return get(tagStatistics({ modal, labels: false })).items;
+  },
 });
 
 export const tagStats = selectorFamily<
@@ -146,19 +122,18 @@ export const tagStats = selectorFamily<
   { modal: boolean; labels: boolean }
 >({
   key: "tagStats",
-  get:
-    ({ modal, labels }) =>
-    ({ get }) => {
-      const tags = get(allTags);
-      const results = Object.fromEntries(
-        tags[labels ? "label" : "sample"].map((t) => [t, 0])
-      );
+  get: ({ modal, labels }) => ({ get }) => {
+    const data = get(
+      labels
+        ? fos.labelTagCounts({ modal: false, extended: false })
+        : fos.sampleTagCounts({ modal: false, extended: false })
+    );
 
-      return {
-        ...results,
-        ...get(tagStatistics({ modal, labels })).tags,
-      };
-    },
+    return {
+      ...data,
+      ...get(tagStatistics({ modal, labels })).tags,
+    };
+  },
 });
 
 export const tagParameters = ({
