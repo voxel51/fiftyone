@@ -51,8 +51,8 @@ export default class SpaceTree {
         this.moveNode(child, node);
       }
       node.activeChild = node.firstChild().activeChild;
+      node.layout = node.firstChild().layout;
       node.firstChild().remove();
-      node.layout = undefined;
       this.updateTree(node);
     }
   }
@@ -94,8 +94,7 @@ export default class SpaceTree {
   }
   canSplitLayout(node: SpaceNode) {
     // can split a space if it has more than one panel
-    // and node is root (limit to allow splitting only once)
-    return node.getPanels().length > 1 && node.isRoot();
+    return node.getPanels().length > 1;
   }
   splitLayout(node: SpaceNode, layout?: Layout) {
     const newNodeA = new SpaceNode();
