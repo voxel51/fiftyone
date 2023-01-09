@@ -188,7 +188,7 @@ const NumericFieldFilter = ({
   if (!hasNonfinites && !hasBounds && named) {
     return null;
   }
-  // if none, inf, ninf are changed from default setting, but filter range is null, set to bounds
+
   const fieldPath = path.split(".").slice(0, -1).join(".");
   const fieldSchema = useRecoilValue(fos.field(fieldPath));
   const shouldShowAllOptions = Boolean(
@@ -201,6 +201,15 @@ const NumericFieldFilter = ({
     setOnlyMatch && setOnlyMatch(true);
     setIsMatching && setIsMatching(!shouldShowAllOptions);
   };
+
+  // if range is not in default position, nonfinites should not be shown, but they should be set to false
+  useEffect(() => {
+    if (!isSliderAtInitialPostion) {
+      nonfinites.forEach(([key, { setValue }]) => {
+        setValue(false);
+      });
+    }
+  }, [isSliderAtInitialPostion]);
 
   return (
     <NamedRangeSliderContainer
