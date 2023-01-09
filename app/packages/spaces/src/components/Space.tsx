@@ -62,11 +62,18 @@ export default function Space({ node, id }: SpaceProps) {
           </ReactSortable>
           <AddPanelButton node={node} spaceId={id} />
           {canSpaceSplit && (
-            <SplitPanelButton
-              node={node}
-              layout={Layout.Horizontal}
-              spaceId={id}
-            />
+            <>
+              <SplitPanelButton
+                node={node}
+                layout={Layout.Horizontal}
+                spaceId={id}
+              />
+              <SplitPanelButton
+                node={node}
+                layout={Layout.Vertical}
+                spaceId={id}
+              />
+            </>
           )}
         </PanelTabs>
         {node.hasActiveChild() ? (
