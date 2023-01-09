@@ -10,6 +10,7 @@ import { useCallback } from "react";
 import { Suspense } from "react";
 import Input from "react-input-autosize";
 import { useLayer } from "react-laag";
+import LoadingDots from "../Loading/LoadingDots";
 
 import Results from "../Results/Results";
 
@@ -204,9 +205,7 @@ const Selector = <T extends unknown>({
                 minWidth: triggerBounds?.width,
               }}
             >
-              <Suspense
-                fallback={<div className={style.loadingFooter}>Loading...</div>}
-              >
+              <Suspense fallback={<LoadingDots text="Loading" />}>
                 <SelectorResults
                   active={active}
                   search={search}

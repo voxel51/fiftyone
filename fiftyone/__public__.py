@@ -34,7 +34,7 @@ from .core.aggregations import (
     Sum,
     Values,
 )
-from .core.collections import SaveContext
+from .core.collections import DownloadContext, SaveContext
 from .core.config import AppConfig
 from .core.dataset import (
     Dataset,
@@ -58,6 +58,7 @@ from .core.fields import (
     ArrayField,
     BooleanField,
     ClassesField,
+    ColorField,
     DateField,
     DateTimeField,
     DictField,
@@ -79,6 +80,7 @@ from .core.fields import (
     ListField,
     ObjectIdField,
     PolylinePointsField,
+    ReferenceField,
     StringField,
     TargetsField,
     VectorField,
@@ -157,6 +159,7 @@ from .core.stages import (
     ExcludeBy,
     ExcludeFields,
     ExcludeFrames,
+    ExcludeGroups,
     ExcludeLabels,
     Exists,
     FilterField,

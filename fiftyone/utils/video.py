@@ -1040,4 +1040,4 @@ def _get_outpath(inpath, output_dir=None, rel_dir=None):
     else:
         filename = os.path.basename(inpath)
 
-    return fos.join(output_dir, filename)
+    return fos.join(fos.normalize_path(output_dir), filename)

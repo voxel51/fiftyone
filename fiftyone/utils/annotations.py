@@ -2350,7 +2350,11 @@ def draw_labeled_images(
         config, kwargs, samples=samples, label_fields=label_fields
     )
 
-    samples.download_media()
+    samples.download_media(media_fields="filepath")
+
+    media_fields = samples._get_media_fields(whitelist=label_fields)
+    if media_fields:
+        samples.download_media(media_fields=media_fields)
 
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=output_dir, rel_dir=rel_dir, idempotent=False

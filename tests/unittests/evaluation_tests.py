@@ -5,12 +5,18 @@ FiftyOne evaluation-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+import random
+import string
 import unittest
 import warnings
 
 import numpy as np
 
+import eta.core.utils as etau
+
 import fiftyone as fo
+import fiftyone.utils.labels as foul
 
 from decorators import drop_datasets
 
@@ -1936,6 +1942,20 @@ class VideoDetectionsTests(unittest.TestCase):
 
 
 class SegmentationTests(unittest.TestCase):
+    def setUp(self):
+        self._temp_dir = etau.TempDir()
+        self._root_dir = self._temp_dir.__enter__()
+
+    def tearDown(self):
+        self._temp_dir.__exit__()
+
+    def _new_dir(self):
+        name = "".join(
+            random.choice(string.ascii_lowercase + string.digits)
+            for _ in range(24)
+        )
+        return os.path.join(self._root_dir, name)
+
     def _make_segmentation_dataset(self):
         dataset = fo.Dataset()
 
@@ -1968,6 +1988,87 @@ class SegmentationTests(unittest.TestCase):
     @drop_datasets
     def test_evaluate_segmentations_simple(self):
         dataset = self._make_segmentation_dataset()
+
+        #
+        # Test empty view
+        #
+
+        empty_view = dataset.limit(0)
+        self.assertEqual(len(empty_view), 0)
+
+        results = empty_view.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+            method="simple",
+        )
+
+        self.assertIn("eval_accuracy", dataset.get_field_schema())
+        self.assertIn("eval_precision", dataset.get_field_schema())
+        self.assertIn("eval_recall", dataset.get_field_schema())
+
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 0)
+
+        actual = results.confusion_matrix()
+        self.assertEqual(actual.shape, (0, 0))
+
+        #
+        # Test evaluation (including missing data)
+        #
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing masks warning
+
+            results = dataset.evaluate_segmentations(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="eval",
+                method="simple",
+                mask_targets={0: "background", 1: "cat", 2: "dog"},
+            )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 4)
+
+        # rows = GT, cols = predicted, labels = [background, cat, dog]
+        actual = results.confusion_matrix()
+        expected = np.array([[2, 1, 1], [1, 1, 0], [1, 0, 1]], dtype=int)
+
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        self.assertIn("eval", dataset.list_evaluations())
+        self.assertIn("eval_accuracy", dataset.get_field_schema())
+        self.assertIn("eval_precision", dataset.get_field_schema())
+        self.assertIn("eval_recall", dataset.get_field_schema())
+
+        dataset.delete_evaluation("eval")
+
+        self.assertNotIn("eval", dataset.list_evaluations())
+        self.assertNotIn("eval_accuracy", dataset.get_field_schema())
+        self.assertNotIn("eval_precision", dataset.get_field_schema())
+        self.assertNotIn("eval_recall", dataset.get_field_schema())
+
+    @drop_datasets
+    def test_evaluate_segmentations_on_disk_simple(self):
+        dataset = self._make_segmentation_dataset()
+
+        # Convert to on-disk segmentations
+        foul.export_segmentations(dataset, "ground_truth", self._new_dir())
+        foul.export_segmentations(dataset, "predictions", self._new_dir())
 
         #
         # Test empty view

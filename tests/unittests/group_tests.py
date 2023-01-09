@@ -15,6 +15,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.utils.data as foud
+import fiftyone.utils.groups as foug
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
@@ -303,6 +304,14 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(sample.group_field.name, "ego")
         self.assertEqual(sample.media_type, "video")
 
+        group_ids_to_keep = dataset.take(2).values("group_field.id")
+        keep_view = dataset.select_groups(group_ids_to_keep)
+        self.assertEqual(len(keep_view), 2)
+
+        group_ids_to_exclude = dataset.take(2).values("group_field.id")
+        exclude_view = dataset.exclude_groups(group_ids_to_exclude)
+        self.assertEqual(len(exclude_view), len(dataset) - 2)
+
         group_id = sample.group_field.id
         group = view.get_group(group_id)
 
@@ -390,7 +399,12 @@ class GroupTests(unittest.TestCase):
 
         self.assertEqual(image_view.media_type, "image")
         self.assertIn("field", image_view.get_field_schema())
+        self.assertIn("group_field", image_view.get_field_schema())
         self.assertIsNone(image_view.get_frame_field_schema())
+
+        view = image_view.select_fields()
+
+        self.assertNotIn("group_field", view.get_field_schema())
 
         mixed_view = dataset.select_group_slices(_allow_mixed=True)
 
@@ -821,6 +835,100 @@ class GroupTests(unittest.TestCase):
             len(dataset.select_group_slices(_allow_mixed=True)), 12
         )
         self.assertEqual(dataset.count("frames"), 4)
+
+    @drop_datasets
+    def test_set_values_group(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.jpg"),
+                fo.Sample(filepath="image2.jpg"),
+                fo.Sample(filepath="image3.jpg"),
+            ]
+        )
+
+        groups = [
+            fo.Group().element("left"),
+            fo.Group().element("right"),
+            fo.Group().element("right"),
+        ]
+
+        dataset.set_values("group", groups)
+
+        self.assertEqual(dataset.media_type, "group")
+        self.assertIsNotNone(dataset.group_slice)
+        self.assertIsNotNone(dataset.default_group_slice)
+        self.assertDictEqual(
+            dataset.group_media_types, {"left": "image", "right": "image"}
+        )
+
+    @drop_datasets
+    def test_delete_group_field(self):
+        dataset1 = _make_group_dataset()
+
+        # Deleting group field from dataset with >1 media types is not allowed
+        with self.assertRaises(ValueError):
+            dataset1.delete_sample_fields("group_field")
+
+        dataset2 = fo.Dataset()
+        dataset2.add_group_field("group_field")
+        dataset2.add_collection(
+            dataset1.select_group_slices(media_type="image")
+        )
+
+        self.assertEqual(dataset2.media_type, "group")
+        self.assertIsNotNone(dataset2.group_slice)
+        self.assertIsNotNone(dataset2.default_group_slice)
+        self.assertDictEqual(
+            dataset2.group_media_types, {"left": "image", "right": "image"}
+        )
+
+        # Deleting group field from dataset with one media type is allowed
+        dataset2.delete_sample_field("group_field")
+
+        self.assertEqual(dataset2.media_type, "image")
+        self.assertIsNone(dataset2.group_slice)
+        self.assertIsNone(dataset2.default_group_slice)
+        self.assertIsNone(dataset2.group_media_types)
+
+    @drop_datasets
+    def test_group_collections(self):
+        dataset1 = fo.Dataset()
+        dataset1.add_samples(
+            [
+                fo.Sample(filepath="image-left1.jpg", group_id=1),
+                fo.Sample(filepath="image-left2.jpg", group_id=2),
+                fo.Sample(filepath="image-left3.jpg", group_id=3),
+                fo.Sample(filepath="skip-me1.jpg"),
+            ]
+        )
+
+        dataset2 = fo.Dataset()
+        dataset2.add_samples(
+            [
+                fo.Sample(filepath="image-right1.jpg", group_id=1),
+                fo.Sample(filepath="image-right2.jpg", group_id=2),
+                fo.Sample(filepath="image-right4.jpg", group_id=4),
+                fo.Sample(filepath="skip-me2.jpg"),
+            ]
+        )
+
+        dataset = foug.group_collections(
+            {"left": dataset1, "right": dataset2}, "group_id"
+        )
+
+        self.assertEqual(len(dataset), 3)
+        self.assertEqual(dataset.media_type, "group")
+        self.assertIsNotNone(dataset.group_slice)
+        self.assertIsNotNone(dataset.default_group_slice)
+        self.assertDictEqual(
+            dataset.group_media_types, {"left": "image", "right": "image"}
+        )
+
+        view = dataset.select_group_slices()
+
+        self.assertEqual(len(view), 6)
+        self.assertEqual(view.media_type, "image")
 
 
 class GroupImportExportTests(unittest.TestCase):

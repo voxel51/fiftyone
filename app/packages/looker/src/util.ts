@@ -1,8 +1,8 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import mime from "mime";
 import { mergeWith } from "immutable";
+import mime from "mime";
 
 import { MIN_PIXELS } from "./constants";
 import {
@@ -16,7 +16,6 @@ import {
   Optional,
 } from "./state";
 
-import LookerWorker from "./worker.ts?worker&inline";
 import {
   AppError,
   getFetchParameters,
@@ -24,6 +23,7 @@ import {
   NetworkError,
   ServerError,
 } from "@fiftyone/utilities";
+import LookerWorker from "./worker.ts?worker&inline";
 
 /**
  * Shallow data-object comparison for equality
