@@ -32,7 +32,7 @@ import {
 
 import { State } from "./types";
 import * as viewAtoms from "./view";
-import { datasetName, isVideoDataset } from "./selectors";
+import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
 import { isLargeVideo, resolvedSidebarMode } from "./options";
 import { commitMutation, VariablesOf } from "react-relay";
 import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
@@ -479,6 +479,7 @@ export const sidebarGroups = selectorFamily<
       !modal &&
         persist &&
         persistSidebarGroups({
+          subscription: useRecoilValue(stateSubscription),
           dataset: get(datasetName),
           stages: get(viewAtoms.view),
           sidebarGroups: groups,

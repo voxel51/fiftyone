@@ -1,16 +1,16 @@
-import React, { useMemo } from "react";
 import { Checkbox as MaterialCheckbox } from "@mui/material";
 import { animated } from "@react-spring/web";
+import React, { useMemo } from "react";
 import styled from "styled-components";
 
-import { useHighlightHover } from "../Actions/utils";
-import { ItemAction } from "../Actions/ItemAction";
-import { getValueString } from "../Filters/utils";
+import { useTheme } from "@fiftyone/components";
 import { constSelector, RecoilValueReadOnly } from "recoil";
+import { prettify } from "../../utils/generic";
+import { ItemAction } from "../Actions/ItemAction";
+import { useHighlightHover } from "../Actions/utils";
+import { getValueString } from "../Filters/utils";
 import { NameAndCountContainer } from "../utils";
 import { SuspenseEntryCounts } from "./CountSubcount";
-import { prettify } from "../../utils/generic";
-import { useTheme } from "@fiftyone/components";
 
 interface CheckboxProps<T> {
   color?: string;

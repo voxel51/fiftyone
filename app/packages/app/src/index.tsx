@@ -1,27 +1,32 @@
 import { ThemeProvider } from "@fiftyone/components";
-import { Loading, Setup, makeRoutes } from "@fiftyone/core";
-import { useRefresh, useScreenshot } from "@fiftyone/state";
-import { ThemeProvider } from "@fiftyone/components";
+import { Loading, makeRoutes, Setup } from "@fiftyone/core";
+
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot, useRecoilValue } from "recoil";
 import Network from "./Network";
 
-import "./index.css";
+import { usePlugins } from "@fiftyone/plugins";
 import {
+  BeforeScreenshotContext,
+  EventsContext,
+  getDatasetName,
+  getSavedViewName,
   modal,
-  refresher,
+  screenshotCallbacks,
   State,
   stateSubscription,
-  useReset,
   useClearModal,
+  useRefresh,
+  useReset,
+  useRouter,
   useScreenshot,
 } from "@fiftyone/state";
-import { usePlugins } from "@fiftyone/plugins";
-import { useRouter } from "@fiftyone/state";
-import { EventsContext } from "@fiftyone/state";
-import { getDatasetName } from "@fiftyone/state";
+
+import { isElectron } from "@fiftyone/utilities";
+
+import "./index.css";
 
 import { useErrorHandler } from "react-error-boundary";
 
@@ -50,7 +55,7 @@ const App: React.FC = ({}) => {
 
   useEffect(() => {
     readyState === AppReadyState.CLOSED && reset();
-  }, [readyState]);
+  }, [readyState, reset]);
 
   const screenshot = useScreenshot(
     new URLSearchParams(window.location.search).get("context")
@@ -86,10 +91,14 @@ const App: React.FC = ({}) => {
               const payload = JSON.parse(msg.data);
               const { colorscale, config, ...data } = payload.state;
               payload.refresh && refresh();
+              const isAnUpdate = payload.update;
+              const changingSavedView = payload.changing_saved_view;
 
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
+                viewName: getSavedViewName(contextRef.current),
+                changingSavedView,
               } as State.Description;
               let dataset = getDatasetName(contextRef.current);
               if (readyStateRef.current !== AppReadyState.OPEN) {
@@ -102,19 +111,44 @@ const App: React.FC = ({}) => {
                 dataset = state.dataset;
               }
 
-              const path = state.dataset
-                ? `/datasets/${encodeURIComponent(state.dataset)}${
-                    window.location.search
-                  }`
-                : `/${window.location.search}`;
+              // !isAnUpdate === initial load (active tab)
+              let savedViewSlug = isAnUpdate
+                ? state.savedViewSlug
+                : state.viewName || "";
 
-              contextRef.current.history.replace(path, {
-                state,
-                colorscale,
-                config,
-                refresh: payload.refresh,
-                variables: dataset ? { view: state.view || null } : undefined,
-              });
+              const url = new URL(window.location.toString());
+              const oldPath = url.pathname + `${url.search}`;
+
+              if (isAnUpdate && !changingSavedView) {
+                url.searchParams.delete("view");
+              } else if (savedViewSlug) {
+                url.searchParams.set("view", savedViewSlug);
+              } else {
+                url.searchParams.delete("view");
+              }
+
+              let search = url.searchParams.toString();
+              if (search.length) {
+                search = `?${search}`;
+              }
+              const path = state.dataset
+                ? `/datasets/${encodeURIComponent(state.dataset)}${search}`
+                : `/${search}`;
+
+              if (
+                !isElectron() &&
+                ((isAnUpdate && !changingSavedView) ||
+                  path !== oldPath ||
+                  !isAnUpdate)
+              ) {
+                contextRef.current.history.replace(path, {
+                  state,
+                  colorscale,
+                  config,
+                  refresh: payload.refresh,
+                  variables: dataset ? { view: state.view || null } : undefined,
+                });
+              }
 
               break;
             }
@@ -145,7 +179,7 @@ const App: React.FC = ({}) => {
       return loadingElement;
     case AppReadyState.OPEN:
       if (plugins.isLoading) return loadingElement;
-      if (plugins.error) return <Loading>Plugin error...</Loading>;
+      if (plugins.hasError) return <Loading>Plugin error...</Loading>;
       return <Network environment={environment} context={context} />;
     default:
       return <Setup />;
@@ -154,10 +188,12 @@ const App: React.FC = ({}) => {
 
 createRoot(document.getElementById("root") as HTMLDivElement).render(
   <RecoilRoot>
-    <EventsContext.Provider value={{ session: null }}>
-      <ThemeProvider>
-        <App />
-      </ThemeProvider>
-    </EventsContext.Provider>
+    <BeforeScreenshotContext.Provider value={screenshotCallbacks}>
+      <EventsContext.Provider value={{ session: null }}>
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      </EventsContext.Provider>
+    </BeforeScreenshotContext.Provider>
   </RecoilRoot>
 );

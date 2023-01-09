@@ -35,7 +35,7 @@ class ServerViewTests(unittest.TestCase):
             "predictions", fof.EmbeddedDocumentField, fol.Detections
         )
 
-        returned = fosv.get_view(
+        returned = fosv.get_dataset_view(
             "test", filters=filters, count_label_tags=True, only_matches=True
         )._pipeline()
 
@@ -171,7 +171,7 @@ class ServerViewTests(unittest.TestCase):
             "predictions", fof.EmbeddedDocumentField, fol.Detections
         )
 
-        returned = fosv.get_view(
+        returned = fosv.get_dataset_view(
             "test", filters=filters, count_label_tags=False, only_matches=True
         )._pipeline()
 
@@ -268,7 +268,7 @@ class ServerViewTests(unittest.TestCase):
             "detections", fof.EmbeddedDocumentField, fol.Detections
         )
 
-        returned = fosv.get_view(
+        returned = fosv.get_dataset_view(
             "test", filters=filters, count_label_tags=True, only_matches=True
         )._pipeline()[1:]
 
@@ -490,7 +490,7 @@ class ServerViewTests(unittest.TestCase):
             "detections", fof.EmbeddedDocumentField, fol.Detections
         )
 
-        returned = fosv.get_view(
+        returned = fosv.get_dataset_view(
             "test", filters=filters, count_label_tags=False, only_matches=True
         )._pipeline()[1:]
 
@@ -657,7 +657,7 @@ class ServerViewTests(unittest.TestCase):
             "detections", fof.EmbeddedDocumentField, fol.Detections
         )
 
-        returned = fosv.get_view(
+        returned = fosv.get_dataset_view(
             "test", filters=filters, count_label_tags=True, only_matches=True
         )._pipeline()[1:]
 
@@ -795,7 +795,7 @@ class ServerViewTests(unittest.TestCase):
             "detections", fof.EmbeddedDocumentField, fol.Detections
         )
 
-        returned = fosv.get_view(
+        returned = fosv.get_dataset_view(
             "test", filters=filters, count_label_tags=False, only_matches=True
         )._pipeline()[1:]
 

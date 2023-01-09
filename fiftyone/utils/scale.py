@@ -425,6 +425,13 @@ def export_to_scale(
     # Compute metadata if necessary
     sample_collection.compute_metadata()
 
+    if label_fields:
+        media_fields = sample_collection._get_media_fields(
+            whitelist=label_fields
+        )
+        if media_fields:
+            sample_collection.download_media(media_fields=media_fields)
+
     # Export the labels
     labels = {}
     for sample in sample_collection.iter_samples(progress=True):

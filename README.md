@@ -219,6 +219,22 @@ Refer to
 to see how to build and run Docker images containing source or release builds
 of FiftyOne.
 
+### UI Development on Storybook
+
+Voxel51 is currently in the process of implementing a
+[Storybook](https://storybook.js.org/) which contains examples of its basic UI
+components. You can access the current storybook instances by running **yarn
+storybook** in **/app/packages/components**. While the storybook instance is
+running, any changes to the component will trigger a refresh in the storybook
+app.
+
+```shell
+%%shell
+
+cd /app/packages/components
+yarn storybook
+```
+
 ### Generating documentation
 
 See the

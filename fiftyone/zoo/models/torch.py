@@ -115,6 +115,7 @@ def _make_load_state_dict_from_url_monkey_patcher(entrypoint, model_dir):
     entrypoint_module = inspect.getmodule(entrypoint)
     if version.parse(torchvision.__version__) >= version.parse("0.12.0"):
         entrypoint_module = torchvision._internally_replaced_utils
+
     load_state_dict_from_url = entrypoint_module.load_state_dict_from_url
 
     def custom_load_state_dict_from_url(url, **kwargs):

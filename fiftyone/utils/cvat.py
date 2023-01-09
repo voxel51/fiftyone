@@ -6,6 +6,7 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import math
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
@@ -955,7 +956,7 @@ class CVATImageDatasetExporter(
         self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
-        self._name = sample_collection.name
+        self._name = sample_collection._dataset.name
         self._task_labels = sample_collection.info.get("task_labels", None)
 
     def export_sample(self, image_or_path, labels, metadata=None):
@@ -3092,6 +3093,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             default, no project is used
         project_id (None): an optional ID of an existing CVAT project to which
             to upload the annotation tasks. By default, no project is used
+        task_name (None): an optional task name to use for the created CVAT task
         occluded_attr (None): an optional attribute name containing existing
             occluded values and/or in which to store downloaded occluded values
             for all objects in the annotation run
@@ -3129,6 +3131,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         job_reviewers=None,
         project_name=None,
         project_id=None,
+        task_name=None,
         occluded_attr=None,
         group_id_attr=None,
         issue_tracker=None,
@@ -3148,6 +3151,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.job_reviewers = job_reviewers
         self.project_name = project_name
         self.project_id = project_id
+        self.task_name = task_name
         self.occluded_attr = occluded_attr
         self.group_id_attr = group_id_attr
         self.issue_tracker = issue_tracker
@@ -4178,7 +4182,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._parse_cloud_files(paths, data, cloud_manifest)
             files = {}
             open_files = []
-
         else:
             files, open_files = self._parse_local_files(paths, data)
 
@@ -4239,10 +4242,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         cloud_manifest = config.cloud_manifest
         config.job_reviewers = self._parse_reviewers(config.job_reviewers)
 
-        if cloud_manifest == False:
-            # Media will be uploaded to CVAT from local cache
-            samples.download_media()
-
         project_name, project_id = self._parse_project_details(
             config.project_name, config.project_id
         )
@@ -4295,6 +4294,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         num_samples = len(samples)
         batch_size = self._get_batch_size(samples, task_size)
+        num_batches = math.ceil(num_samples / batch_size)
+
+        if cloud_manifest == False:
+            # Media will be uploaded to CVAT from local cache
+            samples.download_media(media_fields=media_field)
+
+        media_fields = samples._get_media_fields(whitelist=label_schema)
+        if media_fields:
+            samples.download_media(media_fields=media_fields)
 
         samples.compute_metadata()
 
@@ -4377,8 +4385,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     project_id = self.create_project(project_name, cvat_schema)
                     project_ids.append(project_id)
 
-                _dataset_name = samples_batch._dataset.name.replace(" ", "_")
-                task_name = "FiftyOne_%s" % _dataset_name
+                if config.task_name is None:
+                    _dataset_name = samples_batch._dataset.name.replace(
+                        " ", "_"
+                    )
+                    task_name = f"FiftyOne_{_dataset_name}"
+                else:
+                    task_name = config.task_name
+
+                # Append task number when multiple tasks are created
+                if num_batches > 1:
+                    task_name += f"_{idx + 1}"
 
                 (
                     task_id,

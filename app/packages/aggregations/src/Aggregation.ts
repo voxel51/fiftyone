@@ -8,9 +8,11 @@ export default class Aggregation {
   } {
     const _cls = this._cls;
     const kwargs = [];
-    for (const [paramName, paramValue] of Object.entries(this.params)) {
-      if (paramValue !== null && paramValue !== undefined) {
-        kwargs.push([this._getSerializedName(paramName), paramValue]);
+    if (this.params) {
+      for (const [paramName, paramValue] of Object.entries(this.params)) {
+        if (paramName) {
+          kwargs.push([this._getSerializedName(paramName), paramValue]);
+        }
       }
     }
 

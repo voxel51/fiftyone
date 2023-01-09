@@ -5,7 +5,13 @@ export default graphql`
     $subscription: String!
     $session: String
     $name: String
+    $viewName: String
   ) {
-    setDataset(subscription: $subscription, session: $session, name: $name)
+    setDataset(
+      subscription: $subscription
+      session: $session
+      name: $name
+      viewName: $viewName
+    )
   }
 `;

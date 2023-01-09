@@ -58,7 +58,12 @@ class DatasetView(foc.SampleCollection):
     """
 
     def __init__(
-        self, dataset, _stages=None, _media_type=None, _group_slice=None
+        self,
+        dataset,
+        _stages=None,
+        _media_type=None,
+        _group_slice=None,
+        _name=None,
     ):
         if _stages is None:
             _stages = []
@@ -67,6 +72,7 @@ class DatasetView(foc.SampleCollection):
         self.__stages = _stages
         self.__media_type = _media_type
         self.__group_slice = _group_slice
+        self.__name = _name
 
     def __eq__(self, other):
         if type(other) != type(self):
@@ -124,6 +130,7 @@ class DatasetView(foc.SampleCollection):
             _stages=deepcopy(self.__stages),
             _media_type=self.__media_type,
             _group_slice=self.__group_slice,
+            _name=self.__name,
         )
 
     @property
@@ -239,13 +246,34 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def name(self):
-        """The name of the view."""
-        return self.dataset_name + "-view"
+        """The name of the view if it is a saved view; otherwise None."""
+        return self.__name
+
+    @property
+    def is_saved(self):
+        """Whether the view is a saved view or not."""
+        return self.__name is not None
 
     @property
     def dataset_name(self):
         """The name of the underlying dataset."""
         return self._root_dataset.name
+
+    @property
+    def tags(self):
+        return self._root_dataset.tags
+
+    @tags.setter
+    def tags(self, tags):
+        self._root_dataset.tags = tags
+
+    @property
+    def description(self):
+        return self._root_dataset.description
+
+    @description.setter
+    def description(self, description):
+        self._root_dataset.description = description
 
     @property
     def info(self):
@@ -325,6 +353,9 @@ class DatasetView(foc.SampleCollection):
 
         if self.media_type == fom.GROUP:
             elements.insert(2, ("Group slice:", self.group_slice))
+
+        if self.is_saved:
+            elements.insert(1, ("View name: ", self.name))
 
         elements = fou.justify_headings(elements)
         lines = ["%s %s" % tuple(e) for e in elements]
@@ -421,11 +452,19 @@ class DatasetView(foc.SampleCollection):
                 exit_context.enter_context(pb)
                 samples = pb(samples)
 
+            download_context = getattr(self, "_download_context", None)
+            download = download_context is not None
+            if download:
+                exit_context.enter_context(download_context)
+
             if autosave:
                 save_context = foc.SaveContext(self, batch_size=batch_size)
                 exit_context.enter_context(save_context)
 
             for sample in samples:
+                if download:
+                    download_context.next()
+
                 yield sample
 
                 if autosave:
@@ -534,11 +573,19 @@ class DatasetView(foc.SampleCollection):
                 exit_context.enter_context(pb)
                 groups = pb(groups)
 
+            download_context = getattr(self, "_download_context", None)
+            download = download_context is not None
+            if download:
+                exit_context.enter_context(download_context)
+
             if autosave:
                 save_context = foc.SaveContext(self, batch_size=batch_size)
                 exit_context.enter_context(save_context)
 
             for group in groups:
+                if download:
+                    download_context.next()
+
                 yield group
 
                 if autosave:
@@ -627,11 +674,12 @@ class DatasetView(foc.SampleCollection):
         the view.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -672,11 +720,12 @@ class DatasetView(foc.SampleCollection):
         Only applicable for views that contain videos.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -1185,7 +1234,7 @@ class DatasetView(foc.SampleCollection):
 
             # Generate stage's pipeline
             _pipelines.append(stage.to_mongo(_view))
-            _view = _view.add_stage(stage)
+            _view = _view._add_view_stage(stage, validate=False)
 
         if _attach_frames_idx is None and (attach_frames or frames_only):
             _attach_frames_idx = len(_pipelines)
@@ -1356,8 +1405,9 @@ class DatasetView(foc.SampleCollection):
 
         return self.skip(start).limit(stop - start)
 
-    def _add_view_stage(self, stage):
-        stage.validate(self)
+    def _add_view_stage(self, stage, validate=True):
+        if validate:
+            stage.validate(self)
 
         if stage.has_view:
             view = stage.load_view(self)
@@ -1369,6 +1419,8 @@ class DatasetView(foc.SampleCollection):
             if media_type is not None:
                 view._set_media_type(media_type)
 
+        view._set_name(None)
+
         return view
 
     def _set_media_type(self, media_type):
@@ -1376,6 +1428,9 @@ class DatasetView(foc.SampleCollection):
 
         if media_type != fom.GROUP:
             self.__group_slice = None
+
+    def _set_name(self, name):
+        self.__name = name
 
     def _get_filtered_schema(self, schema, frames=False):
         if schema is None:
@@ -1394,9 +1449,9 @@ class DatasetView(foc.SampleCollection):
         selected_fields = None
         excluded_fields = None
 
-        dataset = self._dataset
+        _view = self._base_view
         for stage in self._stages:
-            sf = stage.get_selected_fields(dataset, frames=frames)
+            sf = stage.get_selected_fields(_view, frames=frames)
             if sf:
                 if roots_only:
                     sf = {f.split(".", 1)[0] for f in sf}
@@ -1406,7 +1461,7 @@ class DatasetView(foc.SampleCollection):
                 else:
                     selected_fields.intersection_update(sf)
 
-            ef = stage.get_excluded_fields(dataset, frames=frames)
+            ef = stage.get_excluded_fields(_view, frames=frames)
             if ef:
                 if roots_only:
                     ef = {f for f in ef if "." not in f}
@@ -1415,6 +1470,8 @@ class DatasetView(foc.SampleCollection):
                     excluded_fields = set(ef)
                 else:
                     excluded_fields.update(ef)
+
+            _view = _view._add_view_stage(stage, validate=False)
 
         if (
             roots_only
@@ -1429,14 +1486,16 @@ class DatasetView(foc.SampleCollection):
     def _get_filtered_fields(self, frames=False):
         filtered_fields = None
 
-        dataset = self._dataset
+        _view = self._base_view
         for stage in self._stages:
-            ff = stage.get_filtered_fields(dataset, frames=frames)
+            ff = stage.get_filtered_fields(_view, frames=frames)
             if ff:
                 if filtered_fields is None:
                     filtered_fields = set(ff)
                 else:
                     filtered_fields.update(ff)
+
+            _view = _view._add_view_stage(stage, validate=False)
 
         return filtered_fields
 
