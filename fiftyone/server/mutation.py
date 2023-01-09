@@ -28,6 +28,22 @@ from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view, extend_view
 
 
+def _build_result_view(result_view, form):
+    if form.slice:
+        result_view = result_view.select_group_slices([form.slice])
+    if form.sample_ids:
+        result_view = fov.make_optimized_select_view(
+            result_view, form.sample_ids
+        )
+    if form.add_stages:
+        for d in form.add_stages:
+            stage = fos.ViewStage._from_dict(d)
+            result_view = result_view.add_stage(stage)
+    if form.extended:
+        result_view = extend_view(result_view, form.extended, True)
+    return result_view
+
+
 @gql.input
 class SelectedLabel:
     field: str
@@ -190,23 +206,9 @@ class Mutation:
                 stages=view if view else None,
                 filters=form.filters if form else None,
             )
-            if form.slice:
-                result_view = result_view.select_group_slices([form.slice])
-
-            if form.sample_ids:
-                result_view = fov.make_optimized_select_view(
-                    result_view, form.sample_ids
-                )
-
-            if form.add_stages:
-                for d in form.add_stages:
-                    stage = fos.ViewStage._from_dict(d)
-                    result_view = result_view.add_stage(stage)
-
-            if form.extended:
-                result_view = extend_view(result_view, form.extended, True)
-            # Set view state
-            state.view = result_view
+        result_view = _build_result_view(result_view, form)
+        # Set view state
+        state.view = result_view
 
         await dispatch_event(
             subscription,
@@ -271,15 +273,15 @@ class Mutation:
         session: t.Optional[str],
         view_name: str,
         view_stages: t.Optional[BSONArray] = None,
+        form: t.Optional[StateForm] = None,
         dataset_name: t.Optional[str] = None,
         description: t.Optional[str] = None,
         color: t.Optional[str] = None,
     ) -> t.Optional[SavedView]:
         state = get_state()
         dataset = state.dataset
-        use_state = True
+        use_state = dataset is not None
         if dataset is None:
-            use_state = False
             # teams is stateless so dataset will be null
             dataset = fo.load_dataset(dataset_name)
 
@@ -289,21 +291,23 @@ class Mutation:
                 "reference for creating saved view with name = "
                 "{}".format(view_name)
             )
+
+        dataset_view = get_view(
+            dataset_name,
+            stages=view_stages if view_stages else None,
+            filters=form.filters if form else None,
+        )
         # view arg required to be an instance of
         # `fiftyone.core.view.DatasetView`
+        result_view = _build_result_view(dataset_view, form)
+        dataset.save_view(
+            view_name, result_view, description=description, color=color
+        )
         if use_state:
-            dataset.save_view(
-                view_name, state.view, description=description, color=color
-            )
             dataset.reload()
             state.view = dataset.load_saved_view(view_name)
             state.view_name = view_name
             await dispatch_event(subscription, StateUpdate(state=state))
-        else:
-            view = get_view(dataset_name, stages=view_stages)
-            dataset.save_view(
-                view_name, view, description=description, color=color
-            )
 
         return next(
             (
