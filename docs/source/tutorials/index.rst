@@ -36,6 +36,13 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
+    :header: Semantic image search
+    :description: Add semantic search to your computer vision pipelines with FiftyOne, Pinecone, and OpenAI’s CLIP model.
+    :link: pandas_comparison.html
+    :image: ../_static/images/tutorials/pandas_tutorial.png
+    :tags: Dataset-Evaluation,Embeddings,Model-Evaluation
+
+.. customcarditem::
     :header: pandas-style queries in FiftyOne
     :description: Translate your pandas knowledge to FiftyOne. This tutorial gives a side-by-side comparison of performing common opertaions in pandas and FiftyOne.
     :link: pandas_comparison.html
@@ -143,6 +150,7 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
+   Semantic image search <semantic_image_search.ipynb>
    pandas and FiftyOne <pandas_comparison.ipynb>
    Evaluating object detections <evaluate_detections.ipynb>
    Evaluating a classifier <evaluate_classifications.ipynb>
