@@ -39,21 +39,31 @@ class OnPlotLoad(HTTPEndpoint):
         patches_field = results.config.patches_field
         is_patches_plot = patches_field is not None
 
+        if view._is_patches and not is_patches_plot:
+            view = view._source_collection
+
         # Determines which points from `results` are in `view`, which are the
         # only points we want to display in the embeddings plot
         results.use_view(view, allow_missing=True)
 
-        print(label_field)
-
         # Color by data
         if label_field:
-            labels = results.view.values(label_field, unwind=True)
-            field = results.view.get_field(label_field)
+            curr_view = results.view
+            if curr_view._is_patches:
+                # `label_field` is always provided with respect to root
+                # dataset, so we must translate for patches views
+                _, root = dataset._get_label_field_path(patches_field)
+                leaf = label_field[len(root) + 1 :]
+                _, label_field = curr_view._get_label_field_path(
+                    patches_field, leaf
+                )
+
+            labels = curr_view.values(label_field, unwind=True)
+            field = curr_view.get_field(label_field)
             if isinstance(field, fo.FloatField):
                 style = "continuous"
             else:
                 if len(set(labels)) <= MAX_CATEGORIES:
-                    print(len(set(labels)))
                     style = "categorical"
                 else:
                     style = "continuous"
