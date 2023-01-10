@@ -422,8 +422,8 @@ def _make_filter_stages(
         args = filters[path]
         # we can assume only_matches to be true, unless args[]
 
-        isMatching = True if args["isMatching"] is None else args["isMatching"]
-        onlyMatches = True if args["onlyMatch"] is None else args["onlyMatch"]
+        is_matching = True if "isMatching" not in args else args["isMatching"]
+        only_match = True if "onlyMatch" not in args else args["onlyMatch"]
 
         if path == "tags" or path.startswith("_"):
             continue
@@ -481,7 +481,7 @@ def _make_filter_stages(
                         _new_field=new_field,
                         **expr,
                     )
-                elif isMatching:
+                elif is_matching:
                     field = (
                         cache.get(prefix + parent.name, prefix + parent.name),
                     )
@@ -494,7 +494,7 @@ def _make_filter_stages(
                     stage = fosg.FilterLabels(
                         cache.get(prefix + parent.name, prefix + parent.name),
                         expr,
-                        only_matches=onlyMatches,
+                        only_matches=only_match,
                         _new_field=new_field,
                     )
 
@@ -571,7 +571,7 @@ def _is_label(field):
 
 def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
     expr = None
-    isMatching = False if args["isMatching"] is None else args["isMatching"]
+    is_matching = False if "isMatching" not in args else args["isMatching"]
     if isinstance(field, fof.ListField):
         expr = f.filter(
             _make_scalar_expression(F(), args, field.field, list_field=True)
@@ -615,11 +615,11 @@ def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
         exclude = args["exclude"]
 
         # list_field handles exclude separately; matchLabel has exclude in the arg
-        if exclude and not (is_label and isMatching) and not list_field:
+        if exclude and not (is_label and is_matching) and not list_field:
             # pylint: disable=invalid-unary-operand-type
             expr = ~expr
 
-        if none and not (is_label and isMatching) and not list_field:
+        if none and not (is_label and is_matching) and not list_field:
             if exclude:
                 expr &= f.exists()
             else:
@@ -650,7 +650,7 @@ def _make_keypoint_kwargs(args, view, points):
 
 
 def _apply_others(expr, f, args, is_label):
-    isMatching = False if args["isMatching"] is None else args["isMatching"]
+    is_matching = False if "isMatching" not in args else args["isMatching"]
     nonfinites = {
         "nan": float("nan"),
         "ninf": -float("inf"),
@@ -669,7 +669,11 @@ def _apply_others(expr, f, args, is_label):
     if "none" in args:
         expr = _apply_none(expr, f, args["none"])
 
-    if "exclude" in args and args["exclude"] and not (isMatching and is_label):
+    if (
+        "exclude" in args
+        and args["exclude"]
+        and not (is_matching and is_label)
+    ):
         # pylint: disable=invalid-unary-operand-type
         expr = ~expr
 

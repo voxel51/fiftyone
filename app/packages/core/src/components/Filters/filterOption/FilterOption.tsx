@@ -87,7 +87,7 @@ const generateOptions = (
         : `Show samples without ${valueName}`,
       tooltip: shouldShowAllOptions
         ? "dataset.match_labels(fields=field, filter=condition, bool=False)"
-        : "dataset.match(F(field).filter(condition).length() == 0))",
+        : "dataset.match(F(field).filter(condition).length() == 0)",
     });
   }
   return options;
