@@ -22,11 +22,16 @@ class ServerViewTests(unittest.TestCase):
             "predictions.detections.label": {
                 "values": ["carrot"],
                 "exclude": False,
+                "onlyMatch": True,
+                "isMatching": False,
                 "_CLS": "str",
             },
             "predictions.detections.confidence": {
                 "range": [0.5, 1],
                 "_CLS": "numeric",
+                "exclude": False,
+                "onlyMatch": True,
+                "isMatching": False,
             },
         }
 
@@ -36,8 +41,12 @@ class ServerViewTests(unittest.TestCase):
         )
 
         returned = fosv.get_view(
-            "test", filters=filters, count_label_tags=True, only_matches=True
+            "test",
+            filters=filters,
+            count_label_tags=True,
         )._pipeline()
+
+        print("returned", returned)
 
         expected = [
             {
@@ -158,11 +167,16 @@ class ServerViewTests(unittest.TestCase):
             "predictions.detections.label": {
                 "values": ["carrot"],
                 "exclude": False,
+                "onlyMatch": True,
+                "isMatching": False,
                 "_CLS": "str",
             },
             "predictions.detections.confidence": {
                 "range": [0.5, 1],
                 "_CLS": "numeric",
+                "exclude": False,
+                "onlyMatch": True,
+                "isMatching": False,
             },
         }
 
@@ -172,7 +186,7 @@ class ServerViewTests(unittest.TestCase):
         )
 
         returned = fosv.get_view(
-            "test", filters=filters, count_label_tags=False, only_matches=True
+            "test", filters=filters, count_label_tags=False
         )._pipeline()
 
         expected = [
@@ -254,10 +268,15 @@ class ServerViewTests(unittest.TestCase):
             "frames.detections.detections.index": {
                 "range": [27, 54],
                 "_CLS": "numeric",
+                "exclude": False,
+                "onlyMatch": True,
+                "isMatching": False,
             },
             "frames.detections.detections.label": {
                 "values": ["vehicle"],
                 "exclude": False,
+                "onlyMatch": True,
+                "isMatching": False,
                 "_CLS": "str",
             },
         }
@@ -269,7 +288,9 @@ class ServerViewTests(unittest.TestCase):
         )
 
         returned = fosv.get_view(
-            "test", filters=filters, count_label_tags=True, only_matches=True
+            "test",
+            filters=filters,
+            count_label_tags=True,
         )._pipeline()[1:]
 
         expected = [
@@ -476,10 +497,15 @@ class ServerViewTests(unittest.TestCase):
             "frames.detections.detections.index": {
                 "range": [27, 54],
                 "_CLS": "numeric",
+                "exclude": False,
+                "onlyMatch": True,
+                "isMatching": False,
             },
             "frames.detections.detections.label": {
                 "values": ["vehicle"],
                 "exclude": False,
+                "onlyMatch": True,
+                "isMatching": False,
                 "_CLS": "str",
             },
         }
@@ -491,7 +517,7 @@ class ServerViewTests(unittest.TestCase):
         )
 
         returned = fosv.get_view(
-            "test", filters=filters, count_label_tags=False, only_matches=True
+            "test", filters=filters, count_label_tags=False
         )._pipeline()[1:]
 
         expected = [
@@ -658,7 +684,7 @@ class ServerViewTests(unittest.TestCase):
         )
 
         returned = fosv.get_view(
-            "test", filters=filters, count_label_tags=True, only_matches=True
+            "test", filters=filters, count_label_tags=True
         )._pipeline()[1:]
 
         expected = [
@@ -782,7 +808,7 @@ class ServerViewTests(unittest.TestCase):
             },
             {"$unset": "frames.__detections"},
         ]
-
+        print("returned", returned)
         self.assertEqual(expected, returned)
 
     @drop_datasets
@@ -796,7 +822,7 @@ class ServerViewTests(unittest.TestCase):
         )
 
         returned = fosv.get_view(
-            "test", filters=filters, count_label_tags=False, only_matches=True
+            "test", filters=filters, count_label_tags=False
         )._pipeline()[1:]
 
         expected = [
@@ -875,5 +901,6 @@ class ServerViewTests(unittest.TestCase):
                 }
             },
         ]
+        print(returned)
 
         self.assertEqual(expected, returned)
