@@ -26,6 +26,7 @@ from fiftyone.core.odm import SavedViewDocument
 from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
+from fiftyone.core.spaces import Space
 
 import fiftyone.server.aggregate as fosa
 from fiftyone.server.aggregations import aggregate_resolver
@@ -171,6 +172,7 @@ class DatasetAppConfig:
     sidebar_mode: t.Optional[SidebarMode]
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
+    spaces: t.Optional[Space]
 
 
 @gql.type
@@ -279,6 +281,7 @@ class AppConfig:
     theme: Theme
     timezone: t.Optional[str]
     use_frame_number: bool
+    spaces: t.Optional[Space]
 
 
 @gql.type

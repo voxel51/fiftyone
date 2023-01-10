@@ -27,12 +27,18 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
   });
   return {
     spaces,
-    updateSpaces: (updater: (spaces: SpaceTree) => void) => {
-      setState((latestSpaces) => {
-        const spaces = new SpaceTree(latestSpaces);
-        updater(spaces);
-        return spaces.toJSON();
-      });
+    updateSpaces: (
+      serializedTreeOrUpdater: (spaces: SpaceTree) => void | SpaceNodeJSON
+    ) => {
+      if (typeof serializedTreeOrUpdater === "function") {
+        setState((latestSpaces) => {
+          const spaces = new SpaceTree(latestSpaces);
+          serializedTreeOrUpdater(spaces);
+          return spaces.toJSON();
+        });
+      } else {
+        setState(serializedTreeOrUpdater);
+      }
     },
   };
 }

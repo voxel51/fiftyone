@@ -228,6 +228,7 @@ class DatasetAppConfig(EmbeddedDocument):
         EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
     plugins = DictField()
+    spaces = None
 
     @staticmethod
     def default_sidebar_groups(sample_collection):
