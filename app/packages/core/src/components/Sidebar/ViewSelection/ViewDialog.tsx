@@ -39,10 +39,10 @@ import {
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 
 interface Props {
-  canEdit?: boolean;
   savedViews: fos.State.SavedView[];
   onEditSuccess: (saveView: fos.State.SavedView, reload?: boolean) => void;
   onDeleteSuccess: (slug: string) => void;
+  canEdit?: boolean;
 }
 
 export const viewDialogContent = atom({
