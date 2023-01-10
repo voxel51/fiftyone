@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
@@ -17,7 +17,7 @@ const Container = styled.div`
 function SamplesContainer() {
   const showSidebar = useRecoilValue(fos.sidebarVisible(false));
   const disabled = useRecoilValue(fos.disabledPaths);
-  const datasetName = useRecoilValue(fos.datasetName);
+  const { id } = fos.usePrimarySpaces();
 
   const renderGridEntry = useCallback(
     (
@@ -134,27 +134,10 @@ function SamplesContainer() {
     []
   );
 
-  const defaultSpacesState = {
-    id: "root",
-    children: [
-      {
-        id: "default-samples-node",
-        children: [],
-        type: "Samples",
-        pinned: true,
-      },
-    ],
-    type: "panel-container",
-    activeChild: "default-samples-node",
-  };
-
   return (
     <Container>
       {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}
-      <SpacesRoot
-        id={`primary-${datasetName}`}
-        defaultState={defaultSpacesState}
-      />
+      <SpacesRoot id={id} />
     </Container>
   );
 }

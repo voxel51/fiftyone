@@ -39,3 +39,4 @@ export { default as useToClips } from "./useToClips";
 export { default as useToEvaluationPatches } from "./useToEvaluationPatches";
 export { default as useToPatches } from "./useToPatches";
 export { default as useUpdateSample } from "./useUpdateSample";
+export { default as usePrimarySpaces } from "./usePrimarySpaces";
