@@ -154,6 +154,9 @@ const Wrapper = ({
   // if the field is a BooleanField, there is no need to show the exclude option
   const shouldNotShowExclude = Boolean(schema?.ftype.includes("BooleanField"));
 
+  // if the field is a keypoint label, there is no need to show match options
+  const isKeyPoints = fieldSchema?.dbField === "keypoints";
+
   const initializeSettings = () => {
     setExcluded && setExcluded(false);
     setOnlyMatch && setOnlyMatch(true);
@@ -205,6 +208,7 @@ const Wrapper = ({
               valueName={name}
               color={color}
               modal={modal}
+              isKeyPointLabel={isKeyPoints}
             />
           )}
           <Button

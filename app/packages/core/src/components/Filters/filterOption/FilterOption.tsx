@@ -28,6 +28,7 @@ interface Props {
   color: string;
   isRangeLabel?: boolean;
   modal: boolean;
+  isKeyPointLabel: boolean;
 }
 
 type Option = {
@@ -37,10 +38,13 @@ type Option = {
   tooltip: string;
 };
 
+type Key = "filter" | "negativeFilter" | "match" | "negativeMatch";
+
 const generateOptions = (
   shouldShowAllOptions: boolean,
   shouldNotShowExclude: boolean,
   modal: boolean,
+  isKeyPointLabel: boolean,
   valueName: string,
   isRangeLabel: boolean
 ) => {
@@ -61,12 +65,12 @@ const generateOptions = (
   if (shouldShowAllOptions && !shouldNotShowExclude) {
     options.push({
       icon: "FilterAltOffIcon",
-      key: "negativefilter",
+      key: "negativeFilter",
       value: `Exclude ${valueName}`,
       tooltip: "dataset.filter_labels(field, condition, only_matches=False)",
     });
   }
-  if (!modal) {
+  if (!modal && !isKeyPointLabel) {
     options.push({
       icon: "ImageIcon",
       key: "match",
@@ -78,7 +82,7 @@ const generateOptions = (
         : "dataset.match(F(field).filter(condition).length() > 0)",
     });
   }
-  if (!modal && !shouldNotShowExclude) {
+  if (!modal && !shouldNotShowExclude && !isKeyPointLabel) {
     options.push({
       icon: "HideImageIcon",
       key: "negativeMatch",
@@ -104,7 +108,7 @@ const currentSelection = (
   switch (key) {
     case "filter":
       return `Filter ${joinStringArray(selectedLabels)} ${item}`;
-    case "negativefilter":
+    case "negativeFilter":
       return `Exclude ${joinStringArray(selectedLabels)} ${item}`;
     case "match":
       return isRangeLabel
@@ -135,6 +139,7 @@ const FilterOption: React.FC<Props> = ({
   labels,
   color,
   modal,
+  isKeyPointLabel,
   valueName,
   shouldShowAllOptions,
   shouldNotShowExclude,
@@ -143,9 +148,7 @@ const FilterOption: React.FC<Props> = ({
   isMatchingAtom,
   isRangeLabel = false,
 }) => {
-  const [key, setKey] = React.useState(
-    shouldShowAllOptions ? "filter" : "match"
-  );
+  const [key, setKey] = React.useState<Key | null>(null);
 
   const [open, setOpen] = React.useState(false);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
@@ -158,23 +161,42 @@ const FilterOption: React.FC<Props> = ({
   const popoutRef = React.useRef();
   const ref = React.useRef();
 
+  useOutsideClick(popoutRef, () => {
+    setOpen(false);
+  });
   const options = generateOptions(
     shouldShowAllOptions,
     shouldNotShowExclude,
     modal,
+    isKeyPointLabel,
     valueName,
     Boolean(isRangeLabel)
   );
-  if (options.length === 1) return <></>;
 
-  useOutsideClick(popoutRef, () => {
-    setOpen(false);
-  });
+  useEffect(() => {
+    // on initial load, check the current filter to decide the current filter key
+    if (key === null) {
+      if (isMatching && !excluded) {
+        shouldShowAllOptions ? setKey("filter") : setKey("match");
+      }
+      if (isMatching && excluded) {
+        shouldShowAllOptions
+          ? setKey("negativeFilter")
+          : setKey("negativeMatch");
+      }
+      if (!isMatching && !excluded) {
+        setKey("filter");
+      }
+      if (!isMatching && excluded) {
+        setKey("negativeFilter");
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (key === "filter") {
       onSelectFilter();
-    } else if (key === "negativefilter") {
+    } else if (key === "negativeFilter") {
       onSelectNegativeFilter();
     } else if (key === "match") {
       onSelectMatch();
@@ -182,6 +204,8 @@ const FilterOption: React.FC<Props> = ({
       onSelectNegativeMatch();
     }
   }, [key]);
+
+  if (options.length === 1) return <></>;
 
   const selectedValue = options.find((o) => o.key === key)?.value;
 

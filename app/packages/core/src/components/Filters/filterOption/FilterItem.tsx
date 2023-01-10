@@ -1,4 +1,4 @@
-import React from "react";
+import React, { DetailedReactHTMLElement } from "react";
 import styled from "styled-components";
 import { IconButton } from "@mui/material";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
@@ -56,7 +56,7 @@ const Item = React.memo(
         }
       };
 
-      const children = (
+      const children: DetailedReactHTMLElement<any, HTMLElement> = (
         <div
           style={{ display: "flex", flexDirection: "row" }}
           ref={ref}
