@@ -39,6 +39,7 @@ import {
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 
 interface Props {
+  canEdit?: boolean;
   savedViews: fos.State.SavedView[];
   onEditSuccess: (saveView: fos.State.SavedView, reload?: boolean) => void;
   onDeleteSuccess: (slug: string) => void;
@@ -55,7 +56,7 @@ export const viewDialogContent = atom({
 });
 
 export default function ViewDialog(props: Props) {
-  const { onEditSuccess, onDeleteSuccess, savedViews = [] } = props;
+  const { onEditSuccess, onDeleteSuccess, savedViews = [], canEdit } = props;
   const theme = useTheme();
   const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
   const viewContent = useRecoilValue(viewDialogContent);
@@ -239,7 +240,7 @@ export default function ViewDialog(props: Props) {
               justifyContent: "start",
             }}
           >
-            {!isCreating && (
+            {!isCreating && canEdit && (
               <Button
                 onClick={onDeleteView}
                 sx={{
