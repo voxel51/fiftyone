@@ -257,21 +257,52 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
 
     current = state.dataset.name if state.dataset else None
     current_saved_view = state.view_name
-    if not isinstance(payload.initializer, fos.StateDescription) and (
-        payload.initializer.dataset != current
-        or payload.initializer.view != current_saved_view
-    ):
-        if payload.initializer:
+    if not isinstance(payload.initializer, fos.StateDescription):
+        update = False
+        if (
+            payload.initializer.dataset
+            and payload.initializer.dataset != current
+        ):
+            update = True
             try:
                 state.dataset = fo.load_dataset(payload.initializer.dataset)
+                state.selected = []
+                state.selected_labels = []
+                state.view = None
+                state.view_name = None
             except:
                 state.dataset = None
-            state.selected = []
-            state.selected_labels = []
-            state.view = None
-            state.saved_view_slug = None
-            state.changing_saved_view = False
+                state.selected = []
+                state.selected_labels = []
+                state.view = None
+                state.view_name = None
+            else:
+                if payload.initializer.view:
+                    try:
+                        state.view = state.dataset.load_saved_view(
+                            payload.initializer.view
+                        )
+                        state.selected = []
+                        state.selected_labels = []
+                        state.view_name = payload.initializer.view
+                    except:
+                        pass
+        elif (
+            payload.initializer.view
+            and payload.initializer.view != current_saved_view
+        ):
+            update = True
+            try:
+                state.view = state.dataset.load_saved_view(
+                    payload.initializer.view
+                )
+                state.selected = []
+                state.selected_labels = []
+                state.view_name = payload.initializer.view
+            except:
+                pass
 
+        if update:
             await dispatch_event(payload.subscription, StateUpdate(state))
 
     elif not is_app:

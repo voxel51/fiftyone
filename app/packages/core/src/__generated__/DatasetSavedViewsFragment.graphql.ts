@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7d5c9301348ace97783a08d7f05b3f11>>
+ * @generated SignedSource<<cc211754f473939b7cebd47c53748650>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,7 +20,6 @@ export type DatasetSavedViewsFragment$data = {
     readonly lastLoadedAt: any | null;
     readonly lastModifiedAt: any | null;
     readonly name: string | null;
-    readonly slug: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
   }> | null;
   readonly " $fragmentType": "DatasetSavedViewsFragment";
@@ -88,13 +87,6 @@ const node: ReaderFragment = {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "slug",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
           "name": "description",
           "storageKey": null
         },
@@ -141,6 +133,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "c7972fa3f5796bad3d7d9766e6ea6d80";
+(node as any).hash = "a10c384cf9aba742ed54c5eeb463f040";
 
 export default node;

@@ -112,7 +112,6 @@ class SavedView:
     id: t.Optional[str]
     dataset_id: t.Optional[str]
     name: t.Optional[str]
-    slug: t.Optional[str]
     description: t.Optional[str]
     color: t.Optional[str]
     view_stages: t.Optional[t.List[str]]
@@ -202,12 +201,12 @@ class Dataset:
     info: t.Optional[JSON]
 
     @gql.field
-    def stages(self, slug: t.Optional[str] = None) -> t.Optional[BSONArray]:
-        if not slug:
+    def stages(self, name: t.Optional[str] = None) -> t.Optional[BSONArray]:
+        if not name:
             return None
 
         for view in self.saved_views:
-            if view.slug == slug:
+            if view.name == name:
                 return view.stage_dicts()
 
         return None

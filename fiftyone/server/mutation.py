@@ -56,9 +56,6 @@ class SelectedLabel:
 class ViewResponse:
     view: BSONArray
     dataset: Dataset
-    view_name: t.Optional[str] = None
-    saved_view_slug: t.Optional[str] = None
-    changing_saved_view: t.Optional[bool] = False
 
 
 @gql.input
@@ -172,15 +169,9 @@ class Mutation:
         dataset_name: str,
         view: t.Optional[BSONArray],
         view_name: t.Optional[str],
-        saved_view_slug: t.Optional[str],
-        changing_saved_view: t.Optional[bool],
         form: t.Optional[StateForm],
         info: Info,
     ) -> ViewResponse:
-        logging.debug(
-            f"[mutation.py] set_view called with args:\ndataset_name"
-            f":{dataset_name}\nview:{view}\nview_name:{view_name}\nchanging_saved_view:{changing_saved_view} \n"
-        )
         state = get_state()
         state.selected = []
         state.selected_labels = []
@@ -197,7 +188,6 @@ class Mutation:
                 # Set view state
                 state.view = result_view
                 state.view_name = result_view.name
-                state.saved_view_slug = saved_view_slug
 
         if result_view is None:
             # Update current view with form parameters
@@ -212,11 +202,7 @@ class Mutation:
 
         await dispatch_event(
             subscription,
-            StateUpdate(
-                state=state,
-                update=True,
-                changing_saved_view=changing_saved_view or False,
-            ),
+            StateUpdate(state=state),
         )
 
         final_view = []
@@ -232,9 +218,6 @@ class Mutation:
         return ViewResponse(
             view=final_view,
             dataset=dataset,
-            view_name=view_name,
-            saved_view_slug=saved_view_slug,
-            changing_saved_view=changing_saved_view or False,
         )
 
     @gql.mutation

@@ -3137,14 +3137,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError("Cannot save view into a different dataset")
 
         view._set_name(name)
-        slug = self._validate_saved_view_name(name, overwrite=overwrite)
+        self._validate_saved_view_name(name, overwrite=overwrite)
 
         now = datetime.utcnow()
 
         view_doc = foo.SavedViewDocument(
             dataset_id=self._doc.id,
             name=name,
-            slug=slug,
             description=description,
             color=color,
             view_stages=[
@@ -3219,10 +3218,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         edited = False
         for key, value in info.items():
             if value != view_doc[key]:
-                if key == "name":
-                    slug = self._validate_saved_view_name(value, skip=view_doc)
-                    view_doc.slug = slug
-
                 view_doc[key] = value
                 edited = True
 
@@ -3301,13 +3296,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.saved_views[idx]
 
     def _validate_saved_view_name(self, name, skip=None, overwrite=False):
-        slug = fou.to_slug(name)
-
         for view_doc in self._doc.saved_views:
             if view_doc is skip:
                 continue
 
-            if name == view_doc.name or slug == view_doc.slug:
+            if name == view_doc.name:
                 dup_name = view_doc.name
 
                 if not overwrite:
@@ -3316,8 +3309,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     )
 
                 self.delete_saved_view(dup_name)
-
-        return slug
 
     def clone(self, name=None, persistent=False):
         """Creates a copy of the dataset.

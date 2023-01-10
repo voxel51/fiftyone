@@ -15,7 +15,6 @@ export const DatasetSavedViewsFragment = graphql`
       id
       datasetId
       name
-      slug
       description
       color
       viewStages
@@ -34,7 +33,7 @@ export const DatasetNodeQuery = graphql`
   ) {
     ...DatasetSavedViewsFragment
     dataset(name: $name, view: $view, viewName: $viewName) {
-      stages(slug: $viewName)
+      stages(name: $viewName)
       id
       name
       mediaType
@@ -110,7 +109,6 @@ export const DatasetNodeQuery = graphql`
         id
         datasetId
         name
-        slug
         description
         color
         viewStages

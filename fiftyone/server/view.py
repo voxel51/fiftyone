@@ -62,7 +62,6 @@ async def load_saved_views(cls, object_ids):
                 "name": True,
                 "color": True,
                 "description": True,
-                "slug": True,
                 "last_loaded_at": True,
                 "created_at": True,
                 "last_modified_at": True,
@@ -100,7 +99,6 @@ def load_saved_views_by_dataset(cls, dataset_id: str):
                         "name": True,
                         "color": True,
                         "description": True,
-                        "slug": True,
                         "last_loaded_at": True,
                         "created_at": True,
                         "last_modified_at": True,
@@ -131,7 +129,6 @@ def get_saved_views(cls, object_ids):
                     "name": True,
                     "color": True,
                     "description": True,
-                    "slug": True,
                     "last_loaded_at": True,
                     "created_at": True,
                     "last_modified_at": True,
@@ -161,7 +158,7 @@ def get_saved_view_stages(identifier):
     return list(
         db.views.aggregate(
             [
-                {"$match": {"slug": identifier}},
+                {"$match": {"name": identifier}},
                 {"$project": {"view_stages": True}},
             ]
         )

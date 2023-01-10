@@ -10,23 +10,19 @@ const useQueryState = (query) => {
 
   const setQuery = useCallback(
     (value) => {
-      try {
-        const existingQueries = qs.parse(location.search, {
-          ignoreQueryPrefix: true,
-        });
+      const existingQueries = qs.parse(router.history.location.search, {
+        ignoreQueryPrefix: true,
+      });
 
-        // don't change state/route in jupyter notebook or similar environments.
-        if (existingQueries?.["context"] === "ipython") {
-          return;
-        }
+      const queryString = qs.stringify(
+        { ...existingQueries, [query]: value },
+        { skipNulls: true }
+      );
 
-        const queryString = qs.stringify(
-          { ...existingQueries, [query]: value },
-          { skipNulls: true }
-        );
-
-        if (router.history.location.state.state) {
-          router.history.push(`${location.pathname}?${queryString}`, {
+      if (router.history.location.state.state) {
+        router.history.push(
+          `${router.history.location.pathname}?${queryString}`,
+          {
             state: {
               ...router.history.location.state.state,
               selected: [],
@@ -34,17 +30,17 @@ const useQueryState = (query) => {
               ...(dataset.viewCls ? { viewCls: dataset.viewCls } : {}),
               ...(dataset ? { dataset } : {}),
             },
-          });
-        }
-      } catch (e) {
-        console.error("setSavedViewParam", e);
+          }
+        );
       }
     },
-    [history, location, query]
+    [router, query]
   );
 
   return [
-    qs.parse(location.search, { ignoreQueryPrefix: true })[query],
+    qs.parse(router.history.location.search, { ignoreQueryPrefix: true })[
+      query
+    ],
     setQuery,
   ];
 };

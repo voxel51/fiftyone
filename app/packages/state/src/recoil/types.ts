@@ -43,7 +43,6 @@ export namespace State {
     id: string;
     datasetId: string;
     name: string;
-    slug: string;
     description?: string;
     color?: string;
     viewStages: Stage[];
@@ -132,6 +131,7 @@ export namespace State {
     groupField: string;
     appConfig: DatasetAppConfig;
     info: { [key: string]: string };
+    viewCls: string;
   }
 
   export interface Filter {}
@@ -182,7 +182,5 @@ export namespace State {
     viewCls: string | null;
     viewName: string | null;
     savedViews: SavedView[];
-    savedViewSlug: string | null;
-    changingSavedView: Boolean | null;
   }
 }

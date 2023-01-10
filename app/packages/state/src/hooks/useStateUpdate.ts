@@ -49,7 +49,6 @@ const useStateUpdate = () => {
         resolve instanceof Function ? resolve(t) : resolve;
 
       const { get, reset, set } = t;
-
       if (state) {
         const view = get(viewAtoms.view);
         if (dataset.stages && !state.view) {

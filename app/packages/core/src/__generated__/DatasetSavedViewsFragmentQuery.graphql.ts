@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a1523cc0d8df5d37476380aef857dc57>>
+ * @generated SignedSource<<ec742d2ba9628c64e84c768302b67c81>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -90,13 +90,6 @@ return {
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "slug",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
             "name": "description",
             "storageKey": null
           },
@@ -141,16 +134,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "f919db0b35ff9c15a0225d3764faf287",
+    "cacheID": "f5e6dc02b4feb9380ac78f89d8ba0df1",
     "id": null,
     "metadata": {},
     "name": "DatasetSavedViewsFragmentQuery",
     "operationKind": "query",
-    "text": "query DatasetSavedViewsFragmentQuery(\n  $name: String!\n) {\n  ...DatasetSavedViewsFragment\n}\n\nfragment DatasetSavedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
+    "text": "query DatasetSavedViewsFragmentQuery(\n  $name: String!\n) {\n  ...DatasetSavedViewsFragment\n}\n\nfragment DatasetSavedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c7972fa3f5796bad3d7d9766e6ea6d80";
+(node as any).hash = "a10c384cf9aba742ed54c5eeb463f040";
 
 export default node;

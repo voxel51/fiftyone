@@ -6,7 +6,7 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import { usePreloadedQuery, useRefetchableFragment } from "react-relay";
+import { useRefetchableFragment } from "react-relay";
 
 import qs from "qs";
 import * as fos from "@fiftyone/state";
@@ -15,7 +15,6 @@ import { Selection } from "@fiftyone/components";
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
 import { DatasetSavedViewsFragment } from "../../../Dataset";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
-import { isElectron } from "@fiftyone/utilities";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 import { DatasetQueryRef } from "../../../Root/Datasets/Dataset";
 
@@ -24,7 +23,7 @@ const DEFAULT_SELECTED: DatasetViewOption = {
   label: "Unsaved view",
   color: "#9e9e9e",
   description: "Unsaved view",
-  slug: "unsaved-view",
+  name: "unsaved-view",
   viewStages: [],
 };
 
@@ -43,25 +42,19 @@ export const selectedSavedViewState = atom<DatasetViewOption | null>({
 
 export type DatasetViewOption = Pick<
   fos.State.SavedView,
-  "id" | "description" | "color" | "viewStages"
-> & { label: string; slug: string };
+  "id" | "description" | "color" | "viewStages" | "name"
+> & { label: string };
 
 export interface DatasetView {
   id: string;
   name: string;
   datasetId: string;
-  slug: string;
   color: string | null;
   description: string | null;
   viewStages: readonly string[];
 }
 
-interface Props {
-  datasetName: string;
-  queryRef: any;
-}
-
-export default function ViewSelection(props: Props) {
+export default function ViewSelection() {
   const [selected, setSelected] = useRecoilState<DatasetViewOption | null>(
     selectedSavedViewState
   );
@@ -71,7 +64,7 @@ export default function ViewSelection(props: Props) {
   });
   const isIPython = existingQueries?.["context"] === "ipython";
 
-  const { datasetName } = props;
+  const datasetName = useRecoilValue(fos.datasetName);
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
   const [savedViewParam, setSavedViewParam] = fos.useQueryState("view");
   const setEditView = useSetRecoilState(viewDialogContent);
@@ -94,12 +87,12 @@ export default function ViewSelection(props: Props) {
   const viewOptions: DatasetViewOption[] = useMemo(
     () => [
       DEFAULT_SELECTED,
-      ...map(items, ({ name, color, description, slug, viewStages }) => ({
-        id: slug,
+      ...map(items, ({ name, color, description, viewStages }) => ({
+        id: name,
+        name,
         label: name,
         color,
         description,
-        slug: slug,
         viewStages,
       })),
     ],
@@ -110,11 +103,11 @@ export default function ViewSelection(props: Props) {
     () =>
       filter(
         viewOptions,
-        ({ id, label, description, slug }: DatasetViewOption) =>
+        ({ id, label, description, name }: DatasetViewOption) =>
           id === DEFAULT_SELECTED.id ||
           label.toLowerCase().includes(viewSearch) ||
           description?.toLowerCase().includes(viewSearch) ||
-          slug?.toLowerCase().includes(viewSearch)
+          name?.toLowerCase().includes(viewSearch)
       ) as DatasetViewOption[],
     [viewOptions, viewSearch]
   );
@@ -126,7 +119,7 @@ export default function ViewSelection(props: Props) {
       searchData?.length
     ) {
       const potentialView = searchData.filter(
-        (v) => v.slug === selected.slug
+        (v) => v.name === selected.name
       )?.[0];
       if (potentialView) {
         setSelected(potentialView);
@@ -137,19 +130,11 @@ export default function ViewSelection(props: Props) {
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
   const bookmarkIconOn = useRecoilValue(shouldToggleBookMarkIconOnSelector);
   const isEmptyView = !bookmarkIconOn && !loadedView?.length;
-  // special case for electron app to clear the selection
-  // when there is no loaded view
-  const isDesktop = isElectron();
-  useEffect(() => {
-    if ((isDesktop || isIPython) && !loadedView.length) {
-      setSelected(DEFAULT_SELECTED);
-    }
-  }, [isDesktop, loadedView, isIPython]);
 
   useEffect(() => {
     if (savedViewParam) {
       const potentialView = viewOptions.filter(
-        (v) => v.slug === savedViewParam
+        (v) => v.name === savedViewParam
       )?.[0];
       if (potentialView) {
         // no unnecessary setView call if selected has not changed
@@ -159,7 +144,7 @@ export default function ViewSelection(props: Props) {
         setSelected(potentialView);
       } else {
         const potentialUpdatedView = savedViewsV2.filter(
-          (v) => v.slug === savedViewParam
+          (v) => v.name === savedViewParam
         )?.[0];
         if (potentialUpdatedView) {
           refetch(
@@ -170,7 +155,6 @@ export default function ViewSelection(props: Props) {
                 setSelected({
                   ...potentialUpdatedView,
                   label: potentialUpdatedView.name,
-                  slug: potentialUpdatedView.slug,
                 });
               },
             }
@@ -182,7 +166,7 @@ export default function ViewSelection(props: Props) {
       }
     } else {
       // no view param
-      if (!isIPython && selected && selected.slug !== DEFAULT_SELECTED.slug) {
+      if (!isIPython && selected && selected.name !== DEFAULT_SELECTED.name) {
         setSelected(DEFAULT_SELECTED);
         // do not reset view to [] again. The viewbar sets it once.
       }
@@ -220,7 +204,7 @@ export default function ViewSelection(props: Props) {
                 fetchPolicy: "network-only",
                 onComplete: (newOptions) => {
                   if (createSavedView && reload) {
-                    setSavedViewParam(createSavedView.slug);
+                    setSavedViewParam(createSavedView.name);
                     setSelected({
                       ...createSavedView,
                       label: createSavedView.name,
@@ -253,7 +237,7 @@ export default function ViewSelection(props: Props) {
           selected={selected}
           setSelected={(item: DatasetViewOption) => {
             setSelected(item);
-            setView(item.viewStages, [], item.label, true, item.slug);
+            setView(item.viewStages, [], item.label, true, item.name);
           }}
           items={searchData}
           onEdit={(item) => {
