@@ -51,6 +51,7 @@ class StateDescription(etas.Serializable):
         view_name=None,
         saved_view_slug=None,
         changing_saved_view=None,
+        spaces=None,
     ):
         self.config = config or fo.app_config.copy()
         self.dataset = dataset
@@ -60,6 +61,7 @@ class StateDescription(etas.Serializable):
         self.view_name = view_name
         self.saved_view_slug = saved_view_slug
         self.changing_saved_view = changing_saved_view or False
+        self.spaces = spaces
 
     def serialize(self, reflective=False):
         with fou.disable_progress_bars():
@@ -94,6 +96,8 @@ class StateDescription(etas.Serializable):
 
             if self.config.colorscale:
                 d["colorscale"] = self.config.get_colormap()
+
+            d["spaces"] = self.spaces
 
             return d
 
@@ -151,6 +155,7 @@ class StateDescription(etas.Serializable):
             view=view,
             view_name=view_name,
             changing_saved_view=d.get("changing_saved_view", False),
+            spaces=d.get("spaces", None),
         )
 
 

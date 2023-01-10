@@ -57,6 +57,7 @@ type AppConfig {
   theme: Theme!
   timezone: String
   useFrameNumber: Boolean!
+  spaces: JSON
 }
 
 scalar BSON
@@ -145,6 +146,7 @@ type DatasetAppConfig {
   sidebarMode: SidebarMode
   modalMediaField: String
   gridMediaField: String
+  spaces: JSON
 }
 
 type DatasetStrConnection {
@@ -338,6 +340,7 @@ type Mutation {
     updatedInfo: SavedViewInfo!
     datasetName: String = null
   ): SavedView
+  setSpaces(subscription: String!, spaces: JSON!): Boolean!
 }
 
 type NamedKeypointSkeleton {
@@ -362,7 +365,7 @@ type Query {
     datasetName: String!
     view: BSONArray
     aggregations: [Aggregate!]!
-    viewName: String
+    viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
   dataset(name: String!, view: BSONArray, viewName: String): Dataset
