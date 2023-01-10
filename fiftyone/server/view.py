@@ -373,6 +373,8 @@ def _make_expression(field, path, args):
     ):
         new_field = field.field
         if args["exclude"]:
+            args["exclude"] = False
+            # need to mark false for subexpression since we changed the condition for exclude, so we do not want a "not" expression
             expr = (
                 lambda subexpr: F(field.db_field or field.name)
                 .filter(subexpr)
