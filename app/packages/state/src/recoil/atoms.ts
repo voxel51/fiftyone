@@ -3,6 +3,7 @@ import { atom, atomFamily, useRecoilCallback } from "recoil";
 import { Sample, RGB } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
+import { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -269,4 +270,9 @@ export const compactLayout = atom({
 export const readOnly = atom({
   key: "readOnly",
   default: false,
+});
+
+export const sessionSpaces = atom<SpaceNodeJSON>({
+  key: "sessionSpaces",
+  default: undefined,
 });

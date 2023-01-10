@@ -30,6 +30,7 @@ import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.core.state import StateDescription
+from fiftyone.core.spaces import default_spaces, Space
 
 import fiftyone.core.session.client as fosc
 from fiftyone.core.session.events import (
@@ -60,6 +61,19 @@ logger = logging.getLogger(__name__)
 _session = None
 _server_services = {}
 _subscribed_sessions = defaultdict(set)
+# default_spaces = {
+#     "id": "root",
+#     "children": [
+#         {
+#             "id": "default-samples-node",
+#             "children": [],
+#             "type": "Samples",
+#             "pinned": True,
+#         },
+#     ],
+#     "type": "panel-container",
+#     "activeChild": "default-samples-node",
+# }
 
 _APP_DESKTOP_MESSAGE = """
 Desktop App launched.
@@ -350,11 +364,26 @@ class Session(object):
         if not final_view_name and view and view.name:
             final_view_name = view.name
 
+        # todo: use Space class
+        # initialize spaces state (inherits dataset or app spaces config)
+        spaces = default_spaces
+        if (
+            dataset
+            and dataset.app_config
+            and dataset.app_config.spaces is not None
+        ):
+            spaces = dataset.app_config.spaces
+        elif fo.app_config.spaces is not None:
+            spaces = fo.app_config.spaces
+
+        print(spaces)
+
         self._state = StateDescription(
             config=config,
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
             view_name=final_view_name,
+            spaces=spaces,
         )
         self._client = fosc.Client(
             address=address,
@@ -513,6 +542,16 @@ class Session(object):
             )
 
         self._state.config = config
+
+    @property
+    def spaces(self) -> Space:
+        """The layout state for the session."""
+        return self._state.spaces or default_spaces
+
+    @spaces.setter  # type: ignore
+    @update_state()
+    def spaces(self, spaces: t.Optional[Space]) -> None:
+        self._state.spaces = spaces
 
     @property
     def _collection(self) -> t.Union[fod.Dataset, fov.DatasetView, None]:

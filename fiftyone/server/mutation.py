@@ -19,6 +19,7 @@ from fiftyone.core.session.events import StateUpdate
 import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
 import fiftyone.core.dataset as fod
+from fiftyone.core.spaces import Space
 
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
@@ -404,3 +405,14 @@ class Mutation:
             ),
             None,
         )
+
+    @gql.mutation
+    async def set_spaces(
+        self,
+        subscription: str,
+        spaces: Space,
+    ) -> bool:
+        state = get_state()
+        state.spaces = spaces
+        await dispatch_event(subscription, StateUpdate(state=state))
+        return True

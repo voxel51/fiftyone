@@ -1,4 +1,5 @@
 import { StrictField } from "@fiftyone/utilities";
+import { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export namespace State {
   export type MediaType = "image" | "group" | "point_cloud" | "video";
@@ -196,5 +197,6 @@ export namespace State {
     savedViews: SavedView[];
     savedViewSlug: string | null;
     changingSavedView: Boolean | null;
+    spaces?: SpaceNodeJSON;
   }
 }
