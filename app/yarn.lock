@@ -4276,6 +4276,7 @@ __metadata:
     uuid: ^8.3.2
     vite: ^3.0.0
     vite-plugin-relay: ^1.0.7
+    vite-plugin-rewrite-all: ^1.0.0
     xstate: ^4.14.0
   languageName: unknown
   linkType: soft
@@ -11493,6 +11494,13 @@ __metadata:
     write-file-atomic: ^3.0.0
     xdg-basedir: ^4.0.0
   checksum: 60ef65d493b63f96e14b11ba7ec072fdbf3d40110a94fb7199d1c287761bdea5c5244e76b2596325f30c1b652213aa75de96ea20afd4a5f82065e61ea090988e
+  languageName: node
+  linkType: hard
+
+"connect-history-api-fallback@npm:^1.6.0":
+  version: 1.6.0
+  resolution: "connect-history-api-fallback@npm:1.6.0"
+  checksum: 804ca2be28c999032ecd37a9f71405e5d7b7a4b3defcebbe41077bb8c5a0a150d7b59f51dcc33b2de30bc7e217a31d10f8cfad27e8e74c2fc7655eeba82d6e7e
   languageName: node
   linkType: hard
 
@@ -24795,6 +24803,17 @@ __metadata:
     babel-plugin-relay: ^14.1.0
     vite: ">=2.0.0"
   checksum: 123ee9ae0b0da51669a1698f6478e32725971522ccf90b77af678566cb2c23602a687a8caadac6ab25516937d9ff80a77ccae7b8e8a6b4c4f7170b5f5977fc0e
+  languageName: node
+  linkType: hard
+
+"vite-plugin-rewrite-all@npm:^1.0.0":
+  version: 1.0.1
+  resolution: "vite-plugin-rewrite-all@npm:1.0.1"
+  dependencies:
+    connect-history-api-fallback: ^1.6.0
+  peerDependencies:
+    vite: ^2.0.0 || ^3.0.0 || ^4.0.0
+  checksum: 9a22e51e80fc14d58d32556208c26740baf3f02eae2d0a5f356ddc1ea478bd2f56803cc17e77261ffad33d27301017ba03736143446685c03bb0f076eef2fdd0
   languageName: node
   linkType: hard
 
