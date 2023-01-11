@@ -25,7 +25,23 @@ from fiftyone.server.events import get_state, dispatch_event
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.query import Dataset, SidebarGroup, SavedView
 from fiftyone.server.scalars import BSON, BSONArray, JSON
-from fiftyone.server.view import get_dataset_view, extend_view
+from fiftyone.server.view import get_view, extend_view
+
+
+def _build_result_view(result_view, form):
+    if form.slice:
+        result_view = result_view.select_group_slices([form.slice])
+    if form.sample_ids:
+        result_view = fov.make_optimized_select_view(
+            result_view, form.sample_ids
+        )
+    if form.add_stages:
+        for d in form.add_stages:
+            stage = fos.ViewStage._from_dict(d)
+            result_view = result_view.add_stage(stage)
+    if form.extended:
+        result_view = extend_view(result_view, form.extended, True)
+    return result_view
 
 
 @gql.input
@@ -97,7 +113,7 @@ class Mutation:
         sidebar_groups: t.List[SidebarGroupInput],
     ) -> bool:
         state = get_state()
-        view = get_dataset_view(dataset, stages=stages)
+        view = get_view(dataset, stages=stages)
 
         current = (
             {
@@ -185,28 +201,14 @@ class Mutation:
 
         if result_view is None:
             # Update current view with form parameters
-            result_view = get_dataset_view(
+            result_view = get_view(
                 dataset_name,
                 stages=view if view else None,
                 filters=form.filters if form else None,
             )
-            if form.slice:
-                result_view = result_view.select_group_slices([form.slice])
-
-            if form.sample_ids:
-                result_view = fov.make_optimized_select_view(
-                    result_view, form.sample_ids
-                )
-
-            if form.add_stages:
-                for d in form.add_stages:
-                    stage = fos.ViewStage._from_dict(d)
-                    result_view = result_view.add_stage(stage)
-
-            if form.extended:
-                result_view = extend_view(result_view, form.extended, True)
-            # Set view state
-            state.view = result_view
+        result_view = _build_result_view(result_view, form)
+        # Set view state
+        state.view = result_view
 
         await dispatch_event(
             subscription,
@@ -246,9 +248,9 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         view: BSONArray,
-        view_name: t.Optional[str],
         slice: str,
         info: Info,
+        view_name: t.Optional[str] = None,
     ) -> Dataset:
         state = get_state()
         state.dataset.group_slice = slice
@@ -256,7 +258,11 @@ class Mutation:
         return await Dataset.resolver(
             name=state.dataset.name,
             view=view,
-            view_name=view_name if view_name else state.view.name,
+            view_name=view_name
+            if view_name
+            else state.view.name
+            if state.view
+            else None,
             info=info,
         )
 
@@ -267,15 +273,15 @@ class Mutation:
         session: t.Optional[str],
         view_name: str,
         view_stages: t.Optional[BSONArray] = None,
+        form: t.Optional[StateForm] = None,
         dataset_name: t.Optional[str] = None,
         description: t.Optional[str] = None,
         color: t.Optional[str] = None,
     ) -> t.Optional[SavedView]:
         state = get_state()
         dataset = state.dataset
-        use_state = True
+        use_state = dataset is not None
         if dataset is None:
-            use_state = False
             # teams is stateless so dataset will be null
             dataset = fo.load_dataset(dataset_name)
 
@@ -285,21 +291,23 @@ class Mutation:
                 "reference for creating saved view with name = "
                 "{}".format(view_name)
             )
+
+        dataset_view = get_view(
+            dataset_name,
+            stages=view_stages if view_stages else None,
+            filters=form.filters if form else None,
+        )
         # view arg required to be an instance of
         # `fiftyone.core.view.DatasetView`
+        result_view = _build_result_view(dataset_view, form)
+        dataset.save_view(
+            view_name, result_view, description=description, color=color
+        )
         if use_state:
-            dataset.save_view(
-                view_name, state.view, description=description, color=color
-            )
             dataset.reload()
             state.view = dataset.load_saved_view(view_name)
             state.view_name = view_name
             await dispatch_event(subscription, StateUpdate(state=state))
-        else:
-            view = get_dataset_view(dataset_name, stages=view_stages)
-            dataset.save_view(
-                view_name, view, description=description, color=color
-            )
 
         return next(
             (
@@ -316,17 +324,19 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         view_name: str,
-        dataset_name: t.Optional[str] = None,
+        dataset_name: t.Optional[str],
     ) -> t.Optional[str]:
-        state = get_state()
-        if state is None and dataset_name is None:
+        if not dataset_name:
             raise ValueError(
                 "Attempting to delete a saved view (%s) without a "
                 "dataset reference.",
                 view_name,
             )
 
-        dataset = state.dataset if state else fo.load_dataset(dataset_name)
+        dataset = fo.load_dataset(dataset_name)
+        if not dataset:
+            raise ValueError(f"No dataset found with name {dataset_name}")
+
         if dataset.has_saved_view(view_name):
             deleted_view_id = dataset.delete_saved_view(view_name)
         else:
@@ -337,7 +347,8 @@ class Mutation:
 
         # If the current view is deleted, set the view state to the full
         # dataset view
-        if state and state.view_name == view_name:
+        state = get_state()
+        if view_name and state.view_name == view_name:
             state.view = dataset.view()
             state.view_name = None
 

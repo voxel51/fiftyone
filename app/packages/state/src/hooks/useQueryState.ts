@@ -25,14 +25,14 @@ const useQueryState = (query) => {
           { skipNulls: true }
         );
 
-        if (router.history.location.state.state) {
+        if (router.history.location.state) {
           router.history.push(`${location.pathname}?${queryString}`, {
             state: {
               ...router.history.location.state.state,
               selected: [],
               selectedLabels: [],
-              ...(dataset.viewCls ? { viewCls: dataset.viewCls } : {}),
-              ...(dataset ? { dataset } : {}),
+              viewCls: dataset?.viewCls || null,
+              dataset: dataset || null,
             },
           });
         }

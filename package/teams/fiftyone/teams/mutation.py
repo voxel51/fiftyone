@@ -16,6 +16,7 @@ import strawberry as gql
 import typing as t
 
 from fiftyone.server.data import Info
+import fiftyone.core.dataset as fod
 import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
 
@@ -65,17 +66,32 @@ class Mutation(fosm.Mutation):
         self,
         subscription: str,
         session: t.Optional[str],
-        view: BSONArray,
-        dataset: str,
+        dataset_name: str,
+        view: t.Optional[BSONArray],
+        view_name: t.Optional[str],
+        saved_view_slug: t.Optional[str],
+        changing_saved_view: t.Optional[bool],
         form: t.Optional[fosm.StateForm],
         info: Info,
     ) -> fosm.ViewResponse:
-        view = fosm.get_view(
-            dataset,
-            view,
-            form.filters,
-        )
-        if form:
+
+        result_view = None
+
+        if view_name is not None:
+            ds = fod.load_dataset(dataset_name)
+            if ds.has_saved_view(view_name):
+                # Load a saved dataset view by name
+                result_view = ds.load_saved_view(view_name)
+                view = result_view._serialize()  # serialized view stages
+
+        elif form:
+            # convert serialized view_stages to DatasetView
+            view = fosm.get_view(
+                dataset_name,
+                stages=view,
+                filters=form.filters,
+            )
+
             if form.slice:
                 view = view.select_group_slices([form.slice])
 
@@ -90,15 +106,38 @@ class Mutation(fosm.Mutation):
             if form.extended:
                 view = fosm.extend_view(view, form.extended, True)
 
+            result_view = view  # DatasetView
+            view = view._serialize()  # serialized view stages
+
+        else:
+            # convert serialized view_stages to DatasetView
+            view = fosm.get_view(
+                dataset_name,
+                stages=view,
+                filters=form.filters,
+            )
+
             result_view = view
             view = view._serialize()
 
-        else:
-            result_view = fov.DatasetView._build(dataset, view)
-
         dataset = await Dataset.resolver(
-            result_view._root_dataset.name, view, info
+            name=dataset_name,
+            view=view,
+            view_name=view_name
+            if view_name
+            else result_view.name
+            if result_view
+            else None,
+            info=info,
         )
         return fosm.ViewResponse(
-            view=result_view._serialize(), dataset=dataset
+            view=view,
+            dataset=dataset,
+            view_name=view_name
+            if view_name
+            else result_view.name
+            if result_view
+            else None,
+            saved_view_slug=saved_view_slug if saved_view_slug else None,
+            changing_saved_view=changing_saved_view,
         )

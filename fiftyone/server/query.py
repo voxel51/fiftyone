@@ -133,10 +133,7 @@ class SavedView:
     @classmethod
     def from_doc(cls, doc: SavedViewDocument):
         stage_dicts = [json_util.loads(x) for x in doc.view_stages]
-        saved_view = from_dict(
-            data_class=cls,
-            data=doc.serialize(),
-        )
+        saved_view = from_dict(data_class=cls, data=doc.to_dict())
         saved_view.stage_dicts = stage_dicts
         return saved_view
 
@@ -221,7 +218,6 @@ class Dataset:
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
         doc["saved_views"] = doc.get("saved_views", [])
-
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -349,7 +345,9 @@ class Query(fosa.AggregateQuery):
         return None
 
     @gql.field
-    def teams_submission(self) -> bool:
+    def teams_submission(
+        self,
+    ) -> bool:  # TODO: check what this method should be
         return True
         isfile = os.path.isfile(foc.TEAMS_PATH)
         if isfile:
@@ -368,26 +366,6 @@ class Query(fosa.AggregateQuery):
     def version(self) -> str:
         return foc.VERSION
 
-    # @gql.field
-    # async def saved_view(
-    #     self, dataset_name: str, view_name: t.Optional[str]
-    # ) -> t.Optional[SavedView]:
-    #     if not view_name and dataset_name:
-    #         return
-    #
-    #     ds = fo.load_dataset(dataset_name)
-    #     if ds.has_saved_view(view_name):
-    #         return next(
-    #             (
-    #                 SavedView.from_doc(view_doc)
-    #                 for view_doc in ds._doc.saved_views
-    #                 if view_doc.name == view_name
-    #             ),
-    #             None,
-    #         )
-    #     return
-
-    #
     @gql.field
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
         ds = fo.load_dataset(dataset_name)
@@ -418,15 +396,12 @@ def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
 
 
 async def serialize_dataset(
-    *,
-    dataset_name: str,
-    serialized_view: BSONArray,
-    view_name: t.Optional[str]
+    dataset_name: str, serialized_view: BSONArray, view_name: t.Optional[str]
 ) -> Dataset:
     def run():
         dataset = fo.load_dataset(dataset_name)
-
         dataset.reload()
+
         if view_name is not None and dataset.has_saved_view(view_name):
             view = dataset.load_saved_view(view_name)
         else:

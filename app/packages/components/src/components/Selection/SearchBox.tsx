@@ -20,6 +20,7 @@ const SearchInput = styled.input`
   padding: 0.25rem 0.5rem;
   color: ${({ theme }) => theme.text.primary};
   background: ${({ theme }) => theme.background.level3};
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
 
   &:focus {
     border: 1px solid ${({ theme }) => theme.primary.softBorder};

@@ -186,13 +186,6 @@ type EvaluationRunConfig implements RunConfig {
   method: String
 }
 
-input ExtendedViewForm {
-  filters: JSON = null
-  mixed: Boolean = null
-  sampleIds: [String!] = null
-  slice: String = null
-}
-
 type FloatAggregation implements Aggregation {
   path: String!
   count: Int!
@@ -312,15 +305,14 @@ type Mutation {
     subscription: String!
     session: String
     view: BSONArray!
+    viewName: String
     slice: String!
-    viewName: String = null
   ): Dataset!
   createSavedView(
     subscription: String!
     session: String
     viewName: String!
     viewStages: BSONArray = null
-    form: StateForm = null
     datasetName: String = null
     description: String = null
     color: String = null
@@ -329,7 +321,7 @@ type Mutation {
     subscription: String!
     session: String
     viewName: String!
-    datasetName: String
+    datasetName: String = null
   ): String
   updateSavedView(
     viewName: String!
@@ -362,8 +354,7 @@ type Query {
     datasetName: String!
     view: BSONArray
     aggregations: [Aggregate!]!
-    viewName: String = null
-    form: ExtendedViewForm = null
+    viewName: String
   ): [AggregationResponses!]!
   dataset(name: String!, view: BSONArray, viewName: String): Dataset
   datasets(
