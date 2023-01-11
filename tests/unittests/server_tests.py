@@ -46,8 +46,6 @@ class ServerViewTests(unittest.TestCase):
             count_label_tags=True,
         )._pipeline()
 
-        print("returned", returned)
-
         expected = [
             {
                 "$set": {
@@ -808,7 +806,7 @@ class ServerViewTests(unittest.TestCase):
             },
             {"$unset": "frames.__detections"},
         ]
-        print("returned", returned)
+
         self.assertEqual(expected, returned)
 
     @drop_datasets
@@ -901,6 +899,5 @@ class ServerViewTests(unittest.TestCase):
                 }
             },
         ]
-        print(returned)
 
         self.assertEqual(expected, returned)

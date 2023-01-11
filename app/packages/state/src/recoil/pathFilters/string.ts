@@ -63,7 +63,7 @@ export const stringSelectedValuesAtom = selectorFamily<
   (string | null)[],
   { modal: boolean; path: string }
 >({
-  key: "stringFilterLabelsAtom",
+  key: "stringSelectedValuesAtom",
   get:
     ({ modal, path }) =>
     ({ get }) =>
