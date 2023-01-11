@@ -16,6 +16,7 @@ import ViewDialog, { viewDialogContent } from "./ViewDialog";
 import { DatasetQueryRef, DatasetSavedViewsFragment } from "../../../Dataset";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
+import { viewName } from "@fiftyone/state";
 
 const DEFAULT_SELECTED: DatasetViewOption = {
   id: "1",
@@ -65,7 +66,7 @@ export default function ViewSelection() {
 
   const datasetName = useRecoilValue(fos.datasetName);
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
-  const [savedViewParam, setSavedViewParam] = fos.useQueryState("view");
+  const savedViewParam = useRecoilValue(viewName);
   const setEditView = useSetRecoilState(viewDialogContent);
   const setView = fos.useSetView();
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
@@ -203,7 +204,7 @@ export default function ViewSelection() {
                 fetchPolicy: "network-only",
                 onComplete: (newOptions) => {
                   if (createSavedView && reload) {
-                    setSavedViewParam(createSavedView.name);
+                    setView([], undefined, createSavedView.name);
                     setSelected({
                       ...createSavedView,
                       label: createSavedView.name,
@@ -220,12 +221,7 @@ export default function ViewSelection() {
                 fetchPolicy: "network-only",
                 onComplete: () => {
                   if (selected?.label === deletedSavedViewName) {
-                    setSavedViewParam(null);
-                    setView([], [], "", false, "");
-
-                    if (isDesktop) {
-                      setSelected(DEFAULT_SELECTED);
-                    }
+                    setView([], []);
                   }
                 },
               }
@@ -236,7 +232,7 @@ export default function ViewSelection() {
           selected={selected}
           setSelected={(item: DatasetViewOption) => {
             setSelected(item);
-            setView(item.viewStages, [], item.label, true, item.name);
+            setView(item.viewStages, [], item.name);
           }}
           items={searchData}
           onEdit={(item) => {

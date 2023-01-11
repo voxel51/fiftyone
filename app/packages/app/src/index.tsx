@@ -94,8 +94,7 @@ const App: React.FC = ({}) => {
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
-                viewName:
-                  getSavedViewName(contextRef.current) || data.view_name,
+                viewName: data.view_name,
               } as State.Description;
 
               if (readyStateRef.current !== AppReadyState.OPEN) {
@@ -116,6 +115,7 @@ const App: React.FC = ({}) => {
               if (search.length) {
                 search = `?${search}`;
               }
+
               const path = state.dataset
                 ? `/datasets/${encodeURIComponent(state.dataset)}${search}`
                 : `/${search}`;
