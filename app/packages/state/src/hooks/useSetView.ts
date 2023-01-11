@@ -127,6 +127,11 @@ const useSetView = (
                   changingSavedView: changingSavedView,
                 };
                 router.history.location.state.state = newState;
+                console.log(
+                  "useSetView onComplete new" +
+                    " router.history.location.state.state:",
+                  router.history.location.state.state
+                );
 
                 const url = new URL(window.location.toString());
                 const currentSlug = url.searchParams.get("view");

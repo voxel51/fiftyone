@@ -89,6 +89,7 @@ def get_header_token(authorization: str):
 
 async def authenticate_header(token: str, jwks: JWKS) -> bool:
     unverified_header = jwt.get_unverified_header(token)
+
     rsa_key = {}
     for key in jwks.keys:
         if key.kid == unverified_header["kid"]:

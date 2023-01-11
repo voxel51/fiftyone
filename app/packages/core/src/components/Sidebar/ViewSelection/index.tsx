@@ -96,7 +96,7 @@ export default function ViewSelection(props: Props) {
     () => [
       DEFAULT_SELECTED,
       ...map(items, ({ name, color, description, slug, viewStages }) => ({
-        id: slug,
+        id: slug, // should this be id
         label: name,
         color,
         description,
