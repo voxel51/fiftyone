@@ -62,8 +62,6 @@ export default function ViewSelection() {
   const existingQueries = qs.parse(location.search, {
     ignoreQueryPrefix: true,
   });
-  const isIPython = existingQueries?.["context"] === "ipython";
-
   const datasetName = useRecoilValue(fos.datasetName);
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
   const savedViewParam = useRecoilValue(viewName);
@@ -74,6 +72,7 @@ export default function ViewSelection() {
   const { savedViews: savedViewsV2 = [] } = fos.useSavedViews();
 
   const fragmentRef = useContext(DatasetQueryRef);
+
   if (!fragmentRef) throw new Error("ref not defined");
 
   const [data, refetch] = useRefetchableFragment(
@@ -166,7 +165,7 @@ export default function ViewSelection() {
       }
     } else {
       // no view param
-      if (!isIPython && selected && selected.name !== DEFAULT_SELECTED.name) {
+      if (selected && selected.name !== DEFAULT_SELECTED.name) {
         setSelected(DEFAULT_SELECTED);
         // do not reset view to [] again. The viewbar sets it once.
       }
