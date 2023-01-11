@@ -300,6 +300,10 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
                 state.selected_labels = []
                 state.view_name = payload.initializer.view
             except:
+                state.view = None
+                state.selected = []
+                state.selected_labels = []
+                state.view_name = None
                 pass
 
         if update:
