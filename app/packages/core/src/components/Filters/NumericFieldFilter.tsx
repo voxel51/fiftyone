@@ -188,12 +188,14 @@ const NumericFieldFilter = ({
   if (!hasNonfinites && !hasBounds && named) {
     return null;
   }
-
+  // only show all four options the field is a nested ListField.
+  // pass down nestedField as a prop to generate options
   const fieldPath = path.split(".").slice(0, -1).join(".");
   const fieldSchema = useRecoilValue(fos.field(fieldPath));
-  const shouldShowAllOptions = Boolean(
-    fieldSchema?.ftype.includes("ListField")
-  );
+  const nestedField = Boolean(fieldSchema?.ftype.includes("ListField"))
+    ? fieldSchema?.dbField?.toLowerCase()
+    : undefined;
+
   // if the field is a keypoint label, there is no need to show match options
   const isKeyPoints = fieldSchema?.dbField === "keypoints";
 
@@ -201,7 +203,7 @@ const NumericFieldFilter = ({
     setFilter([null, null]);
     setExcluded && setExcluded(false);
     setOnlyMatch && setOnlyMatch(true);
-    setIsMatching && setIsMatching(!shouldShowAllOptions);
+    setIsMatching && setIsMatching(!Boolean(nestedField));
   };
 
   // if range is not in default position, nonfinites should not be shown, but they should be set to false
@@ -300,9 +302,9 @@ const NumericFieldFilter = ({
               {...props}
             />
           ))}
-        {isFiltered && nonfinites.length > 0 && hasBounds && (
+        {isFiltered && hasBounds && (
           <FilterOption
-            shouldShowAllOptions={shouldShowAllOptions}
+            nestedField={nestedField}
             shouldNotShowExclude={false} // only boolean fields don't use exclude
             excludeAtom={excludeAtom}
             onlyMatchAtom={onlyMatchAtom}

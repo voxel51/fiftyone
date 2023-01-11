@@ -18,7 +18,7 @@ import { joinStringArray } from "../../utils";
 import Item from "./FilterItem";
 
 interface Props {
-  shouldShowAllOptions: boolean; // nested ListFields only (eg. ground_truth and predictions)
+  nestedField: string | undefined; // nested ListFields only ("detections")
   shouldNotShowExclude: boolean; // for BooleanFields
   excludeAtom: RecoilState<boolean>;
   onlyMatchAtom: RecoilState<boolean>;
@@ -41,7 +41,7 @@ type Option = {
 type Key = "filter" | "negativeFilter" | "match" | "negativeMatch";
 
 const generateOptions = (
-  shouldShowAllOptions: boolean,
+  nestedField: string | undefined,
   shouldNotShowExclude: boolean,
   modal: boolean,
   isKeyPointLabel: boolean,
@@ -54,20 +54,20 @@ const generateOptions = (
   //  3) in expanded mode or keypoints field, do not show the match or negative match options;
 
   const options: Option[] = [];
-  if (shouldShowAllOptions) {
+  if (Boolean(nestedField)) {
     options.push({
       icon: "FilterAltIcon",
       key: "filter",
-      value: `Filter ${valueName}`,
-      tooltip: "dataset.filter_labels(field, condition, only_matches=True)",
+      value: `Select ${nestedField} with ${valueName}`,
+      tooltip: "dataset.filter_labels(field, expr, only_matches=True)",
     });
   }
-  if (shouldShowAllOptions && !shouldNotShowExclude) {
+  if (Boolean(nestedField) && !shouldNotShowExclude) {
     options.push({
       icon: "FilterAltOffIcon",
       key: "negativeFilter",
-      value: `Exclude ${valueName}`,
-      tooltip: "dataset.filter_labels(field, condition, only_matches=False)",
+      value: `Exclude ${nestedField} with ${valueName}`,
+      tooltip: "dataset.filter_labels(field, ~expr, only_matches=False)",
     });
   }
   if (!modal && !isKeyPointLabel) {
@@ -77,9 +77,9 @@ const generateOptions = (
       value: isRangeLabel
         ? `Show samples in the range`
         : `Show samples with ${valueName}`,
-      tooltip: shouldShowAllOptions
-        ? "dataset.match_labels(fields=field, filter=condition)"
-        : "dataset.match(F(field).filter(condition).length() > 0)",
+      tooltip: Boolean(nestedField)
+        ? "dataset.match_labels(fields=field, filter=expr)"
+        : "dataset.match(F(field).filter(expr).length() > 0)",
     });
   }
   if (!modal && !shouldNotShowExclude && !isKeyPointLabel) {
@@ -87,11 +87,11 @@ const generateOptions = (
       icon: "HideImageIcon",
       key: "negativeMatch",
       value: isRangeLabel
-        ? `Show samples outside the range`
-        : `Show samples without ${valueName}`,
-      tooltip: shouldShowAllOptions
-        ? "dataset.match_labels(fields=field, filter=condition, bool=False)"
-        : "dataset.match(F(field).filter(condition).length() == 0)",
+        ? `Omit samples in the range`
+        : `Omit samples with ${valueName}`,
+      tooltip: Boolean(nestedField)
+        ? "dataset.match_labels(fields=field, filter=expr, bool=False)"
+        : "dataset.match(F(field).filter(expr).length() == 0)",
     });
   }
   return options;
@@ -100,6 +100,7 @@ const generateOptions = (
 const currentSelection = (
   key: Key,
   selectedLabels: string[],
+  nestedField: string | undefined,
   valueName: string,
   isRangeLabel: boolean
 ) => {
@@ -107,9 +108,13 @@ const currentSelection = (
   const item = selectedLabels.length > 1 ? valueName + "s" : valueName;
   switch (key) {
     case "filter":
-      return `Filter ${joinStringArray(selectedLabels)} ${item}`;
+      return `Filter ${nestedField} by ${joinStringArray(
+        selectedLabels
+      )} ${item}, filter samples`;
     case "negativeFilter":
-      return `Exclude ${joinStringArray(selectedLabels)} ${item}`;
+      return `Exclude ${nestedField} by ${joinStringArray(
+        selectedLabels
+      )} ${item}`;
     case "match":
       return isRangeLabel
         ? `Show samples within the selected range`
@@ -128,7 +133,7 @@ const currentSelection = (
 const Text = styled.div`
   font-size: 1rem;
   margin: auto auto auto 5px;
-  ${({ theme }) => theme.text.secondary};
+  cursor: pointer, ${({ theme }) => theme.text.secondary};
 `;
 
 const FilterOptionContainer = styled.div`
@@ -141,7 +146,7 @@ const FilterOption: React.FC<Props> = ({
   modal,
   isKeyPointLabel,
   valueName,
-  shouldShowAllOptions,
+  nestedField,
   shouldNotShowExclude,
   excludeAtom,
   onlyMatchAtom,
@@ -165,7 +170,7 @@ const FilterOption: React.FC<Props> = ({
     setOpen(false);
   });
   const options = generateOptions(
-    shouldShowAllOptions,
+    nestedField,
     shouldNotShowExclude,
     modal,
     isKeyPointLabel,
@@ -178,10 +183,10 @@ const FilterOption: React.FC<Props> = ({
     // otherwise, show defaults: filter for nested listfield, match for other fields
     if (key === null) {
       if (isMatching && !excluded) {
-        shouldShowAllOptions ? setKey("filter") : setKey("match");
+        Boolean(nestedField) ? setKey("filter") : setKey("match");
       }
       if (isMatching && excluded) {
-        shouldShowAllOptions
+        Boolean(nestedField)
           ? setKey("negativeFilter")
           : setKey("negativeMatch");
       }
@@ -206,8 +211,6 @@ const FilterOption: React.FC<Props> = ({
     }
   }, [key]);
 
-  if (options.length === 1) return <></>;
-
   const selectedValue = options.find((o) => o.key === key)?.value;
 
   const Selected = () => {
@@ -217,13 +220,13 @@ const FilterOption: React.FC<Props> = ({
 
     switch (icon.toLowerCase()) {
       case "filteralticon":
-        return <FilterAltIcon />;
+        return <FilterAltIcon fontSize="small" />;
       case "filteraltofficon":
-        return <FilterAltOffIcon />;
+        return <FilterAltOffIcon fontSize="small" />;
       case "imageicon":
-        return <ImageIcon />;
+        return <ImageIcon fontSize="small" />;
       case "hideimageicon":
-        return <HideImageIcon />;
+        return <HideImageIcon fontSize="small" />;
       default:
         return <>{selectedValue}</>;
     }
@@ -258,7 +261,19 @@ const FilterOption: React.FC<Props> = ({
     setOnlyMatch && setOnlyMatch(true);
   };
 
-  const children = <Text ref={ref}>{selectedValue}</Text>;
+  const children = (
+    <Text
+      ref={ref}
+      onClick={() => setOpen(!open)}
+      style={{
+        whiteSpace: "nowrap",
+        textOverflow: "ellipsis",
+        overflow: "hidden",
+      }}
+    >
+      {selectedValue}
+    </Text>
+  );
 
   return (
     <FilterOptionContainer ref={popoutRef}>
@@ -270,20 +285,28 @@ const FilterOption: React.FC<Props> = ({
           marginTop: "5px",
         }}
       >
-        <IconButton onClick={() => setOpen(!open)} sx={{ color: color }}>
-          <Selected />
-        </IconButton>
-        <Tooltip
-          text={currentSelection(
-            key as Key,
-            labels,
-            valueName,
-            Boolean(isRangeLabel)
-          )}
-          placement="right-start"
-        >
-          {children}
-        </Tooltip>
+        {options.length > 1 && (
+          <>
+            <IconButton
+              onClick={() => setOpen(!open)}
+              sx={{ color: color, size: "small" }}
+            >
+              <Selected />
+            </IconButton>
+            <Tooltip
+              text={currentSelection(
+                key as Key,
+                labels,
+                nestedField,
+                valueName,
+                Boolean(isRangeLabel)
+              )}
+              placement="right-start"
+            >
+              {children}
+            </Tooltip>
+          </>
+        )}
       </div>
       {open && (
         <Popout style={{ padding: 0, position: "relative" }}>

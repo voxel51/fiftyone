@@ -1,9 +1,17 @@
+import React from "react";
 import { V } from "./CategoricalFilter";
 
 const ResultComponent = ({ value: { value, count } }: { value: V }) => {
   return (
-    <div>
-      <span
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        flexDirection: "row",
+        width: "100%",
+      }}
+    >
+      <div
         style={{
           fontSize: "1rem",
           flex: 1,
@@ -13,8 +21,8 @@ const ResultComponent = ({ value: { value, count } }: { value: V }) => {
         }}
       >
         {value}
-      </span>
-      <span style={{ fontSize: "1rem" }}>{count}</span>
+      </div>
+      <div style={{ fontSize: "1rem" }}>{count}</div>
     </div>
   );
 };

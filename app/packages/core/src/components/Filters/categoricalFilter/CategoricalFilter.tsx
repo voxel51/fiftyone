@@ -89,6 +89,7 @@ const categoricalSearchResults = selectorFamily<
           .slice(0, 25);
         count++;
       }
+      console.info("categoricalSearchResults", { search, count, values });
 
       return { count, values };
     },

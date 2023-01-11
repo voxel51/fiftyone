@@ -83,12 +83,13 @@ const Wrapper = ({
 
   allValues = [...new Set(allValues)];
 
-  // only show all four options the field is a nested ListField. Otherwise, only show the match options
+  // only show all four options the field is a nested ListField.
+  // pass down nestedField as a prop to generate options
   const fieldPath = path.split(".").slice(0, -1).join(".");
   const fieldSchema = useRecoilValue(fos.field(fieldPath));
-  const shouldShowAllOptions: boolean = Boolean(
-    fieldSchema?.ftype.includes("ListField")
-  );
+  const nestedField = Boolean(fieldSchema?.ftype.includes("ListField"))
+    ? fieldSchema?.dbField?.toLowerCase()
+    : undefined;
 
   // if the field is a BooleanField, there is no need to show the exclude option
   const shouldNotShowExclude = Boolean(schema?.ftype.includes("BooleanField"));
@@ -99,7 +100,7 @@ const Wrapper = ({
   const initializeSettings = () => {
     setExcluded && setExcluded(false);
     setOnlyMatch && setOnlyMatch(true);
-    setIsMatching && setIsMatching(!shouldShowAllOptions);
+    setIsMatching && setIsMatching(!Boolean(nestedField));
   };
 
   return (
@@ -138,7 +139,7 @@ const Wrapper = ({
         <>
           {totalCount > 3 && (
             <FilterOption
-              shouldShowAllOptions={shouldShowAllOptions}
+              nestedField={nestedField}
               shouldNotShowExclude={shouldNotShowExclude}
               excludeAtom={excludeAtom}
               onlyMatchAtom={onlyMatchAtom}

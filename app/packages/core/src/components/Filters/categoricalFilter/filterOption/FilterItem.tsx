@@ -46,13 +46,13 @@ const Item = React.memo(
       const getIcon = (icon: string) => {
         switch (icon.toLowerCase()) {
           case "filteralticon":
-            return <FilterAltIcon />;
+            return <FilterAltIcon fontSize="small" />;
           case "filteraltofficon":
-            return <FilterAltOffIcon />;
+            return <FilterAltOffIcon fontSize="small" />;
           case "imageicon":
-            return <ImageIcon />;
+            return <ImageIcon fontSize="small" />;
           case "hideimageicon":
-            return <HideImageIcon />;
+            return <HideImageIcon fontSize="small" />;
         }
       };
 
