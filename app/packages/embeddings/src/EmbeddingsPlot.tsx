@@ -6,6 +6,9 @@ import { usePanelStatePartial } from "@fiftyone/spaces";
 import { tracesToData } from "./tracesToData";
 import { useKeyDown } from "./useKeyDown";
 import { usePlot } from "./usePlot";
+import { useResetPlotZoom, useZoomRevision } from "./useResetPlotZoom";
+import { resetZoom } from "@fiftyone/looker/src/elements/common/actions";
+import { useCallback } from "react";
 
 export function EmbeddingsPlot({
   brainKey,
@@ -15,29 +18,44 @@ export function EmbeddingsPlot({
   plotSelection,
 }) {
   const theme = useTheme();
-  const getColor = useRecoilValue(fos.colorMapRGB(true));
+  const getColor = useRecoilValue(fos.colorMapRGB(false));
   const datasetName = useRecoilValue(fos.datasetName);
   const {
     setPlotSelection,
     resolvedSelection,
     clearSelection,
+    hasSelection,
     handleSelected,
     selectionStyle,
   } = plotSelection;
+  const [zoomRev] = useZoomRevision();
+  const resetZoom = useResetPlotZoom();
   const { isLoading, traces, style } = usePlot(plotSelection);
   const [dragMode, setDragMode] = usePanelStatePartial("dragMode", "lasso");
   useKeyDown("s", () => setDragMode("lasso"));
   useKeyDown("g", () => setDragMode("pan"));
-  useKeyDown("Escape", clearSelection);
+  useKeyDown(
+    "Escape",
+    () => {
+      if (hasSelection) {
+        clearSelection();
+      } else {
+        resetZoom();
+      }
+    },
+    [hasSelection]
+  );
+  const colorscale = useRecoilValue(fos.colorscale);
 
   if (isLoading || !traces) return <Loading>Pixelating...</Loading>;
-  console.log({ resolvedSelection });
+  console.log({ resolvedSelection, colorscale });
   const data = tracesToData(
     traces,
     style,
     getColor,
     resolvedSelection,
-    selectionStyle
+    selectionStyle,
+    colorscale
   );
   const isCategorical = style === "categorical";
 
@@ -74,7 +92,7 @@ export function EmbeddingsPlot({
           }}
           layout={{
             dragmode: dragMode,
-            uirevision: true,
+            uirevision: zoomRev,
             font: {
               family: "var(--joy-fontFamily-body)",
               size: 14,
@@ -110,7 +128,7 @@ export function EmbeddingsPlot({
               y: 1,
               bgcolor: theme.background.level1,
               font: {
-                color: "rgb(179, 179, 179)",
+                color: theme.text.secondary,
               },
             },
           }}

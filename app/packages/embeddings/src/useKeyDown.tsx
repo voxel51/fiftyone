@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 // a react hook that returns true when the given key is down
-export function useKeyDown(key, handler) {
+export function useKeyDown(key, handler, deps = []) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === key) {
@@ -12,5 +12,5 @@ export function useKeyDown(key, handler) {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [key]);
+  }, [key, ...deps]);
 }
