@@ -361,42 +361,43 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
     return view
 
 
-def _make_expression(field, path, args):
-    if not path:
-        return _make_scalar_expression(F(), args, field)
-
+# for F.match()
+def _make_expression(view, path, args):
     keys = path.split(".")
-    rest = ".".join(keys[1:])
-    field = field.get_field_schema()[keys[0]]
+    field = view.get_field_schema()[keys[0]]
+
+    for i in range(1, len(keys)):
+        if isinstance(field, fof.ListField) and not isinstance(
+            field, fof.FrameSupportField
+        ):
+            field = field.field
+        else:
+            field = field.get_field_schema()[keys[i]]
+
     if isinstance(field, fof.ListField) and not isinstance(
         field, fof.FrameSupportField
     ):
-        new_field = field.field
         if args["exclude"]:
-            args["exclude"] = False
             # need to mark false for subexpression since we changed the condition for exclude, so we do not want a "not" expression
+            args["exclude"] = False
             expr = (
-                lambda subexpr: F(field.db_field or field.name)
-                .filter(subexpr)
+                F(field.db_field or field.name)
+                .filter(_make_scalar_expression(F(), args, field))
                 .length()
                 == 0
             )
         else:
             expr = (
-                lambda subexpr: F(field.db_field or field.name)
-                .filter(subexpr)
+                F(field.db_field or field.name)
+                .filter(_make_scalar_expression(F(), args, field))
                 .length()
                 > 0
             )
     else:
-        new_field = field
-        expr = lambda subexpr: F(field.db_field or field.name).apply(subexpr)
-
-    subexpr = _make_expression(new_field, rest, args)
-    if subexpr is not None:
-        return expr(subexpr)
-
-    return None
+        expr = _make_scalar_expression(
+            F(field.db_field or field.name), args, field
+        )
+    return expr
 
 
 def _make_filter_stages(
@@ -569,6 +570,7 @@ def _is_label(field):
     )
 
 
+# make scalar expre for common tyles
 def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
     expr = None
     is_matching = False if "isMatching" not in args else args["isMatching"]
@@ -630,6 +632,7 @@ def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
     return _apply_others(expr, f, args, is_label)
 
 
+# generate expr for keypoint labels
 def _make_keypoint_kwargs(args, view, points):
     if points:
         ske = view._dataset.default_skeleton
