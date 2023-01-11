@@ -13,10 +13,9 @@ import * as fos from "@fiftyone/state";
 import { Selection } from "@fiftyone/components";
 
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
-import { DatasetSavedViewsFragment } from "../../../Dataset";
+import { DatasetQueryRef, DatasetSavedViewsFragment } from "../../../Dataset";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
-import { DatasetQueryRef } from "../../../Root/Datasets/Dataset";
 
 const DEFAULT_SELECTED: DatasetViewOption = {
   id: "1",

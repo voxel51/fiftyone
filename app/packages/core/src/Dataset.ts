@@ -142,6 +142,10 @@ export const DatasetNodeQuery = graphql`
   }
 `;
 
+export const DatasetQueryRef = React.createContext<
+  DatasetQuery$data | undefined
+>(undefined);
+
 export const usePreLoadedDataset = (
   queryRef
 ): [DatasetQuery$data["dataset"], boolean] => {
