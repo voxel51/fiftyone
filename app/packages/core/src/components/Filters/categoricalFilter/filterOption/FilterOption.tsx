@@ -273,6 +273,7 @@ const FilterOption: React.FC<Props> = ({
         whiteSpace: "nowrap",
         textOverflow: "ellipsis",
         overflow: "hidden",
+        letterSpacing: "0.1px",
       }}
     >
       {selectedValue}
