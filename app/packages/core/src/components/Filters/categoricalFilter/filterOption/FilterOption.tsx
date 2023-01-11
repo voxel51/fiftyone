@@ -13,8 +13,8 @@ import { useOutsideClick } from "@fiftyone/state";
 import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
 import Tooltip from "@fiftyone/components/src/components/Tooltip";
 
-import { PopoutDiv } from "../../utils";
-import { joinStringArray } from "../utils";
+import { PopoutDiv } from "../../../utils";
+import { joinStringArray } from "../../utils";
 import Item from "./FilterItem";
 
 interface Props {
@@ -51,7 +51,7 @@ const generateOptions = (
   //  feature requirements:
   //  1) only nested ListField items should have the filter and negative filter options;
   //  2) BooleanField should not have the negative filter or negative match options;
-  //  3) in expanded mode, do not show the match or negative match options;
+  //  3) in expanded mode or keypoints field, do not show the match or negative match options;
 
   const options: Option[] = [];
   if (shouldShowAllOptions) {
@@ -98,7 +98,7 @@ const generateOptions = (
 };
 
 const currentSelection = (
-  key: string,
+  key: Key,
   selectedLabels: string[],
   valueName: string,
   isRangeLabel: boolean
@@ -174,7 +174,8 @@ const FilterOption: React.FC<Props> = ({
   );
 
   useEffect(() => {
-    // on initial load, check the current filter to decide the current filter key
+    // on initial load, if filter already exists, load exisiting filter for modal filters
+    // otherwise, show defaults: filter for nested listfield, match for other fields
     if (key === null) {
       if (isMatching && !excluded) {
         shouldShowAllOptions ? setKey("filter") : setKey("match");
@@ -228,7 +229,7 @@ const FilterOption: React.FC<Props> = ({
     }
   };
 
-  const onSelectItem = (key: string) => {
+  const onSelectItem = (key: Key) => {
     setKey(key);
     setOpen(false);
   };
@@ -273,7 +274,12 @@ const FilterOption: React.FC<Props> = ({
           <Selected />
         </IconButton>
         <Tooltip
-          text={currentSelection(key, labels, valueName, Boolean(isRangeLabel))}
+          text={currentSelection(
+            key as Key,
+            labels,
+            valueName,
+            Boolean(isRangeLabel)
+          )}
           placement="right-start"
         >
           {children}
@@ -286,7 +292,7 @@ const FilterOption: React.FC<Props> = ({
               {...option}
               color={color}
               highlightedBGColor={highlightedBGColor}
-              onClick={() => onSelectItem(option.key)}
+              onClick={() => onSelectItem(option.key as Key)}
             />
           ))}
         </Popout>

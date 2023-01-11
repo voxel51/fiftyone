@@ -1,7 +1,5 @@
 import React from "react";
 
-import CategoricalFilter from "./CategoricalFilter";
-
 import {
   booleanCountResults,
   booleanSelectedValuesAtom,
@@ -9,6 +7,7 @@ import {
   boolOnlyMatchAtom,
   boolExcludeAtom,
 } from "@fiftyone/state";
+import CategoricalFilter from "./categoricalFilter/CategoricalFilter";
 
 const BooleanFieldFilter = ({
   path,

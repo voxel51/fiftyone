@@ -2,13 +2,13 @@ import React from "react";
 
 import * as fos from "@fiftyone/state";
 
-import CategoricalFilter from "./CategoricalFilter";
 import {
   isMatchingAtom,
   onlyMatchAtom,
   stringExcludeAtom,
   stringSelectedValuesAtom,
 } from "@fiftyone/state";
+import CategoricalFilter from "./categoricalFilter/CategoricalFilter";
 
 const StringFieldFilter = ({
   path,

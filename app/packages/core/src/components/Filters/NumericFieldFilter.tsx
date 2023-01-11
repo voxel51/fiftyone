@@ -17,7 +17,7 @@ import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
 import { formatDateTime } from "../../utils/generic";
 import withSuspense from "./withSuspense";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
-import FilterOption from "./filterOption/FilterOption";
+import FilterOption from "./categoricalFilter/filterOption/FilterOption";
 
 const NamedRangeSliderContainer = styled.div`
   margin: 3px;
@@ -39,9 +39,9 @@ const RangeSliderContainer = styled.div`
 `;
 
 const NONFINITES = {
-  nan: "nan", // python NaN
-  ninf: "-inf", // negative infinity
-  inf: "inf", // inifinity
+  nan: "nan",
+  ninf: "-inf",
+  inf: "inf",
   none: null,
 };
 
@@ -194,6 +194,8 @@ const NumericFieldFilter = ({
   const shouldShowAllOptions = Boolean(
     fieldSchema?.ftype.includes("ListField")
   );
+  // if the field is a keypoint label, there is no need to show match options
+  const isKeyPoints = fieldSchema?.dbField === "keypoints";
 
   const initializeSettings = () => {
     setFilter([null, null]);
@@ -310,6 +312,7 @@ const NumericFieldFilter = ({
             valueName={field?.name ?? ""}
             color={color}
             modal={modal}
+            isKeyPointLabel={isKeyPoints}
           />
         )}
         {isFiltered && (
