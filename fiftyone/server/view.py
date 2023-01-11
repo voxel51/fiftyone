@@ -153,18 +153,6 @@ def get_saved_views(cls, object_ids):
     return saved_views
 
 
-def get_saved_view_stages(identifier):
-    db = foo.get_db_conn()
-    return list(
-        db.views.aggregate(
-            [
-                {"$match": {"name": identifier}},
-                {"$project": {"view_stages": True}},
-            ]
-        )
-    )
-
-
 async def load_view(
     dataset_name: str,
     serialized_view: BSONArray,
