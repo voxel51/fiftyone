@@ -123,7 +123,7 @@ export const getSavedViewName = (context: RoutingContext<any>): string => {
     const params = new URLSearchParams(queryString);
     const viewName = params.get("view");
     if (viewName) {
-      return viewName;
+      return decodeURIComponent(viewName);
     }
   }
 

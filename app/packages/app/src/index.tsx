@@ -107,7 +107,7 @@ const App: React.FC = ({}) => {
               );
 
               if (state.viewName) {
-                searchParams.set("view", state.viewName);
+                searchParams.set("view", encodeURIComponent(state.viewName));
               } else {
                 searchParams.delete("view");
               }

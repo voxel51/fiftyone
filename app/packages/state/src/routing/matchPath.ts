@@ -102,7 +102,7 @@ export const matchPath = <T extends OperationType | undefined>(
   Object.entries(queryParams).forEach(([param, variable]) => {
     if (params.has(param)) {
       // @ts-ignore
-      allVariables[variable] = params.get(param);
+      allVariables[variable] = decodeURIComponent(params.get(param));
     }
   });
 

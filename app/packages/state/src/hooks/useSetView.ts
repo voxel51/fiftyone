@@ -74,7 +74,7 @@ const useSetView = (patch = false, selectSlice = false) => {
                   router.history.location.search
                 );
                 viewName
-                  ? searchParams.set("view", viewName)
+                  ? searchParams.set("view", encodeURIComponent(viewName))
                   : searchParams.delete("view");
 
                 router.history.push(
@@ -87,7 +87,8 @@ const useSetView = (patch = false, selectSlice = false) => {
                 const searchParams = new URLSearchParams(
                   window.location.search
                 );
-                viewName && searchParams.set("view", viewName);
+                viewName &&
+                  searchParams.set("view", encodeURIComponent(viewName));
                 window.location.search = searchParams.toString();
                 updateState({
                   dataset: transformDataset(dataset),
