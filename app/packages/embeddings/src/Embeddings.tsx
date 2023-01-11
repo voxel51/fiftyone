@@ -11,6 +11,7 @@ import {
   Help,
   OpenWith,
   Warning,
+  CenterFocusWeak,
 } from "@mui/icons-material";
 import { useBrainResultsSelector } from "./useBrainResult";
 import { useLabelSelector } from "./useLabelSelector";
@@ -24,6 +25,7 @@ import { useWarnings } from "./useWarnings";
 import { EmbeddingsPlot } from "./EmbeddingsPlot";
 import { usePlotSelection } from "./usePlotSelection";
 import { useBrainResultInfo } from "./useBrainResultInfo";
+import { useResetPlotZoom } from "./useResetPlotZoom";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -32,6 +34,7 @@ const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
 export default function Embeddings({ containerHeight, dimensions }) {
   const el = useRef();
   const theme = useTheme();
+  const resetZoom = useResetPlotZoom();
   const brainResultSelector = useBrainResultsSelector();
   const labelSelector = useLabelSelector();
   const setView = fos.useSetView();
@@ -74,13 +77,16 @@ export default function Embeddings({ containerHeight, dimensions }) {
             {plotSelection.hasSelection && (
               <PlotOption
                 to={plotSelection.clearSelection}
-                title={"Reset (Esc)"}
+                title={"Clear Selection (Esc)"}
               >
                 <Close />
               </PlotOption>
             )}
             {showPlot && (
               <Fragment>
+                <PlotOption to={() => resetZoom()} title={"Reset Zoom (Esc)"}>
+                  <CenterFocusWeak />
+                </PlotOption>
                 <PlotOption
                   style={{ opacity: dragMode !== "lasso" ? 0.5 : 1 }}
                   to={() => setDragMode("lasso")}

@@ -87,6 +87,7 @@ const App: React.FC = ({}) => {
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
               const { colorscale, config, ...data } = payload.state;
+
               payload.refresh && refresh();
               const isAnUpdate = payload.update;
               const changingSavedView = payload.changing_saved_view;

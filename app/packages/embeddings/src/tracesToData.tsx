@@ -7,9 +7,11 @@ export function tracesToData(
   style,
   getColor,
   plotSelection,
-  selectionStyle
+  selectionStyle,
+  colorscale
 ) {
   const isCategorical = style === "categorical";
+  const isContinuous = style === "continuous";
   const isUncolored = style === "uncolored";
   return Object.entries(traces)
     .sort((a, b) => sortStringsAlphabetically(a[0], b[0]))
@@ -26,6 +28,15 @@ export function tracesToData(
       // const color = Color.fromCSSRGBValues(r, g, b)
       const color = Color.fromCSSRGBValues(...getColor(key));
 
+      console.log({ colorscale });
+
+      const mappedColorscale = colorscale.map((c, idx) => {
+        const color = Color.fromCSSRGBValues(...c);
+        return [idx / (colorscale.length - 1), color.toCSSRGBString()];
+      });
+
+      console.log(mappedColorscale);
+
       return {
         x: trace.map((d) => d.points[0]),
         y: trace.map((d) => d.points[1]),
@@ -33,20 +44,23 @@ export function tracesToData(
         type: "scattergl",
         mode: "markers",
         marker: {
+          autocolorscale: !isContinuous, // isCategorical || isUncolored,
+          colorscale: mappedColorscale,
           color: isCategorical
-            ? trace.map((d) => {
-                const selected =
-                  plotSelection?.length == 0 ||
-                  (plotSelection && plotSelection.includes(d.id));
-                if (selected) {
-                  return color.toCSSRGBString();
-                } else {
-                  return color
-                    .setBrightness(color.getBrightness() * 0.05)
-                    .toCSSRGBString();
-                }
-              })
-            : isUncolored
+            ? color.toCSSRGBString()
+            : // ? trace.map((d) => {
+            //     const selected =
+            //       plotSelection?.length == 0 ||
+            //       (plotSelection && (plotSelection.includes(d.id) || plotSelection.includes(d.sample_id)));
+            //     if (selected) {
+            //       return color.toCSSRGBString();
+            //     } else {
+            //       return color
+            //         .setBrightness(color.getBrightness() * 0.05)
+            //         .toCSSRGBString();
+            //     }
+            //   })
+            isUncolored
             ? null
             : trace.map((d) => d.label),
           size: 6,
