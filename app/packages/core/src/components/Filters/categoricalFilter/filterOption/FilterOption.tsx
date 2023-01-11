@@ -58,7 +58,9 @@ const generateOptions = (
     options.push({
       icon: "FilterAltIcon",
       key: "filter",
-      value: `Select ${nestedField} with ${valueName}`,
+      value: isRangeLabel
+        ? `Select ${nestedField} within range`
+        : `Select ${nestedField} with ${valueName}`,
       tooltip: "dataset.filter_labels(field, expr, only_matches=True)",
     });
   }
@@ -66,7 +68,9 @@ const generateOptions = (
     options.push({
       icon: "FilterAltOffIcon",
       key: "negativeFilter",
-      value: `Exclude ${nestedField} with ${valueName}`,
+      value: isRangeLabel
+        ? `Exclude ${nestedField} within range`
+        : `Exclude ${nestedField} with ${valueName}`,
       tooltip: "dataset.filter_labels(field, ~expr, only_matches=False)",
     });
   }
