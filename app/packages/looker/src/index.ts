@@ -237,6 +237,7 @@ export abstract class Looker<
         this.dispatchEvent(eventType, {
           shiftKey: detail,
           sampleId: this.sample.id,
+          sample: this.sample,
         });
         return;
       }

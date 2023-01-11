@@ -5,8 +5,5 @@ export function getPointIndex(trace, id) {
   if (idx === undefined || idx === null) {
     idx = findIndexByKeyValue(trace, "sample_id", id);
   }
-  if (idx === null) {
-    debugger;
-  }
   return idx;
 }
