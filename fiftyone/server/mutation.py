@@ -19,7 +19,7 @@ from fiftyone.core.session.events import StateUpdate
 import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
 import fiftyone.core.dataset as fod
-from fiftyone.core.spaces import Space
+from fiftyone.core.spaces import default_spaces, Space
 
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
@@ -101,6 +101,7 @@ class Mutation:
         state.selected_labels = []
         state.view = None
         state.view_name = view_name if view_name is not None else None
+        state.spaces = default_spaces
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 
@@ -410,9 +411,10 @@ class Mutation:
     async def set_spaces(
         self,
         subscription: str,
-        spaces: Space,
+        session: t.Optional[str],
+        spaces: JSON,
     ) -> bool:
         state = get_state()
-        state.spaces = spaces
+        state.spaces = Space.from_dict(spaces).copy()
         await dispatch_event(subscription, StateUpdate(state=state))
         return True

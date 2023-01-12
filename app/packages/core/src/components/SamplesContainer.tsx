@@ -1,10 +1,11 @@
-import React, { useCallback } from "react";
-import { useRecoilValue } from "recoil";
+import React, { useCallback, useEffect, useRef } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
 import Sidebar, { Entries } from "./Sidebar";
 import * as fos from "@fiftyone/state";
-import { SpacesRoot } from "@fiftyone/spaces";
+import { SpacesRoot, useSpaces } from "@fiftyone/spaces";
+import { useSessionSpaces, useSetSpaces } from "@fiftyone/state";
 
 const Container = styled.div`
   display: flex;
@@ -14,10 +15,27 @@ const Container = styled.div`
   background: ${({ theme }) => theme.background.mediaSpace};
 `;
 
+const defaultState = {
+  id: "root",
+  children: [
+    {
+      id: "default-samples-node",
+      children: [],
+      type: "Samples",
+      pinned: true,
+    },
+  ],
+  type: "panel-container",
+  activeChild: "default-samples-node",
+};
+
 function SamplesContainer() {
   const showSidebar = useRecoilValue(fos.sidebarVisible(false));
   const disabled = useRecoilValue(fos.disabledPaths);
-  const { id } = fos.usePrimarySpaces();
+  const [sessionSpaces, setSessionSpaces] = useSessionSpaces();
+  const { spaces, updateSpaces } = useSpaces("main", sessionSpaces);
+  const oldSpaces = useRef(sessionSpaces);
+  const isMounted = useRef(false);
 
   const renderGridEntry = useCallback(
     (
@@ -134,10 +152,28 @@ function SamplesContainer() {
     []
   );
 
+  useEffect(() => {
+    if (!spaces.equals(sessionSpaces)) {
+      updateSpaces(sessionSpaces);
+    }
+  }, [sessionSpaces]);
+
+  useEffect(() => {
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
+    const serializedSpaces = spaces.toJSON();
+    if (!spaces.equals(sessionSpaces) && !spaces.equals(oldSpaces.current)) {
+      setSessionSpaces(serializedSpaces);
+    }
+    oldSpaces.current = serializedSpaces;
+  }, [spaces]);
+
   return (
     <Container>
-      {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}
-      <SpacesRoot id={id} />
+      {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}{" "}
+      <SpacesRoot id={"main"} />
     </Container>
   );
 }
