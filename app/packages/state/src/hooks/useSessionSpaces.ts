@@ -5,20 +5,60 @@ import { useMutation } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { stateSubscription, sessionSpaces } from "../recoil";
 import useSendEvent from "./useSendEvent";
+import { size } from "lodash";
+
+const useSessionSpaces = () => {
+  const send = useSendEvent();
+  const subscription = useRecoilValue(stateSubscription);
+  const sessionSpacesState = useRecoilValue(sessionSpaces);
+  const [commit] = useMutation<foq.setSpacesMutation>(foq.setSpaces);
+  const onError = useErrorHandler();
+
+  const computedSessionSpaces = useMemo(
+    () => toAppFormat(sessionSpacesState),
+    [sessionSpacesState]
+  );
+
+  const computedPanelsState = useMemo(
+    () => extractPanelsState(computedSessionSpaces),
+    [computedSessionSpaces]
+  );
+
+  function setSessionSpaces(spaces: object, panelsState?: object) {
+    const formattedSpaces = toAPIFormat(spaces, panelsState);
+    return send((session) =>
+      commit({
+        onError,
+        variables: { subscription, session, spaces: formattedSpaces },
+      })
+    );
+  }
+  return [computedSessionSpaces, setSessionSpaces, computedPanelsState];
+};
+
+export default useSessionSpaces;
+
+/**
+ * Utilities for API <> App session state conversion
+ */
 
 const nonPanelTypes = ["panel-container", "empty"];
 
-function toAPIFormat(state) {
-  if (Array.isArray(state)) return state.map(toAPIFormat);
+function toAPIFormat(state, panelsState = {}) {
+  if (Array.isArray(state))
+    return state.map((item) => toAPIFormat(item, panelsState));
   const apiState = {
     _cls: nonPanelTypes.includes(state.type) ? "Space" : "Panel",
     component_id: state.id,
   };
   if (apiState._cls === "Panel") {
-    if (state.pinned) apiState.pinned = state.pinned;
+    const isPinned = state.pinned;
+    const panelState = panelsState[state.id];
+    if (isPinned) apiState.pinned = isPinned;
+    if (panelState) apiState.state = panelState;
     apiState.type = state.type;
   } else {
-    apiState.children = toAPIFormat(state.children);
+    apiState.children = toAPIFormat(state.children, panelsState);
     if (state.layout) apiState.orientation = state.layout;
     if (state.activeChild) apiState.active_child = state.activeChild;
   }
@@ -35,31 +75,22 @@ function toAppFormat(state) {
       layout: state.orientation,
       activeChild: state.active_child,
       type: state.type,
+      state: state.state || {}, // not used in SpaceNode atm
     };
   return state;
 }
 
-const useSessionSpaces = () => {
-  const send = useSendEvent();
-  const subscription = useRecoilValue(stateSubscription);
-  const sessionSpacesState = useRecoilValue(sessionSpaces);
-  const [commit] = useMutation<foq.setSpacesMutation>(foq.setSpaces);
-  const onError = useErrorHandler();
-
-  const computedSessionSpaces = useMemo(
-    () => toAppFormat(sessionSpacesState),
-    [sessionSpacesState]
-  );
-
-  function setSessionSpaces(spaces: object) {
-    return send((session) =>
-      commit({
-        onError,
-        variables: { subscription, session, spaces: toAPIFormat(spaces) },
-      })
+function extractPanelsState(space) {
+  const spaceState = {};
+  if (!space) return spaceState;
+  if (Array.isArray(space))
+    return space.reduce(
+      (spaceState, itemState) =>
+        Object.assign(spaceState, extractPanelsState(itemState)),
+      {}
     );
-  }
-  return [computedSessionSpaces, setSessionSpaces];
-};
-
-export default useSessionSpaces;
+  // expects state from session to always be an object
+  if (size(space.state) > 0) spaceState[space.id] = space.state;
+  const spaceChildrenState = extractPanelsState(space.children);
+  return { ...spaceState, ...spaceChildrenState };
+}
