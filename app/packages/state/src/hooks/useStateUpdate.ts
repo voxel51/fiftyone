@@ -23,6 +23,7 @@ import {
   selectedMediaField,
   sidebarMode,
   groupStatistics,
+  theme,
 } from "../recoil";
 import { useColorScheme } from "@mui/material";
 
@@ -55,6 +56,7 @@ const useStateUpdate = () => {
 
         if (!viewsAreEqual(view || [], state.view || [])) {
           set(viewAtoms.view, state.view || []);
+          set(viewAtoms.viewName, state.viewName || null);
           reset(extendedSelection);
           reset(similarityParameters);
           reset(filters);
@@ -83,6 +85,7 @@ const useStateUpdate = () => {
       if (dataset) {
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
         dataset.evaluations = Object.values(dataset.evaluations || {});
+        dataset.savedViews = Object.values(dataset.savedViews || []);
         dataset.sampleFields = collapseFields(dataset.sampleFields);
         dataset.frameFields = collapseFields(dataset.frameFields);
         const previousDataset = get(datasetAtom);
@@ -133,6 +136,7 @@ const useStateUpdate = () => {
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
         }
+
         set(datasetAtom, dataset);
       }
 

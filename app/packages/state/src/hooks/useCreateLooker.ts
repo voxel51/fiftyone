@@ -89,7 +89,22 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
 
       return looker;
     },
-    [isClip, isFrame, isPatch, options, thumbnail, activeId, mediaField]
+    [
+      isClip,
+      isFrame,
+      isPatch,
+      options,
+      thumbnail,
+      activeId,
+      mediaField,
+      dataset,
+      fieldSchema,
+      frameFieldSchema,
+      handleError,
+      highlight,
+      selected,
+      view,
+    ]
   );
   const createLookerRef = useRef<(data: SampleData) => T>(create);
 

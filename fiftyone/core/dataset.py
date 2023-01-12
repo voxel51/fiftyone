@@ -7,7 +7,6 @@ FiftyOne datasets.
 """
 from collections import defaultdict
 import contextlib
-from copy import deepcopy
 from datetime import datetime
 import fnmatch
 import itertools
@@ -17,7 +16,7 @@ import os
 import random
 import string
 
-from bson import ObjectId
+from bson import json_util, ObjectId
 from deprecated import deprecated
 import mongoengine.errors as moe
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
@@ -27,12 +26,9 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.annotation as foan
-import fiftyone.core.brain as fob
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
-import fiftyone.core.expressions as foex
-import fiftyone.core.evaluation as foe
+import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
@@ -84,6 +80,32 @@ def dataset_exists(name):
     return bool(list(conn.datasets.find({"name": name}, {"_id": 1}).limit(1)))
 
 
+def _validate_dataset_name(name, skip=None):
+    """Validates that the given dataset name is available.
+
+    Args:
+        name: a dataset name
+        skip (None): an optional :class:`Dataset` to ignore
+
+    Returns:
+        the slug
+
+    Raises:
+        ValueError: if the name is not available
+    """
+    slug = fou.to_slug(name)
+
+    query = {"$or": [{"name": name}, {"slug": slug}]}
+    if skip is not None:
+        query = {"$and": [query, {"_id": {"$ne": skip._doc.id}}]}
+
+    conn = foo.get_db_conn()
+    if bool(list(conn.datasets.find(query, {"_id": 1}).limit(1))):
+        raise ValueError("Dataset name '%s' is not available" % name)
+
+    return slug
+
+
 def load_dataset(name):
     """Loads the FiftyOne dataset with the given name.
 
@@ -127,6 +149,9 @@ def make_unique_dataset_name(root):
     Returns:
         the dataset name
     """
+    if not root:
+        return get_default_dataset_name()
+
     name = root
     dataset_names = _list_datasets(include_private=True)
 
@@ -285,7 +310,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if isinstance(id_filepath_slice, slice):
             return self.view()[id_filepath_slice]
 
-        if isinstance(id_filepath_slice, foex.ViewExpression):
+        if isinstance(id_filepath_slice, foe.ViewExpression):
             return self.view()[id_filepath_slice]
 
         if etau.is_container(id_filepath_slice):
@@ -578,15 +603,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if name == _name:
             return
 
-        if name in list_datasets():
-            raise ValueError("A dataset with name '%s' already exists" % name)
+        slug = _validate_dataset_name(name, skip=self)
 
         self._doc.name = name
+        self._doc.slug = slug
         self._doc.save(safe=True)
 
         # Update singleton
         self._instances.pop(_name, None)
         self._instances[name] = self
+
+    @property
+    def slug(self):
+        """The slug of the dataset."""
+        return self._doc.slug
 
     @property
     def created_at(self):
@@ -612,7 +642,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def tags(self):
-        """A list of tags given to the dataset.
+        """A list of tags on the dataset.
 
         Examples::
 
@@ -634,6 +664,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def tags(self, value):
         self._doc.tags = value
         self._doc.save(safe=True)
+
+    @property
+    def description(self):
+        """A string description on the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Store a description on the dataset
+            dataset.description = "Your description here"
+        """
+        return self._doc.description
+
+    @description.setter
+    def description(self, description):
+        self._doc.description = description
+        self._doc.save()
 
     @property
     def info(self):
@@ -1199,12 +1249,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def _add_implied_sample_field(self, field_name, value, dynamic=False):
+    def _add_implied_sample_field(
+        self, field_name, value, dynamic=False, validate=True
+    ):
         if isinstance(value, fog.Group):
             expanded = self._add_group_field(field_name, default=value.name)
         else:
             expanded = self._sample_doc_cls.add_implied_field(
-                field_name, value, dynamic=dynamic
+                field_name, value, dynamic=dynamic, validate=validate
             )
 
         if expanded:
@@ -1302,14 +1354,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def _add_implied_frame_field(self, field_name, value, dynamic=False):
+    def _add_implied_frame_field(
+        self, field_name, value, dynamic=False, validate=True
+    ):
         if not self._has_frame_fields():
             raise ValueError(
                 "Only datasets that contain videos may have frame fields"
             )
 
         expanded = self._frame_doc_cls.add_implied_field(
-            field_name, value, dynamic=dynamic
+            field_name, value, dynamic=dynamic, validate=validate
         )
 
         if expanded:
@@ -3024,6 +3078,247 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._reload(hard=True)
             raise
 
+    @property
+    def has_saved_views(self):
+        """Whether this dataset has any saved views."""
+        return bool(self.list_saved_views())
+
+    def has_saved_view(self, name):
+        """Whether this dataset has a saved view with the given name.
+
+        Args:
+            name: a saved view name
+
+        Returns:
+            True/False
+        """
+        return name in self.list_saved_views()
+
+    def list_saved_views(self):
+        """Returns the names of saved views on this dataset.
+
+        Returns:
+            a list of saved view names
+        """
+        return [view_doc.name for view_doc in self._doc.saved_views]
+
+    def save_view(
+        self,
+        name=name,
+        view=view,
+        description=None,
+        color=None,
+        overwrite=False,
+    ):
+        """Saves the given view into this dataset under the given name so it
+        can be loaded later via :meth:`load_saved_view`.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            view = dataset.filter_labels("ground_truth", F("label") == "cat")
+
+            dataset.save_view("cats", view)
+
+            also_view = dataset.load_saved_view("cats")
+            assert view == also_view
+
+        Args:
+            name: a name for the saved view
+            view: a :class:`fiftyone.core.view.DatasetView`
+            overwrite (False): whether to overwrite an existing saved view with
+                the same name
+        """
+        if view._root_dataset is not self:
+            raise ValueError("Cannot save view into a different dataset")
+
+        view._set_name(name)
+        slug = self._validate_saved_view_name(name, overwrite=overwrite)
+
+        now = datetime.utcnow()
+
+        view_doc = foo.SavedViewDocument(
+            dataset_id=self._doc.id,
+            name=name,
+            slug=slug,
+            description=description,
+            color=color,
+            view_stages=[
+                json_util.dumps(s)
+                for s in view._serialize(include_uuids=False)
+            ],
+            created_at=now,
+            last_modified_at=now,
+        )
+        view_doc.save()
+
+        self._doc.saved_views.append(view_doc)
+        self._doc.save()
+
+    def get_saved_view_info(self, name):
+        """Loads the editable information about the saved view with the given
+        name.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            view = dataset.limit(10)
+            dataset.save_view("test", view)
+
+            print(dataset.get_saved_view_info("test"))
+
+        Args:
+            name: the name of a saved view
+
+        Returns:
+            a dict of editable info
+        """
+        view_doc = self._get_saved_view_doc(name)
+        return {f: view_doc[f] for f in view_doc._EDITABLE_FIELDS}
+
+    def update_saved_view_info(self, name, info):
+        """Updates the editable information for the saved view with the given
+        name.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            view = dataset.limit(10)
+            dataset.save_view("test", view)
+
+            # Update the saved view's name and add a description
+            info = dict(
+                name="a new name",
+                description="a description",
+            )
+            dataset.update_saved_view_info("test", info)
+
+        Args:
+            name: the name of a saved view
+            info: a dict whose keys are a subset of the keys returned by
+                :meth:`get_saved_view_info`
+        """
+        view_doc = self._get_saved_view_doc(name)
+
+        invalid_fields = set(info.keys()) - set(view_doc._EDITABLE_FIELDS)
+        if invalid_fields:
+            raise ValueError("Cannot edit fields %s" % invalid_fields)
+
+        edited = False
+        for key, value in info.items():
+            if value != view_doc[key]:
+                if key == "name":
+                    slug = self._validate_saved_view_name(value, skip=view_doc)
+                    view_doc.slug = slug
+
+                view_doc[key] = value
+                edited = True
+
+        if edited:
+            view_doc.last_modified_at = datetime.utcnow()
+            view_doc.save()
+
+    def load_saved_view(self, name):
+        """Loads the saved view with the given name.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            view = dataset.filter_labels("ground_truth", F("label") == "cat")
+
+            dataset.save_view("cats", view)
+
+            also_view = dataset.load_saved_view("cats")
+            assert view == also_view
+
+        Args:
+            name: the name of a saved view
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        view_doc = self._get_saved_view_doc(name)
+
+        stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
+        view = fov.DatasetView._build(self, stage_dicts)
+        view._set_name(name)
+
+        view_doc.last_loaded_at = datetime.utcnow()
+        view_doc.save()
+
+        return view
+
+    def delete_saved_view(self, name):
+        """Deletes the saved view with the given name.
+
+        Args:
+            name: the name of a saved view
+        """
+        view_doc = self._get_saved_view_doc(name, pop=True)
+        deleted_id = view_doc.id
+
+        view_doc.delete()
+        self._doc.save()
+        return str(deleted_id)
+
+    def delete_saved_views(self):
+        """Deletes all saved views from this dataset."""
+        for view_doc in self._doc.saved_views:
+            view_doc.delete()
+
+        self._doc.saved_views = []
+        self._doc.save()
+
+    def _get_saved_view_doc(self, name, pop=False):
+        idx = None
+        for i, view_doc in enumerate(self._doc.saved_views):
+            if name == view_doc.name:
+                idx = i
+                break
+
+        if idx is None:
+            raise ValueError("Dataset has no saved view '%s'" % name)
+
+        if pop:
+            return self._doc.saved_views.pop(idx)
+
+        return self._doc.saved_views[idx]
+
+    def _validate_saved_view_name(self, name, skip=None, overwrite=False):
+        slug = fou.to_slug(name)
+
+        for view_doc in self._doc.saved_views:
+            if view_doc is skip:
+                continue
+
+            if name == view_doc.name or slug == view_doc.slug:
+                dup_name = view_doc.name
+
+                if not overwrite:
+                    raise ValueError(
+                        "Saved view with name '%s' already exists" % dup_name
+                    )
+
+                self.delete_saved_view(dup_name)
+
+        return slug
+
     def clone(self, name=None, persistent=False):
         """Creates a copy of the dataset.
 
@@ -3098,7 +3393,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if self.media_type != fom.GROUP:
                 raise ValueError("Dataset is not grouped")
 
-            F = foex.ViewField
+            F = foe.ViewField
             oids = [ObjectId(_id) for _id in group_ids]
             view = self.select_group_slices(_allow_mixed=True).match(
                 F(self.group_field + "._id").is_in(oids)
@@ -5140,8 +5435,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             d: a JSON dictionary
-            name (None): a name for the new dataset. By default, ``d["name"]``
-                is used
+            name (None): a name for the new dataset
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
@@ -5156,7 +5450,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset`
         """
         if name is None:
-            name = d["name"]
+            name = d.get("name", None)
+            if name is None:
+                raise ValueError("Attempting to load a Dataset with no name.")
 
         if rel_dir is not None:
             rel_dir = fou.normalize_path(rel_dir)
@@ -5253,8 +5549,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             path_or_str: the path to a JSON file on disk or a JSON string
-            name (None): a name for the new dataset. By default, ``d["name"]``
-                is used
+            name (None): a name for the new dataset
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample, if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
@@ -5426,7 +5721,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         id_field = self.group_field + "._id"
         name_field = self.group_field + ".name"
 
-        F = foex.ViewField
+        F = foe.ViewField
         expr = F(id_field) == "$$group_id"
         if etau.is_container(group_slices):
             expr &= F(name_field).is_in(list(group_slices))
@@ -5467,7 +5762,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         id_field = self.group_field + "._id"
         name_field = self.group_field + ".name"
 
-        F = foex.ViewField
+        F = foe.ViewField
         expr = F(id_field) == "$$group_id"
         if etau.is_container(group_slices):
             expr &= F(name_field).is_in(list(group_slices))
@@ -5604,7 +5899,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     continue
 
                 if isinstance(value, fog.Group):
-                    self._expand_group_schema(sample, field_name, value)
+                    self._expand_group_schema(
+                        field_name, value.name, sample.media_type
+                    )
 
                 if not dynamic and field_name in schema:
                     continue
@@ -5627,12 +5924,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def _expand_group_schema(self, sample, field_name, value):
+    def _expand_group_schema(self, field_name, slice_name, media_type):
         if self.group_field is not None and field_name != self.group_field:
             raise ValueError("Dataset has no group field '%s'" % field_name)
-
-        slice_name = value.name
-        media_type = sample.media_type
 
         if slice_name not in self._doc.group_media_types:
             # If this is the first video slice, we need to initialize the frame
@@ -5783,6 +6077,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._reload(hard=True)
         self._reload_docs(hard=True)
 
+    def clear_cache(self):
+        """Clears the dataset's in-memory cache."""
         self._annotation_cache.clear()
         self._brain_cache.clear()
         self._evaluation_cache.clear()
@@ -5885,14 +6181,7 @@ def _create_dataset(
     _clips=False,
     _src_collection=None,
 ):
-    if dataset_exists(name):
-        raise ValueError(
-            (
-                "Dataset '%s' already exists; use `fiftyone.load_dataset()` "
-                "to load an existing dataset"
-            )
-            % name
-        )
+    slug = _validate_dataset_name(name)
 
     _id = ObjectId()
 
@@ -5924,6 +6213,7 @@ def _create_dataset(
     dataset_doc = foo.DatasetDocument(
         id=_id,
         name=name,
+        slug=slug,
         version=focn.VERSION,
         created_at=datetime.utcnow(),
         media_type=None,  # will be inferred when first sample is added
@@ -6083,29 +6373,32 @@ def _do_load_dataset(obj, name):
 
 
 def _delete_dataset_doc(dataset_doc):
-    #
-    # Must manually cleanup run results, which are stored using GridFS
-    # https://docs.mongoengine.org/guide/gridfs.html#deletion
-    #
+    for view_doc in dataset_doc.saved_views:
+        view_doc.delete()
 
     for run_doc in dataset_doc.annotation_runs.values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
+        run_doc.delete()
+
     for run_doc in dataset_doc.brain_methods.values():
         if run_doc.results is not None:
             run_doc.results.delete()
+
+        run_doc.delete()
 
     for run_doc in dataset_doc.evaluations.values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
+        run_doc.delete()
+
     dataset_doc.delete()
 
 
 def _clone_dataset_or_view(dataset_or_view, name, persistent):
-    if dataset_exists(name):
-        raise ValueError("Dataset '%s' already exists" % name)
+    slug = _validate_dataset_name(name)
 
     contains_videos = dataset_or_view._contains_videos(any_slice=True)
 
@@ -6131,6 +6424,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     dataset_doc.id = _id
     dataset_doc.name = name
+    dataset_doc.slug = slug
     dataset_doc.created_at = datetime.utcnow()
     dataset_doc.last_loaded_at = None
     dataset_doc.persistent = persistent
@@ -6143,7 +6437,8 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
         dataset_doc.group_media_types = {}
         dataset_doc.default_group_slice = None
 
-    # Run results get special treatment at the end
+    # Runs/views get special treatment at the end
+    dataset_doc.saved_views.clear()
     dataset_doc.annotation_runs.clear()
     dataset_doc.brain_methods.clear()
     dataset_doc.evaluations.clear()
@@ -6184,13 +6479,14 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     clone_dataset = load_dataset(name)
 
-    # Clone run results (full datasets only)
+    # Clone extras (full datasets only)
     if view is None and (
-        dataset.has_annotation_runs
+        dataset.has_saved_views
+        or dataset.has_annotation_runs
         or dataset.has_brain_runs
         or dataset.has_evaluations
     ):
-        _clone_runs(clone_dataset, dataset._doc)
+        _clone_extras(clone_dataset, dataset._doc)
 
     return clone_dataset
 
@@ -6516,67 +6812,62 @@ def _update_no_overwrite(d, dnew):
     d.update({k: v for k, v in dnew.items() if k not in d})
 
 
-def _clone_runs(dst_dataset, src_doc):
+def _clone_extras(dst_dataset, src_doc):
     dst_doc = dst_dataset._doc
 
-    #
-    # Clone annotation runs results
-    #
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
-    #
+    # Clone saved views
+    for _view_doc in src_doc.saved_views:
+        view_doc = _clone_view_doc(_view_doc)
+        view_doc.dataset_id = dst_doc.id
+        view_doc.save()
 
-    for anno_key, run_doc in src_doc.annotation_runs.items():
-        _run_doc = deepcopy(run_doc)
-        dst_doc.annotation_runs[anno_key] = _run_doc
-        results = foan.AnnotationMethod.load_run_results(
-            dst_dataset, anno_key, cache=False
-        )
-        _run_doc.results = None
-        foan.AnnotationMethod.save_run_results(
-            dst_dataset, anno_key, results, cache=False
-        )
+        dst_doc.saved_views.append(view_doc)
 
-    #
-    # Clone brain results
-    #
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
-    #
+    # Clone annotation runs
+    for anno_key, _run_doc in src_doc.annotation_runs.items():
+        run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
+        run_doc.save()
 
-    for brain_key, run_doc in src_doc.brain_methods.items():
-        _run_doc = deepcopy(run_doc)
-        dst_doc.brain_methods[brain_key] = _run_doc
-        results = fob.BrainMethod.load_run_results(
-            dst_dataset, brain_key, cache=False
-        )
-        _run_doc.results = None
-        fob.BrainMethod.save_run_results(
-            dst_dataset, brain_key, results, cache=False
-        )
+        dst_doc.annotation_runs[anno_key] = run_doc
 
-    #
-    # Clone evaluation results
-    #
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
-    #
+    # Clone brain method runs
+    for brain_key, _run_doc in src_doc.brain_methods.items():
+        run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
+        run_doc.save()
 
-    for eval_key, run_doc in src_doc.evaluations.items():
-        _run_doc = deepcopy(run_doc)
-        dst_doc.evaluations[eval_key] = _run_doc
-        results = foe.EvaluationMethod.load_run_results(
-            dst_dataset, eval_key, cache=False
-        )
-        _run_doc.results = None
-        foe.EvaluationMethod.save_run_results(
-            dst_dataset, eval_key, results, cache=False
-        )
+        dst_doc.brain_methods[brain_key] = run_doc
+
+    # Clone evaluation runs
+    for eval_key, _run_doc in src_doc.evaluations.items():
+        run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
+        run_doc.save()
+
+        dst_doc.evaluations[eval_key] = run_doc
 
     dst_doc.save()
+
+
+def _clone_view_doc(view_doc):
+    _view_doc = view_doc.copy()
+    _view_doc.id = ObjectId()
+    return _view_doc
+
+
+def _clone_run(run_doc):
+    _run_doc = run_doc.copy()
+    _run_doc.id = ObjectId()
+
+    # Unfortunately the only way to copy GridFS files is to read-write them...
+    # https://jira.mongodb.org/browse/TOOLS-2208
+    run_doc.results.seek(0)
+    results_bytes = run_doc.results.read()
+    _run_doc.results = None
+    _run_doc.results.put(results_bytes, content_type="application/json")
+
+    return _run_doc
 
 
 def _ensure_index(dataset, db_field, unique=False):

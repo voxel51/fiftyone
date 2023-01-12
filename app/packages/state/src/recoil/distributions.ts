@@ -12,7 +12,7 @@ import { RelayEnvironmentKey } from "./relay";
 
 import { datasetName } from "./selectors";
 import { view } from "./view";
-import { selectorFamily } from "recoil";
+import { selector, selectorFamily } from "recoil";
 import { expandPath, fieldPaths, field, labelFields, fields } from "./schema";
 import {
   BOOLEAN_FIELD,
@@ -35,10 +35,25 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 import { State } from "./types";
+import { extendedSelection } from "./atoms";
+import { filters } from "./filters";
+import { groupSlice, groupStatistics } from "./groups";
 
 export type AggregationResponseFrom<
   TAggregate extends { response: { aggregate: readonly unknown[] } }
 > = TAggregate["response"]["aggregate"][0];
+
+const extendedViewForm = selector({
+  key: "extendedViewForm",
+  get: ({ get }) => {
+    return {
+      sampleIds: get(extendedSelection),
+      filters: get(filters),
+      slice: get(groupSlice(false)),
+      mixed: get(groupStatistics(false)) === "group",
+    };
+  },
+});
 
 const countValuesData = graphQLSelectorFamily<
   VariablesOf<countValuesQuery>,
@@ -55,6 +70,7 @@ const countValuesData = graphQLSelectorFamily<
         dataset: get(datasetName),
         view: get(view),
         path,
+        form: get(extendedViewForm),
       };
     },
   mapResponse: (data) => data.aggregate[0],
@@ -75,6 +91,7 @@ const histogramValuesData = graphQLSelectorFamily<
         dataset: get(datasetName),
         view: get(view),
         path,
+        form: get(extendedViewForm),
       };
     },
   mapResponse: (data) => data.aggregate[0],

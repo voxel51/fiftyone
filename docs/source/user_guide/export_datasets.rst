@@ -481,6 +481,9 @@ refer to the corresponding dataset format when writing the dataset to disk.
     | :ref:`BDDDataset <BDDDataset-export>`                              | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                    | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`CSVDataset <CSVDataset-export>`                              | A flexible CSV format that represents slice(s) of a dataset's values as columns of |
+    |                                                                    | a CSV file.                                                                        |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`GeoJSONDataset <GeoJSONDataset-export>`                      | An image or video dataset whose location data and labels are stored in             |
     |                                                                    | `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.                         |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -3382,6 +3385,123 @@ the `labels_path` parameter instead of `export_dir`:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.BDDDataset \
             --kwargs labels_path=$LABELS_PATH
+
+.. _CSVDataset-export:
+
+CSVDataset
+----------
+
+The :class:`fiftyone.types.CSVDataset` type is a flexible CSV format that
+represents slice(s) of field values of a dataset as columns of a CSV file.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+        labels.csv
+
+where `labels.csv` is a CSV file in the following format:
+
+.. code-block:: text
+
+    field1,field2,field3,...
+    value1,value2,value3,...
+    value1,value2,value3,...
+    ...
+
+where the columns of interest are specified via the `fields` parameter, and may
+contain any number of top-level or embedded fields such as strings, ints,
+floats, booleans, or lists of such values.
+
+List values are encoded as `"list,of,values"` with double quotes to escape the
+commas. Missing field values are encoded as empty cells.
+
+.. note::
+
+    See :class:`CSVDatasetExporter <fiftyone.utils.csv.CSVDatasetExporter>` for
+    parameters that can be passed to methods like
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
+You can export a FiftyOne dataset as a CSV dataset in the above format as
+follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/csv-dataset"
+
+        # The dataset or view to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+            fields=["list", "of", "fields"],
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/csv-dataset
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --type fiftyone.types.CSVDataset \
+            --kwargs fields=list,of,fields
+
+You can also directly export a CSV of field values with no media by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/labels.csv"
+
+        # The dataset or view to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.CSVDataset,
+            labels_path=labels_path,
+            fields=["list", "of", "fields"],
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/labels.csv
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --type fiftyone.types.CSVDataset \
+            --kwargs \
+                labels_path=$LABELS_PATH \
+                fields=list,of,fields
 
 .. _GeoJSONDataset-export:
 

@@ -117,7 +117,7 @@ export const useScreenshot = (
           data: { src: imgData, width: canvas.width, subscription },
         });
       });
-  }, []);
+  }, [captureCallbacks, context, subscription]);
 
   const run = () => {
     if (!context) return;

@@ -122,6 +122,11 @@ export const dataset = atom<State.Dataset>({
   default: null,
 });
 
+export const selectedViewName = atom<string>({
+  key: "selectedViewName",
+  default: null,
+});
+
 export const selectedLabels = atom<State.SelectedLabelMap>({
   key: "selectedLabels",
   default: {},
@@ -233,6 +238,11 @@ export const theme = atom<"dark" | "light">({
       });
     },
   ],
+});
+
+export const canEditSavedViews = atom({
+  key: "canEditSavedViews",
+  default: true,
 });
 
 export const compactLayout = atom({

@@ -8,6 +8,10 @@ import { State } from "./types";
 import { toSnakeCase } from "@fiftyone/utilities";
 import { config } from "./config";
 import { fieldSchema } from "./schema";
+import { StateForm } from "@fiftyone/relay";
+import { filters, modalFilters } from "./filters";
+import { selectedSamples } from "./atoms";
+import { resolvedGroupSlice } from "./groups";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -37,6 +41,14 @@ export const stateSubscription = selector<string>({
 export const mediaType = selector({
   key: "mediaType",
   get: ({ get }) => get(atoms.dataset)?.mediaType,
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+export const savedViewsSelector = selector<State.SavedView[]>({
+  key: "datasetViews",
+  get: ({ get }) => get(atoms.dataset)?.savedViews || [],
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -363,4 +375,23 @@ export const mediaFields = selector<string[]>({
 export const modalNavigation = selector<atoms.ModalNavigation>({
   key: "modalNavigation",
   get: ({ get }) => get(atoms.modal).navigation,
+});
+
+export const viewStateForm = selectorFamily<
+  StateForm,
+  { addStages?: string; modal?: boolean; selectSlice?: boolean }
+>({
+  key: "viewStateForm",
+  get:
+    ({ addStages, modal, selectSlice }) =>
+    ({ get }) => {
+      return {
+        filters: get(modal ? modalFilters : filters),
+        sampleIds: [...get(selectedSamples)],
+        labels: get(selectedLabelList),
+        extended: get(extendedStages),
+        slice: selectSlice ? get(resolvedGroupSlice(modal)) : null,
+        addStages: addStages ? JSON.parse(addStages) : [],
+      };
+    },
 });

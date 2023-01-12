@@ -752,6 +752,20 @@ class GeoTIFFDataset(ImageLabelsDataset):
         return foug.GeoTIFFDatasetImporter
 
 
+class CSVDataset(Dataset):
+    """A flexible CSV format that represents slice(s) of field values of a
+    dataset as columns of a CSV file.
+
+    See :ref:`this page <CSVDataset-export>` for exporting datasets of this
+    type.
+    """
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.csv as fouc
+
+        return fouc.CSVDatasetExporter
+
+
 class FiftyOneDataset(Dataset):
     """A disk representation of an entire
     :class:`fiftyone.core.dataset.Dataset` stored on disk in a serialized JSON

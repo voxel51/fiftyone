@@ -9,6 +9,7 @@ import logging
 import os
 import shutil
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -33,10 +34,6 @@ logger = logging.getLogger(__name__)
 
 class FiftyOneDataset(fozd.ZooDataset):
     """Base class for zoo datasets that are provided natively by FiftyOne."""
-
-    @property
-    def _download_size(self):
-        return None
 
     pass
 
@@ -505,10 +502,6 @@ class BDD100KDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, None
 
-    @property
-    def _download_size(self):
-        return 7.1  ## GB
-
 
 class Caltech101Dataset(FiftyOneDataset):
     """The Caltech-101 dataset of images.
@@ -579,10 +572,6 @@ class Caltech101Dataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
-
-    @property
-    def _download_size(self):
-        return 0.1386  ## GB
 
 
 class Caltech256Dataset(FiftyOneDataset):
@@ -678,10 +667,6 @@ class Caltech256Dataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
-
-    @property
-    def _download_size(self):
-        return 1.16  ## GB
 
 
 class CityscapesDataset(FiftyOneDataset):
@@ -796,10 +781,6 @@ class CityscapesDataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, None
-
-    @property
-    def _download_size(self):
-        return 11.8  ## GB
 
 
 class COCO2014Dataset(FiftyOneDataset):
@@ -1342,10 +1323,6 @@ class FIWDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, classes
 
-    @property
-    def _download_size(self):
-        return 0.173  ## GB
-
 
 class HMDB51Dataset(FiftyOneDataset):
     """HMDB51 is an action recognition dataset containing a total of 6,766
@@ -1414,10 +1391,6 @@ class HMDB51Dataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
-
-    @property
-    def _download_size(self):
-        return 2.16  ## GB
 
 
 class ImageNetSampleDataset(FiftyOneDataset):
@@ -1513,10 +1486,6 @@ class ImageNetSampleDataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
-
-    @property
-    def _download_size(self):
-        return 0.09826  ## GB
 
 
 class Kinetics400Dataset(FiftyOneDataset):
@@ -2198,10 +2167,6 @@ class KITTIDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, None
 
-    @property
-    def _download_size(self):
-        return 12.57  ## GB
-
 
 class KITTIMultiviewDataset(FiftyOneDataset):
     """KITTI contains a suite of vision tasks built using an autonomous
@@ -2251,6 +2216,10 @@ class KITTIMultiviewDataset(FiftyOneDataset):
     def supports_partial_downloads(self):
         return True
 
+    @property
+    def has_patches(self):
+        return True
+
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
@@ -2270,9 +2239,20 @@ class KITTIMultiviewDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, None
 
-    @property
-    def _download_size(self):
-        return 53.34  ## GB
+    def _patch_if_necessary(self, dataset_dir, split):
+        try:
+            # This data is in FiftyOneDataset format
+            split_dir = os.path.join(dataset_dir, split)
+            metadata_path = os.path.join(split_dir, "metadata.json")
+            metadata = etas.read_json(metadata_path)
+            config = metadata["app_config"]["plugins"]["3d"]
+            is_legacy = "itemRotation" in config["overlay"]
+        except:
+            is_legacy = False
+
+        if is_legacy:
+            logger.info("Patching existing download...")
+            foukt._prepare_kitti_split(split_dir, overwrite=True)
 
 
 class LabeledFacesInTheWildDataset(FiftyOneDataset):
@@ -2337,10 +2317,6 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
-
-    @property
-    def _download_size(self):
-        return 0.173  ## GB
 
 
 class OpenImagesV6Dataset(FiftyOneDataset):
@@ -2566,7 +2542,7 @@ class QuickstartDataset(FiftyOneDataset):
 
     @property
     def tags(self):
-        return ("image", "quickstart", "detection")
+        return ("image", "quickstart")
 
     @property
     def supported_splits(self):
@@ -2645,10 +2621,6 @@ class QuickstartGeoDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, classes
 
-    @property
-    def _download_size(self):
-        return 0.0335  ## GB
-
 
 class QuickstartVideoDataset(FiftyOneDataset):
     """A small video dataset with dense annotations.
@@ -2703,10 +2675,6 @@ class QuickstartVideoDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, None
 
-    @property
-    def _download_size(self):
-        return 0.00352  ## GB
-
 
 class QuickstartGroupsDataset(FiftyOneDataset):
     """A small dataset with grouped image and point cloud data.
@@ -2728,7 +2696,7 @@ class QuickstartGroupsDataset(FiftyOneDataset):
         516.3 MB
     """
 
-    _GDRIVE_ID = "1df8JucJwjHTkl3MgOJdH477vcv4McNCa"
+    _GDRIVE_ID = "1mLfmb0Bj9L7SaDwcgpKVetvKEGt-b7Lb"
     _ARCHIVE_NAME = "quickstart-groups.zip"
     _DIR_IN_ARCHIVE = "quickstart-groups"
 
@@ -2743,6 +2711,10 @@ class QuickstartGroupsDataset(FiftyOneDataset):
     @property
     def supported_splits(self):
         return None
+
+    @property
+    def has_patches(self):
+        return True
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
         _download_and_extract_archive(
@@ -2762,9 +2734,21 @@ class QuickstartGroupsDataset(FiftyOneDataset):
 
         return dataset_type, num_samples, classes
 
-    @property
-    def _download_size(self):
-        return 0.5163  ## GB
+    def _patch_if_necessary(self, dataset_dir, _):
+        try:
+            # This data is in LegacyFiftyOneDataset format
+            metadata_path = os.path.join(dataset_dir, "metadata.json")
+            metadata = etas.read_json(metadata_path)
+            config = metadata["info"]["app_config"]["plugins"]["3d"]
+            is_legacy = "itemRotation" in config["overlay"]
+        except:
+            is_legacy = False
+
+        if is_legacy:
+            logger.info("Downloading patched dataset...")
+            scratch_dir = os.path.join(dataset_dir, "tmp-download")
+            self._download_and_prepare(dataset_dir, scratch_dir, None)
+            etau.delete_dir(scratch_dir)
 
 
 class UCF101Dataset(FiftyOneDataset):
@@ -2850,10 +2834,6 @@ class UCF101Dataset(FiftyOneDataset):
 
         return dataset_type, num_samples, classes
 
-    @property
-    def _download_size(self):
-        return 6.48  ## GB
-
 
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
@@ -2900,4 +2880,10 @@ def _download_and_extract_archive(
 
 def _move_dir(src, dst):
     for f in os.listdir(src):
+        _dst = os.path.join(dst, f)
+        if os.path.isfile(_dst):
+            os.remove(_dst)
+        elif os.path.isdir(_dst):
+            shutil.rmtree(_dst, ignore_errors=True)
+
         shutil.move(os.path.join(src, f), dst)

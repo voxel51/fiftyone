@@ -28,24 +28,26 @@ export const aggregationQuery = graphQLSelectorFamily<
     ({ extended, modal, paths, root = false }) =>
     ({ get }) => {
       const mixed = get(groupStatistics(modal)) === "group";
+      //TODO: refactor to reuse viewStateForm here?
+      const aggForm = {
+        index: get(refresher),
+        dataset: get(selectors.datasetName),
+        extendedStages: root ? [] : get(selectors.extendedStagesUnsorted),
+        filters:
+          extended && !root
+            ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
+            : null,
+        groupId: !root && modal && mixed ? get(groupId) : null,
+        hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
+        paths,
+        mixed,
+        sampleIds: !root && modal && !mixed ? [get(sidebarSampleId)] : [],
+        slice: get(currentSlice(modal)),
+        view: !root ? get(viewAtoms.view) : [],
+      };
 
       return {
-        form: {
-          index: get(refresher),
-          dataset: get(selectors.datasetName),
-          extendedStages: root ? [] : get(selectors.extendedStagesUnsorted),
-          filters:
-            extended && !root
-              ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
-              : null,
-          groupId: !root && modal && mixed ? get(groupId) : null,
-          hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
-          paths,
-          mixed,
-          sampleIds: !root && modal && !mixed ? [get(sidebarSampleId)] : [],
-          slice: get(currentSlice(modal)),
-          view: !root ? get(viewAtoms.view) : [],
-        },
+        form: aggForm,
       };
     },
 });
@@ -55,12 +57,15 @@ export const aggregations = selectorFamily({
   get:
     (params: { extended: boolean; modal: boolean; paths: string[] }) =>
     ({ get }) => {
-      let extended = params.extended;
-      if (extended && !get(filterAtoms.hasFilters(params.modal))) {
-        extended = false;
-      }
+      if (params) {
+        let extended = params.extended;
+        if (extended && !get(filterAtoms.hasFilters(params.modal))) {
+          extended = false;
+        }
 
-      return get(aggregationQuery({ ...params, extended })).aggregations;
+        return get(aggregationQuery({ ...params, extended })).aggregations;
+      }
+      return [];
     },
 });
 
@@ -76,9 +81,19 @@ export const aggregation = selectorFamily({
       path: string;
     }) =>
     ({ get }) => {
-      return get(
+      const result = get(
         aggregations({ ...params, paths: get(schemaAtoms.filterFields(path)) })
-      ).filter((data) => data.path === path)[0];
+      ).filter((data) => data.path === path);
+      // Avoid downstream errors due to undefined.map by returning an
+      // object for failed graphQL aggregations
+      return result?.length
+        ? result[0]
+        : {
+            path: path,
+            count: 0,
+            exists: 0,
+            values: [],
+          };
     },
 });
 
@@ -237,9 +252,13 @@ export const values = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      return get(aggregation(params))
-        .values.map(({ value }) => value)
-        .sort();
+      if (params) {
+        const result = get(aggregation(params));
+        if (result && result.values) {
+          return result.values.map(({ value }) => value).sort() || [];
+        }
+      }
+      return [];
     },
 });
 
@@ -294,7 +313,7 @@ export const count = selectorFamily({
         return get(counts(params))[value] || 0;
       }
 
-      return get(aggregation(params)).count as number;
+      return get(aggregation(params))?.count as number;
     },
 });
 
