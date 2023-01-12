@@ -96,20 +96,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         max_samples=None,
     ):
 
-        if label_types == None:
-            if "points.csv" in [
-                os.path.split(f)[1]
-                for f in glob(os.path.join(dataset_dir, "labels/*"))
-            ]:
-                label_types = _SUPPORTED_LABEL_TYPES_V7
-            else:
-                label_types = _SUPPORTED_LABEL_TYPES_V6
-        elif type(label_types) != list:
-            label_types = [label_types]
-
-        if include_id:
-            label_types.append("open_images_id")
-
         super().__init__(
             dataset_dir=dataset_dir,
             shuffle=shuffle,
@@ -251,6 +237,13 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
         data_dir = os.path.join(self.dataset_dir, "data")
 
+        if os.path.exists(
+            os.path.join(self.dataset_dir, "labels", "point.csv")
+        ):
+            version = "v7"
+        else:
+            version = "v6"
+
         images_map = {
             os.path.splitext(filename)[0]: os.path.join(data_dir, filename)
             for filename in etau.list_files(data_dir)
@@ -291,6 +284,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             attrs=attrs,
             seed=seed,
             download=False,
+            version=version,
         )
 
         (
@@ -316,6 +310,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             track_all_ids=max_samples is not None,
             only_matching=self.only_matching,
             download=False,
+            version=version,
         )
 
         if max_samples is not None:
@@ -635,6 +630,7 @@ def download_open_images_split(
         attrs=attrs,
         seed=seed,
         download=True,
+        version=version,
     )
 
     did_download |= _did_download
@@ -661,6 +657,7 @@ def download_open_images_split(
         shuffle=shuffle,
         num_workers=num_workers,
         download=True,
+        version=version,
     )
 
     did_download |= _did_download
@@ -675,10 +672,12 @@ def _setup(
     attrs=None,
     seed=None,
     download=False,
+    version=None,
 ):
 
     did_download = False
-    _label_types = label_types
+    _label_types = _parse_label_types(version, label_types)
+
     if etau.is_str(classes):
         classes = [classes]
 
@@ -1073,6 +1072,7 @@ def _get_all_label_data(
     only_matching=False,
     split=None,
     download=False,
+    version=None,
 ):
     cls_data = {}
     det_data = {}
@@ -1086,7 +1086,7 @@ def _get_all_label_data(
     all_attrs_ids = set(image_ids)
     any_attrs_ids = set()
 
-    _label_types = label_types
+    _label_types = _parse_label_types(version, label_types)
 
     did_download = False
 
@@ -1362,6 +1362,7 @@ def _download(
     shuffle=False,
     num_workers=None,
     download=True,
+    version=None,
 ):
     # Download any necessary labels, and, if specific classes/attributes are
     # requested, determine which image IDs have the specified labels
@@ -1389,6 +1390,7 @@ def _download(
         track_all_ids=max_samples is not None,
         split=split,
         download=download,
+        version=version,
     )
 
     downloaded_ids = set(downloaded_ids)
