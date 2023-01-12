@@ -11,6 +11,7 @@ import { resetZoom } from "@fiftyone/looker/src/elements/common/actions";
 import { useCallback } from "react";
 
 export function EmbeddingsPlot({
+  labelSelectorLoading,
   brainKey,
   labelField,
   el,
@@ -47,7 +48,8 @@ export function EmbeddingsPlot({
   );
   const colorscale = useRecoilValue(fos.colorscale);
 
-  if (isLoading || !traces) return <Loading>Pixelating...</Loading>;
+  if (labelSelectorLoading || isLoading || !traces)
+    return <Loading>Pixelating...</Loading>;
   console.log({ resolvedSelection, colorscale });
   const data = tracesToData(
     traces,

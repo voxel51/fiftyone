@@ -40,7 +40,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
   const setView = fos.useSetView();
   const brainResultInfo = useBrainResultInfo();
   const canSelect = brainResultSelector.canSelect;
-  const showPlot = brainResultSelector.hasSelection && !labelSelector.isLoading;
+  const showPlot = brainResultSelector.hasSelection;
   const plotSelection = usePlotSelection();
   const [dragMode, setDragMode] = usePanelStatePartial("dragMode", "lasso");
   const warnings = useWarnings();
@@ -64,7 +64,6 @@ export default function Embeddings({ containerHeight, dimensions }) {
               component={Value}
               containerStyle={selectorStyle}
             />
-            {labelSelector.isLoading && <Loading />}
             {brainResultSelector.hasSelection && !labelSelector.isLoading && (
               <Selector
                 {...labelSelector.handlers}
@@ -127,6 +126,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
         </Selectors>
         {showPlot && (
           <EmbeddingsPlot
+            labelSelectorLoading={labelSelector.isLoading}
             plotSelection={plotSelection}
             bounds={dimensions.bounds}
             el={el}
