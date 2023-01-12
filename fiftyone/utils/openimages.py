@@ -488,7 +488,7 @@ def get_point_classes(version="v7", dataset_dir=None):
     Args:
         version ("v7"): the version of the Open Images dataset. Supported
             values are ``("v7")``
-        dataset_dir (None): an optional root directory the in which the dataset
+        dataset_dir (None): an optional root directory in which the dataset
             is downloaded
 
     Returns:
@@ -496,6 +496,7 @@ def get_point_classes(version="v7", dataset_dir=None):
     """
     _verify_version(version)
     if version != "v7":
+        logger.warning("only open-images-v7 supports point labels")
         return
 
     if dataset_dir is None:
