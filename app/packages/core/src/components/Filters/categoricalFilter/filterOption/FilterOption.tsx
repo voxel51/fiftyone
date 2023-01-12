@@ -48,7 +48,6 @@ const generateOptions = (
   //  1) only nested ListField items should have the filter and negative filter options;
   //  2) BooleanField should not have the negative filter or negative match options;
   //  3) in expanded mode or keypoints field, do not show the match or negative match options;
-
   const options: Option[] = [];
   if (Boolean(nestedField)) {
     options.push({
@@ -139,19 +138,13 @@ const FilterOption: React.FC<Props> = ({
     // on initial load, if filter already exists, load exisiting filter for modal filters
     // otherwise, show defaults: filter for nested listfield, match for other fields
     if (key === null) {
-      if (isMatching && !excluded) {
+      // when filter initializes, isMatching is defaulted to false, but we need to use Boolean(nestedField) to set normal defaults to match
+      if (!excluded) {
         Boolean(nestedField) ? setKey("filter") : setKey("match");
-      }
-      if (isMatching && excluded) {
+      } else {
         Boolean(nestedField)
           ? setKey("negativeFilter")
           : setKey("negativeMatch");
-      }
-      if (!isMatching && !excluded) {
-        setKey("filter");
-      }
-      if (!isMatching && excluded) {
-        setKey("negativeFilter");
       }
     }
   }, []);

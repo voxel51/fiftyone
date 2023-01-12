@@ -84,7 +84,7 @@ const Wrapper = ({
   allValues = [...new Set(allValues)];
 
   // only show all four options the field is a nested ListField.
-  // pass down nestedField as a prop to generate options
+  // pass down nestedField as a prop to generate options. (e.g. "detections")
   const fieldPath = path.split(".").slice(0, -1).join(".");
   const fieldSchema = useRecoilValue(fos.field(fieldPath));
   const nestedField = Boolean(fieldSchema?.ftype.includes("ListField"))

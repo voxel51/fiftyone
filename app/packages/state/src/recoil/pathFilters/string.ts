@@ -22,8 +22,8 @@ const getFilter = (
   return {
     values: [],
     exclude: false,
+    isMatching: false,
     onlyMatch: true,
-    isMatching: true,
     _CLS: "str",
     ...get(filterAtoms.filter({ modal, path })),
   } as StringFilter;

@@ -27,7 +27,7 @@ const getFilter = (
     false: false,
     none: false,
     onlyMatch: true,
-    isMatching: true,
+    isMatching: false,
     exclude: false,
     ...get(filterAtoms.filter({ modal, path })),
   };
@@ -46,7 +46,7 @@ const setFilter = (
 ) => {
   const filter = {
     onlyMatch: true,
-    isMatching: true,
+    isMatching: false,
     exclude: false,
     ...getFilter(get, modal, path),
     [key]: value,
