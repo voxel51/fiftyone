@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0099972df9bbf45295cc9f65cebb2aa8>>
+ * @generated SignedSource<<b42852c8bf7979bf954d5bfef201053c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -41,6 +41,7 @@ export type createSavedViewMutation$data = {
     readonly description: string | null;
     readonly id: string | null;
     readonly name: string | null;
+    readonly slug: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
   } | null;
 };
@@ -172,6 +173,13 @@ v8 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "slug",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "color",
         "storageKey": null
       },
@@ -229,16 +237,16 @@ return {
     "selections": (v8/*: any*/)
   },
   "params": {
-    "cacheID": "fabe0cbc44eff1530dc09a792e252fe8",
+    "cacheID": "394266ec53b6d4eeb1710d03f7cb9dbb",
     "id": null,
     "metadata": {},
     "name": "createSavedViewMutation",
     "operationKind": "mutation",
-    "text": "mutation createSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $viewStages: BSONArray\n  $datasetName: String = null\n  $description: String = null\n  $color: String = null\n  $form: StateForm = null\n) {\n  createSavedView(subscription: $subscription, session: $session, viewName: $viewName, viewStages: $viewStages, datasetName: $datasetName, description: $description, color: $color, form: $form) {\n    id\n    datasetId\n    name\n    description\n    color\n    viewStages\n    createdAt\n  }\n}\n"
+    "text": "mutation createSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $viewStages: BSONArray\n  $datasetName: String = null\n  $description: String = null\n  $color: String = null\n  $form: StateForm = null\n) {\n  createSavedView(subscription: $subscription, session: $session, viewName: $viewName, viewStages: $viewStages, datasetName: $datasetName, description: $description, color: $color, form: $form) {\n    id\n    datasetId\n    name\n    description\n    slug\n    color\n    viewStages\n    createdAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0cbcb64d5a6372c62270c4944ab3938c";
+(node as any).hash = "edca4fb3baa506df972aa14983e64a98";
 
 export default node;

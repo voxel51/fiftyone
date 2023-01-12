@@ -25,6 +25,7 @@ export default graphql`
       datasetId
       name
       description
+      slug
       color
       viewStages
       createdAt

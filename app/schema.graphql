@@ -136,7 +136,7 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
-  stages(name: String = null): BSONArray
+  stages(slug: String = null): BSONArray
 }
 
 type DatasetAppConfig {
@@ -364,7 +364,7 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, view: BSONArray, viewName: String): Dataset
+  dataset(name: String!, view: BSONArray, savedViewSlug: String): Dataset
   datasets(
     search: String
     first: Int = 200
@@ -458,6 +458,7 @@ type SavedView {
   name: String
   description: String
   color: String
+  slug: String
   viewStages: [String!]
   createdAt: datetime
   lastModifiedAt: datetime
@@ -549,6 +550,8 @@ type VideoSample implements Sample {
 type ViewResponse {
   view: BSONArray!
   dataset: Dataset!
+  viewName: String
+  savedViewSlug: String
 }
 
 scalar date

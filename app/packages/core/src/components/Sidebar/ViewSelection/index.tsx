@@ -23,7 +23,7 @@ const DEFAULT_SELECTED: DatasetViewOption = {
   label: "Unsaved view",
   color: "#9e9e9e",
   description: "Unsaved view",
-  name: "unsaved-view",
+  slug: "unsaved-view",
   viewStages: [],
 };
 
@@ -42,12 +42,13 @@ export const selectedSavedViewState = atom<DatasetViewOption | null>({
 
 export type DatasetViewOption = Pick<
   fos.State.SavedView,
-  "id" | "description" | "color" | "viewStages" | "name"
-> & { label: string };
+  "id" | "description" | "color" | "viewStages"
+> & { label: string; slug: string };
 
 export interface DatasetView {
   id: string;
   name: string;
+  slug: string;
   datasetId: string;
   color: string | null;
   description: string | null;
@@ -86,11 +87,12 @@ export default function ViewSelection() {
   const viewOptions: DatasetViewOption[] = useMemo(
     () => [
       DEFAULT_SELECTED,
-      ...map(items, ({ name, color, description, viewStages }) => ({
+      ...map(items, ({ name, color, description, slug, viewStages }) => ({
         id: name,
         name,
         label: name,
         color,
+        slug,
         description,
         viewStages,
       })),
@@ -102,11 +104,11 @@ export default function ViewSelection() {
     () =>
       filter(
         viewOptions,
-        ({ id, label, description, name }: DatasetViewOption) =>
+        ({ id, label, description, slug }: DatasetViewOption) =>
           id === DEFAULT_SELECTED.id ||
           label.toLowerCase().includes(viewSearch) ||
           description?.toLowerCase().includes(viewSearch) ||
-          name?.toLowerCase().includes(viewSearch)
+          slug?.toLowerCase().includes(viewSearch)
       ) as DatasetViewOption[],
     [viewOptions, viewSearch]
   );
@@ -118,7 +120,7 @@ export default function ViewSelection() {
       searchData?.length
     ) {
       const potentialView = searchData.filter(
-        (v) => v.name === selected.name
+        (v) => v.slug === selected.slug
       )?.[0];
       if (potentialView) {
         setSelected(potentialView);
@@ -133,7 +135,7 @@ export default function ViewSelection() {
   useEffect(() => {
     if (savedViewParam) {
       const potentialView = viewOptions.filter(
-        (v) => v.name === savedViewParam
+        (v) => v.slug === savedViewParam
       )?.[0];
       if (potentialView) {
         // no unnecessary setView call if selected has not changed
@@ -143,7 +145,7 @@ export default function ViewSelection() {
         setSelected(potentialView);
       } else {
         const potentialUpdatedView = savedViewsV2.filter(
-          (v) => v.name === savedViewParam
+          (v) => v.slug === savedViewParam
         )?.[0];
         if (potentialUpdatedView) {
           refetch(
@@ -154,6 +156,7 @@ export default function ViewSelection() {
                 setSelected({
                   ...potentialUpdatedView,
                   label: potentialUpdatedView.name,
+                  slug: potentialUpdatedView.slug,
                 });
               },
             }
@@ -165,7 +168,7 @@ export default function ViewSelection() {
       }
     } else {
       // no view param
-      if (selected && selected.name !== DEFAULT_SELECTED.name) {
+      if (selected && selected.slug !== DEFAULT_SELECTED.slug) {
         setSelected(DEFAULT_SELECTED);
         // do not reset view to [] again. The viewbar sets it once.
       }
@@ -203,7 +206,7 @@ export default function ViewSelection() {
                 fetchPolicy: "network-only",
                 onComplete: (newOptions) => {
                   if (createSavedView && reload) {
-                    setView([], undefined, createSavedView.name);
+                    setView([], undefined, createSavedView.slug);
                     setSelected({
                       ...createSavedView,
                       label: createSavedView.name,
@@ -231,7 +234,7 @@ export default function ViewSelection() {
           selected={selected}
           setSelected={(item: DatasetViewOption) => {
             setSelected(item);
-            setView(item.viewStages, [], item.name);
+            setView(item.viewStages, [], item.slug);
           }}
           items={searchData}
           onEdit={(item) => {

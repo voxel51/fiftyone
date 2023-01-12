@@ -45,6 +45,7 @@ export namespace State {
     name: string;
     description?: string;
     color?: string;
+    slug: string;
     viewStages: Stage[];
     createdAt: DateTime;
     lastLoadedAt: DateTime;
@@ -181,6 +182,7 @@ export namespace State {
     view: Stage[];
     viewCls: string | null;
     viewName: string | null;
+    savedViewSlug: string | null;
     savedViews: SavedView[];
   }
 }

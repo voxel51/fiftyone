@@ -48,6 +48,7 @@ class StateDescription(etas.Serializable):
         selected=None,
         selected_labels=None,
         view=None,
+        saved_view_slug=None,
         view_name=None,
     ):
         self.config = config or fo.app_config.copy()
@@ -56,6 +57,7 @@ class StateDescription(etas.Serializable):
         self.selected_labels = selected_labels or []
         self.view = view
         self.view_name = view_name
+        self.saved_view_slug = saved_view_slug
 
     def serialize(self, reflective=False):
         with fou.disable_progress_bars():

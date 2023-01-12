@@ -114,6 +114,7 @@ class SavedView:
     name: t.Optional[str]
     description: t.Optional[str]
     color: t.Optional[str]
+    slug: t.Optional[str]
     view_stages: t.Optional[t.List[str]]
     created_at: t.Optional[datetime]
     last_modified_at: t.Optional[datetime]
@@ -201,12 +202,12 @@ class Dataset:
     info: t.Optional[JSON]
 
     @gql.field
-    def stages(self, name: t.Optional[str] = None) -> t.Optional[BSONArray]:
-        if not name:
+    def stages(self, slug: t.Optional[str] = None) -> t.Optional[BSONArray]:
+        if not slug:
             return None
 
         for view in self.saved_views:
-            if view.name == name:
+            if view.slug == slug:
                 return view.stage_dicts()
 
         return None
@@ -245,10 +246,12 @@ class Dataset:
         name: str,
         view: t.Optional[BSONArray],
         info: Info,
-        view_name: t.Optional[str] = gql.UNSET,
+        saved_view_slug: t.Optional[str] = gql.UNSET,
     ) -> t.Optional["Dataset"]:
         return await serialize_dataset(
-            dataset_name=name, serialized_view=view, view_name=view_name
+            dataset_name=name,
+            serialized_view=view,
+            saved_view_slug=saved_view_slug,
         )
 
 
@@ -403,15 +406,18 @@ def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
 
 
 async def serialize_dataset(
-    dataset_name: str, serialized_view: BSONArray, view_name: t.Optional[str]
+    dataset_name: str,
+    serialized_view: BSONArray,
+    saved_view_slug: t.Optional[str],
 ) -> Dataset:
     def run():
         dataset = fo.load_dataset(dataset_name)
         dataset.reload()
 
-        if view_name is not None and dataset.has_saved_view(view_name):
-            view = dataset.load_saved_view(view_name)
-        else:
+        try:
+            doc = dataset._get_saved_view_doc(saved_view_slug, slug=True)
+            view = dataset.load_saved_view(doc.name)
+        except:
             view = fov.DatasetView._build(dataset, serialized_view or [])
 
         doc = dataset._doc.to_dict(no_dereference=True)

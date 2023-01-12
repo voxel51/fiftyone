@@ -20,6 +20,7 @@ export default graphql`
       name
       description
       color
+      slug
       viewStages
       createdAt
       lastModifiedAt

@@ -63,6 +63,7 @@ export default graphql`
           description
           color
           viewStages
+          slug
           createdAt
           lastModifiedAt
           lastLoadedAt
@@ -117,6 +118,7 @@ export default graphql`
         }
       }
       view
+      savedViewSlug
     }
   }
 `;

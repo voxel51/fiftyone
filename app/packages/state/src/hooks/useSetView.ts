@@ -53,7 +53,9 @@ const useSetView = (patch = false, selectSlice = false) => {
               viewName,
             },
             onError,
-            onCompleted: ({ setView: { dataset, view: value } }) => {
+            onCompleted: ({
+              setView: { dataset, view: value, savedViewSlug },
+            }) => {
               if (
                 router &&
                 router.history.location.state &&
@@ -65,7 +67,8 @@ const useSetView = (patch = false, selectSlice = false) => {
                   viewCls: dataset.viewCls,
                   selected: [],
                   selectedLabels: [],
-                  viewName: viewName || null,
+                  savedViewSlug: savedViewSlug || null,
+                  viewName,
                   savedViews: savedViews,
                 };
                 router.history.location.state.state = newState;
@@ -73,8 +76,8 @@ const useSetView = (patch = false, selectSlice = false) => {
                 const searchParams = new URLSearchParams(
                   router.history.location.search
                 );
-                viewName
-                  ? searchParams.set("view", encodeURIComponent(viewName))
+                savedViewSlug
+                  ? searchParams.set("view", encodeURIComponent(savedViewSlug))
                   : searchParams.delete("view");
 
                 router.history.push(
@@ -87,8 +90,8 @@ const useSetView = (patch = false, selectSlice = false) => {
                 const searchParams = new URLSearchParams(
                   window.location.search
                 );
-                viewName &&
-                  searchParams.set("view", encodeURIComponent(viewName));
+                savedViewSlug &&
+                  searchParams.set("view", encodeURIComponent(savedViewSlug));
                 window.location.search = searchParams.toString();
                 updateState({
                   dataset: transformDataset(dataset),
@@ -97,6 +100,7 @@ const useSetView = (patch = false, selectSlice = false) => {
                     viewCls: dataset.viewCls,
                     selected: [],
                     selectedLabels: [],
+                    savedViewSlug,
                     viewName,
                     savedViews,
                   },

@@ -19,6 +19,7 @@ from fiftyone.core.session.events import StateUpdate
 import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
 import fiftyone.core.dataset as fod
+import fiftyone.core.utils as fou
 
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
@@ -56,6 +57,8 @@ class SelectedLabel:
 class ViewResponse:
     view: BSONArray
     dataset: Dataset
+    view_name: t.Optional[str] = None
+    saved_view_slug: t.Optional[str] = None
 
 
 @gql.input
@@ -209,15 +212,18 @@ class Mutation:
         if state and state.view:
             final_view = state.view._serialize()
 
+        slug = fou.to_slug(view_name) if view_name else None
         dataset = await Dataset.resolver(
             name=dataset_name,
             view=final_view,
-            view_name=view_name,
+            saved_view_slug=slug,
             info=info,
         )
         return ViewResponse(
             view=final_view,
             dataset=dataset,
+            view_name=view_name,
+            saved_view_slug=slug,
         )
 
     @gql.mutation
@@ -241,9 +247,9 @@ class Mutation:
         return await Dataset.resolver(
             name=state.dataset.name,
             view=view,
-            view_name=view_name
+            saved_view_slug=fou.to_slug(view_name)
             if view_name
-            else state.view.name
+            else fou.to_slug(state.view.name)
             if state.view
             else None,
             info=info,

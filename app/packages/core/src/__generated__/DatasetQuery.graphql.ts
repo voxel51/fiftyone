@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3693d735c12c6b292e579f7f11cbc18d>>
+ * @generated SignedSource<<24f2d88ca76f3c95c2ccf39f9d5a3e37>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,8 +14,8 @@ export type MediaType = "group" | "image" | "point_cloud" | "video" | "%future a
 export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 export type DatasetQuery$variables = {
   name: string;
+  savedViewSlug?: string | null;
   view?: Array | null;
-  viewName?: string | null;
 };
 export type DatasetQuery$data = {
   readonly dataset: {
@@ -105,6 +105,7 @@ export type DatasetQuery$data = {
       readonly description: string | null;
       readonly id: string | null;
       readonly name: string | null;
+      readonly slug: string | null;
       readonly viewStages: ReadonlyArray<string> | null;
     }> | null;
     readonly skeletons: ReadonlyArray<{
@@ -124,59 +125,57 @@ export type DatasetQuery = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = [
-  {
-    "defaultValue": null,
-    "kind": "LocalArgument",
-    "name": "name"
-  },
-  {
-    "defaultValue": null,
-    "kind": "LocalArgument",
-    "name": "view"
-  },
-  {
-    "defaultValue": null,
-    "kind": "LocalArgument",
-    "name": "viewName"
-  }
-],
+var v0 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "name"
+},
 v1 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "savedViewSlug"
+},
+v2 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "view"
+},
+v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v2 = {
+v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "name",
   "storageKey": null
 },
-v3 = {
+v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "mediaType",
   "storageKey": null
 },
-v4 = {
+v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "description",
   "storageKey": null
 },
-v5 = {
+v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "info",
   "storageKey": null
 },
-v6 = [
+v8 = [
   {
     "alias": null,
     "args": null,
@@ -212,10 +211,10 @@ v6 = [
     "name": "dbField",
     "storageKey": null
   },
-  (v4/*: any*/),
-  (v5/*: any*/)
+  (v6/*: any*/),
+  (v7/*: any*/)
 ],
-v7 = [
+v9 = [
   {
     "alias": null,
     "args": null,
@@ -231,84 +230,91 @@ v7 = [
     "storageKey": null
   }
 ],
-v8 = {
+v10 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "key",
   "storageKey": null
 },
-v9 = {
+v11 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "version",
   "storageKey": null
 },
-v10 = {
+v12 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "timestamp",
   "storageKey": null
 },
-v11 = {
+v13 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "viewStages",
   "storageKey": null
 },
-v12 = {
+v14 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cls",
   "storageKey": null
 },
-v13 = {
+v15 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "datasetId",
   "storageKey": null
 },
-v14 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "color",
-  "storageKey": null
-},
-v15 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "lastLoadedAt",
-  "storageKey": null
-},
 v16 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "createdAt",
+  "name": "slug",
   "storageKey": null
 },
 v17 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "labels",
+  "name": "color",
   "storageKey": null
 },
 v18 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "edges",
+  "name": "lastLoadedAt",
   "storageKey": null
 },
 v19 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "createdAt",
+  "storageKey": null
+},
+v20 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "labels",
+  "storageKey": null
+},
+v21 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "edges",
+  "storageKey": null
+},
+v22 = {
   "alias": null,
   "args": [
     {
@@ -318,13 +324,13 @@ v19 = {
     },
     {
       "kind": "Variable",
-      "name": "view",
-      "variableName": "view"
+      "name": "savedViewSlug",
+      "variableName": "savedViewSlug"
     },
     {
       "kind": "Variable",
-      "name": "viewName",
-      "variableName": "viewName"
+      "name": "view",
+      "variableName": "view"
     }
   ],
   "concreteType": "Dataset",
@@ -337,17 +343,17 @@ v19 = {
       "args": [
         {
           "kind": "Variable",
-          "name": "name",
-          "variableName": "viewName"
+          "name": "slug",
+          "variableName": "savedViewSlug"
         }
       ],
       "kind": "ScalarField",
       "name": "stages",
       "storageKey": null
     },
-    (v1/*: any*/),
-    (v2/*: any*/),
     (v3/*: any*/),
+    (v4/*: any*/),
+    (v5/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -370,8 +376,8 @@ v19 = {
       "name": "groupMediaTypes",
       "plural": true,
       "selections": [
-        (v2/*: any*/),
-        (v3/*: any*/)
+        (v4/*: any*/),
+        (v5/*: any*/)
       ],
       "storageKey": null
     },
@@ -426,7 +432,7 @@ v19 = {
               "name": "paths",
               "storageKey": null
             },
-            (v2/*: any*/)
+            (v4/*: any*/)
           ],
           "storageKey": null
         },
@@ -454,7 +460,7 @@ v19 = {
       "kind": "LinkedField",
       "name": "sampleFields",
       "plural": true,
-      "selections": (v6/*: any*/),
+      "selections": (v8/*: any*/),
       "storageKey": null
     },
     {
@@ -464,7 +470,7 @@ v19 = {
       "kind": "LinkedField",
       "name": "frameFields",
       "plural": true,
-      "selections": (v6/*: any*/),
+      "selections": (v8/*: any*/),
       "storageKey": null
     },
     {
@@ -475,7 +481,7 @@ v19 = {
       "name": "maskTargets",
       "plural": true,
       "selections": [
-        (v2/*: any*/),
+        (v4/*: any*/),
         {
           "alias": null,
           "args": null,
@@ -483,7 +489,7 @@ v19 = {
           "kind": "LinkedField",
           "name": "targets",
           "plural": true,
-          "selections": (v7/*: any*/),
+          "selections": (v9/*: any*/),
           "storageKey": null
         }
       ],
@@ -496,7 +502,7 @@ v19 = {
       "kind": "LinkedField",
       "name": "defaultMaskTargets",
       "plural": true,
-      "selections": (v7/*: any*/),
+      "selections": (v9/*: any*/),
       "storageKey": null
     },
     {
@@ -507,10 +513,10 @@ v19 = {
       "name": "evaluations",
       "plural": true,
       "selections": [
-        (v8/*: any*/),
-        (v9/*: any*/),
         (v10/*: any*/),
         (v11/*: any*/),
+        (v12/*: any*/),
+        (v13/*: any*/),
         {
           "alias": null,
           "args": null,
@@ -519,7 +525,7 @@ v19 = {
           "name": "config",
           "plural": false,
           "selections": [
-            (v12/*: any*/),
+            (v14/*: any*/),
             {
               "alias": null,
               "args": null,
@@ -548,10 +554,10 @@ v19 = {
       "name": "brainMethods",
       "plural": true,
       "selections": [
-        (v8/*: any*/),
-        (v9/*: any*/),
         (v10/*: any*/),
         (v11/*: any*/),
+        (v12/*: any*/),
+        (v13/*: any*/),
         {
           "alias": null,
           "args": null,
@@ -560,7 +566,7 @@ v19 = {
           "name": "config",
           "plural": false,
           "selections": [
-            (v12/*: any*/),
+            (v14/*: any*/),
             {
               "alias": null,
               "args": null,
@@ -596,17 +602,18 @@ v19 = {
       "name": "savedViews",
       "plural": true,
       "selections": [
-        (v1/*: any*/),
-        (v13/*: any*/),
-        (v2/*: any*/),
+        (v3/*: any*/),
+        (v15/*: any*/),
         (v4/*: any*/),
-        (v14/*: any*/),
-        (v11/*: any*/)
+        (v16/*: any*/),
+        (v6/*: any*/),
+        (v17/*: any*/),
+        (v13/*: any*/)
       ],
       "storageKey": null
     },
-    (v15/*: any*/),
-    (v16/*: any*/),
+    (v18/*: any*/),
+    (v19/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -615,9 +622,9 @@ v19 = {
       "name": "skeletons",
       "plural": true,
       "selections": [
-        (v2/*: any*/),
-        (v17/*: any*/),
-        (v18/*: any*/)
+        (v4/*: any*/),
+        (v20/*: any*/),
+        (v21/*: any*/)
       ],
       "storageKey": null
     },
@@ -629,12 +636,12 @@ v19 = {
       "name": "defaultSkeleton",
       "plural": false,
       "selections": [
-        (v17/*: any*/),
-        (v18/*: any*/)
+        (v20/*: any*/),
+        (v21/*: any*/)
       ],
       "storageKey": null
     },
-    (v9/*: any*/),
+    (v11/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -642,13 +649,17 @@ v19 = {
       "name": "viewCls",
       "storageKey": null
     },
-    (v5/*: any*/)
+    (v7/*: any*/)
   ],
   "storageKey": null
 };
 return {
   "fragment": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": [
+      (v0/*: any*/),
+      (v1/*: any*/),
+      (v2/*: any*/)
+    ],
     "kind": "Fragment",
     "metadata": null,
     "name": "DatasetQuery",
@@ -658,14 +669,18 @@ return {
         "kind": "FragmentSpread",
         "name": "DatasetSavedViewsFragment"
       },
-      (v19/*: any*/)
+      (v22/*: any*/)
     ],
     "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": [
+      (v0/*: any*/),
+      (v2/*: any*/),
+      (v1/*: any*/)
+    ],
     "kind": "Operation",
     "name": "DatasetQuery",
     "selections": [
@@ -683,13 +698,14 @@ return {
         "name": "savedViews",
         "plural": true,
         "selections": [
-          (v1/*: any*/),
-          (v13/*: any*/),
-          (v2/*: any*/),
+          (v3/*: any*/),
+          (v15/*: any*/),
           (v4/*: any*/),
-          (v14/*: any*/),
-          (v11/*: any*/),
           (v16/*: any*/),
+          (v6/*: any*/),
+          (v17/*: any*/),
+          (v13/*: any*/),
+          (v19/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -697,24 +713,24 @@ return {
             "name": "lastModifiedAt",
             "storageKey": null
           },
-          (v15/*: any*/)
+          (v18/*: any*/)
         ],
         "storageKey": null
       },
-      (v19/*: any*/)
+      (v22/*: any*/)
     ]
   },
   "params": {
-    "cacheID": "9c0799a14412009b8df0d296764b4a15",
+    "cacheID": "8369a75fca9adab9c97e2854615aa264",
     "id": null,
     "metadata": {},
     "name": "DatasetQuery",
     "operationKind": "query",
-    "text": "query DatasetQuery(\n  $name: String!\n  $view: BSONArray = null\n  $viewName: String = null\n) {\n  ...DatasetSavedViewsFragment\n  dataset(name: $name, view: $view, viewName: $viewName) {\n    stages(name: $viewName)\n    id\n    name\n    mediaType\n    defaultGroupSlice\n    groupField\n    groupMediaTypes {\n      name\n      mediaType\n    }\n    appConfig {\n      gridMediaField\n      mediaFields\n      plugins\n      sidebarGroups {\n        expanded\n        paths\n        name\n      }\n      modalMediaField\n      sidebarMode\n    }\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n      description\n      info\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n      description\n      info\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    savedViews {\n      id\n      datasetId\n      name\n      description\n      color\n      viewStages\n    }\n    lastLoadedAt\n    createdAt\n    skeletons {\n      name\n      labels\n      edges\n    }\n    defaultSkeleton {\n      labels\n      edges\n    }\n    version\n    viewCls\n    info\n  }\n}\n\nfragment DatasetSavedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
+    "text": "query DatasetQuery(\n  $name: String!\n  $view: BSONArray = null\n  $savedViewSlug: String = null\n) {\n  ...DatasetSavedViewsFragment\n  dataset(name: $name, view: $view, savedViewSlug: $savedViewSlug) {\n    stages(slug: $savedViewSlug)\n    id\n    name\n    mediaType\n    defaultGroupSlice\n    groupField\n    groupMediaTypes {\n      name\n      mediaType\n    }\n    appConfig {\n      gridMediaField\n      mediaFields\n      plugins\n      sidebarGroups {\n        expanded\n        paths\n        name\n      }\n      modalMediaField\n      sidebarMode\n    }\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n      description\n      info\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n      description\n      info\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    savedViews {\n      id\n      datasetId\n      name\n      slug\n      description\n      color\n      viewStages\n    }\n    lastLoadedAt\n    createdAt\n    skeletons {\n      name\n      labels\n      edges\n    }\n    defaultSkeleton {\n      labels\n      edges\n    }\n    version\n    viewCls\n    info\n  }\n}\n\nfragment DatasetSavedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "982dd26e58cef4c38996e2b7513ecd3b";
+(node as any).hash = "d83d23ad52b76b10e3075dc483036740";
 
 export default node;

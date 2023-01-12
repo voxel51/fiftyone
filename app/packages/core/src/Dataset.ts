@@ -15,6 +15,7 @@ export const DatasetSavedViewsFragment = graphql`
       id
       datasetId
       name
+      slug
       description
       color
       viewStages
@@ -29,11 +30,11 @@ export const DatasetNodeQuery = graphql`
   query DatasetQuery(
     $name: String!
     $view: BSONArray = null
-    $viewName: String = null
+    $savedViewSlug: String = null
   ) {
     ...DatasetSavedViewsFragment
-    dataset(name: $name, view: $view, viewName: $viewName) {
-      stages(name: $viewName)
+    dataset(name: $name, view: $view, savedViewSlug: $savedViewSlug) {
+      stages(slug: $savedViewSlug)
       id
       name
       mediaType
@@ -109,6 +110,7 @@ export const DatasetNodeQuery = graphql`
         id
         datasetId
         name
+        slug
         description
         color
         viewStages

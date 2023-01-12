@@ -27,6 +27,7 @@ from fiftyone.core.session.events import (
     StateUpdate,
 )
 import fiftyone.core.state as fos
+import fiftyone.core.utils as fou
 from fiftyone.server.query import serialize_dataset
 
 
@@ -93,7 +94,7 @@ async def add_event_listener(
                     serialized_view=data.state.view._serialize()
                     if data.state.view is not None
                     else [],
-                    view_name=data.state.view.name
+                    saved_view_slug=fou.to_slug(data.state.view.name)
                     if data.state.view
                     else None,
                 )
@@ -132,7 +133,7 @@ async def add_event_listener(
                         serialized_view=event.state.view._serialize()
                         if event.state.view is not None
                         else [],
-                        view_name=event.state.view.name
+                        saved_view_slug=fou.to_slug(event.state.view.name)
                         if event.state.view
                         else None,
                     )
@@ -256,7 +257,7 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
         _app_count += 1
 
     current = state.dataset.name if state.dataset else None
-    current_saved_view = state.view_name
+    current_saved_view_slug = state.saved_view_slug
     if not isinstance(payload.initializer, fos.StateDescription):
         update = False
         if (
@@ -270,40 +271,47 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
                 state.selected_labels = []
                 state.view = None
                 state.view_name = None
+                state.saved_view_slug = None
             except:
                 state.dataset = None
                 state.selected = []
                 state.selected_labels = []
                 state.view = None
                 state.view_name = None
+                state.saved_view_slug = None
             else:
                 if payload.initializer.view:
                     try:
-                        state.view = state.dataset.load_saved_view(
-                            payload.initializer.view
+                        doc = state.dataset._get_saved_view_doc(
+                            payload.initializer.view, slug=True
                         )
+                        state.view = state.dataset.load_saved_view(doc.name)
                         state.selected = []
                         state.selected_labels = []
-                        state.view_name = payload.initializer.view
+                        state.saved_view_slug = payload.initializer.view
+                        state.view_name = doc.name
                     except:
                         pass
         elif (
             payload.initializer.view
-            and payload.initializer.view != current_saved_view
+            and payload.initializer.view != current_saved_view_slug
         ):
             update = True
             try:
-                state.view = state.dataset.load_saved_view(
-                    payload.initializer.view
+                doc = state.dataset._get_saved_view_doc(
+                    payload.initializer.view, slug=True
                 )
+                state.view = state.dataset.load_saved_view(doc.name)
                 state.selected = []
                 state.selected_labels = []
-                state.view_name = payload.initializer.view
+                state.saved_view_slug = payload.initializer.view
+                state.view_name = doc.name
             except:
                 state.view = None
                 state.selected = []
                 state.selected_labels = []
                 state.view_name = None
+                state.saved_view_slug = None
                 pass
 
         if update:
