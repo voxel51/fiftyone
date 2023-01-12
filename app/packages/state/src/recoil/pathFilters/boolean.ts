@@ -250,7 +250,7 @@ export const boolean = selectorFamily<
     (params) =>
     ({ get }) => {
       if (!get(filterAtoms.filter(params))) {
-        return (value) => true;
+        return () => true;
       }
 
       const trueValue = get(trueAtom(params));

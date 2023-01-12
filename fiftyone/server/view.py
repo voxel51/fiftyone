@@ -281,10 +281,10 @@ def get_extended_view(
         filters: an optional ``dict`` of App defined filters
         count_label_tags (False): whether to set the hidden ``_label_tags``
             field with counts of tags with respect to all label fields
-        only_matches (None): whether to filter unmatches samples when filtering
-            labels, defaults to None to check FE filter setting
         extended_stages (None): extended view stages
         sort (False): wheter to include sort extended stages
+
+    The function returns a fiftyone.core.collections.SampleCollection
     """
     cleanup_fields = set()
     filtered_labels = set()
@@ -324,6 +324,15 @@ def get_extended_view(
 
 
 def extend_view(view, extended_stages, sort):
+
+    """If sorting conditions are met, it will the sorting of the sample based on the extended stages defined.
+    Then add the stages to the view and return this modified view.
+    Args:
+        view: a :class:`fiftyone.core.collections.SampleCollection`
+        extended_stages: extended view stages
+        sort (False): wheter to include sort extended stages
+    """
+
     for cls, d in extended_stages.items():
         kwargs = [[k, v] for k, v in d.items()]
         stage = fosg.ViewStage._from_dict({"_cls": cls, "kwargs": kwargs})
@@ -334,6 +343,13 @@ def extend_view(view, extended_stages, sort):
 
 
 def _add_labels_tags_counts(view, filtered_fields, label_tags):
+
+    """This counts the number of items in the `_LABEL_TAGS` field and returns the modified view.
+    Args:
+        view: a :class:`fiftyone.core.collections.SampleCollection`
+        filtered_fields: filtered fields
+        label_tags: label tags
+    """
     view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
 
     for path, field in iter_label_fields(view):
@@ -361,43 +377,50 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
     return view
 
 
-# for F.match()
-def _make_expression(view, path, args):
+def _make_expression(field, path, args):
+
+    """This returns a MongoDB expression that can be used to filter a view based on the field, path and provided filter(args)
+    Args:
+        field: a :class:`fiftyone.core.fields.Field`
+        path: a :class:`str` representing the path to the field
+        args: a :class:`dict` representing the filter arguments, usually with keys `values`, `exclude``
+    """
+
+    if not path:
+        return _make_scalar_expression(F(), args, field)
+
     keys = path.split(".")
-    field = view.get_field_schema()[keys[0]]
-
-    for i in range(1, len(keys)):
-        if isinstance(field, fof.ListField) and not isinstance(
-            field, fof.FrameSupportField
-        ):
-            field = field.field
-        else:
-            field = field.get_field_schema()[keys[i]]
-
+    rest = ".".join(keys[1:])
+    field = field.get_field_schema()[keys[0]]
     if isinstance(field, fof.ListField) and not isinstance(
         field, fof.FrameSupportField
     ):
+        new_field = field.field
         if args["exclude"]:
-            # need to mark false for subexpression since we changed the condition for exclude, so we do not want a "not" expression
+            # in ListField, exclude uses match(expr).length() == 0 instead of match(~expr), therefore, exclude needs to be set to False here to get the correct subexpr
             args["exclude"] = False
             expr = (
-                F(field.db_field or field.name)
-                .filter(_make_scalar_expression(F(), args, field))
+                lambda subexpr: F(field.db_field or field.name)
+                .filter(subexpr)
                 .length()
                 == 0
             )
         else:
             expr = (
-                F(field.db_field or field.name)
-                .filter(_make_scalar_expression(F(), args, field))
+                lambda subexpr: F(field.db_field or field.name)
+                .filter(subexpr)
                 .length()
                 > 0
             )
     else:
-        expr = _make_scalar_expression(
-            F(field.db_field or field.name), args, field
-        )
-    return expr
+        new_field = field
+        expr = lambda subexpr: F(field.db_field or field.name).apply(subexpr)
+
+    subexpr = _make_expression(new_field, rest, args)
+    if subexpr is not None:
+        return expr(subexpr)
+
+    return None
 
 
 def _make_filter_stages(
@@ -406,6 +429,7 @@ def _make_filter_stages(
     label_tags=None,
     hide_result=False,
 ):
+    """This creates filter stages using the provided filters and label tags."""
     field_schema = view.get_field_schema()
     if view.media_type != fom.IMAGE:
         frame_field_schema = view.get_frame_field_schema()
@@ -421,8 +445,8 @@ def _make_filter_stages(
     filtered_labels = set()
     for path in sorted(filters):
         args = filters[path]
-        # we can assume only_matches to be true, unless args[]
 
+        # use the setting within the filter, otherwise use default true settings
         is_matching = True if "isMatching" not in args else args["isMatching"]
         only_match = True if "onlyMatch" not in args else args["onlyMatch"]
 
@@ -570,7 +594,6 @@ def _is_label(field):
     )
 
 
-# make scalar expre for common tyles
 def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
     expr = None
     is_matching = False if "isMatching" not in args else args["isMatching"]
@@ -616,7 +639,7 @@ def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
         expr = f.is_in(values)
         exclude = args["exclude"]
 
-        # list_field handles exclude separately; matchLabel has exclude in the arg
+        # list_field handles exclude separately
         if exclude and not (is_label and is_matching) and not list_field:
             # pylint: disable=invalid-unary-operand-type
             expr = ~expr
