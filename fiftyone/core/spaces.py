@@ -3,6 +3,7 @@ from mongoengine.errors import ValidationError
 
 import fiftyone.core.fields as fof
 from fiftyone.core.odm import EmbeddedDocument
+import uuid
 
 
 def _validate_children(children):
@@ -22,6 +23,9 @@ class Component(EmbeddedDocument):
         default=lambda: str(ObjectId()),
         db_field="_id",
     )
+
+    # common id between api and app
+    component_id = fof.StringField(default=lambda: str(uuid.uuid4()))
 
 
 class Panel(Component):
@@ -46,7 +50,7 @@ class Space(Component):
     active_child = fof.StringField(default=None)
 
 
+samples_panel = Panel(type="Samples", pinned=True)
 default_spaces = Space(
-    children=[Panel(type="Samples", pinned=True)],
-    active_child="default-samples-node",
+    children=[samples_panel], active_child=samples_panel.component_id
 )
