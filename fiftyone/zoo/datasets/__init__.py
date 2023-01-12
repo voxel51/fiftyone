@@ -23,7 +23,7 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-def list_zoo_datasets(tags=None, all=True, max_size=None):
+def list_zoo_datasets(tags=None, all=True):
 
     """Returns the list of available datasets in the FiftyOne Dataset Zoo
             fitting the specified conditions. If no conditions are given,
@@ -35,18 +35,16 @@ def list_zoo_datasets(tags=None, all=True, max_size=None):
         import fiftyone.zoo as foz
 
         #
-        # List all zoo datasets with media_type "image", which support
-        # "classification" tasks, and which require at most 1GB download.
+        # List all zoo datasets with "image" and "classification" tags.
         #
 
         foz.list_zoo_datasets(
             tags=["image", "classification"],
             all=True,
-            max_size=1.0,
         )
 
         #
-        # List all zoo datasets with media_type "image" or "video
+        # List all zoo datasets with either "image" or "video" tag
         #
 
         foz.list_zoo_datasets(
@@ -58,9 +56,6 @@ def list_zoo_datasets(tags=None, all=True, max_size=None):
     Args:
         tags (None): Which tags to search the Dataset Zoo for.
         all (True): Allowed values include True/False
-
-        max_size (None): Max allowed size of the dataset in GB, if full dataset
-            download is required.
 
     """
 
@@ -78,7 +73,7 @@ def list_zoo_datasets(tags=None, all=True, max_size=None):
                 return True
         return False
 
-    if tags is None and max_size is None:
+    if tags is None:
         datasets = set()
         all_datasets = _get_zoo_datasets()
         for d in all_datasets.values():
@@ -107,13 +102,6 @@ def list_zoo_datasets(tags=None, all=True, max_size=None):
                 datasets = [d for d in datasets if _has_all_tags(d, tags)]
             else:
                 datasets = [d for d in datasets if _has_any_tags(d, tags)]
-
-        if max_size is not None:
-            datasets = [
-                d
-                for d in datasets
-                if d._download_size and d._download_size < max_size
-            ]
 
         dataset_names = [d.name for d in datasets]
         return dataset_names
