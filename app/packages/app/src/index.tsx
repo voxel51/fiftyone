@@ -105,8 +105,11 @@ const App: React.FC = ({}) => {
                 context.history.location.search
               );
 
-              if (state.viewName) {
-                searchParams.set("view", encodeURIComponent(state.viewName));
+              if (state.savedViewSlug) {
+                searchParams.set(
+                  "view",
+                  encodeURIComponent(state.savedViewSlug)
+                );
               } else {
                 searchParams.delete("view");
               }

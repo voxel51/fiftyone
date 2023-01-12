@@ -1,22 +1,19 @@
+import { Selection } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import React, { Suspense, useContext, useEffect, useMemo } from "react";
-import { filter, map } from "lodash";
+import { useRefetchableFragment } from "react-relay";
 import {
   atom,
   useRecoilState,
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import { useRefetchableFragment } from "react-relay";
-
-import qs from "qs";
-import * as fos from "@fiftyone/state";
-import { Selection } from "@fiftyone/components";
-
-import ViewDialog, { viewDialogContent } from "./ViewDialog";
+import { DatasetSavedViewsFragmentQuery } from "../../../__generated__/DatasetSavedViewsFragmentQuery.graphql";
+import { DatasetSavedViewsFragment$key } from "../../../__generated__/DatasetSavedViewsFragment.graphql";
 import { DatasetQueryRef, DatasetSavedViewsFragment } from "../../../Dataset";
-import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
-import { viewName } from "@fiftyone/state";
+import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
+import ViewDialog, { viewDialogContent } from "./ViewDialog";
 
 const DEFAULT_SELECTED: DatasetViewOption = {
   id: "1",
@@ -60,12 +57,9 @@ export default function ViewSelection() {
     selectedSavedViewState
   );
 
-  const existingQueries = qs.parse(location.search, {
-    ignoreQueryPrefix: true,
-  });
   const datasetName = useRecoilValue(fos.datasetName);
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
-  const savedViewParam = useRecoilValue(viewName);
+  const savedViewParam = useRecoilValue(fos.viewName);
   const setEditView = useSetRecoilState(viewDialogContent);
   const setView = fos.useSetView();
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
@@ -76,18 +70,17 @@ export default function ViewSelection() {
 
   if (!fragmentRef) throw new Error("ref not defined");
 
-  const [data, refetch] = useRefetchableFragment(
-    DatasetSavedViewsFragment,
-    fragmentRef
-  );
+  const [data, refetch] = useRefetchableFragment<
+    DatasetSavedViewsFragmentQuery,
+    DatasetSavedViewsFragment$key
+  >(DatasetSavedViewsFragment, fragmentRef);
 
-  const items =
-    (data as { savedViews: fos.State.SavedView[] })?.savedViews || [];
+  const items = useMemo(() => data.savedViews || [], [data]);
 
-  const viewOptions: DatasetViewOption[] = useMemo(
+  const viewOptions = useMemo(
     () => [
       DEFAULT_SELECTED,
-      ...map(items, ({ name, color, description, slug, viewStages }) => ({
+      ...items.map(({ name, color, description, slug, viewStages }) => ({
         id: name,
         name,
         label: name,
@@ -100,16 +93,15 @@ export default function ViewSelection() {
     [items]
   );
 
-  const searchData: DatasetViewOption[] = useMemo(
+  const searchData = useMemo(
     () =>
-      filter(
-        viewOptions,
-        ({ id, label, description, slug }: DatasetViewOption) =>
+      viewOptions.filter(
+        ({ id, label, description, slug }) =>
           id === DEFAULT_SELECTED.id ||
-          label.toLowerCase().includes(viewSearch) ||
+          label?.toLowerCase().includes(viewSearch) ||
           description?.toLowerCase().includes(viewSearch) ||
           slug?.toLowerCase().includes(viewSearch)
-      ) as DatasetViewOption[],
+      ),
     [viewOptions, viewSearch]
   );
 
@@ -123,7 +115,7 @@ export default function ViewSelection() {
         (v) => v.slug === selected.slug
       )?.[0];
       if (potentialView) {
-        setSelected(potentialView);
+        setSelected(potentialView as DatasetViewOption);
       }
     }
   }, [searchData, selected]);
@@ -138,11 +130,10 @@ export default function ViewSelection() {
         (v) => v.slug === savedViewParam
       )?.[0];
       if (potentialView) {
-        // no unnecessary setView call if selected has not changed
         if (selected && selected.id === potentialView.id) {
           return;
         }
-        setSelected(potentialView);
+        setSelected(potentialView as DatasetViewOption);
       } else {
         const potentialUpdatedView = savedViewsV2.filter(
           (v) => v.slug === savedViewParam
@@ -206,7 +197,7 @@ export default function ViewSelection() {
                 fetchPolicy: "network-only",
                 onComplete: (newOptions) => {
                   if (createSavedView && reload) {
-                    setView([], undefined, createSavedView.slug);
+                    setView([], undefined, createSavedView.name);
                     setSelected({
                       ...createSavedView,
                       label: createSavedView.name,
@@ -234,7 +225,7 @@ export default function ViewSelection() {
           selected={selected}
           setSelected={(item: DatasetViewOption) => {
             setSelected(item);
-            setView(item.viewStages, [], item.slug);
+            setView(item.viewStages, [], item.label);
           }}
           items={searchData}
           onEdit={(item) => {
