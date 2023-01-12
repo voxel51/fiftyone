@@ -39,9 +39,6 @@ class OnPlotLoad(HTTPEndpoint):
         patches_field = results.config.patches_field
         is_patches_plot = patches_field is not None
 
-        if view._is_patches and not is_patches_plot:
-            view = view._source_collection
-
         # Determines which points from `results` are in `view`, which are the
         # only points we want to display in the embeddings plot
         results.use_view(view, allow_missing=True)
