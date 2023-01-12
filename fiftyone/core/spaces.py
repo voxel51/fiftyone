@@ -34,6 +34,7 @@ class Panel(Component):
 
     type = fof.StringField()
     pinned = fof.BooleanField(default=False)
+    state = fof.DictField()
 
 
 class Space(Component):

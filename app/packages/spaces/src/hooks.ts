@@ -10,8 +10,9 @@ import {
   panelStateSelector,
   panelTitlesState,
   spaceSelector,
+  panelsStateAtom,
 } from "./state";
-import { SpaceNodeJSON, SpaceNodeType } from "./types";
+import { PanelsStateObject, SpaceNodeJSON, SpaceNodeType } from "./types";
 import { getNodes } from "./utils";
 
 export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
@@ -41,6 +42,23 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
       }
     },
   };
+}
+
+/**
+ * Get and set multiple panels state
+ */
+export function usePanelsState(): [
+  PanelsStateObject,
+  (newPanelsState: PanelsStateObject) => void
+] {
+  const [panelsState, setPanelsState] = useRecoilState(panelsStateAtom);
+
+  const state = Object.fromEntries(panelsState);
+  function setState(newPanelsState: PanelsStateObject) {
+    setPanelsState(new Map(Object.entries(newPanelsState)));
+  }
+
+  return [state, setState];
 }
 
 export function useSpaceNodes(spaceId: string) {
