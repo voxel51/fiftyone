@@ -376,8 +376,12 @@ class FramesView(fov.DatasetView):
             dst_dataset._clear_frames(frame_ids=frame_ids)
 
     def _sync_source_field_schema(self, path):
+        field = self.get_field(path)
+        if field is None:
+            return
+
         dst_dataset = self._source_collection._root_dataset
-        dst_dataset._merge_frame_field_schema({path: self.get_field(path)})
+        dst_dataset._merge_frame_field_schema({path: field})
 
     def _sync_source_schema(self, fields=None, delete=False):
         if delete:

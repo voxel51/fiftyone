@@ -352,20 +352,22 @@ class _PatchesView(fov.DatasetView):
         self._source_collection._set_labels(field, sample_ids, docs)
 
     def _sync_source_field_schema(self, path):
-        field = path.split(".", 1)[0]
-        if field not in self._label_fields:
+        root = path.split(".", 1)[0]
+        if root not in self._label_fields:
             return
 
-        _, label_path = self._get_label_field_path(field)
-        leaf = path[len(label_path) + 1 :]
+        field = self.get_field(path)
+        if field is None:
+            return
+
+        _, label_root = self._get_label_field_path(root)
+        leaf = path[len(label_root) + 1 :]
 
         dst_dataset = self._source_collection._root_dataset
-        _, dst_path = dst_dataset._get_label_field_path(field)
+        _, dst_path = dst_dataset._get_label_field_path(root)
         dst_path += "." + leaf
 
-        dst_dataset._merge_sample_field_schema(
-            {dst_path: self.get_field(path)}
-        )
+        dst_dataset._merge_sample_field_schema({dst_path: field})
 
     def _sync_source_root(self, fields, update=True, delete=False):
         for field in fields:
