@@ -2,6 +2,7 @@ import { Layout } from "./enums";
 import SpaceNode from "./SpaceNode";
 import { SpaceNodeJSON } from "./types";
 import { spaceNodeFromJSON } from "./utils";
+import { isEqual } from "lodash";
 
 type SpaceTreeUpdateCallback = (rootNode: SpaceNodeJSON) => void;
 
@@ -119,5 +120,11 @@ export default class SpaceTree {
   }
   toJSON() {
     return this.root.toJSON();
+  }
+  equals(treeOrSerializedTree: SpaceTree | SpaceNodeJSON) {
+    let compareWithTree: SpaceTree = treeOrSerializedTree as SpaceTree;
+    if (!(treeOrSerializedTree instanceof SpaceTree))
+      compareWithTree = new SpaceTree(treeOrSerializedTree);
+    return isEqual(this.toJSON(), compareWithTree.toJSON());
   }
 }

@@ -84,6 +84,8 @@ const useStateUpdate = () => {
 
       if (state?.spaces) {
         set(sessionSpaces, state.spaces);
+      } else {
+        reset(sessionSpaces);
       }
 
       if (dataset) {

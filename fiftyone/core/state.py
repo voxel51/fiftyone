@@ -21,6 +21,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.core.spaces import Space
 from fiftyone.server.scalars import JSON
 
 
@@ -97,7 +98,8 @@ class StateDescription(etas.Serializable):
             if self.config.colorscale:
                 d["colorscale"] = self.config.get_colormap()
 
-            d["spaces"] = self.spaces
+            if isinstance(self.spaces, Space):
+                d["spaces"] = self.spaces.to_json()
 
             return d
 
