@@ -62,3 +62,7 @@ export type PanelStatePartialParameter = {
   panelId: string;
   key: string;
 };
+
+export type PanelsStateObject = {
+  [key: string]: unknown;
+};
