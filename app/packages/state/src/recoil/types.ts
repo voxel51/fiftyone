@@ -72,6 +72,7 @@ export namespace State {
       embeddingsField: string | null;
       method: string;
       patchesField: string | null;
+      cls: string;
     };
   }
 
