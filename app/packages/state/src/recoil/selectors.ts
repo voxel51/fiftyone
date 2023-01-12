@@ -4,9 +4,13 @@ import { v4 as uuid } from "uuid";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
 import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
+import { StateForm } from "@fiftyone/relay";
 import { toSnakeCase } from "@fiftyone/utilities";
 import * as atoms from "./atoms";
+import { selectedSamples } from "./atoms";
 import { config } from "./config";
+import { filters, modalFilters } from "./filters";
+import { resolvedGroupSlice } from "./groups";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
 
@@ -383,4 +387,23 @@ export const mediaFields = selector<string[]>({
 export const modalNavigation = selector<atoms.ModalNavigation>({
   key: "modalNavigation",
   get: ({ get }) => get(atoms.modal).navigation,
+});
+
+export const viewStateForm = selectorFamily<
+  StateForm,
+  { addStages?: string; modal?: boolean; selectSlice?: boolean }
+>({
+  key: "viewStateForm",
+  get:
+    ({ addStages, modal, selectSlice }) =>
+    ({ get }) => {
+      return {
+        filters: get(modal ? modalFilters : filters),
+        sampleIds: [...get(selectedSamples)],
+        labels: get(selectedLabelList),
+        extended: get(extendedStages),
+        slice: selectSlice ? get(resolvedGroupSlice(modal)) : null,
+        addStages: addStages ? JSON.parse(addStages) : [],
+      };
+    },
 });

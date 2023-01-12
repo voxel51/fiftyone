@@ -28,24 +28,26 @@ export const aggregationQuery = graphQLSelectorFamily<
     ({ extended, modal, paths, root = false }) =>
     ({ get }) => {
       const mixed = get(groupStatistics(modal)) === "group";
+      //TODO: refactor to reuse viewStateForm here?
+      const aggForm = {
+        index: get(refresher),
+        dataset: get(selectors.datasetName),
+        extendedStages: root ? [] : get(selectors.extendedStagesUnsorted),
+        filters:
+          extended && !root
+            ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
+            : null,
+        groupId: !root && modal && mixed ? get(groupId) : null,
+        hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
+        paths,
+        mixed,
+        sampleIds: !root && modal && !mixed ? [get(sidebarSampleId)] : [],
+        slice: get(currentSlice(modal)),
+        view: !root ? get(viewAtoms.view) : [],
+      };
 
       return {
-        form: {
-          index: get(refresher),
-          dataset: get(selectors.datasetName),
-          extendedStages: root ? [] : get(selectors.extendedStagesUnsorted),
-          filters:
-            extended && !root
-              ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
-              : null,
-          groupId: !root && modal && mixed ? get(groupId) : null,
-          hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
-          paths,
-          mixed,
-          sampleIds: !root && modal && !mixed ? [get(sidebarSampleId)] : [],
-          slice: get(currentSlice(modal)),
-          view: !root ? get(viewAtoms.view) : [],
-        },
+        form: aggForm,
       };
     },
 });

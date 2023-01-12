@@ -23,6 +23,7 @@ import {
   selectedMediaField,
   sidebarMode,
   groupStatistics,
+  theme,
 } from "../recoil";
 import { useColorScheme } from "@mui/material";
 

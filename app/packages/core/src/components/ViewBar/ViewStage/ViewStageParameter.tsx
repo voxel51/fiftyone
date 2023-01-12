@@ -226,8 +226,10 @@ const ObjectEditor = ({
       containerRef.current.style.left = state.matches("editing")
         ? `${x}px`
         : "unset";
-      const { x: barX, width: barWidth } =
-        barRef.current.getBoundingClientRect();
+      // barRef.current is oten undefined. Should it be set somehwere?
+      const { x: barX, width: barWidth } = barRef.current
+        ? barRef.current.getBoundingClientRect()
+        : { x: "auto", width: "auto" };
       const barRight = barX + barWidth;
       containerRef.current.style.width = state.matches("editing")
         ? `${Math.min(barRight - x, 400)}px`

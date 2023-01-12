@@ -574,8 +574,9 @@ const UPDATE_LABEL = {
     // target map array
     const targets = new ARRAY_TYPES[maskData.arrayType](maskData.buffer);
 
+    const isMaskTargetsEmpty = Object.keys(maskTargets).length === 0;
+
     if (maskData.channels > 2) {
-      const isMaskTargetsEmpty = Object.keys(maskTargets).length === 0;
       const isRgbMaskTargetsComputed = isRgbMaskTargets(maskTargets);
 
       for (let i = 0; i < overlay.length; i++) {
@@ -591,6 +592,7 @@ const UPDATE_LABEL = {
           // don't render color if hex is not in mask targets, unless mask targets is completely empty
           (!isMaskTargetsEmpty && !(currentHexCode in maskTargets))
         ) {
+          targets[i] = 0;
           continue;
         }
 
@@ -628,7 +630,11 @@ const UPDATE_LABEL = {
       // these for loops must be fast. no "in" or "of" syntax
       for (let i = 0; i < overlay.length; i++) {
         if (targets[i] !== 0) {
-          overlay[i] = color ? color : getColor(targets[i]);
+          if (!(targets[i] in maskTargets) && !isMaskTargetsEmpty) {
+            targets[i] = 0;
+          } else {
+            overlay[i] = color ? color : getColor(targets[i]);
+          }
         }
       }
     }

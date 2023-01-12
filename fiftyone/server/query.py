@@ -363,26 +363,6 @@ class Query(fosa.AggregateQuery):
     def version(self) -> str:
         return foc.VERSION
 
-    # @gql.field
-    # async def saved_view(
-    #     self, dataset_name: str, view_name: t.Optional[str]
-    # ) -> t.Optional[SavedView]:
-    #     if not view_name and dataset_name:
-    #         return
-    #
-    #     ds = fo.load_dataset(dataset_name)
-    #     if ds.has_saved_view(view_name):
-    #         return next(
-    #             (
-    #                 SavedView.from_doc(view_doc)
-    #                 for view_doc in ds._doc.saved_views
-    #                 if view_doc.name == view_name
-    #             ),
-    #             None,
-    #         )
-    #     return
-
-    #
     @gql.field
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
         ds = fo.load_dataset(dataset_name)

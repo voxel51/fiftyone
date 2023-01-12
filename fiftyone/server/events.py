@@ -255,9 +255,9 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
         global _app_count
         _app_count += 1
 
-    current = state.dataset.name if state.dataset is not None else None
+    current = state.dataset.name if state.dataset else None
     if is_app and payload.initializer != current:
-        if payload.initializer is not None:
+        if payload.initializer:
             try:
                 state.dataset = fo.load_dataset(payload.initializer)
             except:
