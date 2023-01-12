@@ -363,7 +363,7 @@ class _PatchesView(fov.DatasetView):
         _, label_root = self._get_label_field_path(root)
         leaf = path[len(label_root) + 1 :]
 
-        dst_dataset = self._source_collection._root_dataset
+        dst_dataset = self._source_collection._dataset
         _, dst_path = dst_dataset._get_label_field_path(root)
         dst_path += "." + leaf
 
