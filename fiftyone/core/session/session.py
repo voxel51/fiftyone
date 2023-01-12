@@ -61,18 +61,6 @@ logger = logging.getLogger(__name__)
 _session = None
 _server_services = {}
 _subscribed_sessions = defaultdict(set)
-# default_spaces = {
-#     "id": "root",
-#     "children": [
-#         {
-#             "id": "default-samples-node",
-#             "children": [],
-#             "type": "Samples",
-#             "pinned": True,
-#         },
-#     ],
-#     "activeChild": "default-samples-node",
-# }
 
 _APP_DESKTOP_MESSAGE = """
 Desktop App launched.

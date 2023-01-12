@@ -415,6 +415,6 @@ class Mutation:
         spaces: JSON,
     ) -> bool:
         state = get_state()
-        state.spaces = Space.from_dict(spaces).copy()
+        state.spaces = Space.from_dict(spaces)
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
