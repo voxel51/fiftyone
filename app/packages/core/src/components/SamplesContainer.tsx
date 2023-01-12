@@ -4,8 +4,9 @@ import { Controller } from "@react-spring/web";
 import styled from "styled-components";
 import Sidebar, { Entries } from "./Sidebar";
 import * as fos from "@fiftyone/state";
-import { SpacesRoot, useSpaces } from "@fiftyone/spaces";
+import { SpacesRoot, usePanelsState, useSpaces } from "@fiftyone/spaces";
 import { useSessionSpaces } from "@fiftyone/state";
+import { size, isEqual } from "lodash";
 
 const Container = styled.div`
   display: flex;
@@ -18,9 +19,12 @@ const Container = styled.div`
 function SamplesContainer() {
   const showSidebar = useRecoilValue(fos.sidebarVisible(false));
   const disabled = useRecoilValue(fos.disabledPaths);
-  const [sessionSpaces, setSessionSpaces] = useSessionSpaces();
+  const [sessionSpaces, setSessionSpaces, sessionPanelsState] =
+    useSessionSpaces();
   const { spaces, updateSpaces } = useSpaces("main", sessionSpaces);
+  const [panelsState, setPanelsState] = usePanelsState();
   const oldSpaces = useRef(sessionSpaces);
+  const oldPanelsState = useRef(panelsState);
   const isMounted = useRef(false);
 
   const renderGridEntry = useCallback(
@@ -145,16 +149,28 @@ function SamplesContainer() {
   }, [sessionSpaces]);
 
   useEffect(() => {
+    if (size(sessionPanelsState)) {
+      setPanelsState(sessionPanelsState);
+    }
+  }, [sessionPanelsState]);
+
+  useEffect(() => {
     if (!isMounted.current) {
       isMounted.current = true;
       return;
     }
     const serializedSpaces = spaces.toJSON();
-    if (!spaces.equals(sessionSpaces) && !spaces.equals(oldSpaces.current)) {
-      setSessionSpaces(serializedSpaces);
+    const spacesUpdated =
+      !spaces.equals(sessionSpaces) && !spaces.equals(oldSpaces.current);
+    const panelsStateUpdated =
+      !isEqual(sessionPanelsState, panelsState) &&
+      !isEqual(panelsState, oldPanelsState.current);
+    if (spacesUpdated || panelsStateUpdated) {
+      setSessionSpaces(serializedSpaces, panelsState);
     }
     oldSpaces.current = serializedSpaces;
-  }, [spaces]);
+    oldPanelsState.current = panelsState;
+  }, [spaces, panelsState]);
 
   return (
     <Container>
