@@ -71,7 +71,6 @@ _subscribed_sessions = defaultdict(set)
 #             "pinned": True,
 #         },
 #     ],
-#     "type": "panel-container",
 #     "activeChild": "default-samples-node",
 # }
 
@@ -364,19 +363,18 @@ class Session(object):
         if not final_view_name and view and view.name:
             final_view_name = view.name
 
-        # todo: use Space class
-        # initialize spaces state (inherits dataset or app spaces config)
+        # Initialize spaces state
         spaces = default_spaces
+        # Inherit dataset spaces state if exist
         if (
             dataset
             and dataset.app_config
-            and dataset.app_config.spaces is not None
+            and isinstance(dataset.app_config.spaces, Space)
         ):
             spaces = dataset.app_config.spaces
-        elif fo.app_config.spaces is not None:
+        # Inherit global spaces state if exist
+        elif fo.app_config and isinstance(fo.app_config.spaces, Space):
             spaces = fo.app_config.spaces
-
-        print(spaces)
 
         self._state = StateDescription(
             config=config,
@@ -551,6 +549,15 @@ class Session(object):
     @spaces.setter  # type: ignore
     @update_state()
     def spaces(self, spaces: t.Optional[Space]) -> None:
+        if spaces is None:
+            spaces = default_spaces.copy()
+
+        if not isinstance(spaces, Space):
+            raise ValueError(
+                "`Session.spaces` must be a %s or None; found %s"
+                % (Space, type(spaces))
+            )
+
         self._state.spaces = spaces
 
     @property
@@ -581,6 +588,7 @@ class Session(object):
         self._state.view = None
         self._state.selected = []
         self._state.selected_labels = []
+        self._state.spaces = default_spaces
 
     @update_state()
     def clear_dataset(self) -> None:
