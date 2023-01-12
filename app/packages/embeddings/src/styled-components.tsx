@@ -20,7 +20,7 @@ export const Selectors = styled.div`
   > div {
     display: flex;
     column-gap: 1rem;
-    margin: 0 1rem;
+    // margin: 0 1rem;
   }
 `;
 export const PlotOption = styled(Link)`

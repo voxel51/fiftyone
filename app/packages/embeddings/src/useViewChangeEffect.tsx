@@ -51,13 +51,13 @@ export function useViewChangeEffect() {
 
         if (missing > 0) {
           warnings.add(
-            `${missing} ${type} are included in the current view but do not have corresponding embeddings.`
+            `${missing} ${type} in the current view do not have corresponding embeddings.`
           );
         }
 
         if (notUsed > 0) {
           warnings.add(
-            `Not all embeddings are used in the current view. ${notUsed} embeddings are not used.`
+            `${notUsed} embeddings in the index correspond to samples not in the current view`
           );
         }
 
