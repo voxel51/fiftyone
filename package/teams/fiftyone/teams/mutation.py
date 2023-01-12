@@ -161,7 +161,7 @@ async def _update_view_activity(
     for a particular saved view and user"""
 
     db = info.context.db
-    uid, _ = fou.get_user_id()
+    uid = info.context.request.user.sub
 
     if not uid:
         logging.warning("[teams/mutation.py] No id found for the current user")
