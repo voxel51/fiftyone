@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
 import Sidebar, { Entries } from "./Sidebar";
 import * as fos from "@fiftyone/state";
 import { SpacesRoot, useSpaces } from "@fiftyone/spaces";
-import { useSessionSpaces, useSetSpaces } from "@fiftyone/state";
+import { useSessionSpaces } from "@fiftyone/state";
 
 const Container = styled.div`
   display: flex;
@@ -14,20 +14,6 @@ const Container = styled.div`
   overflow: hidden;
   background: ${({ theme }) => theme.background.mediaSpace};
 `;
-
-const defaultState = {
-  id: "root",
-  children: [
-    {
-      id: "default-samples-node",
-      children: [],
-      type: "Samples",
-      pinned: true,
-    },
-  ],
-  type: "panel-container",
-  activeChild: "default-samples-node",
-};
 
 function SamplesContainer() {
   const showSidebar = useRecoilValue(fos.sidebarVisible(false));
