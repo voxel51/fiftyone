@@ -384,6 +384,9 @@ class ClipsView(fov.DatasetView):
 
         dst_dataset._merge_sample_field_schema({dst_path: field})
 
+        if self._source_collection._is_generated:
+            self._source_collection._sync_source_field_schema(dst_path)
+
     def _sync_source_keep_fields(self):
         # If the source TemporalDetection field is excluded, delete it from
         # this collection and the source collection

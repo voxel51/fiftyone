@@ -383,6 +383,9 @@ class FramesView(fov.DatasetView):
         dst_dataset = self._source_collection._dataset
         dst_dataset._merge_frame_field_schema({path: field})
 
+        if self._source_collection._is_generated:
+            self._source_collection._sync_source_field_schema(path)
+
     def _sync_source_schema(self, fields=None, delete=False):
         if delete:
             schema = self.get_field_schema()

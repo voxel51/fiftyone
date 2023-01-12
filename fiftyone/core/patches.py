@@ -369,6 +369,9 @@ class _PatchesView(fov.DatasetView):
 
         dst_dataset._merge_sample_field_schema({dst_path: field})
 
+        if self._source_collection._is_generated:
+            self._source_collection._sync_source_field_schema(dst_path)
+
     def _sync_source_root(self, fields, update=True, delete=False):
         for field in fields:
             self._sync_source_root_field(field, update=update, delete=delete)
