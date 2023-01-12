@@ -14,7 +14,6 @@ import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
 import Tooltip from "@fiftyone/components/src/components/Tooltip";
 
 import { PopoutDiv } from "../../../utils";
-import { joinStringArray } from "../../utils";
 import Item from "./FilterItem";
 
 interface Props {
@@ -23,10 +22,8 @@ interface Props {
   excludeAtom: RecoilState<boolean>;
   onlyMatchAtom: RecoilState<boolean>;
   isMatchingAtom: RecoilState<boolean>;
-  labels: string[];
   valueName: string;
   color: string;
-  isRangeLabel?: boolean;
   modal: boolean;
   isKeyPointLabel: boolean;
 }
@@ -45,8 +42,7 @@ const generateOptions = (
   shouldNotShowExclude: boolean,
   modal: boolean,
   isKeyPointLabel: boolean,
-  valueName: string,
-  isRangeLabel: boolean
+  valueName: string
 ) => {
   //  feature requirements:
   //  1) only nested ListField items should have the filter and negative filter options;
@@ -58,9 +54,7 @@ const generateOptions = (
     options.push({
       icon: "FilterAltIcon",
       key: "filter",
-      value: isRangeLabel
-        ? `Select ${nestedField} within range`
-        : `Select ${nestedField} with ${valueName}`,
+      value: `Select ${nestedField} with ${valueName}`,
       tooltip: "dataset.filter_labels(field, expr, only_matches=True)",
     });
   }
@@ -68,9 +62,7 @@ const generateOptions = (
     options.push({
       icon: "FilterAltOffIcon",
       key: "negativeFilter",
-      value: isRangeLabel
-        ? `Exclude ${nestedField} within range`
-        : `Exclude ${nestedField} with ${valueName}`,
+      value: `Exclude ${nestedField} with ${valueName}`,
       tooltip: "dataset.filter_labels(field, ~expr, only_matches=False)",
     });
   }
@@ -78,66 +70,29 @@ const generateOptions = (
     options.push({
       icon: "ImageIcon",
       key: "match",
-      value: isRangeLabel
-        ? `Show samples in the range`
-        : `Show samples with ${valueName}`,
+      value: `Show samples with ${valueName}`,
       tooltip: Boolean(nestedField)
         ? "dataset.match_labels(fields=field, filter=expr)"
-        : "dataset.match(F(field).filter(expr).length() > 0)",
+        : "dataset.match(expr)",
     });
   }
   if (!modal && !shouldNotShowExclude && !isKeyPointLabel) {
     options.push({
       icon: "HideImageIcon",
       key: "negativeMatch",
-      value: isRangeLabel
-        ? `Omit samples in the range`
-        : `Omit samples with ${valueName}`,
+      value: `Omit samples with ${valueName}`,
       tooltip: Boolean(nestedField)
         ? "dataset.match_labels(fields=field, filter=expr, bool=False)"
-        : "dataset.match(F(field).filter(expr).length() == 0)",
+        : "dataset.match(~expr)",
     });
   }
   return options;
 };
 
-const currentSelection = (
-  key: Key,
-  selectedLabels: string[],
-  nestedField: string | undefined,
-  valueName: string,
-  isRangeLabel: boolean
-) => {
-  // returns the text for selected filter method
-  const item = selectedLabels.length > 1 ? valueName + "s" : valueName;
-  switch (key) {
-    case "filter":
-      return `Filter ${nestedField} by ${joinStringArray(
-        selectedLabels
-      )} ${item}, filter samples`;
-    case "negativeFilter":
-      return `Exclude ${nestedField} by ${joinStringArray(
-        selectedLabels
-      )} ${item}`;
-    case "match":
-      return isRangeLabel
-        ? `Show samples within the selected range`
-        : `Show samples with ${joinStringArray(selectedLabels)} ${item}`;
-    case "negativeMatch":
-      return isRangeLabel
-        ? `Show samples outside the selected range`
-        : `Show samples that don't have ${joinStringArray(
-            selectedLabels
-          )} ${item}`;
-    default:
-      return key;
-  }
-};
-
 const Text = styled.div`
   font-size: 1rem;
   margin: auto auto auto 5px;
-  cursor: pointer, ${({ theme }) => theme.text.secondary};
+  ${({ theme }) => theme.text.secondary};
 `;
 
 const FilterOptionContainer = styled.div`
@@ -145,7 +100,6 @@ const FilterOptionContainer = styled.div`
 `;
 
 const FilterOption: React.FC<Props> = ({
-  labels,
   color,
   modal,
   isKeyPointLabel,
@@ -155,7 +109,6 @@ const FilterOption: React.FC<Props> = ({
   excludeAtom,
   onlyMatchAtom,
   isMatchingAtom,
-  isRangeLabel = false,
 }) => {
   const [key, setKey] = React.useState<Key | null>(null);
 
@@ -173,13 +126,13 @@ const FilterOption: React.FC<Props> = ({
   useOutsideClick(popoutRef, () => {
     setOpen(false);
   });
+
   const options = generateOptions(
     nestedField,
     shouldNotShowExclude,
     modal,
     isKeyPointLabel,
-    valueName,
-    Boolean(isRangeLabel)
+    valueName
   );
 
   useEffect(() => {
@@ -274,6 +227,7 @@ const FilterOption: React.FC<Props> = ({
         textOverflow: "ellipsis",
         overflow: "hidden",
         letterSpacing: "0.1px",
+        cursor: "pointer",
       }}
     >
       {selectedValue}
@@ -298,16 +252,7 @@ const FilterOption: React.FC<Props> = ({
             >
               <Selected />
             </IconButton>
-            <Tooltip
-              text={currentSelection(
-                key as Key,
-                labels,
-                nestedField,
-                valueName,
-                Boolean(isRangeLabel)
-              )}
-              placement="right-start"
-            >
+            <Tooltip text={selectedValue ?? ""} placement="right-start">
               {children}
             </Tooltip>
           </>

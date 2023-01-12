@@ -144,7 +144,6 @@ const Wrapper = ({
               excludeAtom={excludeAtom}
               onlyMatchAtom={onlyMatchAtom}
               isMatchingAtom={isMatchingAtom}
-              labels={Array.from(selectedSet) as string[]}
               valueName={name}
               color={color}
               modal={modal}
