@@ -212,6 +212,7 @@ class ClipsView(fov.DatasetView):
         super().set_values(field_name, *args, **kwargs)
 
         self._sync_source(fields=[field], ids=ids)
+        self._sync_source_field_schema(field_name)
 
     def set_label_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
@@ -364,6 +365,22 @@ class ClipsView(fov.DatasetView):
             # @todo can we optimize this? we know exactly which samples each
             # label to be deleted came from
             self._source_collection._delete_labels(del_ids, fields=[field])
+
+    def _sync_source_field_schema(self, path):
+        field = path.split(".", 1)[0]
+        if field != self._classification_field:
+            return
+
+        _, label_path = self._get_label_field_path(field)
+        leaf = path[len(label_path) + 1 :]
+
+        dst_dataset = self._source_collection._root_dataset
+        _, dst_path = dst_dataset._get_label_field_path(field)
+        dst_path += "." + leaf
+
+        dst_dataset._merge_sample_field_schema(
+            {dst_path: self.get_field(path)}
+        )
 
     def _sync_source_keep_fields(self):
         # If the source TemporalDetection field is excluded, delete it from
