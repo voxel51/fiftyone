@@ -19,6 +19,9 @@ export function useBrainResultsSelector() {
     toKey: (item) => item.key,
     useSearch: (search) => ({
       values: dataset.brainMethods
+        .filter((item) => {
+          return item.config.cls.includes("VisualizationConfig");
+        })
         .filter((item) => item.key.toLowerCase().includes(search.toLowerCase()))
         .map((item) => {
           return item.key;

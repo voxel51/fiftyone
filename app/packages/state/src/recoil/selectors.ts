@@ -15,6 +15,7 @@ import { fieldSchema } from "./schema";
 import { State } from "./types";
 import _ from "lodash";
 import { isPatchesView } from "./view";
+import { pathFilter } from "./pathFilters";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -420,11 +421,12 @@ export const selectedPatchIds = selectorFamily({
   get:
     (patchesField) =>
     ({ get }) => {
+      const modal = get(atoms.modal);
       const isPatches = get(isPatchesView);
       const selectedSamples = get(atoms.selectedSamples);
       const selectedSampleObjects = get(atoms.selectedSampleObjects);
 
-      if (isPatches) {
+      if (isPatches || modal) {
         return selectedSamples;
       }
       let patchIds = [];
@@ -433,7 +435,11 @@ export const selectedPatchIds = selectorFamily({
           const sample = selectedSampleObjects.get(sampleId);
           patchIds = [
             ...patchIds,
-            ...getLabelIdsFromSample(sample, patchesField),
+            ...getLabelIdsFromSample(
+              sample,
+              patchesField,
+              get(pathFilter(false))
+            ),
           ];
         }
       }
@@ -463,12 +469,13 @@ export const selectedPatchSamples = selector({
   },
 });
 
-function getLabelIdsFromSample(sample, path) {
+function getLabelIdsFromSample(sample, path, matchesFilter) {
   const labelIds = [];
   const labelContainer = sample[path];
+  const fullPath = [path, "detections"];
 
-  for (const label of labelContainer.detections) {
-    labelIds.push(label.id);
+  for (const label of labelContainer?.detections || []) {
+    if (matchesFilter(fullPath.join("."), label)) labelIds.push(label.id);
   }
   return labelIds;
 }
