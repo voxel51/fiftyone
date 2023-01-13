@@ -163,7 +163,7 @@ you are interested in.
      - :meth:`select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`
      - :meth:`exclude_labels() <fiftyone.core.collections.SampleCollection.exclude_labels>`
    * - **Fields**
-     - :meth:`exists() <fiftyone.core.collections.SampleCollection.exists>`
+     - 
      - :meth:`filter_field() <fiftyone.core.collections.SampleCollection.filter_field>`
      - :meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`
      - :meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
@@ -185,6 +185,8 @@ you are interested in.
     
 
 
+
+
 Looking at the above table, we can see that most of these operations are 
 supported on these primitives directly via tailored methods. There are a few 
 notable absences, which we will cover presently. At a high level, these empty 
@@ -192,6 +194,7 @@ entries in the table fall into two categories: (1) the operation does not make
 sense on the primitive, or (2) the operation on this primitive can easily 
 applied via the base method.
 
+In the following sections, we fill in the gaps in the table, primitive by primitive:
 
 Samples
 ^^^^^^^^
@@ -204,21 +207,76 @@ fields, the ``filter_field()`` provides all of the desired functionality.
 
 Fields
 ^^^^^^^
+The only missing entry in the `Fields` row is ``match_fields()``. Such a method
+would absolutely make sense - matches on fields are common. However, you can 
+achieve the exact same effect using the basic ``match()`` method. 
 
-For `Fields`, notice that in lieu of ``match_fields()`` the table contains 
-``exists()``. A matching operation on fields would, in theory, return samples 
-that contain a specific field. This is equivalent to getting the samples on 
-which the field exists, hence the method name.
+Drawing analogy with the other matching operations, a hypothetical
+``match_fields()`` method would take as input a `field` and a `filter`. To 
+achieve this effect, we can apply
+:meth:`match() <fiftyone.core.collections.SampleCollection.match>` to the field on which we have applied the filter via the `ViewField`'s `apply()` method.
+
+.. code-block:: python
+
+   # what a match_field() method would look like
+   view = dataset.match_field(field, filter)
+
+   # generate the same view with existing methods
+   from fiftyone import ViewField as F
+   view = dataset.match(F(field).apply(expr))
+
+It is also worth noting that 
+:meth:`exists() <fiftyone.core.collections.SampleCollection.exists>` can be 
+viewed as a special case of the hypothetical ``match_fields()`` method. The 
+:meth:`exists() <fiftyone.core.collections.SampleCollection.exists>` method 
+returns only the samples on which the field exists, hence the method name.
+This is equivalent to matching on fields with the trivial filter ``F()``.
 
 Tags
 ^^^^^
 
+All three of the remaining `Tag` methods can be created with relative ease.
+
+Here's what ``select_tags()`` might look like:
+
+.. code-block:: python
+
+   # what a select_tags() method would look like
+   view = dataset.select_tags(tags)
+
+   # generate the same view with existing methods
+   from fiftyone import ViewField as F
+   view = dataset.set_field(
+      "tags",
+      F("tags").intersection(tags)
+   )
+
+And here's what the very similar ``exclude_tags()`` method would look like:
+
+.. code-block:: python
+
+   # what an exclude_tags() method would look like
+   view = dataset.exclude_tags(tags)
+
+   # generate the same view with existing methods
+   from fiftyone import ViewField as F
+   view = dataset.set_field(
+      "tags",
+      F("tags").difference(tags)
+   )
+
+These two implementations use the set intersection and set difference methods.
+
+
+
 **TO DO**
+``filter_tags()`` - I tried using ``set_field()`` and ``map()``, but ended up
+with an array of True/False values for each sample, with one element per tag
+like [True False True]
 
 Frames
 ^^^^^^^
 
-**Missing ``filter_frames()``**
 
 Groups
 ^^^^^^^
