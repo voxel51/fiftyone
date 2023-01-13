@@ -46,8 +46,11 @@ type MaskLabel = string;
 export type IntMaskTargets = {
   [intKey: string]: MaskLabel;
 };
+
+type HexColor = string;
+
 export type RgbMaskTargets = {
-  [hexKey: string]: {
+  [hexKey: HexColor]: {
     label: MaskLabel;
     intTarget: number;
   };

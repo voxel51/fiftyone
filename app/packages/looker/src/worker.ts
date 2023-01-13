@@ -4,21 +4,20 @@
 
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import {
-  DETECTION,
+  DENSE_LABELS,
   DETECTIONS,
   get32BitColor,
   getFetchFunction,
   HEATMAP,
   LABEL_LIST,
   rgbToHexCached,
-  SEGMENTATION,
   setFetchFunction,
   Stage,
   VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 import { decode as decodePng } from "fast-png";
 import { CHUNK_SIZE } from "./constants";
-import { ARRAY_TYPES, deserialize, OverlayMask } from "./numpy";
+import { ARRAY_TYPES, deserialize, OverlayMask, TypedArray } from "./numpy";
 import { isRgbMaskTargets } from "./overlays/util";
 import { Coloring, FrameChunk, MaskTargets, RgbMaskTargets } from "./state";
 
@@ -135,9 +134,6 @@ const mapId = (obj) => {
 };
 
 const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
-
-// defined as labels that can have on-disk overlays
-const DENSE_LABELS = new Set([SEGMENTATION, HEATMAP, DETECTION, DETECTIONS]);
 
 /**
  * Some label types (example: segmentation, heatmap) can have their overlay data stored on-disk,
@@ -456,6 +452,18 @@ const setStream = ({
 const isFloatArray = (arr) =>
   arr instanceof Float32Array || arr instanceof Float64Array;
 
+const getRgbFromMaskData = (
+  maskTypedArray: TypedArray,
+  channels: number,
+  index: number
+) => {
+  const r = maskTypedArray[index * channels];
+  const g = maskTypedArray[index * channels + 1];
+  const b = maskTypedArray[index * channels + 2];
+
+  return [r, g, b] as [number, number, number];
+};
+
 const UPDATE_LABEL = {
   Detection: async (field, label, coloring: Coloring) => {
     if (!label.mask) {
@@ -508,11 +516,9 @@ const UPDATE_LABEL = {
     if (mapData.channels > 2) {
       // rgb map
       for (let i = 0; i < overlay.length; i++) {
-        const r = targets[i * mapData.channels];
-        const g = targets[i * mapData.channels + 1];
-        const b = targets[i * mapData.channels + 2];
-
-        overlay[i] = get32BitColor([r, g, b]);
+        overlay[i] = get32BitColor(
+          getRgbFromMaskData(targets, mapData.channels, i)
+        );
       }
     } else {
       const [start, stop] = label.range
@@ -576,21 +582,21 @@ const UPDATE_LABEL = {
 
     const isMaskTargetsEmpty = Object.keys(maskTargets).length === 0;
 
+    const isRgbMaskTargetsCached = isRgbMaskTargets(maskTargets);
+
     if (maskData.channels > 2) {
-      const isRgbMaskTargetsComputed = isRgbMaskTargets(maskTargets);
-
       for (let i = 0; i < overlay.length; i++) {
-        const r = targets[i * maskData.channels];
-        const g = targets[i * maskData.channels + 1];
-        const b = targets[i * maskData.channels + 2];
+        const [r, g, b] = getRgbFromMaskData(targets, maskData.channels, i);
 
-        const currentHexCode = rgbToHexCached(r, g, b);
+        const currentHexCode = rgbToHexCached([r, g, b]);
 
         if (
           // #000000 is semantically treated as background
           currentHexCode === "#000000" ||
           // don't render color if hex is not in mask targets, unless mask targets is completely empty
-          (!isMaskTargetsEmpty && !(currentHexCode in maskTargets))
+          (!isMaskTargetsEmpty &&
+            isRgbMaskTargetsCached &&
+            !(currentHexCode in maskTargets))
         ) {
           targets[i] = 0;
           continue;
@@ -598,7 +604,7 @@ const UPDATE_LABEL = {
 
         overlay[i] = get32BitColor([r, g, b]);
 
-        if (isRgbMaskTargetsComputed) {
+        if (isRgbMaskTargetsCached) {
           targets[i] = (maskTargets as RgbMaskTargets)[
             currentHexCode
           ].intTarget;
@@ -630,7 +636,11 @@ const UPDATE_LABEL = {
       // these for loops must be fast. no "in" or "of" syntax
       for (let i = 0; i < overlay.length; i++) {
         if (targets[i] !== 0) {
-          if (!(targets[i] in maskTargets) && !isMaskTargetsEmpty) {
+          if (
+            !(targets[i] in maskTargets) &&
+            !isMaskTargetsEmpty &&
+            !isRgbMaskTargetsCached
+          ) {
             targets[i] = 0;
           } else {
             overlay[i] = color ? color : getColor(targets[i]);

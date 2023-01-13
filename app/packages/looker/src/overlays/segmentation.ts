@@ -4,7 +4,13 @@
 
 import { getColor } from "@fiftyone/utilities";
 import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
-import { BaseState, Coordinates, Optional } from "../state";
+import {
+  BaseState,
+  Coordinates,
+  MaskTargets,
+  Optional,
+  RgbMaskTargets,
+} from "../state";
 import {
   BaseLabel,
   CONTAINS,
@@ -36,6 +42,15 @@ export default class SegmentationOverlay<State extends BaseState>
   private targets?: TypedArray;
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
+
+  private isRgbMaskTargets = false;
+
+  private rgbMaskTargetsReverseMap?: {
+    [intTarget: number]: {
+      label: string;
+      color: string;
+    };
+  };
 
   constructor(field: string, label: SegmentationLabel) {
     this.field = field;
@@ -118,6 +133,25 @@ export default class SegmentationOverlay<State extends BaseState>
     return Infinity;
   }
 
+  initRgbMaskTargetsCache(rgbMaskTargets: MaskTargets) {
+    if (!this.isRgbMaskTargets && isRgbMaskTargets(rgbMaskTargets)) {
+      this.isRgbMaskTargets = true;
+    }
+
+    if (this.rgbMaskTargetsReverseMap) {
+      return;
+    }
+
+    this.rgbMaskTargetsReverseMap = {};
+
+    Object.entries(rgbMaskTargets).map(([color, intTargetAndLabel]) => {
+      this.rgbMaskTargetsReverseMap[intTargetAndLabel.intTarget] = {
+        color,
+        label: intTargetAndLabel.label,
+      };
+    });
+  }
+
   getPointInfo(state: Readonly<State>): Optional<PointInfo<SegmentationInfo>> {
     const coloring = state.options.coloring;
     let maskTargets = coloring.maskTargets[this.field];
@@ -149,23 +183,22 @@ export default class SegmentationOverlay<State extends BaseState>
         type: "Segmentation",
       };
 
-      if (!isRgbMaskTargets(maskTargets)) {
-        // getting color here is computationally inefficient, return no color for this edge case
+      this.initRgbMaskTargetsCache(maskTargets);
+
+      if (!this.isRgbMaskTargets) {
+        // getting color here is computationally inefficient, return no tooltip ribbon color for this edge case
         return rgbSegmentationInfoWithoutColor;
       }
 
-      // find corresponding color for target in mask targets
-      const rgbMaskTargetTuple = Object.entries(maskTargets).find(
-        ([_, el]) => el.intTarget === target
-      );
-
-      if (!rgbMaskTargetTuple) {
-        // color is not in mask targets, ignore it
+      if (
+        !this.rgbMaskTargetsReverseMap ||
+        !this.rgbMaskTargetsReverseMap[target]
+      ) {
         return undefined;
       }
 
       return {
-        color: rgbMaskTargetTuple[0],
+        color: this.rgbMaskTargetsReverseMap[target].color,
         label: {
           ...this.label,
           mask: {

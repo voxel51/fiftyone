@@ -54,7 +54,9 @@ export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
 
 const rgbToHexCache = {};
 
-export const rgbToHexCached = (r: number, g: number, b: number) => {
+export const rgbToHexCached = (color: RGB) => {
+  const [r, g, b] = color;
+
   const key = `${r}${g}${b}`;
 
   if (key in rgbToHexCache) {
