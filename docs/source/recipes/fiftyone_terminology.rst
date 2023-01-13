@@ -1,17 +1,14 @@
 .. _terminology-cheat-sheet:
 
 FiftyOne terminology
-=====================
+====================
 
 .. default-role:: code
 
 A cheat sheet introducing you to the key terminology in the world of FiftyOne!
 
-
-.. _basic-terminology:
-
 The basics
-____________
+__________
 
 .. list-table::
    :widths: 20 80
@@ -26,10 +23,8 @@ ____________
      - | `The enterprise-grade suite <https://voxel51.com/fiftyone-teams/>`_ built on top of FiftyOne for collaboration,
        | permissioning, and working with cloud-backed media
 
-.. _fiftyone-components-terminology:
-
-Components of FiftyOne
-_______________________
+FiftyOne components
+___________________
 
 .. list-table::
    :widths: 20 80
@@ -47,11 +42,8 @@ _______________________
      - | A dataset, ML framework, annotation service, or other tool FiftyOne is 
        | :ref:`directly compatible with <integrations>`
 
-
-.. _data-schema-terminology:
-
-Data Schema
-_________________
+Data model
+__________
 
 .. list-table::
    :widths: 20 80
@@ -61,7 +53,7 @@ _________________
        | related to a given piece of data. Every :ref:`sample <basics-samples>` has an associated 
        | media file. Computer vision analog of row in a table
    * - **Dataset**
-     - | :ref:`Core data structure <basics-dataset>` in FiftyOne, composed of ``Samples``. Consistent 
+     - | :ref:`Core data structure <basics-datasets>` in FiftyOne, composed of ``Samples``. Consistent
        | interface for loading images, videos, annotations, and predictions.
        | Computer vision analog of a table of data
    * - **DatasetView**
@@ -71,35 +63,33 @@ _________________
      - | :ref:`A logical operation <view-stages>`, such as filtering, matching, or sorting, which can
        | be used to generate a ``DatasetView``
    * - **Field**
-     - | Attributes of ``Sample`` instances that :ref:`store customizable information <basics-field>`
+     - | Attributes of ``Sample`` instances that :ref:`store customizable information <basics-fields>`
        |  about the samples. Computer vision analog of a column in a table
    * - **Embedded Field**
      - | :ref:`A collection of related fields <custom-embedded-documents>` organized under a single top-level
        | ``Field``, similar to a nested dictionary
    * - **Label**
-     - | Class hierarchy used to :ref:`store semantic information <basics-label>` about ground truth 
+     - | Class hierarchy used to :ref:`store semantic information <basics-labels>` about ground truth
        | or predicted labels in a sample. Built in ``Label`` types include 
        | ``Detections``, ``Classification``, and ``Keypoints`` among others
    * - **Tag**
      - | A field containing a list of strings representing relevant information.
-       | :ref:`Tags <basics-tag>` can be on the dataset, sample, or label level
+       | :ref:`Tags <basics-tags>` can be on the dataset, sample, or label level
    * - **Metadata**
      - | A ``Sample`` level field which can optionally store data type-specific
        | :ref:`metadata <basics-metadata>` about the raw data in the sample
    * - **Aggregation**
-     - | A class encapsulating the computation of an :ref:`aggregate statistic <basics-aggregation>` about a
+     - | A class encapsulating the computation of an :ref:`aggregate statistic <basics-aggregations>` about a
        | dataset
 
-.. _app-terminology:
-
-The FiftyOne App
-_______________________
+FiftyOne App
+____________
 
 .. list-table::
    :widths: 20 80
 
    * - **Session**
-     - | :ref:`An instance of the FiftyOne App <app-session>` connected to a specific dataset, via 
+     - | :ref:`An instance of the FiftyOne App <app-sessions>` connected to a specific dataset, via
        | which you can use to programmatically interact with the app.
    * - **Sample grid**
      - | The rectangular :ref:`grid of images or videos <app-filtering>` you can scroll through. You 
@@ -110,9 +100,3 @@ _______________________
    * - **Viewbar**
      - | :ref:`Horizontal bar at the top of the app <app-create-view>` where you can create and compose
        | view stages via point and click operations
-
-
-
-
-
-

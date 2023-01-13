@@ -38,9 +38,9 @@ workflows.
 .. Add recipe cards below
 
 .. customcarditem::
-    :header: Terminology
-    :description: Introduction to the key terminology of FiftyOne.
-    :link:fiftyone_terminology.html
+    :header: FiftyOne terminology
+    :description: An overview of FiftyOne's key terminology.
+    :link: fiftyone_terminology.html
     :image: ../_static/images/recipes/pandas_vs_fiftyone.png
     :tags: Cheat-Sheets,Basics
 
@@ -152,7 +152,7 @@ workflows.
    :maxdepth: 1
    :hidden:
 
-   Terminology <fiftyone_terminology>
+   FiftyOne terminology <fiftyone_terminology>
    pandas vs FiftyOne <pandas_vs_fiftyone>
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>

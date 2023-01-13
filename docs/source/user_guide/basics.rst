@@ -11,7 +11,8 @@ This page provides a brief overview of FiftyOne's basic concepts.
    :alt: datasets-hero
    :align: center
 
-.. _basics-dataset:
+.. _basics-datasets:
+
 Datasets
 --------
 
@@ -86,6 +87,7 @@ obtain a desired subset of the samples.
         metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
 
 .. _basics-samples:
+
 Samples
 -------
 
@@ -111,7 +113,8 @@ store additional custom information about the sample.
    # A video sample
    sample = fo.Sample(filepath="/path/to/video.mp4")
 
-.. _basics-field:
+.. _basics-fields:
+
 Fields
 ------
 
@@ -217,7 +220,8 @@ the source media and exposed via the `media_type` attribute of the sample.
     :button_text: Learn more about media types
     :button_link: using_datasets.html#using-media-type
 
-.. _basics-tag:
+.. _basics-tags:
+
 Tags
 ----
 
@@ -244,6 +248,7 @@ like.
     # ["train", "my_favorite_samples"]
 
 .. _basics-metadata:
+
 Metadata
 --------
 
@@ -285,7 +290,8 @@ metadata about the source media of the sample.
         }>,
     }>
 
-.. _basics-label:
+.. _basics-labels:
+
 Labels
 ------
 
@@ -393,7 +399,8 @@ datasets to perform the analysis that you need.
    :alt: cats-similar
    :align: center
 
-.. _basics-aggregation:
+.. _basics-aggregations:
+
 Aggregations
 ------------
 
