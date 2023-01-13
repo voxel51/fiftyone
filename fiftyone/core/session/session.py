@@ -364,16 +364,7 @@ class Session(object):
             final_view_name = view.name
 
         if spaces is None:
-            if (
-                dataset
-                and dataset.app_config
-                and isinstance(dataset.app_config.spaces, Space)
-            ):
-                spaces = dataset.app_config.spaces.copy()
-            elif isinstance(fo.app_config.spaces, Space):
-                spaces = fo.app_config.spaces.copy()
-            else:
-                spaces = default_spaces.copy()
+            spaces = default_spaces.copy()
 
         self._state = StateDescription(
             config=config,
