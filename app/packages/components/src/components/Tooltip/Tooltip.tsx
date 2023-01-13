@@ -20,7 +20,7 @@ const Tooltip = <P extends React.HTMLAttributes<T>, T extends HTMLElement>({
 
   const { triggerProps, layerProps, arrowProps, renderLayer } = useLayer({
     isOpen: isOver,
-    placement: placement ?? "top-center",
+    placement,
     triggerOffset: 8,
   });
 

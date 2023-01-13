@@ -114,7 +114,6 @@ type Props = {
   named?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
-  title: string;
 };
 
 const NumericFieldFilter = ({
@@ -122,7 +121,6 @@ const NumericFieldFilter = ({
   modal,
   path,
   named = true,
-  title,
 }: Props) => {
   const color = useRecoilValue(fos.pathColor({ modal, path }));
   const name = path.split(".").slice(-1)[0];
@@ -203,17 +201,17 @@ const NumericFieldFilter = ({
     setFilter([null, null]);
     setExcluded && setExcluded(false);
     setOnlyMatch && setOnlyMatch(true);
-    setIsMatching && setIsMatching(!Boolean(nestedField));
+    setIsMatching && setIsMatching(!nestedField);
   };
 
   // if range is not in default position, nonfinites should not be shown, but they should be set to false
   useEffect(() => {
     if (!isSliderAtInitialPostion) {
-      nonfinites.forEach(([key, { setValue }]) => {
+      nonfinites.forEach(([_, { setValue }]) => {
         setValue(false);
       });
     }
-  }, [isSliderAtInitialPostion]);
+  }, [isSliderAtInitialPostion, nonfinites]);
 
   return (
     <NamedRangeSliderContainer

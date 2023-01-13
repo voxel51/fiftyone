@@ -304,7 +304,6 @@ export const numeric = selectorFamily<
         }
 
         if (nan && value === "nan") {
-          console.info(nan, exclude);
           return !exclude;
         }
 

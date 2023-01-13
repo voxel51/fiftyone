@@ -5,7 +5,7 @@ import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
 import ImageIcon from "@mui/icons-material/Image";
 import HideImageIcon from "@mui/icons-material/HideImage";
-import Tooltip from "@fiftyone/components/src/components/Tooltip";
+import { Tooltip } from "@fiftyone/components";
 
 type ItemProp = {
   icon?: string;
@@ -26,11 +26,10 @@ const Item = React.memo(
   React.forwardRef(
     (
       { icon, value, tooltip, color, highlightedBGColor, onClick }: ItemProp,
-      ref
+      ref: ForwardedRef<HTMLDivElement>
     ) => {
       const StyledPanelItem = styled.div`
         cursor: pointer;
-        padding: 4px 8px;
         background-color: ${({ theme }) => theme.background.secondary};
         &:hover {
           background-color: ${() => highlightedBGColor};
@@ -56,7 +55,7 @@ const Item = React.memo(
         }
       };
 
-      const children: DetailedReactHTMLElement<any, HTMLElement> = (
+      const children = (
         <div
           style={{ display: "flex", flexDirection: "row" }}
           ref={ref}
@@ -71,7 +70,7 @@ const Item = React.memo(
       return (
         <StyledPanelItem>
           {tooltip ? (
-            <Tooltip text={tooltip!} placement="right-start">
+            <Tooltip text={tooltip} placement="right-start">
               {children}
             </Tooltip>
           ) : (

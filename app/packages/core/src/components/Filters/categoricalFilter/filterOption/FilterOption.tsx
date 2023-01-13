@@ -1,6 +1,6 @@
 import React, { PropsWithChildren, useEffect } from "react";
 import styled from "styled-components";
-import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
+import { RecoilState, useRecoilState, useSetRecoilState } from "recoil";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
 import ImageIcon from "@mui/icons-material/Image";
@@ -49,7 +49,7 @@ const generateOptions = (
   //  2) BooleanField should not have the negative filter or negative match options;
   //  3) in expanded mode or keypoints field, do not show the match or negative match options;
   const options: Option[] = [];
-  if (Boolean(nestedField)) {
+  if (nestedField) {
     options.push({
       icon: "FilterAltIcon",
       key: "filter",
@@ -57,7 +57,7 @@ const generateOptions = (
       tooltip: "dataset.filter_labels(field, expr, only_matches=True)",
     });
   }
-  if (Boolean(nestedField) && !shouldNotShowExclude) {
+  if (nestedField && !shouldNotShowExclude) {
     options.push({
       icon: "FilterAltOffIcon",
       key: "negativeFilter",
@@ -70,7 +70,7 @@ const generateOptions = (
       icon: "ImageIcon",
       key: "match",
       value: `Show samples with ${valueName}`,
-      tooltip: Boolean(nestedField)
+      tooltip: nestedField
         ? "dataset.match_labels(fields=field, filter=expr)"
         : "dataset.match(expr)",
     });
@@ -80,7 +80,7 @@ const generateOptions = (
       icon: "HideImageIcon",
       key: "negativeMatch",
       value: `Omit samples with ${valueName}`,
-      tooltip: Boolean(nestedField)
+      tooltip: nestedField
         ? "dataset.match_labels(fields=field, filter=expr, bool=False)"
         : "dataset.match(~expr)",
     });
@@ -96,6 +96,7 @@ const Text = styled.div`
 
 const FilterOptionContainer = styled.div`
   position: relative;
+  margin: 0 -0.5rem 0 -0.5rem;
 `;
 
 const FilterOption: React.FC<Props> = ({
@@ -113,13 +114,15 @@ const FilterOption: React.FC<Props> = ({
 
   const [open, setOpen] = React.useState(false);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
-  const [onlyMatch, setOnlyMatch] = useRecoilState(onlyMatchAtom);
-  const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
+  const setOnlyMatch = onlyMatchAtom ? useSetRecoilState(onlyMatchAtom) : null;
+  const setIsMatching = isMatchingAtom
+    ? useSetRecoilState(isMatchingAtom)
+    : null;
 
   const theme = useTheme();
   const highlightedBGColor = Color(color).alpha(0.25).string();
 
-  const popoutRef = React.useRef();
+  const popoutRef = React.useRef<HTMLDivElement>();
   const ref = React.useRef();
 
   useOutsideClick(popoutRef, () => {
@@ -138,13 +141,11 @@ const FilterOption: React.FC<Props> = ({
     // on initial load, if filter already exists, load exisiting filter for modal filters
     // otherwise, show defaults: filter for nested listfield, match for other fields
     if (key === null) {
-      // when filter initializes, isMatching is defaulted to false, but we need to use Boolean(nestedField) to set normal defaults to match
+      // when filter initializes, isMatching is defaulted to false, but we need to use nestedField to set normal defaults to match
       if (!excluded) {
-        Boolean(nestedField) ? setKey("filter") : setKey("match");
+        nestedField ? setKey("filter") : setKey("match");
       } else {
-        Boolean(nestedField)
-          ? setKey("negativeFilter")
-          : setKey("negativeMatch");
+        nestedField ? setKey("negativeFilter") : setKey("negativeMatch");
       }
     }
   }, []);
@@ -227,6 +228,18 @@ const FilterOption: React.FC<Props> = ({
     </Text>
   );
 
+  const FilterMode = styled.div`
+    background-color: ${() => theme.background.level3};
+    &:hover {
+      background-color: ${() =>
+        Color(theme.background.level3).alpha(0.5).string()};
+    }
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    cursor: pointer;
+  `;
+
   return (
     <FilterOptionContainer ref={popoutRef}>
       <div
@@ -238,17 +251,17 @@ const FilterOption: React.FC<Props> = ({
         }}
       >
         {options.length > 1 && (
-          <>
-            <IconButton
-              onClick={() => setOpen(!open)}
-              sx={{ color: color, size: "small" }}
-            >
+          <FilterMode onClick={() => setOpen(!open)}>
+            <IconButton sx={{ color: color, size: "small" }}>
               <Selected />
             </IconButton>
-            <Tooltip text={selectedValue ?? ""} placement="right-start">
+            <Tooltip
+              text={selectedValue ?? ""}
+              placement={modal ? "left-start" : "right-start"}
+            >
               {children}
             </Tooltip>
-          </>
+          </FilterMode>
         )}
       </div>
       {open && (
@@ -269,7 +282,7 @@ const FilterOption: React.FC<Props> = ({
 
 export default FilterOption;
 
-// TODO: once feat-space-embeddings branch is merged, the bottom should be removed. It's a duplciate.
+// TODO: once feat-space-embeddings branch is merged, the bottom should be removed. It's a duplciate
 export type PopoutProps = PropsWithChildren<{
   style?: any;
   modal?: boolean;
@@ -293,6 +306,7 @@ function Popout({ children, style = {}, modal }: PopoutProps) {
         ...style,
         zIndex: "200000",
         right: modal ? 0 : "unset",
+        margin: "0 -0.5rem 0 -0.5rem",
       }}
     >
       {children}

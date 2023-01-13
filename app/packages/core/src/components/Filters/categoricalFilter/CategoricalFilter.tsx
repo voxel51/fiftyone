@@ -89,7 +89,6 @@ const categoricalSearchResults = selectorFamily<
           .slice(0, 25);
         count++;
       }
-      console.info("categoricalSearchResults", { search, count, values });
 
       return { count, values };
     },
@@ -173,7 +172,6 @@ interface Props<T extends V = V> {
   modal: boolean;
   path: string;
   named?: boolean;
-  title: string;
 }
 
 const CategoricalFilter = <T extends V = V>({
@@ -185,7 +183,6 @@ const CategoricalFilter = <T extends V = V>({
   path,
   modal,
   named = true,
-  title,
 }: Props<T>) => {
   const name = path.split(".").slice(-1)[0];
   const color = useRecoilValue(fos.pathColor({ modal, path }));
@@ -219,13 +216,7 @@ const CategoricalFilter = <T extends V = V>({
           nested
           field={field}
           color={color}
-          template={({
-            label,
-            hoverHanlders,
-            FieldInfoIcon,
-            hoverTarget,
-            container,
-          }) => (
+          template={({ label, hoverTarget }) => (
             <NamedCategoricalFilterHeader>
               <span ref={hoverTarget}>{label}</span>
             </NamedCategoricalFilterHeader>

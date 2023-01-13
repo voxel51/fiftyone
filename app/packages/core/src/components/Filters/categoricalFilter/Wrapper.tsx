@@ -66,6 +66,28 @@ const Wrapper = ({
     ];
   }
 
+  allValues = [...new Set(allValues)];
+
+  // only show all four options the field is a nested ListField.
+  // pass down nestedField as a prop to generate options. (e.g. "detections")
+  const fieldPath = path.split(".").slice(0, -1).join(".");
+  const fieldSchema = useRecoilValue(fos.field(fieldPath));
+  const nestedField = fieldSchema?.ftype.includes("ListField")
+    ? fieldSchema?.dbField?.toLowerCase()
+    : undefined;
+
+  // if the field is a BooleanField, there is no need to show the exclude option
+  const shouldNotShowExclude = Boolean(schema?.ftype.includes("BooleanField"));
+
+  // if the field is a keypoint label, there is no need to show match options
+  const isKeyPoints = fieldSchema?.dbField === "keypoints";
+
+  const initializeSettings = () => {
+    setExcluded && setExcluded(false);
+    setOnlyMatch && setOnlyMatch(true);
+    setIsMatching && setIsMatching(!nestedField);
+  };
+
   if (totalCount === 0) {
     return (
       <>
@@ -80,28 +102,6 @@ const Wrapper = ({
       </>
     );
   }
-
-  allValues = [...new Set(allValues)];
-
-  // only show all four options the field is a nested ListField.
-  // pass down nestedField as a prop to generate options. (e.g. "detections")
-  const fieldPath = path.split(".").slice(0, -1).join(".");
-  const fieldSchema = useRecoilValue(fos.field(fieldPath));
-  const nestedField = Boolean(fieldSchema?.ftype.includes("ListField"))
-    ? fieldSchema?.dbField?.toLowerCase()
-    : undefined;
-
-  // if the field is a BooleanField, there is no need to show the exclude option
-  const shouldNotShowExclude = Boolean(schema?.ftype.includes("BooleanField"));
-
-  // if the field is a keypoint label, there is no need to show match options
-  const isKeyPoints = fieldSchema?.dbField === "keypoints";
-
-  const initializeSettings = () => {
-    setExcluded && setExcluded(false);
-    setOnlyMatch && setOnlyMatch(true);
-    setIsMatching && setIsMatching(!Boolean(nestedField));
-  };
 
   return (
     <>
