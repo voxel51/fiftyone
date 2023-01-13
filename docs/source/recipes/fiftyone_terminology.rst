@@ -7,40 +7,45 @@ FiftyOne terminology
 
 A cheat sheet introducing you to the key terminology in the world of FiftyOne!
 
-The basics
-__________
+Core components
+_______________
 
 .. list-table::
    :widths: 20 80
 
    * - **FiftyOne**
-     - The :ref:`open-source framework <fiftyone-library>`, the core library, and the Python SDK
+     - The :ref:`open-source framework <fiftyone-library>`, the core library,
+       and the Python SDK.
    * - **FiftyOne App**
-     - | The :ref:`GUI attached to FiftyOne <fiftyone-app>` for graphically viewing, filtering, and understanding 
-       | your computer vision data. Can be launched within an IPython notebook, 
-       | in the browser, or as a standalone desktop app.
+     - The :ref:`user interface <fiftyone-app>` for graphically viewing,
+       filtering, and understanding your datasets. Can be launched in the
+       browser, within notebooks, or as a standalone desktop app.
    * - **FiftyOne Teams**
-     - | `The enterprise-grade suite <https://voxel51.com/fiftyone-teams/>`_ built on top of FiftyOne for collaboration,
-       | permissioning, and working with cloud-backed media
+     - `The enterprise-grade suite <https://voxel51.com/fiftyone-teams/>`_
+       built on top of FiftyOne for collaboration, permissioning, and working
+       with cloud-backed media.
 
-FiftyOne components
-___________________
+Other components
+________________
 
 .. list-table::
    :widths: 20 80
 
    * - **Brain**
-     - Library of :ref:`ML-powered capabilities <fiftyone-brain>` for computation and visualization
+     - Library of :ref:`ML-powered capabilities <fiftyone-brain>` for
+       computation and visualization.
    * - **Dataset Zoo**
-     - | :ref:`Collection of common datasets <dataset-zoo>` available for download and loading into 
-       | FiftyOne
+     - :ref:`Collection of common datasets <dataset-zoo>` available for
+       download and loading into  FiftyOne.
    * - **Model Zoo**
-     - :ref:`Collection of pre-trained models <model-zoo>` available for download and inference
+     - :ref:`Collection of pre-trained models <model-zoo>` available for
+       download and inference.
    * - **Plugin**
-     - A module you can use to :ref:`customize and extend the behavior of FiftyOne <app-plugins>`
+     - A module you can use to :ref:`customize and extend <app-plugins>` the
+       behavior of FiftyOne.
    * - **Integration**
-     - | A dataset, ML framework, annotation service, or other tool FiftyOne is 
-       | :ref:`directly compatible with <integrations>`
+     - A dataset, ML framework, annotation service, or other tool FiftyOne is
+       :ref:`directly compatible with <integrations>`.
 
 Data model
 __________
@@ -48,39 +53,48 @@ __________
 .. list-table::
    :widths: 20 80
 
-   * - **Sample**
-     - | The atomic elements of a ``Dataset`` that store all the information 
-       | related to a given piece of data. Every :ref:`sample <basics-samples>` has an associated 
-       | media file. Computer vision analog of row in a table
    * - **Dataset**
-     - | :ref:`Core data structure <basics-datasets>` in FiftyOne, composed of ``Samples``. Consistent
-       | interface for loading images, videos, annotations, and predictions.
-       | Computer vision analog of a table of data
+     - :ref:`Core data structure <basics-datasets>` in FiftyOne, composed of
+       `Sample` instances. Provides a consistent interface for loading
+       images, videos, metadata, annotations, and predictions. The computer
+       vision analog of a table of data.
+   * - **Sample**
+     - The atomic elements of a `Dataset` that store all the information
+       related to a given piece of data. Every :ref:`sample <basics-samples>`
+       has an associated media file. The computer vision analog of a row of
+       tabular data.
    * - **DatasetView**
-     - | :ref:`A view into <using-views>` a ``Dataset``, which can be filtered, sorted, sampled, etc. 
-       | along various axes to obtain a desired subset of the samples
+     - :ref:`A view into <using-views>` a `Dataset`, which can filter,
+       sort, transform, etc. the dataset along various axes to obtain a
+       desired subset of the samples.
    * - **ViewStage**
-     - | :ref:`A logical operation <view-stages>`, such as filtering, matching, or sorting, which can
-       | be used to generate a ``DatasetView``
+     - :ref:`A logical operation <view-stages>`, such as filtering, matching,
+       or sorting, which can be used to generate a `DatasetView`.
    * - **Field**
-     - | Attributes of ``Sample`` instances that :ref:`store customizable information <basics-fields>`
-       |  about the samples. Computer vision analog of a column in a table
-   * - **Embedded Field**
-     - | :ref:`A collection of related fields <custom-embedded-documents>` organized under a single top-level
-       | ``Field``, similar to a nested dictionary
+     - Attributes of `Sample` instances that
+       :ref:`store customizable information <basics-fields>` about the
+       samples. The computer vision analog of a column in a table.
+   * - **Embedded Document Field**
+     - :ref:`A collection of related fields <custom-embedded-documents>`
+       organized under a single top-level `Field`, similar to a nested
+       dictionary.
    * - **Label**
-     - | Class hierarchy used to :ref:`store semantic information <basics-labels>` about ground truth
-       | or predicted labels in a sample. Built in ``Label`` types include 
-       | ``Detections``, ``Classification``, and ``Keypoints`` among others
+     - Class hierarchy used to
+       :ref:`store semantic information <basics-labels>` about ground truth
+       or predicted labels in a sample. Builtin `Label` types include
+       `Classification`, `Detections`, `Keypoints`, and many others.
    * - **Tag**
-     - | A field containing a list of strings representing relevant information.
-       | :ref:`Tags <basics-tags>` can be on the dataset, sample, or label level
+     - A field containing a list of strings representing relevant
+       information. :ref:`Tags <basics-tags>` can be assigned to datasets,
+       samples, or labels.
    * - **Metadata**
-     - | A ``Sample`` level field which can optionally store data type-specific
-       | :ref:`metadata <basics-metadata>` about the raw data in the sample
+     - A special `Sample` field that can be automatically populated with
+       media type-specific  :ref:`metadata <basics-metadata>` about the raw
+       media associated with the sample.
    * - **Aggregation**
-     - | A class encapsulating the computation of an :ref:`aggregate statistic <basics-aggregations>` about a
-       | dataset
+     - A class encapsulating the computation of an
+       :ref:`aggregate statistic <basics-aggregations>` about the contents of
+       a dataset or view.
 
 FiftyOne App
 ____________
@@ -89,14 +103,21 @@ ____________
    :widths: 20 80
 
    * - **Session**
-     - | :ref:`An instance of the FiftyOne App <app-sessions>` connected to a specific dataset, via
-       | which you can use to programmatically interact with the app.
+     - :ref:`An instance of the FiftyOne App <app-sessions>` connected to a
+       specific dataset, via which you can use to programmatically interact
+       with the App.
    * - **Sample grid**
-     - | The rectangular :ref:`grid of images or videos <app-filtering>` you can scroll through. You 
-       | can click on any image or video in the grid to expand
+     - The rectangular :ref:`media grid <app-filtering>` that you can scroll
+       through to quickly browse the samples in a dataset. Click on any media
+       in the grid to open the sample modal.
+   * - **Sample modal**
+     - The :ref:`expanded modal <app-sample-view>` that provides detailed
+       information and visualization about an individual sample in a dataset.
    * - **Sidebar**
-     - | Vertical component on :ref:`left side of app <app-fields-sidebar>` which allows for toggling labels on/off, 
-       | filtering by class or id, or by numerical value ranges
-   * - **Viewbar**
-     - | :ref:`Horizontal bar at the top of the app <app-create-view>` where you can create and compose
-       | view stages via point and click operations
+     - Vertical component on :ref:`left side of App <app-fields-sidebar>`
+       that provides convenient options for filtering the dataset and
+       toggling the visibility of fields in the sample grid.
+   * - **View bar**
+     - :ref:`Horizontal bar at the top of the App <app-create-view>` where
+       you can create and compose view stages via point and click operations
+       to filter your dataset and show only the content of interest.

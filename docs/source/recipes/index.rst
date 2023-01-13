@@ -39,7 +39,7 @@ workflows.
 
 .. customcarditem::
     :header: FiftyOne terminology
-    :description: An overview of FiftyOne's key terminology.
+    :description: A brief overview of FiftyOne's key terminology.
     :link: fiftyone_terminology.html
     :image: ../_static/images/recipes/pandas_vs_fiftyone.png
     :tags: Cheat-Sheets,Basics
