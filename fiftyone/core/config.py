@@ -372,8 +372,6 @@ class AppConfig(EnvConfig):
         )
         self.plugins = d.get("plugins", {})
 
-        self.spaces = d.get("spaces", None)
-
         self._init()
 
     def get_colormap(self, colorscale=None, n=256, hex_strs=False):
