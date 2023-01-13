@@ -17,7 +17,7 @@ const useSetDataset = () => {
   const onError = useErrorHandler();
 
   return (name?: string) => {
-    to(name ? `/datasets/${encodeURI(name)}` : "/");
+    to(name ? `/datasets/${encodeURIComponent(name)}` : "/");
 
     send((session) =>
       commit({
