@@ -2581,6 +2581,22 @@ class VideoTests(unittest.TestCase):
         )
         self.assertEqual(patches.count("ground_truth.label_upper"), 2)
         self.assertEqual(view2.count("ground_truth.label_upper"), 2)
+        self.assertIsNone(patches.get_field("ground_truth.label_upper"))
+        self.assertIsNone(
+            frames.get_field("ground_truth.detections.label_upper")
+        )
+        self.assertIsNone(
+            dataset.get_field("frames.ground_truth.detections.label_upper")
+        )
+
+        view2.set_values("ground_truth.label_dynamic", values, dynamic=True)
+        self.assertIsNotNone(patches.get_field("ground_truth.label_dynamic"))
+        self.assertIsNotNone(
+            frames.get_field("ground_truth.detections.label_dynamic")
+        )
+        self.assertIsNotNone(
+            dataset.get_field("frames.ground_truth.detections.label_dynamic")
+        )
 
         values = {
             _id: v
@@ -2823,6 +2839,16 @@ class VideoTests(unittest.TestCase):
         )
         self.assertEqual(patches.count("ground_truth.label_upper"), 2)
         self.assertEqual(view2.count("ground_truth.label_upper"), 2)
+        self.assertIsNone(patches.get_field("ground_truth.label_upper"))
+        self.assertIsNone(
+            dataset.get_field("frames.ground_truth.detections.label_upper")
+        )
+
+        view2.set_values("ground_truth.label_dynamic", values, dynamic=True)
+        self.assertIsNotNone(patches.get_field("ground_truth.label_dynamic"))
+        self.assertIsNotNone(
+            dataset.get_field("frames.ground_truth.detections.label_dynamic")
+        )
 
         view3 = patches.skip(2).set_field(
             "ground_truth.label", F("label").upper()
