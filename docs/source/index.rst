@@ -317,6 +317,8 @@ Where should you go from here? You could...
 * :ref:`Install FiftyOne <installing-fiftyone>`
 * Try one of the :doc:`tutorials <tutorials/index>` that demonstrate the unique
   capabilities of FiftyOne
+  Check out our :doc:`cheat sheets <cheat_sheets/index>` for getting up and 
+  running
 * Explore :doc:`recipes <recipes/index>` for integrating FiftyOne into
   your current ML workflows
 * Consult the :doc:`user guide <user_guide/index>` for detailed instructions on
@@ -339,6 +341,7 @@ or reach out to us at support@voxel51.com.
    Environments <environments/index>
    Tutorials <tutorials/index>
    Recipes <recipes/index>
+   Cheat Sheets <cheat_sheets/index>
    User Guide <user_guide/index>
    Integrations <integrations/index>
    Release Notes <release-notes>
