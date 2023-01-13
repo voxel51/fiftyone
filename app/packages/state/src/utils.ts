@@ -117,7 +117,7 @@ export const getDatasetName = (context: RoutingContext<any>): string => {
   );
 
   if (result) {
-    return result.variables.name;
+    return decodeURIComponent(result.variables.name);
   }
 
   return null;
