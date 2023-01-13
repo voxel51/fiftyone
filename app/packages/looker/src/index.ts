@@ -109,9 +109,7 @@ const workerCallbacks = {
 };
 
 const getLabelsWorker = (() => {
-  // one labels worker seems to be best
-  // const numWorkers = navigator.hardwareConcurrency || 4;
-  const numWorkers = 1;
+  const numWorkers = navigator.hardwareConcurrency || 4;
   let workers: Worker[];
 
   let next = -1;

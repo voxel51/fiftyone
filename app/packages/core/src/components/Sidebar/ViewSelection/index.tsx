@@ -67,7 +67,7 @@ export default function ViewSelection(props: Props) {
   const [selected, setSelected] = useRecoilState<DatasetViewOption | null>(
     selectedSavedViewState
   );
-
+  const canEditSavedViews = useRecoilValue<boolean>(fos.canEditSavedViews);
   const existingQueries = qs.parse(location.search, {
     ignoreQueryPrefix: true,
   });
@@ -206,6 +206,9 @@ export default function ViewSelection(props: Props) {
 
   useEffect(() => {
     const callback = (event: KeyboardEvent) => {
+      if (!canEditSavedViews) {
+        return;
+      }
       if ((event.metaKey || event.ctrlKey) && event.code === "KeyS") {
         event.preventDefault();
         if (!isEmptyView) {
@@ -218,12 +221,13 @@ export default function ViewSelection(props: Props) {
     return () => {
       document.removeEventListener("keydown", callback);
     };
-  }, [isEmptyView]);
+  }, [isEmptyView, canEditSavedViews]);
 
   return (
     <Suspense fallback="Loading saved views...">
       <Box>
         <ViewDialog
+          canEdit={canEditSavedViews}
           savedViews={items}
           onEditSuccess={(
             createSavedView: fos.State.SavedView,
@@ -265,6 +269,7 @@ export default function ViewSelection(props: Props) {
           }}
         />
         <Selection
+          readonly={!canEditSavedViews}
           selected={selected}
           setSelected={(item: DatasetViewOption) => {
             setSelected(item);
@@ -289,8 +294,10 @@ export default function ViewSelection(props: Props) {
           }}
           lastFixedOption={
             <LastOption
-              onClick={() => !isEmptyView && setIsOpen(true)}
-              disabled={isEmptyView}
+              onClick={() =>
+                canEditSavedViews && !isEmptyView && setIsOpen(true)
+              }
+              disabled={isEmptyView || !canEditSavedViews}
             >
               <Box style={{ width: "12%" }}>
                 <AddIcon fontSize="small" disabled={isEmptyView} />
