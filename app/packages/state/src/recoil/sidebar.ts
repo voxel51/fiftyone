@@ -639,6 +639,42 @@ export const disabledPaths = selector<Set<string>>({
   },
 });
 
+const collapsedPaths = selector<Set<string>>({
+  key: "collapsedPaths",
+  get: ({ get }) => {
+    let paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
+    paths = [...paths, ...get(fieldPaths({ ftype: LIST_FIELD }))];
+
+    get(
+      fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE })
+    ).forEach(({ fields, name: prefix }) => {
+      Object.values(fields)
+        .filter(
+          ({ ftype, subfield }) =>
+            ftype === DICT_FIELD ||
+            subfield === DICT_FIELD ||
+            (ftype === LIST_FIELD && !subfield)
+        )
+        .forEach(({ name }) => paths.push(`${prefix}.${name}`));
+    });
+
+    get(fields({ space: State.SPACE.FRAME })).forEach(
+      ({ name, embeddedDocType }) => {
+        if (LABELS.includes(embeddedDocType)) {
+          return;
+        }
+
+        paths.push(`frames.${name}`);
+      }
+    );
+
+    return new Set(paths);
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
 export const sidebarGroupMapping = selectorFamily<
   { [name: string]: Omit<State.SidebarGroup, "name"> },
   { modal: boolean; loading: boolean; filtered?: boolean }
@@ -721,7 +757,7 @@ export const groupShown = selectorFamily<
         }
         return (
           !data.paths.length ||
-          !data.paths.every((path) => get(disabledPaths).has(path))
+          !data.paths.every((path) => get(collapsedPaths).has(path))
         );
       }
 
