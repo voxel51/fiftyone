@@ -541,7 +541,7 @@ class Session(object):
     @property
     def spaces(self) -> Space:
         """The layout state for the session."""
-        return self._state.spaces or default_spaces
+        return self._state.spaces
 
     @spaces.setter  # type: ignore
     @update_state()

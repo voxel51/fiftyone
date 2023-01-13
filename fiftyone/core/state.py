@@ -151,8 +151,9 @@ class StateDescription(etas.Serializable):
 
         spaces = d.get("spaces", None)
 
-        if spaces is not None:
-            spaces = Space.from_dict(json_util.loads(spaces))
+        # @todo I believe this should happen here
+        # if spaces is not None:
+        #    spaces = Space.from_dict(spaces)
 
         return cls(
             config=config,
