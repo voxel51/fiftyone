@@ -1,12 +1,11 @@
 import {
   mainSample,
-  mainSampleQuery,
+  mainSampleQuery as mainSampleQueryGraphQL,
   paginateGroup,
   paginateGroupQuery,
   paginateGroup_query$key,
   pinnedSample,
   pinnedSampleQuery,
-  pinnedSampleQuery$data,
 } from "@fiftyone/relay";
 
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
@@ -190,8 +189,8 @@ export const activeModalSample = selector<
 });
 
 const mainSampleQuery = graphQLSelector<
-  VariablesOf<mainSampleQuery>,
-  ResponseFrom<mainSampleQuery>
+  VariablesOf<mainSampleQueryGraphQL>,
+  ResponseFrom<mainSampleQueryGraphQL>
 >({
   environment: RelayEnvironmentKey,
   key: "mainSampleQuery",

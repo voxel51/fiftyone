@@ -479,7 +479,7 @@ export const sidebarGroups = selectorFamily<
       !modal &&
         persist &&
         persistSidebarGroups({
-          subscription: useRecoilValue(stateSubscription),
+          subscription: get(stateSubscription),
           dataset: get(datasetName),
           stages: get(viewAtoms.view),
           sidebarGroups: groups,

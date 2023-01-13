@@ -34,6 +34,7 @@
         "vitest": "^0.25.2"
     },
     "dependencies": {
+        "@fiftyone/looker": "*",
         "@fiftyone/relay": "*",
         "@fiftyone/utilities": "*",
         "@microsoft/fetch-event-source": "^2.0.1",
