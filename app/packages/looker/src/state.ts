@@ -28,7 +28,7 @@ export interface Sample {
     height: number;
   };
   id: string;
-  media_type: "image" | "image";
+  media_type: "image" | "video" | "point-cloud";
   filepath: string;
   tags: string[];
   _label_tags: string[];
@@ -42,9 +42,20 @@ export interface LabelData {
   index?: number;
 }
 
-export interface MaskTargets {
-  [key: number]: string;
-}
+type MaskLabel = string;
+export type IntMaskTargets = {
+  [intKey: string]: MaskLabel;
+};
+
+type HexColor = string;
+
+export type RgbMaskTargets = {
+  [hexKey: HexColor]: {
+    label: MaskLabel;
+    intTarget: number;
+  };
+};
+export type MaskTargets = IntMaskTargets | RgbMaskTargets;
 
 export type BufferRange = [number, number];
 export type Buffers = BufferRange[];

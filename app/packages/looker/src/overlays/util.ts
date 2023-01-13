@@ -3,7 +3,7 @@
  */
 
 import { INFO_COLOR } from "../constants";
-import { BaseState, Coordinates } from "../state";
+import { BaseState, Coordinates, MaskTargets, RgbMaskTargets } from "../state";
 import { BaseLabel } from "./base";
 
 export const t = (state: BaseState, x: number, y: number): Coordinates => {
@@ -72,3 +72,16 @@ export const strokeCanvasRect = (
   strokeRect(ctx, state, INFO_COLOR);
   ctx.setLineDash([]);
 };
+
+/**
+ * Returns true if mask targets is RGB
+ */
+export function isRgbMaskTargets(
+  maskTargets: MaskTargets
+): maskTargets is RgbMaskTargets {
+  if (!maskTargets || typeof maskTargets !== "object") {
+    throw new Error("mask targets is invalid");
+  }
+
+  return Object.keys(maskTargets)[0]?.startsWith("#") === true;
+}

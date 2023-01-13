@@ -359,11 +359,11 @@ class MongoEngineBaseDocument(SerializableDocument):
     def _to_db_fields(self, field_names):
         db_fields = []
 
+        # pylint: disable=no-member
         for field_name in field_names:
             if field_name == "id":
                 db_fields.append("_id")
             else:
-                # pylint: disable=no-member
                 field = self._fields.get(field_name, None)
                 if field is None:
                     value = self.get_field(field_name)

@@ -236,10 +236,10 @@ const useData = <T extends unknown>(path: string): T => {
 
     const key = keys[index];
 
-    data = data[field.dbField || key];
+    data = data[field?.dbField || key];
 
     if (keys[index + 1]) {
-      field = field.fields[keys[index + 1]];
+      field = field?.fields[keys[index + 1]];
     }
   }
 

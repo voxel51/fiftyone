@@ -52,6 +52,28 @@ export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
   return bitColorCache[key];
 };
 
+const rgbToHexCache = {};
+
+export const rgbToHexCached = (color: RGB) => {
+  const [r, g, b] = color;
+
+  const key = `${r}${g}${b}`;
+
+  if (key in rgbToHexCache) {
+    return rgbToHexCache[`${r}${g}${b}`];
+  }
+
+  rgbToHexCache[key] =
+    "#" +
+    ((1 << 24) | (r << 16) | (g << 8) | b)
+      // convert result of bitwise operation to hex
+      .toString(16)
+      // remove leading "1" that's a result of padding for bitwise ORs for RGB values above
+      .slice(1)
+      .toLocaleUpperCase();
+  return rgbToHexCache[key];
+};
+
 export const getRGBA = (value: number): RGBA => {
   const uint32 = new Uint32Array(1);
   uint32[0] = value;

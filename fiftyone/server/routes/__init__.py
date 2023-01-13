@@ -20,7 +20,6 @@ from .tag import Tag
 from .tagging import Tagging
 from .values import Values
 
-
 routes = [
     ("/aggregate", Aggregate),
     ("/event", Event),

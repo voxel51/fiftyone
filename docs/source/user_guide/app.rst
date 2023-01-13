@@ -461,6 +461,44 @@ the App.
     :alt: app-views2
     :align: center
 
+.. _app-saving-views:
+
+Saving views
+____________
+
+You can use the menu in the upper-left of the App to save the current state of
+the App's view bar and filters sidebar as a new view into your dataset. Any
+views that you save are persisted on your dataset under a name of your choice
+so that you can quickly load them in a future session via this UI.
+
+Saved views are a convenient way to record semantically relevant subsets of a
+dataset, such as:
+
+-   samples in a particular state, e.g., with certain tag(s)
+-   a subset of a dataset that was used for a task, e.g., training a model
+-   samples that contain content of interest, e.g., object types or image
+    characteristics
+
+.. note::
+
+    Remember that saved views only store the rule(s) used to extract content
+    from the underlying dataset, not the actual content itself. Saving views
+    is cheap. Don't worry about storage space!
+
+    Keep in mind, though, that the contents of a saved view may change as the
+    underlying dataset is modified. For example, if a save view contains
+    samples with a certain tag, the view's contents will change as you
+    add/remove this tag from samples.
+
+.. note::
+
+    Did you know? You can also programmatically create, modify, and delete
+    saved views :ref:`via Python <saving-views>`!
+
+.. image:: /images/app/app-saved-views.gif
+    :alt: app-saved-views
+    :align: center
+
 .. _app-sample-view:
 
 Viewing a sample

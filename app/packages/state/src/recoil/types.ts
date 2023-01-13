@@ -8,6 +8,11 @@ export namespace State {
     SAMPLE = "SAMPLE",
   }
 
+  /**
+   * An object containing the configuration for plugins.
+   * Each key is the name of a plugin, and the value is the
+   * configuration for that plugin.
+   */
   export type PluginConfig = { [pluginName: string]: object };
   export interface Config {
     colorPool: string[];
@@ -37,6 +42,19 @@ export namespace State {
 
   export interface Targets {
     [key: number]: string;
+  }
+
+  export interface SavedView {
+    id: string;
+    datasetId: string;
+    name: string;
+    slug: string;
+    description?: string;
+    color?: string;
+    viewStages: Stage[];
+    createdAt: DateTime;
+    lastLoadedAt: DateTime;
+    lastModifiedAt?: DateTime;
   }
 
   export interface Evaluation {}
@@ -91,12 +109,17 @@ export namespace State {
     sidebarGroups?: SidebarGroup[];
     sidebarMode?: "all" | "best" | "fast";
   }
+
+  /**
+   * The dataset object returned by the API.
+   */
   export interface Dataset {
     id: string;
     brainMethods: BrainRun[];
     createdAt: DateTime;
     defaultMaskTargets: Targets;
     evaluations: EvaluationRun[];
+    savedViews: SavedView[];
     frameFields: StrictField[];
     lastLoadedAt: DateTime;
     maskTargets: {
@@ -119,6 +142,9 @@ export namespace State {
     info: { [key: string]: string };
   }
 
+  /**
+   * @hidden
+   */
   export interface Filter {}
 
   export enum TagKey {
@@ -165,5 +191,9 @@ export namespace State {
     selectedLabels: SelectedLabel[];
     view: Stage[];
     viewCls: string | null;
+    viewName: string | null;
+    savedViews: SavedView[];
+    savedViewSlug: string | null;
+    changingSavedView: Boolean | null;
   }
 }

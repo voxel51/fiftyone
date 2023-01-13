@@ -1,4 +1,10 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
 
@@ -11,6 +17,10 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { Box } from "@mui/material";
+import ViewSelection from "./ViewSelection";
+import { DatasetSavedViewsQuery } from "../../Root/Root";
+import { useQueryLoader } from "react-relay";
 const MARGIN = 3;
 
 const fn = (
@@ -369,7 +379,7 @@ enum Direction {
 const SidebarColumn = styled.div`
   position: relative;
   max-height: 100%;
-  height: 100%;
+  height: 92%;
   width: 100%;
 
   overflow-y: scroll;
@@ -431,6 +441,7 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
+  const loadedDatasetName = useRecoilValue<string>(fos.datasetName);
 
   if (entries instanceof Error) {
     throw entries;
@@ -678,6 +689,14 @@ const InteractiveSidebar = ({
   );
   const theme = useTheme();
 
+  const [savedViewsQueryRef, loadSavedViewsQuery] = useQueryLoader(
+    DatasetSavedViewsQuery
+  );
+
+  useEffect(() => {
+    loadSavedViewsQuery({ name: loadedDatasetName });
+  }, [loadSavedViewsQuery]);
+
   return shown ? (
     <Resizable
       size={{ height: "100%", width }}
@@ -705,71 +724,85 @@ const InteractiveSidebar = ({
           : undefined,
       }}
     >
-      <SidebarColumn
-        ref={container}
-        onScroll={({ target }) => {
-          if (start.current !== null) {
-            start.current += scroll.current - target.scrollTop;
-          }
-
-          scroll.current = target.scrollTop;
-          down.current && animate(last.current);
-        }}
-      >
-        <Container style={containerController.springs}>
-          {order.current.map((key) => {
-            const entry = items.current[key].entry;
-            if (entry.kind === fos.EntryKind.GROUP) {
-              group = entry.name;
-            }
-            const { shadow, cursor, ...springs } =
-              items.current[key].controller.springs;
-            const { children } = render(
-              key,
-              group,
-              entry,
-              items.current[key].controller,
-              trigger
-            );
-            const style = {};
-            if (entry.kind === fos.EntryKind.INPUT) {
-              style.zIndex = 0;
+      {!modal && (
+        <Suspense>
+          <Box style={{ padding: 8, paddingLeft: 16, paddingRight: 16 }}>
+            {savedViewsQueryRef !== null && (
+              <ViewSelection
+                datasetName={loadedDatasetName}
+                queryRef={savedViewsQueryRef}
+              />
+            )}
+          </Box>
+        </Suspense>
+      )}
+      <Suspense>
+        <SidebarColumn
+          ref={container}
+          onScroll={({ target }) => {
+            if (start.current !== null) {
+              start.current += scroll.current - target.scrollTop;
             }
 
-            return (
-              <animated.div
-                onMouseDownCapture={() => {
-                  lastTouched.current = undefined;
-                  placeItems();
-                }}
-                key={key}
-                style={{
-                  ...springs,
-                  boxShadow: shadow.to(
-                    (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
-                  ),
-                  ...style,
-                }}
-              >
-                <div
-                  ref={(node) => {
-                    if (!items.current[key]) {
-                      return;
-                    }
+            scroll.current = target.scrollTop;
+            down.current && animate(last.current);
+          }}
+        >
+          <Container style={containerController.springs}>
+            {order.current.map((key) => {
+              const entry = items.current[key].entry;
+              if (entry.kind === fos.EntryKind.GROUP) {
+                group = entry.name;
+              }
+              const { shadow, cursor, ...springs } =
+                items.current[key].controller.springs;
+              const { children } = render(
+                key,
+                group,
+                entry,
+                items.current[key].controller,
+                trigger
+              );
+              const style = {};
+              if (entry.kind === fos.EntryKind.INPUT) {
+                style.zIndex = 0;
+              }
 
-                    items.current[key].el &&
-                      observer.unobserve(items.current[key].el);
-                    node && observer.observe(node);
-                    items.current[key].el = node;
+              return (
+                <animated.div
+                  onMouseDownCapture={() => {
+                    lastTouched.current = undefined;
+                    placeItems();
+                  }}
+                  key={key}
+                  style={{
+                    ...springs,
+                    boxShadow: shadow.to(
+                      (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
+                    ),
+                    ...style,
                   }}
                 >
-                  {children}
-                </div>
-              </animated.div>
-            );
-          })}
-        </Container>
-      </SidebarColumn>
+                  <div
+                    ref={(node) => {
+                      if (!items.current[key]) {
+                        return;
+                      }
+
+                      items.current[key].el &&
+                        observer.unobserve(items.current[key].el);
+                      node && observer.observe(node);
+                      items.current[key].el = node;
+                    }}
+                  >
+                    {children}
+                  </div>
+                </animated.div>
+              );
+            })}
+          </Container>
+        </SidebarColumn>
+      </Suspense>
     </Resizable>
   ) : null;
 };

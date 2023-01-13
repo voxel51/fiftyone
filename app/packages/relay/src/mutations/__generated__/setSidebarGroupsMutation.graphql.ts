@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<110fad434e453ab80f0414deb9a7b67c>>
+ * @generated SignedSource<<450e432e6169a85c4f242815d30e7284>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,8 +16,10 @@ export type SidebarGroupInput = {
 };
 export type setSidebarGroupsMutation$variables = {
   dataset: string;
+  session?: string | null;
   sidebarGroups: ReadonlyArray<SidebarGroupInput>;
   stages: Array;
+  subscription: string;
 };
 export type setSidebarGroupsMutation$data = {
   readonly setSidebarGroups: boolean;
@@ -36,14 +38,24 @@ var v0 = {
 v1 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "sidebarGroups"
+  "name": "session"
 },
 v2 = {
   "defaultValue": null,
   "kind": "LocalArgument",
+  "name": "sidebarGroups"
+},
+v3 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
   "name": "stages"
 },
-v3 = [
+v4 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "subscription"
+},
+v5 = [
   {
     "alias": null,
     "args": [
@@ -54,6 +66,11 @@ v3 = [
       },
       {
         "kind": "Variable",
+        "name": "session",
+        "variableName": "session"
+      },
+      {
+        "kind": "Variable",
         "name": "sidebarGroups",
         "variableName": "sidebarGroups"
       },
@@ -61,6 +78,11 @@ v3 = [
         "kind": "Variable",
         "name": "stages",
         "variableName": "stages"
+      },
+      {
+        "kind": "Variable",
+        "name": "subscription",
+        "variableName": "subscription"
       }
     ],
     "kind": "ScalarField",
@@ -73,37 +95,41 @@ return {
     "argumentDefinitions": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v2/*: any*/)
+      (v2/*: any*/),
+      (v3/*: any*/),
+      (v4/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "setSidebarGroupsMutation",
-    "selections": (v3/*: any*/),
+    "selections": (v5/*: any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
+      (v4/*: any*/),
+      (v1/*: any*/),
       (v0/*: any*/),
-      (v2/*: any*/),
-      (v1/*: any*/)
+      (v3/*: any*/),
+      (v2/*: any*/)
     ],
     "kind": "Operation",
     "name": "setSidebarGroupsMutation",
-    "selections": (v3/*: any*/)
+    "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "49223211f87d09916d692a5b86c73e55",
+    "cacheID": "30ff3bb58850612d19abd31673645b9c",
     "id": null,
     "metadata": {},
     "name": "setSidebarGroupsMutation",
     "operationKind": "mutation",
-    "text": "mutation setSidebarGroupsMutation(\n  $dataset: String!\n  $stages: BSONArray!\n  $sidebarGroups: [SidebarGroupInput!]!\n) {\n  setSidebarGroups(dataset: $dataset, stages: $stages, sidebarGroups: $sidebarGroups)\n}\n"
+    "text": "mutation setSidebarGroupsMutation(\n  $subscription: String!\n  $session: String\n  $dataset: String!\n  $stages: BSONArray!\n  $sidebarGroups: [SidebarGroupInput!]!\n) {\n  setSidebarGroups(subscription: $subscription, session: $session, dataset: $dataset, stages: $stages, sidebarGroups: $sidebarGroups)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "22c6d57fcd3c020c73b93c7b6c8897e9";
+(node as any).hash = "6edb503fe6431a2fd846189f046260d6";
 
 export default node;
