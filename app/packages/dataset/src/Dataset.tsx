@@ -59,6 +59,7 @@ export interface DatasetProps {
   readOnly?: boolean;
   theme?: "dark" | "light";
   toggleHeaders?: () => void;
+  canEditSavedViews?: boolean;
 }
 
 export const Dataset: React.FC<DatasetProps> = (props) => {
@@ -87,9 +88,11 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
   readOnly = false,
   theme = "dark",
   toggleHeaders,
+  canEditSavedViews = true,
 }) => {
   const [queryRef, loadQuery] = useQueryLoader<DatasetQuery>(DatasetNodeQuery);
   const setTheme = useSetRecoilState(fos.theme);
+  const setCanChangeSavedViews = useSetRecoilState(fos.canEditSavedViews);
   const setCompactLayout = useSetRecoilState(fos.compactLayout);
   const setReadOnly = useSetRecoilState(fos.readOnly);
 
@@ -99,6 +102,9 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
   React.useEffect(() => {
     loadQuery({ name: dataset });
   }, [dataset]);
+  React.useEffect(() => {
+    setCanChangeSavedViews(canEditSavedViews);
+  }, [canEditSavedViews]);
   React.useLayoutEffect(() => {
     setReadOnly(readOnly);
   }, [readOnly]);

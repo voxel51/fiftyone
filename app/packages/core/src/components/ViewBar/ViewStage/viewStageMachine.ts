@@ -1,5 +1,12 @@
 import { v4 as uuid } from "uuid";
-import { actions, assign, Machine, send, sendParent, spawn } from "xstate";
+import {
+  actions,
+  assign,
+  createMachine,
+  send,
+  sendParent,
+  spawn,
+} from "xstate";
 
 import { computeBestMatchString, getMatch } from "./utils";
 import viewStageParameterMachine from "./viewStageParameterMachine";
@@ -42,7 +49,7 @@ const isValidStage = (stageInfo, stage) => {
     .some((n) => n.toLowerCase() === stage.toLowerCase());
 };
 
-const viewStageMachine = Machine(
+const viewStageMachine = createMachine(
   {
     id: "viewStage",
     context: {

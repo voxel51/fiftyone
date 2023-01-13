@@ -143,9 +143,9 @@ export default function Selection(props: SelectionProps) {
               ...textBoxStyle,
               display: "flex",
               padding: "0 1rem",
-              background: theme.background.level1,
+              background: theme.background.level3,
               "&:hover": {
-                background: theme.background.level1,
+                background: theme.background.level3,
               },
             },
           },
@@ -153,10 +153,10 @@ export default function Selection(props: SelectionProps) {
             sx: {
               ...textBoxStyle,
               textAlign: "left",
-              background: theme.background.level1,
+              background: theme.background.level3,
 
               "&:hover": {
-                background: theme.background.level1,
+                background: theme.background.level3,
               },
             },
           },
