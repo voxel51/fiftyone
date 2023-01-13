@@ -36,11 +36,13 @@ import {
   COLOR_OPTIONS_MAP,
   DEFAULT_COLOR_OPTION,
 } from "@fiftyone/components/src/components/Selection/SelectionColors";
+import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 
 interface Props {
   savedViews: fos.State.SavedView[];
   onEditSuccess: (saveView: fos.State.SavedView, reload?: boolean) => void;
   onDeleteSuccess: (slug: string) => void;
+  canEdit?: boolean;
 }
 
 export const viewDialogContent = atom({
@@ -54,7 +56,7 @@ export const viewDialogContent = atom({
 });
 
 export default function ViewDialog(props: Props) {
-  const { onEditSuccess, onDeleteSuccess, savedViews = [] } = props;
+  const { onEditSuccess, onDeleteSuccess, savedViews = [], canEdit } = props;
   const theme = useTheme();
   const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
   const viewContent = useRecoilValue(viewDialogContent);
@@ -107,6 +109,8 @@ export default function ViewDialog(props: Props) {
   }, [viewContent]);
 
   const view = useRecoilValue(fos.view);
+  const extendedViewExists = useRecoilValue(shouldToggleBookMarkIconOnSelector);
+
   const {
     handleDeleteView,
     isDeletingSavedView,
@@ -132,7 +136,7 @@ export default function ViewDialog(props: Props) {
   }, [nameValue]);
 
   const onSaveView = useCallback(() => {
-    if (isCreating && view?.length) {
+    if (isCreating) {
       handleCreateSavedView(
         nameValue,
         descriptionValue,
@@ -236,7 +240,7 @@ export default function ViewDialog(props: Props) {
               justifyContent: "start",
             }}
           >
-            {!isCreating && (
+            {!isCreating && canEdit && (
               <Button
                 onClick={onDeleteView}
                 sx={{
@@ -278,7 +282,7 @@ export default function ViewDialog(props: Props) {
                 isDeletingSavedView ||
                 !!nameError ||
                 !nameValue ||
-                (isCreating && !view?.length) ||
+                (isCreating && !view?.length && !extendedViewExists) ||
                 (initialName === nameValue &&
                   descriptionValue === initialDescription &&
                   colorOption?.color === initialColor)

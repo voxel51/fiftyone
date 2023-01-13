@@ -1,6 +1,8 @@
 import { graphql } from "react-relay";
 
-export default graphql`
+import r from "../resolve";
+
+export default r(graphql`
   query pinnedSampleQuery(
     $dataset: String!
     $view: BSONArray!
@@ -17,4 +19,4 @@ export default graphql`
       }
     }
   }
-`;
+`);
