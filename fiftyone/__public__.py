@@ -70,14 +70,13 @@ from .core.fields import (
     GeoMultiLineStringField,
     GeoMultiPolygonField,
     IntField,
-    IntDictField,
     KeypointsField,
     ListField,
     ObjectIdField,
     PolylinePointsField,
     ReferenceField,
     StringField,
-    TargetsField,
+    MaskTargetsField,
     VectorField,
 )
 from .core.frame import Frame
