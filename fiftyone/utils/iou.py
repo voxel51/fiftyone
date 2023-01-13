@@ -17,6 +17,8 @@ import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
+from .utils3d import compute_cuboid_iou as _compute_cuboid_iou
+
 sg = fou.lazy_import("shapely.geometry")
 so = fou.lazy_import("shapely.ops")
 
@@ -398,28 +400,17 @@ def _find_duplicates_greedy(ious, iou_thresh):
     return sorted(dup_inds)
 
 
-def _check_bbox_dim(gt):
-    """
-    Checks dimension of the bounding boxes
-    Returns:
-        2 if dim = 2
-        3 if dim = 3
-        -1 if not valid dimensionally
-    """
-    if "bounding_box" in gt and len(gt.bounding_box) == 4:
-        return 2
+def _get_bbox_dim(detection):
+    if all(
+        getattr(detection, a, None) is not None
+        for a in ("dimensions", "location", "rotation")
+    ):
+        return 3
 
-    properties_3d = ["dimensions", "location", "rotation"]
-    for prop in properties_3d:
-        if prop not in gt or len(gt[prop]) != 3:
-            return -1
-    return 3
+    return 2
 
 
-def _compute_2d_bbox_iou(gt, gt_crowd, pred):
-    """
-    computes single IoU
-    """
+def _compute_bbox_iou(gt, pred, gt_crowd=False):
     gx, gy, gw, gh = gt.bounding_box
     gt_area = gh * gw
 
@@ -443,8 +434,7 @@ def _compute_2d_bbox_iou(gt, gt_crowd, pred):
     else:
         union = pred_area + gt_area - inter
 
-    iou = min(etan.safe_divide(inter, union), 1)
-    return iou
+    return min(etan.safe_divide(inter, union), 1)
 
 
 def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
@@ -463,15 +453,10 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
         else:
             gts = _polylines_to_detections(gts)
 
-    bbox_dim = _check_bbox_dim(gts[0])
-    if bbox_dim == -1:
-        return "Not a valid bounding box. Cannot compute IoU"
-    elif bbox_dim == 2:
-        bbox_iou_func = _compute_2d_bbox_iou
+    if _get_bbox_dim(gts[0]) == 3:
+        bbox_iou_fcn = _compute_cuboid_iou
     else:
-        from fiftyone.utils.eval.utils3d import _compute_3d_bbox_iou
-
-        bbox_iou_func = _compute_3d_bbox_iou
+        bbox_iou_fcn = _compute_bbox_iou
 
     ious = np.zeros((len(preds), len(gts)))
 
@@ -485,7 +470,7 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
             elif classwise and pred.label != gt.label:
                 continue
             else:
-                iou = bbox_iou_func(gt, gt_crowd, pred)
+                iou = bbox_iou_fcn(gt, pred, gt_crowd=gt_crowd)
 
             ious[i, j] = iou
 
