@@ -149,6 +149,11 @@ class StateDescription(etas.Serializable):
 
         fo.config.timezone = d.get("config", {}).get("timezone", None)
 
+        spaces = d.get("spaces", None)
+
+        if spaces is not None:
+            spaces = Space.from_dict(json_util.loads(spaces))
+
         return cls(
             config=config,
             dataset=dataset,
@@ -157,7 +162,7 @@ class StateDescription(etas.Serializable):
             view=view,
             view_name=view_name,
             changing_saved_view=d.get("changing_saved_view", False),
-            spaces=d.get("spaces", None),
+            spaces=spaces,
         )
 
 
