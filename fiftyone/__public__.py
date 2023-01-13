@@ -148,6 +148,10 @@ from .core.plots import (
     NumericalHistogram,
 )
 from .core.sample import Sample
+from .core.spaces import (
+    Space,
+    Panel,
+)
 from .core.stages import (
     Concat,
     Exclude,
