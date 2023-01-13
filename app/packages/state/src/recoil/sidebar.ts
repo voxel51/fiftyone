@@ -716,10 +716,13 @@ export const groupShown = selectorFamily<
       const data = get(sidebarGroupMapping({ modal, loading }))[group];
 
       if ([null, undefined].includes(data.expanded)) {
-        if (!["tags", "label tags"].includes(group)) {
-          return true;
+        if (["tags", "label tags"].includes(group)) {
+          return null;
         }
-        return null;
+        return (
+          !data.paths.length ||
+          !data.paths.every((path) => get(disabledPaths).has(path))
+        );
       }
 
       return data.expanded;
