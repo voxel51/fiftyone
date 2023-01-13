@@ -124,7 +124,7 @@ information on changing a plugin's configuration.
 .. note::
 
     You can see an example of dataset level plugin configuration on the
-    :ref:`map tab page <map-tab>`.
+    :ref:`map tab page <app-map-tab>`.
 
 Developing plugins
 ------------------
@@ -334,7 +334,7 @@ Adding a custom Plot
 Reacting to state changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: tsx
+.. code-block:: jsx
 
     import * as fos from '@fiftyone/state'
     import * as recoil from 'recoil'
