@@ -582,7 +582,7 @@ const UPDATE_LABEL = {
 
     const isMaskTargetsEmpty = Object.keys(maskTargets).length === 0;
 
-    const isRgbMaskTargetsCached = isRgbMaskTargets(maskTargets);
+    const isRgbMaskTargets_ = isRgbMaskTargets(maskTargets);
 
     if (maskData.channels > 2) {
       for (let i = 0; i < overlay.length; i++) {
@@ -595,7 +595,7 @@ const UPDATE_LABEL = {
           currentHexCode === "#000000" ||
           // don't render color if hex is not in mask targets, unless mask targets is completely empty
           (!isMaskTargetsEmpty &&
-            isRgbMaskTargetsCached &&
+            isRgbMaskTargets_ &&
             !(currentHexCode in maskTargets))
         ) {
           targets[i] = 0;
@@ -604,10 +604,13 @@ const UPDATE_LABEL = {
 
         overlay[i] = get32BitColor([r, g, b]);
 
-        if (isRgbMaskTargetsCached) {
+        if (isRgbMaskTargets_) {
           targets[i] = (maskTargets as RgbMaskTargets)[
             currentHexCode
           ].intTarget;
+        } else {
+          // assign an arbitrary uint8 value here; this isn't used anywhere but absence of it affects tooltip behavior
+          targets[i] = r;
         }
       }
 
@@ -639,7 +642,7 @@ const UPDATE_LABEL = {
           if (
             !(targets[i] in maskTargets) &&
             !isMaskTargetsEmpty &&
-            !isRgbMaskTargetsCached
+            !isRgbMaskTargets_
           ) {
             targets[i] = 0;
           } else {
