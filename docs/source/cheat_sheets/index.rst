@@ -12,6 +12,7 @@ If you're looking for topic-focused info that gets right down to business, check
         <div class="row">
 
 .. Add callout items below this line
+
 .. customcalloutitem::
     :header: FiftyOne Terminology
     :description: Introduction to the key terminology in the world of FiftyOne!
