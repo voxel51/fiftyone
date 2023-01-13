@@ -7,8 +7,8 @@ FiftyOne terminology
 
 A cheat sheet introducing you to the key terminology in the world of FiftyOne!
 
-Core components
-_______________
+The basics
+__________
 
 .. list-table::
    :widths: 20 80
@@ -17,9 +17,9 @@ _______________
      - The :ref:`open-source framework <fiftyone-library>`, the core library,
        and the Python SDK.
    * - **FiftyOne App**
-     - The :ref:`user interface <fiftyone-app>` for graphically viewing,
-       filtering, and understanding your datasets. Can be launched in the
-       browser, within notebooks, or as a standalone desktop app.
+     - The :ref:`provided user interface <fiftyone-app>` for graphically
+       viewing, filtering, and understanding your datasets. Can be launched in
+       the browser, within notebooks, or as a standalone desktop app.
    * - **FiftyOne Teams**
      - `The enterprise-grade suite <https://voxel51.com/fiftyone-teams/>`_
        built on top of FiftyOne for collaboration, permissioning, and working
