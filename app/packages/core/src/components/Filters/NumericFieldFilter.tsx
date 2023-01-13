@@ -190,7 +190,7 @@ const NumericFieldFilter = ({
   // pass down nestedField as a prop to generate options
   const fieldPath = path.split(".").slice(0, -1).join(".");
   const fieldSchema = useRecoilValue(fos.field(fieldPath));
-  const nestedField = Boolean(fieldSchema?.ftype.includes("ListField"))
+  const nestedField = fieldSchema?.ftype.includes("ListField")
     ? fieldSchema?.dbField?.toLowerCase()
     : undefined;
 
