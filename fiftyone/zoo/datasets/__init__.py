@@ -23,18 +23,72 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-def list_zoo_datasets():
+def list_zoo_datasets(tags=None, source=None):
     """Returns the list of available datasets in the FiftyOne Dataset Zoo.
 
-    Returns:
-        a list of dataset names
-    """
-    datasets = set()
-    all_datasets = _get_zoo_datasets()
-    for d in all_datasets.values():
-        datasets |= d.keys()
+    Example usage::
 
-    return sorted(datasets)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        #
+        # List all zoo datasets
+        #
+
+        names = foz.list_zoo_datasets()
+        print(names)
+
+        #
+        # List all zoo datasets with (both of) the specified tags
+        #
+
+        names = foz.list_zoo_datasets(tags=["image", "detection"])
+        print(names)
+
+        #
+        # List all zoo datasets available via the given source
+        #
+
+        names = foz.list_zoo_datasets(source="torch")
+        print(names)
+
+    Args:
+        tags (None): only include datasets that have the specified tag or list
+            of tags
+        source (None): only include datasets available via the given source or
+            list of sources
+
+    Returns:
+        a sorted list of dataset names
+    """
+    if etau.is_str(source):
+        sources = [source]
+    elif source is not None:
+        sources = list(sources)
+    else:
+        sources, _ = _get_zoo_dataset_sources()
+
+    all_datasets = _get_zoo_datasets()
+
+    datasets = {}
+    for source in sources:
+        for name, zoo_dataset_cls in all_datasets.get(source, {}).items():
+            if name not in datasets:
+                datasets[name] = zoo_dataset_cls
+
+    if tags is not None:
+        if etau.is_str(tags):
+            tags = {tags}
+        else:
+            tags = set(tags)
+
+        datasets = {
+            name: zoo_dataset_cls
+            for name, zoo_dataset_cls in datasets.items()
+            if tags.issubset(zoo_dataset_cls().tags)
+        }
+
+    return sorted(datasets.keys())
 
 
 def list_downloaded_zoo_datasets(base_dir=None):
