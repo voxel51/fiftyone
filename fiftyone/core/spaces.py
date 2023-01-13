@@ -1,9 +1,16 @@
+"""
+App Space configuration.
+
+| Copyright 2017-2022, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 from bson import ObjectId
 from mongoengine.errors import ValidationError
+import uuid
 
 import fiftyone.core.fields as fof
 from fiftyone.core.odm import EmbeddedDocument
-import uuid
 
 
 def _validate_children(children):
@@ -16,9 +23,11 @@ def _validate_children(children):
 
 
 class Component(EmbeddedDocument):
+    """Base class for App components."""
 
     meta = {"abstract": True, "allow_inheritance": True}
 
+    # @todo remove
     id = fof.ObjectIdField(
         default=lambda: str(ObjectId()),
         db_field="_id",
@@ -29,6 +38,14 @@ class Component(EmbeddedDocument):
 
 
 class Panel(Component):
+    """A Panel (tab) within a Space in the App.
+
+    Args:
+        component_id: the component ID
+        type: the Panel type
+        pinned: whether the Panel is currently pinned
+        state: an optional Panel state dict
+    """
 
     meta = {"strict": False, "allow_inheritance": True}
 
@@ -38,6 +55,16 @@ class Panel(Component):
 
 
 class Space(Component):
+    """Configuration of a Space in the App.
+
+    Args:
+        component_id: the component's ID
+        children: the list of :class:`Component` children of this space, if any
+        orientation (["horizontal", "vertical"]): the orientation of this
+            space's children
+        active_child: the ``component_id`` of this space's currently active
+            chilld
+    """
 
     meta = {"strict": False, "allow_inheritance": True}
 
