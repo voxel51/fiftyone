@@ -5,5 +5,7 @@ registerComponent({
   name: "Looker3d",
   component: Looker3d,
   type: PluginComponentType.Visualizer,
-  activator: ({ sample }) => sample && sample.filepath.endsWith(".pcd"),
+  activator: ({ sample }) =>
+    sample &&
+    (sample.filepath.endsWith(".pcd") || sample.filepath.endsWith(".ply")),
 });
