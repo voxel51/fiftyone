@@ -254,22 +254,6 @@ export const numericFieldIsFiltered = selectorFamily<
       !meetsDefault(getFilter(get, Boolean(modal), path)),
 });
 
-export const isDefaultRange = selectorFamily<
-  boolean,
-  { defaultRange?: Range; modal: boolean; path: string }
->({
-  key: "isDefaultNumericFieldRange",
-  get:
-    ({ modal, path, defaultRange }) =>
-    ({ get }) => {
-      const range = get(
-        rangeAtom({ modal, path, defaultRange, withBounds: true })
-      );
-      const values = get(boundsAtom({ path, defaultRange }));
-      return values.every((b, i) => b === range[i]);
-    },
-});
-
 // this is where the final filtering for looker occurs in the App
 // it returns a boolean about whether labels are selected or not
 export const numeric = selectorFamily<
