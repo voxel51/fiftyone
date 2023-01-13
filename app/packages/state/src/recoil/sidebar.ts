@@ -219,23 +219,20 @@ export const resolveGroups = (
   current?: State.SidebarGroup[]
 ): State.SidebarGroup[] => {
   // when expanded is null in sidebarGroups, use default settings
-  const sidebarGroups = dataset?.appConfig?.sidebarGroups
-    ? dataset?.appConfig?.sidebarGroups.map((group) => {
-        if (group.expanded === null) {
-          group.expanded = [
-            "label tags",
-            "tags",
-            "labels",
-            "primitives",
-            "metadata",
-          ].includes(group.name)
-            ? true
-            : undefined;
-          return group;
-        }
+  let sidebarGroups = dataset?.appConfig?.sidebarGroups;
+  if (dataset?.appConfig?.sidebarGroups) {
+    sidebarGroups = dataset?.appConfig?.sidebarGroups.map((group) => {
+      if (group.expanded === null) {
+        const openFields =
+          dataset?.appConfig?.sidebarMode === "all"
+            ? ["labels", "primitives", "metadata", "sample tags", "label tags"]
+            : ["labels", "primitives", "metadata"];
+        group.expanded = openFields.includes(group.name) ? true : undefined;
         return group;
-      })
-    : dataset?.appConfig?.sidebarGroups;
+      }
+      return group;
+    });
+  }
 
   let groups = sidebarGroups
     ? JSON.parse(JSON.stringify(sidebarGroups))
