@@ -192,6 +192,14 @@ export const LABELS_MAP = {
 
 export const MASK_LABELS = new Set([DETECTION, SEGMENTATION]);
 
+// defined as labels that can have on-disk overlays
+export const DENSE_LABELS = new Set([
+  SEGMENTATION,
+  HEATMAP,
+  DETECTION,
+  DETECTIONS,
+]);
+
 export const VALID_OBJECT_TYPES = [
   DETECTION,
   DETECTIONS,

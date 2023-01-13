@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<24f2d88ca76f3c95c2ccf39f9d5a3e37>>
+ * @generated SignedSource<<74f6398d88d81e72e4f64d22e00eb26f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -46,7 +46,7 @@ export type DatasetQuery$data = {
     readonly createdAt: any | null;
     readonly defaultGroupSlice: string | null;
     readonly defaultMaskTargets: ReadonlyArray<{
-      readonly target: number;
+      readonly target: string;
       readonly value: string;
     }> | null;
     readonly defaultSkeleton: {
@@ -84,7 +84,7 @@ export type DatasetQuery$data = {
     readonly maskTargets: ReadonlyArray<{
       readonly name: string;
       readonly targets: ReadonlyArray<{
-        readonly target: number;
+        readonly target: string;
         readonly value: string;
       }>;
     }>;

@@ -56,8 +56,8 @@ export default function ViewSelection() {
   const [selected, setSelected] = useRecoilState<DatasetViewOption | null>(
     selectedSavedViewState
   );
-
   const datasetName = useRecoilValue(fos.datasetName);
+  const canEditSavedViews = useRecoilValue<boolean>(fos.canEditSavedViews);
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
   const savedViewParam = useRecoilValue(fos.viewName);
   const setEditView = useSetRecoilState(viewDialogContent);
@@ -168,6 +168,9 @@ export default function ViewSelection() {
 
   useEffect(() => {
     const callback = (event: KeyboardEvent) => {
+      if (!canEditSavedViews) {
+        return;
+      }
       if ((event.metaKey || event.ctrlKey) && event.code === "KeyS") {
         event.preventDefault();
         if (!isEmptyView) {
@@ -180,12 +183,13 @@ export default function ViewSelection() {
     return () => {
       document.removeEventListener("keydown", callback);
     };
-  }, [isEmptyView]);
+  }, [isEmptyView, canEditSavedViews]);
 
   return (
     <Suspense fallback="Loading saved views...">
       <Box>
         <ViewDialog
+          canEdit={canEditSavedViews}
           savedViews={items}
           onEditSuccess={(
             createSavedView: fos.State.SavedView,
@@ -222,6 +226,7 @@ export default function ViewSelection() {
           }}
         />
         <Selection
+          readonly={!canEditSavedViews}
           selected={selected}
           setSelected={(item: DatasetViewOption) => {
             setSelected(item);
@@ -246,8 +251,10 @@ export default function ViewSelection() {
           }}
           lastFixedOption={
             <LastOption
-              onClick={() => !isEmptyView && setIsOpen(true)}
-              disabled={isEmptyView}
+              onClick={() =>
+                canEditSavedViews && !isEmptyView && setIsOpen(true)
+              }
+              disabled={isEmptyView || !canEditSavedViews}
             >
               <Box style={{ width: "12%" }}>
                 <AddIcon fontSize="small" disabled={isEmptyView} />

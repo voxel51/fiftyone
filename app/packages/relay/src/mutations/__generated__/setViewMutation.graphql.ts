@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a3020f90f5a6265a6445e250af47b76f>>
+ * @generated SignedSource<<19c1acdf52760e18e82bf6e304f35641>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -63,7 +63,7 @@ export type setViewMutation$data = {
       readonly createdAt: any | null;
       readonly defaultGroupSlice: string | null;
       readonly defaultMaskTargets: ReadonlyArray<{
-        readonly target: number;
+        readonly target: string;
         readonly value: string;
       }> | null;
       readonly defaultSkeleton: {
@@ -101,7 +101,7 @@ export type setViewMutation$data = {
       readonly maskTargets: ReadonlyArray<{
         readonly name: string;
         readonly targets: ReadonlyArray<{
-          readonly target: number;
+          readonly target: string;
           readonly value: string;
         }>;
       }>;

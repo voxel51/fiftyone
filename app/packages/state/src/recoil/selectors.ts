@@ -3,15 +3,16 @@ import { v4 as uuid } from "uuid";
 
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
-import * as atoms from "./atoms";
-import { State } from "./types";
-import { toSnakeCase } from "@fiftyone/utilities";
-import { config } from "./config";
-import { fieldSchema } from "./schema";
+import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
 import { StateForm } from "@fiftyone/relay";
-import { filters, modalFilters } from "./filters";
+import { toSnakeCase } from "@fiftyone/utilities";
+import * as atoms from "./atoms";
 import { selectedSamples } from "./atoms";
+import { config } from "./config";
+import { filters, modalFilters } from "./filters";
 import { resolvedGroupSlice } from "./groups";
+import { fieldSchema } from "./schema";
+import { State } from "./types";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -105,10 +106,7 @@ export const datasetAppConfig = selector<State.DatasetAppConfig>({
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
-    const targets = get(atoms.dataset).defaultMaskTargets || {};
-    return Object.fromEntries(
-      Object.entries(targets).map(([k, v]) => [parseInt(k, 10), v])
-    );
+    return get(atoms.dataset).defaultMaskTargets || {};
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -160,10 +158,24 @@ export const getTarget = selector({
   get: ({ get }) => {
     const { defaults, fields } = get(targets);
     return (field, target) => {
+      let maskTargets;
       if (field in fields) {
-        return fields[field][target];
+        maskTargets = fields[field];
+      } else {
+        maskTargets = defaults;
       }
-      return defaults[target];
+
+      if (isRgbMaskTargets(maskTargets)) {
+        const maskTargetTuple = Object.entries(maskTargets).find(
+          ([_, el]) => el.intTarget === target
+        );
+
+        if (maskTargetTuple) {
+          return maskTargetTuple[1].label;
+        }
+      }
+
+      return maskTargets[target];
     };
   },
   cachePolicy_UNSTABLE: {
@@ -199,7 +211,7 @@ export const selectedLabelList = selector<State.SelectedLabel[]>({
 export const anyTagging = selector<boolean>({
   key: "anyTagging",
   get: ({ get }) => {
-    let values = [];
+    const values = [];
     [true, false].forEach((i) =>
       [true, false].forEach((j) => {
         values.push(get(atoms.tagging({ modal: i, labels: j })));
@@ -263,8 +275,8 @@ export const pathHiddenLabelsMap = selector<{
     const labels = get(atoms.hiddenLabels);
     const newLabels: State.SelectedLabelMap = {};
 
-    for (let sampleId in value) {
-      for (let field in value[sampleId]) {
+    for (const sampleId in value) {
+      for (const field in value[sampleId]) {
         for (let i = 0; i < value[sampleId][field].length; i++) {
           const labelId = value[sampleId][field][i];
           newLabels[labelId] = labels[labelId];

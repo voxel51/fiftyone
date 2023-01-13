@@ -3044,8 +3044,9 @@ class SampleCollection(object):
 
         .. note::
 
-            The mask value ``0`` is treated as a background class for the
-            purposes of computing evaluation metrics like precision and recall.
+            The mask values ``0`` and ``#000000`` are treated as a background
+            class for the purposes of computing evaluation metrics like
+            precision and recall.
 
         Args:
             pred_field: the name of the field containing the predicted
@@ -3054,8 +3055,9 @@ class SampleCollection(object):
                 ground truth :class:`fiftyone.core.labels.Segmentation`
                 instances
             eval_key (None): a string key to use to refer to this evaluation
-            mask_targets (None): a dict mapping mask values to labels. If not
-                provided, the observed pixel values are used
+            mask_targets (None): a dict mapping pixel values or RGB hex strings
+                to labels. If not provided, the observed values are used as
+                labels
             method ("simple"): a string specifying the evaluation method to
                 use. Supported values are ``("simple")``
             **kwargs: optional keyword arguments for the constructor of the
