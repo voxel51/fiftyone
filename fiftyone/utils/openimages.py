@@ -103,14 +103,14 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             max_samples=max_samples,
         )
 
-        self.label_types = label_types
+        # pylint: disable=no-member
+        self.label_types = _parse_label_types(self.version, label_types)
         self.classes = classes
         self.attrs = attrs
         self.image_ids = image_ids
         self.only_matching = only_matching
         self.load_hierarchy = load_hierarchy
 
-        self._label_types = label_types
         self._images_map = None
         self._info = None
         self._classes_map = None
@@ -137,7 +137,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
         label = {}
 
-        if "classifications" in self._label_types:
+        if "classifications" in self.label_types:
             # Add labels
             pos_labels, neg_labels = _create_classifications(
                 self._cls_data, image_id, self._classes_map
@@ -148,7 +148,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             if neg_labels is not None:
                 label["negative_labels"] = neg_labels
 
-        if "detections" in self._label_types:
+        if "detections" in self.label_types:
             # Add detections
             detections = _create_detections(
                 self._det_data, image_id, self._classes_map
@@ -156,7 +156,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             if detections is not None:
                 label["detections"] = detections
 
-        if "points" in self._label_types:
+        if "points" in self.label_types:
             # Add points
             points = _create_points(
                 self._pnt_data,
@@ -167,7 +167,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             if points is not None:
                 label["points"] = points
 
-        if "segmentations" in self._label_types:
+        if "segmentations" in self.label_types:
             # Add segmentations
             segmentations = _create_segmentations(
                 self._seg_data,
@@ -178,7 +178,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             if segmentations is not None:
                 label["segmentations"] = segmentations
 
-        if "relationships" in self._label_types:
+        if "relationships" in self.label_types:
             # Add relationships
             relationships = _create_relationships(
                 self._rel_data, image_id, self._classes_map, self._attrs_map
@@ -186,7 +186,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             if relationships is not None:
                 label["relationships"] = relationships
 
-        if "open_images_id" in self._label_types:
+        if "open_images_id" in self.label_types:
             label["open_images_id"] = image_id
 
         if self._has_scalar_labels:
@@ -205,8 +205,8 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
     @property
     def _has_scalar_labels(self):
         return (
-            len(self._label_types) == 1
-            and self._label_types[0] != "classifications"
+            len(self.label_types) == 1
+            and self.label_types[0] != "classifications"
         )
 
     @property
@@ -221,9 +221,9 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         }
 
         if self._has_scalar_labels:
-            return types[self._label_types[0]]
+            return types[self.label_types[0]]
 
-        return {k: v for k, v in types.items() if k in self._label_types}
+        return {k: v for k, v in types.items() if k in self.label_types}
 
     def setup(self):
         dataset_dir = self.dataset_dir
@@ -234,15 +234,10 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         classes = self.classes
         attrs = self.attrs
         image_ids = self.image_ids
+        # pylint: disable=no-member
+        version = self.version
 
         data_dir = os.path.join(self.dataset_dir, "data")
-
-        if os.path.exists(
-            os.path.join(self.dataset_dir, "labels", "point.csv")
-        ):
-            version = "v7"
-        else:
-            version = "v6"
 
         images_map = {
             os.path.splitext(filename)[0]: os.path.join(data_dir, filename)
@@ -284,7 +279,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             attrs=attrs,
             seed=seed,
             download=False,
-            version=version,
         )
 
         (
@@ -376,6 +370,68 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
     def get_dataset_info(self):
         return self._info
+
+
+class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
+    def __init__(
+        self,
+        dataset_dir,
+        label_types=None,
+        classes=None,
+        attrs=None,
+        image_ids=None,
+        include_id=True,
+        only_matching=False,
+        load_hierarchy=True,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        self.version = "v6"
+        super().__init__(
+            dataset_dir,
+            label_types=label_types,
+            classes=classes,
+            attrs=attrs,
+            image_ids=image_ids,
+            include_id=include_id,
+            only_matching=only_matching,
+            load_hierarchy=load_hierarchy,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+
+
+class OpenImagesV7DatasetImporter(OpenImagesDatasetImporter):
+    def __init__(
+        self,
+        dataset_dir,
+        label_types=None,
+        classes=None,
+        attrs=None,
+        image_ids=None,
+        include_id=True,
+        only_matching=False,
+        load_hierarchy=True,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        self.version = "v7"
+        super().__init__(
+            dataset_dir,
+            label_types=label_types,
+            classes=classes,
+            attrs=attrs,
+            image_ids=image_ids,
+            include_id=include_id,
+            only_matching=only_matching,
+            load_hierarchy=load_hierarchy,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
 
 
 def get_attributes(version="v7", dataset_dir=None):
@@ -630,7 +686,6 @@ def download_open_images_split(
         attrs=attrs,
         seed=seed,
         download=True,
-        version=version,
     )
 
     did_download |= _did_download
@@ -672,11 +727,10 @@ def _setup(
     attrs=None,
     seed=None,
     download=False,
-    version=None,
 ):
 
     did_download = False
-    _label_types = _parse_label_types(version, label_types)
+    _label_types = label_types
 
     if etau.is_str(classes):
         classes = [classes]

@@ -2503,7 +2503,7 @@ class OpenImagesV6Dataset(FiftyOneDataset):
             version="v6",
         )
 
-        dataset_type = fot.OpenImagesDataset()
+        dataset_type = fot.OpenImagesV6Dataset()
 
         if not downloaded:
             num_samples = None
@@ -2696,7 +2696,7 @@ class OpenImagesV7Dataset(FiftyOneDataset):
             version="v7",
         )
 
-        dataset_type = fot.OpenImagesDataset()
+        dataset_type = fot.OpenImagesV7Dataset()
 
         if not downloaded:
             num_samples = None
