@@ -530,7 +530,7 @@ type StringAggregationValue {
 }
 
 type Target {
-  target: Int!
+  target: String!
   value: String!
 }
 

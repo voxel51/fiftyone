@@ -4,7 +4,7 @@
 import { NONFINITES } from "@fiftyone/utilities";
 
 import { INFO_COLOR } from "../constants";
-import { NumpyResult } from "../numpy";
+import { OverlayMask } from "../numpy";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
@@ -12,7 +12,7 @@ import { t } from "./util";
 
 interface DetectionLabel extends RegularLabel {
   mask?: {
-    data: NumpyResult;
+    data: OverlayMask;
     image: ArrayBuffer;
   };
   bounding_box: BoundingBox;
