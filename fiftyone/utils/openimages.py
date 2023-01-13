@@ -42,7 +42,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         label_types (None): a label type or list of label types to load. The
             supported values are
             ``("detections", "classifications", "points", "relationships",
-            "segmentations")``. "points" are only supported for open-imagesv7
+            "segmentations")``. "points" are only supported for open-images-v7.
             By default, all supported label types for version are loaded
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
@@ -373,6 +373,54 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
 
 class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
+    """Base class for importing datasets in Open Images V6 format.
+
+    See :class:`fiftyone.types.OpenImagesDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        label_types (None): a label type or list of label types to load. The
+            supported values are
+            ``("detections", "classifications", "relationships",
+            "segmentations")``.
+            By default, all supported label types for version are loaded
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        attrs (None): a string or list of strings specifying required
+            relationship attributes to load. Only applicable when
+            ``label_types`` includes "relationships". If provided, only samples
+            containing at least one instance of a specified attribute will be
+            loaded
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
+        include_id (True): whether to load the Open Images ID for each sample
+            along with the labels
+        only_matching (False): whether to only load labels that match the
+            ``classes`` or ``attrs`` requirements that you provide (True), or
+            to load all labels for samples that match the requirements (False)
+        load_hierarchy (True): whether to load the classes hiearchy and add it
+            to the dataset's ``info`` dictionary
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load. If
+            ``label_types``, ``classes``, and/or ``attrs`` are also specified,
+            first priority will be given to samples that contain all of the
+            specified label types, classes, and/or attributes, followed by
+            samples that contain at least one of the specified labels types or
+            classes. The actual number of samples loaded may be less than this
+            maximum value if the dataset does not contain sufficient samples
+            matching your requirements. By default, all matching samples are
+            loaded
+    """
+
     def __init__(
         self,
         dataset_dir,
@@ -404,6 +452,54 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
 
 
 class OpenImagesV7DatasetImporter(OpenImagesDatasetImporter):
+    """Base class for importing datasets in Open Images V7 format.
+
+    See :class:`fiftyone.types.OpenImagesDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        label_types (None): a label type or list of label types to load. The
+            supported values are
+            ``("detections", "classifications", "points", "relationships",
+            "segmentations")``.
+            By default, all supported label types for version are loaded
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        attrs (None): a string or list of strings specifying required
+            relationship attributes to load. Only applicable when
+            ``label_types`` includes "relationships". If provided, only samples
+            containing at least one instance of a specified attribute will be
+            loaded
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
+        include_id (True): whether to load the Open Images ID for each sample
+            along with the labels
+        only_matching (False): whether to only load labels that match the
+            ``classes`` or ``attrs`` requirements that you provide (True), or
+            to load all labels for samples that match the requirements (False)
+        load_hierarchy (True): whether to load the classes hiearchy and add it
+            to the dataset's ``info`` dictionary
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load. If
+            ``label_types``, ``classes``, and/or ``attrs`` are also specified,
+            first priority will be given to samples that contain all of the
+            specified label types, classes, and/or attributes, followed by
+            samples that contain at least one of the specified labels types or
+            classes. The actual number of samples loaded may be less than this
+            maximum value if the dataset does not contain sufficient samples
+            matching your requirements. By default, all matching samples are
+            loaded
+    """
+
     def __init__(
         self,
         dataset_dir,

@@ -184,6 +184,8 @@ Images V6 or Open Images V7 by passing them to
 .. note::
 
     See
+    :class:`OpenImagesV7Dataset <fiftyone.zoo.datasets.base.OpenImagesV6Dataset>`
+    , 
     :class:`OpenImagesV7Dataset <fiftyone.zoo.datasets.base.OpenImagesV7Dataset>`
     and :class:`OpenImagesDatasetImporter <fiftyone.utils.openimages.OpenImagesDatasetImporter>`
     for complete descriptions of the optional keyword arguments that you can
