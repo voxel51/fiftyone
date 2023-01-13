@@ -110,14 +110,19 @@ const FilterOption: React.FC<Props> = ({
   onlyMatchAtom,
   isMatchingAtom,
 }) => {
-  const [key, setKey] = React.useState<Key | null>(null);
-
   const [open, setOpen] = React.useState(false);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
   const setOnlyMatch = onlyMatchAtom ? useSetRecoilState(onlyMatchAtom) : null;
   const setIsMatching = isMatchingAtom
     ? useSetRecoilState(isMatchingAtom)
     : null;
+  const [key, setKey] = React.useState<Key>(() => {
+    if (!excluded) {
+      return nestedField ? "filter" : "match";
+    } else {
+      return nestedField ? "negativeFilter" : "negativeMatch";
+    }
+  });
 
   const theme = useTheme();
   const highlightedBGColor = Color(color).alpha(0.25).string();
@@ -136,19 +141,6 @@ const FilterOption: React.FC<Props> = ({
     isKeyPointLabel,
     valueName
   );
-
-  useEffect(() => {
-    // on initial load, if filter already exists, load exisiting filter for modal filters
-    // otherwise, show defaults: filter for nested listfield, match for other fields
-    if (key === null) {
-      // when filter initializes, isMatching is defaulted to false, but we need to use nestedField to set normal defaults to match
-      if (!excluded) {
-        nestedField ? setKey("filter") : setKey("match");
-      } else {
-        nestedField ? setKey("negativeFilter") : setKey("negativeMatch");
-      }
-    }
-  }, []);
 
   useEffect(() => {
     if (key === "filter") {
