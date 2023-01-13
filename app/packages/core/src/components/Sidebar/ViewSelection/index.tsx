@@ -127,7 +127,7 @@ export default function ViewSelection() {
   useEffect(() => {
     if (savedViewParam) {
       const potentialView = viewOptions.filter(
-        (v) => v.slug === savedViewParam
+        (v) => v.label === savedViewParam
       )?.[0];
       if (potentialView) {
         if (selected && selected.id === potentialView.id) {
@@ -136,7 +136,7 @@ export default function ViewSelection() {
         setSelected(potentialView as DatasetViewOption);
       } else {
         const potentialUpdatedView = savedViewsV2.filter(
-          (v) => v.slug === savedViewParam
+          (v) => v.name === savedViewParam
         )?.[0];
         if (potentialUpdatedView) {
           refetch(
