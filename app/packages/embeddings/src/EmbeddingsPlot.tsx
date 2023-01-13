@@ -1,6 +1,8 @@
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
-import Plot from "react-plotly.js";
+import createPlotlyComponent from "react-plotly.js/factory";
+import Plotly from "plotly.js-basic-dist-min";
+
 import { Loading, useTheme } from "@fiftyone/components";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { tracesToData } from "./tracesToData";
@@ -9,6 +11,8 @@ import { usePlot } from "./usePlot";
 import { useResetPlotZoom, useZoomRevision } from "./useResetPlotZoom";
 import { resetZoom } from "@fiftyone/looker/src/elements/common/actions";
 import { useCallback } from "react";
+
+const Plot = createPlotlyComponent(Plotly);
 
 export function EmbeddingsPlot({
   labelSelectorLoading,

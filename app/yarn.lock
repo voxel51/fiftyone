@@ -4453,6 +4453,7 @@ __metadata:
     eslint-plugin-react-hooks: ^4.6.0
     jsdom: ^20.0.2
     patch-package: ^6.4.7
+    plotly.js-basic-dist-min: ^2.17.1
     prettier: ^2.8.0
     relay-compiler: ^14.1.0
     relay-runtime: ^14.1.0
@@ -21513,6 +21514,13 @@ __metadata:
     base64-js: ^1.5.1
     xmlbuilder: ^9.0.7
   checksum: f8b82816f66559965a4dabf139bd8dd95cdec7e51f32742bb353af276ea8228b9807113743b860eda3e867f6ed70d2bcbc1e135b3204d92b5c37ac765f68444e
+  languageName: node
+  linkType: hard
+
+"plotly.js-basic-dist-min@npm:^2.17.1":
+  version: 2.17.1
+  resolution: "plotly.js-basic-dist-min@npm:2.17.1"
+  checksum: 95cc4b9c64878b73b64be465e6a82a9cf59c53c92e5bbdf3129b9cb12b1de0f5cdcfd2d561680ada1057f1be132923c0b12c96fb9b3c0e591d49a77567c5bad1
   languageName: node
   linkType: hard
 
