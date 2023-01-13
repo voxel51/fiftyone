@@ -307,8 +307,17 @@ class Session(object):
         if port is None:
             port = fo.config.default_app_port
 
+        if (
+            address is not None
+            and address != "0.0.0.0"
+            and focx.is_databricks_context()
+        ):
+            logger.warning(
+                "A session address was provided that is not 0.0.0.0, but databricks requires 0.0.0.0"
+            )
+
         if address is None:
-            if fou.is_docker():
+            if fou.is_docker() or focx.is_databricks_context():
                 address = "0.0.0.0"
             else:
                 address = fo.config.default_app_address
