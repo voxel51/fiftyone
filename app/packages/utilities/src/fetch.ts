@@ -161,9 +161,10 @@ export const setFetchFunction = (
 const isWorker =
   // @ts-ignore
   typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+const hasWindow = typeof window !== "undefined" && !isWorker;
 
 export const getAPI = () => {
-  if (import.meta.env.VITE_API) {
+  if (import.meta.env?.VITE_API) {
     return import.meta.env.VITE_API;
   }
   if (window.FIFTYONE_SERVER_ADDRESS) {
@@ -176,7 +177,7 @@ export const getAPI = () => {
     : window.location.origin;
 };
 
-if (!isWorker) {
+if (hasWindow) {
   setFetchFunction(getAPI(), {}, getFetchPathPrefix());
 }
 
@@ -184,7 +185,7 @@ class RetriableError extends Error {}
 class FatalError extends Error {}
 
 const polling =
-  !isWorker &&
+  hasWindow &&
   typeof new URLSearchParams(window.location.search).get("polling") ===
     "string";
 
