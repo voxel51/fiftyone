@@ -34,10 +34,6 @@ class TFDSDataset(fozd.ZooDataset):
     ``tensorflow_datasets`` package.
     """
 
-    @property
-    def _download_size(self):
-        return None
-
     pass
 
 
@@ -69,7 +65,7 @@ class MNISTDataset(TFDSDataset):
 
     @property
     def tags(self):
-        return ("image", "classification", "multiclass-classification")
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -96,10 +92,6 @@ class MNISTDataset(TFDSDataset):
             get_num_samples_fcn,
             sample_parser,
         )
-
-    @property
-    def _download_size(self):
-        return 0.021  ## GB
 
 
 class FashionMNISTDataset(TFDSDataset):
@@ -130,7 +122,7 @@ class FashionMNISTDataset(TFDSDataset):
 
     @property
     def tags(self):
-        return ("image", "classification", "multiclass-classification")
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -157,10 +149,6 @@ class FashionMNISTDataset(TFDSDataset):
             get_num_samples_fcn,
             sample_parser,
         )
-
-    @property
-    def _download_size(self):
-        return 0.03642  ## GB
 
 
 class CIFAR10Dataset(TFDSDataset):
@@ -192,7 +180,7 @@ class CIFAR10Dataset(TFDSDataset):
 
     @property
     def tags(self):
-        return ("image", "classification", "multiclass-classification")
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -219,10 +207,6 @@ class CIFAR10Dataset(TFDSDataset):
             get_num_samples_fcn,
             sample_parser,
         )
-
-    @property
-    def _download_size(self):
-        return 0.1324  ## GB
 
 
 class CIFAR100Dataset(TFDSDataset):
@@ -254,7 +238,7 @@ class CIFAR100Dataset(TFDSDataset):
 
     @property
     def tags(self):
-        return ("image", "classification", "multiclass-classification")
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -281,10 +265,6 @@ class CIFAR100Dataset(TFDSDataset):
             get_num_samples_fcn,
             sample_parser,
         )
-
-    @property
-    def _download_size(self):
-        return 0.13203  ## GB
 
 
 class ImageNet2012Dataset(TFDSDataset):
@@ -350,12 +330,7 @@ class ImageNet2012Dataset(TFDSDataset):
 
     @property
     def tags(self):
-        return (
-            "image",
-            "classification",
-            "manual",
-            "multiclass-classification",
-        )
+        return ("image", "classification", "manual")
 
     @property
     def supported_splits(self):
@@ -394,10 +369,6 @@ class ImageNet2012Dataset(TFDSDataset):
             get_num_samples_fcn,
             sample_parser,
         )
-
-    @property
-    def _download_size(self):
-        return 144.02  ## GB
 
 
 class VOC2007Dataset(TFDSDataset):
@@ -463,10 +434,6 @@ class VOC2007Dataset(TFDSDataset):
             sample_parser,
         )
 
-    @property
-    def _download_size(self):
-        return 0.86885  ## GB
-
 
 class VOC2012Dataset(TFDSDataset):
     """The dataset for the PASCAL Visual Object Classes Challenge 2012
@@ -530,10 +497,6 @@ class VOC2012Dataset(TFDSDataset):
             get_num_samples_fcn,
             sample_parser,
         )
-
-    @property
-    def _download_size(self):
-        return 3.59  ## GB
 
 
 AVAILABLE_DATASETS = {

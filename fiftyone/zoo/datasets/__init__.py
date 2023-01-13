@@ -23,11 +23,8 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-def list_zoo_datasets(tags=None, all=True):
-
-    """Returns the list of available datasets in the FiftyOne Dataset Zoo
-            fitting the specified conditions. If no conditions are given,
-            it returns a list of all datasets in the FiftyOne Dataset Zoo
+def list_zoo_datasets(tags=None, source=None):
+    """Returns the list of available datasets in the FiftyOne Dataset Zoo.
 
     Example usage::
 
@@ -35,76 +32,63 @@ def list_zoo_datasets(tags=None, all=True):
         import fiftyone.zoo as foz
 
         #
-        # List all zoo datasets with "image" and "classification" tags.
+        # List all zoo datasets
         #
 
-        foz.list_zoo_datasets(
-            tags=["image", "classification"],
-            all=True,
-        )
+        names = foz.list_zoo_datasets()
+        print(names)
 
         #
-        # List all zoo datasets with either "image" or "video" tag
+        # List all zoo datasets with (both of) the specified tags
         #
 
-        foz.list_zoo_datasets(
-            tags=["image", "video"],
-            all=False,
-        )
+        names = foz.list_zoo_datasets(tags=["image", "detection"])
+        print(names)
 
+        #
+        # List all zoo datasets available via the given source
+        #
+
+        names = foz.list_zoo_datasets(source="torch")
+        print(names)
 
     Args:
-        tags (None): Which tags to search the Dataset Zoo for.
-        all (True): Allowed values include True/False
+        tags (None): only include datasets that have the specified tag or list
+            of tags
+        source (None): only include datasets available via the given source or
+            list of sources
 
+    Returns:
+        a sorted list of dataset names
     """
-
-    def _has_all_tags(dataset, tags):
-        dtags = dataset.tags
-        for tag in tags:
-            if tag not in dtags:
-                return False
-        return True
-
-    def _has_any_tags(dataset, tags):
-        dtags = dataset.tags
-        for tag in tags:
-            if tag in dtags:
-                return True
-        return False
-
-    if tags is None:
-        datasets = set()
-        all_datasets = _get_zoo_datasets()
-        for d in all_datasets.values():
-            datasets |= d.keys()
-
-        return sorted(datasets)
+    if etau.is_str(source):
+        sources = [source]
+    elif source is not None:
+        sources = list(sources)
     else:
-        from .base import AVAILABLE_DATASETS as BASE_DATASETS
-        from .torch import AVAILABLE_DATASETS as TORCH_DATASETS
-        from .tf import AVAILABLE_DATASETS as TF_DATASETS
+        sources, _ = _get_zoo_dataset_sources()
 
-        datasets = [
-            d()
-            for d in {
-                **BASE_DATASETS,
-                **TORCH_DATASETS,
-                **TF_DATASETS,
-            }.values()
-        ]
+    all_datasets = _get_zoo_datasets()
 
-        if tags is not None:
-            if type(tags) != list:
-                tags = [tags]
+    datasets = {}
+    for source in sources:
+        for name, zoo_dataset_cls in all_datasets.get(source, {}).items():
+            if name not in datasets:
+                datasets[name] = zoo_dataset_cls
 
-            if all:
-                datasets = [d for d in datasets if _has_all_tags(d, tags)]
-            else:
-                datasets = [d for d in datasets if _has_any_tags(d, tags)]
+    if tags is not None:
+        if etau.is_str(tags):
+            tags = {tags}
+        else:
+            tags = set(tags)
 
-        dataset_names = [d.name for d in datasets]
-        return dataset_names
+        datasets = {
+            name: zoo_dataset_cls
+            for name, zoo_dataset_cls in datasets.items()
+            if tags.issubset(zoo_dataset_cls().tags)
+        }
+
+    return sorted(datasets.keys())
 
 
 def list_downloaded_zoo_datasets(base_dir=None):
