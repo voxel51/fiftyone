@@ -218,21 +218,7 @@ export const resolveGroups = (
   dataset: State.Dataset,
   current?: State.SidebarGroup[]
 ): State.SidebarGroup[] => {
-  // when expanded is null in sidebarGroups, use default settings
-  let sidebarGroups = dataset?.appConfig?.sidebarGroups;
-  if (dataset?.appConfig?.sidebarGroups) {
-    sidebarGroups = dataset?.appConfig?.sidebarGroups.map((group) => {
-      if (group.expanded === null) {
-        const openFields =
-          dataset?.appConfig?.sidebarMode === "all"
-            ? ["labels", "primitives", "metadata", "sample tags", "label tags"]
-            : ["labels", "primitives", "metadata"];
-        group.expanded = openFields.includes(group.name) ? true : undefined;
-        return group;
-      }
-      return group;
-    });
-  }
+  const sidebarGroups = dataset?.appConfig?.sidebarGroups;
 
   let groups = sidebarGroups
     ? JSON.parse(JSON.stringify(sidebarGroups))
@@ -729,12 +715,14 @@ export const groupShown = selectorFamily<
     ({ get }) => {
       const data = get(sidebarGroupMapping({ modal, loading }))[group];
 
-      return data.expanded === undefined
-        ? !["tags", "label tags"].includes(group)
-          ? !data.paths.length ||
-            !data.paths.every((path) => get(disabledPaths).has(path))
-          : true
-        : data.expanded;
+      if ([null, undefined].includes(data.expanded)) {
+        if (!["tags", "label tags"].includes(group)) {
+          return true;
+        }
+        return null;
+      }
+
+      return data.expanded;
     },
   set:
     ({ modal, group }) =>
