@@ -11,12 +11,12 @@ FiftyOne datasets and dataset views, and how to use them to masterfully massage
 your data.
 
 
-The Seven Basic Operations
+The Six Basic Operations
 ___________________________
 
 If you run ``print(dataset.list_view_stages())``, you'll get a list of all 
 FiftyOne View Stage methods you can use to get views of your dataset. With a few
-exceptions (which we'll cover later), these methods can be organized into seven
+exceptions (which we'll cover later), these methods can be organized into six
 categories: matching, filtering, selection, exclusion, indexing, and converting 
 to another format.
 
@@ -134,7 +134,7 @@ All other view stage methods, which do not fit into these seven buckets:
 
 
 Why so many related methods?
-------------------------------
+______________________________
 
 Simply put, it's all about helping you perform your computer vision workflows as
 easily and efficiently as possible. These methods allow you to get the data 
@@ -204,6 +204,41 @@ method. This is because filtering operations create a view with contents of the
 primitive to which they are applied. However, as samples are comprised of 
 fields, the ``filter_field()`` provides all of the desired functionality.
 
+Labels
+^^^^^^^
+
+While all of the methods in the `Labels` row are filled in, there is one 
+subtlety: filtering by ``id``. :meth:`match_labels() <fiftyone.core.collections.SampleCollection.match_labels>`, :meth:`select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`, and
+:meth:`exclude_labels() <fiftyone.core.collections.SampleCollection.exclude_labels>` all allow you to 
+pass in a list of ``id``s to use to generate a view, but if you try the same
+approach with :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`, it will not work. 
+The reason for this has to do with how the data is stored. 
+
+If you want to filter by label ``id``, you can import ``ObjectId`` from 
+the ``bson`` library and use this to wrap the string of the ``id``. You also 
+need to prepend ``"id"`` in the filtering expression with ``"_"``. Here's an
+example of how you would filter labels in the ``predictions`` field for a 
+single ``id``:
+
+.. code-block:: python
+
+   from bson import ObjectId
+
+   import fiftone as fo
+   import fiftyone.zoo as foz
+   from fiftyone import ViewField as F
+
+   # example dataset
+   dataset = foz.load_zoo_dataset("quickstart")
+
+   # example id
+   detection_id = dataset.first().predictions.detections[0].id
+
+   dataset.filter_labels(
+      "predictions", 
+      F("_id") == ObjectId(detection_id)
+   )
+
 
 Fields
 ^^^^^^^
@@ -267,47 +302,64 @@ And here's what the very similar ``exclude_tags()`` method would look like:
 
 These two implementations use the set intersection and set difference methods.
 
+Lastly, because `Tags` is just a list of strings, there aren't really many use cases for
+more general ``filter_tags()`` operations. 
 
+Frames and Groups
+^^^^^^^^^^^^^^^^^^
 
-**TO DO**
-``filter_tags()`` - I tried using ``set_field()`` and ``map()``, but ended up
-with an array of True/False values for each sample, with one element per tag
-like [True False True]
+For both `Frame` and `Group` data in FiftyOne, most view stages - including 
+matching and filtering - naturally support these datasets by prepending 
+``"frames."`` or ``"groups."`` accordingly. 
 
-Frames
-^^^^^^^
+The idea behind this is the same as the idea behind not needing to have a 
+``filter()`` operations for `Sample`s: the other primitives suffice!
 
-
-Groups
-^^^^^^^
-
-The *Groups* row, noticeably, is missing both the ``match_groups()`` and 
-``filter_groups()`` methods. This is because in practice, the majority of the
-filtering and matching operations one might want to perform on Grouped Datasets
-can be accomplished by performing filtering and matching operations on specific
-slices of the dataset.
-
-For instance, if we wanted to filter the labels of the :ref:`Quickstart Groups Dataset<dataset-zoo-quickstart-groups>` for only ``"Pedestrian"`` labels, we could do so
-by creating a stage that encapsulates this logic, and iterating through all of
-the group slices:
+If we wanted to filter the `Detection` labels in the :ref:`Quickstart Video Dataset<dataset-zoo-quickstart-video>` for labels in the ``"Vehicle"`` class, 
+we could do so via:
 
 .. code-block:: python
 
-      import fiftyone as fo
-      import fiftyone.zoo as foz
-      from fiftyone import ViewField as F
+   # filter frame labels
 
-      dataset = foz.load_zoo_dataset("quickstart-groups")
+   import fiftyone as fo
+   import fiftyone.zoo as foz
+   from fiftyone import ViewField as F
 
-      ## create the stage we will apply to all group slices
-      stage = fo.FilterLabels("ground_truth", F("label") == "Pedestrian")
+   dataset = foz.load_zoo_dataset("quickstart-video")
+   view = dataset.filter_labels(
+      "frames.detections", 
+      F("label") == "vehicle"
+   )
+   
+For Grouped datasets, we can match groups, for instance, based on what group
+slices they contain:
 
-      view = fo.DatasetView(dataset)
-      ## iterate through group slices
-      for gs in dataset.group_slices:
-          dataset.group_slice = gs
-          view = view.add_stage(stage)
+.. code-block:: python
 
+   import fiftyone as fo
+   import fiftyone.zoo as foz
+   from fiftyone import ViewField as F
+
+   # load dataset with 200 groups. each has "left", "right", and "pcd" elements
+   dataset = foz.load_zoo_dataset("quickstart-groups")
+
+   # add 50 new groups with only "left" slice samples
+   for i in range(50):
+    sample = fo.Sample(
+        filepath = "image{}.png".format(i), 
+        group = fo.Group().element("left")
+   )
+   dataset.add_sample(sample)
+   ## --> 250 groups in dataset
+
+   # match groups that have "pcd" elements
+   view = dataset.match(
+       F("groups.pcd")!= None
+   )
+
+   # view only has 200 groups
+   print(view)
 
 
 
