@@ -595,9 +595,13 @@ Matching labels with ``match_labels()``
 +---------------+----------------------+------------------------------------------------------------------------------+
 | Brute force   |   .. code-block:: python                                                                            |
 |               |                                                                                                     |
-|               |     pred_match = F("predictions.detections").filter(F("tags").contains("error")).length()>0         |
-|               |     gt_match = F("ground_truth.detections").filter(F("tags").contains("error")).length()>0          |
-|               |     ds.match(pred_match \| gt_match)                                                                |
+|               |     pred_match = F("predictions.detections").filter(                                                |
+|               |         F("tags").contains("error")                                                                 |
+|               |     ).length()>0                                                                                    |
+|               |     gt_match = F("ground_truth.detections").filter(                                                 |
+|               |         F("tags").contains("error")                                                                 |
+|               |     ).length()>0                                                                                    |
+|               |     ds.match(pred_match \|\ gt_match)                                                               |
 +---------------+-----------------------------------------------------------------------------------------------------+
 
 Matching tags with ``match_tags()``
