@@ -27,12 +27,6 @@ class Component(EmbeddedDocument):
 
     meta = {"abstract": True, "allow_inheritance": True}
 
-    # @todo remove
-    id = fof.ObjectIdField(
-        default=lambda: str(ObjectId()),
-        db_field="_id",
-    )
-
     # common id between api and app
     component_id = fof.StringField(default=lambda: str(uuid.uuid4()))
 
