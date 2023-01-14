@@ -131,12 +131,12 @@ export namespace State {
     sampleFields: StrictField[];
     version: string;
     skeletons: StrictKeypointSkeleton[];
-    defaultSkeleton: KeypointSkeleton;
+    defaultSkeleton?: KeypointSkeleton;
     groupMediaTypes?: {
       name: string;
       mediaType: MediaType;
     }[];
-    defaultGroupSlice: string;
+    defaultGroupSlice?: string;
     groupField: string;
     appConfig: DatasetAppConfig;
     info: { [key: string]: string };
