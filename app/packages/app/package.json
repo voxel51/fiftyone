@@ -8,8 +8,8 @@
         "compile": "yarn workspace @fiftyone/core compile && yarn workspace @fiftyone/relay compile",
         "dev": "vite",
         "build": "yarn compile && yarn build-bare && yarn copy-to-python",
-        "build-bare": "tsc && vite build",
-        "build-desktop": "tsc && vite build --mode desktop",
+        "build-bare": "NODE_OPTIONS=--max-old-space-size=4096 && tsc && vite build",
+        "build-desktop": "NODE_OPTIONS=--max-old-space-size=4096 && tsc && vite build --mode desktop",
         "copy-to-python": "rm -rf ../../../fiftyone/server/static && cp -r ./dist ../../../fiftyone/server/static",
         "copy-to-desktop": "rm -rf ../desktop/dist/ && cp -r ./dist ../desktop/dist"
     },
