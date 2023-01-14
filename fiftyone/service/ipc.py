@@ -89,6 +89,13 @@ class IPCServer(socketserver.TCPServer):
 class IPCRequestHandler(socketserver.StreamRequestHandler):
     def handle(self):
         try:
+            """***************** Warning *****************
+            Injection attack opportunity during deserialization!
+            Path:
+            	File: ipc.py, Line: 92
+            		message = pickle.load(self.rfile)
+            		Tainted information is used in a sink.
+            """
             message = pickle.load(self.rfile)
             reply = self.server.on_message(message)
             self.send_reply(reply)
