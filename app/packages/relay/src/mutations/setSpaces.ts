@@ -4,7 +4,7 @@ export default graphql`
   mutation setSpacesMutation(
     $subscription: String!
     $session: String
-    $spaces: JSON!
+    $spaces: BSON!
   ) {
     setSpaces(subscription: $subscription, session: $session, spaces: $spaces)
   }

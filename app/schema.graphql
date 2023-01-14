@@ -340,7 +340,7 @@ type Mutation {
     updatedInfo: SavedViewInfo!
     datasetName: String = null
   ): SavedView
-  setSpaces(subscription: String!, session: String, spaces: JSON!): Boolean!
+  setSpaces(subscription: String!, session: String, spaces: BSON!): Boolean!
 }
 
 type NamedKeypointSkeleton {
