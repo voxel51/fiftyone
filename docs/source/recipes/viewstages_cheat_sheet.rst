@@ -132,9 +132,11 @@ All other view stage methods, which do not fit into these six buckets:
    * - :meth:`mongo() <fiftyone.core.collections.SampleCollection.mongo>`
    * - :meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>`
 
+Filtering, matching, selecting, and excluding
+______________________________________________
 
 Why so many related methods?
-______________________________
+-----------------------------
 
 Simply put, it's all about helping you perform your computer vision workflows as
 easily and efficiently as possible. These methods allow you to get the data 
@@ -361,5 +363,214 @@ slices they contain:
    # view only has 200 groups
    print(view)
 
+
+Conversions
+_____________
+
+FiftyOne provides a variety of convenient methods for converting your data
+from one format to another. Some of these conversions are accomplished as view
+stages, which create a `DatasetView` that has a different type of data than the
+original `Dataset` or `DatasetView` to which the view stage was applied. Let's 
+briefly show what each one does:
+
+Images to object patches
+-------------------------
+
+If your dataset contains label list fields like |Detections| or |Polylines| then you can use
+:meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>` to
+create views that contain one sample per object patch in a specified label
+field of your dataset.
+
+For example, you can extract patches for all ground truth objects in a
+detection dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Convert to ground truth patches
+    gt_patches = dataset.to_patches("ground_truth")
+    print(gt_patches)
+
+.. code-block:: text
+
+    Dataset:     quickstart
+    Media type:  image
+    Num patches: 1232
+    Patch fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        sample_id:    fiftyone.core.fields.ObjectIdField
+        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
+    View stages:
+        1. ToPatches(field='ground_truth', config=None)
+
+Images to evaluation patches
+------------------------------
+
+If you have :ref:`run evaluation <evaluating-detections>` on predictions from
+an object detection model, then you can use
+:meth:`to_evaluation_patches() <fiftyone.core.collections.SampleCollection.to_evaluation_patches>`
+to transform the dataset (or a view into it) into a new view that contains one
+sample for each true positive, false positive, and false negative example.
+
+.. code-block:: python
+   :linenos:
+
+   import fiftyone as fo
+   import fiftyone.zoo as foz
+
+   dataset = foz.load_zoo_dataset("quickstart")
+
+   # Evaluate `predictions` w.r.t. labels in `ground_truth` field
+   dataset.evaluate_detections(
+     "predictions", gt_field="ground_truth", eval_key="eval"
+   )
+
+   # Convert to evaluation patches
+   eval_patches = dataset.to_evaluation_patches("eval")
+   print(eval_patches)
+
+   print(eval_patches.count_values("type"))
+   # {'fn': 246, 'fp': 4131, 'tp': 986}
+
+
+.. code-block:: text
+
+    Dataset:     quickstart
+    Media type:  image
+    Num patches: 5363
+    Patch fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        sample_id:    fiftyone.core.fields.ObjectIdField
+        type:         fiftyone.core.fields.StringField
+        iou:          fiftyone.core.fields.FloatField
+        crowd:        fiftyone.core.fields.BooleanField
+    View stages:
+        1. ToEvaluationPatches(eval_key='eval', config=None)
+
+
+Videos to clips
+-----------------
+
+You can use
+:meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>` to
+create views into your video datasets that contain one sample per clip defined
+by a specific field or expression in a video collection.
+
+.. code-block:: python
+   :linenos:
+
+   import fiftyone as fo
+   import fiftyone.zoo as foz
+   from fiftyone import ViewField as F
+
+   dataset = foz.load_zoo_dataset("quickstart-video")
+
+   #
+   # Create a clips view that contains one clip for each contiguous
+   # segment that contains at least one road sign in every frame
+   #
+
+   clips = (
+       dataset
+       .filter_labels("frames.detections", F("label") == "road sign")
+       .to_clips("frames.detections")
+   )
+   print(clips)
+
+.. note::
+
+   The generated clips are still videos!
+
+
+Videos to images
+-------------------
+
+You can use
+:meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
+to create image views into your video datasets that contain one sample per
+frame in the dataset.
+
+.. code-block:: python
+   :linenos:
+
+   import fiftyone as fo
+   import fiftyone.zoo as foz
+
+   dataset = foz.load_zoo_dataset("quickstart-video")
+
+   session = fo.launch_app(dataset)
+
+   #
+   # Create a frames view for the entire dataset
+   # with one image per frame
+   #
+
+   frames = dataset.to_frames(sample_frames=True)
+   print(frames)
+
+.. code-block:: text
+
+   Dataset:     quickstart-video
+   Media type:  image
+   Num samples: 1279
+   Sample fields:
+      id:           fiftyone.core.fields.ObjectIdField
+      filepath:     fiftyone.core.fields.StringField
+      tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+      metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+      sample_id:    fiftyone.core.fields.ObjectIdField
+      frame_number: fiftyone.core.fields.FrameNumberField
+      detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+   View stages:
+     1. ToFrames(config=None)
+
+
+Grouped to non-grouped
+-------------------------
+
+While the name might be confusing, :meth:`select_group_slices() <fiftyone.core.collections.SampleCollection.select_group_slices>` is in a sense
+both a selection and conversion method. All of the group slices you pass in to 
+the method are selected and combined into a single, non-grouped view.
+
+The following code creates an image dataset from the "left" and "right" group
+slices of the :ref:`Quickstart Groups Dataset<dataset-zoo-quickstart-groups>`:
+
+.. code-block:: python
+    :linenos:
+
+    image_view = dataset.select_group_slices(["left", "right"])
+    print(image_view)
+
+.. code-block:: text
+
+    Dataset:     groups-overview
+    Media type:  image
+    Num samples: 400
+    Sample fields:
+        id:       fiftyone.core.fields.ObjectIdField
+        filepath: fiftyone.core.fields.StringField
+        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        group:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
+    View stages:
+        1. SelectGroupSlices(slices=['left', 'right'])
+
+
+.. note::
+
+   All of the group slices selected must have the same media type.
 
 
