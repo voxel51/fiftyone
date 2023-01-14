@@ -35,10 +35,6 @@ def compute_cuboid_iou(gt, pred, gt_crowd=False):
     ymin = max(corners1[4, 1], corners2[4, 1])
     inter_vol = inter_area * max(0.0, ymax - ymin)
 
-    # area1 = _polygon_area(np.array(rect1)[:, 0], np.array(rect1)[:, 1])
-    # area2 = _polygon_area(np.array(rect2)[:, 0], np.array(rect2)[:, 1])
-    # iou_2d = inter_area / (area1 + area2 - inter_area)
-
     gt_vol = _cuboid_volume(corners1)
     pred_vol = _cuboid_volume(corners2)
 
@@ -196,9 +192,3 @@ def _cuboid_volume(corners):
     b = np.sqrt(np.sum((corners[1, :] - corners[2, :]) ** 2))
     c = np.sqrt(np.sum((corners[0, :] - corners[4, :]) ** 2))
     return a * b * c
-
-
-def _is_clockwise(p):
-    x = p[:, 0]
-    y = p[:, 1]
-    return np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)) > 0
