@@ -120,7 +120,7 @@ elements - from the dataset samples.
 Miscellaneous
 --------------
 
-All other view stage methods, which do not fit into these seven buckets:
+All other view stage methods, which do not fit into these six buckets:
 
 .. list-table:: Conversion (to) methods
 
