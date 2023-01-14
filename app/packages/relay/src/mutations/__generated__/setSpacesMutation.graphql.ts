@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<652d1003900f3c83de348fd576183e95>>
+ * @generated SignedSource<<8056ddd88bdae447e2f328e3d8e50522>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -89,16 +89,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "64996b78a63925df2a6f495c43eebde7",
+    "cacheID": "5025127b4a8a2c9867ca6f919c8c0ec5",
     "id": null,
     "metadata": {},
     "name": "setSpacesMutation",
     "operationKind": "mutation",
-    "text": "mutation setSpacesMutation(\n  $subscription: String!\n  $session: String\n  $spaces: JSON!\n) {\n  setSpaces(subscription: $subscription, session: $session, spaces: $spaces)\n}\n"
+    "text": "mutation setSpacesMutation(\n  $subscription: String!\n  $session: String\n  $spaces: BSON!\n) {\n  setSpaces(subscription: $subscription, session: $session, spaces: $spaces)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "045a66803c4f42a41d07b2e0368898cd";
+(node as any).hash = "023e7cf359ce2132e896ff473e33b9f9";
 
 export default node;
