@@ -158,7 +158,7 @@ function SamplesContainer() {
 
   return (
     <Container>
-      {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}{" "}
+      {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}
       <SpacesRoot id={"main"} />
     </Container>
   );

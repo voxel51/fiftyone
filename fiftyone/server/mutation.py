@@ -412,7 +412,7 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
-        spaces: JSON,
+        spaces: BSON,
     ) -> bool:
         state = get_state()
         state.spaces = Space.from_dict(spaces)
