@@ -1563,6 +1563,22 @@ class Detections3DTests(unittest.TestCase):
         loc = np.array([4.0, 5.0, 6.0])
         sample["test3_box2"] = self._create_detections(dims, loc, rot)
 
+        dims = np.array([1.0, 1.0, 1.0])
+        loc = np.array([0, 0, 0])
+        rot = np.array([0, 0, 0])
+        sample["test4_box1"] = self._create_detections(dims, loc, rot)
+
+        # unit box rotated by 45 degrees about each axis
+        rot = np.array([np.pi / 4.0, 0.0, 0.0])
+        sample["test4_box2"] = self._create_detections(dims, loc, rot)
+        sample.save()
+
+        rot = np.array([0.0, np.pi / 4.0, 0.0])
+        sample["test4_box3"] = self._create_detections(dims, loc, rot)
+        sample.save()
+
+        rot = np.array([0.0, 0.0, np.pi / 4.0])
+        sample["test4_box4"] = self._create_detections(dims, loc, rot)
         sample.save()
 
         return dataset
@@ -1595,9 +1611,24 @@ class Detections3DTests(unittest.TestCase):
         dataset = self._make_3d_detections_dataset()
 
         intersection = 4.5 * 4.5 * 14.5
-        union = 1000.0 + 750.0
-        expected_iou = intersection / (union - intersection)
+        union = 1000.0 + 750.0 - intersection
+        expected_iou = intersection / union
         self._check_iou(dataset, "test3_box1", "test3_box2", expected_iou)
+
+    @drop_datasets
+    def test_single_rotation(self):
+        ## the two boxes form a star of David with octagonal overlap
+        ## intersection is area of octagon
+        dataset = self._make_3d_detections_dataset()
+
+        side = 1.0 / (1 + np.sqrt(2))
+        intersection = 2.0 * (1 + np.sqrt(2)) * side**2
+        union = 2 - intersection
+        expected_iou = intersection / union
+
+        self._check_iou(dataset, "test4_box1", "test4_box2", expected_iou)
+        self._check_iou(dataset, "test4_box1", "test4_box3", expected_iou)
+        self._check_iou(dataset, "test4_box1", "test4_box4", expected_iou)
 
 
 class VideoDetectionsTests(unittest.TestCase):
