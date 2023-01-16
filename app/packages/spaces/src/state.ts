@@ -1,5 +1,9 @@
 import { atom, selectorFamily } from "recoil";
-import { PanelStatePartialParameter, SpaceNodeJSON } from "./types";
+import {
+  PanelStateParameter,
+  PanelStatePartialParameter,
+  SpaceNodeJSON,
+} from "./types";
 
 // a react hook for managing the state of all spaces in the app
 // it should use recoil to persist the tree
@@ -35,19 +39,28 @@ export const panelsStateAtom = atom({
   default: new Map(),
 });
 
+export const panelsLocalStateAtom = atom({
+  key: "panelsLocalState",
+  default: new Map(),
+});
+
 export const panelStateSelector = selectorFamily({
   key: "panelStateSelector",
   get:
-    (panelId: string) =>
+    (params: PanelStateParameter) =>
     ({ get }) => {
-      return get(panelsStateAtom).get(panelId);
+      const { panelId, local } = params;
+      const stateAtom = getStateAtom(local);
+      return get(stateAtom).get(panelId);
     },
   set:
-    (panelId: string) =>
+    (params: PanelStateParameter) =>
     ({ get, set }, newValue) => {
-      const newState = new Map(get(panelsStateAtom));
+      const { panelId, local } = params;
+      const stateAtom = getStateAtom(local);
+      const newState = new Map(get(stateAtom));
       newState.set(panelId, newValue);
-      set(panelsStateAtom, newState);
+      set(stateAtom, newState);
     },
 });
 
@@ -56,15 +69,19 @@ export const panelStatePartialSelector = selectorFamily({
   get:
     (params: PanelStatePartialParameter) =>
     ({ get }) => {
-      const { panelId, key } = params;
-      return get(panelStateSelector(panelId))?.[key];
+      const { key, ...selectorParam } = params;
+      return get(panelStateSelector(selectorParam))?.[key];
     },
   set:
     (params: PanelStatePartialParameter) =>
     ({ get, set }, newValue) => {
-      const { panelId, key } = params;
-      const currentState = get(panelStateSelector(panelId)) || {};
+      const { key, ...selectorParam } = params;
+      const currentState = get(panelStateSelector(selectorParam)) || {};
       const updatedState = { ...currentState, [key]: newValue };
-      set(panelStateSelector(panelId), updatedState);
+      set(panelStateSelector(selectorParam), updatedState);
     },
 });
+
+function getStateAtom(local?: boolean) {
+  return local ? panelsLocalStateAtom : panelsStateAtom;
+}

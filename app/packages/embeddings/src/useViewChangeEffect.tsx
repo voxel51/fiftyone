@@ -16,7 +16,11 @@ export function useViewChangeEffect() {
   const [brainKey] = useBrainResult();
   const [labelField] = useColorByField();
   const view = useRecoilValue(fos.view);
-  const [loadedPlot, setLoadedPlot] = usePanelStatePartial("loadedPlot", null);
+  const [loadedPlot, setLoadedPlot] = usePanelStatePartial(
+    "loadedPlot",
+    null,
+    true
+  );
   const [loadingPlot, setLoadingPlot] = usePanelStatePartial(
     "loadingPlot",
     true

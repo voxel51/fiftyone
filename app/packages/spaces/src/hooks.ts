@@ -113,10 +113,16 @@ export function usePanelContext() {
  *
  * Note: `id` is optional if hook is used within the component of a panel.
  */
-export function usePanelState<T>(defaultState?: T, id?: string) {
+export function usePanelState<T>(
+  defaultState?: T,
+  id?: string,
+  local?: boolean
+) {
   const panelContext = usePanelContext();
   const panelId = id || (panelContext?.node?.id as string);
-  const [state, setState] = useRecoilState<T>(panelStateSelector(panelId));
+  const [state, setState] = useRecoilState<T>(
+    panelStateSelector({ panelId, local })
+  );
   const computedState = state || defaultState;
 
   return [computedState, setState];
@@ -125,14 +131,17 @@ export function usePanelState<T>(defaultState?: T, id?: string) {
 /**
  * Can only be used within a panel component
  */
-export function usePanelStateCallback<T>(callback: (panelState: T) => void) {
+export function usePanelStateCallback<T>(
+  callback: (panelState: T) => void,
+  local?: boolean
+) {
   const panelContext = usePanelContext();
   const panelId = panelContext?.node?.id as string;
   return useRecoilCallback(
     ({ snapshot }) =>
       async () => {
         const panelState = await snapshot.getPromise(
-          panelStateSelector(panelId)
+          panelStateSelector({ panelId, local })
         );
         callback(panelState);
       },
@@ -145,14 +154,14 @@ export function usePanelStateCallback<T>(callback: (panelState: T) => void) {
  * @returns a state resolver function which return promise that resolves to the
  * current state of a panel
  */
-export function usePanelStateLazy() {
+export function usePanelStateLazy(local?: boolean) {
   const panelContext = usePanelContext();
   const panelId = panelContext?.node?.id as string;
 
   const resolvePanelState = useRecoilCallback(
     ({ snapshot }) =>
       async () =>
-        snapshot.getPromise(panelStateSelector(panelId))
+        snapshot.getPromise(panelStateSelector({ panelId, local }))
   );
 
   return () => resolvePanelState();
@@ -164,11 +173,15 @@ export function usePanelStateLazy() {
  * Should only be used within a panel component whose state is an object or
  *  an array
  */
-export function usePanelStatePartial<T>(key: string, defaultState: T) {
+export function usePanelStatePartial<T>(
+  key: string,
+  defaultState: T,
+  local?: boolean
+) {
   const panelContext = usePanelContext();
   const panelId = panelContext?.node?.id as string;
   const [state, setState] = useRecoilState<T>(
-    panelStatePartialSelector({ panelId, key })
+    panelStatePartialSelector({ panelId, key, local })
   );
   const computedState = useComputedState(state, defaultState);
   return [computedState, setState];
