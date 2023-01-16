@@ -16,16 +16,12 @@ export function tracesToData(
   return Object.entries(traces)
     .sort((a, b) => sortStringsAlphabetically(a[0], b[0]))
     .map(([key, trace]) => {
-      // const selectedpoints = trace
-      //   .map((d, idx) => (d.selected ? idx : null))
-      //   .filter((d) => d !== null);
       const selectedpoints = plotSelection?.length
         ? plotSelection
             .map((id) => getPointIndex(trace, id))
             .filter((p) => p !== null)
         : null;
 
-      // const color = Color.fromCSSRGBValues(r, g, b)
       const color = Color.fromCSSRGBValues(...getColor(key));
 
       const mappedColorscale = colorscale.map((c, idx) => {
@@ -44,19 +40,7 @@ export function tracesToData(
           colorscale: mappedColorscale,
           color: isCategorical
             ? color.toCSSRGBString()
-            : // ? trace.map((d) => {
-            //     const selected =
-            //       plotSelection?.length == 0 ||
-            //       (plotSelection && (plotSelection.includes(d.id) || plotSelection.includes(d.sample_id)));
-            //     if (selected) {
-            //       return color.toCSSRGBString();
-            //     } else {
-            //       return color
-            //         .setBrightness(color.getBrightness() * 0.05)
-            //         .toCSSRGBString();
-            //     }
-            //   })
-            isUncolored
+            : isUncolored
             ? null
             : trace.map((d) => d.label),
           size: 6,
@@ -80,7 +64,6 @@ export function tracesToData(
         },
         unselected: {
           marker: {
-            // color: color.setBrightness(0.2).toCSSRGBString(),
             opacity: 0.2,
           },
         },
