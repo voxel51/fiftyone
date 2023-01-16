@@ -27,7 +27,7 @@ const useSetDataset = () => {
   const router = useContext(RouterContext);
   const viewName = getSavedViewName(router);
   return (name?: string) => {
-    to(name ? `/datasets/${encodeURI(name)}` : "/");
+    to(name ? `/datasets/${encodeURIComponent(name)}` : "/");
 
     send((session) =>
       commit({

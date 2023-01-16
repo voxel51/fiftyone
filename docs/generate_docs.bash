@@ -91,6 +91,11 @@ cd docs
 echo "Generating model zoo listing page"
 python scripts/make_model_zoo_docs.py
 
+echo "Generating TypeScript API docs"
+cd ../app
+yarn doc
+cd ../docs
+
 echo "Building docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
 sphinx-build -M html source build $SPHINXOPTS

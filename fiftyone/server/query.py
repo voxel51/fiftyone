@@ -142,7 +142,7 @@ class SavedView:
 class SidebarGroup:
     name: str
     paths: t.Optional[t.List[str]]
-    expanded: t.Optional[bool] = True
+    expanded: t.Optional[bool] = None
 
 
 @gql.type

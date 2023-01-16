@@ -1,25 +1,16 @@
-import reactRefresh from "@vitejs/plugin-react-refresh";
-import nodePolyfills from "rollup-plugin-polyfill-node";
-import { UserConfig } from "vite";
-import relay from "vite-plugin-relay";
+import { defineConfig } from "vite";
 
-export default <UserConfig>{
-  plugins: [
-    reactRefresh({
-      parserPlugins: ["classProperties", "classPrivateProperties"],
-    }),
-    relay,
-    nodePolyfills(),
-  ],
-  esbuild: true,
+export default defineConfig({
   base: "/",
   build: {
     lib: {
       entry: "src/index.ts",
       formats: ["es"],
     },
-    base: "/",
+    rollupOptions: {
+      external: ["recoil"],
+    },
     target: "es2015",
     minify: false,
   },
-};
+});

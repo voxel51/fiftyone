@@ -15,6 +15,10 @@ import { sidebarSampleId } from "./modal";
 import { refresher } from "./atoms";
 import { field } from "./schema";
 
+/**
+ * GraphQL Selector Family for Aggregations.
+ * @param extended - Whether to use extended aggregations.
+ */
 export const aggregationQuery = graphQLSelectorFamily<
   VariablesOf<foq.aggregationsQuery>,
   { extended: boolean; modal: boolean; paths: string[]; root?: boolean },
@@ -467,6 +471,9 @@ export const nonfiniteCounts = selectorFamily({
     },
 });
 
+/**
+ * @hidden
+ */
 export type Nonfinite = "nan" | "ninf" | "inf" | "none";
 
 export const nonfiniteCount = selectorFamily<
