@@ -722,11 +722,20 @@ const InteractiveSidebar = ({
         borderRight: !modal
           ? `1px solid ${theme.primary.plainBorder}`
           : undefined,
+        borderTopRightRadius: 8,
       }}
     >
       {!modal && (
         <Suspense>
-          <Box style={{ padding: 8, paddingLeft: 16, paddingRight: 16 }}>
+          <Box
+            style={{
+              padding: 8,
+              paddingLeft: 16,
+              paddingRight: 16,
+              background: theme.background.mediaSpace,
+              borderTopRightRadius: 8,
+            }}
+          >
             {savedViewsQueryRef !== null && (
               <ViewSelection
                 datasetName={loadedDatasetName}

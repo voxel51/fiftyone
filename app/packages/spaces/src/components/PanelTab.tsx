@@ -30,7 +30,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
             e.stopPropagation();
             spaces.removeNode(node);
           }}
-          sx={{ pb: 0 }}
+          sx={{ pb: 0, mr: "-8px" }}
           title="Close"
         >
           <Close sx={{ fontSize: 16 }} />

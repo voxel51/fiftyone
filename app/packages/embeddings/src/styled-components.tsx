@@ -5,6 +5,7 @@ export const EmbeddingsContainer = styled.div`
   margin: 0;
   height: 100%;
   width: 100%;
+  background: ${({ theme }) => theme.background.mediaSpace};
 `;
 export const Selectors = styled.div`
   display: flex;
