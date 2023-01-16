@@ -1,1 +1,1 @@
-# Map Fiftyone Plugin Example
+# Embeddings Fiftyone Plugin Example

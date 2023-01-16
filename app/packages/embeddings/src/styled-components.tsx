@@ -16,12 +16,9 @@ export const Selectors = styled.div`
   column-gap: 1rem;
   z-index: 999;
   padding: 0 1rem;
-  // width: 100%;
-  // justify-content: space-between;
   > div {
     display: flex;
     column-gap: 1rem;
-    // margin: 0 1rem;
   }
 `;
 export const PlotOption = styled(Link)`

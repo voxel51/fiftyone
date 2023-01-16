@@ -23,7 +23,7 @@ export default defineConfig({
     minify: true,
     lib: {
       entry: path.resolve(__dirname, "./src/index.ts"),
-      name: "Map",
+      name: "Embeddings",
       fileName: (format) => `index.${format}.js`,
       formats: ["umd"],
     },
