@@ -76,7 +76,7 @@ const countValuesData = graphQLSelectorFamily<
         form: get(extendedViewForm),
       };
     },
-  mapResponse: (data) => data.aggregate[0],
+  mapResponse: (data: countValuesQuery["response"]) => data.aggregate[0],
 });
 
 const histogramValuesData = graphQLSelectorFamily<

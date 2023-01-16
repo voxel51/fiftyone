@@ -18,6 +18,8 @@ import fiftyone as fo
 import fiftyone.core.context as focx
 from fiftyone.core.json import FiftyOneJSONEncoder
 from fiftyone.core.session.events import (
+    add_screenshot,
+    CaptureNotebookCell,
     CloseSession,
     DeactivateNotebookCell,
     ReactivateNotebookCell,
@@ -54,6 +56,10 @@ async def dispatch_event(
         subscription: the calling subscription id
         event: the event
     """
+    if isinstance(event, CaptureNotebookCell) and focx.is_databricks_context():
+        add_screenshot(event)
+        return
+
     if isinstance(event, StateUpdate):
         global _state
         _state = event.state
@@ -287,3 +293,15 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
     _requests[payload.subscription] = request_listeners
 
     return InitializedListener(is_app, request_listeners, state)
+
+
+_PORT = None
+
+
+def set_port(port: int):
+    global _PORT
+    _PORT = port
+
+
+def get_port() -> int:
+    return _PORT
