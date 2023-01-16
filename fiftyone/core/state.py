@@ -152,7 +152,7 @@ class StateDescription(etas.Serializable):
         spaces = d.get("spaces", None)
 
         if spaces is not None:
-            spaces = Space.from_json(spaces)
+            spaces = Space.from_dict(json_util.loads(spaces))
 
         return cls(
             config=config,
