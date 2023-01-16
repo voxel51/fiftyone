@@ -4,7 +4,7 @@
 
 import { Overlay } from "./overlays/base";
 
-import { Schema, Stage } from "@fiftyone/utilities";
+import { AppError, Schema, Stage } from "@fiftyone/utilities";
 
 // vite won't import these from fou
 export type RGB = [number, number, number];
@@ -28,7 +28,7 @@ export interface Sample {
     height: number;
   };
   id: string;
-  media_type: "image" | "image";
+  media_type: "image" | "video" | "point-cloud";
   filepath: string;
   tags: string[];
   _label_tags: string[];
@@ -42,9 +42,20 @@ export interface LabelData {
   index?: number;
 }
 
-export interface MaskTargets {
-  [key: number]: string;
-}
+type MaskLabel = string;
+export type IntMaskTargets = {
+  [intKey: string]: MaskLabel;
+};
+
+type HexColor = string;
+
+export type RgbMaskTargets = {
+  [hexKey: HexColor]: {
+    label: MaskLabel;
+    intTarget: number;
+  };
+};
+export type MaskTargets = IntMaskTargets | RgbMaskTargets;
 
 export type BufferRange = [number, number];
 export type Buffers = BufferRange[];
@@ -208,7 +219,7 @@ export interface BaseState {
   setZoom: boolean;
   hasDefaultZoom: boolean;
   SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
-  error: boolean | number;
+  error: boolean | number | AppError;
   destroyed: boolean;
   reloading: boolean;
 }

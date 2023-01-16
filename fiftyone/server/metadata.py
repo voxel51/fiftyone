@@ -358,11 +358,7 @@ class FFmpegNotFoundException(RuntimeError):
 def _create_media_urls(
     collection: SampleCollection, sample: t.Dict, cache: t.Dict
 ) -> t.Dict[str, str]:
-    media_fields = (
-        collection.app_config.media_fields
-        if collection.app_config
-        else ["filepath"]
-    )
+    media_fields = collection.app_config.media_fields
     media_urls = []
 
     for field in media_fields:

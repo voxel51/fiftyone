@@ -6,7 +6,6 @@ import {
   KeyboardArrowDown,
   KeyboardArrowUp,
   Loading,
-  ThemeProvider,
 } from "@fiftyone/components";
 import {
   Dataset as CoreDataset,
@@ -16,11 +15,9 @@ import {
 } from "@fiftyone/core";
 import { usePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { getEnvironment, RelayEnvironmentKey } from "@fiftyone/state";
-import React, { useState, Suspense } from "react";
+import React, { Suspense } from "react";
 import { PreloadedQuery, useQueryLoader } from "react-relay";
-import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
-import { RecoilRelayEnvironmentProvider } from "recoil-relay";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 
 import { DatasetQuery } from "@fiftyone/core";
@@ -58,32 +55,21 @@ export interface DatasetProps {
   readOnly?: boolean;
   theme?: "dark" | "light";
   toggleHeaders?: () => void;
+  canEditSavedViews?: boolean;
 }
 
-export const Dataset: React.FC<DatasetProps> = (props) => {
-  const [environment] = useState(getEnvironment);
-  return (
-    <RecoilRoot>
-      <RecoilRelayEnvironmentProvider
-        environment={environment}
-        environmentKey={RelayEnvironmentKey}
-      >
-        <DatasetRenderer {...props} />
-      </RecoilRelayEnvironmentProvider>
-    </RecoilRoot>
-  );
-};
-
-export const DatasetRenderer: React.FC<DatasetProps> = ({
+export const Dataset: React.FC<DatasetProps> = ({
   dataset,
   compactLayout = true,
   hideHeaders = false,
   readOnly = false,
   theme = "dark",
   toggleHeaders,
+  canEditSavedViews = true,
 }) => {
   const [queryRef, loadQuery] = useQueryLoader<DatasetQuery>(DatasetNodeQuery);
   const setTheme = useSetRecoilState(fos.theme);
+  const setCanChangeSavedViews = useSetRecoilState(fos.canEditSavedViews);
   const setCompactLayout = useSetRecoilState(fos.compactLayout);
   const setReadOnly = useSetRecoilState(fos.readOnly);
 
@@ -93,6 +79,9 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
   React.useEffect(() => {
     loadQuery({ name: dataset });
   }, [dataset]);
+  React.useEffect(() => {
+    setCanChangeSavedViews(canEditSavedViews);
+  }, [canEditSavedViews]);
   React.useLayoutEffect(() => {
     setReadOnly(readOnly);
   }, [readOnly]);
@@ -107,27 +96,25 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
   if (plugins.hasError) return <div>Plugin error...</div>;
 
   return (
-    <ThemeProvider>
-      <Container>
-        <Suspense fallback={loadingElement}>
-          <DatasetLoader dataset={dataset} queryRef={queryRef}>
-            <ViewBarWrapper>
-              <ViewBar />
-              {toggleHeaders && (
-                <HeadersToggle
-                  toggleHeaders={toggleHeaders}
-                  hideHeaders={hideHeaders}
-                />
-              )}
-            </ViewBarWrapper>
-            <CoreDatasetContainer>
-              <CoreDataset />
-            </CoreDatasetContainer>
-          </DatasetLoader>
-        </Suspense>
-        <div id="modal" />
-      </Container>
-    </ThemeProvider>
+    <Container>
+      <Suspense fallback={loadingElement}>
+        <DatasetLoader dataset={dataset} queryRef={queryRef}>
+          <ViewBarWrapper>
+            <ViewBar />
+            {toggleHeaders && (
+              <HeadersToggle
+                toggleHeaders={toggleHeaders}
+                hideHeaders={hideHeaders}
+              />
+            )}
+          </ViewBarWrapper>
+          <CoreDatasetContainer>
+            <CoreDataset />
+          </CoreDatasetContainer>
+        </DatasetLoader>
+      </Suspense>
+      <div id="modal" />
+    </Container>
   );
 };
 

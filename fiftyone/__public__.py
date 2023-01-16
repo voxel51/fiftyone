@@ -53,6 +53,7 @@ from .core.fields import (
     ArrayField,
     BooleanField,
     ClassesField,
+    ColorField,
     DateField,
     DateTimeField,
     DictField,
@@ -69,13 +70,13 @@ from .core.fields import (
     GeoMultiLineStringField,
     GeoMultiPolygonField,
     IntField,
-    IntDictField,
     KeypointsField,
     ListField,
     ObjectIdField,
     PolylinePointsField,
+    ReferenceField,
     StringField,
-    TargetsField,
+    MaskTargetsField,
     VectorField,
 )
 from .core.frame import Frame
@@ -127,6 +128,7 @@ from .core.models import (
 from .core.odm import (
     DatasetAppConfig,
     KeypointSkeleton,
+    SidebarGroupDocument,
 )
 from .core.plots import (
     plot_confusion_matrix,
@@ -151,6 +153,7 @@ from .core.stages import (
     ExcludeBy,
     ExcludeFields,
     ExcludeFrames,
+    ExcludeGroups,
     ExcludeLabels,
     Exists,
     FilterField,

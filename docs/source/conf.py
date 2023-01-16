@@ -65,6 +65,7 @@ extensions = [
     "sphinx_tabs.tabs",
     "sphinx_copybutton",
     "autodocsumm",
+    "myst_parser",
 ]
 
 # Types of class members to generate documentation for.

@@ -1,10 +1,3 @@
-import React, {
-  MutableRefObject,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
-import { CircularProgress } from "@mui/material";
 import {
   Bookmark,
   Check,
@@ -16,8 +9,15 @@ import {
   VisibilityOff,
   Wallpaper,
 } from "@mui/icons-material";
+import React, {
+  MutableRefObject,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import useMeasure from "react-use-measure";
 import {
+  selector,
   selectorFamily,
   useRecoilCallback,
   useRecoilState,
@@ -25,25 +25,37 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
+import { useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-
+import * as fos from "@fiftyone/state";
+import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
+import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import { PillButton } from "../utils";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
-import Tagger from "./Tagger";
-import { PillButton } from "../utils";
-import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import Similar from "./Similar";
-import { useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
+import Tagger from "./Tagger";
+
+export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
+  key: "shouldToggleBookMarkIconOn",
+  get: ({ get }) => {
+    const hasFiltersValue = get(fos.hasFilters(false));
+    const extendedSelectionList = get(fos.extendedSelection);
+    const selectedSampleSet = get(fos.selectedSamples);
+
+    const isExtendedSelectionOn =
+      extendedSelectionList && extendedSelectionList.length > 0;
+
+    return (
+      isExtendedSelectionOn || hasFiltersValue || selectedSampleSet.size > 0
+    );
+  },
+});
 
 const Loading = () => {
   const theme = useTheme();
-  return (
-    <CircularProgress
-      style={{ padding: 2, height: 22, width: 22, color: theme.text.primary }}
-    />
-  );
+  return <LoadingDots text="" color={theme.text.primary} />;
 };
 
 const ActionDiv = styled.div`
@@ -279,7 +291,6 @@ const Hidden = () => {
 };
 
 const SaveFilters = () => {
-  const hasFiltersValue = useRecoilValue(fos.hasFilters(false));
   const loading = useRecoilValue(fos.savingFilters);
   const onComplete = useRecoilCallback(({ set, reset }) => () => {
     set(fos.savingFilters, false);
@@ -301,7 +312,11 @@ const SaveFilters = () => {
     []
   );
 
-  return hasFiltersValue ? (
+  const shouldToggleBookMarkIconOn = useRecoilValue(
+    shouldToggleBookMarkIconOnSelector
+  );
+
+  return shouldToggleBookMarkIconOn ? (
     <ActionDiv>
       <PillButton
         open={false}
@@ -378,6 +393,7 @@ export const ModalActionsRow = ({
   lookerRef?: MutableRefObject<VideoLooker | undefined>;
 }) => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
+  const hideTagging = useRecoilValue(fos.readOnly);
 
   return (
     <ActionsRowDiv
@@ -389,7 +405,7 @@ export const ModalActionsRow = ({
       <Hidden />
       <Selected modal={true} lookerRef={lookerRef} />
       {!isVideo && <Similarity modal={true} />}
-      <Tag modal={true} lookerRef={lookerRef} />
+      {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>

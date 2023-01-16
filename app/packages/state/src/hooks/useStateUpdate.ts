@@ -12,10 +12,7 @@ import {
   dataset as datasetAtom,
   resolveGroups,
   filters,
-  colorPool as colorPoolAtom,
   selectedLabels,
-  appConfig,
-  colorscale as colorscaleAtom,
   selectedSamples,
   patching,
   similaritySorting,
@@ -49,7 +46,7 @@ const useStateUpdate = () => {
 
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
-      const { dataset, state } =
+      const { config, dataset, state } =
         resolve instanceof Function ? resolve(t) : resolve;
 
       const { get, reset, set } = t;
@@ -59,6 +56,7 @@ const useStateUpdate = () => {
 
         if (!viewsAreEqual(view || [], state.view || [])) {
           set(viewAtoms.view, state.view || []);
+          set(viewAtoms.viewName, state.viewName || null);
           reset(extendedSelection);
           reset(similarityParameters);
           reset(filters);
@@ -79,9 +77,15 @@ const useStateUpdate = () => {
           )
         );
 
+      if (config && config.theme !== "browser") {
+        set(theme, config.theme);
+        setMode(config.theme);
+      }
+
       if (dataset) {
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
         dataset.evaluations = Object.values(dataset.evaluations || {});
+        dataset.savedViews = Object.values(dataset.savedViews || []);
         dataset.sampleFields = collapseFields(dataset.sampleFields);
         dataset.frameFields = collapseFields(dataset.frameFields);
         const previousDataset = get(datasetAtom);
@@ -92,7 +96,7 @@ const useStateUpdate = () => {
         if (
           !previousDataset ||
           previousDataset.id !== dataset.id ||
-          dataset.groupSlice !== previousDataset.groupSlice
+          dataset.groupSlice != previousDataset.groupSlice
         ) {
           if (dataset?.name !== previousDataset?.name) {
             reset(sidebarMode(false));
@@ -109,13 +113,21 @@ const useStateUpdate = () => {
           reset(groupStatistics(false));
 
           reset(similarityParameters);
+
+          const getMediaPathWithOverride = (f: string) =>
+            dataset.sampleFields.map((field) => field.name).includes(f)
+              ? f
+              : "filepath";
+
           set(
             selectedMediaField(false),
-            dataset?.appConfig?.gridMediaField || "filepath"
+            getMediaPathWithOverride(dataset?.appConfig?.gridMediaField) ||
+              "filepath"
           );
           set(
             selectedMediaField(true),
-            dataset?.appConfig?.modalMediaField || "filepath"
+            getMediaPathWithOverride(dataset?.appConfig?.modalMediaField) ||
+              "filepath"
           );
           reset(extendedSelection);
           reset(filters);
@@ -124,6 +136,7 @@ const useStateUpdate = () => {
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
         }
+
         set(datasetAtom, dataset);
       }
 

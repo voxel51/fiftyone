@@ -302,10 +302,8 @@ samples or fields, this may involve substantial computation.
 
 Therefore, the App supports three sidebar modes that you can choose between:
 
--   `all`: always compute counts for all fields and stats for all fields whose
-    filter tray is expanded
--   `fast`: only compute counts and stats for fields whose filter tray is
-    expanded
+-   `all`: always compute counts for all fields
+-   `fast`: only compute counts for fields whose filter tray is expanded
 -   `best` (*default*): automatically choose between `all` and `fast` mode
     based on the size of the dataset
 
@@ -386,6 +384,9 @@ of the :ref:`dataset's App config <custom-app-config>`:
     print(sidebar_groups[2].name)  # metadata
     sidebar_groups[2].expanded = False
 
+    # Add a new group
+    sidebar_groups.append(fo.SidebarGroupDocument(name="new"))
+
     # Modify the dataset's App config
     dataset.app_config.sidebar_groups = sidebar_groups
     dataset.save()  # must save after edits
@@ -408,7 +409,7 @@ You can conveniently reset the sidebar groups to their default state by setting
 
     If a dataset has fields that do not appear in the dataset's
     :class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>`
-    property, these fields will be dyanmically assigned to default groups in
+    property, these fields will be dynamically assigned to default groups in
     the App at runtime.
 
 .. _app-filtering:
@@ -458,6 +459,44 @@ the App.
 
 .. image:: /images/app/app-views2.gif
     :alt: app-views2
+    :align: center
+
+.. _app-saving-views:
+
+Saving views
+____________
+
+You can use the menu in the upper-left of the App to save the current state of
+the App's view bar and filters sidebar as a new view into your dataset. Any
+views that you save are persisted on your dataset under a name of your choice
+so that you can quickly load them in a future session via this UI.
+
+Saved views are a convenient way to record semantically relevant subsets of a
+dataset, such as:
+
+-   samples in a particular state, e.g., with certain tag(s)
+-   a subset of a dataset that was used for a task, e.g., training a model
+-   samples that contain content of interest, e.g., object types or image
+    characteristics
+
+.. note::
+
+    Remember that saved views only store the rule(s) used to extract content
+    from the underlying dataset, not the actual content itself. Saving views
+    is cheap. Don't worry about storage space!
+
+    Keep in mind, though, that the contents of a saved view may change as the
+    underlying dataset is modified. For example, if a save view contains
+    samples with a certain tag, the view's contents will change as you
+    add/remove this tag from samples.
+
+.. note::
+
+    Did you know? You can also programmatically create, modify, and delete
+    saved views :ref:`via Python <saving-views>`!
+
+.. image:: /images/app/app-saved-views.gif
+    :alt: app-saved-views
     :align: center
 
 .. _app-sample-view:

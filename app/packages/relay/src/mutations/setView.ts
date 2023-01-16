@@ -1,18 +1,26 @@
 import { graphql } from "react-relay";
 
-export default graphql`
+import r from "../resolve";
+
+export default r(graphql`
   mutation setViewMutation(
     $subscription: String!
     $session: String
     $view: BSONArray!
-    $dataset: String!
+    $viewName: String
+    $savedViewSlug: String
+    $changingSavedView: Boolean
+    $datasetName: String!
     $form: StateForm!
   ) {
     setView(
       subscription: $subscription
       session: $session
       view: $view
-      dataset: $dataset
+      viewName: $viewName
+      savedViewSlug: $savedViewSlug
+      changingSavedView: $changingSavedView
+      datasetName: $datasetName
       form: $form
     ) {
       dataset {
@@ -32,6 +40,8 @@ export default graphql`
           embeddedDocType
           path
           dbField
+          description
+          info
         }
         frameFields {
           ftype
@@ -39,6 +49,8 @@ export default graphql`
           embeddedDocType
           path
           dbField
+          description
+          info
         }
         maskTargets {
           name
@@ -50,6 +62,17 @@ export default graphql`
         defaultMaskTargets {
           target
           value
+        }
+        savedViews {
+          id
+          name
+          slug
+          description
+          color
+          viewStages
+          createdAt
+          lastModifiedAt
+          lastLoadedAt
         }
         evaluations {
           key
@@ -90,6 +113,7 @@ export default graphql`
         appConfig {
           gridMediaField
           mediaFields
+          modalMediaField
           plugins
           sidebarGroups {
             expanded
@@ -100,6 +124,9 @@ export default graphql`
         }
       }
       view
+      viewName
+      savedViewSlug
+      changingSavedView
     }
   }
-`;
+`);

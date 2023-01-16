@@ -2,11 +2,11 @@ import _ from "lodash";
 import mime from "mime";
 import { isElectron } from "./electron";
 
-export { isElectron } from "./electron";
-export { GraphQLError, NotFoundError, ServerError } from "./errors";
+export * from "./color";
+export * from "./electron";
+export * from "./errors";
 export * from "./fetch";
 export * from "./Resource";
-export * from "./color";
 
 interface O {
   [key: string]: O | any;
@@ -87,9 +87,12 @@ export const removeKeys = <T>(
 interface BaseField {
   ftype: string;
   dbField: string | null;
+  description: string | null;
+  info: object | null;
   name: string;
   embeddedDocType: string | null;
   subfield: string | null;
+  path: string | null;
 }
 
 export interface StrictField extends BaseField {
@@ -189,6 +192,14 @@ export const LABELS_MAP = {
 };
 
 export const MASK_LABELS = new Set([DETECTION, SEGMENTATION]);
+
+// defined as labels that can have on-disk overlays
+export const DENSE_LABELS = new Set([
+  SEGMENTATION,
+  HEATMAP,
+  DETECTION,
+  DETECTIONS,
+]);
 
 export const VALID_OBJECT_TYPES = [
   DETECTION,
@@ -327,7 +338,10 @@ export const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 export const VALID_KEYPOINTS = withPath(LABELS_PATH, [KEYPOINT, KEYPOINTS]);
 
 export const isNotebook = () => {
-  return Boolean(new URLSearchParams(window.location.search).get("context"));
+  return Boolean(
+    typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("context")
+  );
 };
 
 export const useExternalLink = (href) => {
