@@ -68,7 +68,7 @@ function toAPIFormat(state, panelsState = {}) {
 function toAppFormat(state) {
   if (typeof state === "string") return toAppFormat(JSON.parse(state));
   if (Array.isArray(state)) return state.map(toAppFormat);
-  if (state._id)
+  if (state._cls)
     return {
       id: state.component_id,
       children: state.children ? toAppFormat(state.children) : [],
