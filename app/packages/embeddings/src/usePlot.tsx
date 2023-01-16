@@ -4,7 +4,7 @@ import { useSelectionEffect } from "./useSelectionEffect";
 import useExtendedStageEffect from "./useExtendedStageEffect";
 
 export function usePlot({ clearSelection, setPlotSelection }) {
-  const [loadedPlot] = usePanelStatePartial("loadedPlot", null);
+  const [loadedPlot] = usePanelStatePartial("loadedPlot", null, true);
   const [loadingPlot] = usePanelStatePartial("loadingPlot", true);
   const [loadingPlotError] = usePanelStatePartial("loadingPlotError", null);
 

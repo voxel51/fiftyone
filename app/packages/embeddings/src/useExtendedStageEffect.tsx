@@ -7,7 +7,7 @@ import { fetchExtendedStage } from "./fetch";
 export default function useExtendedStageEffect() {
   const datasetName = useRecoilValue(fos.datasetName);
   const view = useRecoilValue(fos.view);
-  const [loadedPlot] = usePanelStatePartial("loadedPlot", null);
+  const [loadedPlot] = usePanelStatePartial("loadedPlot", null, true);
   const [overrideStage, setOverrideStage] = useRecoilState(
     fos.extendedSelectionOverrideStage
   );
