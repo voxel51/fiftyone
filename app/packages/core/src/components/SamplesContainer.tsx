@@ -11,7 +11,7 @@ const Container = styled.div`
   justify-content: space-between;
   flex-grow: 1;
   overflow: hidden;
-  background: ${({ theme }) => theme.background.mediaSpace};
+  background: ${({ theme }) => theme.background.header};
 `;
 
 function SamplesContainer() {

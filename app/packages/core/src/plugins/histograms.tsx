@@ -9,6 +9,7 @@ import { scrollbarStyles } from "../components/utils";
 
 const DistributionsContainer = styled.div`
   height: 100%;
+  background: ${({ theme }) => theme.background.mediaSpace};
   ${scrollbarStyles}
 `;
 
@@ -29,7 +30,8 @@ function Plots() {
         containerStyle={{
           position: "relative",
           width: "12rem",
-          margin: "1rem 1rem 0 1rem",
+          marginLeft: "1rem",
+          paddingTop: "1rem",
         }}
         inputStyle={{
           width: "12rem",

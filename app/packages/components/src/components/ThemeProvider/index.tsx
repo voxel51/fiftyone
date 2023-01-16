@@ -27,6 +27,7 @@ let theme = extendJoyTheme({
           sidebar: "hsl(200, 0%, 100%)",
           tooltip: "hsl(200, 0%, 100%)",
           viewBarButtons: "hsl(200, 0%, 100%)",
+          inactiveTab: "hsl(200, 0%, 90%)",
         },
         divider: "hsl(200, 0%, 80%)",
         danger: {
@@ -83,6 +84,7 @@ let theme = extendJoyTheme({
           sidebar: "hsl(200, 0%, 15%)",
           tooltip: "hsl(200, 0%, 5%)",
           viewBarButtons: "hsl(200, 0%, 15%)",
+          inactiveTab: "hsl(200, 0%, 18%)",
         },
         divider: "hsl(200, 0%, 20%)",
         danger: {

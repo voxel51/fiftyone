@@ -9,6 +9,7 @@ const FlashlightContainer = styled.div`
   position: relative;
   padding: 0 0 0 1rem;
   height: 100%;
+  background: ${({ theme }) => theme.background.mediaSpace};
 `;
 
 registerComponent({
