@@ -50,7 +50,6 @@ export function EmbeddingsPlot({
 
   if (labelSelectorLoading || isLoading || !traces)
     return <Loading>Pixelating...</Loading>;
-  console.log({ resolvedSelection, colorscale });
   const data = tracesToData(
     traces,
     style,
@@ -68,7 +67,6 @@ export function EmbeddingsPlot({
           data={data}
           style={{ zIndex: 1 }}
           onSelected={(selected, foo) => {
-            console.log("on selected", { selected, foo });
             if (!selected || selected?.points?.length === 0) return;
 
             let result = {};
@@ -83,7 +81,6 @@ export function EmbeddingsPlot({
             handleSelected(pointIds);
           }}
           onDeselect={() => {
-            console.log("on deselected");
             handleSelected(null);
           }}
           config={{
