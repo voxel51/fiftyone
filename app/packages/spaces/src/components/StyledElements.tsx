@@ -49,7 +49,8 @@ export const StyledTab = styled.button<{ active?: boolean }>`
     props.active
       ? "var(--joy-palette-text-primary)"
       : "var(--joy-palette-text-secondary)"};
-  padding: 0px 12px 4px 12px;
+  padding: 2px 12px 2px 12px;
+  border-right: 1px solid var(--joy-palette-background-level3);
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
 `;
