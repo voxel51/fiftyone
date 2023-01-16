@@ -3,7 +3,22 @@ FiftyOne Teams
 
 Welcome to the FiftyOne Teams Docs!
 
-FiftyOne Teams is designed to integrate naturally into your ML workflow. All documentation at https://fiftyone.ai is fully applicable to FiftyOne Teams deployments, as Teams is backwards compatible with open source FiftyOne.
+FiftyOne Teams enables multiple users to securely collaborate on the same datasets and models, either on-premises or in the cloud, all built on top of the open source FiftyOne workflows that you're already relying on.
+
+All documentation at https://fiftyone.ai is fully applicable to FiftyOne Teams deployments, as Teams is backwards compatible with open source FiftyOne.
+
+|br|
+
+.. image:: https://voxel51.com/images/teams/hero.png
+   :alt: teams-hero
+   :align: center
+
+|br|
+
+.. note::
+
+    `Click here <https://voxel51.com/fiftyone-teams/>`_ to learn more about
+    FiftyOne Teams or to `schedule a demo <https://voxel51.com/#teams-form>`_.
 
 .. Callout items --------------------------------------------------------------
 
@@ -21,20 +36,14 @@ FiftyOne Teams is designed to integrate naturally into your ML workflow. All doc
     :button_link: overview.html
 
 .. customcalloutitem::
-    :header: Installation
+    :header: Installation Overview
     :description: Learn how to install the FiftyOne Teams Python SDK.
     :button_text: Install SDK
-    :button_link: teams_install_guide/index.html
-
-.. customcalloutitem::
-    :header: Configure cloud credentials
-    :description: Configure the FiftyOne Teams App to work with your private AWS, GCP, or Azure cloud.
-    :button_text: Configure credentials
-    :button_link: cloud_credentials.html
+    :button_link: install_overview.html
 
 .. customcalloutitem::
     :header: Cloud-backed media
-    :description: Integrate FiftyOne Teams seamlessly with your cloud-backed media, stored with AWS, GCP, or Azure.
+    :description: Integrate FiftyOne Teams seamlessly with your cloud-backed media, stored with AWS, GCP, Azure, or MinIO.
     :button_text: Work with cloud-backed media
     :button_link: cloud_media.html
 
@@ -70,10 +79,9 @@ FiftyOne Teams is designed to integrate naturally into your ML workflow. All doc
     :hidden:
 
     Teams overview <overview>
-    Installation guide <teams_install_guide/index>
-    Configuring cloud credentials <cloud_credentials>
+    Installation overview <install_overview>
     Cloud-backed media <cloud_media>
     Roles and permissions <roles_and_permissions>
     FiftyOne Teams App <teams_app>
-    Upgrading and downgrading <upgrading_downgrading>
+    Upgrading <upgrading_downgrading>
 

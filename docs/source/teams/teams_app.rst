@@ -7,13 +7,18 @@ FiftyOne Teams App
 
 Like the open source FiftyOne App, the FiftyOne Teams App allows you to visually inspect, filter, sort, and concatenate view stages on the level of samples in individual datasets. In addition to these features, the FiftyOne Teams App facilitates the organization, versioning, permissioning, and sharing of datasets on a per-dataset basis. This page will walk through some of the added functionality available in the FiftyOne Teams App.
 
+.. image:: https://voxel51.com/images/teams/features/feature-management.png
+   :alt: app-hero
+   :align: center
+
+
 .. _teams-app-homepage:
 
 Navigating the homepage
 ________________________
 
 
-In the top bar on this page, on the left side, the grey number directly to the right of “All datasets” indicates the total number of datasets that your team has. If there are more than 20 datasets, you can use the “Previous” and “Next” buttons at the bottom of the page to see a different batch of datasets, sorted or filtered to your specifications. 
+In the top bar on this page, on the left side, the grey number directly to the right of “All datasets” indicates the total number of datasets that your team has. If there are more than 20 datasets, you can use the “Previous” and “Next” buttons at the bottom of the page to see a different batch of datasets, sorted or filtered to your specifications.
 
 No matter what page you are on in the FiftyOne Teams App, clicking on the Voxel51 logo in the upper left will bring you back to ``<team-name>.fiftyone.ai/datasets``.
 
@@ -26,6 +31,11 @@ To pin a dataset for easy access, hover your cursor over the row corresponding t
 
 To unpin a dataset, click on the pin icon next to the dataset name under the “Your pinned datasets” header, or the pin next to the dataset name in the main view.
 
+.. image:: ../images/teams/pinned_datasets.png
+   :alt: pin-datasets
+   :align: center
+   :width: 500
+
 .. _ordering-datasets:
 
 Ordering datasets
@@ -33,12 +43,51 @@ Ordering datasets
 
 You can use the drop-down menu in the upper left to select the criterion by which to arrange the datasets, including number of samples, date of creation, and alphabetically by name.
 
-.. filtering-datasets:
+.. image:: ../images/teams/ordering_datasets.png
+   :alt: order-datasets
+   :align: center
+   :width: 500
+
+.. _filtering-datasets:
 
 Filtering datasets
 -------------------
 
-You can use the search bar (with the magnifying glass icon) to the right of the sorting dropdown to filter datasets by name, tags, and media type. One important detail is that the filtering and sorting operations are compatible with each other: so long as the search text remains in the search bar, changing the sorting order will continue to show only the datasets matching the query. 
+You can use the search bar (with the magnifying glass icon) to the right of the sorting dropdown to filter datasets by name, tags, and media type. One important detail is that the filtering and sorting operations are compatible with each other: so long as the search text remains in the search bar, changing the sorting order will continue to show only the datasets matching the query.
+
+
+.. image:: ../images/teams/filtering_datasets.png
+   :alt: filtering-datasets
+   :align: center
+   :width: 500
+
+
+
+.. _teams-dataset-samples:
+
+Viewing a dataset
+_________________
+
+After clicking on a dataset from the homepage, you will be presented with the
+familiar FiftyOne sample grid akin to the open-source App.
+
+Here you can interact with your dataset to view, tag, and filter samples and more!
+
+.. image:: ../images/teams/samples_page.png
+   :alt: samples-page
+   :align: center
+
+
+.. note::
+
+    :ref:`Check out this page <fiftyone-app>` to learn what you can do with the "Samples"
+    tab of the FiftyOne App.
+
+
+Clicking on a dataset will take you to this "Samples" tab. In the
+next section, we discuss how you can edit and delete datasets from the "Manage"
+tab.
+
 
 .. _create-edit-delete:
 
@@ -52,12 +101,24 @@ While with FiftyOne Teams it is still possible to create, edit, and delete datas
 Create new dataset
 -------------------
 
-To create a new dataset, click on the red “+ New dataset…” button in the upper right. A pop-up will then appear, allowing you to set the name of the dataset and enter a description and tags. All of these properties can be edited later. While it is strongly recommended to provide tags and a description, the only requirement for dataset creation is a unique dataset name. 
+To create a new dataset, click on the red “+ New dataset…” button in the upper right. A pop-up will then appear, allowing you to set the name of the dataset and enter a description and tags. All of these properties can be edited later. While it is strongly recommended to provide tags and a description, the only requirement for dataset creation is a unique dataset name.
 
 * **Name**: when you’re entering the text for the dataset name, a URL will appear below the name, denoting the address at which the dataset will be accessible, as well as either a green checkmark or a red “x” denoting whether the entered name is or is not available.
 * **Tags**: you can enter as many tags as you want, for the split, media type, context, version, or any other pertinent information. To add a tag, start typing in the text bar. If the tag you want to add is not present in the dropdown, type out the full text of the desired tag and then press the tab key. If the tag you want to add is present in the dropdown list, either
 	#. Navigate to it using the down arrow until that entry is highlighted and then press the enter key, or
 	#. Use your mouse to select that entry and click to add.
+
+.. image:: ../images/teams/create_new_datasets.png
+   :alt: create-datasets
+   :align: center
+
+
+.. note::
+
+   Currently, you still need to use the :ref:`FiftyOne Python SDK <teams-python-sdk>` to upload new
+   samples, labels, and metadata to your dataset after it is created.
+
+   A common approach is to automate this process with :ref:`cloud functions <cloud-functions>`.
 
 
 .. _edit-dataset:
@@ -67,10 +128,14 @@ Edit dataset
 
 To edit a dataset click on the three vertical dots on the right side of the dataset row in the main view and click on the “Edit dataset” pop-up that appears. This is equivalent to clicking on the dataset’s row itself and then toggling from the “Samples” tab to the “Manage” tab in the screen the appears.
 
-* **Edit basic info**: in the “Basic Info” tab, you can change the name, description, and tags for the dataset. Additionally, you can clone the dataset. To clone the dataset, all you need to do is specify a name for the cloned dataset.
+* **Edit basic info**: in the “Basic Info” tab, you can change the name, description, and tags for the dataset. Additionally, you can clone the dataset, as long as you are not a Guest. To clone the dataset, all you need to do is specify a name for the cloned dataset.
 * **Manage dataset access**: in the “Manage dataset access” tab, you can configure two different types of access.
 	#. Under the “Default access” header, you can specify the default level of access for all members of the team. Unless otherwise specified in the “People with access” section, this is the level of access people on your team will have.
 	#. Under the “People with access” header, you can grant a different level of access to individuals. To grant any level of access to someone who is not a member of the team, they will already need to be registered as a “Guest”, and they must first be invited as a Guest from the Team Settings page. See this page for details on managing team settings.
+
+.. image:: ../images/teams/edit_datasets.png
+   :alt: edit-datasets
+   :align: center
 
 
 .. _delete-dataset:
@@ -80,8 +145,9 @@ Delete dataset
 
 To delete a dataset, switch to the “Danger zone” tab and select “Delete entire dataset”. One should proceed with caution as this operation is permanent.
 
-
-
+.. image:: ../images/teams/delete_dataset.png
+   :alt: delete-dataset
+   :align: center
 
 
 

@@ -11,52 +11,74 @@ FiftyOne Teams is designed to integrate naturally into your ML workflow. It inte
 FiftyOne vs FiftyOne Teams
 ___________________________
 
-.. list-table::
-   :widths: 16 7 7 7 7 7 7 7 7 7 7 7 7
-   :header-rows: 1
-   :stub-columns: 1
+.. raw:: html
 
-   * - 
-     - Curate Datasets
-     - Evaluate Models
-     - Find Mistakes
-     - Visualize Embeddings
-     - Deployment
-     - Dataset Management
-     - User Permissions
-     - Dataset Permissions
-     - Dataset Versioning
-     - SSO
-     - Enterprise Support
-     - Licensing
-   * - FiftyOne
-     - ☑
-     - ☑
-     - ☑
-     - ☑
-     - Local, Single user
-     - ☐
-     - ☐
-     - ☐
-     - ☐
-     - ☐
-     - Slack Community
-     - Apache 2.0
-   * - FiftyOne Teams
-     - ☑
-     - ☑
-     - ☑
-     - ☑
-     - | Multi-user, on-premise,
-       | private/public cloud
-     - ☑
-     - ☑
-     - ☑
-     - ☑
-     - ☑
-     - ☑
-     - | Unlimited data, flexible
-       | user-based licensing
+    </table><table class="docutils align-center">
+    <thead>
+    <tr class="row-odd"><th class="head stub"></th>
+    <th class="head" style="text-align: center"><p><b>FiftyOne Teams</b></p></th>
+    <th class="head" style="text-align: center"><p><b>FiftyOne</b></p></th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="row-even"><th class="stub"><p>Curate Datasets</p></th>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    </tr>
+    <tr class="row-odd", style="border-top: 1px solid #cacaca"><th class="stub"><p>Evaluate Models</p></th>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    </tr>
+    <tr class="row-even", style="border-top: 1px solid #cacaca"><th class="stub"><p>Find Mistakes</p></th>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    </tr>
+    <tr class="row-odd", style="border-top: 1px solid #cacaca"><th class="stub"><p>Visualize Embeddings</p></th>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    </tr>
+    <tr class="row-even", style="border-top: 1px solid #cacaca"><th class="stub"><p>Deployment</p></th>
+    <td style="text-align: center"><div class="line-block">
+    <div class="line">Multi-user, on-premise,</div>
+    <div class="line">private/public cloud</div>
+    </div>
+    </td>
+    <td style="text-align: center"><p>Local, Single user</p></td>
+    </tr>
+    <tr class="row-odd", style="border-top: 1px solid #cacaca"><th class="stub"><p>Dataset Management</p></th>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <td style="text-align: center"></td>
+    </tr>
+    <tr class="row-even", style="border-top: 1px solid #cacaca"><th class="stub"><p>User Permissions</p></th>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <td style="text-align: center"></td>
+    </tr>
+    <tr class="row-odd", style="border-top: 1px solid #cacaca"><th class="stub"><p>Dataset Permissions</p></th>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <td style="text-align: center"></td>
+    </tr>
+    <tr class="row-even", style="border-top: 1px solid #cacaca"><th class="stub"><p>Dataset Versioning</p></th>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <td style="text-align: center"></td>
+    </tr>
+    <tr class="row-odd", style="border-top: 1px solid #cacaca"><th class="stub"><p>SSO</p></th>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <td style="text-align: center"></td>
+    </tr>
+    <tr class="row-even", style="border-top: 1px solid #cacaca"><th class="stub"><p>Enterprise Support</p></th>
+    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <td style="text-align: center"><p>Slack Community</p></td>
+    </tr>
+    <tr class="row-odd", style="border-top: 1px solid #cacaca"><th class="stub"><p>Licensing</p></th>
+    <td style="text-align: center"><div class="line-block">
+    <div class="line">Unlimited data, flexible</div>
+    <div class="line">user-based licensing</div>
+    </div>
+    </td>
+    <td style="text-align: center"><p>Apache 2.0</p></td>
+    </tr>
+    </tbody>
+    </table>
 
 
 .. _backwards-compatibility:
@@ -64,7 +86,7 @@ ___________________________
 Backwards compatibility
 __________________________
 
-FiftyOne Teams is fully backwards compatible with open-source FiftyOne. This means that all of your pre-existing FiftyOne workflows should 
+FiftyOne Teams is fully backwards compatible with open-source FiftyOne. This means that all of your pre-existing FiftyOne workflows should
 be usable without modification. Some such FiftyOne workflows are listed in the table below.
 
 .. list-table::
@@ -85,7 +107,7 @@ be usable without modification. Some such FiftyOne workflows are listed in the t
      - :ref:`Using the annotation API <fiftyone-annotation>`
    * - Model training and evaluation
      - | :ref:`Exporting data for model training <exporting-datasets>`
-       | `Adding model predictions to FiftyOne <https://voxel51.com/docs/fiftyone/tutorials/evaluate_detections.html#Add-predictions-to-dataset>`_ 
+       | `Adding model predictions to FiftyOne <https://voxel51.com/docs/fiftyone/tutorials/evaluate_detections.html#Add-predictions-to-dataset>`_
        | :ref:`Evaluating models in FiftyOne <evaluating-models>`
        | :ref:`Using interactice plots to explore results <interactive-plots>`
 
