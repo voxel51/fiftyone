@@ -28,14 +28,10 @@ export function tracesToData(
       // const color = Color.fromCSSRGBValues(r, g, b)
       const color = Color.fromCSSRGBValues(...getColor(key));
 
-      console.log({ colorscale });
-
       const mappedColorscale = colorscale.map((c, idx) => {
         const color = Color.fromCSSRGBValues(...c);
         return [idx / (colorscale.length - 1), color.toCSSRGBString()];
       });
-
-      console.log(mappedColorscale);
 
       return {
         x: trace.map((d) => d.points[0]),
