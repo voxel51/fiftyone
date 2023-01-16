@@ -38,13 +38,6 @@ export function useSelectionEffect() {
 
   // updated the selection when the extended view updates
   useEffect(() => {
-    console.log("updated the selection when the extended view updates", {
-      view,
-      extended,
-      filters,
-      extendedSelection,
-    });
-
     if (loadedPlot) {
       const resolvedExtended = extendedSelection ? extended : null;
       fetchUpdatedSelection({
