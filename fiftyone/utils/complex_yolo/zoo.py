@@ -7,32 +7,63 @@ Complex-YOLOv3 model wrapper for the FiftyOne Model Zoo.
 """
 import logging
 import os
-from pkg_resources import packaging
-import warnings
+
+import numpy as np
 
 import eta.core.web as etaw
-import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
 
 fou.ensure_torch()
-import math
-import numpy as np
-import open3d as o3d
 import torch
+from torch.autograd import Variable
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-Tensor = (
-    torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
-)
+o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_import("open3d"))
 
-from .model import build_model
+from .model import ComplexYOLOv3
 
 
 logger = logging.getLogger(__name__)
+
+
+def apply_model(
+    samples,
+    model,
+    feature_map_field,
+    feature_group_slice=None,
+    label_field="predictions",
+    label_group_slice=None,
+    bounds=None,
+):
+    """Wrapper for applying a :class:`TorchComplexYOLOv3Model` to a sample
+    collection.
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        model: a :class:`fiftyone.utils.complex_yolo.TorchComplexYOLOv3Model`
+        feature_map_field: the field containing the feature maps to feed to the
+            model
+        feature_group_slice (None): the group slice containing the feature
+            maps, if the collection is grouped
+        label_field ("predictions"): the name of the field in which to store
+            the model predictions
+        label_group_slice (None): the group slice on which to store the
+            predictions, if the collection is grouped
+        bounds (None): optionl ``(min, max)`` bounds defining the field of view
+            of the feature maps
+    """
+    model.predict_all(
+        samples,
+        feature_map_field,
+        feature_group_slice=feature_group_slice,
+        label_field=label_field,
+        label_group_slice=label_group_slice,
+        bounds=bounds,
+    )
 
 
 class TorchComplexYOLOv3ModelConfig(
@@ -44,150 +75,179 @@ class TorchComplexYOLOv3ModelConfig(
     arguments.
 
     Args:
+        config_url: a URL from which the model's config can be downloaded,
+            if necessary
         config_base_filename: the filename in ``fo.config.model_zoo_dir`` in
             which to store the model's config file
-        config_base_url: a URL from which the model's config can be downloaded,
-            if necessary
-        weights_base_filename: the filename in ``fo.config.model_zoo_dir`` in
-            which to store the model's weights file
-        weights_base_gid: a google drive ID from which the model's weights can be
-            downloaded, if necessary
-        classes (None): an optional list of custom classes to use for zero-shot
-            prediction
+        nms_thresh (0.3) a non-maximum suppression threshold to use
     """
 
     def __init__(self, d):
         d = self.init(d)
         super().__init__(d)
 
+        self.config_url = self.parse_string(d, "config_url")
         self.config_base_filename = self.parse_string(
             d, "config_base_filename"
         )
-        self.config_base_url = self.parse_string(d, "config_base_url")
-        self.weights_base_filename = self.parse_string(
-            d, "weights_base_filename"
-        )
-        self.weights_base_gid = self.parse_string(d, "weights_base_gid")
-        self.weights_path = os.path.join(
-            fo.config.model_zoo_dir, self.weights_base_filename
-        )
-        self.config_path = os.path.join(
+        self.nms_thresh = self.parse_number(d, "nms_thresh", default=0.3)
+
+        self._config_path = os.path.join(
             fo.config.model_zoo_dir, self.config_base_filename
         )
-        self.device = device
-        self.Tensor = Tensor
-        self.labels = d["classes"].replace(" ", "").split(",")
+
+    @property
+    def config_path(self):
+        return self._config_path
+
+    def download_config_if_necessary(self):
+        if not os.path.isfile(self._config_path):
+            logger.info("Downloading YOLOv3 config...")
+            etaw.download_file(self.config_url, path=self._config_path)
 
 
 class TorchComplexYOLOv3Model(fout.TorchImageModel):
-    """Torch implementation of Complex-YOLOv3 from https://github.com/ghimiredhikura/Complex-YOLOv3.
+    """Torch implementation of Complex-YOLOv3 from
+    https://github.com/ghimiredhikura/Complex-YOLOv3.
 
     Args:
         config: a :class:`TorchComplexYOLOv3ModelConfig`
     """
 
-    def __init__(self, config, args=dict()):
-        self._device = device
-        self.img_size = args.get("img_size", 608)
-        self.nms_thresh = args.get("nms_thresh", 0.3)
-        self.conf_thresh = args.get("conf_thresh", 0.9)
+    def __init__(self, config):
         super().__init__(config)
-        self._labels = self.config.labels
-        self._label_class_dict = {c: i for i, c in enumerate(self._labels)}
 
-    def get_label(self, class_id):
-        return (
-            self._labels[class_id]
-            if class_id < len(self._labels)
-            else "DontCare"
+        self._Tensor = (
+            torch.cuda.FloatTensor
+            if torch.cuda.is_available()
+            else torch.FloatTensor
         )
-
-    def _download_weights_if_necessary(self, weights_base_gid, weights_path):
-        if not os.path.isfile(weights_path):
-            logger.info("Downloading YOLOv3 weights...")
-            etaw.download_google_drive_file(
-                weights_base_gid, path=weights_path
-            )
-
-    def _download_config_if_necessary(self, config_base_url, config_path):
-        if not os.path.isfile(config_path):
-            logger.info("Downloading YOLOv3 config...")
-            etaw.download_file(config_base_url, path=config_path)
+        self._device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
+        self._class_heights = None
+        self._class_zs = None
 
     def _download_model(self, config):
-        self._download_config_if_necessary(
-            config.config_base_url, config.config_path
-        )
-        self._download_weights_if_necessary(
-            config.weights_base_gid, config.weights_path
-        )
+        config.download_model_if_necessary()
+        config.download_config_if_necessary()
 
+    def _load_network(self, config):
+        model = ComplexYOLOv3(config.config_path)
+        model.load_state_dict(
+            torch.load(
+                config.model_path,
+                map_location=torch.device(self._device),
+            )
+        )
+        return model.eval().to(self._device).float()
+
+    @property
     def preprocess(self):
         return False
 
-    def _load_network(self, config):
-        m = build_model(config).to(device).float()
-        self._model = m
-        self._model._labels = self.config.labels
-        self._model._label_class_dict = {
-            c: i for i, c in enumerate(self._model._labels)
-        }
-        return m
-
     def set_class_heights(self, class_heights):
-        self._model.class_heights = class_heights
+        self._class_heights = class_heights
 
     def set_class_zs(self, class_zs):
-        self._model.class_zs = class_zs
+        self._class_zs = class_zs
+
+    def predict_all(
+        self,
+        samples,
+        feature_map_field,
+        feature_group_slice=None,
+        label_field="predictions",
+        label_group_slice=None,
+        bounds=None,
+    ):
+        is_grouped = samples.media_type == fom.GROUP
+        if is_grouped:
+            iter_samples = samples.iter_groups(progress=True)
+        else:
+            iter_samples = samples.iter_samples(progress=True)
+
+        for sample_or_group in iter_samples:
+            if is_grouped:
+                feature_sample = sample_or_group[feature_group_slice]
+                pred_sample = sample_or_group[label_group_slice]
+            else:
+                feature_sample = sample_or_group
+                pred_sample = sample_or_group
+
+            feature_map = np.einsum(
+                "jki -> ijk",
+                np.load(feature_sample[feature_map_field]),
+            )
+            feature_maps = torch.tensor(np.array([feature_map]))
+            feature_maps = Variable(feature_maps.type(self._Tensor))
+            preds = self._predict_all(feature_maps)
+
+            bounds = self._get_bounds(bounds, pred_sample)
+            detections = self._to_detections(preds, bounds)
+
+            pred_sample[label_field] = fo.Detections(detections=detections)
+            pred_sample.save()
 
     def _apply_non_maximum_suppression(self, preds):
         return self._model.nms(
-            preds, conf_thresh=self.conf_thresh, nms_thresh=self.nms_thresh
+            preds,
+            self.config.confidence_thresh,
+            self.config.nms_thresh,
         )
 
-    def _get_bev_predictions(self, imgs):
-        if self.device == "cuda":
+    def _predict_all(self, imgs):
+        if self._device == "cuda":
             imgs = imgs.cuda()
+
         preds = self._model(imgs)
-        preds = self._apply_non_maximum_suppression(preds)
-        return preds
+        return self._apply_non_maximum_suppression(preds)
 
-    def _convert_bev_to_pcd_detections(self, bev_preds, min_bound, max_bound):
-        img_size = self.img_size
-        detections = []
+    def _to_detections(self, preds, bounds):
+        width, height = self.config.image_size
+        min_bound, max_bound = bounds
+        labels = self.classes
 
-        ### Add in h and z info
-        preds = self._model.compute_height(bev_preds)
+        # Add in h and z info
+        preds = self._model.compute_height(
+            preds,
+            labels,
+            class_height=self._class_heights,
+            class_zs=self._class_zs,
+        )
         if len(preds) == 0:
             return None
-        for i, pred in enumerate(preds[0]):
-            ### Read in params
-            y, x, l, w, im, re, conf, cls_conf, cls_pred, h, z = pred
-            ### rescale x, y, w, l
-            x, y, w, l = x / img_size, y / img_size, w / img_size, l / img_size
-            w = w * (max_bound[1] - min_bound[1])
-            l = l * (max_bound[0] - min_bound[0])
-            y = y * (max_bound[1] - min_bound[1]) + min_bound[1]
-            x = x * (max_bound[0] - min_bound[0]) + min_bound[0]
 
-            ### Compute rotation angle r_y in [-pi/2, pi/2]
+        detections = []
+        for pred in preds[0]:
+            # Read in params
+            y, x, l, w, im, re, conf, cls_conf, cls_pred, h, z = pred
+
+            # Rescale x, y, w, l
+            x *= max_bound[0] / width
+            y *= max_bound[1] / height
+            w *= (max_bound[1] - min_bound[1]) / width
+            l *= (max_bound[0] - min_bound[0]) / height
+
+            # Compute rotation angle r_y in [-pi/2, pi/2]
             yaw = np.arctan2(im, re)
             ry = 3 * np.pi / 2 + yaw
             if ry > np.pi:
                 ry -= 2 * np.pi
+
             rotation = [0, ry, 0]
 
-            label = self._labels[int(cls_pred)]
+            label = labels[int(cls_pred)]
             dimensions = [h, l, w]
 
-            ### Transform between coordinate systems
+            # Transform between coordinate systems
             x, y, z = -y, z, x
             location = [x, y, z]
 
             beta = np.arctan2(z, x)
             alpha = -np.sign(beta) * np.pi / 2 + beta + ry
 
-            new_detection = fo.Detection(
+            detection = fo.Detection(
                 label=label,
                 dimensions=dimensions,
                 location=location,
@@ -195,99 +255,20 @@ class TorchComplexYOLOv3Model(fout.TorchImageModel):
                 confidence=conf,
                 alpha=alpha,
             )
+            detections.append(detection)
 
-            detections.append(new_detection)
         return detections
 
-    def _get_group_pcd(self, sample, pcd_group_slice):
-        group_id = sample.group.id
-        dataset = sample._dataset
-        pcd_sample_id = dataset.get_group(group_id)[pcd_group_slice].filepath
-        dataset.group_slice = pcd_group_slice
-        pcd_sample = dataset[pcd_sample_id]
-        return pcd_sample
+    def _get_bounds(self, bounds, pcd_sample):
+        if bounds is None:
+            bounds = (None, None)
 
-    def _get_bounds(self, min_bound, max_bound, pcd_sample):
+        min_bound, max_bound = bounds
+
         if min_bound is None or max_bound is None:
             pcd_path = pcd_sample.filepath
             pcd_points = np.array(o3d.io.read_point_cloud(pcd_path).points)
             min_bound = np.amin(pcd_points, axis=0)
             max_bound = np.amax(pcd_points, axis=0)
+
         return min_bound, max_bound
-
-    def predict_all(
-        self,
-        dataset,
-        feature_map_field="feature_map_filepath",
-        pcd_group_slice="pcd",
-        min_bound=None,
-        max_bound=None,
-    ):
-
-        from torch.autograd import Variable
-
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        Tensor = (
-            torch.cuda.FloatTensor
-            if torch.cuda.is_available()
-            else torch.FloatTensor
-        )
-
-        samples = dataset.select_group_slices("bev")
-
-        with etau.ProgressBar() as pb:
-            for sample in pb(samples):
-
-                bev_map = np.einsum(
-                    "jki -> ijk", np.load(sample[feature_map_field])
-                )
-                bev_maps = torch.tensor(np.array([bev_map]))
-                input_imgs = Variable(bev_maps.type(Tensor))
-                bev_preds = self._get_bev_predictions(input_imgs)
-
-                pcd_sample = self._get_group_pcd(sample, pcd_group_slice)
-                min_bound, max_bound = self._get_bounds(
-                    min_bound, max_bound, pcd_sample
-                )
-                detections = self._convert_bev_to_pcd_detections(
-                    bev_preds, min_bound, max_bound
-                )
-                pcd_sample["predictions"] = fo.Detections(
-                    detections=detections
-                )
-                pcd_sample.save()
-
-
-def apply_model(
-    model,
-    bev_samples,
-    feature_map_field="feature_map_filepath",
-    pcd_group_slice="pcd",
-    min_bound=None,
-    max_bound=None,
-):
-    """Wrapper for applying ComplexYOLOv3 model to a dataset or collection of samples and
-        adding the generated 3d bbox detections to the corresponding point cloud (pcd)
-        samples
-
-    Args:
-        model: a :class:`fiftyone.utils.complex_yolo.TorchComplexYOLOv3Model` object
-        samples: a collection of :class:`fiftyone.core.sample.Sample` objects. Can be either a
-            list, a Dataset, or a DatasetView. MUST be BEVs!
-        feature_map_field: field on the samples in which to find the bird's eye view RGB maps
-            that are inputs to model.predict_all(...)
-        pcd_group_slice: group slice on which to add 3d bbox detections
-
-    """
-    from torch.autograd import Variable
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    Tensor = (
-        torch.cuda.FloatTensor
-        if torch.cuda.is_available()
-        else torch.FloatTensor
-    )
-
-    model.predict_all(
-        bev_samples, feature_map_field, pcd_group_slice, min_bound, max_bound
-    )

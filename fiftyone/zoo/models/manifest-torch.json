@@ -1742,7 +1742,7 @@
         },
         {
             "base_name": "complex-yolo-v3-torch",
-            "base_filename": "complex_yolov3",
+            "base_filename": "yolov3_ckpt_epoch-298.pth",
             "version": null,
             "description": "Complex extension of YOLO object detection model <https://arxiv.org/abs/1803.06199>`_ ",
             "source": "https://github.com/ghimiredhikura/Complex-YOLOv3",
@@ -1750,23 +1750,20 @@
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "url": "https://github.com/ghimiredhikura/Complex-YOLOv3/blob/master/config/complex_yolov3.cfg"
+                    "google_drive_id": "1e7PCqeV3tS68KtBIUbX34Uhy81XnsYZV"
                 }
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.complex_yolo.TorchComplexYOLOv3Model",
                 "config": {
-                    "weights_base_gid": "1e7PCqeV3tS68KtBIUbX34Uhy81XnsYZV",
-                    "weights_base_filename": "yolov3_ckpt_epoch-298.pth",
-                    "config_base_url": "https://raw.githubusercontent.com/ghimiredhikura/Complex-YOLOv3/master/config/complex_yolov3.cfg",
+                    "config_url": "https://raw.githubusercontent.com/ghimiredhikura/Complex-YOLOv3/master/config/complex_yolov3.cfg",
                     "config_base_filename": "complex_yolov3.cfg",
-                    "classes": "Car, Pedestrian, Cyclist",
                     "entrypoint_fcn": "",
-                    "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
-                    "image_size": null,
-                    "image_min_dim": 224,
-                    "embeddings_layer": null
+                    "output_processor_cls": "fiftyone.utils.torch.NullOutputProcessor",
+                    "labels_string": "Car,Pedestrian,Cyclist",
+                    "image_size": [608, 608],
+                    "confidence_thresh": 0.9,
+                    "nms_thresh": 0.3
                 }
             },
             "requirements": {
