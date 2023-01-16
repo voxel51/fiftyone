@@ -15,6 +15,10 @@ import { sidebarSampleId } from "./modal";
 import { refresher } from "./atoms";
 import { field } from "./schema";
 
+/**
+ * GraphQL Selector Family for Aggregations.
+ * @param extended - Whether to use extended aggregations.
+ */
 export const aggregationQuery = graphQLSelectorFamily<
   VariablesOf<foq.aggregationsQuery>,
   { extended: boolean; modal: boolean; paths: string[]; root?: boolean },
@@ -28,24 +32,26 @@ export const aggregationQuery = graphQLSelectorFamily<
     ({ extended, modal, paths, root = false }) =>
     ({ get }) => {
       const mixed = get(groupStatistics(modal)) === "group";
+      //TODO: refactor to reuse viewStateForm here?
+      const aggForm = {
+        index: get(refresher),
+        dataset: get(selectors.datasetName),
+        extendedStages: root ? [] : get(selectors.extendedStagesUnsorted),
+        filters:
+          extended && !root
+            ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
+            : null,
+        groupId: !root && modal && mixed ? get(groupId) : null,
+        hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
+        paths,
+        mixed,
+        sampleIds: !root && modal && !mixed ? [get(sidebarSampleId)] : [],
+        slice: get(currentSlice(modal)),
+        view: !root ? get(viewAtoms.view) : [],
+      };
 
       return {
-        form: {
-          index: get(refresher),
-          dataset: get(selectors.datasetName),
-          extendedStages: root ? [] : get(selectors.extendedStagesUnsorted),
-          filters:
-            extended && !root
-              ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
-              : null,
-          groupId: !root && modal && mixed ? get(groupId) : null,
-          hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
-          paths,
-          mixed,
-          sampleIds: !root && modal && !mixed ? [get(sidebarSampleId)] : [],
-          slice: get(currentSlice(modal)),
-          view: !root ? get(viewAtoms.view) : [],
-        },
+        form: aggForm,
       };
     },
 });
@@ -465,6 +471,9 @@ export const nonfiniteCounts = selectorFamily({
     },
 });
 
+/**
+ * @hidden
+ */
 export type Nonfinite = "nan" | "ninf" | "inf" | "none";
 
 export const nonfiniteCount = selectorFamily<

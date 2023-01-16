@@ -8,6 +8,11 @@ export namespace State {
     SAMPLE = "SAMPLE",
   }
 
+  /**
+   * An object containing the configuration for plugins.
+   * Each key is the name of a plugin, and the value is the
+   * configuration for that plugin.
+   */
   export type PluginConfig = { [pluginName: string]: object };
   export interface Config {
     colorPool: string[];
@@ -104,6 +109,10 @@ export namespace State {
     sidebarGroups?: SidebarGroup[];
     sidebarMode?: "all" | "best" | "fast";
   }
+
+  /**
+   * The dataset object returned by the API.
+   */
   export interface Dataset {
     id: string;
     brainMethods: BrainRun[];
@@ -122,17 +131,20 @@ export namespace State {
     sampleFields: StrictField[];
     version: string;
     skeletons: StrictKeypointSkeleton[];
-    defaultSkeleton: KeypointSkeleton;
+    defaultSkeleton?: KeypointSkeleton;
     groupMediaTypes?: {
       name: string;
       mediaType: MediaType;
     }[];
-    defaultGroupSlice: string;
+    defaultGroupSlice?: string;
     groupField: string;
     appConfig: DatasetAppConfig;
     info: { [key: string]: string };
   }
 
+  /**
+   * @hidden
+   */
   export interface Filter {}
 
   export enum TagKey {

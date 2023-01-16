@@ -320,6 +320,7 @@ type Mutation {
     session: String
     viewName: String!
     viewStages: BSONArray = null
+    form: StateForm = null
     datasetName: String = null
     description: String = null
     color: String = null
@@ -529,7 +530,7 @@ type StringAggregationValue {
 }
 
 type Target {
-  target: Int!
+  target: String!
   value: String!
 }
 

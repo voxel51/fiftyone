@@ -39,6 +39,9 @@ import { extendedSelection } from "./atoms";
 import { filters } from "./filters";
 import { groupSlice, groupStatistics } from "./groups";
 
+/**
+ * A generic type that extracts the response type from a GraphQL query.
+ */
 export type AggregationResponseFrom<
   TAggregate extends { response: { aggregate: readonly unknown[] } }
 > = TAggregate["response"]["aggregate"][0];

@@ -15,11 +15,13 @@ declare global {
   }
 }
 
-// required for plugins to use the same instance of React
-window.React = React;
-window.ReactDOM = ReactDOM;
-window.recoil = recoil;
-window.__fos__ = fos;
+if (typeof window !== "undefined") {
+  // required for plugins to use the same instance of React
+  window.React = React;
+  window.ReactDOM = ReactDOM;
+  window.recoil = recoil;
+  window.__fos__ = fos;
+}
 
 function usingRegistry() {
   if (!window.__fo_plugin_registry__) {
@@ -28,6 +30,10 @@ function usingRegistry() {
   return window.__fo_plugin_registry__;
 }
 
+/**
+ * Adds a plugin to the registry. This is called by the plugin itself.
+ * @param registration The plugin registration
+ */
 export function registerComponent<T>(
   registration: PluginComponentRegistration<T>
 ) {
@@ -36,9 +42,20 @@ export function registerComponent<T>(
   }
   usingRegistry().register(registration);
 }
+
+/**
+ * Remove a plugin from the registry.
+ * @param name The name of the plugin
+ */
 export function unregisterComponent(name: string) {
   usingRegistry().unregister(name);
 }
+
+/**
+ * Get a list of plugins match the given `type`.
+ * @param type The type of plugin to list
+ * @returns A list of plugins
+ */
 export function getByType(type: PluginComponentType) {
   return usingRegistry().getByType(type);
 }
@@ -94,6 +111,9 @@ async function loadScript(name, url) {
   });
 }
 
+/**
+ * A react hook for loading the plugin system.
+ */
 export function usePlugins() {
   const [state, setState] = useState("loading");
   useEffect(() => {
@@ -119,6 +139,13 @@ export function usePlugin(
   return usingRegistry().getByType(type);
 }
 
+/**
+ * A react hook that returns a list of active plugins.
+ *
+ * @param type The type of plugin to list
+ * @param ctx Argument passed to the plugin's activator function
+ * @returns A list of active plugins
+ */
 export function useActivePlugins(type: PluginComponentType, ctx: any) {
   return useMemo(
     () =>
@@ -138,11 +165,28 @@ export enum PluginComponentType {
 }
 
 type PluginActivator = (props: any) => boolean;
-interface PluginComponentRegistration<T extends {} = {}> {
+
+/**
+ * A plugin registration.
+ */
+export interface PluginComponentRegistration<T extends {} = {}> {
+  /**
+   * The name of the plugin
+   */
   name: string;
+  /**
+   * The optional label of the plugin to display to the user
+   */
   label?: string;
+  /**
+   * The React component to render
+   */
   component: FunctionComponent<T>;
+  /** The plugin type */
   type: PluginComponentType;
+  /**
+   * A function that returns true if the plugin should be active
+   */
   activator: PluginActivator;
 }
 

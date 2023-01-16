@@ -2,21 +2,8 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import {
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
-import {
-  filters,
-  groupSlice,
-  resolvedGroupSlice,
-  selectedLabelList,
-  selectedSamples,
-  State,
-  stateSubscription,
-  view,
-} from "../recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
+import { State, stateSubscription, view, viewStateForm } from "../recoil";
 import { RouterContext } from "../routing";
 import { transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
@@ -104,41 +91,38 @@ const useSetView = (
               : viewOrUpdater;
           commit({
             variables: {
-              subscription: subscription,
-              session: session,
+              subscription,
+              session,
               view: value,
               datasetName: dataset.name,
               form: patch
-                ? {
-                    filters: snapshot.getLoadable(filters).contents,
-                    sampleIds: [
-                      ...snapshot.getLoadable(selectedSamples).contents,
-                    ],
-                    labels: snapshot.getLoadable(selectedLabelList).contents,
-                    extended: snapshot.getLoadable(fos.extendedStages).contents,
-                    addStages,
-                    slice: selectSlice
-                      ? snapshot.getLoadable(resolvedGroupSlice(false)).contents
-                      : null,
-                  }
+                ? snapshot.getLoadable(
+                    viewStateForm({
+                      addStages: addStages ? JSON.stringify(addStages) : null,
+                      modal: false,
+                      selectSlice,
+                    })
+                  ).contents
                 : {},
-
-              changingSavedView: changingSavedView,
-              savedViewSlug: savedViewSlug,
-              viewName: viewName,
+              changingSavedView,
+              savedViewSlug,
+              viewName,
             },
             onError,
             onCompleted: ({ setView: { dataset, view: value } }) => {
               const isDesktop = isElectron();
-              if (router.history.location.state) {
+              if (
+                router.history.location.state &&
+                router.history.location.state.state
+              ) {
                 const newState = {
-                  ...router.history.location.state,
+                  ...router.history.location.state.state,
                   view: value,
                   viewCls: dataset.viewCls,
                   selected: [],
                   selectedLabels: [],
-                  viewName: viewName,
-                  savedViewSlug: savedViewSlug,
+                  viewName: viewName || null,
+                  savedViewSlug: savedViewSlug || null,
                   savedViews: savedViews,
                   changingSavedView: changingSavedView,
                 };
@@ -208,12 +192,14 @@ const useSetView = (
                     viewCls: dataset.viewCls,
                     selected: [],
                     selectedLabels: [],
-                    viewName: viewName,
-                    savedViews: savedViews,
-                    savedViewSlug: savedViewSlug,
-                    changingSavedView: changingSavedView,
+                    viewName,
+                    savedViews,
+                    savedViewSlug,
+                    changingSavedView,
                   },
                 });
+                onComplete && onComplete();
+                return;
               } else {
                 // stateless use in teams / embedded app
                 const url = new URL(window.location.toString());
@@ -247,10 +233,10 @@ const useSetView = (
                   viewCls: dataset.viewCls,
                   selected: [],
                   selectedLabels: [],
-                  viewName: viewName,
-                  savedViews: savedViews,
-                  savedViewSlug: savedViewSlug,
-                  changingSavedView: changingSavedView,
+                  viewName,
+                  savedViews,
+                  savedViewSlug,
+                  changingSavedView,
                 },
               });
 

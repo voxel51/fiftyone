@@ -83,7 +83,7 @@ const ViewBar = React.memo(() => {
       setView,
       fieldNames: fieldPaths,
     });
-  }, [view]);
+  }, [view, fieldPaths]);
 
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);

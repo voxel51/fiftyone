@@ -446,12 +446,13 @@ class Detection(_HasAttributesDict, _HasID, Label):
         You must provide either ``mask`` or ``frame_size`` to use this method.
 
         Args:
-            mask (None): an optional 2D integer numpy array to use as an
-                initial mask to which to add this object
+            mask (None): an optional numpy array to use as an initial mask to
+                which to add this object
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            target (255): the pixel value to use to render the object
+            target (255): the pixel value or RGB hex string to use to render
+                the object
 
         Returns:
             a :class:`Segmentation`
@@ -555,15 +556,16 @@ class Detections(_HasLabelList, Label):
         You must provide either ``mask`` or ``frame_size`` to use this method.
 
         Args:
-            mask (None): an optional 2D integer numpy array to use as an
-                initial mask to which to add objects
+            mask (None): an optional array to use as an initial mask to which
+                to add objects
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            mask_targets (None): a dict mapping integer pixel values to label
-                strings defining which object classes to render and which pixel
-                values to use for each class. If omitted, all objects are
-                rendered with pixel value 255
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                object classes to render and which pixel values to use for each
+                class. If omitted, all objects are rendered with pixel value
+                255
 
         Returns:
             a :class:`Segmentation`
@@ -675,8 +677,8 @@ class Polyline(_HasAttributesDict, _HasID, Label):
         You must provide either ``mask`` or ``frame_size`` to use this method.
 
         Args:
-            mask (None): an optional 2D integer numpy array to use as an
-                initial mask to which to add objects
+            mask (None): an optional numpy array to use as an initial mask to
+                which to add objects
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
@@ -813,15 +815,16 @@ class Polylines(_HasLabelList, Label):
         You must provide either ``mask`` or ``frame_size`` to use this method.
 
         Args:
-            mask (None): an optional 2D integer numpy array to use as an
-                initial mask to which to add objects
+            mask (None): an optional numpy array to use as an initial mask to
+                which to add objects
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            mask_targets (None): a dict mapping integer pixel values to label
-                strings defining which object classes to render and which
-                pixel values to use for each class. If omitted, all objects are
-                rendered with pixel value 255
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                object classes to render and which pixel values to use for each
+                class. If omitted, all objects are rendered with pixel value
+                255
             thickness (1): the thickness, in pixels, at which to render
                 (non-filled) polylines
 
@@ -908,7 +911,7 @@ class Segmentation(_HasID, _HasMedia, Label):
     segmentation.
 
     Args:
-        mask (None): a 2D numpy array with integer values encoding the semantic
+        mask (None): a numpy array with integer values encoding the semantic
             labels
         mask_path (None): the path to the segmentation image on disk
     """
@@ -970,6 +973,49 @@ class Segmentation(_HasID, _HasMedia, Label):
                 self.mask = None
                 self.mask_path = outpath
 
+    def transform_mask(self, targets_map, outpath=None, update=False):
+        """Transforms this instance's mask according to the provided targets
+        map.
+
+        This method can be used to transform between grayscale and RGB masks,
+        or it can be used to edit the pixel values or colors of a mask without
+        changing the number of channels.
+
+        Note that any pixel values not in ``targets_map`` will be zero in the
+        transformed mask.
+
+        Args:
+            targets_map: a dict mapping existing pixel values (2D masks) or RGB
+                hex strings (3D masks) to new pixel values or RGB hex strings.
+                You may convert between grayscale and RGB using this argument
+            outpath (None): an optional path to write the transformed mask on
+                disk
+            update (False): whether to save the transformed mask on this
+                instance
+
+        Returns:
+            the transformed mask
+        """
+        mask = self.get_mask()
+        if mask is None:
+            return
+
+        mask = _transform_mask(mask, targets_map)
+
+        if outpath is not None:
+            _write_mask(mask, outpath)
+
+            if update:
+                self.mask = None
+                self.mask_path = outpath
+        elif update:
+            if self.mask_path is not None:
+                _write_mask(mask, self.mask_path)
+            else:
+                self.mask = mask
+
+        return mask
+
     def to_detections(self, mask_targets=None, mask_types="stuff"):
         """Returns a :class:`Detections` representation of this instance with
         instance masks populated.
@@ -981,9 +1027,10 @@ class Segmentation(_HasID, _HasMedia, Label):
         per connected region of that class in the segmentation.
 
         Args:
-            mask_targets (None): a dict mapping integer pixel values to label
-                strings defining which classes to generate detections for. If
-                omitted, all labels are assigned to the integer pixel values
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                classes to generate detections for. If omitted, all labels are
+                assigned to their pixel values
             mask_types ("stuff"): whether the classes are ``"stuff"``
                 (amorphous regions of pixels) or ``"thing"`` (connected
                 regions, each representing an instance of the thing). Can be
@@ -991,8 +1038,8 @@ class Segmentation(_HasID, _HasMedia, Label):
 
                 -   ``"stuff"`` if all classes are stuff classes
                 -   ``"thing"`` if all classes are thing classes
-                -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
-                    for each class
+                -   a dict mapping pixel values (2D masks) or RGB hex strings
+                    (3D masks) to ``"stuff"`` or ``"thing"`` for each class
 
         Returns:
             a :class:`Detections`
@@ -1012,10 +1059,10 @@ class Segmentation(_HasID, _HasMedia, Label):
         per connected region of that class.
 
         Args:
-            mask_targets (None): a dict mapping integer pixel values to label
-                strings defining which object classes to generate polylines
-                for. If omitted, all labels are assigned to the integer pixel
-                values
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                classes to generate detections for. If omitted, all labels are
+                assigned to their pixel values
             mask_types ("stuff"): whether the classes are ``"stuff"``
                 (amorphous regions of pixels) or ``"thing"`` (connected
                 regions, each representing an instance of the thing). Can be
@@ -1023,8 +1070,8 @@ class Segmentation(_HasID, _HasMedia, Label):
 
                 -   ``"stuff"`` if all classes are stuff classes
                 -   ``"thing"`` if all classes are thing classes
-                -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
-                    for each class
+                -   a dict mapping pixel values (2D masks) or RGB hex strings
+                    (3D masks) to ``"stuff"`` or ``"thing"`` for each class
             tolerance (2): a tolerance, in pixels, when generating approximate
                 polylines for each region. Typical values are 1-3 pixels
 
@@ -1330,6 +1377,44 @@ def _write_mask(mask, mask_path):
     etai.write(mask, mask_path)
 
 
+def _transform_mask(in_mask, targets_map):
+    rgb_in = fof.is_rgb_mask_targets(targets_map)
+    rgb_out = fof.is_rgb_mask_targets({v: k for k, v in targets_map.items()})
+
+    if rgb_in:
+        if in_mask.ndim != 3:
+            raise ValueError(
+                "Cannot use RGB input targets to transform grayscale mask"
+            )
+
+        in_mask = _rgb_array_to_int(in_mask)
+        targets_map = {_hex_to_int(k): v for k, v in targets_map.items()}
+    else:
+        if in_mask.ndim == 3:
+            raise ValueError(
+                "Cannot use integer input targets to transform RGB mask"
+            )
+
+    if rgb_out:
+        targets_map = {k: _hex_to_int(v) for k, v in targets_map.items()}
+
+    if rgb_out:
+        dtype = int
+    elif max(targets_map.values(), default=0) > 255:
+        dtype = np.uint16
+    else:
+        dtype = np.uint8
+
+    out_mask = np.zeros_like(in_mask, dtype=dtype)
+    for in_val, out_val in targets_map.items():
+        out_mask[in_mask == in_val] = out_val
+
+    if rgb_out:
+        out_mask = _int_array_to_rgb(out_mask)
+
+    return out_mask
+
+
 def _mask_to_image(mask):
     if mask.dtype in (np.uint8, np.uint16):
         return mask
@@ -1372,22 +1457,33 @@ def _heatmap_to_image(map, range):
 
 
 def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
+    if mask_targets is not None:
+        is_rgb = fof.is_rgb_mask_targets(mask_targets)
+
     if mask is None:
         if frame_size is None:
             raise ValueError("Either `mask` or `frame_size` must be provided")
 
-        if mask_targets is not None and max(mask_targets) > 255:
+        if mask_targets is not None and not is_rgb and max(mask_targets) > 255:
             dtype = np.int
         else:
             dtype = np.uint8
 
         width, height = frame_size
-        mask = np.zeros((height, width), dtype=dtype)
+        if mask_targets is not None and is_rgb:
+            mask = np.zeros((height, width, 3), dtype=dtype)
+        else:
+            mask = np.zeros((height, width), dtype=dtype)
     else:
         height, width = mask.shape[:2]
 
     if mask_targets is not None:
-        labels_to_targets = {label: idx for idx, label in mask_targets.items()}
+        if is_rgb:
+            labels_to_targets = {
+                v: _hex_to_rgb(k) for k, v in mask_targets.items()
+            }
+        else:
+            labels_to_targets = {v: k for k, v in mask_targets.items()}
     else:
         labels_to_targets = None
 
@@ -1402,10 +1498,19 @@ def _render_instance(mask, detection, target):
 
     x0, y0 = offset
     dh, dw = obj_mask.shape
+    target = np.asarray(target)
 
-    patch = mask[y0 : (y0 + dh), x0 : (x0 + dw)]
-    patch[obj_mask] = target
-    mask[y0 : (y0 + dh), x0 : (x0 + dw)] = patch
+    if mask.ndim == 3:
+        patch = mask[y0 : (y0 + dh), x0 : (x0 + dw), :]
+        if target.size == 3:
+            patch[obj_mask, :] = np.reshape(target, (1, 1, 3))
+        else:
+            patch[obj_mask, :] = target
+        mask[y0 : (y0 + dh), x0 : (x0 + dw), :] = patch
+    else:
+        patch = mask[y0 : (y0 + dh), x0 : (x0 + dw)]
+        patch[obj_mask] = target
+        mask[y0 : (y0 + dh), x0 : (x0 + dw)] = patch
 
 
 def _render_polyline(mask, polyline, target, thickness):
@@ -1429,27 +1534,44 @@ def _segmentation_to_detections(segmentation, mask_targets, mask_types):
         mask_types = {}
 
     mask = segmentation.get_mask()
+    is_rgb = mask.ndim == 3
+
+    if is_rgb:
+        array_targets = np.unique(mask.reshape(-1, mask.shape[2]), axis=0)
+        targets = [_rgb_to_hex(t) for t in targets]
+    else:
+        targets = np.unique(mask)
+        array_targets = itertools.repeat(None)
 
     detections = []
-    for target in np.unique(mask):
-        if target == 0:
+    for target, array_target in zip(targets, array_targets):
+        if target in (0, "#000000"):
             continue  # skip background
 
         if mask_targets is not None:
             label = mask_targets.get(target, None)
+            if is_rgb and label is None:
+                label = mask_targets.get(target.upper(), None)
+
             if label is None:
                 continue  # skip unknown target
         else:
             label = str(target)
 
         label_type = mask_types.get(target, None)
+        if is_rgb and label_type is None:
+            label_type = mask_types.get(target.upper(), None)
+
         if label_type is None:
             if default is None:
                 continue  # skip unknown type
 
             label_type = default
 
-        label_mask = mask == target
+        if is_rgb:
+            label_mask = np.all(mask == array_target.reshape(1, 1, 3), axis=2)
+        else:
+            label_mask = mask == target
 
         if label_type == "stuff":
             instances = [_parse_stuff_instance(label_mask)]
@@ -1479,27 +1601,44 @@ def _segmentation_to_polylines(
         mask_types = {}
 
     mask = segmentation.get_mask()
+    is_rgb = mask.ndim == 3
+
+    if is_rgb:
+        array_targets = np.unique(mask.reshape(-1, mask.shape[2]), axis=0)
+        targets = [_rgb_to_hex(t) for t in targets]
+    else:
+        targets = np.unique(mask)
+        array_targets = itertools.repeat(None)
 
     polylines = []
-    for target in np.unique(mask):
-        if target == 0:
+    for target, array_target in zip(targets, array_targets):
+        if target in (0, "#000000"):
             continue  # skip background
 
         if mask_targets is not None:
             label = mask_targets.get(target, None)
+            if is_rgb and label is None:
+                label = mask_targets.get(target.upper(), None)
+
             if label is None:
                 continue  # skip unknown target
         else:
             label = str(target)
 
         label_type = mask_types.get(target, None)
+        if is_rgb and label is None:
+            label_type = mask_types.get(target.upper(), None)
+
         if label_type is None:
             if default is None:
                 continue  # skip unknown type
 
             label_type = default
 
-        label_mask = mask == target
+        if is_rgb:
+            label_mask = np.all(mask == array_target.reshape(1, 1, 3), axis=2)
+        else:
+            label_mask = mask == target
 
         polygons = _get_polygons(label_mask, tolerance)
 
@@ -1520,6 +1659,47 @@ def _segmentation_to_polylines(
             polylines.append(polyline)
 
     return polylines
+
+
+def _hex_to_rgb(hex_str):
+    r = int(hex_str[1:3], 16)
+    g = int(hex_str[3:5], 16)
+    b = int(hex_str[5:7], 16)
+    return np.array([r, g, b])
+
+
+def _rgb_to_hex(rgb):
+    return "#%02x%02x%02x" % tuple(rgb)
+
+
+def _hex_to_int(hex_str):
+    r = int(hex_str[1:3], 16)
+    g = int(hex_str[3:5], 16)
+    b = int(hex_str[5:7], 16)
+    return (r << 16) + (g << 8) + b
+
+
+def _int_to_hex(value):
+    r = (value >> 16) & 255
+    g = (value >> 8) & 255
+    b = value & 255
+    return "#%02x%02x%02x" % (r, g, b)
+
+
+def _rgb_array_to_int(mask):
+    return (
+        np.left_shift(mask[:, :, 0], 16, dtype=int)
+        + np.left_shift(mask[:, :, 1], 8, dtype=int)
+        + mask[:, :, 2]
+    )
+
+
+def _int_array_to_rgb(mask):
+    out_mask = np.empty((*mask.shape, 3), dtype=np.uint8)
+    out_mask[:, :, 0] = np.right_shift(mask, 16) & 255
+    out_mask[:, :, 1] = np.right_shift(mask, 8) & 255
+    out_mask[:, :, 2] = mask & 255
+    return out_mask
 
 
 def _parse_stuff_instance(mask):

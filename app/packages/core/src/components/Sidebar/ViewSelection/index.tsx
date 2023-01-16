@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { Suspense, useEffect, useMemo } from "react";
 import { filter, map } from "lodash";
 import {
   atom,
@@ -19,6 +19,7 @@ import {
 } from "../../../Root/Root";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 import { isElectron } from "@fiftyone/utilities";
+import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 
 const DEFAULT_SELECTED: DatasetViewOption = {
   id: "1",
@@ -66,7 +67,7 @@ export default function ViewSelection(props: Props) {
   const [selected, setSelected] = useRecoilState<DatasetViewOption | null>(
     selectedSavedViewState
   );
-
+  const canEditSavedViews = useRecoilValue<boolean>(fos.canEditSavedViews);
   const existingQueries = qs.parse(location.search, {
     ignoreQueryPrefix: true,
   });
@@ -134,8 +135,8 @@ export default function ViewSelection(props: Props) {
   }, [searchData, selected]);
 
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
-  const isEmptyView = !loadedView?.length;
-
+  const bookmarkIconOn = useRecoilValue(shouldToggleBookMarkIconOnSelector);
+  const isEmptyView = !bookmarkIconOn && !loadedView?.length;
   // special case for electron app to clear the selection
   // when there is no loaded view
   const isDesktop = isElectron();
@@ -151,9 +152,13 @@ export default function ViewSelection(props: Props) {
         (v) => v.slug === savedViewParam
       )?.[0];
       if (potentialView) {
+        // no unnecessary setView call if selected has not changed
+        if (selected && selected.id === potentialView.id) {
+          return;
+        }
         setSelected(potentialView);
         setView(
-          potentialView?.viewStages,
+          potentialView.viewStages,
           [],
           potentialView.label,
           true,
@@ -192,15 +197,18 @@ export default function ViewSelection(props: Props) {
       }
     } else {
       // no view param
-      if (selected && selected.slug !== DEFAULT_SELECTED.slug) {
+      if (!isIPython && selected && selected.slug !== DEFAULT_SELECTED.slug) {
         setSelected(DEFAULT_SELECTED);
-        setView(loadedView, [], "", false, "");
+        // do not reset view to [] again. The viewbar sets it once.
       }
     }
   }, [savedViewParam]);
 
   useEffect(() => {
     const callback = (event: KeyboardEvent) => {
+      if (!canEditSavedViews) {
+        return;
+      }
       if ((event.metaKey || event.ctrlKey) && event.code === "KeyS") {
         event.preventDefault();
         if (!isEmptyView) {
@@ -213,87 +221,94 @@ export default function ViewSelection(props: Props) {
     return () => {
       document.removeEventListener("keydown", callback);
     };
-  }, [isEmptyView]);
+  }, [isEmptyView, canEditSavedViews]);
 
   return (
-    <Box>
-      <ViewDialog
-        savedViews={items}
-        onEditSuccess={(
-          createSavedView: fos.State.SavedView,
-          reload?: boolean
-        ) => {
-          refetch(
-            { name: datasetName },
-            {
-              fetchPolicy: "network-only",
-              onComplete: (newOptions) => {
-                if (createSavedView && reload) {
-                  setSavedViewParam(createSavedView.slug);
-                  setSelected({
-                    ...createSavedView,
-                    label: createSavedView.name,
-                  });
-                }
-              },
-            }
-          );
-        }}
-        onDeleteSuccess={(deletedSavedViewName: string) => {
-          refetch(
-            { name: datasetName },
-            {
-              fetchPolicy: "network-only",
-              onComplete: () => {
-                if (selected?.label === deletedSavedViewName) {
-                  setSavedViewParam(null);
-
-                  if (isDesktop) {
-                    setSelected(DEFAULT_SELECTED);
+    <Suspense fallback="Loading saved views...">
+      <Box>
+        <ViewDialog
+          canEdit={canEditSavedViews}
+          savedViews={items}
+          onEditSuccess={(
+            createSavedView: fos.State.SavedView,
+            reload?: boolean
+          ) => {
+            refetch(
+              { name: datasetName },
+              {
+                fetchPolicy: "network-only",
+                onComplete: (newOptions) => {
+                  if (createSavedView && reload) {
+                    setSavedViewParam(createSavedView.slug);
+                    setSelected({
+                      ...createSavedView,
+                      label: createSavedView.name,
+                    });
                   }
-                }
-              },
-            }
-          );
-        }}
-      />
-      <Selection
-        selected={selected}
-        setSelected={(item: DatasetViewOption) => {
-          setSelected(item);
-          setView([], [], item.label, true, item.slug);
-        }}
-        items={searchData}
-        onEdit={(item) => {
-          setEditView({
-            color: item.color || "",
-            description: item.description || "",
-            isCreating: false,
-            name: item.label,
-          });
-          setIsOpen(true);
-        }}
-        search={{
-          value: viewSearch,
-          placeholder: "Search views...",
-          onSearch: (term: string) => {
-            setViewSearch(term);
-          },
-        }}
-        lastFixedOption={
-          <LastOption
-            onClick={() => !isEmptyView && setIsOpen(true)}
-            disabled={isEmptyView}
-          >
-            <Box style={{ width: "12%" }}>
-              <AddIcon fontSize="small" disabled={isEmptyView} />
-            </Box>
-            <TextContainer disabled={isEmptyView}>
-              Save current filters as view
-            </TextContainer>
-          </LastOption>
-        }
-      />
-    </Box>
+                },
+              }
+            );
+          }}
+          onDeleteSuccess={(deletedSavedViewName: string) => {
+            refetch(
+              { name: datasetName },
+              {
+                fetchPolicy: "network-only",
+                onComplete: () => {
+                  if (selected?.label === deletedSavedViewName) {
+                    setSavedViewParam(null);
+                    setView([], [], "", false, "");
+
+                    if (isDesktop) {
+                      setSelected(DEFAULT_SELECTED);
+                    }
+                  }
+                },
+              }
+            );
+          }}
+        />
+        <Selection
+          readonly={!canEditSavedViews}
+          selected={selected}
+          setSelected={(item: DatasetViewOption) => {
+            setSelected(item);
+            setView(item.viewStages, [], item.label, true, item.slug);
+          }}
+          items={searchData}
+          onEdit={(item) => {
+            setEditView({
+              color: item.color || "",
+              description: item.description || "",
+              isCreating: false,
+              name: item.label,
+            });
+            setIsOpen(true);
+          }}
+          search={{
+            value: viewSearch,
+            placeholder: "Search views...",
+            onSearch: (term: string) => {
+              setViewSearch(term);
+            },
+          }}
+          lastFixedOption={
+            <LastOption
+              onClick={() =>
+                canEditSavedViews && !isEmptyView && setIsOpen(true)
+              }
+              disabled={isEmptyView || !canEditSavedViews}
+            >
+              <Box style={{ width: "12%" }}>
+                <AddIcon fontSize="small" disabled={isEmptyView} />
+              </Box>
+              <TextContainer disabled={isEmptyView}>
+                Save current filters as view
+              </TextContainer>
+            </LastOption>
+          }
+        />
+      </Box>
+    </Suspense>
   );
 }
