@@ -76,6 +76,7 @@ function toAppFormat(state) {
       activeChild: state.active_child,
       type: state.type,
       state: state.state || {}, // not used in SpaceNode atm
+      pinned: state.pinned,
     };
   return state;
 }
