@@ -24,6 +24,7 @@ export const StyledPanel = styled.div`
 
 export const AddPanelButtonContainer = styled.div`
   position: relative;
+  margin-left: 4px;
 `;
 
 export const StyledPanelItem = styled.div`
@@ -42,12 +43,13 @@ export const StyledTab = styled.button<{ active?: boolean }>`
   background: ${(props) =>
     props.active
       ? "var(--joy-palette-background-level2)"
-      : "var(--joy-palette-background-button)"};
+      : "var(--joy-palette-background-inactiveTab)"};
   border: none;
   color: ${(props) =>
     props.active
       ? "var(--joy-palette-text-primary)"
       : "var(--joy-palette-text-secondary)"};
   padding: 0px 12px 4px 12px;
-  border-right: 1px solid var(--joy-palette-background-level3);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
 `;
