@@ -267,7 +267,7 @@ const DistributionsContainer = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
   width: 100%;
-  height: calc(100% - 2rem);
+  height: calc(100% - 4.5rem);
   ${scrollbarStyles}
 `;
 

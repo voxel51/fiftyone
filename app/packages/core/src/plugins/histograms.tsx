@@ -10,6 +10,7 @@ import { scrollbarStyles } from "../components/utils";
 const DistributionsContainer = styled.div`
   height: 100%;
   background: ${({ theme }) => theme.background.mediaSpace};
+  overflow: hidden;
   ${scrollbarStyles}
 `;
 
@@ -47,7 +48,7 @@ function Plots() {
         }}
         value={plot}
       />
-      <Distributions key={plot} group={plot} style={{ padding: "1rem" }} />
+      <Distributions key={plot} group={plot} style={{ margin: "1rem" }} />
     </DistributionsContainer>
   );
 }

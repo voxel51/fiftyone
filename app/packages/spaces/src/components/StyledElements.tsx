@@ -8,6 +8,7 @@ export const SpaceContainer = styled.div`
 export const PanelContainer = styled.div`
   width: 100%;
   height: 100%;
+  overflow: hidden;
 `;
 
 export const PanelTabs = styled.div`
@@ -18,7 +19,7 @@ export const PanelTabs = styled.div`
 
 export const StyledPanel = styled.div`
   width: 100%;
-  height: calc(100% - 37px);
+  height: calc(100% - 28px);
   overflow: auto;
 `;
 
