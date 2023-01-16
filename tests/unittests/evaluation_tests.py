@@ -1497,17 +1497,8 @@ class DetectionsTests(unittest.TestCase):
             detection["eval2"]
 
 
-class Detections3DTests(unittest.TestCase):
-    def _create_detections(self, dims, loc, rot):
-        detection = fo.Detection(
-            dimensions=list(dims),
-            location=list(loc),
-            rotation=list(rot),
-        )
-        detections = fo.Detections(detections=[detection])
-        return detections
-
-    def _make_3d_detections_dataset(self):
+class CuboidTests(unittest.TestCase):
+    def _make_dataset(self):
         group = fo.Group()
         samples = [
             fo.Sample(
@@ -1530,58 +1521,69 @@ class Detections3DTests(unittest.TestCase):
         dims = np.array([1, 1, 1])
         loc = np.array([0, 0, 0])
         rot = np.array([0, 0, 0])
-        sample["test1_box1"] = self._create_detections(dims, loc, rot)
+        sample["test1_box1"] = self._make_box(dims, loc, rot)
 
         # unit box offset from origin
-        loc = np.array([1, 1, 1])
-        sample["test1_box2"] = self._create_detections(dims, loc, rot)
+        loc = np.array([2, 2, 2])
+        sample["test1_box2"] = self._make_box(dims, loc, rot)
 
         # unit box away from origin
         loc = np.array([2, -3.5, 20])
-        sample["test2_box1"] = self._create_detections(dims, loc, rot)
+        sample["test2_box1"] = self._make_box(dims, loc, rot)
 
         # x shift
-        sample["test2_box2"] = self._create_detections(
+        sample["test2_box2"] = self._make_box(
             dims, loc + np.array([0.5, 0.0, 0.0]), rot
         )
 
         # y shift
-        sample["test2_box3"] = self._create_detections(
+        sample["test2_box3"] = self._make_box(
             dims, loc + np.array([0.0, 0.5, 0.0]), rot
         )
 
         # z shift
-        sample["test2_box4"] = self._create_detections(
+        sample["test2_box4"] = self._make_box(
             dims, loc + np.array([0.0, 0.0, 0.5]), rot
         )
 
         dims = np.array([5.0, 10.0, 15.0])
         loc = np.array([1.0, 2.0, 3.0])
-        sample["test3_box1"] = self._create_detections(dims, loc, rot)
+        sample["test3_box1"] = self._make_box(dims, loc, rot)
 
         dims = np.array([10.0, 5.0, 20.0])
         loc = np.array([4.0, 5.0, 6.0])
-        sample["test3_box2"] = self._create_detections(dims, loc, rot)
+        sample["test3_box2"] = self._make_box(dims, loc, rot)
 
         dims = np.array([1.0, 1.0, 1.0])
         loc = np.array([0, 0, 0])
         rot = np.array([0, 0, 0])
-        sample["test4_box1"] = self._create_detections(dims, loc, rot)
+        sample["test4_box1"] = self._make_box(dims, loc, rot)
 
         # unit box rotated by 45 degrees about each axis
         rot = np.array([np.pi / 4.0, 0.0, 0.0])
-        sample["test4_box2"] = self._create_detections(dims, loc, rot)
+        sample["test4_box2"] = self._make_box(dims, loc, rot)
         sample.save()
 
         rot = np.array([0.0, np.pi / 4.0, 0.0])
-        sample["test4_box3"] = self._create_detections(dims, loc, rot)
+        sample["test4_box3"] = self._make_box(dims, loc, rot)
         sample.save()
 
         rot = np.array([0.0, 0.0, np.pi / 4.0])
-        sample["test4_box4"] = self._create_detections(dims, loc, rot)
+        sample["test4_box4"] = self._make_box(dims, loc, rot)
         sample.save()
 
         return dataset
+
+    def _make_box(self, dimensions, location, rotation):
+        return fo.Detections(
+            detections=[
+                fo.Detection(
+                    dimensions=list(dimensions),
+                    location=list(location),
+                    rotation=list(rotation),
+                )
+            ]
+        )
 
     def _check_iou(self, dataset, field1, field2, expected_iou):
         dets1 = dataset.first()[field1].detections
@@ -1592,14 +1594,14 @@ class Detections3DTests(unittest.TestCase):
 
     @drop_datasets
     def test_non_overlapping_boxes(self):
-        dataset = self._make_3d_detections_dataset()
+        dataset = self._make_dataset()
 
         expected_iou = 0.0
         self._check_iou(dataset, "test1_box1", "test1_box2", expected_iou)
 
     @drop_datasets
     def test_shifted_boxes(self):
-        dataset = self._make_3d_detections_dataset()
+        dataset = self._make_dataset()
 
         expected_iou = 1.0 / 3.0
         self._check_iou(dataset, "test2_box1", "test2_box2", expected_iou)
@@ -1608,7 +1610,7 @@ class Detections3DTests(unittest.TestCase):
 
     @drop_datasets
     def test_shifted_and_scaled_boxes(self):
-        dataset = self._make_3d_detections_dataset()
+        dataset = self._make_dataset()
 
         intersection = 4.5 * 4.5 * 14.5
         union = 1000.0 + 750.0 - intersection
@@ -1619,7 +1621,7 @@ class Detections3DTests(unittest.TestCase):
     def test_single_rotation(self):
         ## the two boxes form a star of David with octagonal overlap
         ## intersection is area of octagon
-        dataset = self._make_3d_detections_dataset()
+        dataset = self._make_dataset()
 
         side = 1.0 / (1 + np.sqrt(2))
         intersection = 2.0 * (1 + np.sqrt(2)) * side**2
