@@ -191,6 +191,10 @@ class Mutation:
                 # Set view state
                 state.view = result_view
                 state.view_name = result_view.name
+                state.saved_view_slug = fou.to_slug(view_name)
+        else:
+            state.view_name = None
+            state.saved_view_slug = None
 
         if result_view is None:
             # Update current view with form parameters

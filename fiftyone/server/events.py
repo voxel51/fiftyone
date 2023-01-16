@@ -95,7 +95,7 @@ async def add_event_listener(
                     if data.state.view is not None
                     else [],
                     saved_view_slug=fou.to_slug(data.state.view.name)
-                    if data.state.view
+                    if data.state.view is not None and data.state.view.name
                     else None,
                 )
 
@@ -134,7 +134,8 @@ async def add_event_listener(
                         if event.state.view is not None
                         else [],
                         saved_view_slug=fou.to_slug(event.state.view.name)
-                        if event.state.view
+                        if event.state.view is not None
+                        and event.state.view.name
                         else None,
                     )
 
