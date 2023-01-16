@@ -137,7 +137,9 @@ def display_databricks(
     client: Client, cell: NotebookCell, reactivate: bool = False
 ):
     """Display a FiftyOne instance in a Databricks output frame.
-    The Databricks driver port is accessible via a proxy url and can be displayed inside an IFrame.
+
+    The Databricks driver port is accessible via a proxy url and can be
+    displayed inside an IFrame.
     """
     display_ipython(
         client,

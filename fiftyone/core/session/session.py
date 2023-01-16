@@ -297,7 +297,7 @@ class Session(object):
         config: AppConfig = None,
     ) -> None:
         focx.init_context()
-        # Allow `dataset` to be a view
+
         if isinstance(dataset, fov.DatasetView):
             view = dataset
             dataset = dataset._root_dataset
@@ -313,7 +313,8 @@ class Session(object):
             and focx.is_databricks_context()
         ):
             logger.warning(
-                "A session address was provided that is not 0.0.0.0, but databricks requires 0.0.0.0"
+                "A session address != 0.0.0.0 was provided, but databricks "
+                "requires 0.0.0.0"
             )
 
         if address is None:
