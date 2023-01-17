@@ -7,7 +7,7 @@ FiftyOne Teams App
 
 Like the open source FiftyOne App, the FiftyOne Teams App allows you to visually inspect, filter, sort, and concatenate view stages on the level of samples in individual datasets. In addition to these features, the FiftyOne Teams App facilitates the organization, versioning, permissioning, and sharing of datasets on a per-dataset basis. This page will walk through some of the added functionality available in the FiftyOne Teams App.
 
-.. image:: https://voxel51.com/images/teams/features/feature-management.png
+.. image:: ../images/teams/feature_management.png
    :alt: app-hero
    :align: center
 

@@ -62,13 +62,13 @@ can be used to manipulate both local and cloud media include:
    Pro tip: Learn more about these and other FiftyOne methods by entering them
    into an IPython cell followed by a question mark:
 
-   .. code-block:: python
+   .. code-block::
 
         import fiftyone.core.storage as fos
 
         fos.upload_media?
 
-   .. code-block:: shell
+   .. code-block::
 
         Signature:
         fos.upload_media(

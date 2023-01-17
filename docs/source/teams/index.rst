@@ -9,7 +9,7 @@ All documentation at https://fiftyone.ai is fully applicable to FiftyOne Teams d
 
 |br|
 
-.. image:: https://voxel51.com/images/teams/hero.png
+.. image:: ../images/teams/hero.png
    :alt: teams-hero
    :align: center
 

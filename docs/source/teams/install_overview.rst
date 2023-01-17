@@ -120,9 +120,7 @@ _____________________
 
 To work with FiftyOne datasets whose media are stored in Google Cloud Storage, you simply need to provide `service account credentials <https://cloud.google.com/iam/docs/service-accounts>`_ to your Teams client with read access to the relevant files.
 
-You can do this in any of the following ways:
-
-#. Permanently register GCP credentials on a particular machine by adding the following key to your media cache config:
+You can register GCP credentials on a particular machine by adding the following key to your media cache config:
 
 	|
 
@@ -132,7 +130,6 @@ You can do this in any of the following ways:
             "google_application_credentials": "/path/to/gcp-service-account.json"
         }
 
-#. Configure/provide GCP credentials in accordance with `Application Default Credentials <https://cloud.google.com/docs/authentication/production#automatically>`_.
 
 
 .. _minio:
