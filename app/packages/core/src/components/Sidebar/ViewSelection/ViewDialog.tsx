@@ -292,7 +292,7 @@ export default function ViewDialog(props: Props) {
                   colorOption?.color === initialColor)
               }
               sx={{
-                background: "#FF6D04",
+                background: theme.voxel[500],
                 color: theme.common.white,
                 textTransform: "inherit",
                 padding: "0.5rem 1.25rem",
@@ -300,7 +300,7 @@ export default function ViewDialog(props: Props) {
                 marginLeft: "1rem",
 
                 "&:hover": {
-                  background: "#D54B00",
+                  background: theme.voxel[600],
                   color: theme.common.white,
                 },
 
