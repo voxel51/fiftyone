@@ -25,149 +25,6 @@ o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
 logger = logging.getLogger(__name__)
 
 
-def compute_orthographic_projection_map(
-    filepath, size, projection_normal=None, bounds=None
-):
-    """Generates an orthographic projection map for the given PCD file onto the
-    specified plane (default xy plane).
-
-    The returned map is a three-channel array encoding the intensity, height,
-    and density of the point cloud.
-
-    Args:
-        filepath: the path to the ``.pcd`` file
-        size: the desired ``(width, height)`` for the generated map. Either
-            dimension can be None or negative, in which case the appropriate
-            aspect-preserving value is used
-        projection_normal (None): the normal vector of the plane onto which to
-            perform the projection. By default, ``[0, 0, 1]`` is used
-        bounds (None): an optional ``([xmin, ymin, zmin], [xmax, ymax, zmax])``
-            tuple defining the field of view for which to generate each map in
-            the projected plane. Either element of the tuple or any/all of its
-            values can be None, in which case a tight crop of the point cloud
-            along the missing dimension(s) are used
-
-    Returns:
-        a tuple of
-
-        -   the feature map
-        -   the ``[xmin, xmax, ymin, ymax]`` bounds in the projected plane
-    """
-    pc = o3d.io.read_point_cloud(filepath)
-
-    if projection_normal is not None:
-        # @todo our goal is to rotate `projection_normal` onto `[0, 0, 1]`
-        R = o3d.geometry.get_rotation_matrix_from_xyz(projection_normal)
-        pc = pc.rotate(R, center=False)
-
-    if bounds is None:
-        min_bound, max_bound = None, None
-    else:
-        min_bound, max_bound = bounds
-
-    if _contains_none(min_bound):
-        _min_bound = np.amin(np.asarray(pc.points), axis=0)
-        min_bound = _fill_none(min_bound, _min_bound)
-
-    if _contains_none(max_bound):
-        _max_bound = np.amax(np.asarray(pc.points), axis=0)
-        max_bound = _fill_none(max_bound, _max_bound)
-
-    width, height = _parse_size(size, (min_bound, max_bound))
-
-    bbox = o3d.geometry.AxisAlignedBoundingBox(
-        min_bound=min_bound, max_bound=max_bound
-    )
-    pc = pc.crop(bbox).translate((0, 0, -1 * min_bound[2]))
-
-    discretization = (max_bound[0] - min_bound[0]) / height
-    max_height = float(np.abs(max_bound[2] - min_bound[2]))
-
-    # Extract points from o3d point cloud
-    points = np.vstack((np.copy(pc.points).T, np.array(pc.colors)[:, 0])).T
-
-    # Discretize feature map
-    points[:, 0] = np.int_(np.floor(points[:, 0] / discretization))
-    points[:, 1] = np.int_(
-        np.floor(points[:, 1] / discretization) + (width + 1) / 2
-    )
-
-    # sort
-    indices = np.lexsort((-points[:, 2], points[:, 1], points[:, 0]))
-    points = points[indices]
-
-    # Height map
-    height_map = np.zeros((height + 1, width + 1))
-    _, indices = np.unique(points[:, 0:2], axis=0, return_index=True)
-    points_frac = points[indices]
-
-    height_map[np.int_(points_frac[:, 0]), np.int_(points_frac[:, 1])] = (
-        points_frac[:, 2] / max_height
-    )
-
-    # Intensity map and density map
-    intensity_map = np.zeros((height + 1, width + 1))
-    density_map = np.zeros((height + 1, width + 1))
-
-    _, indices, counts = np.unique(
-        points[:, 0:2], axis=0, return_index=True, return_counts=True
-    )
-    points_top = points[indices]
-    normalized_counts = np.minimum(1.0, np.log(counts + 1) / np.log(64))
-
-    intensity_map[
-        np.int_(points_top[:, 0]), np.int_(points_top[:, 1])
-    ] = points_top[:, 3]
-    density_map[
-        np.int_(points_top[:, 0]), np.int_(points_top[:, 1])
-    ] = normalized_counts
-
-    feature_map = np.stack(
-        (
-            intensity_map[:height, :width],
-            height_map[:height, :width],
-            density_map[:height, :width],
-        )
-    )
-
-    # Reshape and rescale pixel values
-    feature_map = np.einsum("ijk -> jki", feature_map)
-
-    bounds = [min_bound[0], max_bound[0], min_bound[1], max_bound[1]]
-
-    return feature_map, bounds
-
-
-def _parse_size(size, bounds):
-    width, height = size
-    min_bounds, max_bounds = bounds
-
-    w = max_bounds[0] - min_bounds[0]
-    h = max_bounds[1] - min_bounds[1]
-
-    if height is None or height < 0:
-        height = int(round(h * (width * 1.0 / w)))
-
-    if width is None or width < 0:
-        width = int(round(w * (height * 1.0 / h)))
-
-    return width, height
-
-
-def _contains_none(values):
-    if values is None:
-        return True
-
-    return any(v is None for v in values)
-
-
-def _fill_none(values, ref_values):
-    if values is None:
-        return ref_values
-
-    return [v if v is not None else r for v, r in zip(values, ref_values)]
-
-
 def compute_orthographic_projection_maps(
     samples,
     size,
@@ -339,6 +196,118 @@ def compute_orthographic_projection_maps(
             point_cloud_view.set_values(out_bounds_field, all_bounds)
 
 
+def compute_orthographic_projection_map(
+    filepath, size, projection_normal=None, bounds=None
+):
+    """Generates an orthographic projection map for the given PCD file onto the
+    specified plane (default xy plane).
+
+    The returned map is a three-channel array encoding the intensity, height,
+    and density of the point cloud.
+
+    Args:
+        filepath: the path to the ``.pcd`` file
+        size: the desired ``(width, height)`` for the generated map. Either
+            dimension can be None or negative, in which case the appropriate
+            aspect-preserving value is used
+        projection_normal (None): the normal vector of the plane onto which to
+            perform the projection. By default, ``[0, 0, 1]`` is used
+        bounds (None): an optional ``([xmin, ymin, zmin], [xmax, ymax, zmax])``
+            tuple defining the field of view for which to generate each map in
+            the projected plane. Either element of the tuple or any/all of its
+            values can be None, in which case a tight crop of the point cloud
+            along the missing dimension(s) are used
+
+    Returns:
+        a tuple of
+
+        -   the feature map
+        -   the ``[xmin, xmax, ymin, ymax]`` bounds in the projected plane
+    """
+    pc = o3d.io.read_point_cloud(filepath)
+
+    if projection_normal is not None:
+        R = _rotation_matrix_from_vectors(projection_normal, [0, 0, 1])
+        pc = pc.rotate(R, center=[0, 0, 0])
+
+    if bounds is None:
+        min_bound, max_bound = None, None
+    else:
+        min_bound, max_bound = bounds
+
+    if _contains_none(min_bound):
+        _min_bound = np.amin(np.asarray(pc.points), axis=0)
+        min_bound = _fill_none(min_bound, _min_bound)
+
+    if _contains_none(max_bound):
+        _max_bound = np.amax(np.asarray(pc.points), axis=0)
+        max_bound = _fill_none(max_bound, _max_bound)
+
+    width, height = _parse_size(size, (min_bound, max_bound))
+
+    bbox = o3d.geometry.AxisAlignedBoundingBox(
+        min_bound=min_bound, max_bound=max_bound
+    )
+    pc = pc.crop(bbox).translate((0, 0, -1 * min_bound[2]))
+
+    discretization = (max_bound[0] - min_bound[0]) / height
+    max_height = float(np.abs(max_bound[2] - min_bound[2]))
+
+    # Extract points from o3d point cloud
+    points = np.vstack((np.copy(pc.points).T, np.array(pc.colors)[:, 0])).T
+
+    # Discretize feature map
+    points[:, 0] = np.int_(np.floor(points[:, 0] / discretization))
+    points[:, 1] = np.int_(
+        np.floor(points[:, 1] / discretization) + (width + 1) / 2
+    )
+
+    # sort
+    indices = np.lexsort((-points[:, 2], points[:, 1], points[:, 0]))
+    points = points[indices]
+
+    # Height map
+    height_map = np.zeros((height + 1, width + 1))
+    _, indices = np.unique(points[:, 0:2], axis=0, return_index=True)
+    points_frac = points[indices]
+
+    height_map[np.int_(points_frac[:, 0]), np.int_(points_frac[:, 1])] = (
+        points_frac[:, 2] / max_height
+    )
+
+    # Intensity map and density map
+    intensity_map = np.zeros((height + 1, width + 1))
+    density_map = np.zeros((height + 1, width + 1))
+
+    _, indices, counts = np.unique(
+        points[:, 0:2], axis=0, return_index=True, return_counts=True
+    )
+    points_top = points[indices]
+    normalized_counts = np.minimum(1.0, np.log(counts + 1) / np.log(64))
+
+    intensity_map[
+        np.int_(points_top[:, 0]), np.int_(points_top[:, 1])
+    ] = points_top[:, 3]
+    density_map[
+        np.int_(points_top[:, 0]), np.int_(points_top[:, 1])
+    ] = normalized_counts
+
+    feature_map = np.stack(
+        (
+            intensity_map[:height, :width],
+            height_map[:height, :width],
+            density_map[:height, :width],
+        )
+    )
+
+    # Reshape and rescale pixel values
+    feature_map = np.einsum("ijk -> jki", feature_map)
+
+    bounds = [min_bound[0], max_bound[0], min_bound[1], max_bound[1]]
+
+    return feature_map, bounds
+
+
 def _get_point_cloud_slice(samples):
     point_cloud_slices = {
         s for s, m in samples.group_media_types.items() if m == fom.POINT_CLOUD
@@ -354,3 +323,45 @@ def _get_point_cloud_slice(samples):
         )
 
     return slice_name
+
+
+# Reference: https://math.stackexchange.com/q/180418
+def _rotation_matrix_from_vectors(vec1, vec2):
+    """Returns the rotation matrix that aligns vec1 to vec2."""
+    a = (np.asarray(vec1) / np.linalg.norm(vec1)).reshape(3)
+    b = (np.asarray(vec2) / np.linalg.norm(vec2)).reshape(3)
+    v = np.cross(a, b)
+    c = np.dot(a, b)
+    s = np.linalg.norm(v)
+    K = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    return np.eye(3) + K + K.dot(K) * ((1 - c) / (s**2))
+
+
+def _parse_size(size, bounds):
+    width, height = size
+    min_bounds, max_bounds = bounds
+
+    w = max_bounds[0] - min_bounds[0]
+    h = max_bounds[1] - min_bounds[1]
+
+    if height is None or height < 0:
+        height = int(round(h * (width * 1.0 / w)))
+
+    if width is None or width < 0:
+        width = int(round(w * (height * 1.0 / h)))
+
+    return width, height
+
+
+def _contains_none(values):
+    if values is None:
+        return True
+
+    return any(v is None for v in values)
+
+
+def _fill_none(values, ref_values):
+    if values is None:
+        return ref_values
+
+    return [v if v is not None else r for v, r in zip(values, ref_values)]
