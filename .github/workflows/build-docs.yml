@@ -84,7 +84,7 @@ jobs:
       - name: Authorize gcloud
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: "${{ secrets.GCP_CREDENTIALS }}"
+          credentials_json: "${{ secrets.DOCS_GCP_CREDENTIALS }}"
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v1
       - name: publish
