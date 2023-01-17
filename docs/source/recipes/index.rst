@@ -38,11 +38,16 @@ workflows.
 .. Add recipe cards below
 
 .. customcarditem::
+    :header: FiftyOne terminology
+    :description: A brief overview of FiftyOne's key terminology.
+    :link: fiftyone_terminology.html
+    :tags: Cheat-Sheets,Basics
+
+.. customcarditem::
     :header: Filtering cheat sheet
-    :description: Match and filter in FiftyOne.
+    :description: Check out this cheat sheet for an overview of the basic syntaxes for matching and filtering in FiftyOne.
     :link: filtering_cheat_sheet.html
-    :image: ../_static/images/recipes/pandas_vs_fiftyone.png
-    :tags: Cheat-Sheets,Dataset-Curation,Advanced
+    :tags: Cheat-Sheets,Dataset-Curation
 
 .. customcarditem::
     :header: pandas vs FiftyOne
@@ -152,6 +157,7 @@ workflows.
    :maxdepth: 1
    :hidden:
 
+   FiftyOne terminology <fiftyone_terminology>
    Filtering cheat sheet <filtering_cheat_sheet>
    pandas vs FiftyOne <pandas_vs_fiftyone>
    Creating views <creating_views.ipynb>

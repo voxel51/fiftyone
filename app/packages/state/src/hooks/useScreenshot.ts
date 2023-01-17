@@ -115,6 +115,15 @@ export const useScreenshot = (
           event: "capture_notebook_cell",
           subscription,
           data: { src: imgData, width: canvas.width, subscription },
+        }).then(() => {
+          if (context === "databricks") {
+            const params = new URLSearchParams(window.location.search);
+            const proxy = params.get("proxy");
+
+            window.location.assign(
+              `${proxy || "/"}screenshot/${subscription}.html?proxy=${proxy}`
+            );
+          }
         });
       });
   }, [captureCallbacks, context, subscription]);

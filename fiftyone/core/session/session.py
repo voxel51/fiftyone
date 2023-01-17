@@ -39,7 +39,6 @@ from fiftyone.core.session.events import (
     ReactivateNotebookCell,
     StateUpdate,
 )
-
 import fiftyone.core.session.notebooks as fosn
 
 
@@ -297,7 +296,8 @@ class Session(object):
         auto: bool = True,
         config: AppConfig = None,
     ) -> None:
-        # Allow `dataset` to be a view
+        focx.init_context()
+
         if isinstance(dataset, fov.DatasetView):
             view = dataset
             dataset = dataset._root_dataset
@@ -307,8 +307,18 @@ class Session(object):
         if port is None:
             port = fo.config.default_app_port
 
+        if (
+            address is not None
+            and address != "0.0.0.0"
+            and focx.is_databricks_context()
+        ):
+            logger.warning(
+                "A session address != 0.0.0.0 was provided, but databricks "
+                "requires 0.0.0.0"
+            )
+
         if address is None:
-            if fou.is_docker():
+            if fou.is_docker() or focx.is_databricks_context():
                 address = "0.0.0.0"
             else:
                 address = fo.config.default_app_address
@@ -998,9 +1008,9 @@ def _attach_listeners(session: "Session"):
     if focx.is_notebook_context() and not focx.is_colab_context():
 
         def on_capture_notebook_cell(event: CaptureNotebookCell) -> None:
-            cell = session._notebook_cells.get(event.subscription, None)
-            if cell is not None:
-                fosn.capture(cell, event)
+            event.subscription in session._notebook_cells and fosn.capture(
+                session._notebook_cells[event.subscription], event
+            )
 
         session._client.add_event_listener(
             "capture_notebook_cell", on_capture_notebook_cell
