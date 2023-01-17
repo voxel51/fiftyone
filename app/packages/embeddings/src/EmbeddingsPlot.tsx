@@ -32,7 +32,11 @@ export function EmbeddingsPlot({
   const [zoomRev] = useZoomRevision();
   const resetZoom = useResetPlotZoom();
   const { isLoading, traces, style } = usePlot(plotSelection);
-  const [dragMode, setDragMode] = usePanelStatePartial("dragMode", "lasso");
+  const [dragMode, setDragMode] = usePanelStatePartial(
+    "dragMode",
+    "lasso",
+    true
+  );
   useKeyDown("s", () => setDragMode("lasso"));
   useKeyDown("g", () => setDragMode("pan"));
   useKeyDown(

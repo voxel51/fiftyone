@@ -21,7 +21,8 @@ export function usePlotSelection() {
     extendedSelection && extendedSelection.length > 0;
   const [plotSelection, setPlotSelection] = usePanelStatePartial(
     "plotSelection",
-    []
+    [],
+    true
   );
   const selectedPatchIds = useRecoilValue(fos.selectedPatchIds(patchesField));
   const selectedPatchSampleIds = useRecoilValue(fos.selectedPatchSamples);

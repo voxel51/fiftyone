@@ -4,7 +4,7 @@ import * as fos from "@fiftyone/state";
 import { useExternalLink } from "@fiftyone/utilities";
 import { Loading, Selector, useTheme } from "@fiftyone/components";
 import { useToPatches } from "@fiftyone/state";
-import { usePanelState, usePanelStatePartial } from "@fiftyone/spaces";
+import { usePanelStatePartial } from "@fiftyone/spaces";
 import {
   HighlightAlt,
   Close,
@@ -42,7 +42,11 @@ export default function Embeddings({ containerHeight, dimensions }) {
   const canSelect = brainResultSelector.canSelect;
   const showPlot = brainResultSelector.hasSelection;
   const plotSelection = usePlotSelection();
-  const [dragMode, setDragMode] = usePanelStatePartial("dragMode", "lasso");
+  const [dragMode, setDragMode] = usePanelStatePartial(
+    "dragMode",
+    "lasso",
+    true
+  );
   const warnings = useWarnings();
 
   const selectorStyle = {
