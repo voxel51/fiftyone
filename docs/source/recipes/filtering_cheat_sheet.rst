@@ -29,13 +29,30 @@ The formulas in this section use the following example data:
 +-------------------------------------------+-----------------------------------------------------------------------+
 | Operation                                 | Command                                                               |
 +===========================================+=======================================================================+
-| Filepath starts with "/Users"             | ``ds.match(F("filepath").starts_with("/Users"))``                     |
+| Filepath starts with "/Users"             |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.match(                                                         |
+|                                           |        F("filepath").starts_with("/Users")                            |
+|                                           |     )                                                                 |
 +-------------------------------------------+-----------------------------------------------------------------------+
-| Filepath ends with "10.jpg" or "10.png"   | ``ds.match(F("filepath").ends_with(("10.jpg", "10.png")))``           |
+| Filepath ends with "10.jpg" or "10.png"   |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.match(                                                         |
+|                                           |        F("filepath").ends_with(                                       |
+|                                           |           ("10.jpg", "10.png")                                        |
+|                                           |        )                                                              |
+|                                           |     )                                                                 |
 +-------------------------------------------+-----------------------------------------------------------------------+
-| Label contains string "be"                | ``ds.filter_labels("predictions", F("label").contains_str("be"))``    |
+| Label contains string "be"                |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.filter_labels(                                                 |
+|                                           |        "predictions",                                                 |
+|                                           |        F("label").contains_str("be")                                  |
+|                                           |     )                                                                 |
 +-------------------------------------------+-----------------------------------------------------------------------+
-| Filepath contains "088" and is JPEG       | ``ds.match(F("filepath").re_match("088*.jpg"))``                      |
+| Filepath contains "088" and is JPEG       |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.match(F("filepath").re_match("088*.jpg"))                      |
 +-------------------------------------------+-----------------------------------------------------------------------+
 
 Reference:
@@ -76,7 +93,9 @@ The formulas in this section use the following example data:
 +-------------------------------------------+-----------------------------------------------------------------------+
 | Operation                                 | Command                                                               |
 +===========================================+=======================================================================+
-| After 2021-08-24 02:01:00                 | ``ds.match(F("date") > query_date)``                                  |
+| After 2021-08-24 02:01:00                 |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.match(F("date") > query_date)                                  |
 |                                           |                                                                       |
 |                                           | .. collapse:: In the App                                              |
 |                                           |                                                                       |
@@ -85,19 +104,45 @@ The formulas in this section use the following example data:
 |                                           |   slider allows you to specify the range of dates. In this case, drag |
 |                                           |   the left side to the first option after 2021-08-24.                 |
 +-------------------------------------------+-----------------------------------------------------------------------+
-| Within 30 minutes of 2021-08-24 02:01:00  | ``ds.match(abs(F("date") - query_date) < query_delta)``               |
+| Within 30 minutes of 2021-08-24 02:01:00  |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.match(                                                         |
+|                                           |         abs(F("date") - query_date) < query_delta                     |
+|                                           |     )                                                                 |
 +-------------------------------------------+-----------------------------------------------------------------------+
-| On the 24th of the month                  | ``ds.match(F("date").day_of_month() == 24)``                          |
+| On the 24th of the month                  |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.match(F("date").day_of_month() == 24)                          |
 +-------------------------------------------+-----------------------------------------------------------------------+
-| On even day of the week                   | ``ds.match(F("date").day_of_week() % 2 == 0)``                        |
+| On even day of the week                   |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.match(                                                         |
+|                                           |         F("date").day_of_week() % 2 == 0                              |
+|                                           |     )                                                                 |   
 +-------------------------------------------+-----------------------------------------------------------------------+
-| On the 268th day of the year              | ``ds.match(F("date").day_of_year() == 268)``                          |
+| On the 268th day of the year              |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.match(                                                         |
+|                                           |         F("date").day_of_year() == 268                                |
+|                                           |     )                                                                 |                        
 +-------------------------------------------+-----------------------------------------------------------------------+
-| In the 9th month of the year (September)  | ``ds.match(F("date").month() == 9)``                                  |
+| In the 9th month of the year (September)  |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.match(                                                         |
+|                                           |         F("date").month() == 9                                        |
+|                                           |     )                                                                 |
 +-------------------------------------------+-----------------------------------------------------------------------+
-| In the 38th week of the year              | ``ds.match(F("date").week() == 38)``                                  |
+| In the 38th week of the year              |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.match(                                                         |
+|                                           |         F("date").week() == 38                                        |
+|                                           |     )                                                                 |
 +-------------------------------------------+-----------------------------------------------------------------------+
-| In the year 2022                          | ``ds.match(F("date").year() == 2022)``                                |
+| In the year 2022                          |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.match(                                                         |
+|                                           |         F("date").year() == 2022                                      |
+|                                           |     )                                                                 |
 |                                           |                                                                       |
 |                                           | .. collapse:: In the App                                              |
 |                                           |                                                                       |
@@ -105,7 +150,11 @@ The formulas in this section use the following example data:
 |                                           |   click the down arrow in the "date" field to expand. Drag the left   |
 |                                           |   and right ends of the slider to only encompass dates in 2022.       |
 +-------------------------------------------+-----------------------------------------------------------------------+
-| With minute not equal to 0                | ``ds.match(F("date").minute() != 0)``                                 |
+| With minute not equal to 0                |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.match(                                                         |
+|                                           |         F("date").minute() != 0                                       |
+|                                           |     )                                                                 |
 +-------------------------------------------+-----------------------------------------------------------------------+
 
 Reference:
@@ -136,9 +185,13 @@ The formulas in this section use the following example data:
 +-------------------------------------------+-----------------------------------------------------------------------+
 | Operation                                 | Command                                                               |
 +===========================================+=======================================================================+
-| Within 5km of Times Square                | ``ds.geo_near(TIMES_SQUARE, max_distance=5000)``                      |
+| Within 5km of Times Square                |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.geo_near(TIMES_SQUARE, max_distance=5000)                      |
 +-------------------------------------------+-----------------------------------------------------------------------+
-| Within Manhattan                          | ``ds.geo_within(MANHATTAN)``                                          |
+| Within Manhattan                          |  .. code-block::                                                      |
+|                                           |                                                                       |
+|                                           |     ds.geo_within(MANHATTAN)                                          |
 +-------------------------------------------+-----------------------------------------------------------------------+
 
 Reference:
@@ -160,7 +213,12 @@ The formulas in this section use the following example data:
 +-------------------------------------------+-------------------------------------------------------------------------+
 | Operation                                 | Command                                                                 |
 +===========================================+=========================================================================+
-| Predictions with confidence > 0.95        | ``filter_labels("predictions", F("confidence") > 0.95)``                |
+| Predictions with confidence > 0.95        |  .. code-block::                                                        |
+|                                           |                                                                         |
+|                                           |     ds.filter_labels(                                                   |
+|                                           |        "predictions",                                                   |
+|                                           |        F("confidence") > 0.95                                           |
+|                                           |     )                                                                   |
 |                                           |                                                                         |
 |                                           | .. collapse:: In the App                                                |
 |                                           |                                                                         |
@@ -169,9 +227,19 @@ The formulas in this section use the following example data:
 |                                           |   be specified by values in the "confidence" field via the horizontal   |
 |                                           |   selection bar. Drag the circle on the right side of this bar to 0.95. |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| Exactly 10 ground truth detections        | ``ds.match(F("ground_truth.detections").length() == 10)``               |
+| Exactly 10 ground truth detections        |  .. code-block::                                                        |
+|                                           |                                                                         |
+|                                           |     ds.match(                                                           |
+|                                           |         F("ground_truth.detections").length() == 10                     |
+|                                           |     )                                                                   |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| At least   one dog                        | ``ds.match(F("ground_truth.detections.label").contains("dog"))``        |
+| At least one dog                          |  .. code-block::                                                        |
+|                                           |                                                                         |
+|                                           |     ds.match(                                                           |
+|                                           |         F(                                                              |
+|                                           |             "ground_truth.detections.label"                             |
+|                                           |         ).contains("dog")                                               |
+|                                           |     )                                                                   |
 |                                           |                                                                         |
 |                                           | .. collapse:: In the App                                                |
 |                                           |                                                                         |
@@ -179,14 +247,23 @@ The formulas in this section use the following example data:
 |                                           |   the down arrow in the "ground truth" label field to expand. Click into|
 |                                           |   the "+ filter by label" field and select "dog" from the dropdown.     |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| Images that do not contain dogs           | ``ds.match(~F("ground_truth.detections.label").contains("dog"))``       |
+| Images that do not contain dogs           |  .. code-block::                                                        |
+|                                           |                                                                         |
+|                                           |     ds.match(                                                           |
+|                                           |         ~F("ground_truth.detections.label").contains("dog")             |
+|                                           |     )                                                                   |
 |                                           |                                                                         |
 |                                           | .. collapse:: In the App                                                |
 |                                           |                                                                         |
 |                                           |   Same as for "At least one dog", but at the end, switch the selection  | 
 |                                           |   mode for the label field from "Select" to "Exclude".                  |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| Only dog detections                       | ``ds.filter_labels("ground_truth", F("label") == "dog")``               |
+| Only dog detections                       | .. code-block::                                                         |
+|                                           |                                                                         |
+|                                           |    ds.filter_labels(                                                    |
+|                                           |        "ground_truth",                                                  |
+|                                           |        F("label") == "dog"                                              |
+|                                           |    )                                                                    |
 |                                           |                                                                         |
 |                                           | .. collapse:: In the App                                                |
 |                                           |                                                                         |
@@ -195,9 +272,22 @@ The formulas in this section use the following example data:
 |                                           |   "ground_truth" label field, click into the "+ filter by label" cell,  |
 |                                           |   select "dog" from the dropdown.                                       |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| Images that only contain dogs             | ``ds.match(F("ground_truth.detections.label").is_subset(["dog"]))``     |
+| Images that only contain dogs             | .. code-block::                                                         |
+|                                           |                                                                         |
+|                                           |    ds.match(                                                            |
+|                                           |        F("ground_truth.detections.label").is_subset(                    |
+|                                           |            ["dog"]                                                      |
+|                                           |        )                                                                |
+|                                           |    )                                                                    |
+|                                           |                                                                         |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| Contains either a cat or a dog            | ``ds.match(F("predictions.detections.label").contains(["cat","dog"])``  |
+| Contains either a cat or a dog            | .. code-block::                                                         |
+|                                           |                                                                         |
+|                                           |    ds.match(                                                            |
+|                                           |         F("predictions.detections.label").contains(                     |
+|                                           |            ["cat","dog"]                                                |
+|                                           |         )                                                               |
+|                                           |    )                                                                    |
 |                                           |                                                                         |
 |                                           | .. collapse:: In the App                                                |
 |                                           |                                                                         |
@@ -210,7 +300,8 @@ The formulas in this section use the following example data:
 |                                           |                                                                         |
 |                                           |    ds.match(                                                            |
 |                                           |        F("predictions.detections.label").contains(                      |
-|                                           |            ["cat", "dog"], all=True                                     |
+|                                           |            ["cat", "dog"],                                              |
+|                                           |            all=True                                                     |
 |                                           |        )                                                                |
 |                                           |    )                                                                    |
 +-------------------------------------------+-------------------------------------------------------------------------+
@@ -300,7 +391,9 @@ dataset ``ds`` with detections in its ``predictions`` field:
 +-------------------------------------------+-------------------------------------------------------------------------+
 | Operation                                 | Command                                                                 |
 +===========================================+=========================================================================+
-| Uniqueness > 0.9                          | ``ds.match(F("uniqueness") > 0.9)``                                     |
+| Uniqueness > 0.9                          | .. code-block:: python                                                  |
+|                                           |                                                                         |
+|                                           |    ds.match(F("uniqueness") > 0.9)                                      |
 |                                           |                                                                         |
 |                                           | .. collapse:: In the App                                                |
 |                                           |                                                                         |
@@ -309,7 +402,12 @@ dataset ``ds`` with detections in its ``predictions`` field:
 |                                           |   specified by values in the "uniqueness" field via the horizontal      |
 |                                           |   selection bar. Drag the circle on the right side of this bar to 0.9.  |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| 10 most unique images                     | ``ds.sort_by("uniqueness", reverse=True)[:10]``                         |
+| 10 most unique images                     | .. code-block:: python                                                  |
+|                                           |                                                                         |
+|                                           |    ds.sort_by(                                                          |
+|                                           |        "uniqueness",                                                    |
+|                                           |        reverse=True                                                     |
+|                                           |    )[:10]                                                               |
 |                                           |                                                                         |
 |                                           | .. collapse:: In the App                                                |
 |                                           |                                                                         |
@@ -318,7 +416,12 @@ dataset ``ds`` with detections in its ``predictions`` field:
 |                                           |   next field, type "True". Click on the "+" to concatenate view stages. |
 |                                           |   Scroll down to "Limit", and in the "int" field enter 10. Hit return.  |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| Predictions with confidence > 0.95        | ``filter_labels("predictions", F("confidence") > 0.95)``                |
+| Predictions with confidence > 0.95        | .. code-block:: python                                                  |
+|                                           |                                                                         |
+|                                           |    filter_labels(                                                       |
+|                                           |        "predictions",                                                   |
+|                                           |        F("confidence") > 0.95                                           |
+|                                           |    )                                                                    |
 |                                           |                                                                         |
 |                                           | .. collapse:: In the App                                                |
 |                                           |                                                                         |
@@ -327,7 +430,12 @@ dataset ``ds`` with detections in its ``predictions`` field:
 |                                           |   be specified by values in the "confidence" field via the horizontal   |
 |                                           |   selection bar. Drag the circle on the right side of this bar to 0.95. |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| 10 most "wrong" predictions               | ``ds.sort_by("mistakenness", reverse=True)[:10]``                       |
+| 10 most "wrong" predictions               | .. code-block:: python                                                  |
+|                                           |                                                                         |
+|                                           |    ds.sort_by(                                                          |
+|                                           |        "mistakenness",                                                  |
+|                                           |        reverse=True                                                     |
+|                                           |    )[:10]                                                               |
 |                                           |                                                                         |
 |                                           | .. collapse:: In the App                                                |
 |                                           |                                                                         |
@@ -337,7 +445,9 @@ dataset ``ds`` with detections in its ``predictions`` field:
 |                                           |   stages. Scroll down to "Limit", and in the "int" field enter 10. Hit  |
 |                                           |   return.                                                               |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| Images with more than 10 false positives  | ``ds.match(F("eval_fp") > 10)``                                         |
+| Images with more than 10 false positives  | .. code-block:: python                                                  |
+|                                           |                                                                         |
+|                                           |    ds.match(F("eval_fp") > 10)                                          |
 |                                           |                                                                         |
 |                                           | .. collapse:: In the App                                                |
 |                                           |                                                                         |
@@ -345,7 +455,7 @@ dataset ``ds`` with detections in its ``predictions`` field:
 |                                           |   on the down arrow in the "eval_fp" field to expand. Drag the circle on|
 |                                           |   the left side of this bar to 10.                                      |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| False positives "dog" detections          | .. code-block:: python                                                  |
+| False positive "dog" detections           | .. code-block:: python                                                  |
 |                                           |                                                                         |
 |                                           |    ep.match_labels(                                                     |
 |                                           |       filter=(F("eval") == "fp") & (F("label") == "dog"),               |
@@ -361,7 +471,9 @@ dataset ``ds`` with detections in its ``predictions`` field:
 |                                           |   Scroll up to the Labels section, expand the "predictions" cell, click |
 |                                           |   in the "+ filter by label" field, and select "dog" from the dropdown. |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| Predictions with IoU > 0.9                | ``ep.match(F("iou") > 0.9)``                                            |
+| Predictions with IoU > 0.9                | .. code-block:: python                                                  |
+|                                           |                                                                         |
+|                                           |    ep.match(F("iou") > 0.9)                                             |
 |                                           |                                                                         |
 |                                           | .. collapse:: In the App                                                |
 |                                           |                                                                         |
@@ -422,7 +534,12 @@ classification predictions that have their ``logits`` attribute set:
 |                                           |   bar, click on "+ add stage", and add "SortBy" uniqueness, and then    |
 |                                           |   "Limit" to 10.                                                        |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| 10 most "wrong" predictions               | ``ds.sort_by("mistakenness", reverse=True)[:10]``                       |
+| 10 most "wrong" predictions               | .. code-block:: python                                                  |
+|                                           |                                                                         |
+|                                           |    ds.sort_by(                                                          |
+|                                           |        "mistakenness",                                                  |
+|                                           |        reverse=True                                                     |
+|                                           |    )[:10]                                                               |
 |                                           |                                                                         |
 |                                           | .. collapse:: In the App                                                |
 |                                           |                                                                         |
@@ -432,7 +549,14 @@ classification predictions that have their ``logits`` attribute set:
 |                                           |   stages. Scroll down to "Limit", and in the "int" field enter 10. Hit  |
 |                                           |   return.                                                               |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| 10 most likely annotation mistakes        | ``ds.match_tags("train").sort_by("mistakenness, reverse=True)[:10]``    |
+| 10 most likely annotation mistakes        | .. code-block:: python                                                  |
+|                                           |                                                                         |
+|                                           |    ds.match_tags(                                                       |
+|                                           |        "train"                                                          |
+|                                           |    ).sort_by(                                                           |
+|                                           |        "mistakenness,                                                   |
+|                                           |        reverse=True                                                     |
+|                                           |    )[:10]                                                               |
 +-------------------------------------------+-------------------------------------------------------------------------+
 
 Reference:
@@ -480,7 +604,12 @@ Filtering labels
 +-------------------------------------------+-------------------------------------------------------------------------+
 | Operation                                 | Get predicted detections that have confidence > 0.9                     |
 +===========================================+=========================================================================+
-| Idiomatic                                 | ``ds.filter_labels("predictions", F("confidence") > 0.9)``              |
+| Idiomatic                                 |   .. code-block:: python                                                |
+|                                           |                                                                         |
+|                                           |      ds.filter_labels( )                                                |
+|                                           |          "predictions",                                                 |
+|                                           |          F("confidence") > 0.9                                          |
+|                                           |      )                                                                  |
 +-------------------------------------------+-------------------------------------------------------------------------+
 | Brute force                               |   .. code-block:: python                                                |
 |                                           |                                                                         |
@@ -497,9 +626,11 @@ Matching labels
 ---------------
 
 +---------------+-----------------------------------------------------------------------------------------------------+
-| Operation     | Samples that have labels with ``id``s in the list ``label_ids``                                     |
+| Operation     | Samples that have labels with id's in the list ``label_ids``                                        |
 +===============+=====================================================================================================+
-| Idiomatic     | ``ds.match_labels(ids=label_ids)``                                                                  |
+| Idiomatic     |   .. code-block:: python                                                                            |
+|               |                                                                                                     |
+|               |      ds.match_labels(ids=label_ids)                                                                 |
 +---------------+-----------------------------------------------------------------------------------------------------+
 | Brute force   |   .. code-block:: python                                                                            |
 |               |                                                                                                     |
@@ -511,7 +642,12 @@ Matching labels
 +---------------+-----------------------------------------------------------------------------------------------------+
 | Operation     | Samples that have labels satisfying ``len_filter`` in ``predictions`` or ``ground_truth`` field     |
 +===============+=====================================================================================================+
-| Idiomatic     | ``ds.match_labels(filter=len_filter, fields=["predictions", "ground_truth"])``                      |
+| Idiomatic     |   .. code-block:: python                                                                            |
+|               |                                                                                                     |
+|               |      ds.match_labels(                                                                               |
+|               |          filter=len_filter,                                                                         |
+|               |          fields=["predictions", "ground_truth"]                                                     |
+|               |      )                                                                                              |
 +---------------+----------------------+------------------------------------------------------------------------------+
 | Brute force   |   .. code-block:: python                                                                            |
 |               |                                                                                                     |
@@ -523,7 +659,9 @@ Matching labels
 +---------------+-----------------------------------------------------------------------------------------------------+
 | Operation     | Samples that have labels with tag "error" in ``predictions`` or ``ground_truth`` field              |
 +===============+=====================================================================================================+
-| Idiomatic     | ``ds.match_labels(tags="error")``                                                                   |
+| Idiomatic     |   .. code-block:: python                                                                            |
+|               |                                                                                                     |
+|               |      ds.match_labels(tags="error")                                                                  |
 +---------------+----------------------+------------------------------------------------------------------------------+
 | Brute force   |   .. code-block:: python                                                                            |
 |               |                                                                                                     |
@@ -542,9 +680,13 @@ Matching tags
 +-------------------------------------------+-------------------------------------------------------------------------+
 | Operation                                 | Samples that have tag ``validation``                                    |
 +===========================================+=========================================================================+
-| Idiomatic                                 | ``ds.match_tags("validation")``                                         |
+| Idiomatic                                 |   .. code-block:: python                                                |
+|                                           |                                                                         |
+|                                           |      ds.match_tags("validation")                                        |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| Brute force                               | ``ds.match(F("tags").contains("validation"))``                          |
+| Brute force                               |   .. code-block:: python                                                |
+|                                           |                                                                         |
+|                                           |      ds.match(F("tags").contains("validation"))                         |
 +-------------------------------------------+-------------------------------------------------------------------------+
 
 Reference:
@@ -566,9 +708,17 @@ The following table uses this example data:
 +-------------------------------------------+-------------------------------------------------------------------------+
 | Operation                                 | Frames with at least 10 detections                                      |
 +===========================================+=========================================================================+
-| Idiomatic                                 | ``ds.match_frames(num_objects > 10)``                                   |
+| Idiomatic                                 |   .. code-block:: python                                                |
+|                                           |                                                                         |
+|                                           |      ds.match_frames(num_objects > 10)                                  |
 +-------------------------------------------+-------------------------------------------------------------------------+
-| Brute force                               | ``ds.match(F("frames").filter(num_objects > 10).length() > 0)``         |
+| Brute force                               |   .. code-block:: python                                                |
+|                                           |                                                                         |
+|                                           |      ds.match(                                                          |
+|                                           |          F("frames").filter(                                            |
+|                                           |              num_objects > 10                                           |
+|                                           |          ).length() > 0                                                 |
+|                                           |      )                                                                  |
 +-------------------------------------------+-------------------------------------------------------------------------+
 
 Reference:
@@ -616,7 +766,12 @@ The following table uses this example data:
 +---------------+-----------------------------------------------------------------------------------------------------+
 | Operation     | Only include predicted keypoints with confidence > 0.9                                              |
 +===============+=====================================================================================================+
-| Idiomatic     | ``ds.filter_keypoints("predictions", filter=F("confidence") > 0.9)``                                |
+| Idiomatic     |   .. code-block:: python                                                                            |
+|               |                                                                                                     |
+|               |      ds.filter_keypoints(                                                                           |
+|               |          "predictions",                                                                             |
+|               |          filter=F("confidence") > 0.9                                                               |
+|               |      )                                                                                              |
 +---------------+----------------------+------------------------------------------------------------------------------+
 | Brute force   |   .. code-block:: python                                                                            |
 |               |                                                                                                     |
