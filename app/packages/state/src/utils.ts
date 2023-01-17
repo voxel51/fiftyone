@@ -66,12 +66,23 @@ export const collapseFields = (paths): StrictField[] => {
   return Object.entries(schema).map(([_, field]) => toStrictField(field));
 };
 
-const convertTargets = (targets: { target: any; value: any }[]) => {
+const convertTargets = (
+  targets: {
+    target: string;
+    value: string;
+  }[]
+) => {
   return Object.fromEntries(
-    (targets || []).map<[number, string]>(({ target, value }) => [
-      target,
-      value,
-    ])
+    (targets || []).map(({ target, value }, i) => {
+      if (!isNaN(Number(target))) {
+        // masks targets is for non-rgb masks
+        return [target, value];
+      }
+
+      // convert into RGB mask representation
+      // offset of 1 in intTarget because 0 has a special significance
+      return [target, { label: value, intTarget: i + 1 }];
+    })
   );
 };
 
@@ -106,7 +117,7 @@ export const getDatasetName = (context: RoutingContext<any>): string => {
   );
 
   if (result) {
-    return result.variables.name;
+    return decodeURIComponent(result.variables.name);
   }
 
   return null;
@@ -114,3 +125,17 @@ export const getDatasetName = (context: RoutingContext<any>): string => {
 
 export type ResponseFrom<TQuery extends { response: unknown }> =
   TQuery["response"];
+
+export const getSavedViewName = (context: RoutingContext<any>): string => {
+  const datasetName = getDatasetName(context);
+  if (datasetName) {
+    const queryString = window.location.search;
+    const params = new URLSearchParams(queryString);
+    const viewName = params.get("view");
+    if (viewName) {
+      return viewName;
+    }
+  }
+
+  return null;
+};

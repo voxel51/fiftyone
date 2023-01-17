@@ -25,19 +25,19 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
+import { useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
+import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 import { PillButton } from "../utils";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Similar from "./Similar";
 import Tagger from "./Tagger";
-import { useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
-import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 
-const shouldToggleBookMarkIconOnSelector = selector<boolean>({
+export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
   get: ({ get }) => {
     const hasFiltersValue = get(fos.hasFilters(false));
@@ -393,6 +393,7 @@ export const ModalActionsRow = ({
   lookerRef?: MutableRefObject<VideoLooker | undefined>;
 }) => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
+  const hideTagging = useRecoilValue(fos.readOnly);
 
   return (
     <ActionsRowDiv
@@ -404,7 +405,7 @@ export const ModalActionsRow = ({
       <Hidden />
       <Selected modal={true} lookerRef={lookerRef} />
       {!isVideo && <Similarity modal={true} />}
-      <Tag modal={true} lookerRef={lookerRef} />
+      {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>

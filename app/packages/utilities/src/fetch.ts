@@ -17,9 +17,9 @@ export interface FetchFunction {
     method: string,
     path: string,
     body?: A,
-    result?: "json" | "blob",
+    result?: "json" | "blob" | "arrayBuffer",
     retries?: number,
-    retryCodes?: number[]
+    retryCodes?: number[] | "arrayBuffer"
   ): Promise<R>;
 }
 
@@ -32,13 +32,18 @@ export const getFetchHeaders = () => {
 };
 
 export const getFetchOrigin = () => {
-  if (window.FIFTYONE_SERVER_ADDRESS) {
+  // window is not defined in the web worker
+  if (typeof window !== "undefined" && window.FIFTYONE_SERVER_ADDRESS) {
     return window.FIFTYONE_SERVER_ADDRESS;
   }
   return fetchOrigin;
 };
 export function getFetchPathPrefix(): string {
-  if (typeof window.FIFTYONE_SERVER_PATH_PREFIX === "string") {
+  // window is not defined in the web worker
+  if (
+    typeof window !== "undefined" &&
+    typeof window.FIFTYONE_SERVER_PATH_PREFIX === "string"
+  ) {
     return window.FIFTYONE_SERVER_PATH_PREFIX;
   }
   return "";
@@ -156,9 +161,10 @@ export const setFetchFunction = (
 const isWorker =
   // @ts-ignore
   typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+const hasWindow = typeof window !== "undefined" && !isWorker;
 
 export const getAPI = () => {
-  if (import.meta.env.VITE_API) {
+  if (import.meta.env?.VITE_API) {
     return import.meta.env.VITE_API;
   }
   if (window.FIFTYONE_SERVER_ADDRESS) {
@@ -171,7 +177,7 @@ export const getAPI = () => {
     : window.location.origin;
 };
 
-if (!isWorker) {
+if (hasWindow) {
   setFetchFunction(getAPI(), {}, getFetchPathPrefix());
 }
 
@@ -179,7 +185,7 @@ class RetriableError extends Error {}
 class FatalError extends Error {}
 
 const polling =
-  !isWorker &&
+  hasWindow &&
   typeof new URLSearchParams(window.location.search).get("polling") ===
     "string";
 

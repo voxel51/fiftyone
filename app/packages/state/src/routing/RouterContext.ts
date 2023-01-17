@@ -12,7 +12,6 @@ import {
 } from "relay-runtime";
 
 import {
-  FetchFunction,
   getFetchFunction,
   GraphQLError,
   isElectron,
@@ -255,12 +254,18 @@ async function fetchGraphQL(
   );
 
   if ("errors" in data && data.errors) {
-    throw new GraphQLError(data.errors as unknown as GraphQLError[]);
+    // TODO: figure out how why the aggregationQuery is getting
+    //  triggered for non-existent datasets and handle this upstream, but
+    //  silence the error for now since the no data from the failed query
+    //  is required/expected
+    console.error("GraphQLResponse data returned errors:", data.errors, data);
+    return null;
+    // throw new GraphQLError(data.errors as unknown as GraphQLError[]);
   }
   return data;
 }
 
-const fetchRelay: FetchFunction = async (params, variables) => {
+const fetchRelay = async (params, variables) => {
   return fetchGraphQL(params.text, variables);
 };
 
@@ -270,6 +275,10 @@ export const getEnvironment = () =>
     store: new Store(new RecordSource()),
   });
 
-export const RouterContext = React.createContext(
-  createRouter(getEnvironment(), [], { errors: false }).context
-);
+export let RouterContext: React.Context<RoutingContext<any>> = null;
+
+if (typeof window !== "undefined") {
+  RouterContext = React.createContext(
+    createRouter(getEnvironment(), [], { errors: false }).context
+  );
+}

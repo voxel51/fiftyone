@@ -1,5 +1,6 @@
 
 **/*.DS_store
+.vscode
 
 __pycache__
 *.py[cod]
@@ -23,4 +24,6 @@ dist/
 
 /bin
 /lib
+coverage.xml
+.coverage.*
 pyvenv.cfg

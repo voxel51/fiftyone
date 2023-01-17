@@ -100,12 +100,12 @@ export const imageFilters = atomFamily<
   default: ({ filter }) => IMAGE_FILTERS[filter].default,
 });
 
-export const activePlot = atom({
+export const activePlot = atom<string>({
   key: "activePlot",
   default: "Labels",
 });
 
-export const loading = atom({
+export const loading = atom<boolean>({
   key: "loading",
   default: false,
 });
@@ -117,8 +117,18 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   }
 );
 
+/**
+ * The state of the current dataset. Contains informations about the dataset, and the samples contained in it.
+ *
+ * See :py:class:\`fiftyone.core.dataset.Dataset\` for python documentation.
+ */
 export const dataset = atom<State.Dataset>({
   key: "dataset",
+  default: null,
+});
+
+export const selectedViewName = atom<string>({
+  key: "selectedViewName",
   default: null,
 });
 
@@ -233,6 +243,11 @@ export const theme = atom<"dark" | "light">({
       });
     },
   ],
+});
+
+export const canEditSavedViews = atom({
+  key: "canEditSavedViews",
+  default: true,
 });
 
 export const compactLayout = atom({

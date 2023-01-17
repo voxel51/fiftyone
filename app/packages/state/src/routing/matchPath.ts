@@ -87,7 +87,7 @@ export const matchPath = <T extends OperationType | undefined>(
   };
   keys.forEach((key, i) => {
     // @ts-ignore
-    allVariables[key.name] = values[i];
+    allVariables[key.name] = decodeURIComponent(values[i]);
   });
 
   return {

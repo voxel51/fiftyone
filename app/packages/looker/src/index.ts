@@ -1,9 +1,6 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import LRU from "lru-cache";
-import { v4 as uuid } from "uuid";
-
 import {
   AppError,
   DATE_FIELD,
@@ -16,16 +13,18 @@ import {
   Schema,
   withPath,
 } from "@fiftyone/utilities";
+import LRU from "lru-cache";
+import { v4 as uuid } from "uuid";
 
 import {
-  FONT_SIZE,
-  STROKE_WIDTH,
-  PAD,
-  POINT_RADIUS,
-  MAX_FRAME_CACHE_SIZE_BYTES,
+  BASE_ALPHA,
   CHUNK_SIZE,
   DASH_LENGTH,
-  BASE_ALPHA,
+  FONT_SIZE,
+  MAX_FRAME_CACHE_SIZE_BYTES,
+  PAD,
+  POINT_RADIUS,
+  STROKE_WIDTH,
 } from "./constants";
 import {
   getFrameElements,
@@ -37,29 +36,29 @@ import {
   LookerElement,
   VIDEO_SHORTCUTS,
 } from "./elements/common";
-import processOverlays from "./processOverlays";
 import { ClassificationsOverlay, loadOverlays } from "./overlays";
 import { CONTAINS, Overlay } from "./overlays/base";
+import processOverlays from "./processOverlays";
 import {
-  FrameState,
-  ImageState,
-  VideoState,
-  StateUpdate,
   BaseState,
+  BufferRange,
+  Buffers,
+  Coloring,
+  Coordinates,
   DEFAULT_FRAME_OPTIONS,
   DEFAULT_IMAGE_OPTIONS,
   DEFAULT_VIDEO_OPTIONS,
-  Coordinates,
-  Optional,
-  FrameChunkResponse,
-  VideoSample,
-  FrameSample,
-  Buffers,
-  LabelData,
-  BufferRange,
   Dimensions,
+  FrameChunkResponse,
+  FrameSample,
+  FrameState,
+  ImageState,
+  LabelData,
+  Optional,
   Sample,
-  Coloring,
+  StateUpdate,
+  VideoSample,
+  VideoState,
 } from "./state";
 import {
   addToBuffers,
@@ -75,9 +74,9 @@ import {
 
 import { zoomToContent } from "./zoom";
 
-import { getFrameNumber } from "./elements/util";
 import { getColor } from "@fiftyone/utilities";
 import { Events } from "./elements/base";
+import { getFrameNumber } from "./elements/util";
 
 export { createColorGenerator, getRGB } from "@fiftyone/utilities";
 export { freeVideos } from "./elements/util";
@@ -91,7 +90,6 @@ export type {
   VideoConfig,
   VideoOptions,
 } from "./state";
-
 export { zoomAspectRatio } from "./zoom";
 
 export type RGB = [number, number, number];
@@ -111,9 +109,7 @@ const workerCallbacks = {
 };
 
 const getLabelsWorker = (() => {
-  // one labels worker seems to be best
-  // const numWorkers = navigator.hardwareConcurrency || 4;
-  const numWorkers = 1;
+  const numWorkers = navigator.hardwareConcurrency || 4;
   let workers: Worker[];
 
   let next = -1;
@@ -646,24 +642,25 @@ export abstract class Looker<
 
   private loadSample(sample: Sample) {
     const messageUUID = uuid();
-    const worker = getLabelsWorker((event, detail) =>
+    const labelsWorker = getLabelsWorker((event, detail) =>
       this.dispatchEvent(event, detail)
     );
-    const listener = ({ data: { sample, uuid } }) => {
+    const listener = ({ data: { sample, coloring, uuid } }) => {
       if (uuid === messageUUID) {
         this.sample = sample;
+        this.state.options.coloring = coloring;
         this.loadOverlays(sample);
         this.updater({
           overlaysPrepared: true,
           disabled: false,
           reloading: false,
         });
-        worker.removeEventListener("message", listener);
+        labelsWorker.removeEventListener("message", listener);
       }
     };
-    worker.addEventListener("message", listener);
+    labelsWorker.addEventListener("message", listener);
 
-    worker.postMessage({
+    labelsWorker.postMessage({
       method: "processSample",
       coloring: this.state.options.coloring,
       sample,
