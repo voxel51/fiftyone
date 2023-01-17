@@ -28,7 +28,7 @@ solutions, including Kubernetes and Docker.
 Python SDK
 ----------
 
-While the :ref:`FiftyOne Teams App <team-app>` allows for countless new App-centric
+While the :ref:`FiftyOne Teams App <teams-app>` allows for countless new App-centric
 workflows, any existing Python-based workflows that you've fallen in love with
 in the open-source version of FiftyOne are still directly applicable!
 

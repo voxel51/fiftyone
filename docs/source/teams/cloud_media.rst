@@ -106,8 +106,7 @@ can be used to manipulate both local and cloud media include:
             progress (False): whether to render a progress bar tracking the status
                 of the upload
 
-        Returns:
-            the list of remote paths
+        Returns:   the list of remote paths
         File:      /path/to/fiftyone-teams/fiftyone/core/storage.py
         Type:      function
 
