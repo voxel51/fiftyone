@@ -269,7 +269,11 @@ export default function ViewDialog(props: Props) {
                 color: theme.text.primary,
                 textTransform: "inherit",
                 padding: "0.5rem 1.25rem",
-                border: `1px solid ${theme.primary.plainBorder}`,
+                border: `1px solid ${theme.text.tertiary}`,
+
+                "&:hover": {
+                  background: theme.background.level2,
+                },
               }}
             >
               Cancel
@@ -288,7 +292,7 @@ export default function ViewDialog(props: Props) {
                   colorOption?.color === initialColor)
               }
               sx={{
-                background: theme.common.black,
+                background: "#FF6D04",
                 color: theme.common.white,
                 textTransform: "inherit",
                 padding: "0.5rem 1.25rem",
@@ -296,7 +300,7 @@ export default function ViewDialog(props: Props) {
                 marginLeft: "1rem",
 
                 "&:hover": {
-                  background: theme.common.black,
+                  background: "#D54B00",
                   color: theme.common.white,
                 },
 
