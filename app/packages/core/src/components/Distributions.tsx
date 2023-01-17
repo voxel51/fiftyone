@@ -21,7 +21,6 @@ import {
   noDistributionPathsData,
 } from "@fiftyone/state";
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
-import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -284,13 +283,7 @@ const Distributions = ({
   if (noData.state === "hasError") throw noData.contents;
   return noData.state === "hasValue" ? (
     !noData.contents ? (
-      <Suspense
-        fallback={
-          <Loading>
-            <LoadingDots text="Loading" />
-          </Loading>
-        }
-      >
+      <Suspense fallback={<Loading ellipsisAnimation>Loading</Loading>}>
         <DistributionsContainer style={style}>
           {paths.map((path) => {
             return <DistributionRenderer key={path} path={path} />;
@@ -301,9 +294,7 @@ const Distributions = ({
       <Loading>No data</Loading>
     )
   ) : (
-    <Loading>
-      <LoadingDots text="Loading" />
-    </Loading>
+    <Loading ellipsisAnimation>Loading</Loading>
   );
 };
 
