@@ -38,6 +38,13 @@ workflows.
 .. Add recipe cards below
 
 .. customcarditem::
+    :header: FiftyOne terminology
+    :description: A brief overview of FiftyOne's key terminology.
+    :link: fiftyone_terminology.html
+    :image: ../_static/images/recipes/pandas_vs_fiftyone.png
+    :tags: Cheat-Sheets,Basics
+
+.. customcarditem::
     :header: pandas vs FiftyOne
     :description: See how to translate common pandas queries into FiftyOne's query syntax for computer vision.
     :link: pandas_vs_fiftyone.html
@@ -145,6 +152,7 @@ workflows.
    :maxdepth: 1
    :hidden:
 
+   FiftyOne terminology <fiftyone_terminology>
    pandas vs FiftyOne <pandas_vs_fiftyone>
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
