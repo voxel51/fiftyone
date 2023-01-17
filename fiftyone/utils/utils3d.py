@@ -25,27 +25,40 @@ o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
 logger = logging.getLogger(__name__)
 
 
-def compute_birds_eye_view_map(filepath, size, bounds=None):
-    """Generates a bird's-eye view (BEV) map for the given PCD file.
+def compute_orthographic_projection_map(
+    filepath, size, projection_normal=None, bounds=None
+):
+    """Generates an orthographic projection map for the given PCD file onto the
+    specified plane (default xy plane).
 
-    The returned map is a three-channel numpy array encoding the intensity,
-    height, and density of the point cloud.
+    The returned map is a three-channel array encoding the intensity, height,
+    and density of the point cloud.
 
     Args:
         filepath: the path to the ``.pcd`` file
         size: the desired ``(width, height)`` for the generated map. Either
             dimension can be None or negative, in which case the appropriate
             aspect-preserving value is used
+        projection_normal (None): the normal vector of the plane onto which to
+            perform the projection. By default, ``[0, 0, 1]`` is used
         bounds (None): an optional ``([xmin, ymin, zmin], [xmax, ymax, zmax])``
-            tuple defining the field of view for which to generate each map.
-            Either element of the tuple or any/all of its values can be None,
-            in which case a tight crop of the point cloud along the missing
-            dimension(s) are used
+            tuple defining the field of view for which to generate each map in
+            the projected plane. Either element of the tuple or any/all of its
+            values can be None, in which case a tight crop of the point cloud
+            along the missing dimension(s) are used
 
     Returns:
-        the BEV map
+        a tuple of
+
+        -   the feature map
+        -   the ``[xmin, xmax, ymin, ymax]`` bounds in the projected plane
     """
-    point_cloud = o3d.io.read_point_cloud(filepath)
+    pc = o3d.io.read_point_cloud(filepath)
+
+    if projection_normal is not None:
+        # @todo our goal is to rotate `projection_normal` onto `[0, 0, 1]`
+        R = o3d.geometry.get_rotation_matrix_from_xyz(projection_normal)
+        pc = pc.rotate(R, center=False)
 
     if bounds is None:
         min_bound, max_bound = None, None
@@ -53,11 +66,11 @@ def compute_birds_eye_view_map(filepath, size, bounds=None):
         min_bound, max_bound = bounds
 
     if _contains_none(min_bound):
-        _min_bound = np.amin(np.asarray(point_cloud.points), axis=0)
+        _min_bound = np.amin(np.asarray(pc.points), axis=0)
         min_bound = _fill_none(min_bound, _min_bound)
 
     if _contains_none(max_bound):
-        _max_bound = np.amax(np.asarray(point_cloud.points), axis=0)
+        _max_bound = np.amax(np.asarray(pc.points), axis=0)
         max_bound = _fill_none(max_bound, _max_bound)
 
     width, height = _parse_size(size, (min_bound, max_bound))
@@ -65,15 +78,13 @@ def compute_birds_eye_view_map(filepath, size, bounds=None):
     bbox = o3d.geometry.AxisAlignedBoundingBox(
         min_bound=min_bound, max_bound=max_bound
     )
-    point_cloud = point_cloud.crop(bbox).translate((0, 0, -1 * min_bound[2]))
+    pc = pc.crop(bbox).translate((0, 0, -1 * min_bound[2]))
 
     discretization = (max_bound[0] - min_bound[0]) / height
     max_height = float(np.abs(max_bound[2] - min_bound[2]))
 
     # Extract points from o3d point cloud
-    points = np.vstack(
-        (np.copy(point_cloud.points).T, np.array(point_cloud.colors)[:, 0])
-    ).T
+    points = np.vstack((np.copy(pc.points).T, np.array(pc.colors)[:, 0])).T
 
     # Discretize feature map
     points[:, 0] = np.int_(np.floor(points[:, 0] / discretization))
@@ -111,21 +122,20 @@ def compute_birds_eye_view_map(filepath, size, bounds=None):
         np.int_(points_top[:, 0]), np.int_(points_top[:, 1])
     ] = normalized_counts
 
-    # Encode intensity, height, and density in RGB map
-    bev_map = np.stack(
+    feature_map = np.stack(
         (
-            density_map[:height, :width],  # r_map
-            height_map[:height, :width],  # g_map
-            intensity_map[:height, :width],  # b_map
+            intensity_map[:height, :width],
+            height_map[:height, :width],
+            density_map[:height, :width],
         )
     )
 
     # Reshape and rescale pixel values
-    bev_map = np.einsum("ijk -> jki", bev_map)
+    feature_map = np.einsum("ijk -> jki", feature_map)
 
-    # Reorder for etai.write()
-    bev_map[:, :, [0, 2]] = bev_map[:, :, [2, 0]]
-    return bev_map
+    bounds = [min_bound[0], max_bound[0], min_bound[1], max_bound[1]]
+
+    return feature_map, bounds
 
 
 def _parse_size(size, bounds):
@@ -158,25 +168,28 @@ def _fill_none(values, ref_values):
     return [v if v is not None else r for v, r in zip(values, ref_values)]
 
 
-def compute_birds_eye_view_maps(
+def compute_orthographic_projection_maps(
     samples,
     size,
     output_dir,
     rel_dir=None,
+    projection_normal=None,
     in_group_slice=None,
     out_group_slice=None,
     out_image_field=None,
+    out_bounds_field=None,
     out_map_field=None,
     bounds=None,
 ):
-    """Computes bird's-eye view (BEV) maps for the point clouds in the given
+    """Computes orthographic projection maps for the point clouds in the given
     collection.
 
     If ``out_map_field`` is provided, the raw maps generated by
-    :func:`compute_birds_eye_view_map` are written to disk as ``.npy`` files.
+    :func:`compute_orthographic_projection_map` are written to disk as ``.npy``
+    files.
 
-    If ``out_group_slice`` or ``out_image_field`` are provided, the BEV maps
-    are written to disk as RGB images.
+    If ``out_group_slice`` or ``out_image_field`` are provided, the maps are
+    written to disk as RGB images.
 
     Examples::
 
@@ -185,33 +198,17 @@ def compute_birds_eye_view_maps(
         import fiftyone.zoo as foz
 
         dataset = foz.load_zoo_dataset("quickstart-groups")
+        view = dataset.select_group_slices("pcd")
 
-        #
-        # Option 1: store bird's-eye view images in a new `bev` group slice
-        #
-
-        fou3d.compute_birds_eye_view_maps(
-            dataset,
+        fou3d.compute_orthographic_projection_maps(
+            view,
             (-1, 512),
-            "/tmp/bev",
-            out_group_slice="bev",
+            "/tmp/proj",
+            out_image_field="proj_path",
+            out_bounds_field="proj_bounds",
         )
 
         session = fo.launch_app(dataset)
-
-        #
-        # Option 2: store bird's-eye view images with custom bounds in a new
-        # `bev_filepath`field
-        #
-
-        view = dataset.select_group_slices("pcd")
-        fou3d.compute_birds_eye_view_maps(
-            view,
-            (400, 600),
-            "/tmp/bev",
-            out_image_field="bev_filepath",
-            bounds=((0, 0, 0), (100, 200, 50))
-        )
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -224,22 +221,28 @@ def compute_birds_eye_view_maps(
             ``output_dir`` to generate an output path for each image. This
             argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths
+        projection_normal (None): the normal vector of the plane onto which to
+            perform the projections. By default, ``[0, 0, 1]`` is used
         in_group_slice (None): the name of the group slice containing the point
             cloud data. If ``samples`` is a grouped collection and this
             parameter is not provided, the first point cloud slice will be used
         out_group_slice (None): the name of a group slice to which to add
-            samples containing the BEV images/maps
+            samples containing the feature images/maps
         out_image_field (None): the name of a field in which to store the paths
-            to the BEV images. If ``in_group_slice`` is provided, this will
+            to the feature images. If ``in_group_slice`` is provided, this will
             always be set to ``filepath``
+        out_bounds_field (None): the name of a field in which to store the
+            ``[xmin, xmax, ymin, ymax]`` bounds of each map in the projected
+            plane
         out_map_field (None): an optional field in which to store the paths to
-            the feature maps generated by :meth:`compute_birds_eye_view_map`.
-            If this value is not provided, the maps are not written to disk
+            the feature maps generated by
+            :meth:`compute_orthographic_projection_map`. If this value is not
+            provided, the maps are not written to disk
         bounds (None): an optional ``([xmin, ymin, zmin], [xmax, ymax, zmax])``
-            tuple defining the field of view for which to generate each map.
-            Either element of the tuple or any/all of its values can be None,
-            in which case a tight crop of the point cloud along the missing
-            dimension(s) are used
+            tuple defining the field of view in the projected plane for which
+            to generate each map. Either element of the tuple or any/all of its
+            values can be None, in which case a tight crop of the point cloud
+            along the missing dimension(s) are used
     """
     if in_group_slice is None and samples.media_type == fom.GROUP:
         in_group_slice = _get_point_cloud_slice(samples)
@@ -273,52 +276,67 @@ def compute_birds_eye_view_maps(
     )
 
     if out_group_slice is not None:
-        bev_samples = []
+        out_samples = []
     else:
-        bev_image_paths = []
-        bev_feature_paths = []
+        image_paths = []
+        map_paths = []
+        all_bounds = []
 
     with fou.ProgressBar(total=len(filepaths)) as pb:
         for filepath, group in pb(zip(filepaths, groups)):
-            bev_image_path = filename_maker.get_output_path(
+            image_path = filename_maker.get_output_path(
                 filepath, output_ext=".png"
             )
 
-            bev_map = compute_birds_eye_view_map(filepath, size, bounds=bounds)
+            feature_map, map_bounds = compute_orthographic_projection_map(
+                filepath,
+                size,
+                projection_normal=projection_normal,
+                bounds=bounds,
+            )
 
             if out_image_field is not None:
-                # pylint: disable=no-member
-                bev_img = cv2.rotate(
-                    (255.0 * bev_map).astype(np.uint8), cv2.ROTATE_180
-                )
-                etai.write(bev_img, bev_image_path)
+                feature_img = (255.0 * feature_map).astype(np.uint8)
+                # feature_img = np.transpose(feature_img, (1, 0, 2))
+                # feature_img = cv2.rotate(feature_img, cv2.ROTATE_180)
+                etai.write(feature_img, image_path)
 
             if out_map_field is not None:
-                bev_feature_path = os.path.splitext(bev_image_path)[0] + ".npy"
-                np.save(bev_feature_path, bev_map)
+                feature_path = os.path.splitext(image_path)[0] + ".npy"
+                np.save(feature_path, feature_map)
 
             if out_group_slice is not None:
-                sample = fos.Sample(filepath=bev_image_path)
+                sample = fos.Sample(filepath=image_path)
                 sample[group_field] = group.element(out_group_slice)
-                if out_map_field is not None:
-                    sample[out_map_field] = bev_feature_path
 
-                bev_samples.append(sample)
+                if out_map_field is not None:
+                    sample[out_map_field] = feature_path
+
+                if out_bounds_field is not None:
+                    sample[out_bounds_field] = map_bounds
+
+                out_samples.append(sample)
             else:
                 if out_image_field is not None:
-                    bev_image_paths.append(bev_image_path)
+                    image_paths.append(image_path)
 
                 if out_map_field is not None:
-                    bev_feature_paths.append(bev_feature_path)
+                    map_paths.append(feature_path)
+
+                if out_bounds_field is not None:
+                    all_bounds.append(map_bounds)
 
     if out_group_slice is not None:
-        samples.add_samples(bev_samples)
+        samples.add_samples(out_samples)
     else:
         if out_image_field is not None:
-            point_cloud_view.set_values(out_image_field, bev_image_paths)
+            point_cloud_view.set_values(out_image_field, image_paths)
 
         if out_map_field is not None:
-            point_cloud_view.set_values(out_map_field, bev_feature_paths)
+            point_cloud_view.set_values(out_map_field, map_paths)
+
+        if out_bounds_field is not None:
+            point_cloud_view.set_values(out_bounds_field, all_bounds)
 
 
 def _get_point_cloud_slice(samples):
