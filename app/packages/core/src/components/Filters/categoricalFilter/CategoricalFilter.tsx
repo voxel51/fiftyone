@@ -5,25 +5,22 @@ import {
   RecoilValue,
   selectorFamily,
   useRecoilCallback,
-  useRecoilState,
   useRecoilValue,
   useRecoilValueLoadable,
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 
-import { genSort } from "../../utils/generic";
-
-import Checkbox from "../Common/Checkbox";
-import { Button } from "../utils";
-
-import ExcludeOption from "./Exclude";
+import * as fos from "@fiftyone/state";
 import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { Selector, useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
-import withSuspense from "./withSuspense";
-import FieldLabelAndInfo from "../FieldLabelAndInfo";
-import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
+
+import withSuspense from "../withSuspense";
+import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import { CHECKBOX_LIMIT, nullSort } from "../utils";
+import ResultComponent from "./ResultComponent";
+import Wrapper from "./Wrapper";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -46,156 +43,7 @@ const NamedCategoricalFilterHeader = styled.div`
   text-overflow: ellipsis;
 `;
 
-const CHECKBOX_LIMIT = 20;
-
-type V = { value: string | number | null | boolean; count: number };
-
-const nullSort = ({
-  count,
-  asc,
-}: fos.SortResults): ((aa: V, bb: V) => number) => {
-  return ({ count: aac, value: aav }, { count: bbc, value: bbv }): number => {
-    let a = [aav, aac];
-    let b = [bbv, bbc];
-
-    if (count) {
-      a.reverse();
-      b.reverse();
-    }
-
-    let result = 0;
-    for (let i = 0; i < a.length; i++) {
-      result = genSort(a[i], b[i], asc);
-      if (result !== 0) {
-        return result;
-      }
-    }
-
-    return result;
-  };
-};
-
-interface WrapperProps {
-  results: [V["value"], number][];
-  selectedValuesAtom: RecoilState<V["value"][]>;
-  excludeAtom?: RecoilState<boolean>;
-  color: string;
-  totalCount: number;
-  modal: boolean;
-  path: string;
-  selectedCounts: MutableRefObject<Map<V["value"], number>>;
-}
-
-const Wrapper = ({
-  color,
-  results,
-  totalCount,
-  selectedValuesAtom,
-  excludeAtom,
-  modal,
-  path,
-  selectedCounts,
-}: WrapperProps) => {
-  const name = path.split(".").slice(-1)[0];
-  const schema = useRecoilValue(fos.field(path));
-  const [selected, setSelected] = useRecoilState(selectedValuesAtom);
-  const selectedSet = new Set(selected);
-  const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
-  const sorting = useRecoilValue(fos.sortFilterResults(modal));
-  const counts = Object.fromEntries(results);
-  let allValues: V[] = selected.map<V>((value) => ({
-    value,
-    count: counts[String(value)] ?? 0,
-  }));
-  const skeleton = useRecoilValue(isKeypointLabel(path));
-  const neverShowExpansion = schema?.ftype.includes("ObjectIdField");
-
-  if ((results.length <= CHECKBOX_LIMIT && !neverShowExpansion) || skeleton) {
-    allValues = [
-      ...allValues,
-      ...results
-        .filter(([v]) => !selectedSet.has(v))
-        .map(([value, count]) => ({ value, count })),
-    ];
-  }
-
-  if (totalCount === 0) {
-    return (
-      <>
-        <Checkbox
-          key={"No results"}
-          color={color}
-          value={false}
-          disabled={true}
-          name={"No results"}
-          setValue={() => {}}
-        />
-      </>
-    );
-  }
-
-  allValues = [...new Set(allValues)];
-
-  return (
-    <>
-      {allValues.sort(nullSort(sorting)).map(({ value, count }) => (
-        <Checkbox
-          key={String(value)}
-          color={color}
-          value={selectedSet.has(value)}
-          disabled={totalCount === 1}
-          name={value}
-          count={
-            count < 0
-              ? null
-              : selectedCounts.current.has(value)
-              ? selectedCounts.current.get(value)
-              : count
-          }
-          setValue={(checked: boolean) => {
-            if (checked) {
-              selectedSet.add(value);
-            } else {
-              selectedSet.delete(value);
-            }
-            setSelected([...selectedSet].sort());
-          }}
-          subcountAtom={fos.count({
-            modal,
-            path,
-            extended: true,
-            value: value as string,
-          })}
-        />
-      ))}
-      {Boolean(selectedSet.size) && (
-        <>
-          {totalCount > 3 && excludeAtom && (
-            <ExcludeOption
-              excludeAtom={excludeAtom}
-              valueName={name}
-              color={color}
-            />
-          )}
-          <Button
-            text={"Reset"}
-            color={color}
-            onClick={() => {
-              setSelected([]);
-              setExcluded && setExcluded(false);
-            }}
-            style={{
-              margin: "0.25rem -0.5rem",
-              height: "2rem",
-              borderRadius: 0,
-              textAlign: "center",
-            }}
-          ></Button>
-        </>
-      )}
-    </>
-  );
-};
+export type V = { value: string | number | null | boolean; count: number };
 
 const categoricalSearch = atomFamily<string, { path: string; modal: boolean }>({
   key: "categoricalSearchResults",
@@ -215,7 +63,7 @@ const categoricalSearchResults = selectorFamily<
     async ({ get }) => {
       const search = get(categoricalSearch({ modal, path }));
       const sorting = get(fos.sortFilterResults(modal));
-      let sampleId = null;
+      let sampleId: string | undefined = undefined;
       const selected = get(fos.stringSelectedValuesAtom({ path, modal }));
       if (modal) {
         sampleId = get(fos.modal)?.sample._id;
@@ -284,38 +132,6 @@ const useOnSelect = (
   );
 };
 
-interface Props<T extends V = V> {
-  selectedValuesAtom: RecoilState<T["value"][]>;
-  excludeAtom?: RecoilState<boolean>;
-  countsAtom: RecoilValue<{
-    count: number;
-    results: [T["value"], number][];
-  }>;
-  modal: boolean;
-  path: string;
-  named?: boolean;
-  title: string;
-}
-
-const ResultComponent = ({ value: { value, count } }: { value: V }) => {
-  return (
-    <>
-      <span
-        style={{
-          fontSize: "1rem",
-          flex: 1,
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {value}
-      </span>
-      <span style={{ fontSize: "1rem" }}>{count}</span>
-    </>
-  );
-};
-
 export const isKeypointLabel = selectorFamily<boolean, string>({
   key: "isKeypointLabel",
   get:
@@ -344,14 +160,29 @@ export const isKeypointLabel = selectorFamily<boolean, string>({
   },
 });
 
+interface Props<T extends V = V> {
+  selectedValuesAtom: RecoilState<T["value"][]>;
+  excludeAtom: RecoilState<boolean>; // toggles select or exclude
+  isMatchingAtom: RecoilState<boolean>; // toggles match or filter
+  onlyMatchAtom: RecoilState<boolean>; // toggles onlyMatch mode (omit empty samples)
+  countsAtom: RecoilValue<{
+    count: number;
+    results: [T["value"], number][];
+  }>;
+  modal: boolean;
+  path: string;
+  named?: boolean;
+}
+
 const CategoricalFilter = <T extends V = V>({
   countsAtom,
   selectedValuesAtom,
   excludeAtom,
+  onlyMatchAtom,
+  isMatchingAtom,
   path,
   modal,
   named = true,
-  title,
 }: Props<T>) => {
   const name = path.split(".").slice(-1)[0];
   const color = useRecoilValue(fos.pathColor({ modal, path }));
@@ -362,8 +193,9 @@ const CategoricalFilter = <T extends V = V>({
   const theme = useTheme();
   const field = useRecoilValue(fos.field(path));
   const countsLoadable = useRecoilValueLoadable(countsAtom);
-  const schema = useRecoilValue(fos.field(path));
-  const neverShowExpansion = schema?.ftype.includes("ObjectIdField");
+
+  // id fields should always use filter mode
+  const neverShowExpansion = field?.ftype.includes("ObjectIdField");
 
   if (countsLoadable.state !== "hasValue") return null;
 
@@ -384,13 +216,7 @@ const CategoricalFilter = <T extends V = V>({
           nested
           field={field}
           color={color}
-          template={({
-            label,
-            hoverHanlders,
-            FieldInfoIcon,
-            hoverTarget,
-            container,
-          }) => (
+          template={({ label, hoverTarget }) => (
             <NamedCategoricalFilterHeader>
               <span ref={hoverTarget}>{label}</span>
             </NamedCategoricalFilterHeader>
@@ -424,6 +250,8 @@ const CategoricalFilter = <T extends V = V>({
           results={results}
           selectedValuesAtom={selectedValuesAtom}
           excludeAtom={excludeAtom}
+          isMatchingAtom={isMatchingAtom}
+          onlyMatchAtom={onlyMatchAtom}
           modal={modal}
           totalCount={count}
           selectedCounts={selectedCounts}
