@@ -1,7 +1,11 @@
 import { usePanelStatePartial } from "@fiftyone/spaces";
 
 export function useWarnings() {
-  const [state, _setState] = usePanelStatePartial("warnings", { warnings: [] });
+  const [state, _setState] = usePanelStatePartial(
+    "warnings",
+    { warnings: [] },
+    true
+  );
   const { warnings } = state;
   const hasWarnings = Array.isArray(warnings) && warnings.length > 0;
   const setState = (fn) => {

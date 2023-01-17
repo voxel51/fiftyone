@@ -5,8 +5,12 @@ import useExtendedStageEffect from "./useExtendedStageEffect";
 
 export function usePlot({ clearSelection, setPlotSelection }) {
   const [loadedPlot] = usePanelStatePartial("loadedPlot", null, true);
-  const [loadingPlot] = usePanelStatePartial("loadingPlot", true);
-  const [loadingPlotError] = usePanelStatePartial("loadingPlotError", null);
+  const [loadingPlot] = usePanelStatePartial("loadingPlot", true, true);
+  const [loadingPlotError] = usePanelStatePartial(
+    "loadingPlotError",
+    null,
+    true
+  );
 
   useViewChangeEffect();
   useSelectionEffect();

@@ -24,11 +24,13 @@ export function useSelectionEffect() {
   );
   const [loadingPlot, setLoadingPlot] = usePanelStatePartial(
     "loadingPlot",
+    true,
     true
   );
   const [loadingPlotError, setLoadingPlotError] = usePanelStatePartial(
     "loadingPlotError",
-    null
+    null,
+    true
   );
   const filters = useRecoilValue(fos.filters);
   const extended = useRecoilValue(fos.extendedStagesUnsorted);
