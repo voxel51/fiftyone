@@ -5697,7 +5697,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             detach_frames = False
 
         if media_type != fom.GROUP:
-            group_slice = None
             group_slices = None
             detach_groups = False
             groups_only = False
