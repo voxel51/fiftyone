@@ -1,6 +1,6 @@
 import { usePanelStatePartial } from "@fiftyone/spaces";
 
-export const useZoomRevision = () => usePanelStatePartial("zoomRevision", 0);
+export const useZoomRevision = () => usePanelStatePartial("zoomRevision", 1);
 export function useResetPlotZoom() {
   const [zoomRevision, setZoomRevision] = useZoomRevision();
   const reset = () => {
