@@ -8,10 +8,11 @@ Filtering
 A cheat sheet showing how to perform matching and filtering operations in
 FiftyOne!
 
-.. note::
+..
+    .. note::
 
-    Expand the collapsed text in the cells below to see how to perform the
-    corresponding operation in the :ref:`FiftyOne App <fiftyone-app>`!
+        Expand the collapsed text in the cells below to see how to perform the
+        corresponding operation in the :ref:`FiftyOne App <fiftyone-app>`!
 
 Strings and pattern matching
 ____________________________
