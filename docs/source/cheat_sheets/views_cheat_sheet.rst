@@ -6,7 +6,7 @@ Views Cheat Sheet
 .. default-role:: code
 
 This cheat sheet shows how to use :ref:`dataset views <using-views>` to
-retrieve the specific subset of data you're looking for!
+retrieve the specific subset of data you're looking for.
 
 The six basic operations
 ________________________

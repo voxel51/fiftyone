@@ -6,7 +6,7 @@ Filtering Cheat Sheet
 .. default-role:: code
 
 This cheat sheet shows how to perform common matching and filtering operations
-in FiftyOne using :ref:`dataset views <using-views>`!
+in FiftyOne using :ref:`dataset views <using-views>`.
 
 ..
     .. note::

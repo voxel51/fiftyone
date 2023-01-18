@@ -317,10 +317,10 @@ Where should you go from here? You could...
 * :ref:`Install FiftyOne <installing-fiftyone>`
 * Try one of the :doc:`tutorials <tutorials/index>` that demonstrate the unique
   capabilities of FiftyOne
-  Check out our :doc:`cheat sheets <cheat_sheets/index>` for getting up and 
-  running
 * Explore :doc:`recipes <recipes/index>` for integrating FiftyOne into
   your current ML workflows
+* Check out the :doc:`cheat sheets <cheat_sheets/index>` for topics you may
+  want to master quickly
 * Consult the :doc:`user guide <user_guide/index>` for detailed instructions on
   how to accomplish various tasks with FiftyOne
 

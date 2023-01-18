@@ -6,7 +6,7 @@ pandas vs FiftyOne
 .. default-role:: code
 
 This cheat sheet shows how to translate common
-`pandas <https://pandas.pydata.org>`_ operations into FiftyOne!
+`pandas <https://pandas.pydata.org>`_ operations into FiftyOne.
 
 Nomenclature
 ____________
