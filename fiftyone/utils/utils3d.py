@@ -248,46 +248,36 @@ def compute_orthographic_projection_map(
     bbox = o3d.geometry.AxisAlignedBoundingBox(
         min_bound=min_bound, max_bound=max_bound
     )
-    pc = pc.crop(bbox).translate((0, 0, -1 * min_bound[2]))
+    pc = pc.crop(bbox).translate((-min_bound[0], -min_bound[1], -min_bound[2]))
 
-    discretization = (max_bound[0] - min_bound[0]) / height
-    max_height = float(np.abs(max_bound[2] - min_bound[2]))
-
-    # Extract points from o3d point cloud
     points = np.vstack((np.copy(pc.points).T, np.array(pc.colors)[:, 0])).T
+    points[:, 0] *= (width - 1) / (max_bound[0] - min_bound[0])
+    points[:, 1] *= (height - 1) / (max_bound[1] - min_bound[1])
 
-    # Discretize feature map
-    points[:, 0] = np.int_(np.floor(points[:, 0] / discretization))
-    points[:, 1] = np.int_(
-        np.floor(points[:, 1] / discretization) + (width + 1) / 2
-    )
-
-    # sort
     indices = np.lexsort((-points[:, 2], points[:, 1], points[:, 0]))
     points = points[indices]
-
-    # Height map
-    height_map = np.zeros((height + 1, width + 1))
-    _, indices = np.unique(points[:, 0:2], axis=0, return_index=True)
-    points_frac = points[indices]
-
-    height_map[np.int_(points_frac[:, 0]), np.int_(points_frac[:, 1])] = (
-        points_frac[:, 2] / max_height
-    )
-
-    # Intensity map and density map
-    intensity_map = np.zeros((height + 1, width + 1))
-    density_map = np.zeros((height + 1, width + 1))
 
     _, indices, counts = np.unique(
         points[:, 0:2], axis=0, return_index=True, return_counts=True
     )
+
+    points_frac = points[indices]
+    z_range = float(np.abs(max_bound[2] - min_bound[2]))
+
+    height_map = np.zeros((width, height))
+    height_map[np.int_(points_frac[:, 0]), np.int_(points_frac[:, 1])] = (
+        points_frac[:, 2] / z_range
+    )
+
     points_top = points[indices]
     normalized_counts = np.minimum(1.0, np.log(counts + 1) / np.log(64))
 
+    intensity_map = np.zeros((width, height))
     intensity_map[
         np.int_(points_top[:, 0]), np.int_(points_top[:, 1])
     ] = points_top[:, 3]
+
+    density_map = np.zeros((width, height))
     density_map[
         np.int_(points_top[:, 0]), np.int_(points_top[:, 1])
     ] = normalized_counts
@@ -300,7 +290,6 @@ def compute_orthographic_projection_map(
         )
     )
 
-    # Reshape and rescale pixel values
     feature_map = np.einsum("ijk -> jki", feature_map)
 
     bounds = [min_bound[0], max_bound[0], min_bound[1], max_bound[1]]
