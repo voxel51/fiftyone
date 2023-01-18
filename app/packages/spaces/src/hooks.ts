@@ -129,6 +129,22 @@ export function usePanelState<T>(
 }
 
 /**
+ * Get reference to recoil state of a panel which can be used with any recoil
+ *  state hooks
+ *
+ * **Note: `id` is required if the hook is used outside of a panel component.**
+ */
+export function usePanelStateRecoil(
+  defaultState?: unknown,
+  id?: string,
+  local?: boolean
+) {
+  const panelContext = usePanelContext();
+  const panelId = id || (panelContext?.node?.id as string);
+  return panelStateSelector({ panelId, local, defaultState });
+}
+
+/**
  * Can only be used within a panel component
  */
 export function usePanelStateCallback<T>(

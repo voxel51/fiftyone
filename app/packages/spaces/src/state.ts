@@ -49,9 +49,12 @@ export const panelStateSelector = selectorFamily({
   get:
     (params: PanelStateParameter) =>
     ({ get }) => {
-      const { panelId, local } = params;
+      const { panelId, local, defaultState } = params;
       const stateAtom = getStateAtom(local);
-      return get(stateAtom).get(panelId);
+      const state = get(stateAtom).get(panelId);
+      // todo: need better way to check if state was initialized to also allow
+      //  `undefined` value for a state
+      return state === undefined ? defaultState : state;
     },
   set:
     (params: PanelStateParameter) =>
