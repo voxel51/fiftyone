@@ -6,6 +6,7 @@ FiftyOne Server routes
 |
 """
 from .aggregate import Aggregate
+from .embeddings import Embeddings
 from .event import Event
 from .events import Events
 from .fiftyone import FiftyOne
@@ -15,6 +16,7 @@ from .plugins import Plugins
 from .samples import Samples
 from .select import Select
 from .sort import Sort
+from .screenshot import Screenshot
 from .stages import Stages
 from .tag import Tag
 from .tagging import Tagging
@@ -22,6 +24,7 @@ from .values import Values
 
 routes = [
     ("/aggregate", Aggregate),
+    ("/embeddings", Embeddings),
     ("/event", Event),
     ("/events", Events),
     ("/fiftyone", FiftyOne),
@@ -32,6 +35,7 @@ routes = [
     ("/select", Select),
     ("/sort", Sort),
     ("/stages", Stages),
+    ("/screenshot/{img:str}", Screenshot),
     ("/tag", Tag),
     ("/tagging", Tagging),
     ("/values", Values),

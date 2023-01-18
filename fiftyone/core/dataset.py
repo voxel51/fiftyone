@@ -1301,6 +1301,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
+    def _merge_sample_field_schema(
+        self,
+        schema,
+        expand_schema=True,
+        recursive=True,
+        validate=True,
+    ):
+        expanded = self._sample_doc_cls.merge_field_schema(
+            schema,
+            expand_schema=expand_schema,
+            recursive=recursive,
+            validate=validate,
+        )
+
+        if expanded:
+            self._reload()
+
     def add_dynamic_sample_fields(self, fields=None, add_mixed=False):
         """Adds all dynamic sample fields to the dataset's schema.
 
@@ -1330,10 +1347,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             elif field is not None:
                 schema[path] = field
 
-        expanded = self._sample_doc_cls.merge_field_schema(schema)
-
-        if expanded:
-            self._reload()
+        self._merge_sample_field_schema(schema)
 
     def add_frame_field(
         self,
@@ -1408,6 +1422,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
+    def _merge_frame_field_schema(
+        self,
+        schema,
+        expand_schema=True,
+        recursive=True,
+        validate=True,
+    ):
+        expanded = self._frame_doc_cls.merge_field_schema(
+            schema,
+            expand_schema=expand_schema,
+            recursive=recursive,
+            validate=validate,
+        )
+
+        if expanded:
+            self._reload()
+
     def add_dynamic_frame_fields(self, fields=None, add_mixed=False):
         """Adds all dynamic frame fields to the dataset's schema.
 
@@ -1442,10 +1473,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             elif field is not None:
                 schema[path] = field
 
-        expanded = self._frame_doc_cls.merge_field_schema(schema)
-
-        if expanded:
-            self._reload()
+        self._merge_frame_field_schema(schema)
 
     def add_group_field(
         self, field_name, default=None, description=None, info=None

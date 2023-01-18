@@ -13,6 +13,9 @@ import { filters, modalFilters } from "./filters";
 import { resolvedGroupSlice } from "./groups";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
+import _ from "lodash";
+import { isPatchesView } from "./view";
+import { pathFilter } from "./pathFilters";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -349,6 +352,12 @@ export const extendedStagesUnsorted = selector({
   key: "extendedStagesUnsorted",
   get: ({ get }) => {
     const sampleIds = get(atoms.extendedSelection);
+    const extendedSelectionOverrideStage = get(
+      atoms.extendedSelectionOverrideStage
+    );
+    if (extendedSelectionOverrideStage) {
+      return extendedSelectionOverrideStage;
+    }
     return {
       "fiftyone.core.stages.Select":
         sampleIds && sampleIds.length
@@ -407,3 +416,66 @@ export const viewStateForm = selectorFamily<
       };
     },
 });
+export const selectedPatchIds = selectorFamily({
+  key: "selectedPatchIds",
+  get:
+    (patchesField) =>
+    ({ get }) => {
+      const modal = get(atoms.modal);
+      const isPatches = get(isPatchesView);
+      const selectedSamples = get(atoms.selectedSamples);
+      const selectedSampleObjects = get(atoms.selectedSampleObjects);
+
+      if (isPatches || modal) {
+        return selectedSamples;
+      }
+      let patchIds = [];
+      for (const sampleId of selectedSamples) {
+        if (selectedSampleObjects.has(sampleId)) {
+          const sample = selectedSampleObjects.get(sampleId);
+          patchIds = [
+            ...patchIds,
+            ...getLabelIdsFromSample(
+              sample,
+              patchesField,
+              get(pathFilter(false))
+            ),
+          ];
+        }
+      }
+      return new Set(patchIds);
+    },
+});
+
+export const selectedPatchSamples = selector({
+  key: "selectedPatchSamples",
+  get: ({ get }) => {
+    const isPatches = get(isPatchesView);
+    const selectedPatches = get(atoms.selectedSamples);
+    const selectedSampleObjects = get(atoms.selectedSampleObjects);
+
+    if (isPatches) {
+      let sampleIds = [];
+      for (const patchId of selectedPatches) {
+        if (selectedSampleObjects.has(patchId)) {
+          const sample = selectedSampleObjects.get(patchId);
+          sampleIds = [...sampleIds, sample._sample_id];
+        }
+      }
+      return new Set(sampleIds);
+    } else {
+      return new Set();
+    }
+  },
+});
+
+function getLabelIdsFromSample(sample, path, matchesFilter) {
+  const labelIds = [];
+  const labelContainer = sample[path];
+  const fullPath = [path, "detections"];
+
+  for (const label of labelContainer?.detections || []) {
+    if (matchesFilter(fullPath.join("."), label)) labelIds.push(label.id);
+  }
+  return labelIds;
+}

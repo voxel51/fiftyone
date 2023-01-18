@@ -57,6 +57,7 @@ type AppConfig {
   theme: Theme!
   timezone: String
   useFrameNumber: Boolean!
+  spaces: JSON
 }
 
 scalar BSON
@@ -146,6 +147,7 @@ type DatasetAppConfig {
   sidebarMode: SidebarMode
   modalMediaField: String
   gridMediaField: String
+  spaces: JSON
 }
 
 type DatasetStrConnection {
@@ -337,6 +339,7 @@ type Mutation {
     updatedInfo: SavedViewInfo!
     datasetName: String = null
   ): SavedView
+  setSpaces(subscription: String!, session: String, spaces: BSON!): Boolean!
 }
 
 type NamedKeypointSkeleton {

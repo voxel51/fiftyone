@@ -29,7 +29,7 @@ export abstract class BaseElement<
   element: Element;
   protected readonly events: LoadedEvents = {};
 
-  constructor(
+  boot(
     config: Readonly<State["config"]>,
     update: StateUpdate<State>,
     dispatchEvent: (eventType: string, details?: any) => void

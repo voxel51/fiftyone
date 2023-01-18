@@ -142,7 +142,7 @@ class SavedView:
 class SidebarGroup:
     name: str
     paths: t.Optional[t.List[str]]
-    expanded: t.Optional[bool] = True
+    expanded: t.Optional[bool] = None
 
 
 @gql.type
@@ -171,6 +171,7 @@ class DatasetAppConfig:
     sidebar_mode: t.Optional[SidebarMode]
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
+    spaces: t.Optional[JSON]
 
 
 @gql.type
@@ -292,6 +293,7 @@ class AppConfig:
     theme: Theme
     timezone: t.Optional[str]
     use_frame_number: bool
+    spaces: t.Optional[JSON]
 
 
 @gql.type

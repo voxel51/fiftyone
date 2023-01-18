@@ -7,6 +7,7 @@ FiftyOne Server app.
 """
 from datetime import date, datetime
 import os
+import pathlib
 
 import eta.core.utils as etau
 from starlette.applications import Starlette
@@ -32,6 +33,8 @@ from fiftyone.server.query import Query
 from fiftyone.server.routes import routes
 from fiftyone.server.scalars import Date, DateTime
 
+from fiftyone.server.routes.embeddings import Embeddings
+
 
 etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
 
@@ -41,8 +44,13 @@ class Static(StaticFiles):
         response = await super().get_response(path, scope)
 
         if response.status_code == 404:
-            full_path, stat_result = self.lookup_path("index.html")
-            return self.file_response(full_path, stat_result, scope)
+            path = pathlib.Path(
+                *pathlib.Path(path).parts[2:]
+            )  # strip dataset/{name}
+            response = await super().get_response(path, scope)
+            if response.status_code == 404:
+                full_path, stat_result = self.lookup_path("index.html")
+                return self.file_response(full_path, stat_result, scope)
 
         return response
 
@@ -83,6 +91,7 @@ app = Starlette(
     ],
     debug=foc.DEV_INSTALL,
     routes=[Route(route, endpoint) for route, endpoint in routes]
+    + Embeddings
     + [
         Route(
             "/graphql",

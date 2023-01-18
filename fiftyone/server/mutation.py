@@ -5,7 +5,6 @@ FiftyOne Server mutations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 from dataclasses import asdict
 import strawberry as gql
 import typing as t
@@ -19,11 +18,11 @@ from fiftyone.core.session.events import StateUpdate
 import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
 import fiftyone.core.dataset as fod
+from fiftyone.core.spaces import default_spaces, Space
 import fiftyone.core.utils as fou
 
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
-from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.query import Dataset, SidebarGroup, SavedView
 from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view, extend_view
@@ -98,6 +97,7 @@ class Mutation:
         state.selected_labels = []
         state.view = None
         state.view_name = view_name if view_name is not None else None
+        state.spaces = default_spaces
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 
@@ -402,3 +402,15 @@ class Mutation:
             ),
             None,
         )
+
+    @gql.mutation
+    async def set_spaces(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        spaces: BSON,
+    ) -> bool:
+        state = get_state()
+        state.spaces = Space.from_dict(spaces)
+        await dispatch_event(subscription, StateUpdate(state=state))
+        return True

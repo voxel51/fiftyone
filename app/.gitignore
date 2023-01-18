@@ -3,11 +3,12 @@
 !.yarn/plugins
 !.yarn/sdks
 !.yarn/versions
+.yarnrc
 coverage
 node_modules
 .snowpack
 build
 dist
-.yarnrc
-yarn-error.log
+docs.json
 tsconfig.tsbuildinfo
+yarn-error.log

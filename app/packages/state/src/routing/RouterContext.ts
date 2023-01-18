@@ -12,7 +12,6 @@ import {
 } from "relay-runtime";
 
 import {
-  FetchFunction,
   getFetchFunction,
   GraphQLError,
   isElectron,
@@ -273,7 +272,7 @@ async function fetchGraphQL(
   return data;
 }
 
-const fetchRelay: FetchFunction = async (params, variables) => {
+const fetchRelay = async (params, variables) => {
   return fetchGraphQL(params.text, variables);
 };
 
@@ -283,6 +282,10 @@ export const getEnvironment = () =>
     store: new Store(new RecordSource()),
   });
 
-export const RouterContext = React.createContext(
-  createRouter(getEnvironment(), [], { errors: false }).context
-);
+export let RouterContext: React.Context<RoutingContext<any>> = null;
+
+if (typeof window !== "undefined") {
+  RouterContext = React.createContext(
+    createRouter(getEnvironment(), [], { errors: false }).context
+  );
+}

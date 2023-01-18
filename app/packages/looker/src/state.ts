@@ -28,7 +28,7 @@ export interface Sample {
     height: number;
   };
   id: string;
-  media_type: "image" | "image";
+  media_type: "image" | "video" | "point-cloud";
   filepath: string;
   tags: string[];
   _label_tags: string[];

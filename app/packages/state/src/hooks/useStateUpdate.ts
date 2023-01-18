@@ -24,6 +24,7 @@ import {
   sidebarMode,
   groupStatistics,
   theme,
+  sessionSpaces,
 } from "../recoil";
 import { useColorScheme } from "@mui/material";
 
@@ -83,6 +84,12 @@ const useStateUpdate = () => {
       if (config && config.theme !== "browser") {
         set(theme, config.theme);
         setMode(config.theme);
+      }
+
+      if (state?.spaces) {
+        set(sessionSpaces, state.spaces);
+      } else {
+        reset(sessionSpaces);
       }
 
       if (dataset) {
