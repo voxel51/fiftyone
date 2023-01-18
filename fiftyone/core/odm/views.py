@@ -34,11 +34,3 @@ class SavedViewDocument(Document):
     created_at = DateTimeField()
     last_modified_at = DateTimeField()
     last_loaded_at = DateTimeField()
-
-    def serialize(self):
-        d = self.to_dict()
-
-        # TODO: remove nested get when ready to merge
-        d["id"] = str(d.get("_id", d.get("id", ObjectId())))
-        d["dataset_id"] = str(d.get("_dataset_id", d.get("dataset_id", "")))
-        return d

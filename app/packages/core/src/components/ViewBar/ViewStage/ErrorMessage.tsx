@@ -3,10 +3,9 @@ import { config, animated, useSpring } from "@react-spring/web";
 import styled from "styled-components";
 import { useService } from "@xstate/react";
 
-import { ReportProblem } from "@mui/icons-material";
-
 import { useFollow, useOutsideClick } from "@fiftyone/state";
 import { useTheme } from "@fiftyone/components";
+import { ReportProblem } from "@mui/icons-material";
 
 const ErrorMessageDiv = animated(styled.div`
   box-sizing: border-box;

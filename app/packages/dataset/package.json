@@ -2,7 +2,7 @@
     "name": "@fiftyone/dataset",
     "author": "Voxel51, Inc.",
     "version": "0.0.0",
-    "description": "Media viewer that can render label overlays.",
+    "description": "dataset page package",
     "homepage": "https://github.com/voxel51/fiftyone/app/packages/looker",
     "license": "Apache-2.0",
     "bugs": {

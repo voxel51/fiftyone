@@ -8,7 +8,6 @@ FiftyOne Server aggregations
 from datetime import date, datetime, timedelta
 import typing as t
 
-import asyncio
 import strawberry as gql
 
 import fiftyone as fo
@@ -18,7 +17,7 @@ import fiftyone.core.collections as foc
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import T
 from fiftyone.server.scalars import BSONArray
-from fiftyone.server.view import load_view
+from fiftyone.server.view import load_view, ExtendedViewForm
 
 
 _DEFAULT_NUM_HISTOGRAM_BINS = 25
@@ -117,11 +116,11 @@ class AggregateQuery:
     @gql.field
     async def aggregate(
         self,
-        *,
         dataset_name: str,
         view: t.Optional[BSONArray],
         aggregations: t.List[Aggregate],
-        view_name: t.Optional[str],
+        view_name: t.Optional[str] = None,
+        form: t.Optional[ExtendedViewForm] = None,
     ) -> t.List[
         gql.union(
             "AggregationResponses",
@@ -139,6 +138,7 @@ class AggregateQuery:
             dataset_name=dataset_name,
             serialized_view=view,
             view_name=view_name,
+            form=(form or ExtendedViewForm()),
         )
 
         resolvers = []

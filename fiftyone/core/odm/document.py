@@ -382,22 +382,9 @@ class MongoEngineBaseDocument(SerializableDocument):
         # pylint: disable=no-member
         return self._fields_ordered
 
-    def to_dict(self, extended=False, no_dereference=False):
+    def to_dict(self, extended=False):
         # pylint: disable=no-member
         d = self.to_mongo(use_db_field=True)
-        if no_dereference:
-            # Serialize the objects in dict and list reference fields instead of just the ObjectIds
-            for k, val in d.items():
-                if type(val) in [list, dict]:
-                    if type(val) == list and len(val) > 0:
-                        if isinstance(val[0], ObjectId):
-                            d[k] = [
-                                obj.serialize() for obj in getattr(self, k)
-                            ]
-                    elif type(val) == dict:
-                        for k2, v2 in val.items():
-                            if isinstance(v2, ObjectId):
-                                d[k][k2] = getattr(self, k)[k2].to_dict()
 
         if not extended:
             return d

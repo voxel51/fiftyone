@@ -417,6 +417,7 @@ export const ModalActionsRow = ({
   lookerRef?: MutableRefObject<VideoLooker | undefined>;
 }) => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
+  const hideTagging = useRecoilValue(fos.readOnly);
 
   return (
     <ActionsRowDiv
@@ -428,7 +429,7 @@ export const ModalActionsRow = ({
       <Hidden />
       <Selected modal={true} lookerRef={lookerRef} />
       {!isVideo && <Similarity modal={true} />}
-      <Tag modal={true} lookerRef={lookerRef} />
+      {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>

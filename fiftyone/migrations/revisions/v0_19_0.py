@@ -32,6 +32,8 @@ def up(db, dataset_name):
     _up_runs(db, dataset_dict, "brain_methods")
     _up_runs(db, dataset_dict, "evaluations")
 
+    _warn_legacy_3d_config(dataset_dict)
+
     db.datasets.replace_one(match_d, dataset_dict)
 
 
@@ -93,6 +95,37 @@ def _down_runs(db, dataset_dict, runs_field):
         _runs[key] = run_doc
 
     dataset_dict[runs_field] = _runs
+
+
+def _warn_legacy_3d_config(dataset_dict):
+    try:
+        config = dataset_dict["app_config"]["plugins"]["3d"]
+    except:
+        return
+
+    is_legacy = False
+
+    try:
+        is_legacy |= "itemRotation" in config["overlay"]
+    except:
+        pass
+
+    try:
+        is_legacy |= "rotation" in config["overlay"]
+    except:
+        pass
+
+    try:
+        is_legacy |= "rotation" in config["pointCloud"]
+    except:
+        pass
+
+    if is_legacy:
+        name = dataset_dict.get("name", "????")
+        logger.warning(
+            "Dataset '%s' uses legacy 3D visualization config settings",
+            name,
+        )
 
 
 def _set_slug(db, dataset_dict):

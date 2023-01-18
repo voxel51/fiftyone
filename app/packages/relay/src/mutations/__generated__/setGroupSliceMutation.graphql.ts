@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<74d626b47db10bf8fe56d811cad7e41f>>
+ * @generated SignedSource<<d65841e678cc9636391bee909d50f98c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,7 @@ export type setGroupSliceMutation$variables = {
   slice: string;
   subscription: string;
   view: Array;
+  viewName?: string | null;
 };
 export type setGroupSliceMutation$data = {
   readonly setGroupSlice: {
@@ -46,7 +47,12 @@ v3 = {
   "kind": "LocalArgument",
   "name": "view"
 },
-v4 = [
+v4 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "viewName"
+},
+v5 = [
   {
     "alias": null,
     "args": [
@@ -69,6 +75,11 @@ v4 = [
         "kind": "Variable",
         "name": "view",
         "variableName": "view"
+      },
+      {
+        "kind": "Variable",
+        "name": "viewName",
+        "variableName": "viewName"
       }
     ],
     "concreteType": "Dataset",
@@ -93,12 +104,13 @@ return {
       (v0/*: any*/),
       (v1/*: any*/),
       (v2/*: any*/),
-      (v3/*: any*/)
+      (v3/*: any*/),
+      (v4/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "setGroupSliceMutation",
-    "selections": (v4/*: any*/),
+    "selections": (v5/*: any*/),
     "type": "Mutation",
     "abstractKey": null
   },
@@ -108,23 +120,24 @@ return {
       (v2/*: any*/),
       (v0/*: any*/),
       (v3/*: any*/),
-      (v1/*: any*/)
+      (v1/*: any*/),
+      (v4/*: any*/)
     ],
     "kind": "Operation",
     "name": "setGroupSliceMutation",
-    "selections": (v4/*: any*/)
+    "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "bf10fdcc9a9e3441643c157812f905a2",
+    "cacheID": "a8129fbfe516833d7d5c233d2adddd97",
     "id": null,
     "metadata": {},
     "name": "setGroupSliceMutation",
     "operationKind": "mutation",
-    "text": "mutation setGroupSliceMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $slice: String!\n) {\n  setGroupSlice(subscription: $subscription, session: $session, view: $view, slice: $slice) {\n    id\n  }\n}\n"
+    "text": "mutation setGroupSliceMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $slice: String!\n  $viewName: String\n) {\n  setGroupSlice(subscription: $subscription, session: $session, view: $view, slice: $slice, viewName: $viewName) {\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "88072c125d8981795598ed623e1609eb";
+(node as any).hash = "c240e69e37d0f3986af1569e5abd985f";
 
 export default node;
