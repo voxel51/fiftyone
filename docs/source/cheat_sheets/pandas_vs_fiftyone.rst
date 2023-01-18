@@ -5,7 +5,8 @@ pandas vs FiftyOne
 
 .. default-role:: code
 
-A cheat sheet showing how to translate common pandas operations into FiftyOne!
+This cheat sheet shows how to translate common
+`pandas <https://pandas.pydata.org>`_ operations into FiftyOne!
 
 Nomenclature
 ____________
@@ -32,8 +33,8 @@ _______________
    :stub-columns: 1
 
    * - 
-     - **pandas**
-     - **FiftyOne**
+     - pandas
+     - FiftyOne
    * - Importing the packages
      - ``import pandas as pd``
      - ``import fiftyone as fo``
@@ -53,8 +54,8 @@ ______
    :stub-columns: 1
 
    * - 
-     - **pandas**
-     - **FiftyOne**
+     - pandas
+     - FiftyOne
    * - First row/sample
      - ``df.iloc[0]`` or ``df.head(1)``
      - ``ds.first()`` or ``ds.head(1)``
@@ -89,8 +90,8 @@ ___________
    :stub-columns: 1
 
    * - 
-     - **pandas**
-     - **FiftyOne**
+     - pandas
+     - FiftyOne
    * - Make a copy
      - ``df.copy()``
      - ``ds.clone()`` 
@@ -123,8 +124,8 @@ ____________
    :stub-columns: 1
 
    * - 
-     - **pandas**
-     - **FiftyOne**
+     - pandas
+     - FiftyOne
    * - Count
      - ``df[*].count()``
      - ``ds.count(*)`` 
@@ -157,8 +158,8 @@ __________________
    :stub-columns: 1
 
    * - 
-     - **pandas**
-     - **FiftyOne**
+     - pandas
+     - FiftyOne
    * - New column/field as constant value
      - ``df["col"] = value``
      - | ``ds.add_sample_field("field", fo.StringField)``
@@ -203,8 +204,8 @@ ___________
    :stub-columns: 1
 
    * - 
-     - **pandas**
-     - **FiftyOne**
+     - pandas
+     - FiftyOne
    * - Exact equality
      - ``df[df[*] == value]``
      - ``ds.match(F(*) == value)``

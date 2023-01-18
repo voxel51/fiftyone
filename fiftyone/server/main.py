@@ -25,6 +25,8 @@ import fiftyone as fo
 import fiftyone.constants as foc
 
 from fiftyone.server.app import app
+from fiftyone.server.events import set_port
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -34,8 +36,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     config = Config()
-
     config.bind = [f"{args.address}:{args.port}"]
+    set_port(args.port)
 
     config.use_reloader = foc.DEV_INSTALL
     asyncio.run(serve(app, config), debug=foc.DEV_INSTALL)
