@@ -41,8 +41,13 @@ workflows.
     :header: FiftyOne terminology
     :description: A brief overview of FiftyOne's key terminology.
     :link: fiftyone_terminology.html
-    :image: ../_static/images/recipes/pandas_vs_fiftyone.png
     :tags: Cheat-Sheets,Basics
+
+.. customcarditem::
+    :header: Dataset views
+    :description: Learn how to use dataset views to retrieve the subsets of your data you're looking for.
+    :link: views_cheat_sheet.html
+    :tags: Cheat-Sheets,Basics,Dataset-Curation
 
 .. customcarditem::
     :header: pandas vs FiftyOne
@@ -153,6 +158,7 @@ workflows.
    :hidden:
 
    FiftyOne terminology <fiftyone_terminology>
+   Views cheat sheet <views_cheat_sheet>
    pandas vs FiftyOne <pandas_vs_fiftyone>
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
