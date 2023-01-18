@@ -128,6 +128,7 @@ export const DatasetNodeQuery = graphql`
       }
       version
       viewCls
+      viewName
       appConfig {
         gridMediaField
         mediaFields
@@ -171,6 +172,7 @@ export const usePreLoadedDataset = (
         `${router.pathname}?${search.length ? `?${search}` : ""}`
       );
     }
+
     if (
       !router.state &&
       typeof window !== "undefined" &&

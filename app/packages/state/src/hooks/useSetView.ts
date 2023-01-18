@@ -51,8 +51,8 @@ const useSetView = (patch = false, selectSlice = false) => {
             onError,
             onCompleted: ({
               setView: {
+                view: viewResponse,
                 dataset: { stages: value, viewName, ...dataset },
-                view,
               },
             }) => {
               const searchParams = new URLSearchParams(
@@ -73,7 +73,7 @@ const useSetView = (patch = false, selectSlice = false) => {
                   ...router.history.location.state,
                   state: {
                     ...router.history.location.state.state,
-                    view: value,
+                    view: savedViewSlug ? value : viewResponse,
                     viewCls: dataset.viewCls,
                     selected: [],
                     selectedLabels: [],
@@ -83,7 +83,7 @@ const useSetView = (patch = false, selectSlice = false) => {
                 });
               } else {
                 window.history.replaceState(
-                  { view: value },
+                  { view: savedViewSlug ? value : viewResponse },
                   undefined,
                   newRoute
                 );

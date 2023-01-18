@@ -413,10 +413,11 @@ async def serialize_dataset(
     def run():
         dataset = fo.load_dataset(dataset_name)
         dataset.reload()
-
+        view_name = None
         try:
             doc = dataset._get_saved_view_doc(saved_view_slug, slug=True)
             view = dataset.load_saved_view(doc.name)
+            view_name = view.name
         except:
             view = fov.DatasetView._build(dataset, serialized_view or [])
 
@@ -424,6 +425,7 @@ async def serialize_dataset(
         Dataset.modifier(doc)
         data = from_dict(Dataset, doc, config=Config(check_types=False))
         data.view_cls = None
+        data.view_name = view_name
 
         collection = dataset.view()
         if view is not None:
