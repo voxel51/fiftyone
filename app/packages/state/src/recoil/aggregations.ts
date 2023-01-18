@@ -216,14 +216,18 @@ export const booleanCountResults = selectorFamily<
     (params) =>
     ({ get }) => {
       const data = get(aggregation(params));
-      return {
+      const none = get(noneCount(params));
+      const result = {
         count: data.false + data.true,
         results: [
           [false, data.false],
           [true, data.true],
-          [null, get(noneCount(params))],
         ],
       };
+      if (none) {
+        result.results.push([null, none]);
+      }
+      return result;
     },
 });
 

@@ -384,7 +384,7 @@ const unwind = (name: string, value: unknown) => {
   }
 
   let v = value[name];
-  if (v) {
+  if (v !== undefined && v !== null) {
     return v;
   }
 
