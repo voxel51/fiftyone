@@ -599,24 +599,26 @@ type Method =
   | ResolveColorMethod
   | SetStreamMethod;
 
-onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
-  switch (method) {
-    case "init":
-      init(args as Init);
-      return;
-    case "processSample":
-      processSample(args as ProcessSample);
-      return;
-    case "requestFrameChunk":
-      requestFrameChunk(args as RequestFrameChunk);
-      return;
-    case "setStream":
-      setStream(args as SetStream);
-      return;
-    case "resolveColor":
-      resolveColor(args as ResolveColor);
-      return;
-    default:
-      throw new Error("unknown method");
-  }
-};
+if (typeof onmessage !== "undefined") {
+  onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
+    switch (method) {
+      case "init":
+        init(args as Init);
+        return;
+      case "processSample":
+        processSample(args as ProcessSample);
+        return;
+      case "requestFrameChunk":
+        requestFrameChunk(args as RequestFrameChunk);
+        return;
+      case "setStream":
+        setStream(args as SetStream);
+        return;
+      case "resolveColor":
+        resolveColor(args as ResolveColor);
+        return;
+      default:
+        throw new Error("unknown method");
+    }
+  };
+}

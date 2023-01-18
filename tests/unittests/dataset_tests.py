@@ -2647,7 +2647,7 @@ class DatasetExtrasTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.update_saved_view_info("my-view1", {"name": "my_view2!"})
 
-        view_docs = dataset._saved_views()
+        view_docs = dataset._doc.saved_views
 
         self.assertListEqual([v.name for v in view_docs], names)
         self.assertListEqual([v.slug for v in view_docs], slugs)
@@ -2655,13 +2655,13 @@ class DatasetExtrasTests(unittest.TestCase):
         dataset.delete_saved_view("my_view2")
 
         self.assertSetEqual(
-            {v.name for v in dataset._saved_views()},
+            {v.name for v in dataset._doc.saved_views},
             {names[0], names[2]},
         )
 
         dataset.delete_saved_views()
 
-        self.assertListEqual(dataset._saved_views(), [])
+        self.assertListEqual(dataset._doc.saved_views, [])
 
     def test_runs(self):
         dataset = self.dataset

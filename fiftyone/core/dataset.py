@@ -3179,6 +3179,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Loads the editable information about the saved view with the given
         name.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            view = dataset.limit(10)
+            dataset.save_view("test", view)
+
+            print(dataset.get_saved_view_info("test"))
+
         Args:
             name: the name of a saved view
 
@@ -3198,13 +3210,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             import fiftyone.zoo as foz
 
             dataset = foz.load_zoo_dataset("quickstart")
-            view = dataset.limit(10)
 
+            view = dataset.limit(10)
             dataset.save_view("test", view)
 
-            info = dataset.get_saved_view_info("test")
-            info["name"] = "a new name"
-
+            # Update the saved view's name and add a description
+            info = dict(
+                name="a new name",
+                description="a description",
+            )
             dataset.update_saved_view_info("test", info)
 
         Args:
@@ -3301,9 +3315,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return self._doc.saved_views.pop(idx)
 
         return self._doc.saved_views[idx]
-
-    def _saved_views(self):
-        return self._doc.saved_views
 
     def _validate_saved_view_name(self, name, skip=None, overwrite=False):
         slug = fou.to_slug(name)
@@ -6083,6 +6094,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._reload(hard=True)
         self._reload_docs(hard=True)
 
+    def clear_cache(self):
+        """Clears the dataset's in-memory cache."""
         self._annotation_cache.clear()
         self._brain_cache.clear()
         self._evaluation_cache.clear()

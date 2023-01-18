@@ -51,7 +51,7 @@
         "@emotion/react": "^11.10.4",
         "@emotion/styled": "^11.10.4",
         "@fiftyone/state": "*",
-        "@mui/joy": "^5.0.0-alpha.46",
+        "@mui/joy": "5.0.0-alpha.51",
         "@mui/material": "^5.9.0",
         "@storybook/addon-docs": "^6.5.14",
         "classnames": "^2.3.1",

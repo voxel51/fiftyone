@@ -329,7 +329,10 @@ export const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 export const VALID_KEYPOINTS = withPath(LABELS_PATH, [KEYPOINT, KEYPOINTS]);
 
 export const isNotebook = () => {
-  return Boolean(new URLSearchParams(window.location.search).get("context"));
+  return Boolean(
+    typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("context")
+  );
 };
 
 export const useExternalLink = (href) => {
