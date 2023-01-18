@@ -1,6 +1,8 @@
 import { graphql } from "react-relay";
 
-export default graphql`
+import r from "../resolve";
+
+export default r(graphql`
   query histogramValuesQuery(
     $dataset: String!
     $view: BSONArray!
@@ -31,4 +33,4 @@ export default graphql`
       }
     }
   }
-`;
+`);

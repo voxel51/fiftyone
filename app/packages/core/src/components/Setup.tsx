@@ -50,9 +50,11 @@ const port = (() => {
     return parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151;
   }
 
-  if (window.location.port !== undefined) {
+  if (typeof window !== "undefined" && window.location.port !== undefined) {
     return parseInt(window.location.port);
   }
+
+  return "";
 })();
 
 const remoteSnippet = `import fiftyone as fo

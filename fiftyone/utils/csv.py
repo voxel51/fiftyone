@@ -144,7 +144,9 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
         etau.ensure_basedir(self.labels_path)
         f = open(self.labels_path, "w")
 
-        csv_writer = csv.writer(f)
+        # QUOTE_MINIMAL is default, but pass it anyways to make sure
+        #   list fields we try to write are handled properly
+        csv_writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
         csv_writer.writerow(header)
 
         self._f = f
@@ -211,4 +213,4 @@ def _parse_value(value):
         return str(value)
 
     # Render lists as "list,of,values"
-    return '"' + ",".join(str(v) for v in value) + '"'
+    return ",".join(str(v) for v in value)

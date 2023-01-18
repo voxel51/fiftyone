@@ -1267,7 +1267,7 @@ Annnotation
   them
 - Added a native :ref:`CVAT integration <cvat-integration>` that enables you
   to use the annotation API with
-  `CVAT <https://github.com/openvinotoolkit/cvat>`_
+  `CVAT <https://github.com/opencv/cvat>`_
 
 Docs
 

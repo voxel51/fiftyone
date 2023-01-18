@@ -70,7 +70,7 @@ export class ThumbnailSelectorElement<
       this.shown = shown;
     }
 
-    if (this.selected !== selected) {
+    if (this.selected !== selected && this.checkbox) {
       this.selected = selected;
       this.checkbox.checked = selected;
     }
