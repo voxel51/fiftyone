@@ -8,11 +8,10 @@ Filtering Cheat Sheet
 This cheat sheet shows how to perform common matching and filtering operations
 in FiftyOne using :ref:`dataset views <using-views>`!
 
-..
-    .. note::
+.. note::
 
-        Expand the collapsed text in the cells below to see how to perform the
-        corresponding operation in the :ref:`App <fiftyone-app>`!
+    Expand the collapsed text in the cells below to see how to perform the
+    corresponding operation in the :ref:`App <fiftyone-app>`!
 
 Strings and pattern matching
 ____________________________
