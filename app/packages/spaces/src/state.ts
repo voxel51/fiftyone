@@ -82,6 +82,11 @@ export const panelStatePartialSelector = selectorFamily({
     },
 });
 
+export const previousTabsGroupAtom = atom<HTMLElement | null>({
+  key: "previousTabsGroupAtom",
+  default: null,
+});
+
 function getStateAtom(local?: boolean) {
   return local ? panelsLocalStateAtom : panelsStateAtom;
 }
