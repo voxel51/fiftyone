@@ -478,6 +478,18 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
         return fouo.OpenImagesV6DatasetImporter
 
 
+class OpenImagesV7Dataset(ImageDetectionDataset):
+    """A labeled dataset consisting of images and their associated annotations
+    saved in
+    `Open Images format <https://storage.googleapis.com/openimages/web/download.html>`_.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.openimages as fouo
+
+        return fouo.OpenImagesV7DatasetImporter
+
+
 class FIWDataset(Dataset):
     """A labeled dataset consisting of images and their associated annotations
     saved in

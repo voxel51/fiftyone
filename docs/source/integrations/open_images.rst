@@ -24,12 +24,13 @@ natively in FiftyOne!
 Loading Open Images
 ___________________
 
-The FiftyOne Dataset Zoo provides support for loading the
-:ref:`Open Images V6 <dataset-zoo-open-images-v6>` dataset.
+The FiftyOne Dataset Zoo provides support for loading the 
+:ref:`Open Images V6 <dataset-zoo-open-images-v6>` and 
+:ref:`Open Images V7 <dataset-zoo-open-images-v7>` datasets.
 
 Like all other zoo datasets, you can use
 :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>` to download
-and load an Open Images V6 split into FiftyOne:
+and load an Open Images V7 split into FiftyOne:
 
 .. code-block:: python
     :linenos:
@@ -37,8 +38,8 @@ and load an Open Images V6 split into FiftyOne:
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Download and load the validation split of Open Images V6
-    dataset = foz.load_zoo_dataset("open-images-v6", split="validation")
+    # Download and load the validation split of Open Images V7
+    dataset = foz.load_zoo_dataset("open-images-v7", split="validation")
 
     session = fo.launch_app(dataset)
 
@@ -65,14 +66,14 @@ first if possible before resorting to downloading additional data from the web.
     import fiftyone.zoo as foz
 
     #
-    # Load 50 random samples from the validation split
+    # Load 50 random samples from the validation split of Open Images V7.
     #
     # Only the required images will be downloaded (if necessary).
     # By default, all label types are loaded
     #
 
     dataset = foz.load_zoo_dataset(
-        "open-images-v6",
+        "open-images-v7",
         split="validation",
         max_samples=50,
         shuffle=True,
@@ -82,7 +83,7 @@ first if possible before resorting to downloading additional data from the web.
 
     #
     # Load detections and classifications for 25 samples from the
-    # validation split that contain fedoras and pianos
+    # validation split of Open Images V6 that contain fedoras and pianos
     #
     # Images that contain all `label_types` and `classes` will be
     # prioritized first, followed by images that contain at least one of
@@ -103,8 +104,27 @@ first if possible before resorting to downloading additional data from the web.
 
     session.dataset = dataset
 
+    #
+    # Load classifications and point labels for all samples from the
+    # validation split of Open Images V7 with class "Turtle" or "Tortoise".
+    #
+    # If there are not enough images matching classes` in the split to 
+    # meet `max_samples`, only the available images will be loaded.
+    #
+    # Images will only be downloaded if necessary
+    #
+
+    dataset = foz.load_zoo_dataset(
+        "open-images-v7",
+        split="validation",
+        label_types=["points", "classifications"],
+        classes=["Turtle", "Tortoise"],
+    )
+
+    session.dataset = dataset
+
 The following parameters are available to configure a partial download of Open
-Images V6 by passing them to
+Images V6 or Open Images V7 by passing them to
 :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
 
 -   **split** (*None*) and **splits** (*None*): a string or list of strings,
@@ -113,9 +133,9 @@ Images V6 by passing them to
     splits are loaded
 
 -   **label_types** (*None*): a label type or list of label types to load.
-    Supported values are
+    Supported values for Open Images V6 are
     ``("detections", "classifications", "relationships", "segmentations")``.
-    By default, all labels types are loaded
+    Open Images V7 also supports `"points"` labels. By default, all labels types are loaded
 
 -   **classes** (*None*): a string or list of strings specifying required
     classes to load. If provided, only samples containing at least one instance
@@ -164,8 +184,10 @@ Images V6 by passing them to
 .. note::
 
     See
-    :class:`OpenImagesV6Dataset <fiftyone.zoo.datasets.base.OpenImagesV6Dataset>`
-    and :class:`OpenImagesV6DatasetImporter <fiftyone.utils.openimages.OpenImagesV6DatasetImporter>`
+    :class:`OpenImagesV7Dataset <fiftyone.zoo.datasets.base.OpenImagesV6Dataset>`
+    , 
+    :class:`OpenImagesV7Dataset <fiftyone.zoo.datasets.base.OpenImagesV7Dataset>`
+    and :class:`OpenImagesDatasetImporter <fiftyone.utils.openimages.OpenImagesDatasetImporter>`
     for complete descriptions of the optional keyword arguments that you can
     pass to :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
 
