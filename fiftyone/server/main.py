@@ -26,7 +26,6 @@ import fiftyone.constants as foc
 
 from fiftyone.server.app import app
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=fo.config.default_app_port)

@@ -5,6 +5,7 @@ FiftyOne Teams authentication
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import typing as t
 from dataclasses import dataclass
 from inspect import isclass
@@ -51,13 +52,20 @@ async def on_shutdown():
     await _web.close()
 
 
+def _ensure_trailing_slash(url: str):
+    if not url:
+        raise ValueError("Missing url")
+    return url if url.endswith("/") else url + "/"
+
+
 def decode(token: str, rsa_key):
+    domain = _ensure_trailing_slash(fot.teams_config.domain)
     return jwt.decode(
         token,
         rsa_key,
         algorithms=ALGORITHMS,
         audience=fot.teams_config.audience,
-        issuer=f"https://{fot.teams_config.domain}/",
+        issuer=f"https://{domain}",
     )
 
 
@@ -81,6 +89,7 @@ def get_header_token(authorization: str):
 
 async def authenticate_header(token: str, jwks: JWKS) -> bool:
     unverified_header = jwt.get_unverified_header(token)
+
     rsa_key = {}
     for key in jwks.keys:
         if key.kid == unverified_header["kid"]:
@@ -91,16 +100,30 @@ async def authenticate_header(token: str, jwks: JWKS) -> bool:
                 "n": key.n,
                 "e": key.e,
             }
-
+    if not rsa_key:
+        raise ValueError(
+            "Unable to authenticate header. Missing matching jwk key ID (kid). "
+            "Verify the value for FIFTYONE_TEAMS_DOMAIN is correct."
+        )
     if rsa_key:
         try:
             decode(token, rsa_key)
         except jwt.ExpiredSignatureError:
-            return False
+            raise ValueError(
+                "Unable to authenticate header. "
+                "Encountered jwt.ExpiredSignatureError"
+            )
         except jwt.JWTClaimsError:
-            return False
-        except Exception:
-            return False
+            raise ValueError(
+                "Unable to authenticate header. Encountered jwt.JWTClaimsError. "
+                "Verify the values for your FiftyOneTeamsConfig are correct."
+            )
+        except Exception as e:
+            raise ValueError(
+                "Unable to authenticate header. Uncaught exception: {}".format(
+                    e
+                )
+            )
 
         return True
 
@@ -148,24 +171,32 @@ class AuthenticatedUser(BaseUser):
 
 class Authentication(AuthenticationBackend):
     async def authenticate(self, conn):
+        token = None
         header = conn.headers.get("Authorization", None)
         cookie = conn.cookies.get("fiftyone-token", None)
         if header:
             token = get_header_token(header)
         elif cookie:
             token = cookie
-
-        try:
-            authenticated = await authenticate_header(token, _jwks)
-        except Exception:
-            authenticated = False
-
-        if authenticated:
-            claims = jwt.get_unverified_claims(token)
-            return (
-                AuthCredentials(["authenticated"]),
-                AuthenticatedUser(sub=claims["sub"]),
-            )
+        else:
+            # Can't throw an error here because token may not be present upon
+            # first load, and we don't want to get stuck here.
+            logging.warning("No authentication header or cookie provided.")
+        if token:
+            try:
+                authenticated = await authenticate_header(token, _jwks)
+                if authenticated:
+                    claims = jwt.get_unverified_claims(token)
+                    return (
+                        AuthCredentials(["authenticated"]),
+                        AuthenticatedUser(sub=claims["sub"]),
+                    )
+            except ValueError:
+                ...
+            except Exception as e:
+                logging.error(
+                    "Uncaught authentication exception: {}".format(e)
+                )
 
         return AuthCredentials([]), UnauthenticatedUser()
 

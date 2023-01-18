@@ -215,7 +215,9 @@ async def dispatch_polling_event_listener(
 
 
 def get_state() -> fos.StateDescription:
-    """Get the current state description singleton on the server
+    """Get the current state description singleton on the server if it
+    exists. Otherwise, initializes and sets the state description with
+    default values.
 
     Returns:
         the :class:`fiftyone.core.state.StateDescription` server singleton
@@ -255,7 +257,7 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
         global _app_count
         _app_count += 1
 
-    current = state.dataset.name if state.dataset is not None else None
+    current = state.dataset.name if state.dataset else None
     if is_app and payload.initializer != current:
         if payload.initializer is not None:
             try:

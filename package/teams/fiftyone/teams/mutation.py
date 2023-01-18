@@ -5,6 +5,9 @@ FiftyOne Teams mutations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
+import logging
+
 from dacite import Config, from_dict
 from fiftyone.teams.authentication import (
     IsAuthenticated,
@@ -16,7 +19,9 @@ import strawberry as gql
 import typing as t
 
 from fiftyone.server.data import Info
+import fiftyone.core.dataset as fod
 import fiftyone.core.stages as fos
+import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
 import fiftyone.server.mutation as fosm
@@ -65,17 +70,36 @@ class Mutation(fosm.Mutation):
         self,
         subscription: str,
         session: t.Optional[str],
-        view: BSONArray,
-        dataset: str,
+        dataset_name: str,
+        view: t.Optional[BSONArray],
+        view_name: t.Optional[str],
+        saved_view_slug: t.Optional[str],
+        changing_saved_view: t.Optional[bool],
         form: t.Optional[fosm.StateForm],
         info: Info,
     ) -> fosm.ViewResponse:
-        view = fosm.get_view(
-            dataset,
-            view,
-            form.filters,
-        )
-        if form:
+
+        result_view = None
+
+        if view_name is not None:
+            ds = fod.load_dataset(dataset_name)
+            if ds.has_saved_view(view_name):
+                # Load a saved dataset view by name
+                result_view = ds.load_saved_view(view_name)
+                loaded_at = datetime.datetime.utcnow()
+                res = await _update_view_activity(
+                    view_name, ds, loaded_at, info
+                )
+                view = result_view._serialize()  # serialized view stages
+
+        elif form:
+            # convert serialized view_stages to DatasetView
+            view = fosm.get_view(
+                dataset_name,
+                stages=view,
+                filters=form.filters,
+            )
+
             if form.slice:
                 view = view.select_group_slices([form.slice])
 
@@ -90,15 +114,104 @@ class Mutation(fosm.Mutation):
             if form.extended:
                 view = fosm.extend_view(view, form.extended, True)
 
+            result_view = view  # DatasetView
+            view = view._serialize()  # serialized view stages
+
+        else:
+            # convert serialized view_stages to DatasetView
+            view = fosm.get_view(
+                dataset_name,
+                stages=view,
+                filters=form.filters,
+            )
+
             result_view = view
             view = view._serialize()
 
-        else:
-            result_view = fov.DatasetView._build(dataset, view)
-
         dataset = await Dataset.resolver(
-            result_view._root_dataset.name, view, info
+            name=dataset_name,
+            view=view,
+            view_name=view_name
+            if view_name
+            else result_view.name
+            if result_view
+            else None,
+            info=info,
         )
         return fosm.ViewResponse(
-            view=result_view._serialize(), dataset=dataset
+            view=view,
+            dataset=dataset,
+            view_name=view_name
+            if view_name
+            else result_view.name
+            if result_view
+            else None,
+            saved_view_slug=saved_view_slug if saved_view_slug else None,
+            changing_saved_view=changing_saved_view,
         )
+
+
+async def _update_view_activity(
+    view_name: str,
+    dataset: fod.Dataset,
+    loaded_at: datetime.datetime,
+    info: Info,
+):
+    """Record the last load time and total load count
+    for a particular saved view and user"""
+
+    db = info.context.db
+    uid = info.context.request.user.sub
+
+    if not uid:
+        logging.warning("[teams/mutation.py] No id found for the current user")
+        uid = "MISSING"
+
+    # use `ObjectId` instead of `name` to avoid issues resolving renamed
+    # views and datasets
+    view_id = next(
+        (view.id for view in dataset._saved_views() if view.name == view_name),
+        None,
+    )
+    if not view_id:
+        logging.error(
+            "[teams/mutation.py] No id found for view_name={} and dataset={}".format(
+                view_name, dataset.name
+            )
+        )
+        return
+
+    try:
+        # Note: if multi-tab syncing becomes supported, update this to only
+        # increase load_count when the difference between the current and
+        # previous last_loaded_at is greater than X
+        res = await db["views.activity"].find_one_and_update(
+            {
+                "user_id": uid,
+                "view_id": view_id,
+                "dataset_id": dataset._doc.id,
+            },
+            {
+                "$set": {
+                    "last_loaded_at": loaded_at,
+                    "view_name": view_name,
+                },
+                "$inc": {"load_count": 1},
+            },
+            projection={
+                "_id": True,
+                "view_name": True,
+                "last_loaded_at": True,
+                "load_count": True,
+            },
+            upsert=True,
+        )
+        if res:
+            return res.get("view_name", None)
+    except Exception as e:
+        logging.error(
+            "[teams/mutation.py] Failed to log view activity to db. "
+            "Error: {}".format(e)
+        )
+
+    return

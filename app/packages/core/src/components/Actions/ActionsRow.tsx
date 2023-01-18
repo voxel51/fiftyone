@@ -39,7 +39,7 @@ import Selector from "./Selected";
 import Similar from "./Similar";
 import Tagger from "./Tagger";
 
-const shouldToggleBookMarkIconOnSelector = selector<boolean>({
+export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
   get: ({ get }) => {
     const hasFiltersValue = get(fos.hasFilters(false));

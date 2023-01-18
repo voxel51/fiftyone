@@ -56,6 +56,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       FIFTYONE_DO_NOT_TRACK: true
+      FIFTYONE_DATABASE_ADMIN: true
     strategy:
       fail-fast: false
       matrix:

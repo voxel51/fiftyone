@@ -464,6 +464,10 @@ class DatasetDocument(Document):
     brain_methods = DictField(ReferenceField(RunDocument))
     evaluations = DictField(ReferenceField(RunDocument))
 
+    @property
+    def _id(self):
+        return self._id
+
     def to_dict(self, *args, no_dereference=False, **kwargs):
         d = super().to_dict(*args, **kwargs)
 

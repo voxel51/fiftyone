@@ -240,6 +240,11 @@ export const theme = atom<"dark" | "light">({
   ],
 });
 
+export const canEditSavedViews = atom({
+  key: "canEditSavedViews",
+  default: true,
+});
+
 export const compactLayout = atom({
   key: "compactLayout",
   default: false,
