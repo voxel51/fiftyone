@@ -1,30 +1,27 @@
-import { ThemeProvider } from "@fiftyone/components";
-import { Loading, makeRoutes, Setup } from "@fiftyone/core";
-
-import { getEventSource, toCamelCase } from "@fiftyone/utilities";
-import React, { useEffect, useRef, useState } from "react";
-import { createRoot } from "react-dom/client";
-import { RecoilRoot, useRecoilValue } from "recoil";
-import Network from "./Network";
-
+import { Loading, ThemeProvider } from "@fiftyone/components";
+import { Setup, makeRoutes } from "@fiftyone/core";
 import { usePlugins } from "@fiftyone/plugins";
 import {
   BeforeScreenshotContext,
   EventsContext,
   getDatasetName,
-  getSavedViewName,
   modal,
   screenshotCallbacks,
   State,
   stateSubscription,
-  useClearModal,
-  useRefresh,
   useReset,
-  useRouter,
+  useClearModal,
   useScreenshot,
+  useRouter,
+  useRefresh,
+  getSavedViewName,
 } from "@fiftyone/state";
-
 import { isElectron } from "@fiftyone/utilities";
+import { getEventSource, toCamelCase } from "@fiftyone/utilities";
+import React, { useEffect, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { RecoilRoot, useRecoilValue } from "recoil";
+import Network from "./Network";
 
 import "./index.css";
 
