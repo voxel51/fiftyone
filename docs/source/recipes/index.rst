@@ -45,12 +45,12 @@ workflows.
 
 .. customcarditem::
     :header: Filtering cheat sheet
-    :description: Check out this cheat sheet for an overview of the basic syntaxes for matching and filtering in FiftyOne.
+    :description: An overview of the basic syntaxes for matching and filtering in FiftyOne.
     :link: filtering_cheat_sheet.html
     :tags: Cheat-Sheets,Dataset-Curation
 
 .. customcarditem::
-    :header: Dataset views
+    :header: Views cheat sheet
     :description: Learn how to use dataset views to retrieve the subsets of your data you're looking for.
     :link: views_cheat_sheet.html
     :tags: Cheat-Sheets,Basics,Dataset-Curation
