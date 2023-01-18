@@ -15,7 +15,6 @@ export { default as useJSONPanel } from "./useJSONPanel";
 export { default as useLookerStore } from "./useLookerStore";
 export * from "./useLookerStore";
 export { default as usePanel } from "./usePanel";
-export { default as useQueryState } from "./useQueryState";
 export { default as useReset } from "./useReset";
 export { default as useSavedViews } from "./useSavedViews";
 export { default as useScreenshot } from "./useScreenshot";

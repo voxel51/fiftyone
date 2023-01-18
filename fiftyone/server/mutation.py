@@ -5,7 +5,6 @@ FiftyOne Server mutations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 from dataclasses import asdict
 import strawberry as gql
 import typing as t
@@ -20,10 +19,10 @@ import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
 import fiftyone.core.dataset as fod
 from fiftyone.core.spaces import default_spaces, Space
+import fiftyone.core.utils as fou
 
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
-from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.query import Dataset, SidebarGroup, SavedView
 from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view, extend_view
@@ -57,9 +56,6 @@ class SelectedLabel:
 class ViewResponse:
     view: BSONArray
     dataset: Dataset
-    view_name: t.Optional[str] = None
-    saved_view_slug: t.Optional[str] = None
-    changing_saved_view: t.Optional[bool] = False
 
 
 @gql.input
@@ -173,25 +169,27 @@ class Mutation:
         session: t.Optional[str],
         dataset_name: str,
         view: t.Optional[BSONArray],
-        view_name: t.Optional[str],
         saved_view_slug: t.Optional[str],
-        changing_saved_view: t.Optional[bool],
         form: t.Optional[StateForm],
         info: Info,
     ) -> ViewResponse:
-        logging.debug(
-            f"[mutation.py] set_view called with args:\ndataset_name"
-            f":{dataset_name}\nview:{view}\nview_name:{view_name}\nchanging_saved_view:{changing_saved_view} \n"
-        )
         state = get_state()
         state.selected = []
         state.selected_labels = []
 
         result_view = None
+        ds = fod.load_dataset(dataset_name)
+        view_name = None
+        if saved_view_slug is not None:
+            try:
+                doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
+                view_name = doc.name
+            except:
+                pass
 
         if view_name is not None:
             # Load a saved view by name
-            ds = fod.load_dataset(dataset_name)
+
             if ds.has_saved_view(view_name):
                 # Load a saved dataset view by name
                 result_view = ds.load_saved_view(view_name)
@@ -200,6 +198,9 @@ class Mutation:
                 state.view = result_view
                 state.view_name = result_view.name
                 state.saved_view_slug = saved_view_slug
+        else:
+            state.view_name = None
+            state.saved_view_slug = None
 
         if result_view is None:
             # Update current view with form parameters
@@ -208,35 +209,30 @@ class Mutation:
                 stages=view if view else None,
                 filters=form.filters if form else None,
             )
+
         result_view = _build_result_view(result_view, form)
         # Set view state
         state.view = result_view
 
         await dispatch_event(
             subscription,
-            StateUpdate(
-                state=state,
-                update=True,
-                changing_saved_view=changing_saved_view or False,
-            ),
+            StateUpdate(state=state),
         )
 
         final_view = []
         if state and state.view:
             final_view = state.view._serialize()
 
+        slug = fou.to_slug(view_name) if view_name else None
         dataset = await Dataset.resolver(
             name=dataset_name,
             view=final_view,
-            view_name=view_name,
+            saved_view_slug=slug,
             info=info,
         )
         return ViewResponse(
-            view=final_view,
             dataset=dataset,
-            view_name=view_name,
-            saved_view_slug=saved_view_slug,
-            changing_saved_view=changing_saved_view or False,
+            view=final_view,
         )
 
     @gql.mutation
@@ -260,9 +256,9 @@ class Mutation:
         return await Dataset.resolver(
             name=state.dataset.name,
             view=view,
-            view_name=view_name
+            saved_view_slug=fou.to_slug(view_name)
             if view_name
-            else state.view.name
+            else fou.to_slug(state.view.name)
             if state.view
             else None,
             info=info,

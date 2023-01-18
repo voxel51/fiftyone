@@ -137,6 +137,7 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
+  stages(slug: String = null): BSONArray
 }
 
 type DatasetAppConfig {
@@ -304,9 +305,7 @@ type Mutation {
     session: String
     datasetName: String!
     view: BSONArray
-    viewName: String
     savedViewSlug: String
-    changingSavedView: Boolean
     form: StateForm
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
@@ -331,7 +330,7 @@ type Mutation {
     subscription: String!
     session: String
     viewName: String!
-    datasetName: String = null
+    datasetName: String
   ): String
   updateSavedView(
     viewName: String!
@@ -368,7 +367,7 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, view: BSONArray, viewName: String): Dataset
+  dataset(name: String!, view: BSONArray, savedViewSlug: String): Dataset
   datasets(
     search: String
     first: Int = 200
@@ -460,9 +459,9 @@ type SavedView {
   id: String
   datasetId: String
   name: String
-  slug: String
   description: String
   color: String
+  slug: String
   viewStages: [String!]
   createdAt: datetime
   lastModifiedAt: datetime
@@ -554,9 +553,6 @@ type VideoSample implements Sample {
 type ViewResponse {
   view: BSONArray!
   dataset: Dataset!
-  viewName: String
-  savedViewSlug: String
-  changingSavedView: Boolean
 }
 
 scalar date

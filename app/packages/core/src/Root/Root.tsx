@@ -53,30 +53,6 @@ const rootQuery = graphql`
   }
 `;
 
-export const DatasetSavedViewsQuery = graphql`
-  query RootDatasetSavedViewsQuery($name: String!) {
-    ...RootDatasetSavedViewsFragment
-  }
-`;
-
-export const DatasetSavedViewsFragment = graphql`
-  fragment RootDatasetSavedViewsFragment on Query
-  @refetchable(queryName: "RootDatasetSavedViewsFragmentQuery") {
-    savedViews(datasetName: $name) {
-      id
-      datasetId
-      name
-      slug
-      description
-      color
-      viewStages
-      createdAt
-      lastModifiedAt
-      lastLoadedAt
-    }
-  }
-`;
-
 const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
   const refresh = useRecoilValue(fos.refresher);
 

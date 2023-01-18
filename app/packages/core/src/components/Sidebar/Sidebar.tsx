@@ -689,14 +689,6 @@ const InteractiveSidebar = ({
   );
   const theme = useTheme();
 
-  const [savedViewsQueryRef, loadSavedViewsQuery] = useQueryLoader(
-    DatasetSavedViewsQuery
-  );
-
-  useEffect(() => {
-    loadSavedViewsQuery({ name: loadedDatasetName });
-  }, [loadSavedViewsQuery]);
-
   return shown ? (
     <Resizable
       size={{ height: "100%", width }}
@@ -736,12 +728,7 @@ const InteractiveSidebar = ({
               borderTopRightRadius: 8,
             }}
           >
-            {savedViewsQueryRef !== null && (
-              <ViewSelection
-                datasetName={loadedDatasetName}
-                queryRef={savedViewsQueryRef}
-              />
-            )}
+            <ViewSelection />
           </Box>
         </Suspense>
       )}
