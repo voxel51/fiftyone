@@ -5,18 +5,14 @@ import { useMutation } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { State, stateSubscription, view, viewStateForm } from "../recoil";
 import { RouterContext } from "../routing";
-import { transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
-import useStateUpdate from "./useStateUpdate";
 import * as fos from "../";
 
 const useSetView = (patch = false, selectSlice = false) => {
   const send = useSendEvent(true);
-  const updateState = useStateUpdate();
   const subscription = useRecoilValue(stateSubscription);
   const router = useContext(RouterContext);
   const [commit] = useMutation<setViewMutation>(setView);
-
   const onError = useErrorHandler();
 
   return useRecoilCallback(
@@ -26,7 +22,7 @@ const useSetView = (patch = false, selectSlice = false) => {
           | State.Stage[]
           | ((current: State.Stage[]) => State.Stage[]),
         addStages?: State.Stage[],
-        viewName?: string
+        savedViewSlug?: string
       ) => {
         const dataset = snapshot.getLoadable(fos.dataset).contents;
         const savedViews = dataset.savedViews || [];
@@ -50,61 +46,47 @@ const useSetView = (patch = false, selectSlice = false) => {
                     })
                   ).contents
                 : {},
-              viewName,
+              savedViewSlug,
             },
             onError,
             onCompleted: ({
-              setView: { dataset, view: value, savedViewSlug },
+              setView: {
+                dataset: { stages: value, viewName, ...dataset },
+                view,
+              },
             }) => {
-              if (
-                router &&
-                router.history.location.state &&
-                router.history.location.state.state
-              ) {
-                const newState = {
-                  ...router.history.location.state.state,
-                  view: value,
-                  viewCls: dataset.viewCls,
-                  selected: [],
-                  selectedLabels: [],
-                  savedViewSlug: savedViewSlug || null,
-                  viewName,
-                  savedViews: savedViews,
-                };
-                router.history.location.state.state = newState;
+              const searchParams = new URLSearchParams(
+                router.history.location.search
+              );
 
-                const searchParams = new URLSearchParams(
-                  router.history.location.search
-                );
-                savedViewSlug
-                  ? searchParams.set("view", encodeURIComponent(savedViewSlug))
-                  : searchParams.delete("view");
+              savedViewSlug
+                ? searchParams.set("view", encodeURIComponent(savedViewSlug))
+                : searchParams.delete("view");
 
-                router.history.push(
-                  `${
-                    router.history.location.pathname
-                  }?${searchParams.toString()}`,
-                  { ...router.history.location.state, state: newState }
-                );
-              } else {
-                const searchParams = new URLSearchParams(
-                  window.location.search
-                );
-                savedViewSlug &&
-                  searchParams.set("view", encodeURIComponent(savedViewSlug));
-                window.location.search = searchParams.toString();
-                updateState({
-                  dataset: transformDataset(dataset),
+              const search = searchParams.toString();
+              const newRoute = `${router.history.location.pathname}${
+                search.length ? "?" : ""
+              }${search}`;
+
+              if (router.history.location.state?.state) {
+                router.history.push(newRoute, {
+                  ...router.history.location.state,
                   state: {
+                    ...router.history.location.state.state,
                     view: value,
                     viewCls: dataset.viewCls,
                     selected: [],
                     selectedLabels: [],
-                    savedViewSlug,
                     viewName,
-                    savedViews,
+                    savedViews: savedViews,
                   },
                 });
+              } else {
+                window.history.replaceState(
+                  { view: value },
+                  undefined,
+                  newRoute
+                );
               }
             },
           });

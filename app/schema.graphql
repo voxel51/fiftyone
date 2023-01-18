@@ -303,7 +303,7 @@ type Mutation {
     session: String
     datasetName: String!
     view: BSONArray
-    viewName: String
+    savedViewSlug: String
     form: StateForm
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
@@ -328,7 +328,7 @@ type Mutation {
     subscription: String!
     session: String
     viewName: String!
-    datasetName: String = null
+    datasetName: String
   ): String
   updateSavedView(
     viewName: String!
@@ -550,8 +550,6 @@ type VideoSample implements Sample {
 type ViewResponse {
   view: BSONArray!
   dataset: Dataset!
-  viewName: String
-  savedViewSlug: String
 }
 
 scalar date

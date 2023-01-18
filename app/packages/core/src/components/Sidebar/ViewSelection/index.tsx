@@ -201,7 +201,7 @@ export default function ViewSelection() {
                 fetchPolicy: "network-only",
                 onComplete: (newOptions) => {
                   if (createSavedView && reload) {
-                    setView([], undefined, createSavedView.name);
+                    setView([], undefined, createSavedView.slug);
                     setSelected({
                       ...createSavedView,
                       label: createSavedView.name,
@@ -230,7 +230,7 @@ export default function ViewSelection() {
           selected={selected}
           setSelected={(item: DatasetViewOption) => {
             setSelected(item);
-            setView(item.viewStages, [], item.label);
+            setView(item.viewStages, [], item.slug);
           }}
           items={searchData}
           onEdit={(item) => {

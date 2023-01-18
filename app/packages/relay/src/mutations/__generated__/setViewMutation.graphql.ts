@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<19c1acdf52760e18e82bf6e304f35641>>
+ * @generated SignedSource<<624cf89385c34d41457ec082069c942a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -28,10 +28,10 @@ export type SelectedLabel = {
 export type setViewMutation$variables = {
   datasetName: string;
   form: StateForm;
+  savedViewSlug?: string | null;
   session?: string | null;
   subscription: string;
   view: Array;
-  viewName?: string | null;
 };
 export type setViewMutation$data = {
   readonly setView: {
@@ -132,10 +132,11 @@ export type setViewMutation$data = {
         readonly labels: ReadonlyArray<string> | null;
         readonly name: string;
       }>;
+      readonly stages: Array | null;
       readonly version: string | null;
       readonly viewCls: string | null;
+      readonly viewName: string | null;
     };
-    readonly savedViewSlug: string | null;
     readonly view: Array;
   };
 };
@@ -158,22 +159,22 @@ v1 = {
 v2 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "session"
+  "name": "savedViewSlug"
 },
 v3 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "subscription"
+  "name": "session"
 },
 v4 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "view"
+  "name": "subscription"
 },
 v5 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "viewName"
+  "name": "view"
 },
 v6 = {
   "alias": null,
@@ -343,6 +344,11 @@ v21 = [
       },
       {
         "kind": "Variable",
+        "name": "savedViewSlug",
+        "variableName": "savedViewSlug"
+      },
+      {
+        "kind": "Variable",
         "name": "session",
         "variableName": "session"
       },
@@ -355,11 +361,6 @@ v21 = [
         "kind": "Variable",
         "name": "view",
         "variableName": "view"
-      },
-      {
-        "kind": "Variable",
-        "name": "viewName",
-        "variableName": "viewName"
       }
     ],
     "concreteType": "ViewResponse",
@@ -410,6 +411,19 @@ v21 = [
               (v7/*: any*/),
               (v8/*: any*/)
             ],
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": [
+              {
+                "kind": "Variable",
+                "name": "slug",
+                "variableName": "savedViewSlug"
+              }
+            ],
+            "kind": "ScalarField",
+            "name": "stages",
             "storageKey": null
           },
           {
@@ -604,6 +618,13 @@ v21 = [
           {
             "alias": null,
             "args": null,
+            "kind": "ScalarField",
+            "name": "viewName",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
             "concreteType": "NamedKeypointSkeleton",
             "kind": "LinkedField",
             "name": "skeletons",
@@ -709,13 +730,6 @@ v21 = [
         "kind": "ScalarField",
         "name": "view",
         "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "savedViewSlug",
-        "storageKey": null
       }
     ],
     "storageKey": null
@@ -741,10 +755,10 @@ return {
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v3/*: any*/),
-      (v2/*: any*/),
       (v4/*: any*/),
+      (v3/*: any*/),
       (v5/*: any*/),
+      (v2/*: any*/),
       (v0/*: any*/),
       (v1/*: any*/)
     ],
@@ -753,16 +767,16 @@ return {
     "selections": (v21/*: any*/)
   },
   "params": {
-    "cacheID": "c7ed3aba78b61495f6b62d7bfaf80c65",
+    "cacheID": "31840ba0c113ca66387817e07e88a321",
     "id": null,
     "metadata": {},
     "name": "setViewMutation",
     "operationKind": "mutation",
-    "text": "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $viewName: String\n  $datasetName: String!\n  $form: StateForm!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, viewName: $viewName, datasetName: $datasetName, form: $form) {\n    dataset {\n      id\n      name\n      mediaType\n      groupSlice\n      defaultGroupSlice\n      groupField\n      groupMediaTypes {\n        name\n        mediaType\n      }\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n        description\n        info\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n        description\n        info\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      savedViews {\n        id\n        name\n        description\n        color\n        viewStages\n        slug\n        createdAt\n        lastModifiedAt\n        lastLoadedAt\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n      appConfig {\n        gridMediaField\n        mediaFields\n        modalMediaField\n        plugins\n        sidebarGroups {\n          expanded\n          name\n          paths\n        }\n        sidebarMode\n      }\n    }\n    view\n    savedViewSlug\n  }\n}\n"
+    "text": "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $savedViewSlug: String\n  $datasetName: String!\n  $form: StateForm!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, savedViewSlug: $savedViewSlug, datasetName: $datasetName, form: $form) {\n    dataset {\n      id\n      name\n      mediaType\n      groupSlice\n      defaultGroupSlice\n      groupField\n      groupMediaTypes {\n        name\n        mediaType\n      }\n      stages(slug: $savedViewSlug)\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n        description\n        info\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n        description\n        info\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      savedViews {\n        id\n        name\n        description\n        color\n        viewStages\n        slug\n        createdAt\n        lastModifiedAt\n        lastLoadedAt\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      viewName\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n      appConfig {\n        gridMediaField\n        mediaFields\n        modalMediaField\n        plugins\n        sidebarGroups {\n          expanded\n          name\n          paths\n        }\n        sidebarMode\n      }\n    }\n    view\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "8542b45397d855f36bf9617a19c888c8";
+(node as any).hash = "32eb48fa318c9847440bd31b6279c884";
 
 export default node;

@@ -5,7 +5,7 @@ export default graphql`
     $subscription: String!
     $session: String
     $view: BSONArray!
-    $viewName: String
+    $savedViewSlug: String
     $datasetName: String!
     $form: StateForm!
   ) {
@@ -13,7 +13,7 @@ export default graphql`
       subscription: $subscription
       session: $session
       view: $view
-      viewName: $viewName
+      savedViewSlug: $savedViewSlug
       datasetName: $datasetName
       form: $form
     ) {
@@ -28,6 +28,7 @@ export default graphql`
           name
           mediaType
         }
+        stages(slug: $savedViewSlug)
         sampleFields {
           ftype
           subfield
@@ -95,6 +96,7 @@ export default graphql`
         createdAt
         version
         viewCls
+        viewName
         skeletons {
           name
           labels
@@ -118,7 +120,6 @@ export default graphql`
         }
       }
       view
-      savedViewSlug
     }
   }
 `;

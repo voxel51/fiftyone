@@ -57,8 +57,6 @@ class SelectedLabel:
 class ViewResponse:
     view: BSONArray
     dataset: Dataset
-    view_name: t.Optional[str] = None
-    saved_view_slug: t.Optional[str] = None
 
 
 @gql.input
@@ -171,7 +169,7 @@ class Mutation:
         session: t.Optional[str],
         dataset_name: str,
         view: t.Optional[BSONArray],
-        view_name: t.Optional[str],
+        saved_view_slug: t.Optional[str],
         form: t.Optional[StateForm],
         info: Info,
     ) -> ViewResponse:
@@ -180,10 +178,18 @@ class Mutation:
         state.selected_labels = []
 
         result_view = None
+        ds = fod.load_dataset(dataset_name)
+        view_name = None
+        if saved_view_slug is not None:
+            try:
+                doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
+                view_name = doc.name
+            except:
+                pass
 
         if view_name is not None:
             # Load a saved view by name
-            ds = fod.load_dataset(dataset_name)
+
             if ds.has_saved_view(view_name):
                 # Load a saved dataset view by name
                 result_view = ds.load_saved_view(view_name)
@@ -191,7 +197,7 @@ class Mutation:
                 # Set view state
                 state.view = result_view
                 state.view_name = result_view.name
-                state.saved_view_slug = fou.to_slug(view_name)
+                state.saved_view_slug = saved_view_slug
         else:
             state.view_name = None
             state.saved_view_slug = None
@@ -203,6 +209,7 @@ class Mutation:
                 stages=view if view else None,
                 filters=form.filters if form else None,
             )
+
         result_view = _build_result_view(result_view, form)
         # Set view state
         state.view = result_view
@@ -224,10 +231,8 @@ class Mutation:
             info=info,
         )
         return ViewResponse(
-            view=final_view,
             dataset=dataset,
-            view_name=view_name,
-            saved_view_slug=slug,
+            view=final_view,
         )
 
     @gql.mutation

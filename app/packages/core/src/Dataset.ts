@@ -161,6 +161,24 @@ export const usePreLoadedDataset = (
   const router = React.useContext(fos.RouterContext);
 
   React.useLayoutEffect(() => {
+    let { viewName, stages: view, ...rest } = dataset;
+
+    const params = new URLSearchParams(router.history.location.search);
+    if (!viewName && params.has("view")) {
+      params.delete("view");
+      const search = params.toString();
+      router.history.replace(
+        `${router.pathname}?${search.length ? `?${search}` : ""}`
+      );
+    }
+    if (
+      !router.state &&
+      typeof window !== "undefined" &&
+      window.history.state?.view
+    ) {
+      view = window.history.state?.view;
+    }
+
     const { colorscale, config, state } = router?.state || {};
 
     if (dataset) {
@@ -170,7 +188,7 @@ export const usePreLoadedDataset = (
           config: config
             ? (toCamelCase(config) as fos.State.Config)
             : undefined,
-          dataset: fos.transformDataset(dataset),
+          dataset: fos.transformDataset(rest),
           state,
         };
       });
