@@ -5,7 +5,7 @@ FiftyOne terminology
 
 .. default-role:: code
 
-This cheat sheet introduces the key terminology in the world of FiftyOne!
+This cheat sheet introduces the key terminology in the world of FiftyOne.
 
 The basics
 __________

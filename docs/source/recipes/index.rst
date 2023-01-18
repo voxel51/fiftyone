@@ -38,31 +38,6 @@ workflows.
 .. Add recipe cards below
 
 .. customcarditem::
-    :header: FiftyOne terminology
-    :description: A brief overview of FiftyOne's key terminology.
-    :link: fiftyone_terminology.html
-    :tags: Cheat-Sheets,Basics
-
-.. customcarditem::
-    :header: Filtering cheat sheet
-    :description: An overview of the basic syntaxes for matching and filtering in FiftyOne.
-    :link: filtering_cheat_sheet.html
-    :tags: Cheat-Sheets,Dataset-Curation
-
-.. customcarditem::
-    :header: Views cheat sheet
-    :description: Learn how to use dataset views to retrieve the subsets of your data you're looking for.
-    :link: views_cheat_sheet.html
-    :tags: Cheat-Sheets,Basics,Dataset-Curation
-
-.. customcarditem::
-    :header: pandas vs FiftyOne
-    :description: See how to translate common pandas queries into FiftyOne's query syntax for computer vision.
-    :link: pandas_vs_fiftyone.html
-    :image: ../_static/images/recipes/pandas_vs_fiftyone.png
-    :tags: Cheat-Sheets,Dataset-Curation
-
-.. customcarditem::
     :header: Creating views and using view expressions
     :description: Create views to easily query and explore your datasets in FiftyOne.
     :link: creating_views.html
@@ -163,10 +138,6 @@ workflows.
    :maxdepth: 1
    :hidden:
 
-   FiftyOne terminology <fiftyone_terminology>
-   Filtering cheat sheet <filtering_cheat_sheet>
-   Views cheat sheet <views_cheat_sheet>
-   pandas vs FiftyOne <pandas_vs_fiftyone>
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
    Removing duplicate objects <remove_duplicate_annos.ipynb>
