@@ -3318,7 +3318,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             view_doc.last_modified_at = datetime.utcnow()
             view_doc.save()
 
-    def load_saved_view(self, name):
+    def load_saved_view(
+        self,
+        name,
+    ):
         """Loads the saved view with the given name.
 
         Examples::
@@ -3373,10 +3376,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.saved_views = []
         self._doc.save()
 
-    def _get_saved_view_doc(self, name, pop=False):
+    def _get_saved_view_doc(self, name, pop=False, slug=False):
         idx = None
+        key = "slug" if slug else "name"
+
         for i, view_doc in enumerate(self._doc.saved_views):
-            if name == view_doc.name:
+            if name == getattr(view_doc, key):
                 idx = i
                 break
 
@@ -3390,7 +3395,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _validate_saved_view_name(self, name, skip=None, overwrite=False):
         slug = fou.to_slug(name)
-
         for view_doc in self._doc.saved_views:
             if view_doc is skip:
                 continue

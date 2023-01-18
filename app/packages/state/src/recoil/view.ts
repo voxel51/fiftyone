@@ -1,7 +1,6 @@
 import { atom, selector } from "recoil";
 
 import { State } from "./types";
-import * as atoms from "./atoms";
 
 export const view = atom<State.Stage[]>({
   key: "view",

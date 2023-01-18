@@ -27,9 +27,10 @@ from fiftyone.core.config import AppConfig
 import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
+from fiftyone.core.spaces import default_spaces, Space
+from fiftyone.core.state import StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-from fiftyone.core.state import StateDescription
 
 import fiftyone.core.session.client as fosc
 from fiftyone.core.session.events import (
@@ -100,6 +101,8 @@ call `session.wait()` to keep the session (and the script) alive.
 def launch_app(
     dataset: fod.Dataset = None,
     view: fov.DatasetView = None,
+    spaces: Space = None,
+    plots: fop.PlotManager = None,
     port: int = None,
     address: str = None,
     remote: bool = False,
@@ -118,6 +121,11 @@ def launch_app(
             :class:`fiftyone.core.view.DatasetView` to load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
+        spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
+            defining a space configuration to load
+        plots (None): an optional
+            :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
+            session
         port (None): the port number to serve the App. If None,
             ``fiftyone.config.default_app_port`` is used
         address (None): the address to serve the App. If None,
@@ -155,6 +163,8 @@ def launch_app(
     _session = Session(
         dataset=dataset,
         view=view,
+        spaces=spaces,
+        plots=plots,
         port=port,
         address=address,
         remote=remote,
@@ -261,6 +271,8 @@ class Session(object):
             :class:`fiftyone.core.view.DatasetView` to load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
+        spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
+            defining a space configuration to load
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
@@ -287,6 +299,7 @@ class Session(object):
         dataset: t.Union[fod.Dataset, fov.DatasetView] = None,
         view: fov.DatasetView = None,
         view_name: str = None,
+        spaces: Space = None,
         plots: fop.PlotManager = None,
         port: int = None,
         address: str = None,
@@ -302,7 +315,7 @@ class Session(object):
             view = dataset
             dataset = dataset._root_dataset
 
-        self._validate(dataset, view, plots, config)
+        self._validate(dataset, view, spaces, plots, config)
 
         if port is None:
             port = fo.config.default_app_port
@@ -350,11 +363,15 @@ class Session(object):
         if not final_view_name and view and view.name:
             final_view_name = view.name
 
+        if spaces is None:
+            spaces = default_spaces.copy()
+
         self._state = StateDescription(
             config=config,
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
             view_name=final_view_name,
+            spaces=spaces,
         )
         self._client = fosc.Client(
             address=address,
@@ -402,6 +419,7 @@ class Session(object):
         self,
         dataset: t.Optional[t.Union[fod.Dataset, fov.DatasetView]],
         view: t.Optional[fov.DatasetView],
+        spaces: t.Optional[Space],
         plots: t.Optional[fop.PlotManager],
         config: t.Optional[AppConfig],
     ) -> None:
@@ -415,6 +433,12 @@ class Session(object):
             raise ValueError(
                 "`view` must be a %s or None; found %s"
                 % (fov.DatasetView, type(view))
+            )
+
+        if spaces is not None and not isinstance(spaces, Space):
+            raise ValueError(
+                "`spaces` must be a %s or None; found %s"
+                % (Space, type(spaces))
             )
 
         if plots is not None and not isinstance(plots, fop.PlotManager):
@@ -515,6 +539,25 @@ class Session(object):
         self._state.config = config
 
     @property
+    def spaces(self) -> Space:
+        """The layout state for the session."""
+        return self._state.spaces
+
+    @spaces.setter  # type: ignore
+    @update_state()
+    def spaces(self, spaces: t.Optional[Space]) -> None:
+        if spaces is None:
+            spaces = default_spaces.copy()
+
+        if not isinstance(spaces, Space):
+            raise ValueError(
+                "`Session.spaces` must be a %s or None; found %s"
+                % (Space, type(spaces))
+            )
+
+        self._state.spaces = spaces
+
+    @property
     def _collection(self) -> t.Union[fod.Dataset, fov.DatasetView, None]:
         if self.view is not None:
             return self.view
@@ -542,6 +585,7 @@ class Session(object):
         self._state.view = None
         self._state.selected = []
         self._state.selected_labels = []
+        self._state.spaces = default_spaces
 
     @update_state()
     def clear_dataset(self) -> None:

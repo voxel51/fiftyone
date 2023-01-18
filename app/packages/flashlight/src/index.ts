@@ -160,9 +160,6 @@ export default class Flashlight<K> {
 
     const { width, height } = getDims(this.config.horizontal, element);
 
-    if (width === 0) {
-      return;
-    }
     this.state.width = width - 16;
     this.state.containerHeight = height;
 

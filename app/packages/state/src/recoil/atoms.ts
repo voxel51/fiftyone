@@ -3,6 +3,7 @@ import { atom, atomFamily, useRecoilCallback } from "recoil";
 import { Sample, RGB } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
+import { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -132,6 +133,7 @@ export const selectedViewName = atom<string>({
   default: null,
 });
 
+// only used in extended view, for tagging purpose
 export const selectedLabels = atom<State.SelectedLabelMap>({
   key: "selectedLabels",
   default: {},
@@ -142,6 +144,12 @@ export const selectedSamples = atom<Set<string>>({
   default: new Set(),
 });
 
+export const selectedSampleObjects = atom<Map<String, Sample>>({
+  key: "selectedSampleObjects",
+  default: new Map(),
+});
+
+// only used in extended view, for tagging purpose
 export const hiddenLabels = atom<State.SelectedLabelMap>({
   key: "hiddenLabels",
   default: {},
@@ -203,6 +211,10 @@ export const extendedSelection = atom<string[]>({
   key: "extendedSelection",
   default: null,
 });
+export const extendedSelectionOverrideStage = atom<any>({
+  key: "extendedSelectionOverrideStage",
+  default: null,
+});
 
 export const similarityParameters = atom<
   State.SortBySimilarityParameters & { queryIds: string[] }
@@ -258,4 +270,21 @@ export const compactLayout = atom({
 export const readOnly = atom({
   key: "readOnly",
   default: false,
+});
+
+export const sessionSpaces = atom<SpaceNodeJSON>({
+  key: "sessionSpaces",
+  default: {
+    id: "root",
+    children: [
+      {
+        id: "default-samples-node",
+        children: [],
+        type: "Samples",
+        pinned: true,
+      },
+    ],
+    type: "panel-container",
+    activeChild: "default-samples-node",
+  },
 });

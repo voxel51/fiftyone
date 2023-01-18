@@ -22,6 +22,7 @@ import {
 import RouteDefinition, { RouteBase } from "./RouteDefinition";
 
 import { MatchPathResult, matchPath } from "./matchPath";
+import { Route } from "..";
 
 export interface RouteData<
   T extends OperationType | undefined = OperationType
@@ -34,6 +35,7 @@ export interface RouteData<
 
 export interface Entry<T extends OperationType | undefined = OperationType> {
   pathname: string;
+  queryParams: { [key: string]: string };
   state: any;
   entries: {
     component: Resource<Route<T>>;
@@ -88,7 +90,8 @@ export const createRouter = (
       routes,
       location.pathname,
       errors,
-      location.state?.variables as Partial<VariablesOf<any>>
+      location.state?.variables as Partial<VariablesOf<any>>,
+      history.location.search
     );
     const entries = prepareMatches(environment, matches);
     const nextEntry: Entry<any> = {
@@ -106,6 +109,7 @@ export const createRouter = (
       if (!currentEntry) {
         currentEntry = {
           pathname: history.location.pathname,
+
           state: history.location.state,
           entries: prepareMatches(
             environment,
@@ -113,7 +117,8 @@ export const createRouter = (
               routes,
               history.location.pathname,
               errors,
-              history.location.state?.variables as Partial<VariablesOf<any>>
+              history.location.state?.variables as Partial<VariablesOf<any>>,
+              history.location.search
             )
           ),
         };
@@ -148,11 +153,12 @@ export const matchRoutes = <
   routes: RouteBase<T>[],
   pathname: string,
   variables: T extends OperationType ? Partial<VariablesOf<T>> : undefined,
-  branch: { route: RouteBase<T>; match: MatchPathResult<T> }[] = []
+  branch: { route: RouteBase<T>; match: MatchPathResult<T> }[] = [],
+  search: string
 ): { route: RouteBase<T>; match: MatchPathResult<T> }[] => {
   routes.some((route) => {
     const match = route.path
-      ? matchPath(pathname, route, variables)
+      ? matchPath(pathname, route, variables, search)
       : branch.length
       ? branch[branch.length - 1].match
       : ({
@@ -166,7 +172,7 @@ export const matchRoutes = <
       branch.push({ route, match });
 
       if (route.children) {
-        matchRoutes(route.children, pathname, variables, branch);
+        matchRoutes(route.children, pathname, variables, branch, search);
       }
     }
 
@@ -180,9 +186,10 @@ const matchRoute = <T extends OperationType | undefined = OperationType>(
   routes: RouteDefinition<T>[],
   pathname: string,
   errors: boolean,
-  variables: T extends OperationType ? Partial<VariablesOf<T>> : undefined
+  variables: T extends OperationType ? Partial<VariablesOf<T>> : undefined,
+  search: string
 ): Match<T>[] => {
-  const matchedRoutes = matchRoutes(routes, pathname, variables);
+  const matchedRoutes = matchRoutes(routes, pathname, variables, [], search);
 
   if (
     errors &&
