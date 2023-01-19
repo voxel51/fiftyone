@@ -3,30 +3,7 @@ name: Test
 on: workflow_call
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      app: ${{ steps.filter.outputs.app }}
-      python: ${{ steps.filter.outputs.python }}
-    steps:
-      - uses: actions/checkout@v2
-      - uses: dorny/paths-filter@v2
-        id: filter
-        with:
-          filters: |
-            app:
-              - 'app/**'
-              - '.github/**'
-            python:
-              - '.github/**'
-              - 'fiftyone/**'
-              - 'package/**'
-              - 'requirements/**'
-              - 'setup.py'
-
   test-app:
-    needs: changes
-    if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
@@ -51,8 +28,6 @@ jobs:
           flags: app
 
   test-python:
-    needs: changes
-    if: ${{ needs.changes.outputs.python == 'true' }}
     runs-on: ${{ matrix.os }}
     env:
       FIFTYONE_DO_NOT_TRACK: true
