@@ -12,11 +12,7 @@ import {
   isGroup,
   State,
 } from "@fiftyone/state";
-import {
-  CLIPS_SAMPLE_FIELDS,
-  getFetchFunction,
-  toSnakeCase,
-} from "@fiftyone/utilities";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background.body};
