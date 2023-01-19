@@ -1,16 +1,23 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { useContext, useMemo, useRef } from "react";
-import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
+import { SortableEvent } from "react-sortablejs";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { PanelContext } from "./contexts";
 import SpaceNode from "./SpaceNode";
 import SpaceTree from "./SpaceTree";
 import {
+  panelsStateAtom,
   panelStatePartialSelector,
   panelStateSelector,
   panelTitlesState,
+  previousTabsGroupAtom,
   spaceSelector,
-  panelsStateAtom,
 } from "./state";
 import { PanelsStateObject, SpaceNodeJSON, SpaceNodeType } from "./types";
 import { getNodes } from "./utils";
@@ -190,4 +197,51 @@ export function usePanelStatePartial<T>(
 function useComputedState(state: any, defaultState: any) {
   const defaultRef = useRef(defaultState);
   return state === undefined ? defaultRef.current : state;
+}
+
+export function usePanelTabAutoPosition() {
+  const setPreviousTabGroup = useSetRecoilState(previousTabsGroupAtom);
+  const getPreviousTabGroup = useRecoilCallback(
+    ({ snapshot }) =>
+      async () => {
+        return snapshot.getPromise(previousTabsGroupAtom);
+      },
+    []
+  );
+
+  function autoPositionElement(group: HTMLElement, item?: HTMLElement) {
+    const lastChild = group.lastChild as HTMLElement;
+
+    if (!lastChild) return;
+
+    const secondLastChild = lastChild.previousSibling as HTMLElement;
+    const lastChildIsIgnored = lastChild.classList.contains("sortable-ignore");
+
+    if (!lastChildIsIgnored && secondLastChild) {
+      lastChild.style.transform = `translate(-${secondLastChild.offsetWidth}px)`;
+      secondLastChild.style.transform = `translate(${lastChild.offsetWidth}px)`;
+    } else if (lastChildIsIgnored) {
+      lastChild.style.transform = "none";
+      if (secondLastChild) secondLastChild.style.transform = "none";
+      if (item) item.style.transform = "none";
+    }
+  }
+
+  async function autoPosition(e: SortableEvent) {
+    const previousTabGroup = await getPreviousTabGroup();
+    if (previousTabGroup && e.to != previousTabGroup) {
+      autoPositionElement(previousTabGroup);
+      setPreviousTabGroup(null);
+    }
+    const { from, to, item } = e;
+    if (from != to) {
+      autoPositionElement(from, item);
+      autoPositionElement(to, item);
+      setPreviousTabGroup(to);
+    } else {
+      autoPositionElement(to, item);
+    }
+  }
+
+  return autoPosition;
 }

@@ -8,12 +8,6 @@ Filtering Cheat Sheet
 This cheat sheet shows how to perform common matching and filtering operations
 in FiftyOne using :ref:`dataset views <using-views>`.
 
-..
-    .. note::
-
-        Expand the collapsed text in the cells below to see how to perform the
-        corresponding operation in the :ref:`App <fiftyone-app>`!
-
 Strings and pattern matching
 ____________________________
 
@@ -92,13 +86,6 @@ The formulas in this section use the following example data:
 | After 2021-08-24 02:01:00                 |  .. code-block::                                                      |
 |                                           |                                                                       |
 |                                           |     ds.match(F("date") > query_date)                                  |
-|                                           |                                                                       |
-|                                           |  .. collapse:: In the App                                             |
-|                                           |                                                                       |
-|                                           |     In the sidebar, scroll down to the primitives section and click   |
-|                                           |     the down arrow in the "date" field to expand. Dragging the ends   |
-|                                           |     of the slider allows you to specify the range of dates. In this   |
-|                                           |     case, drag the left side to the first option after 2021-08-24.    |
 +-------------------------------------------+-----------------------------------------------------------------------+
 | Within 30 minutes of 2021-08-24 02:01:00  |  .. code-block::                                                      |
 |                                           |                                                                       |
@@ -127,12 +114,6 @@ The formulas in this section use the following example data:
 | In the year 2022                          |  .. code-block::                                                      |
 |                                           |                                                                       |
 |                                           |     ds.match(F("date").year() == 2022)                                |
-|                                           |                                                                       |
-|                                           |  .. collapse:: In the App                                             |
-|                                           |                                                                       |
-|                                           |     In the left-side bar, scroll down to the primitives section and   |
-|                                           |     click the down arrow in the "date" field to expand. Drag the left |
-|                                           |     and right ends of the slider to only encompass dates in 2022.     |
 +-------------------------------------------+-----------------------------------------------------------------------+
 | With minute not equal to 0                |  .. code-block::                                                      |
 |                                           |                                                                       |
@@ -200,14 +181,6 @@ The formulas in this section use the following example data:
 | Predictions with confidence > 0.95   |  .. code-block::                                                        |
 |                                      |                                                                         |
 |                                      |     ds.filter_labels("predictions", F("confidence") > 0.95)             |
-|                                      |                                                                         |
-|                                      |  .. collapse:: In the App                                               |
-|                                      |                                                                         |
-|                                      |     In the left-side bar, scroll down to the labels section and click   |
-|                                      |     on the down arrow in the "predictions" label field to expand.       |
-|                                      |     Samples can be specified by values in the "confidence" field via    |
-|                                      |     the horizontal selection bar. Drag the circle on the right side of  |
-|                                      |     this bar to 0.95.                                                   |
 +--------------------------------------+-------------------------------------------------------------------------+
 | Exactly 10 ground truth detections   |  .. code-block::                                                        |
 |                                      |                                                                         |
@@ -218,35 +191,16 @@ The formulas in this section use the following example data:
 |                                      |     ds.match(                                                           |
 |                                      |         F("ground_truth.detections.label").contains("dog")              |
 |                                      |     )                                                                   |
-|                                      |                                                                         |
-|                                      |  .. collapse:: In the App                                               |
-|                                      |                                                                         |
-|                                      |     In the left-side bar, scroll down to the labels section and click   |
-|                                      |     on the down arrow in the "ground truth" label field to expand.      |
-|                                      |     Click into the "+ filter by label" field and select "dog" from the  |
-|                                      |     dropdown.                                                           |
 +--------------------------------------+-------------------------------------------------------------------------+
 | Images that do not contain dogs      |  .. code-block::                                                        |
 |                                      |                                                                         |
 |                                      |     ds.match(                                                           |
 |                                      |         ~F("ground_truth.detections.label").contains("dog")             |
 |                                      |     )                                                                   |
-|                                      |                                                                         |
-|                                      |  .. collapse:: In the App                                               |
-|                                      |                                                                         |
-|                                      |     Same as for "At least one dog", but at the end, switch the          |
-|                                      |     selection mode for the label field from "Select" to "Exclude".      |
 +--------------------------------------+-------------------------------------------------------------------------+
 | Only dog detections                  |  .. code-block::                                                        |
 |                                      |                                                                         |
 |                                      |     ds.filter_labels("ground_truth", F("label") == "dog")               |
-|                                      |                                                                         |
-|                                      |  .. collapse:: In the App                                               |
-|                                      |                                                                         |
-|                                      |     Click on the Bookmark icon above the sample grid and select         |
-|                                      |     "ground truth". In the labels section of the left side-bar, expand  |
-|                                      |     the "ground_truth" label field, click into the "+ filter by label"  |
-|                                      |     cell, select "dog" from the dropdown.                               |
 +--------------------------------------+-------------------------------------------------------------------------+
 | Images that only contain dogs        |  .. code-block::                                                        |
 |                                      |                                                                         |
@@ -255,7 +209,6 @@ The formulas in this section use the following example data:
 |                                      |             ["dog"]                                                     |
 |                                      |         )                                                               |
 |                                      |     )                                                                   |
-|                                      |                                                                         |
 +--------------------------------------+-------------------------------------------------------------------------+
 | Contains either a cat or a dog       |  .. code-block::                                                        |
 |                                      |                                                                         |
@@ -264,13 +217,6 @@ The formulas in this section use the following example data:
 |                                      |             ["cat","dog"]                                               |
 |                                      |          )                                                              |
 |                                      |     )                                                                   |
-|                                      |                                                                         |
-|                                      |  .. collapse:: In the App                                               |
-|                                      |                                                                         |
-|                                      |     Same as for "At least one dog", but afte selecting "dog" from the   |
-|                                      |     dropdown, click back into the "+ filter by label" field and select  |
-|                                      |     "cat" from the dropdown. After this, both "cat" and "dog" should    |
-|                                      |     appear with checkboxes in this section.                             |
 +--------------------------------------+-------------------------------------------------------------------------+
 | Contains a cat and a dog prediction  | .. code-block:: python                                                  |
 |                                      |                                                                         |
@@ -375,60 +321,22 @@ dataset ``ds`` with detections in its ``predictions`` field:
 | Uniqueness > 0.9                          |  .. code-block:: python                                                 |
 |                                           |                                                                         |
 |                                           |     ds.match(F("uniqueness") > 0.9)                                     |
-|                                           |                                                                         |
-|                                           |  .. collapse:: In the App                                               |
-|                                           |                                                                         |
-|                                           |     In the left-side bar, scroll down to the primitives section and     |
-|                                           |     click on the down arrow in the "uniqueness" field to expand.        |
-|                                           |     Samples can be specified by values in the "uniqueness" field via    |
-|                                           |     the horizontal selection bar. Drag the circle on the right side of  |
-|                                           |     this bar to 0.9.                                                    |
 +-------------------------------------------+-------------------------------------------------------------------------+
 | 10 most unique images                     |  .. code-block:: python                                                 |
 |                                           |                                                                         |
 |                                           |     ds.sort_by("uniqueness", reverse=True)[:10]                         |
-|                                           |                                                                         |
-|                                           |  .. collapse:: In the App                                               |
-|                                           |                                                                         |
-|                                           |     In the view bar, click "Add Stage". Scroll down to "SortBy". In the |
-|                                           |     blank field that appears, type "uniqueness" and click "Submit". In  |
-|                                           |     the next field, type "True". Click on the "+" to concatenate view   |
-|                                           |     stages. Scroll down to "Limit", and in the "int" field enter 10.    |
-|                                           |     Hit return.                                                         |
 +-------------------------------------------+-------------------------------------------------------------------------+
 | Predictions with confidence > 0.95        |  .. code-block:: python                                                 |
 |                                           |                                                                         |
 |                                           |     filter_labels("predictions", F("confidence") > 0.95)                |
-|                                           |                                                                         |
-|                                           |  .. collapse:: In the App                                               |
-|                                           |                                                                         |
-|                                           |     In the left-side bar, scroll down to the labels section and click   |
-|                                           |     on the down arrow in the "predictions" label field to expand.       |
-|                                           |     Samples can be specified by values in the "confidence" field via    |
-|                                           |     the horizontal selection bar. Drag the circle on the right side of  |
-|                                           |     this bar to 0.95.                                                   |
 +-------------------------------------------+-------------------------------------------------------------------------+
 | 10 most "wrong" predictions               |  .. code-block:: python                                                 |
 |                                           |                                                                         |
 |                                           |     ds.sort_by("mistakenness", reverse=True)[:10]                       |
-|                                           |                                                                         |
-|                                           |  .. collapse:: In the App                                               |
-|                                           |                                                                         |
-|                                           |     In the view bar, click "Add Stage". Scroll down to "SortBy". In the |
-|                                           |     blank field that appears, type "mistakenness" and click "Submit".   |
-|                                           |     In the next field, type "True". Click on the "+" to concatenate     |
-|                                           |     view stages. Scroll down to "Limit", and in the "int" field enter   |
-|                                           |     10. Hit return.                                                     |
 +-------------------------------------------+-------------------------------------------------------------------------+
 | Images with more than 10 false positives  |  .. code-block:: python                                                 |
 |                                           |                                                                         |
 |                                           |     ds.match(F("eval_fp") > 10)                                         |
-|                                           |                                                                         |
-|                                           |  .. collapse:: In the App                                               |
-|                                           |                                                                         |
-|                                           |     In the left-side bar, scroll down to the primitives section and     |
-|                                           |     click on the down arrow in the "eval_fp" field to expand. Drag the  |
-|                                           |     circle on the left side of this bar to 10.                          |
 +-------------------------------------------+-------------------------------------------------------------------------+
 | False positive "dog" detections           |  .. code-block:: python                                                 |
 |                                           |                                                                         |
@@ -436,28 +344,10 @@ dataset ``ds`` with detections in its ``predictions`` field:
 |                                           |        filter=(F("eval") == "fp") & (F("label") == "dog"),              |
 |                                           |        fields="predictions",                                            |
 |                                           |     )                                                                   |
-|                                           |                                                                         |
-|                                           |  .. collapse:: In the App                                               |
-|                                           |                                                                         |
-|                                           |     Click on the Patches icon, toggle over from Labels to Evaluations,  |
-|                                           |     and select "eval" from the dropdown, then click on the Bookmark     |
-|                                           |     icon to save this view as a ViewStage. In the left-side bar, scroll |
-|                                           |     down to primitives section and click, expand the "type" cell, and   |
-|                                           |     select "fp". Scroll up to the Labels section, expand the            |
-|                                           |     "predictions" cell, click in the "+ filter by label" field, and     |
-|                                           |     select "dog" from the dropdown.                                     |
 +-------------------------------------------+-------------------------------------------------------------------------+
 | Predictions with IoU > 0.9                |  .. code-block:: python                                                 |
 |                                           |                                                                         |
 |                                           |     ep.match(F("iou") > 0.9)                                            |
-|                                           |                                                                         |
-|                                           |  .. collapse:: In the App                                               |
-|                                           |                                                                         |
-|                                           |     Click on the Patches icon, toggle over from Labels to Evaluations,  |
-|                                           |     and select "eval" from the dropdown. This should populate the grid  |
-|                                           |     view with evaluation patches. Next, go over to the left side-bar    |
-|                                           |     and in the primitives section, expand the "iou" cell. Drag the      |
-|                                           |     right side of the bar from 1.0 to 0.9.                              |
 +-------------------------------------------+-------------------------------------------------------------------------+
 
 Reference:
@@ -501,27 +391,10 @@ classification predictions that have their ``logits`` attribute set:
 |                                           |     ds.match(                                                           |
 |                                           |         F("predictions.label") != F("ground_truth.label")               |
 |                                           |     ).sort_by("uniqueness", reverse=True)[:10]                          |
-|                                           |                                                                         |
-|                                           |  .. collapse:: In the App                                               |
-|                                           |                                                                         |
-|                                           |     In the left side-bar, scroll down to the primitives section and     |
-|                                           |     expand the "eval" section. Select the checkbox next to "False".     |
-|                                           |     Directly above the sample grid, click the Bookmark icon to convert  |
-|                                           |     the current view to a view stage in the view bar. Now go up to the  |
-|                                           |     view bar, click on "+ add stage", and add "SortBy" uniqueness, and  |
-|                                           |     then "Limit" to 10.                                                 |
 +-------------------------------------------+-------------------------------------------------------------------------+
 | 10 most "wrong" predictions               |  .. code-block:: python                                                 |
 |                                           |                                                                         |
 |                                           |     ds.sort_by("mistakenness", reverse=True)[:10]                       |
-|                                           |                                                                         |
-|                                           |  .. collapse:: In the App                                               |
-|                                           |                                                                         |
-|                                           |     In the view bar, click "Add Stage". Scroll down to "SortBy". In the |
-|                                           |     blank field that appears, type "mistakenness" and click "Submit".   |
-|                                           |     In the next field, type "True". Click on the "+" to concatenate     |
-|                                           |     view stages. Scroll down to "Limit", and in the "int" field enter   |
-|                                           |     10. Hit return.                                                     |
 +-------------------------------------------+-------------------------------------------------------------------------+
 | 10 most likely annotation mistakes        |  .. code-block:: python                                                 |
 |                                           |                                                                         |

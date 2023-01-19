@@ -1,7 +1,7 @@
 """
 FiftyOne Server events
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -265,7 +265,6 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
 
     current = state.dataset.name if state.dataset else None
     current_saved_view_slug = state.saved_view_slug
-    print(current_saved_view_slug, payload.initializer.view)
     if not isinstance(payload.initializer, fos.StateDescription):
         update = False
         if (

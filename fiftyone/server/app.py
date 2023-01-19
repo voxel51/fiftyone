@@ -1,7 +1,7 @@
 """
 FiftyOne Server app.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -32,8 +32,6 @@ from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
 from fiftyone.server.routes import routes
 from fiftyone.server.scalars import Date, DateTime
-
-from fiftyone.server.routes.embeddings import Embeddings
 
 
 etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
@@ -91,7 +89,6 @@ app = Starlette(
     ],
     debug=foc.DEV_INSTALL,
     routes=[Route(route, endpoint) for route, endpoint in routes]
-    + Embeddings
     + [
         Route(
             "/graphql",
