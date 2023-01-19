@@ -9,7 +9,6 @@ import itertools
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
-from starlette.routing import Route
 
 import fiftyone as fo
 from fiftyone.server.decorators import route
@@ -245,11 +244,11 @@ class ColorByChoices(HTTPEndpoint):
         return {"fields": fields}
 
 
-Embeddings = [
-    Route("/embeddings/plot", OnPlotLoad),
-    Route("/embeddings/selection", EmbeddingsSelection),
-    Route("/embeddings/extended-stage", EmbeddingsExtendedStage),
-    Route("/embeddings/color-by-choices", ColorByChoices),
+EmbeddingsRoutes = [
+    ("/embeddings/plot", OnPlotLoad),
+    ("/embeddings/selection", EmbeddingsSelection),
+    ("/embeddings/extended-stage", EmbeddingsExtendedStage),
+    ("/embeddings/color-by-choices", ColorByChoices),
 ]
 
 
