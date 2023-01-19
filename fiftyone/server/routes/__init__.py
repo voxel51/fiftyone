@@ -6,7 +6,7 @@ FiftyOne Server routes
 |
 """
 from .aggregate import Aggregate
-from .embeddings import Embeddings
+from .embeddings import EmbeddingsRoutes
 from .event import Event
 from .events import Events
 from .fiftyone import FiftyOne
@@ -22,9 +22,9 @@ from .tag import Tag
 from .tagging import Tagging
 from .values import Values
 
-routes = [
+# Starlette routes should not be created here. Please leave as tuple definitions
+routes = EmbeddingsRoutes + [
     ("/aggregate", Aggregate),
-    ("/embeddings", Embeddings),
     ("/event", Event),
     ("/events", Events),
     ("/fiftyone", FiftyOne),
