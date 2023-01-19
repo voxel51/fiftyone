@@ -1,4 +1,4 @@
-import { AbstractLooker } from "./abstract-looker";
+import { AbstractLooker } from "./abstract";
 import { LookerUtils } from "./shared";
 import { getFrameElements } from "../elements";
 import { COMMON_SHORTCUTS } from "../elements/common";
