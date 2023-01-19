@@ -87,7 +87,6 @@ const App: React.FC = ({}) => {
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
               const { colorscale, config, ...data } = payload.state;
-              console.log("payload data", data);
 
               payload.refresh && refresh();
               const state = {
@@ -117,7 +116,6 @@ const App: React.FC = ({}) => {
               if (search.length) {
                 search = `?${search}`;
               }
-              console.log("onmessage() state", state);
 
               const path = state.dataset
                 ? `/datasets/${encodeURIComponent(state.datasetSlug)}${search}`

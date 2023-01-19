@@ -121,7 +121,7 @@ export const getDatasetSlug = (context: RoutingContext<any>): string => {
     return decodeURIComponent(slug);
   }
 
-  return null;
+  return "";
 };
 
 export type ResponseFrom<TQuery extends { response: unknown }> =

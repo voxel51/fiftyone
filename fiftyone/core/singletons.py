@@ -34,6 +34,7 @@ class DatasetSingleton(type):
             instance.__init__(name=name, _create=_create, *args, **kwargs)
             if instance.name:
                 name = instance.name  # `__init__` may have changed `name`
+            # Use name and slug to reference the dataset singleton
             cls._instances[name] = instance
             cls._instances[fou.to_slug(name)] = instance
         else:

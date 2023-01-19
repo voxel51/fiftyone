@@ -192,7 +192,6 @@ export namespace State {
 
   export interface Description {
     dataset: string;
-    datasetSlug: string;
     selected: string[];
     selectedLabels: SelectedLabel[];
     view: Stage[];

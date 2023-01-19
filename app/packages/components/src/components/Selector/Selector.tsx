@@ -76,8 +76,8 @@ const Selector = <T extends unknown>({
   useSearch,
   component,
   toKey = (value) => {
-    if (value && typeof value === "object") {
-      return String(value?.id || value?.name);
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return String(value.id || value.name);
     } else {
       return String(value);
     }

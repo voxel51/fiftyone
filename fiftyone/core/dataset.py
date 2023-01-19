@@ -6421,9 +6421,6 @@ def _do_load_dataset(obj, name):
         dataset_doc = foo.DatasetDocument.objects.get(
             __raw__={"$or": [{"name": name}, {"slug": name}]}
         )
-        print(dataset_doc)
-        # else:
-        # dataset_doc = foo.DatasetDocument.objects.get(name=name)
     except moe.DoesNotExist:
         raise ValueError("Dataset '%s' not found" % name)
 
