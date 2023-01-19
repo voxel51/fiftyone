@@ -25,6 +25,7 @@ import fiftyone.core.media as fom
 from fiftyone.core.odm import SavedViewDocument
 from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
+import fiftyone.core.utils as fout
 import fiftyone.core.view as fov
 
 import fiftyone.server.aggregate as fosa
@@ -201,6 +202,10 @@ class Dataset:
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
+
+    @gql.field
+    def slug(self) -> t.Optional[str]:
+        return self.slug or fout.to_slug(self.name)
 
     @gql.field
     def stages(self, slug: t.Optional[str] = None) -> t.Optional[BSONArray]:
@@ -384,6 +389,11 @@ class Query(fosa.AggregateQuery):
         return [
             SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
         ]
+
+    @gql.field
+    def get_dataset_name(self, dataset_slug: str) -> t.Optional[str]:
+        ds = fo.load_dataset(dataset_slug)
+        return ds.name
 
 
 def _flatten_fields(

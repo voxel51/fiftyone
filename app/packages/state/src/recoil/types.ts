@@ -131,6 +131,7 @@ export namespace State {
     groupSlice?: string;
     mediaType: MediaType;
     name: string;
+    slug: string;
     sampleFields: StrictField[];
     version: string;
     skeletons: StrictKeypointSkeleton[];

@@ -57,7 +57,9 @@ def get_dataset_revision(name):
         the dataset revision string
     """
     conn = foo.get_db_conn()
-    dataset_doc = conn.datasets.find_one({"name": name}, {"version": 1})
+    dataset_doc = conn.datasets.find_one(
+        {"$or": [{"slug": name}, {"name": name}]}, {"version": 1}
+    )
     if dataset_doc is None:
         raise ValueError("Dataset '%s' not found" % name)
 

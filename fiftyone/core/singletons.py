@@ -7,6 +7,7 @@ FiftyOne singleton implementations.
 """
 from collections import defaultdict
 import weakref
+import fiftyone.core.utils as fou
 
 
 class DatasetSingleton(type):
@@ -31,10 +32,14 @@ class DatasetSingleton(type):
         ):
             instance = cls.__new__(cls)
             instance.__init__(name=name, _create=_create, *args, **kwargs)
-            name = instance.name  # `__init__` may have changed `name`
+            if instance.name:
+                name = instance.name  # `__init__` may have changed `name`
             cls._instances[name] = instance
+            cls._instances[fou.to_slug(name)] = instance
         else:
             instance = cls._instances[name]
+            if fou.to_slug(name) not in cls._instances:
+                cls._instances[fou.to_slug(name)] = instance
             instance._update_last_loaded_at()
 
         return instance

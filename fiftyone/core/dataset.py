@@ -256,7 +256,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _virtual=False,
         **kwargs,
     ):
-        if name is None and _create:
+        if not name and _create:
             name = get_default_dataset_name()
 
         if overwrite and dataset_exists(name):
@@ -6391,7 +6391,7 @@ def _load_clips_source_dataset(frame_collection_name):
     return load_dataset(doc["name"])
 
 
-def _load_dataset(obj, name, virtual=False):
+def _load_dataset(obj, name, virtual=False, slug=False):
     if not virtual:
         fomi.migrate_dataset_if_necessary(name)
 
@@ -6414,9 +6414,16 @@ def _load_dataset(obj, name, virtual=False):
 
 
 def _do_load_dataset(obj, name):
+    dataset_doc = None
     try:
         # pylint: disable=no-member
-        dataset_doc = foo.DatasetDocument.objects.get(name=name)
+        # TODO: check if no_dereference works here?
+        dataset_doc = foo.DatasetDocument.objects.get(
+            __raw__={"$or": [{"name": name}, {"slug": name}]}
+        )
+        print(dataset_doc)
+        # else:
+        # dataset_doc = foo.DatasetDocument.objects.get(name=name)
     except moe.DoesNotExist:
         raise ValueError("Dataset '%s' not found" % name)
 

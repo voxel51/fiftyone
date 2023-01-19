@@ -110,7 +110,7 @@ export const getDatasetName = (context: RoutingContext<any>): string => {
   const result = matchPath(
     context.pathname,
     {
-      path: "/datasets/:name",
+      path: "/datasets/:slug",
       exact: true,
     },
     {},
@@ -118,7 +118,7 @@ export const getDatasetName = (context: RoutingContext<any>): string => {
   );
 
   if (result) {
-    return decodeURIComponent(result.variables.name);
+    return decodeURIComponent(result.variables.slug);
   }
 
   return null;
