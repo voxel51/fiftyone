@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9c5dadaf4a74184434b29709a9284649>>
+ * @generated SignedSource<<a1523cc0d8df5d37476380aef857dc57>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,15 +10,15 @@
 
 import { ConcreteRequest, Query } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
-export type RootDatasetSavedViewsFragmentQuery$variables = {
+export type DatasetSavedViewsFragmentQuery$variables = {
   name: string;
 };
-export type RootDatasetSavedViewsFragmentQuery$data = {
-  readonly " $fragmentSpreads": FragmentRefs<"RootDatasetSavedViewsFragment">;
+export type DatasetSavedViewsFragmentQuery$data = {
+  readonly " $fragmentSpreads": FragmentRefs<"DatasetSavedViewsFragment">;
 };
-export type RootDatasetSavedViewsFragmentQuery = {
-  response: RootDatasetSavedViewsFragmentQuery$data;
-  variables: RootDatasetSavedViewsFragmentQuery$variables;
+export type DatasetSavedViewsFragmentQuery = {
+  response: DatasetSavedViewsFragmentQuery$data;
+  variables: DatasetSavedViewsFragmentQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -34,12 +34,12 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "RootDatasetSavedViewsFragmentQuery",
+    "name": "DatasetSavedViewsFragmentQuery",
     "selections": [
       {
         "args": null,
         "kind": "FragmentSpread",
-        "name": "RootDatasetSavedViewsFragment"
+        "name": "DatasetSavedViewsFragment"
       }
     ],
     "type": "Query",
@@ -49,7 +49,7 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "RootDatasetSavedViewsFragmentQuery",
+    "name": "DatasetSavedViewsFragmentQuery",
     "selections": [
       {
         "alias": null,
@@ -141,16 +141,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "3c5c17d9fb68ae34450b4b187d3b8ab1",
+    "cacheID": "f919db0b35ff9c15a0225d3764faf287",
     "id": null,
     "metadata": {},
-    "name": "RootDatasetSavedViewsFragmentQuery",
+    "name": "DatasetSavedViewsFragmentQuery",
     "operationKind": "query",
-    "text": "query RootDatasetSavedViewsFragmentQuery(\n  $name: String!\n) {\n  ...RootDatasetSavedViewsFragment\n}\n\nfragment RootDatasetSavedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
+    "text": "query DatasetSavedViewsFragmentQuery(\n  $name: String!\n) {\n  ...DatasetSavedViewsFragment\n}\n\nfragment DatasetSavedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "00069e3f8442bb208462d061c825cab3";
+(node as any).hash = "c7972fa3f5796bad3d7d9766e6ea6d80";
 
 export default node;

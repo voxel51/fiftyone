@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 import {
   AppError,
@@ -237,6 +237,7 @@ export abstract class Looker<
         this.dispatchEvent(eventType, {
           shiftKey: detail,
           sampleId: this.sample.id,
+          sample: this.sample,
         });
         return;
       }

@@ -1,7 +1,7 @@
 """
 FiftyOne's public interface.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -147,6 +147,10 @@ from .core.plots import (
     NumericalHistogram,
 )
 from .core.sample import Sample
+from .core.spaces import (
+    Space,
+    Panel,
+)
 from .core.stages import (
     Concat,
     Exclude,

@@ -162,9 +162,18 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
 export enum PluginComponentType {
   Visualizer,
   Plot,
+  Panel,
 }
 
 type PluginActivator = (props: any) => boolean;
+
+type PanelOptions = {
+  allowDuplicates?: boolean;
+};
+
+type PluginComponentProps<T> = T & {
+  panelNode?: unknown;
+};
 
 /**
  * A plugin registration.
@@ -177,17 +186,19 @@ export interface PluginComponentRegistration<T extends {} = {}> {
   /**
    * The optional label of the plugin to display to the user
    */
-  label?: string;
+  label: string;
+  Icon?: React.ComponentType;
   /**
    * The React component to render
    */
-  component: FunctionComponent<T>;
+  component: FunctionComponent<PluginComponentProps<T>>;
   /** The plugin type */
   type: PluginComponentType;
   /**
    * A function that returns true if the plugin should be active
    */
   activator: PluginActivator;
+  panelOptions?: PanelOptions;
 }
 
 const DEFAULT_ACTIVATOR = () => true;

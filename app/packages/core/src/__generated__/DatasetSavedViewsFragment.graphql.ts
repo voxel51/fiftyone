@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<24e53aa5329ce0917b1c6346800c5909>>
+ * @generated SignedSource<<7d5c9301348ace97783a08d7f05b3f11>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,7 @@
 
 import { ReaderFragment, RefetchableFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
-export type RootDatasetSavedViewsFragment$data = {
+export type DatasetSavedViewsFragment$data = {
   readonly savedViews: ReadonlyArray<{
     readonly color: string | null;
     readonly createdAt: any | null;
@@ -23,14 +23,14 @@ export type RootDatasetSavedViewsFragment$data = {
     readonly slug: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
   }> | null;
-  readonly " $fragmentType": "RootDatasetSavedViewsFragment";
+  readonly " $fragmentType": "DatasetSavedViewsFragment";
 };
-export type RootDatasetSavedViewsFragment$key = {
-  readonly " $data"?: RootDatasetSavedViewsFragment$data;
-  readonly " $fragmentSpreads": FragmentRefs<"RootDatasetSavedViewsFragment">;
+export type DatasetSavedViewsFragment$key = {
+  readonly " $data"?: DatasetSavedViewsFragment$data;
+  readonly " $fragmentSpreads": FragmentRefs<"DatasetSavedViewsFragment">;
 };
 
-import RootDatasetSavedViewsFragmentQuery_graphql from './RootDatasetSavedViewsFragmentQuery.graphql';
+import DatasetSavedViewsFragmentQuery_graphql from './DatasetSavedViewsFragmentQuery.graphql';
 
 const node: ReaderFragment = {
   "argumentDefinitions": [
@@ -44,10 +44,10 @@ const node: ReaderFragment = {
     "refetch": {
       "connection": null,
       "fragmentPathInResult": [],
-      "operation": RootDatasetSavedViewsFragmentQuery_graphql
+      "operation": DatasetSavedViewsFragmentQuery_graphql
     }
   },
-  "name": "RootDatasetSavedViewsFragment",
+  "name": "DatasetSavedViewsFragment",
   "selections": [
     {
       "alias": null,
@@ -141,6 +141,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "00069e3f8442bb208462d061c825cab3";
+(node as any).hash = "c7972fa3f5796bad3d7d9766e6ea6d80";
 
 export default node;
