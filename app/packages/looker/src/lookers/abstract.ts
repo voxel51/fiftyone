@@ -43,8 +43,8 @@ import {
   snapBox,
 } from "../util";
 
-import { LookerUtils } from "./shared";
 import { Events } from "../elements/base";
+import { LookerUtils } from "./shared";
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
 const LABEL_LIST_KEY = Object.fromEntries(

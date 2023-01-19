@@ -20,24 +20,10 @@ import {
 import { addToBuffers, createWorker, removeFromBuffers } from "../util";
 
 import LRUCache from "lru-cache";
-import { AbstractLooker } from "..";
 import { CHUNK_SIZE, MAX_FRAME_CACHE_SIZE_BYTES } from "../constants";
 import { getFrameNumber } from "../elements/util";
+import { AbstractLooker } from "./abstract";
 import { LookerUtils } from "./shared";
-
-export { createColorGenerator, getRGB } from "@fiftyone/utilities";
-export { freeVideos } from "../elements/util";
-export type {
-  Coloring,
-  FrameConfig,
-  FrameOptions,
-  ImageConfig,
-  ImageOptions,
-  Point,
-  VideoConfig,
-  VideoOptions,
-} from "../state";
-export { zoomAspectRatio } from "../zoom";
 
 interface Frame {
   sample: FrameSample;

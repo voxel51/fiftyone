@@ -1,25 +1,11 @@
-import { AbstractLooker } from "..";
-import { LookerUtils } from "./shared";
 import { getImageElements } from "../elements";
 import { COMMON_SHORTCUTS } from "../elements/common";
 import { Overlay } from "../overlays/base";
 import { DEFAULT_IMAGE_OPTIONS, ImageState, Optional } from "../state";
+import { AbstractLooker } from "./abstract";
+import { LookerUtils } from "./shared";
 
 import { zoomToContent } from "../zoom";
-
-export { createColorGenerator, getRGB } from "@fiftyone/utilities";
-export { freeVideos } from "../elements/util";
-export type {
-  Coloring,
-  FrameConfig,
-  FrameOptions,
-  ImageConfig,
-  ImageOptions,
-  Point,
-  VideoConfig,
-  VideoOptions,
-} from "../state";
-export { zoomAspectRatio } from "../zoom";
 
 export class ImageLooker extends AbstractLooker<ImageState> {
   getElements(config) {
