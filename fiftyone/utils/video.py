@@ -1,7 +1,7 @@
 """
 Video utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -994,4 +994,4 @@ def _get_outpath(inpath, output_dir=None, rel_dir=None):
     else:
         filename = os.path.basename(inpath)
 
-    return os.path.join(output_dir, filename)
+    return os.path.join(fou.normalize_path(output_dir), filename)

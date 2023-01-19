@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 import {
   get32BitColor,
@@ -7,7 +7,7 @@ import {
   getRGBA,
   getRGBAColor,
 } from "@fiftyone/utilities";
-import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
+import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { isFloatArray } from "../util";
 import {
@@ -21,7 +21,7 @@ import {
 import { sizeBytes, strokeCanvasRect, t } from "./util";
 
 interface HeatMap {
-  data: NumpyResult;
+  data: OverlayMask;
   image: ArrayBuffer;
 }
 

@@ -1,7 +1,7 @@
 """
 FiftyOne Server paginator
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -11,7 +11,7 @@ import motor.motor_asyncio as mtr
 import typing as t
 
 import strawberry as gql
-from strawberry.arguments import UNSET
+from strawberry.unset import UNSET
 
 import fiftyone.core.odm as foo
 

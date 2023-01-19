@@ -9,7 +9,6 @@ import {
   VisibilityOff,
   Wallpaper,
 } from "@mui/icons-material";
-import { CircularProgress } from "@mui/material";
 import React, {
   MutableRefObject,
   useLayoutEffect,
@@ -26,11 +25,11 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-
 import { useTheme } from "@fiftyone/components";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
+import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 import { PillButton } from "../utils";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
@@ -38,7 +37,7 @@ import Selector from "./Selected";
 import Similar from "./Similar";
 import Tagger from "./Tagger";
 
-const shouldToggleBookMarkIconOnSelector = selector<boolean>({
+export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
   get: ({ get }) => {
     const hasFiltersValue = get(fos.hasFilters(false));
@@ -56,11 +55,7 @@ const shouldToggleBookMarkIconOnSelector = selector<boolean>({
 
 const Loading = () => {
   const theme = useTheme();
-  return (
-    <CircularProgress
-      style={{ padding: 2, height: 22, width: 22, color: theme.text.primary }}
-    />
-  );
+  return <LoadingDots text="" color={theme.text.primary} />;
 };
 
 const ActionDiv = styled.div`
@@ -398,6 +393,7 @@ export const ModalActionsRow = ({
   lookerRef?: MutableRefObject<VideoLooker | undefined>;
 }) => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
+  const hideTagging = useRecoilValue(fos.readOnly);
 
   return (
     <ActionsRowDiv
@@ -409,7 +405,7 @@ export const ModalActionsRow = ({
       <Hidden />
       <Selected modal={true} lookerRef={lookerRef} />
       {!isVideo && <Similarity modal={true} />}
-      <Tag modal={true} lookerRef={lookerRef} />
+      {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>

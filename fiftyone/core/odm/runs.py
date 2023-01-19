@@ -1,27 +1,30 @@
 """
 Dataset run documents.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from mongoengine import (
+from mongoengine import FileField
+
+from fiftyone.core.fields import (
+    DateTimeField,
     DictField,
     ListField,
+    ObjectIdField,
     StringField,
-    DateTimeField,
-    FileField,
 )
 
-from .embedded_document import EmbeddedDocument
+from .document import Document
 
 
-class RunDocument(EmbeddedDocument):
-    """Description of a run on a dataset."""
+class RunDocument(Document):
+    """Backing document for dataset runs."""
 
     # strict=False lets this class ignore unknown fields from other versions
-    meta = {"strict": False}
+    meta = {"collection": "runs", "strict": False}
 
+    dataset_id = ObjectIdField(db_field="_dataset_id")
     key = StringField()
     version = StringField()
     timestamp = DateTimeField()

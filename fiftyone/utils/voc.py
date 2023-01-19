@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -554,6 +554,7 @@ class VOCObject(object):
         # Handles CVAT exported attributes
         if "attributes" in d:
             cvat_attrs = d.pop("attributes", {}).pop("attribute", {})
+            cvat_attrs = _ensure_list(cvat_attrs)
             cvat_attrs = {a["name"]: a["value"] for a in cvat_attrs}
             d.update(cvat_attrs)
 

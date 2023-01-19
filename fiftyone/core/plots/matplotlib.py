@@ -1,7 +1,7 @@
 """
 Matplotlib plots.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1028,9 +1028,7 @@ def _parse_locations(locations, samples):
     else:
         location_field = locations
         samples.validate_field_type(
-            location_field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.GeoLocation,
+            location_field, embedded_doc_type=fol.GeoLocation
         )
 
     locations = samples.values(location_field + ".point.coordinates")

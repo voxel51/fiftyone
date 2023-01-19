@@ -1,11 +1,11 @@
-import React from "react";
 import { Launch } from "@mui/icons-material";
+import React from "react";
 
-import { useHighlightHover } from "./utils";
-import { ItemAction } from "./ItemAction";
-import { useExternalLink } from "@fiftyone/utilities";
-import ExternalLink from "@fiftyone/components/src/components/ExternalLink";
 import { useTheme } from "@fiftyone/components";
+import ExternalLink from "@fiftyone/components/src/components/ExternalLink";
+import { useExternalLink } from "@fiftyone/utilities";
+import { ItemAction } from "./ItemAction";
+import { useHighlightHover } from "./utils";
 
 type ActionOptionProps = {
   onClick?: (event?: Event) => void;

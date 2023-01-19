@@ -36,7 +36,7 @@ const Grid: React.FC<{}> = () => {
     const flashlight = new Flashlight<number>({
       horizontal: false,
       initialRequestKey: 1,
-      options: { rowAspectRatioThreshold: threshold, offset: 60 },
+      options: { rowAspectRatioThreshold: threshold, offset: 52 },
       onItemClick: expandSample,
       onResize: resize.current,
       onItemResize: (id, dimensions) =>
@@ -85,7 +85,7 @@ const Grid: React.FC<{}> = () => {
     return flashlight;
   });
 
-  useLayoutEffect(
+  useEffect(
     deferred(() => {
       if (isTagging || !flashlight.isAttached()) {
         return;
@@ -149,15 +149,16 @@ const Grid: React.FC<{}> = () => {
     document,
     "keydown",
     useRecoilCallback(
-      ({ snapshot, set }) => async (event: KeyboardEvent) => {
-        if (event.key !== "Escape") {
-          return;
-        }
+      ({ snapshot, set }) =>
+        async (event: KeyboardEvent) => {
+          if (event.key !== "Escape") {
+            return;
+          }
 
-        if (!(await snapshot.getPromise(fos.modal))) {
-          set(fos.selectedSamples, new Set());
-        }
-      },
+          if (!(await snapshot.getPromise(fos.modal))) {
+            set(fos.selectedSamples, new Set());
+          }
+        },
       []
     )
   );

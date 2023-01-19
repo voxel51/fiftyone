@@ -33,10 +33,8 @@ import {
   JSONIcon,
   HelpIcon,
 } from "@fiftyone/components";
-import { colorMap, dataset } from "@fiftyone/state";
+import { colorMap, dataset, useBeforeScreenshot } from "@fiftyone/state";
 import { removeListener } from "process";
-
-THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
 
 const deg2rad = (degrees) => degrees * (Math.PI / 180);
 const hasFocusAtom = recoil.atom({
@@ -126,29 +124,21 @@ function Cuboid({
   dimensions,
   opacity,
   rotation,
-  rotation_y = 0,
-  rotation_z = 0,
   location,
   selected,
   onClick,
   tooltip,
   label,
   color,
-  useLegaceCoordinates,
+  useLegacyCoordinates,
 }) {
   const [x, y, z] = location;
-  const x2 = x;
   const y2 = y - 0.5 * dimensions[1];
-  const z2 = z;
-  const loc = useLegaceCoordinates ? [x2, y2, z2] : [x, y, z];
+  const loc = useLegacyCoordinates ? [x, y2, z] : [x, y, z];
   const itemRotationVec = new THREE.Vector3(...itemRotation);
-  const rawLegacyRotation = [0, rotation_y, rotation_z];
-  const resolvedRotation = new THREE.Vector3(
-    ...(rotation || rawLegacyRotation)
-  );
+  const resolvedRotation = new THREE.Vector3(...rotation);
   const actualRotation = resolvedRotation.add(itemRotationVec).toArray();
 
-  // [0, rotation_y + Math.PI / 2, rotation_z]
   const geo = React.useMemo(() => new THREE.BoxGeometry(...dimensions), []);
   return (
     <Fragment>
@@ -283,7 +273,10 @@ export function Looker3d(props) {
 }
 
 function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
-  const settings = fop.usePluginSettings("3d", { useLegacyCoordinates: true });
+  const settings = fop.usePluginSettings("3d", {
+    useLegacyCoordinates: false,
+    defaultUp: [0, 0, 1],
+  });
 
   const modal = true;
   // @ts-ignore
@@ -299,6 +292,10 @@ function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
   const { coloring } = recoil.useRecoilValue(
     fos.lookerOptions({ withFilter: true, modal })
   );
+
+  useEffect(() => {
+    THREE.Object3D.DefaultUp = new THREE.Vector3(...settings.defaultUp);
+  }, []);
 
   const overlays = load3dOverlays(sample, selectedLabels)
     .map((l) => {
@@ -445,6 +442,7 @@ function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
   return (
     <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
       <Canvas onClick={() => setAction(null)}>
+        <Screenshot />
         <CameraSetup
           controlsRef={controlsRef}
           cameraRef={cameraRef}
@@ -462,7 +460,7 @@ function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
                 onClick={() => handleSelect(label)}
                 label={label}
                 tooltip={tooltip}
-                useLegaceCoordinates={settings.useLegacyCoordinates}
+                useLegacyCoordinates={settings.useLegacyCoordinates}
               />
             ))}
         </mesh>
@@ -754,6 +752,18 @@ function ViewHelp({ helpPanel }) {
     </Fragment>
   );
 }
+
+const Screenshot = () => {
+  const { gl, scene, camera } = useThree();
+  useBeforeScreenshot(() => {
+    return new Promise((resolve) => {
+      gl.render(scene, camera);
+      resolve(gl.domElement);
+    });
+  });
+
+  return null;
+};
 
 function load3dOverlays(sample, selectedLabels, currentPath = []) {
   let overlays = [];

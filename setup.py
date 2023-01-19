@@ -2,7 +2,7 @@
 """
 Installs FiftyOne.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.18.0"
+VERSION = "0.19.0"
 
 
 def get_version():

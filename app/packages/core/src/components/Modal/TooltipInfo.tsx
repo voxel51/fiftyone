@@ -1,11 +1,11 @@
-import React, { useState, useRef } from "react";
+import { animated, useSpring } from "@react-spring/web";
+import React, { useRef } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import { animated, useSpring } from "@react-spring/web";
 
-import { ContentDiv, ContentHeader } from "../utils";
 import * as fos from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
+import { ContentDiv, ContentHeader } from "../utils";
 
 const TooltipDiv = animated(styled(ContentDiv)`
   position: absolute;
@@ -249,14 +249,24 @@ const RegressionInfo = ({ detail }) => {
 
 const SegmentationInfo = ({ detail }) => {
   const targetValue = useTarget(detail.field, detail.target);
+  const hideTargetValue = detail.color === undefined;
 
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      {targetValue ? (
-        <ContentItem key={"target-value"} name={"label"} value={targetValue} />
-      ) : (
-        <ContentItem key={"pixel-value"} name={"pixel"} value={detail.target} />
-      )}
+      {!hideTargetValue &&
+        (targetValue ? (
+          <ContentItem
+            key={"target-value"}
+            name={"label"}
+            value={targetValue}
+          />
+        ) : (
+          <ContentItem
+            key={"pixel-value"}
+            name={"pixel"}
+            value={detail.target}
+          />
+        ))}
       <AttrInfo label={detail.label} />
     </AttrBlock>
   );

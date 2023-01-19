@@ -23,6 +23,8 @@ import {
   selectedMediaField,
   sidebarMode,
   groupStatistics,
+  theme,
+  sessionSpaces,
 } from "../recoil";
 import { useColorScheme } from "@mui/material";
 
@@ -49,16 +51,20 @@ const useStateUpdate = () => {
         resolve instanceof Function ? resolve(t) : resolve;
 
       const { get, reset, set } = t;
-
       if (state) {
         const view = get(viewAtoms.view);
+        if (dataset.stages && !state.view) {
+          state.view = dataset.stages;
+        }
 
         if (!viewsAreEqual(view || [], state.view || [])) {
           set(viewAtoms.view, state.view || []);
+
           reset(extendedSelection);
           reset(similarityParameters);
           reset(filters);
         }
+        set(viewAtoms.viewName, state.viewName || null);
       }
 
       state?.viewCls !== undefined && set(viewAtoms.viewCls, state.viewCls);
@@ -80,9 +86,16 @@ const useStateUpdate = () => {
         setMode(config.theme);
       }
 
+      if (state?.spaces) {
+        set(sessionSpaces, state.spaces);
+      } else {
+        reset(sessionSpaces);
+      }
+
       if (dataset) {
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
         dataset.evaluations = Object.values(dataset.evaluations || {});
+        dataset.savedViews = Object.values(dataset.savedViews || []);
         dataset.sampleFields = collapseFields(dataset.sampleFields);
         dataset.frameFields = collapseFields(dataset.frameFields);
         const previousDataset = get(datasetAtom);
@@ -93,7 +106,7 @@ const useStateUpdate = () => {
         if (
           !previousDataset ||
           previousDataset.id !== dataset.id ||
-          dataset.groupSlice !== previousDataset.groupSlice
+          dataset.groupSlice != previousDataset.groupSlice
         ) {
           if (dataset?.name !== previousDataset?.name) {
             reset(sidebarMode(false));
@@ -133,6 +146,7 @@ const useStateUpdate = () => {
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
         }
+
         set(datasetAtom, dataset);
       }
 

@@ -1,14 +1,13 @@
 """
 FiftyOne Server aggregations
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from datetime import date, datetime, timedelta
 import typing as t
 
-import asyncio
 import strawberry as gql
 
 import fiftyone as fo
@@ -18,6 +17,7 @@ import fiftyone.core.collections as foc
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import T
 from fiftyone.server.scalars import BSONArray
+from fiftyone.server.view import load_view, ExtendedViewForm
 
 
 _DEFAULT_NUM_HISTOGRAM_BINS = 25
@@ -117,8 +117,10 @@ class AggregateQuery:
     async def aggregate(
         self,
         dataset_name: str,
-        view: BSONArray,
+        view: t.Optional[BSONArray],
         aggregations: t.List[Aggregate],
+        view_name: t.Optional[str] = None,
+        form: t.Optional[ExtendedViewForm] = None,
     ) -> t.List[
         gql.union(
             "AggregationResponses",
@@ -132,7 +134,12 @@ class AggregateQuery:
             ),
         )
     ]:
-        view = await load_view(dataset_name, view)
+        view = await load_view(
+            dataset_name=dataset_name,
+            serialized_view=view,
+            view_name=view_name,
+            form=(form or ExtendedViewForm()),
+        )
 
         resolvers = []
         aggs = []
@@ -154,19 +161,6 @@ class AggregateQuery:
             responses.append(resolver(result))
 
         return responses
-
-
-async def load_view(
-    name: str, serialized_view: BSONArray
-) -> foc.SampleCollection:
-    def run() -> foc.SampleCollection:
-        dataset = fo.load_dataset(name)
-        dataset.reload()
-        return fo.DatasetView._build(dataset, serialized_view or [])
-
-    loop = asyncio.get_running_loop()
-
-    return await loop.run_in_executor(None, run)
 
 
 async def _count_values(

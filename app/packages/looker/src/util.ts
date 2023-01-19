@@ -1,8 +1,8 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
-import mime from "mime";
 import { mergeWith } from "immutable";
+import mime from "mime";
 
 import { MIN_PIXELS } from "./constants";
 import {
@@ -16,7 +16,6 @@ import {
   Optional,
 } from "./state";
 
-import LookerWorker from "./worker.ts?worker&inline";
 import {
   AppError,
   getFetchParameters,
@@ -24,6 +23,7 @@ import {
   NetworkError,
   ServerError,
 } from "@fiftyone/utilities";
+import LookerWorker from "./worker.ts?worker&inline";
 
 /**
  * Shallow data-object comparison for equality
@@ -437,7 +437,13 @@ export const createWorker = (
   },
   dispatchEvent?: DispatchEvent
 ): Worker => {
-  const worker = new LookerWorker();
+  let worker: Worker = null;
+
+  try {
+    worker = new LookerWorker();
+  } catch {
+    worker = new Worker(new URL("./worker.ts", import.meta.url));
+  }
 
   worker.onerror = (error) => {
     dispatchEvent("error", error);

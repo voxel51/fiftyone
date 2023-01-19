@@ -1,6 +1,8 @@
 import { graphql } from "react-relay";
 
-export default graphql`
+import r from "../resolve";
+
+export default r(graphql`
   query paginateGroupQuery(
     $count: Int = 20
     $cursor: String = null
@@ -10,9 +12,9 @@ export default graphql`
   ) {
     ...paginateGroup_query
   }
-`;
+`);
 
-export const paginateGroupPaginationFragment = graphql`
+export const paginateGroupPaginationFragment = r(graphql`
   fragment paginateGroup_query on Query
   @refetchable(queryName: "paginateGroupPageQuery") {
     samples(
@@ -58,4 +60,4 @@ export const paginateGroupPaginationFragment = graphql`
       }
     }
   }
-`;
+`);

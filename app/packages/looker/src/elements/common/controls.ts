@@ -1,10 +1,9 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
-import { ICONS } from "../util";
 import {
   fullscreen,
   help,

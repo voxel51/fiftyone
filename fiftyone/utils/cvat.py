@@ -2,10 +2,11 @@
 Utilities for working with datasets in
 `CVAT format <https://github.com/opencv/cvat>`_.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import math
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
@@ -929,7 +930,7 @@ class CVATImageDatasetExporter(
         self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
-        self._name = sample_collection.name
+        self._name = sample_collection._dataset.name
         self._task_labels = sample_collection.info.get("task_labels", None)
 
     def export_sample(self, image_or_path, labels, metadata=None):
@@ -3060,6 +3061,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             default, no project is used
         project_id (None): an optional ID of an existing CVAT project to which
             to upload the annotation tasks. By default, no project is used
+        task_name (None): an optional task name to use for the created CVAT task
         occluded_attr (None): an optional attribute name containing existing
             occluded values and/or in which to store downloaded occluded values
             for all objects in the annotation run
@@ -3091,6 +3093,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         job_reviewers=None,
         project_name=None,
         project_id=None,
+        task_name=None,
         occluded_attr=None,
         group_id_attr=None,
         issue_tracker=None,
@@ -3109,6 +3112,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.job_reviewers = job_reviewers
         self.project_name = project_name
         self.project_id = project_id
+        self.task_name = task_name
         self.occluded_attr = occluded_attr
         self.group_id_attr = group_id_attr
         self.issue_tracker = issue_tracker
@@ -3817,6 +3821,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return [pid for pid in project_ids if self._is_empty_project(pid)]
 
     def _is_empty_project(self, project_id):
+        if not self.project_exists(project_id):
+            return True
+
         resp = self.get(self.project_url(project_id)).json()
         return not resp["tasks"]
 
@@ -3865,15 +3872,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             True/False
         """
-        return (
-            self._get_value_from_search(
-                self.project_id_search_url,
-                project_id,
-                "id",
-                "id",
+        try:
+            response = self.get(
+                self.project_url(project_id), print_error_info=False
             )
-            is not None
-        )
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                return False
+            else:
+                raise e
+
+        return True
 
     def delete_project(self, project_id):
         """Deletes the given project from the CVAT server.
@@ -4226,6 +4235,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         num_samples = len(samples)
         batch_size = self._get_batch_size(samples, task_size)
+        num_batches = math.ceil(num_samples / batch_size)
 
         samples.compute_metadata()
 
@@ -4290,8 +4300,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     project_id = self.create_project(project_name, cvat_schema)
                     project_ids.append(project_id)
 
-                _dataset_name = samples_batch._dataset.name.replace(" ", "_")
-                task_name = "FiftyOne_%s" % _dataset_name
+                if config.task_name is None:
+                    _dataset_name = samples_batch._dataset.name.replace(
+                        " ", "_"
+                    )
+                    task_name = f"FiftyOne_{_dataset_name}"
+                else:
+                    task_name = config.task_name
+
+                # Append task number when multiple tasks are created
+                if num_batches > 1:
+                    task_name += f"_{idx + 1}"
 
                 (
                     task_id,
@@ -7096,7 +7115,7 @@ def _parse_occlusion_value(value):
 
 
 # Track interpolation code sourced from CVAT:
-# https://github.com/openvinotoolkit/cvat/blob/31f6234b0cdc656c9dde4294c1008560611c6978/cvat/apps/dataset_manager/annotation.py#L431-L730
+# https://github.com/opencv/cvat/blob/31f6234b0cdc656c9dde4294c1008560611c6978/cvat/apps/dataset_manager/annotation.py#L431-L730
 def _get_interpolated_shapes(track_shapes):
     def copy_shape(source, frame, points=None):
         copied = deepcopy(source)

@@ -1,18 +1,25 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
+import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import {
-  LABEL_LIST,
-  VALID_LABEL_TYPES,
+  DENSE_LABELS,
+  DETECTIONS,
+  get32BitColor,
   getFetchFunction,
+  HEATMAP,
+  LABEL_LIST,
+  rgbToHexCached,
   setFetchFunction,
   Stage,
-  get32BitColor,
+  VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
+import { decode as decodePng } from "fast-png";
 import { CHUNK_SIZE } from "./constants";
-import { ARRAY_TYPES, deserialize } from "./numpy";
-import { Coloring, FrameChunk } from "./state";
+import { ARRAY_TYPES, deserialize, OverlayMask, TypedArray } from "./numpy";
+import { isRgbMaskTargets } from "./overlays/util";
+import { Coloring, FrameChunk, MaskTargets, RgbMaskTargets } from "./state";
 
 interface ResolveColor {
   key: string | number;
@@ -126,9 +133,72 @@ const mapId = (obj) => {
   return obj;
 };
 
-const LABELS = new Set(VALID_LABEL_TYPES);
+const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
 
-const processLabels = (
+/**
+ * Some label types (example: segmentation, heatmap) can have their overlay data stored on-disk,
+ * we want to impute the relevant mask property of these labels from what's stored in the disk
+ */
+const imputeOverlayFromPath = async (
+  field: string,
+  label: Record<string, any>,
+  coloring: Coloring,
+  buffers: ArrayBuffer[]
+) => {
+  // handle all list types here
+  if (label._cls === DETECTIONS) {
+    label.detections.forEach((detection) =>
+      imputeOverlayFromPath(field, detection, coloring, buffers)
+    );
+    return;
+  }
+
+  // overlay path is in `map_path` property for heatmap, or else, it's in `mask_path` property (for segmentation or detection)
+  const overlayPathField = label._cls === HEATMAP ? "map_path" : "mask_path";
+  const overlayField = overlayPathField === "map_path" ? "map" : "mask";
+
+  if (
+    Object.hasOwn(label, overlayField) ||
+    !Object.hasOwn(label, overlayPathField)
+  ) {
+    // nothing to be done
+    return;
+  }
+
+  // convert absolute file path to a URL that we can "fetch" from
+  const overlayPngImageUrl = getSampleSrc(label[overlayPathField] as string);
+
+  const pngArrayBuffer: ArrayBuffer = await getFetchFunction()(
+    "GET",
+    overlayPngImageUrl,
+    null,
+    "arrayBuffer"
+  );
+
+  const overlayData = decodePng(pngArrayBuffer);
+
+  const width = overlayData.width;
+  const height = overlayData.height;
+
+  const overlayMask: OverlayMask = {
+    buffer: overlayData.data.buffer,
+    channels: overlayData.channels,
+    arrayType: overlayData.data.constructor.name as OverlayMask["arrayType"],
+    shape: [height, width],
+  };
+
+  // set the `mask` property for this label
+  label[overlayField] = {
+    data: overlayMask,
+    image: new ArrayBuffer(width * height * 4),
+  };
+
+  // transfer buffers
+  buffers.push(overlayMask.buffer);
+  buffers.push(label[overlayField].image);
+};
+
+const processLabels = async (
   sample: { [key: string]: any },
   coloring: Coloring,
   prefix: string = ""
@@ -142,11 +212,15 @@ const processLabels = (
       continue;
     }
 
+    if (DENSE_LABELS.has(label._cls)) {
+      await imputeOverlayFromPath(field, label, coloring, buffers);
+    }
+
     if (label._cls in DESERIALIZE) {
       DESERIALIZE[label._cls](label, buffers);
     }
 
-    if (LABELS.has(label._cls)) {
+    if (ALL_VALID_LABELS.has(label._cls)) {
       if (label._cls in LABEL_LIST) {
         const list = label[LABEL_LIST[label._cls]];
         if (Array.isArray(list)) {
@@ -208,6 +282,7 @@ const processSample = ({ sample, uuid, coloring }: ProcessSample) => {
       {
         method: "processSample",
         sample,
+        coloring,
         uuid,
       },
       // @ts-ignore
@@ -377,6 +452,18 @@ const setStream = ({
 const isFloatArray = (arr) =>
   arr instanceof Float32Array || arr instanceof Float64Array;
 
+const getRgbFromMaskData = (
+  maskTypedArray: TypedArray,
+  channels: number,
+  index: number
+) => {
+  const r = maskTypedArray[index * channels];
+  const g = maskTypedArray[index * channels + 1];
+  const b = maskTypedArray[index * channels + 2];
+
+  return [r, g, b] as [number, number, number];
+};
+
 const UPDATE_LABEL = {
   Detection: async (field, label, coloring: Coloring) => {
     if (!label.mask) {
@@ -419,45 +506,56 @@ const UPDATE_LABEL = {
     }
 
     const overlay = new Uint32Array(label.map.image);
+
+    const mapData = label.map.data;
+
     const targets = new ARRAY_TYPES[label.map.data.arrayType](
       label.map.data.buffer
     );
-    const [start, stop] = label.range
-      ? label.range
-      : isFloatArray(targets)
-      ? [0, 1]
-      : [0, 255];
 
-    const max = Math.max(Math.abs(start), Math.abs(stop));
+    if (mapData.channels > 2) {
+      // rgb map
+      for (let i = 0; i < overlay.length; i++) {
+        overlay[i] = get32BitColor(
+          getRgbFromMaskData(targets, mapData.channels, i)
+        );
+      }
+    } else {
+      const [start, stop] = label.range
+        ? label.range
+        : isFloatArray(targets)
+        ? [0, 1]
+        : [0, 255];
+      const max = Math.max(Math.abs(start), Math.abs(stop));
 
-    const color = await requestColor(coloring.pool, coloring.seed, field);
+      const color = await requestColor(coloring.pool, coloring.seed, field);
 
-    const getColor =
-      coloring.by === "label"
-        ? (value) => {
-            if (value === 0) {
-              return 0;
+      const getColor =
+        coloring.by === "label"
+          ? (value) => {
+              if (value === 0) {
+                return 0;
+              }
+
+              const index = Math.round(
+                (Math.max(value - start, 0) / (stop - start)) *
+                  (coloring.scale.length - 1)
+              );
+
+              return get32BitColor(coloring.scale[index]);
             }
+          : (value) => {
+              if (value === 0) {
+                return 0;
+              }
 
-            const index = Math.round(
-              (Math.max(value - start, 0) / (stop - start)) *
-                (coloring.scale.length - 1)
-            );
-
-            return get32BitColor(coloring.scale[index]);
-          }
-        : (value) => {
-            if (value === 0) {
-              return 0;
-            }
-
-            return get32BitColor(color, Math.min(max, Math.abs(value)) / max);
-          };
-
-    // these for loops must be fast. no "in" or "of" syntax
-    for (let i = 0; i < overlay.length; i++) {
-      if (targets[i] !== 0) {
-        overlay[i] = getColor(targets[i]);
+              return get32BitColor(color, Math.min(max, Math.abs(value)) / max);
+            };
+      // these for loops must be fast. no "in" or "of" syntax
+      for (let i = 0; i < overlay.length; i++) {
+        if (targets[i] !== 0) {
+          overlay[i] = getColor(targets[i]);
+        }
       }
     }
   },
@@ -466,38 +564,91 @@ const UPDATE_LABEL = {
       return;
     }
 
+    // the actual overlay that'll be painted, byte-length of width * height * 4 (RGBA channels)
     const overlay = new Uint32Array(label.mask.image);
-    const targets = new ARRAY_TYPES[label.mask.data.arrayType](
-      label.mask.data.buffer
-    );
-    let maskTargets = coloring.maskTargets[field];
 
+    // each field may have its own target map
+    let maskTargets: MaskTargets = coloring.maskTargets[field];
+
+    // or, in the absence of field specific targets, use default mask targets that are dataset scoped
     if (!maskTargets) {
       maskTargets = coloring.defaultMaskTargets;
     }
-    const cache = {};
 
-    let color;
-    if (maskTargets && Object.keys(maskTargets).length === 1) {
-      color = get32BitColor(
-        await requestColor(coloring.pool, coloring.seed, field)
-      );
-    }
+    const maskData: OverlayMask = label.mask.data;
 
-    const getColor = (i) => {
-      i = Math.round(Math.abs(i)) % coloring.targets.length;
+    // target map array
+    const targets = new ARRAY_TYPES[maskData.arrayType](maskData.buffer);
 
-      if (!(i in cache)) {
-        cache[i] = get32BitColor(coloring.targets[i]);
+    const isMaskTargetsEmpty = Object.keys(maskTargets).length === 0;
+
+    const isRgbMaskTargets_ = isRgbMaskTargets(maskTargets);
+
+    if (maskData.channels > 2) {
+      for (let i = 0; i < overlay.length; i++) {
+        const [r, g, b] = getRgbFromMaskData(targets, maskData.channels, i);
+
+        const currentHexCode = rgbToHexCached([r, g, b]);
+
+        if (
+          // #000000 is semantically treated as background
+          currentHexCode === "#000000" ||
+          // don't render color if hex is not in mask targets, unless mask targets is completely empty
+          (!isMaskTargetsEmpty &&
+            isRgbMaskTargets_ &&
+            !(currentHexCode in maskTargets))
+        ) {
+          targets[i] = 0;
+          continue;
+        }
+
+        overlay[i] = get32BitColor([r, g, b]);
+
+        if (isRgbMaskTargets_) {
+          targets[i] = (maskTargets as RgbMaskTargets)[
+            currentHexCode
+          ].intTarget;
+        } else {
+          // assign an arbitrary uint8 value here; this isn't used anywhere but absence of it affects tooltip behavior
+          targets[i] = r;
+        }
       }
 
-      return cache[i];
-    };
+      // discard the buffer values of other channels
+      maskData.buffer = maskData.buffer.slice(0, overlay.length);
+    } else {
+      const cache = {};
 
-    // these for loops must be fast. no "in" or "of" syntax
-    for (let i = 0; i < overlay.length; i++) {
-      if (targets[i] !== 0) {
-        overlay[i] = color ? color : getColor(targets[i]);
+      let color;
+      if (maskTargets && Object.keys(maskTargets).length === 1) {
+        color = get32BitColor(
+          await requestColor(coloring.pool, coloring.seed, field)
+        );
+      }
+
+      const getColor = (i) => {
+        i = Math.round(Math.abs(i)) % coloring.targets.length;
+
+        if (!(i in cache)) {
+          cache[i] = get32BitColor(coloring.targets[i]);
+        }
+
+        return cache[i];
+      };
+
+      // these for loops must be fast. no "in" or "of" syntax
+      for (let i = 0; i < overlay.length; i++) {
+        if (targets[i] !== 0) {
+          if (
+            !(targets[i] in maskTargets) &&
+            !isMaskTargetsEmpty &&
+            !isRgbMaskTargets_
+          ) {
+            targets[i] = 0;
+          } else {
+            overlay[i] = color ? color : getColor(targets[i]);
+          }
+        }
       }
     }
   },
@@ -522,24 +673,26 @@ type Method =
   | ResolveColorMethod
   | SetStreamMethod;
 
-onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
-  switch (method) {
-    case "init":
-      init(args as Init);
-      return;
-    case "processSample":
-      processSample(args as ProcessSample);
-      return;
-    case "requestFrameChunk":
-      requestFrameChunk(args as RequestFrameChunk);
-      return;
-    case "setStream":
-      setStream(args as SetStream);
-      return;
-    case "resolveColor":
-      resolveColor(args as ResolveColor);
-      return;
-    default:
-      throw new Error("unknown method");
-  }
-};
+if (typeof onmessage !== "undefined") {
+  onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
+    switch (method) {
+      case "init":
+        init(args as Init);
+        return;
+      case "processSample":
+        processSample(args as ProcessSample);
+        return;
+      case "requestFrameChunk":
+        requestFrameChunk(args as RequestFrameChunk);
+        return;
+      case "setStream":
+        setStream(args as SetStream);
+        return;
+      case "resolveColor":
+        resolveColor(args as ResolveColor);
+        return;
+      default:
+        throw new Error("unknown method");
+    }
+  };
+}

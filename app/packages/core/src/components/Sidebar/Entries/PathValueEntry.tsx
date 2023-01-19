@@ -17,13 +17,12 @@ import styled from "styled-components";
 
 import { prettify } from "../../../utils/generic";
 
-import { NameAndCountContainer } from "../../utils";
 import * as fos from "@fiftyone/state";
+import { NameAndCountContainer } from "../../utils";
 
 import RegularEntry from "./RegularEntry";
-
-import LoadingCircle from "../../Common/Loading";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 
 const ScalarDiv = styled.div`
   & > div {
@@ -93,7 +92,7 @@ const ScalarValueEntry = ({
       trigger={trigger}
     >
       <ScalarDiv>
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<LoadingDots text="" />}>
           <Loadable path={path} />
         </Suspense>
         <FieldLabelAndInfo
@@ -163,7 +162,7 @@ const ListValueEntry = ({
         <NameAndCountContainer>
           <span key="path">{path}</span>
           <span key="value">
-            <Suspense fallback={<LoadingCircle />}>
+            <Suspense fallback={<LoadingDots text="" />}>
               <LengthLoadable path={path} />
             </Suspense>
           </span>
@@ -237,10 +236,10 @@ const useData = <T extends unknown>(path: string): T => {
 
     const key = keys[index];
 
-    data = data[field.dbField || key];
+    data = data[field?.dbField || key];
 
     if (keys[index + 1]) {
-      field = field.fields[keys[index + 1]];
+      field = field?.fields[keys[index + 1]];
     }
   }
 

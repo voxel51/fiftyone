@@ -1,8 +1,8 @@
 import AddGroup from "./AddGroupEntry";
 import Empty from "./EmptyEntry";
-import Filter from "./FilterEntry";
 import FilterablePath from "./FilterablePathEntry";
 import FilterableTag from "./FilterableTagEntry";
+import Filter from "./FilterEntry";
 import {
   PathGroupEntry as PathGroup,
   TagGroupEntry as TagGroup,
