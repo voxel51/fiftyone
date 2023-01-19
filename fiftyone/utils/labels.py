@@ -1,7 +1,7 @@
 """
 Label utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -22,6 +22,7 @@ def objects_to_segmentations(
     output_dir=None,
     rel_dir=None,
     overwrite=False,
+    save_mask_targets=False,
 ):
     """Converts the instance segmentations or polylines in the specified field
     of the collection into semantic segmentation masks.
@@ -40,9 +41,9 @@ def objects_to_segmentations(
         mask_size (None): the ``(width, height)`` at which to render the
             segmentation masks. If not provided, masks will be rendered to
             match the resolution of each input image
-        mask_targets (None): a dict mapping integer pixel values in
-            ``[0, 255]`` to label strings defining which object classes to
-            render and which pixel values to use for each class. If omitted,
+        mask_targets (None): a dict mapping pixel values (2D masks) or RGB hex
+            strings (3D masks) to label strings defining which object classes
+            to render and which pixel values to use for each class. If omitted,
             all objects are rendered with pixel value 255
         thickness (1): the thickness, in pixels, at which to render
             (non-filled) polylines
@@ -58,6 +59,8 @@ def objects_to_segmentations(
             :func:`fiftyone.core.utils.normalize_path`
         overwrite (False): whether to delete ``output_dir`` prior to exporting
             if it exists
+        save_mask_targets (False): whether to store the ``mask_targets`` on the
+            dataset
     """
     fov.validate_collection_label_fields(
         sample_collection,
@@ -130,7 +133,7 @@ def objects_to_segmentations(
 
             image[out_field] = segmentation
 
-    if mask_targets is not None:
+    if save_mask_targets and mask_targets is not None:
         if not sample_collection.default_mask_targets:
             sample_collection.default_mask_targets = mask_targets
         else:
@@ -254,6 +257,108 @@ def import_segmentations(
                         etau.delete_file(del_path)
 
 
+def transform_segmentations(
+    sample_collection,
+    in_field,
+    targets_map,
+    output_dir=None,
+    rel_dir=None,
+    update=True,
+    update_mask_targets=False,
+    overwrite=False,
+):
+    """Transforms the segmentations in the given field according to the
+    provided targets map.
+
+    This method can be used to transform between grayscale and RGB masks, or it
+    can be used to edit the pixel values or colors of masks without changing
+    the number of channels.
+
+    Note that any pixel values not in ``targets_map`` will be zero in the
+    transformed masks.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        in_field: the name of the :class:`fiftyone.core.labels.Segmentation`
+            field
+        targets_map: a dict mapping existing pixel values (2D masks) or RGB hex
+            strings (3D masks) to new pixel values or RGB hex strings to use.
+            You may convert between grayscale and RGB using this argument
+        output_dir (None): an optional directory in which to write the
+            transformed images
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each image. This
+            argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
+        update (True): whether to update the mask paths on the instances
+        update_mask_targets (False): whether to update the mask targets on the
+            dataset to reflect the transformed targets
+        overwrite (False): whether to delete ``output_dir`` prior to exporting
+            if it exists
+    """
+    fov.validate_collection_label_fields(
+        sample_collection, in_field, fol.Segmentation
+    )
+
+    samples = sample_collection.select_fields(in_field)
+    in_field, processing_frames = samples._handle_frame_field(in_field)
+
+    if output_dir is not None:
+        if overwrite:
+            etau.delete_dir(output_dir)
+
+        filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+        )
+
+    for sample in samples.iter_samples(autosave=True, progress=True):
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
+
+        for image in images:
+            label = image[in_field]
+            if label is None:
+                continue
+
+            if output_dir is not None:
+                outpath = filename_maker.get_output_path(
+                    image.filepath, output_ext=".png"
+                )
+            else:
+                outpath = None
+
+            label.transform_mask(targets_map, outpath=outpath, update=update)
+
+    if update_mask_targets:
+        mask_targets = sample_collection.mask_targets.get(in_field, None)
+        if mask_targets is not None:
+            sample_collection.mask_targets[in_field] = _transform_mask_targets(
+                mask_targets, targets_map
+            )
+        else:
+            mask_targets = sample_collection.default_mask_targets
+            if mask_targets:
+                sample_collection.default_mask_targets = (
+                    _transform_mask_targets(mask_targets, targets_map)
+                )
+
+
+def _transform_mask_targets(mask_targets, targets_map):
+    _mask_targets = {}
+    for k, v in targets_map.items():
+        label = mask_targets.get(k, None)
+        if label is not None:
+            _mask_targets[v] = label
+
+    return _mask_targets
+
+
 def segmentations_to_detections(
     sample_collection,
     in_field,
@@ -280,10 +385,10 @@ def segmentations_to_detections(
             field to convert
         out_field: the name of the
             :class:`fiftyone.core.labels.Detections` field to populate
-        mask_targets (None): a dict mapping integer pixel values in
-            ``[0, 255]`` to label strings defining which object classes to
-            label and which pixel values to use for each class. If
-            omitted, all labels are assigned to the integer pixel values
+        mask_targets (None): a dict mapping pixel values (2D masks) or RGB hex
+            strings (3D masks) to label strings defining which object classes
+            to label and which pixel values to use for each class. If omitted,
+            all labels are assigned to the pixel values
         mask_types ("stuff"): whether the classes are ``"stuff"`` (amorphous
             regions of pixels) or ``"thing"`` (connected regions, each
             representing an instance of the thing). Can be any of the
@@ -291,8 +396,8 @@ def segmentations_to_detections(
 
             -   ``"stuff"`` if all classes are stuff classes
             -   ``"thing"`` if all classes are thing classes
-            -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
-                for each class
+            -   a dict mapping pixel values (2D masks) or RGB hex strings (3D
+                masks) to ``"stuff"`` or ``"thing"`` for each class
     """
     fov.validate_collection_label_fields(
         sample_collection,
@@ -393,10 +498,10 @@ def segmentations_to_polylines(
             field to convert
         out_field: the name of the
             :class:`fiftyone.core.labels.Polylines` field to populate
-        mask_targets (None): a dict mapping integer pixel values in
-            ``[0, 255]`` to label strings defining which object classes to
-            label and which pixel values to use for each class. If
-            omitted, all labels are assigned to the integer pixel values
+        mask_targets (None): a dict mapping pixel values (2D masks) or RGB hex
+            strings (3D masks) to label strings defining which object classes
+            to label and which pixel values to use for each class. If omitted,
+            all labels are assigned to the pixel values
         mask_types ("stuff"): whether the classes are ``"stuff"`` (amorphous
             regions of pixels) or ``"thing"`` (connected regions, each
             representing an instance of the thing). Can be any of the
@@ -404,8 +509,8 @@ def segmentations_to_polylines(
 
             -   ``"stuff"`` if all classes are stuff classes
             -   ``"thing"`` if all classes are thing classes
-            -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
-                for each class
+            -   a dict mapping pixel values (2D masks) or RGB hex strings (3D
+                masks) to ``"stuff"`` or ``"thing"`` for each class
         tolerance (2): a tolerance, in pixels, when generating approximate
                 polylines for each region. Typical values are 1-3 pixels
     """

@@ -3,11 +3,19 @@ import { v4 as uuid } from "uuid";
 
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
-import * as atoms from "./atoms";
-import { State } from "./types";
+import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
+import { StateForm } from "@fiftyone/relay";
 import { toSnakeCase } from "@fiftyone/utilities";
+import * as atoms from "./atoms";
+import { selectedSamples } from "./atoms";
 import { config } from "./config";
+import { filters, modalFilters } from "./filters";
+import { resolvedGroupSlice } from "./groups";
 import { fieldSchema } from "./schema";
+import { State } from "./types";
+import _ from "lodash";
+import { isPatchesView } from "./view";
+import { pathFilter } from "./pathFilters";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -101,10 +109,7 @@ export const datasetAppConfig = selector<State.DatasetAppConfig>({
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
-    const targets = get(atoms.dataset).defaultMaskTargets || {};
-    return Object.fromEntries(
-      Object.entries(targets).map(([k, v]) => [parseInt(k, 10), v])
-    );
+    return get(atoms.dataset).defaultMaskTargets || {};
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -156,10 +161,24 @@ export const getTarget = selector({
   get: ({ get }) => {
     const { defaults, fields } = get(targets);
     return (field, target) => {
+      let maskTargets;
       if (field in fields) {
-        return fields[field][target];
+        maskTargets = fields[field];
+      } else {
+        maskTargets = defaults;
       }
-      return defaults[target];
+
+      if (isRgbMaskTargets(maskTargets)) {
+        const maskTargetTuple = Object.entries(maskTargets).find(
+          ([_, el]) => el.intTarget === target
+        );
+
+        if (maskTargetTuple) {
+          return maskTargetTuple[1].label;
+        }
+      }
+
+      return maskTargets[target];
     };
   },
   cachePolicy_UNSTABLE: {
@@ -195,7 +214,7 @@ export const selectedLabelList = selector<State.SelectedLabel[]>({
 export const anyTagging = selector<boolean>({
   key: "anyTagging",
   get: ({ get }) => {
-    let values = [];
+    const values = [];
     [true, false].forEach((i) =>
       [true, false].forEach((j) => {
         values.push(get(atoms.tagging({ modal: i, labels: j })));
@@ -259,8 +278,8 @@ export const pathHiddenLabelsMap = selector<{
     const labels = get(atoms.hiddenLabels);
     const newLabels: State.SelectedLabelMap = {};
 
-    for (let sampleId in value) {
-      for (let field in value[sampleId]) {
+    for (const sampleId in value) {
+      for (const field in value[sampleId]) {
         for (let i = 0; i < value[sampleId][field].length; i++) {
           const labelId = value[sampleId][field][i];
           newLabels[labelId] = labels[labelId];
@@ -333,6 +352,12 @@ export const extendedStagesUnsorted = selector({
   key: "extendedStagesUnsorted",
   get: ({ get }) => {
     const sampleIds = get(atoms.extendedSelection);
+    const extendedSelectionOverrideStage = get(
+      atoms.extendedSelectionOverrideStage
+    );
+    if (extendedSelectionOverrideStage) {
+      return extendedSelectionOverrideStage;
+    }
     return {
       "fiftyone.core.stages.Select":
         sampleIds && sampleIds.length
@@ -372,3 +397,85 @@ export const modalNavigation = selector<atoms.ModalNavigation>({
   key: "modalNavigation",
   get: ({ get }) => get(atoms.modal).navigation,
 });
+
+export const viewStateForm = selectorFamily<
+  StateForm,
+  { addStages?: string; modal?: boolean; selectSlice?: boolean }
+>({
+  key: "viewStateForm",
+  get:
+    ({ addStages, modal, selectSlice }) =>
+    ({ get }) => {
+      return {
+        filters: get(modal ? modalFilters : filters),
+        sampleIds: [...get(selectedSamples)],
+        labels: get(selectedLabelList),
+        extended: get(extendedStages),
+        slice: selectSlice ? get(resolvedGroupSlice(modal)) : null,
+        addStages: addStages ? JSON.parse(addStages) : [],
+      };
+    },
+});
+export const selectedPatchIds = selectorFamily({
+  key: "selectedPatchIds",
+  get:
+    (patchesField) =>
+    ({ get }) => {
+      const modal = get(atoms.modal);
+      const isPatches = get(isPatchesView);
+      const selectedSamples = get(atoms.selectedSamples);
+      const selectedSampleObjects = get(atoms.selectedSampleObjects);
+
+      if (isPatches || modal) {
+        return selectedSamples;
+      }
+      let patchIds = [];
+      for (const sampleId of selectedSamples) {
+        if (selectedSampleObjects.has(sampleId)) {
+          const sample = selectedSampleObjects.get(sampleId);
+          patchIds = [
+            ...patchIds,
+            ...getLabelIdsFromSample(
+              sample,
+              patchesField,
+              get(pathFilter(false))
+            ),
+          ];
+        }
+      }
+      return new Set(patchIds);
+    },
+});
+
+export const selectedPatchSamples = selector({
+  key: "selectedPatchSamples",
+  get: ({ get }) => {
+    const isPatches = get(isPatchesView);
+    const selectedPatches = get(atoms.selectedSamples);
+    const selectedSampleObjects = get(atoms.selectedSampleObjects);
+
+    if (isPatches) {
+      let sampleIds = [];
+      for (const patchId of selectedPatches) {
+        if (selectedSampleObjects.has(patchId)) {
+          const sample = selectedSampleObjects.get(patchId);
+          sampleIds = [...sampleIds, sample._sample_id];
+        }
+      }
+      return new Set(sampleIds);
+    } else {
+      return new Set();
+    }
+  },
+});
+
+function getLabelIdsFromSample(sample, path, matchesFilter) {
+  const labelIds = [];
+  const labelContainer = sample[path];
+  const fullPath = [path, "detections"];
+
+  for (const label of labelContainer?.detections || []) {
+    if (matchesFilter(fullPath.join("."), label)) labelIds.push(label.id);
+  }
+  return labelIds;
+}

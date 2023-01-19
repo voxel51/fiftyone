@@ -1,11 +1,10 @@
 """
 FiftyOne Server mutations
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 from dataclasses import asdict
 import strawberry as gql
 import typing as t
@@ -19,13 +18,30 @@ from fiftyone.core.session.events import StateUpdate
 import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
 import fiftyone.core.dataset as fod
+from fiftyone.core.spaces import default_spaces, Space
+import fiftyone.core.utils as fou
 
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
-from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.query import Dataset, SidebarGroup, SavedView
 from fiftyone.server.scalars import BSON, BSONArray, JSON
-from fiftyone.server.view import get_dataset_view, extend_view
+from fiftyone.server.view import get_view, extend_view
+
+
+def _build_result_view(result_view, form):
+    if form.slice:
+        result_view = result_view.select_group_slices([form.slice])
+    if form.sample_ids:
+        result_view = fov.make_optimized_select_view(
+            result_view, form.sample_ids
+        )
+    if form.add_stages:
+        for d in form.add_stages:
+            stage = fos.ViewStage._from_dict(d)
+            result_view = result_view.add_stage(stage)
+    if form.extended:
+        result_view = extend_view(result_view, form.extended, True)
+    return result_view
 
 
 @gql.input
@@ -40,9 +56,6 @@ class SelectedLabel:
 class ViewResponse:
     view: BSONArray
     dataset: Dataset
-    view_name: t.Optional[str] = None
-    saved_view_slug: t.Optional[str] = None
-    changing_saved_view: t.Optional[bool] = False
 
 
 @gql.input
@@ -84,6 +97,7 @@ class Mutation:
         state.selected_labels = []
         state.view = None
         state.view_name = view_name if view_name is not None else None
+        state.spaces = default_spaces
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 
@@ -97,7 +111,7 @@ class Mutation:
         sidebar_groups: t.List[SidebarGroupInput],
     ) -> bool:
         state = get_state()
-        view = get_dataset_view(dataset, stages=stages)
+        view = get_view(dataset, stages=stages)
 
         current = (
             {
@@ -155,25 +169,27 @@ class Mutation:
         session: t.Optional[str],
         dataset_name: str,
         view: t.Optional[BSONArray],
-        view_name: t.Optional[str],
         saved_view_slug: t.Optional[str],
-        changing_saved_view: t.Optional[bool],
         form: t.Optional[StateForm],
         info: Info,
     ) -> ViewResponse:
-        logging.debug(
-            f"[mutation.py] set_view called with args:\ndataset_name"
-            f":{dataset_name}\nview:{view}\nview_name:{view_name}\nchanging_saved_view:{changing_saved_view} \n"
-        )
         state = get_state()
         state.selected = []
         state.selected_labels = []
 
         result_view = None
+        ds = fod.load_dataset(dataset_name)
+        view_name = None
+        if saved_view_slug is not None:
+            try:
+                doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
+                view_name = doc.name
+            except:
+                pass
 
         if view_name is not None:
             # Load a saved view by name
-            ds = fod.load_dataset(dataset_name)
+
             if ds.has_saved_view(view_name):
                 # Load a saved dataset view by name
                 result_view = ds.load_saved_view(view_name)
@@ -182,57 +198,41 @@ class Mutation:
                 state.view = result_view
                 state.view_name = result_view.name
                 state.saved_view_slug = saved_view_slug
+        else:
+            state.view_name = None
+            state.saved_view_slug = None
 
         if result_view is None:
             # Update current view with form parameters
-            result_view = get_dataset_view(
+            result_view = get_view(
                 dataset_name,
                 stages=view if view else None,
                 filters=form.filters if form else None,
             )
-            if form.slice:
-                result_view = result_view.select_group_slices([form.slice])
 
-            if form.sample_ids:
-                result_view = fov.make_optimized_select_view(
-                    result_view, form.sample_ids
-                )
-
-            if form.add_stages:
-                for d in form.add_stages:
-                    stage = fos.ViewStage._from_dict(d)
-                    result_view = result_view.add_stage(stage)
-
-            if form.extended:
-                result_view = extend_view(result_view, form.extended, True)
-            # Set view state
-            state.view = result_view
+        result_view = _build_result_view(result_view, form)
+        # Set view state
+        state.view = result_view
 
         await dispatch_event(
             subscription,
-            StateUpdate(
-                state=state,
-                update=True,
-                changing_saved_view=changing_saved_view or False,
-            ),
+            StateUpdate(state=state),
         )
 
         final_view = []
         if state and state.view:
             final_view = state.view._serialize()
 
+        slug = fou.to_slug(view_name) if view_name else None
         dataset = await Dataset.resolver(
             name=dataset_name,
             view=final_view,
-            view_name=view_name,
+            saved_view_slug=slug,
             info=info,
         )
         return ViewResponse(
-            view=final_view,
             dataset=dataset,
-            view_name=view_name,
-            saved_view_slug=saved_view_slug,
-            changing_saved_view=changing_saved_view or False,
+            view=final_view,
         )
 
     @gql.mutation
@@ -246,9 +246,9 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         view: BSONArray,
-        view_name: t.Optional[str],
         slice: str,
         info: Info,
+        view_name: t.Optional[str] = None,
     ) -> Dataset:
         state = get_state()
         state.dataset.group_slice = slice
@@ -256,7 +256,11 @@ class Mutation:
         return await Dataset.resolver(
             name=state.dataset.name,
             view=view,
-            view_name=view_name if view_name else state.view.name,
+            saved_view_slug=fou.to_slug(view_name)
+            if view_name
+            else fou.to_slug(state.view.name)
+            if state.view
+            else None,
             info=info,
         )
 
@@ -267,15 +271,15 @@ class Mutation:
         session: t.Optional[str],
         view_name: str,
         view_stages: t.Optional[BSONArray] = None,
+        form: t.Optional[StateForm] = None,
         dataset_name: t.Optional[str] = None,
         description: t.Optional[str] = None,
         color: t.Optional[str] = None,
     ) -> t.Optional[SavedView]:
         state = get_state()
         dataset = state.dataset
-        use_state = True
+        use_state = dataset is not None
         if dataset is None:
-            use_state = False
             # teams is stateless so dataset will be null
             dataset = fo.load_dataset(dataset_name)
 
@@ -285,21 +289,23 @@ class Mutation:
                 "reference for creating saved view with name = "
                 "{}".format(view_name)
             )
+
+        dataset_view = get_view(
+            dataset_name,
+            stages=view_stages if view_stages else None,
+            filters=form.filters if form else None,
+        )
         # view arg required to be an instance of
         # `fiftyone.core.view.DatasetView`
+        result_view = _build_result_view(dataset_view, form)
+        dataset.save_view(
+            view_name, result_view, description=description, color=color
+        )
         if use_state:
-            dataset.save_view(
-                view_name, state.view, description=description, color=color
-            )
             dataset.reload()
             state.view = dataset.load_saved_view(view_name)
             state.view_name = view_name
             await dispatch_event(subscription, StateUpdate(state=state))
-        else:
-            view = get_dataset_view(dataset_name, stages=view_stages)
-            dataset.save_view(
-                view_name, view, description=description, color=color
-            )
 
         return next(
             (
@@ -396,3 +402,15 @@ class Mutation:
             ),
             None,
         )
+
+    @gql.mutation
+    async def set_spaces(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        spaces: BSON,
+    ) -> bool:
+        state = get_state()
+        state.spaces = Space.from_dict(spaces)
+        await dispatch_event(subscription, StateUpdate(state=state))
+        return True

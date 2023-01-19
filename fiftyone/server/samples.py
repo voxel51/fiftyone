@@ -1,7 +1,7 @@
 """
 FiftyOne Server samples pagination
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -73,21 +73,17 @@ async def paginate_samples(
     extended_stages: t.Optional[BSON] = None,
     sample_filter: t.Optional[SampleFilter] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
-    view = fosv.get_dataset_view(
+    view = fosv.get_view(
         dataset,
         stages=stages,
         filters=filters,
         count_label_tags=True,
         extended_stages=extended_stages,
         sort=True,
-        only_matches=True,
         sample_filter=sample_filter,
     )
 
-    root_view = fosv.get_dataset_view(
-        dataset,
-        stages=stages,
-    )
+    root_view = fosv.get_view(dataset, stages=stages)
 
     media = view.media_type
     if media == fom.MIXED:

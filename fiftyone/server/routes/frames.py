@@ -1,7 +1,7 @@
 """
 FiftyOne Server /frames route
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -28,9 +28,7 @@ class Frames(HTTPEndpoint):
         stages = data.get("view")
         sample_id = data.get("sampleId")
 
-        view = fosv.get_dataset_view(
-            dataset, stages=stages, extended_stages=extended
-        )
+        view = fosv.get_view(dataset, stages=stages, extended_stages=extended)
         view = fov.make_optimized_select_view(view, sample_id)
 
         end_frame = min(num_frames + start_frame, frame_count)

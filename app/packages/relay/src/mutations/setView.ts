@@ -1,13 +1,13 @@
 import { graphql } from "react-relay";
 
-export default graphql`
+import r from "../resolve";
+
+export default r(graphql`
   mutation setViewMutation(
     $subscription: String!
     $session: String
     $view: BSONArray!
-    $viewName: String
     $savedViewSlug: String
-    $changingSavedView: Boolean
     $datasetName: String!
     $form: StateForm!
   ) {
@@ -15,9 +15,7 @@ export default graphql`
       subscription: $subscription
       session: $session
       view: $view
-      viewName: $viewName
       savedViewSlug: $savedViewSlug
-      changingSavedView: $changingSavedView
       datasetName: $datasetName
       form: $form
     ) {
@@ -32,6 +30,7 @@ export default graphql`
           name
           mediaType
         }
+        stages(slug: $savedViewSlug)
         sampleFields {
           ftype
           subfield
@@ -64,10 +63,10 @@ export default graphql`
         savedViews {
           id
           name
-          slug
           description
           color
           viewStages
+          slug
           createdAt
           lastModifiedAt
           lastLoadedAt
@@ -99,6 +98,7 @@ export default graphql`
         createdAt
         version
         viewCls
+        viewName
         skeletons {
           name
           labels
@@ -122,9 +122,6 @@ export default graphql`
         }
       }
       view
-      viewName
-      savedViewSlug
-      changingSavedView
     }
   }
-`;
+`);

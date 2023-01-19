@@ -9,6 +9,7 @@ export default graphql`
     $datasetName: String = null
     $description: String = null
     $color: String = null
+    $form: StateForm = null
   ) {
     createSavedView(
       subscription: $subscription
@@ -18,12 +19,13 @@ export default graphql`
       datasetName: $datasetName
       description: $description
       color: $color
+      form: $form
     ) {
       id
       datasetId
       name
-      slug
       description
+      slug
       color
       viewStages
       createdAt

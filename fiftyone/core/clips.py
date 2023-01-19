@@ -1,7 +1,7 @@
 """
 Clips views.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -212,6 +212,7 @@ class ClipsView(fov.DatasetView):
         super().set_values(field_name, *args, **kwargs)
 
         self._sync_source(fields=[field], ids=ids)
+        self._sync_source_field_schema(field_name)
 
     def set_label_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
@@ -364,6 +365,27 @@ class ClipsView(fov.DatasetView):
             # @todo can we optimize this? we know exactly which samples each
             # label to be deleted came from
             self._source_collection._delete_labels(del_ids, fields=[field])
+
+    def _sync_source_field_schema(self, path):
+        root = path.split(".", 1)[0]
+        if root != self._classification_field:
+            return
+
+        field = self.get_field(path)
+        if field is None:
+            return
+
+        _, label_root = self._get_label_field_path(root)
+        leaf = path[len(label_root) + 1 :]
+
+        dst_dataset = self._source_collection._dataset
+        _, dst_path = dst_dataset._get_label_field_path(root)
+        dst_path += "." + leaf
+
+        dst_dataset._merge_sample_field_schema({dst_path: field})
+
+        if self._source_collection._is_generated:
+            self._source_collection._sync_source_field_schema(dst_path)
 
     def _sync_source_keep_fields(self):
         # If the source TemporalDetection field is excluded, delete it from

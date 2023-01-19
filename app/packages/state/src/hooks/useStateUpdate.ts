@@ -23,6 +23,8 @@ import {
   selectedMediaField,
   sidebarMode,
   groupStatistics,
+  theme,
+  sessionSpaces,
 } from "../recoil";
 import { useColorScheme } from "@mui/material";
 
@@ -49,17 +51,20 @@ const useStateUpdate = () => {
         resolve instanceof Function ? resolve(t) : resolve;
 
       const { get, reset, set } = t;
-
       if (state) {
         const view = get(viewAtoms.view);
+        if (dataset.stages && !state.view) {
+          state.view = dataset.stages;
+        }
 
         if (!viewsAreEqual(view || [], state.view || [])) {
           set(viewAtoms.view, state.view || []);
-          set(viewAtoms.viewName, state.viewName || null);
+
           reset(extendedSelection);
           reset(similarityParameters);
           reset(filters);
         }
+        set(viewAtoms.viewName, state.viewName || null);
       }
 
       state?.viewCls !== undefined && set(viewAtoms.viewCls, state.viewCls);
@@ -79,6 +84,12 @@ const useStateUpdate = () => {
       if (config && config.theme !== "browser") {
         set(theme, config.theme);
         setMode(config.theme);
+      }
+
+      if (state?.spaces) {
+        set(sessionSpaces, state.spaces);
+      } else {
+        reset(sessionSpaces);
       }
 
       if (dataset) {

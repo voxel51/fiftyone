@@ -1,7 +1,7 @@
 """
 FiftyOne Server /aggregation and /tagging routes
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -26,7 +26,7 @@ class Aggregate(HTTPEndpoint):
         stages = data.get("view", None)
         aggregations = data.get("aggregations", [])
 
-        view = fosv.get_dataset_view(dataset, stages=stages, filters=filters)
+        view = fosv.get_view(dataset, stages=stages, filters=filters)
 
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)

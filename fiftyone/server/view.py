@@ -1,168 +1,47 @@
 """
 FiftyOne Server view
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from typing import List, Optional
 
 import asyncio
-from bson import ObjectId, json_util
-from dacite import Config, from_dict
-
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
-from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-from fiftyone.server.scalars import BSONArray
+import strawberry as gql
 
+from bson import ObjectId, json_util
+from dacite import Config, from_dict
+from fiftyone.core.expressions import ViewField as F, VALUE
+from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
+from fiftyone.server.scalars import BSONArray, JSON
 from fiftyone.server.utils import iter_label_fields
-import fiftyone.core.odm as foo
+from typing import List, Optional
 
 _LABEL_TAGS = "_label_tags"
 
 
-async def load_saved_views(cls, object_ids):
-    if len(object_ids) < 1:
-        return None
-    db = foo.get_async_db_conn()
-    return [
-        from_dict(
-            data_class=cls,
-            data=view,
-            config=Config(
-                type_hooks={
-                    BSONArray: lambda x: [json_util.loads(s) for s in x]
-                }
-            ),
-        )
-        for view in db.views.find(
-            {"_id": {"$in": object_ids}},
-            {
-                "_id": True,
-                "id": {"$toString": "$_id"},
-                "_dataset_id": {"$ifNull": ["$dataset_id", "$_dataset_id"]},
-                "dataset_id": {"$toString": "$_dataset_id"},
-                "name": True,
-                "color": True,
-                "description": True,
-                "slug": True,
-                "last_loaded_at": True,
-                "created_at": True,
-                "last_modified_at": True,
-                "view_stages": True,
-            },
-        )
-    ]
-
-
-def load_saved_views_by_dataset(cls, dataset_id: str):
-    db = foo.get_db_conn()
-    # TODO: refactor once everything works
-    return [
-        from_dict(
-            data_class=cls,
-            data=view,
-            config=Config(
-                type_hooks={
-                    BSONArray: lambda x: [json_util.loads(s) for s in x],
-                    ObjectId: lambda x: str(x),
-                }
-            ),
-        )
-        for view in db.views.aggregate(
-            [
-                {"$match": {"_dataset_id": {"$eq": ObjectId(dataset_id)}}},
-                {
-                    "$project": {
-                        "_id": True,
-                        "id": {"$toString": "$_id"},
-                        "_dataset_id": {
-                            "$ifNull": ["$dataset_id", "$_dataset_id"]
-                        },
-                        "dataset_id": {"$toString": "$_dataset_id"},
-                        "name": True,
-                        "color": True,
-                        "description": True,
-                        "slug": True,
-                        "last_loaded_at": True,
-                        "created_at": True,
-                        "last_modified_at": True,
-                        "view_stages": True,
-                    }
-                },
-            ]
-        )
-    ]
-
-
-def get_saved_views(cls, object_ids):
-    # Called by serialize_dataset > modifier
-    if len(object_ids) < 1:
-        return None
-    db = foo.get_db_conn()
-    agg = db.views.aggregate(
-        [
-            {"$match": {"_id": {"$in": object_ids}}},
-            {
-                "$project": {
-                    "_id": True,
-                    "id": {"$toString": "$_id"},
-                    "_dataset_id": {
-                        "$ifNull": ["$dataset_id", "$_dataset_id"]
-                    },
-                    "dataset_id": {"$toString": "$_dataset_id"},
-                    "name": True,
-                    "color": True,
-                    "description": True,
-                    "slug": True,
-                    "last_loaded_at": True,
-                    "created_at": True,
-                    "last_modified_at": True,
-                    "view_stages": True,
-                }
-            },
-        ]
-    )
-
-    saved_views = [
-        from_dict(
-            data_class=cls,
-            data=view,
-            config=Config(
-                type_hooks={
-                    BSONArray: lambda x: [json_util.loads(s) for s in x]
-                }
-            ),
-        )
-        for view in agg
-    ]
-    return saved_views
-
-
-def get_saved_view_stages(identifier):
-    db = foo.get_db_conn()
-    return list(
-        db.views.aggregate(
-            [
-                {"$match": {"slug": identifier}},
-                {"$project": {"view_stages": True}},
-            ]
-        )
-    )
+@gql.input
+class ExtendedViewForm:
+    filters: Optional[JSON] = None
+    mixed: Optional[bool] = None
+    sample_ids: Optional[List[str]] = None
+    slice: Optional[str] = None
 
 
 async def load_view(
-    *,
     dataset_name: str,
     serialized_view: BSONArray,
+    form: ExtendedViewForm,
     view_name: Optional[str] = None,
 ) -> foc.SampleCollection:
     def run() -> foc.SampleCollection:
@@ -171,40 +50,51 @@ async def load_view(
         if view_name:
             return dataset.load_saved_view(view_name)
         else:
-            return fo.DatasetView._build(dataset, serialized_view or [])
+            view = get_view(
+                dataset_name,
+                stages=serialized_view,
+                filters=form.filters,
+                sample_filter=SampleFilter(
+                    group=GroupElementFilter(slice=form.slice)
+                ),
+            )
+
+            if form.sample_ids:
+                view = fov.make_optimized_select_view(view, form.sample_ids)
+
+            if form.mixed:
+                view = view.select_group_slices(_allow_mixed=True)
+
+            return view
 
     loop = asyncio.get_running_loop()
 
     return await loop.run_in_executor(None, run)
 
 
-def get_dataset_view(
+def get_view(
     dataset_name,
-    *,
+    view_name=None,
     stages=None,
     filters=None,
     count_label_tags=False,
-    only_matches=True,
     extended_stages=None,
     sample_filter=None,
     sort=False,
-    view_name=None,
 ):
-    """Construct a new view using the request parameters or load a previously
-    saved view by name.
+    """Gets the view defined by the given request parameters.
 
     Args:
         dataset_name: the dataset name
-        view_name (str): an optional str used for loading a previously saved
-        view by name
+        view_name (None): the name of a saved view to load
         stages (None): an optional list of serialized
             :class:`fiftyone.core.stages.ViewStage` instances
         filters (None): an optional ``dict`` of App defined filters
-        extended_stages (None): extended view stages
         count_label_tags (False): whether to set the hidden ``_label_tags``
             field with counts of tags with respect to all label fields
         only_matches (True): whether to filter unmatches samples when filtering
             labels
+        extended_stages (None): extended view stages
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
         sort (False): whether to include sort extended stages
@@ -213,19 +103,15 @@ def get_dataset_view(
         a :class:`fiftyone.core.view.DatasetView`
     """
     dataset = fod.load_dataset(dataset_name)
+    dataset.reload()
 
-    # Load a previously saved view
-    if view_name is not None and dataset.has_saved_view(view_name):
-        view = dataset.load_saved_view(view_name)
-        view.reload()
-        return
-
-    # Construct a new view
-    view = dataset.view()
-    view.reload()
+    if view_name is not None:
+        return dataset.load_saved_view(view_name)
 
     if stages:
-        view = fov.DatasetView._build(view, stages)
+        view = fov.DatasetView._build(dataset, stages)
+    else:
+        view = dataset.view()
 
     if sample_filter is not None:
         if sample_filter.group:
@@ -244,7 +130,6 @@ def get_dataset_view(
             view,
             filters,
             count_label_tags=count_label_tags,
-            only_matches=only_matches,
             extended_stages=extended_stages,
             sort=sort,
         )
@@ -256,7 +141,6 @@ def get_extended_view(
     view,
     filters=None,
     count_label_tags=False,
-    only_matches=True,
     extended_stages=None,
     sort=False,
 ):
@@ -267,10 +151,10 @@ def get_extended_view(
         filters: an optional ``dict`` of App defined filters
         count_label_tags (False): whether to set the hidden ``_label_tags``
             field with counts of tags with respect to all label fields
-        only_matches (True): whether to filter unmatches samples when filtering
-            labels
         extended_stages (None): extended view stages
         sort (False): wheter to include sort extended stages
+
+    The function returns a fiftyone.core.collections.SampleCollection
     """
     cleanup_fields = set()
     filtered_labels = set()
@@ -293,7 +177,6 @@ def get_extended_view(
             filters,
             label_tags=label_tags,
             hide_result=count_label_tags,
-            only_matches=only_matches,
         )
 
         for stage in stages:
@@ -311,6 +194,15 @@ def get_extended_view(
 
 
 def extend_view(view, extended_stages, sort):
+
+    """If sorting conditions are met, it will the sorting of the sample based on the extended stages defined.
+    Then add the stages to the view and return this modified view.
+    Args:
+        view: a :class:`fiftyone.core.collections.SampleCollection`
+        extended_stages: extended view stages
+        sort (False): wheter to include sort extended stages
+    """
+
     for cls, d in extended_stages.items():
         kwargs = [[k, v] for k, v in d.items()]
         stage = fosg.ViewStage._from_dict({"_cls": cls, "kwargs": kwargs})
@@ -321,6 +213,13 @@ def extend_view(view, extended_stages, sort):
 
 
 def _add_labels_tags_counts(view, filtered_fields, label_tags):
+
+    """This counts the number of items in the `_LABEL_TAGS` field and returns the modified view.
+    Args:
+        view: a :class:`fiftyone.core.collections.SampleCollection`
+        filtered_fields: filtered fields
+        label_tags: label tags
+    """
     view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
 
     for path, field in iter_label_fields(view):
@@ -349,6 +248,14 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
 
 
 def _make_expression(field, path, args):
+
+    """This returns a MongoDB expression that can be used to filter a view based on the field, path and provided filter(args)
+    Args:
+        field: a :class:`fiftyone.core.fields.Field`
+        path: a :class:`str` representing the path to the field
+        args: a :class:`dict` representing the filter arguments, usually with keys `values`, `exclude``
+    """
+
     if not path:
         return _make_scalar_expression(F(), args, field)
 
@@ -359,12 +266,22 @@ def _make_expression(field, path, args):
         field, fof.FrameSupportField
     ):
         new_field = field.field
-        expr = (
-            lambda subexpr: F(field.db_field or field.name)
-            .filter(subexpr)
-            .length()
-            > 0
-        )
+        if args["exclude"]:
+            # in ListField, exclude uses match(expr).length() == 0 instead of match(~expr), therefore, exclude needs to be set to False here to get the correct subexpr
+            args["exclude"] = False
+            expr = (
+                lambda subexpr: F(field.db_field or field.name)
+                .filter(subexpr)
+                .length()
+                == 0
+            )
+        else:
+            expr = (
+                lambda subexpr: F(field.db_field or field.name)
+                .filter(subexpr)
+                .length()
+                > 0
+            )
     else:
         new_field = field
         expr = lambda subexpr: F(field.db_field or field.name).apply(subexpr)
@@ -377,8 +294,12 @@ def _make_expression(field, path, args):
 
 
 def _make_filter_stages(
-    view, filters, label_tags=None, hide_result=False, only_matches=True
+    view,
+    filters,
+    label_tags=None,
+    hide_result=False,
 ):
+    """This creates filter stages using the provided filters and label tags."""
     field_schema = view.get_field_schema()
     if view.media_type != fom.IMAGE:
         frame_field_schema = view.get_frame_field_schema()
@@ -389,12 +310,16 @@ def _make_filter_stages(
         F("tags").contains(label_tags), None
     )
     cache = {}
-
     stages = []
     cleanup = set()
     filtered_labels = set()
     for path in sorted(filters):
         args = filters[path]
+
+        # use the setting within the filter, otherwise use default true settings
+        is_matching = True if "isMatching" not in args else args["isMatching"]
+        only_match = True if "onlyMatch" not in args else args["onlyMatch"]
+
         if path == "tags" or path.startswith("_"):
             continue
 
@@ -429,8 +354,11 @@ def _make_filter_stages(
                     path if path.endswith(".points") else None,
                 )
                 if keypoints
-                else _make_scalar_expression(view_field, args, field)
+                else _make_scalar_expression(
+                    view_field, args, field, is_label=True
+                )
             )
+
             if expr is not None:
                 if hide_result:
                     new_field = "__%s" % path.split(".")[1 if frames else 0]
@@ -448,16 +376,26 @@ def _make_filter_stages(
                         _new_field=new_field,
                         **expr,
                     )
+                elif is_matching:
+                    field = (
+                        cache.get(prefix + parent.name, prefix + parent.name),
+                    )
+                    stage = fosg.MatchLabels(
+                        fields=field[0],
+                        filter=expr,
+                        bool=(not args["exclude"]),
+                    )
                 else:
                     stage = fosg.FilterLabels(
                         cache.get(prefix + parent.name, prefix + parent.name),
                         expr,
-                        only_matches=only_matches,
+                        only_matches=only_match,
                         _new_field=new_field,
                     )
 
                 stages.append(stage)
                 filtered_labels.add(path)
+
                 if new_field:
                     cache[prefix + parent.name] = new_field
                     cleanup.add(new_field)
@@ -467,6 +405,7 @@ def _make_filter_stages(
                 stages.append(fosg.Match(expr))
 
     if label_tags is not None and hide_result:
+
         for path, _ in iter_label_fields(view):
             if hide_result:
                 new_field = _get_filtered_path(
@@ -525,15 +464,15 @@ def _is_label(field):
     )
 
 
-def _make_scalar_expression(f, args, field):
+def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
     expr = None
+    is_matching = False if "isMatching" not in args else args["isMatching"]
     if isinstance(field, fof.ListField):
-        return (
-            f.filter(_make_scalar_expression(F(), args, field.field)).length()
-            > 0
-        )
-
-    if isinstance(field, fof.BooleanField):
+        expr = f.filter(
+            _make_scalar_expression(F(), args, field.field, list_field=True)
+        ).length()
+        return expr == 0 if args["exclude"] else expr > 0
+    elif isinstance(field, fof.BooleanField):
         true, false = args["true"], args["false"]
         if true and false:
             expr = f.is_in([True, False])
@@ -570,11 +509,12 @@ def _make_scalar_expression(f, args, field):
         expr = f.is_in(values)
         exclude = args["exclude"]
 
-        if exclude:
+        # list_field handles exclude separately
+        if exclude and not (is_label and is_matching) and not list_field:
             # pylint: disable=invalid-unary-operand-type
             expr = ~expr
 
-        if none:
+        if none and not (is_label and is_matching) and not list_field:
             if exclude:
                 expr &= f.exists()
             else:
@@ -582,9 +522,10 @@ def _make_scalar_expression(f, args, field):
 
         return expr
 
-    return _apply_others(expr, f, args)
+    return _apply_others(expr, f, args, is_label)
 
 
+# generate expr for keypoint labels
 def _make_keypoint_kwargs(args, view, points):
     if points:
         ske = view._dataset.default_skeleton
@@ -604,7 +545,8 @@ def _make_keypoint_kwargs(args, view, points):
     return {"filter": (f >= mn) & (f <= mx)}
 
 
-def _apply_others(expr, f, args):
+def _apply_others(expr, f, args, is_label):
+    is_matching = False if "isMatching" not in args else args["isMatching"]
     nonfinites = {
         "nan": float("nan"),
         "ninf": -float("inf"),
@@ -623,7 +565,11 @@ def _apply_others(expr, f, args):
     if "none" in args:
         expr = _apply_none(expr, f, args["none"])
 
-    if "exclude" in args and args["exclude"]:
+    if (
+        "exclude" in args
+        and args["exclude"]
+        and not (is_matching and is_label)
+    ):
         # pylint: disable=invalid-unary-operand-type
         expr = ~expr
 
