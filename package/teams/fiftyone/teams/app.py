@@ -7,6 +7,7 @@ FiftyOne Teams app
 """
 import os
 
+import eta.core.utils as etau
 import starlette.applications as stra
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
@@ -31,6 +32,8 @@ from fiftyone.teams.schema import schema
 routes = [
     Route(route, authenticate_route(endpoint)) for route, endpoint in routes
 ]
+
+etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
 
 
 class Static(StaticFiles):
