@@ -5,20 +5,20 @@ FiftyOne Teams
 
 Welcome to the FiftyOne Teams Docs!
 
-FiftyOne Teams enables multiple users to securely collaborate on the same
-datasets and models, either on-premises or in the cloud, all built on top of
-the open source FiftyOne workflows that you're already relying on.
+`FiftyOne Teams <https://voxel51.com/fiftyone-teams/>`_ enables multiple users
+to securely collaborate on the same datasets and models, either on-premises or
+in the cloud, all built on top of the open source FiftyOne workflows that
+you're already relying on.
 
-FiftyOne Teams is fully backwards-compatible with open source FiftyOne, so all
-other pages on this site are also applicable to Teams deployments.
+FiftyOne Teams is fully backwards-compatible with the
+`open source project <https://github.com/voxel51/fiftyone>`_, so all other
+pages on this site apply to Teams deployments.
 
 |br|
 
 .. image:: ../images/teams/hero.png
    :alt: teams-hero
    :align: center
-
-|br|
 
 .. note::
 
@@ -37,7 +37,7 @@ other pages on this site are also applicable to Teams deployments.
 
 .. customcalloutitem::
     :header: Overview
-    :description: What's FiftyOne Teams? Glad you asksed!
+    :description: What's FiftyOne Teams? We think you'll be glad you asksed!
     :button_text: Learn the basics
     :button_link: overview.html
 
@@ -69,7 +69,7 @@ other pages on this site are also applicable to Teams deployments.
     :header: Migrations
     :description: Learn how to migrate to FiftyOne Teams and manage your Teams deployment.
     :button_text: Migrate to Teams
-    :button_link: migration.html
+    :button_link: migrations.html
 
 .. End callouts ---------------------------------------------------------------
 
@@ -89,4 +89,4 @@ other pages on this site are also applicable to Teams deployments.
     Cloud-backed media <cloud_media>
     Roles and permissions <roles_and_permissions>
     Teams App <teams_app>
-    Upgrading <migration>
+    Migrations <migrations>
