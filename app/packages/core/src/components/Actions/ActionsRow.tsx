@@ -196,7 +196,7 @@ const Selected = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [samples, setSamples] = useRecoilState(fos.selectedSamples);
+  const samples = useRecoilValue(fos.selectedSamples);
   const labels = useRecoilValue(fos.selectedLabelIds);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
@@ -209,14 +209,6 @@ const Selected = ({
 
   if (samples.size < 1 && !modal) {
     return null;
-  }
-
-  // when the user selects labels in sample modal, but no samples are selected, we add the current sample to selected samples
-  if (modal && labels.size > 0 && samples.size < 1) {
-    const currentSample = lookerRef?.current?.sample?.id;
-    if (currentSample) {
-      setSamples(new Set([currentSample]));
-    }
   }
 
   let text = samples.size.toLocaleString();
