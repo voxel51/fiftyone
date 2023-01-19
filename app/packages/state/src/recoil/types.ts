@@ -1,4 +1,5 @@
 import { StrictField } from "@fiftyone/utilities";
+import { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export namespace State {
   export type MediaType = "image" | "group" | "point_cloud" | "video";
@@ -48,9 +49,9 @@ export namespace State {
     id: string;
     datasetId: string;
     name: string;
-    slug: string;
     description?: string;
     color?: string;
+    slug: string;
     viewStages: Stage[];
     createdAt: DateTime;
     lastLoadedAt: DateTime;
@@ -72,6 +73,7 @@ export namespace State {
       embeddingsField: string | null;
       method: string;
       patchesField: string | null;
+      cls: string;
     };
   }
 
@@ -114,6 +116,7 @@ export namespace State {
    * The dataset object returned by the API.
    */
   export interface Dataset {
+    stages?: Stage[];
     id: string;
     brainMethods: BrainRun[];
     createdAt: DateTime;
@@ -140,6 +143,7 @@ export namespace State {
     groupField: string;
     appConfig: DatasetAppConfig;
     info: { [key: string]: string };
+    viewCls: string;
   }
 
   /**
@@ -192,8 +196,8 @@ export namespace State {
     view: Stage[];
     viewCls: string | null;
     viewName: string | null;
-    savedViews: SavedView[];
     savedViewSlug: string | null;
-    changingSavedView: Boolean | null;
+    savedViews: SavedView[];
+    spaces?: SpaceNodeJSON;
   }
 }

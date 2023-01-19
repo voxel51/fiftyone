@@ -112,9 +112,9 @@ class SavedView:
     id: t.Optional[str]
     dataset_id: t.Optional[str]
     name: t.Optional[str]
-    slug: t.Optional[str]
     description: t.Optional[str]
     color: t.Optional[str]
+    slug: t.Optional[str]
     view_stages: t.Optional[t.List[str]]
     created_at: t.Optional[datetime]
     last_modified_at: t.Optional[datetime]
@@ -171,6 +171,7 @@ class DatasetAppConfig:
     sidebar_mode: t.Optional[SidebarMode]
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
+    spaces: t.Optional[JSON]
 
 
 @gql.type
@@ -200,6 +201,17 @@ class Dataset:
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
+
+    @gql.field
+    def stages(self, slug: t.Optional[str] = None) -> t.Optional[BSONArray]:
+        if not slug:
+            return None
+
+        for view in self.saved_views:
+            if view.slug == slug:
+                return view.stage_dicts()
+
+        return None
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -235,10 +247,12 @@ class Dataset:
         name: str,
         view: t.Optional[BSONArray],
         info: Info,
-        view_name: t.Optional[str] = gql.UNSET,
+        saved_view_slug: t.Optional[str] = gql.UNSET,
     ) -> t.Optional["Dataset"]:
         return await serialize_dataset(
-            dataset_name=name, serialized_view=view, view_name=view_name
+            dataset_name=name,
+            serialized_view=view,
+            saved_view_slug=saved_view_slug,
         )
 
 
@@ -279,6 +293,7 @@ class AppConfig:
     theme: Theme
     timezone: t.Optional[str]
     use_frame_number: bool
+    spaces: t.Optional[JSON]
 
 
 @gql.type
@@ -393,21 +408,26 @@ def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
 
 
 async def serialize_dataset(
-    dataset_name: str, serialized_view: BSONArray, view_name: t.Optional[str]
+    dataset_name: str,
+    serialized_view: BSONArray,
+    saved_view_slug: t.Optional[str],
 ) -> Dataset:
     def run():
         dataset = fo.load_dataset(dataset_name)
         dataset.reload()
-
-        if view_name is not None and dataset.has_saved_view(view_name):
-            view = dataset.load_saved_view(view_name)
-        else:
+        view_name = None
+        try:
+            doc = dataset._get_saved_view_doc(saved_view_slug, slug=True)
+            view = dataset.load_saved_view(doc.name)
+            view_name = view.name
+        except:
             view = fov.DatasetView._build(dataset, serialized_view or [])
 
         doc = dataset._doc.to_dict(no_dereference=True)
         Dataset.modifier(doc)
         data = from_dict(Dataset, doc, config=Config(check_types=False))
         data.view_cls = None
+        data.view_name = view_name
 
         collection = dataset.view()
         if view is not None:

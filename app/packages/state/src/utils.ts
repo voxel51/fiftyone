@@ -113,7 +113,8 @@ export const getDatasetName = (context: RoutingContext<any>): string => {
       path: "/datasets/:name",
       exact: true,
     },
-    {}
+    {},
+    ""
   );
 
   if (result) {
@@ -129,11 +130,11 @@ export type ResponseFrom<TQuery extends { response: unknown }> =
 export const getSavedViewName = (context: RoutingContext<any>): string => {
   const datasetName = getDatasetName(context);
   if (datasetName) {
-    const queryString = window.location.search;
+    const queryString = context.history.location.search;
     const params = new URLSearchParams(queryString);
     const viewName = params.get("view");
     if (viewName) {
-      return viewName;
+      return decodeURIComponent(viewName);
     }
   }
 

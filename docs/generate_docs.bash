@@ -12,19 +12,22 @@ usage() {
 
 Options:
 -h      Display this help message.
+-f      Perform a fast build (don't regenerate zoo/plugin docs).
 -c      Perform a clean build (deletes existing build directory).
--s      Copy static files only (CSS, JS)
+-s      Copy static files only (CSS, JS).
 "
 }
 
 
 # Parse flags
 SHOW_HELP=false
+FAST_BUILD=false
 CLEAN_BUILD=false
 STATIC_ONLY=false
-while getopts "hcs" FLAG; do
+while getopts "hfcs" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
+        f) FAST_BUILD=true ;;
         c) CLEAN_BUILD=true ;;
         s) STATIC_ONLY=true ;;
         *) usage; exit 2 ;;
@@ -88,13 +91,15 @@ rm fiftyone/brain
 
 cd docs
 
-echo "Generating model zoo listing page"
-python scripts/make_model_zoo_docs.py
+if [[ ${FAST_BUILD} = false ]]; then
+    echo "Generating model zoo listing page"
+    python scripts/make_model_zoo_docs.py
 
-echo "Generating TypeScript API docs"
-cd ../app
-yarn doc
-cd ../docs
+    echo "Generating TypeScript API docs"
+    cd ../app
+    yarn doc
+    cd ../docs
+fi
 
 echo "Building docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]

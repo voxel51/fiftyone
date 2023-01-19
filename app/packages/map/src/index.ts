@@ -1,6 +1,7 @@
 import { registerComponent, PluginComponentType } from "@fiftyone/plugins";
 import { Schema } from "@fiftyone/utilities";
 import Map from "./Map";
+import MapIcon from "@mui/icons-material/Map";
 
 export { default as Map } from "./Map";
 
@@ -10,6 +11,7 @@ registerComponent({
   component: Map,
   type: PluginComponentType.Plot,
   activator: hasGeoField,
+  Icon: MapIcon,
 });
 
 function hasGeoField({ schema }: { schema: Schema }) {

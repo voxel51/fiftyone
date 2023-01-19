@@ -42,6 +42,8 @@ module.exports = {
         caughtErrorsIgnorePattern: "^_",
       },
     ],
+    // allow namespace for type export
+    "@typescript-eslint/no-namespace": "off",
   },
   settings: {
     react: {

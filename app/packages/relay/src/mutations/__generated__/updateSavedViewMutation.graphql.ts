@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e19df5864a372dfbb6a8b6cdd846cfd3>>
+ * @generated SignedSource<<fc30f9e4c60484f327aaa4c7a0d0a600>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -126,13 +126,6 @@ v5 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "slug",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "description",
         "storageKey": null
       },
@@ -141,6 +134,13 @@ v5 = [
         "args": null,
         "kind": "ScalarField",
         "name": "color",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "slug",
         "storageKey": null
       },
       {
@@ -205,16 +205,16 @@ return {
     "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "65edb571ce9ea9a98f56df77932a0af3",
+    "cacheID": "2f4941915ed060fd4742d80c04837a2f",
     "id": null,
     "metadata": {},
     "name": "updateSavedViewMutation",
     "operationKind": "mutation",
-    "text": "mutation updateSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $datasetName: String\n  $updatedInfo: SavedViewInfo!\n) {\n  updateSavedView(subscription: $subscription, session: $session, viewName: $viewName, datasetName: $datasetName, updatedInfo: $updatedInfo) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
+    "text": "mutation updateSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $datasetName: String\n  $updatedInfo: SavedViewInfo!\n) {\n  updateSavedView(subscription: $subscription, session: $session, viewName: $viewName, datasetName: $datasetName, updatedInfo: $updatedInfo) {\n    id\n    datasetId\n    name\n    description\n    color\n    slug\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9b8c6b634b65416c2c7acd1949373fa6";
+(node as any).hash = "072449b3bcac8e4b62be039b844c4989";
 
 export default node;
