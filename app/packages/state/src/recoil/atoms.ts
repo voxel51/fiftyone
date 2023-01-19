@@ -111,6 +111,7 @@ export const loading = atom<boolean>({
   default: false,
 });
 
+// labels: whether label tag or sample tag
 export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   {
     key: "tagging",
