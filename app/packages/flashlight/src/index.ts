@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 import { MARGIN, NUM_ROWS_PER_SECTION } from "./constants";
 import SectionElement from "./section";
@@ -160,9 +160,6 @@ export default class Flashlight<K> {
 
     const { width, height } = getDims(this.config.horizontal, element);
 
-    if (width === 0) {
-      return;
-    }
     this.state.width = width - 16;
     this.state.containerHeight = height;
 

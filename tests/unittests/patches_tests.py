@@ -1,10 +1,12 @@
 """
 FiftyOne patches-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
+
 from bson import ObjectId
 import unittest
 
@@ -184,6 +186,16 @@ class PatchesTests(unittest.TestCase):
             dataset.count_values("ground_truth.detections.label_upper")["CAT"],
             1,
         )
+        self.assertIsNone(view.get_field("ground_truth.label_upper"))
+        self.assertIsNone(
+            dataset.get_field("ground_truth.detections.label_upper")
+        )
+
+        view2.set_values("ground_truth.label_dynamic", values, dynamic=True)
+        self.assertIsNotNone(view.get_field("ground_truth.label_dynamic"))
+        self.assertIsNotNone(
+            dataset.get_field("ground_truth.detections.label_dynamic")
+        )
 
         values = {
             _id: v
@@ -281,6 +293,25 @@ class PatchesTests(unittest.TestCase):
         sample = dataset.first()
         with self.assertRaises(KeyError):
             sample["ground_truth"]
+
+        # Test saving a patches view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
 
     @drop_datasets
     def test_to_evaluation_patches(self):
@@ -461,6 +492,20 @@ class PatchesTests(unittest.TestCase):
             dataset.count_values("predictions.detections.label_upper")["CAT"],
             2,
         )
+        self.assertIsNone(view.get_field("predictions.detections.label_upper"))
+        self.assertIsNone(
+            dataset.get_field("predictions.detections.label_upper")
+        )
+
+        view2.set_values(
+            "predictions.detections.label_dynamic", values, dynamic=True
+        )
+        self.assertIsNotNone(
+            view.get_field("predictions.detections.label_dynamic")
+        )
+        self.assertIsNotNone(
+            dataset.get_field("predictions.detections.label_dynamic")
+        )
 
         values = {
             _id: v
@@ -588,6 +633,25 @@ class PatchesTests(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             sample["predictions"]
+
+        # Test saving an evaluation patches view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
 
 
 if __name__ == "__main__":

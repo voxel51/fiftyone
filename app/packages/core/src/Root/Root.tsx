@@ -24,6 +24,7 @@ import {
 // built in plugins
 import "@fiftyone/map";
 import "@fiftyone/looker-3d";
+import "@fiftyone/embeddings";
 
 import gaConfig from "../ga";
 import style from "./Root.module.css";
@@ -69,6 +70,7 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
               cursor
               node {
                 name
+                # can the view selector reuse the savedViews {} fragment?
               }
             }
           }

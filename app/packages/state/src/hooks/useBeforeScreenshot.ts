@@ -10,5 +10,5 @@ export default (cb: () => Promise<HTMLCanvasElement>) => {
     return () => {
       callbacks.delete(cb);
     };
-  }, [cb]);
+  }, [cb, callbacks]);
 };

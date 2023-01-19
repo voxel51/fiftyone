@@ -9,7 +9,7 @@ import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue } from "recoil";
 import { mainGroupSample, selectedMediaField } from "../recoil";
 
-import { selectedSamples, SampleData } from "../recoil/atoms";
+import { SampleData, selectedSamples } from "../recoil/atoms";
 import * as schemaAtoms from "../recoil/schema";
 import { datasetName } from "../recoil/selectors";
 import { State } from "../recoil/types";
@@ -42,17 +42,26 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
 
   const create = useCallback(
     ({ frameNumber, frameRate, sample, urls }: SampleData): T => {
-      const video = getMimeType(sample).startsWith("video/");
       let constructor:
         | typeof FrameLooker
         | typeof ImageLooker
         | typeof VideoLooker = ImageLooker;
-      if (video && (isFrame || isPatch)) {
-        constructor = FrameLooker;
-      }
 
-      if (video) {
-        constructor = VideoLooker;
+      const mimeType = getMimeType(sample);
+
+      if (mimeType !== null) {
+        const isVideo = mimeType.startsWith("video/");
+
+        if (isVideo && (isFrame || isPatch)) {
+          constructor = FrameLooker;
+        }
+
+        if (isVideo) {
+          constructor = VideoLooker;
+        }
+      } else {
+        // todo: check media type; constructor = PcdLooker if media_type is point-cloud
+        constructor = ImageLooker;
       }
 
       const config: ReturnType<T["getInitialState"]>["config"] = {
@@ -89,7 +98,22 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
 
       return looker;
     },
-    [isClip, isFrame, isPatch, options, thumbnail, activeId, mediaField]
+    [
+      isClip,
+      isFrame,
+      isPatch,
+      options,
+      thumbnail,
+      activeId,
+      mediaField,
+      dataset,
+      fieldSchema,
+      frameFieldSchema,
+      handleError,
+      highlight,
+      selected,
+      view,
+    ]
   );
   const createLookerRef = useRef<(data: SampleData) => T>(create);
 

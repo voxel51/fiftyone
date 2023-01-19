@@ -1,7 +1,7 @@
 """
 FiftyOne dataset types.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -476,6 +476,18 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
         import fiftyone.utils.openimages as fouo
 
         return fouo.OpenImagesV6DatasetImporter
+
+
+class OpenImagesV7Dataset(ImageDetectionDataset):
+    """A labeled dataset consisting of images and their associated annotations
+    saved in
+    `Open Images format <https://storage.googleapis.com/openimages/web/download.html>`_.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.openimages as fouo
+
+        return fouo.OpenImagesV7DatasetImporter
 
 
 class FIWDataset(Dataset):

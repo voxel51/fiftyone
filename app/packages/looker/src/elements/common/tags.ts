@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import {
@@ -298,7 +298,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
         if (value === undefined) continue;
 
-        if (LABEL_RENDERERS[field.embeddedDocType]) {
+        if (field && LABEL_RENDERERS[field.embeddedDocType]) {
           if (path.startsWith("frames.")) continue;
           const classifications = LABEL_LISTS.includes(field.embeddedDocType);
 
@@ -313,14 +313,18 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           continue;
         }
 
-        if (PRIMITIVE_RENDERERS[field.ftype]) {
+        if (field && PRIMITIVE_RENDERERS[field.ftype]) {
           list
             ? pushList(PRIMITIVE_RENDERERS[field.ftype], value)
             : elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
           continue;
         }
 
-        if (field.ftype === LIST_FIELD && PRIMITIVE_RENDERERS[field.subfield]) {
+        if (
+          field &&
+          field.ftype === LIST_FIELD &&
+          PRIMITIVE_RENDERERS[field.subfield]
+        ) {
           pushList(PRIMITIVE_RENDERERS[field.subfield], value);
           continue;
         }
@@ -380,7 +384,7 @@ const unwind = (name: string, value: unknown) => {
   }
 
   let v = value[name];
-  if (v) {
+  if (v !== undefined && v !== null) {
     return v;
   }
 
@@ -401,16 +405,16 @@ const getFieldAndValue = (
   for (const key of path.split(".")) {
     field = schema[key];
 
-    if (field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
+    if (field && field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
       return [null, null, false];
     }
 
-    if (![undefined, null].includes(value)) {
+    if (![undefined, null].includes(value) && field) {
       value = unwind(field.dbField, value);
       list = list || field.ftype === LIST_FIELD;
     }
 
-    schema = field.fields;
+    schema = field ? field.fields : null;
   }
 
   return [field, value, list];

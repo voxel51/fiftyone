@@ -12,6 +12,11 @@ export const viewCls = atom<string>({
   default: null,
 });
 
+export const viewName = atom<string>({
+  key: "viewName",
+  default: null,
+});
+
 export const isRootView = selector<boolean>({
   key: "isRootView",
   get: ({ get }) =>
@@ -121,5 +126,20 @@ export const isFramesView = selector<boolean>({
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
+  },
+});
+
+export const selectedViewName = selector<string>({
+  key: "currentViewName",
+  get: ({ get }) => {
+    return get(viewName);
+  },
+});
+
+export const currentViewSlug = selector<string>({
+  key: "currentViewSlug",
+  get: () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("view") || null;
   },
 });

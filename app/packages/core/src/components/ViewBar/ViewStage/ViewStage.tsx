@@ -268,125 +268,121 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
   }, [isEditing, inputRef.current]);
 
   return (
-    <>
-      <ViewStageContainer
-        style={containerProps}
-        ref={(node) =>
-          node &&
-          node !== containerRef.current &&
-          setContainerRef({ current: node })
-        }
-      >
-        <ViewStageDiv style={props}>
-          <ViewStageInput
-            placeholder={stage.length === 0 ? "+ add stage" : ""}
-            value={stage}
-            autoFocus={focusOnInit}
-            onFocus={() => !isEditing && send("EDIT")}
-            onBlur={(e) => {
-              state.matches("input.editing.searchResults.notHovering") &&
+    <ViewStageContainer
+      style={containerProps}
+      ref={(node) =>
+        node &&
+        node !== containerRef.current &&
+        setContainerRef({ current: node })
+      }
+    >
+      <ViewStageDiv style={props}>
+        <ViewStageInput
+          placeholder={stage.length === 0 ? "+ add stage" : ""}
+          value={stage}
+          autoFocus={focusOnInit}
+          onFocus={() => !isEditing && send("EDIT")}
+          onBlur={(e) => {
+            state.matches("input.editing.searchResults.notHovering") &&
+              send("BLUR");
+          }}
+          onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              const match = getMatch(
+                stageInfo.map((s) => s.name),
+                e.target.value
+              );
+              send({
+                type: "COMMIT",
+                value: match
+                  ? match
+                  : bestMatch.value
+                  ? bestMatch.value
+                  : e.target.value,
+              });
+            }
+          }}
+          onKeyDown={(e) => {
+            switch (e.key) {
+              case "Escape":
                 send("BLUR");
-            }}
-            onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                const match = getMatch(
-                  stageInfo.map((s) => s.name),
-                  e.target.value
-                );
-                send({
-                  type: "COMMIT",
-                  value: match
-                    ? match
-                    : bestMatch.value
-                    ? bestMatch.value
-                    : e.target.value,
-                });
-              }
-            }}
-            onKeyDown={(e) => {
-              switch (e.key) {
-                case "Escape":
-                  send("BLUR");
-                  break;
-                case "ArrowDown":
-                  send("NEXT_RESULT");
-                  break;
-                case "ArrowUp":
-                  send("PREVIOUS_RESULT");
-                  break;
-                case "ArrowRight":
-                  e.target.selectionStart === e.target.value.length &&
-                    bestMatch.value &&
-                    send({ type: "CHANGE", value: bestMatch.value });
-                  break;
-              }
-            }}
-            style={{ fontSize: "1rem" }}
-            ref={inputRef}
-          />
-          {state.matches("input.editing") ? (
-            <BestMatchDiv>
-              {bestMatch ? bestMatch.placeholder : ""}
-            </BestMatchDiv>
-          ) : null}
-          {isCompleted && (
-            <div
-              style={{
-                width: "1rem",
-                height: "1rem",
-                margin: "0.4rem 0.5rem 0.75rem 0",
-              }}
-            >
-              <ExternalLink
-                href={`https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`}
-                style={{ maxHeight: "1rem", width: "1rem", display: "block" }}
-              >
-                <Help
-                  style={{
-                    width: "1rem",
-                    height: "1rem",
-                    color: theme.text.secondary,
-                  }}
-                />
-              </ExternalLink>
-            </div>
-          )}
-        </ViewStageDiv>
-        {parameters
-          .filter((p) => !p.parameter.startsWith("_"))
-          .map((parameter) => (
-            <ViewStageParameter
-              key={parameter.parameter}
-              parameterRef={parameter.ref}
-              barRef={barRef}
-              stageRef={stageRef}
-            />
-          ))}
-        {parameters.length ? (
-          <ViewStageDelete spring={deleteProps} send={send} />
+                break;
+              case "ArrowDown":
+                send("NEXT_RESULT");
+                break;
+              case "ArrowUp":
+                send("PREVIOUS_RESULT");
+                break;
+              case "ArrowRight":
+                e.target.selectionStart === e.target.value.length &&
+                  bestMatch.value &&
+                  send({ type: "CHANGE", value: bestMatch.value });
+                break;
+            }
+          }}
+          style={{ fontSize: "1rem" }}
+          ref={inputRef}
+        />
+        {state.matches("input.editing") ? (
+          <BestMatchDiv>{bestMatch ? bestMatch.placeholder : ""}</BestMatchDiv>
         ) : null}
-        {state.matches("input.editing") &&
-          barRef.current &&
-          containerRef.current && (
-            <SearchResults
-              results={results}
-              send={send}
-              currentResult={currentResult}
-              bestMatch={bestMatch.value}
-              followRef={containerRef}
-              barRef={barRef}
-            />
-          )}
-        {containerRef.current && (
-          <ErrorMessage
-            serviceRef={stageRef}
+        {isCompleted && (
+          <div
+            style={{
+              width: "1rem",
+              height: "1rem",
+              margin: "0.4rem 0.5rem 0.75rem 0",
+            }}
+          >
+            <ExternalLink
+              href={`https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`}
+              style={{ maxHeight: "1rem", width: "1rem", display: "block" }}
+            >
+              <Help
+                style={{
+                  width: "1rem",
+                  height: "1rem",
+                  color: theme.text.secondary,
+                }}
+              />
+            </ExternalLink>
+          </div>
+        )}
+      </ViewStageDiv>
+      {parameters
+        .filter((p) => !p.parameter.startsWith("_"))
+        .map((parameter) => (
+          <ViewStageParameter
+            key={parameter.parameter}
+            parameterRef={parameter.ref}
+            barRef={barRef}
+            stageRef={stageRef}
+          />
+        ))}
+      {parameters.length ? (
+        <ViewStageDelete spring={deleteProps} send={send} />
+      ) : null}
+      {state.matches("input.editing") &&
+        barRef.current &&
+        containerRef.current && (
+          <SearchResults
+            results={results}
+            send={send}
+            currentResult={currentResult}
+            bestMatch={bestMatch.value}
             followRef={containerRef}
             barRef={barRef}
           />
         )}
-      </ViewStageContainer>
-    </>
+      {containerRef.current && (
+        <ErrorMessage
+          serviceRef={stageRef}
+          followRef={containerRef}
+          barRef={barRef}
+        />
+      )}
+    </ViewStageContainer>
   );
 });
 

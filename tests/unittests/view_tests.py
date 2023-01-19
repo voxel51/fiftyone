@@ -1,7 +1,7 @@
 """
 FiftyOne view-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -270,6 +270,14 @@ class DatasetViewTests(unittest.TestCase):
         self.assertIsInstance(frame_view._id, ObjectId)
         self.assertIsInstance(frame_view.sample_id, str)
         self.assertIsInstance(frame_view._sample_id, ObjectId)
+
+    @drop_datasets
+    def test_view_name_readonly(self):
+        dataset = fo.Dataset()
+        view = dataset.view()
+
+        with self.assertRaises(AttributeError):
+            view.name = "new_name"
 
 
 class ViewFieldTests(unittest.TestCase):

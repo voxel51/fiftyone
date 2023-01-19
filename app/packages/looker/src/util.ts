@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 import { mergeWith } from "immutable";
 import mime from "mime";
@@ -437,7 +437,13 @@ export const createWorker = (
   },
   dispatchEvent?: DispatchEvent
 ): Worker => {
-  const worker = new LookerWorker();
+  let worker: Worker = null;
+
+  try {
+    worker = new LookerWorker();
+  } catch {
+    worker = new Worker(new URL("./worker.ts", import.meta.url));
+  }
 
   worker.onerror = (error) => {
     dispatchEvent("error", error);

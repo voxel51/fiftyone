@@ -2,38 +2,17 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import {
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
-import {
-  filters,
-  groupSlice,
-  resolvedGroupSlice,
-  selectedLabelList,
-  selectedSamples,
-  State,
-  stateSubscription,
-  view,
-} from "../recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
+import { State, stateSubscription, view, viewStateForm } from "../recoil";
 import { RouterContext } from "../routing";
-import { transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
-import useStateUpdate from "./useStateUpdate";
 import * as fos from "../";
 
-const useSetView = (
-  patch: boolean = false,
-  selectSlice: boolean = false,
-  onComplete?: () => void
-) => {
+const useSetView = (patch = false, selectSlice = false) => {
   const send = useSendEvent(true);
-  const updateState = useStateUpdate();
   const subscription = useRecoilValue(stateSubscription);
   const router = useContext(RouterContext);
   const [commit] = useMutation<setViewMutation>(setView);
-
   const onError = useErrorHandler();
 
   return useRecoilCallback(
@@ -42,9 +21,11 @@ const useSetView = (
         viewOrUpdater:
           | State.Stage[]
           | ((current: State.Stage[]) => State.Stage[]),
-        addStages?: State.Stage[]
+        addStages?: State.Stage[],
+        savedViewSlug?: string
       ) => {
         const dataset = snapshot.getLoadable(fos.dataset).contents;
+        const savedViews = dataset.savedViews || [];
         send((session) => {
           const value =
             viewOrUpdater instanceof Function
@@ -55,44 +36,58 @@ const useSetView = (
               subscription,
               session,
               view: value,
-              dataset: dataset.name,
+              datasetName: dataset.name,
               form: patch
-                ? {
-                    filters: snapshot.getLoadable(filters).contents,
-                    sampleIds: [
-                      ...snapshot.getLoadable(selectedSamples).contents,
-                    ],
-                    labels: snapshot.getLoadable(selectedLabelList).contents,
-                    extended: snapshot.getLoadable(fos.extendedStages).contents,
-                    addStages,
-                    slice: selectSlice
-                      ? snapshot.getLoadable(resolvedGroupSlice(false)).contents
-                      : null,
-                  }
+                ? snapshot.getLoadable(
+                    viewStateForm({
+                      addStages: addStages ? JSON.stringify(addStages) : null,
+                      modal: false,
+                      selectSlice,
+                    })
+                  ).contents
                 : {},
+              savedViewSlug,
             },
             onError,
-            onCompleted: ({ setView: { dataset, view: value } }) => {
-              if (router.history.location.state) {
-                router.history.location.state.state = {
-                  ...router.history.location.state,
-                  view: value,
-                  viewCls: dataset.viewCls,
-                  selected: [],
-                  selectedLabels: [],
-                };
-              }
+            onCompleted: ({
+              setView: {
+                view: viewResponse,
+                dataset: { stages: value, viewName, ...dataset },
+              },
+            }) => {
+              const searchParams = new URLSearchParams(
+                router.history.location.search
+              );
 
-              updateState({
-                dataset: transformDataset(dataset),
-                state: {
-                  view: value,
-                  viewCls: dataset.viewCls,
-                  selected: [],
-                  selectedLabels: [],
-                },
-              });
-              onComplete && onComplete();
+              savedViewSlug
+                ? searchParams.set("view", encodeURIComponent(savedViewSlug))
+                : searchParams.delete("view");
+
+              const search = searchParams.toString();
+              const newRoute = `${router.history.location.pathname}${
+                search.length ? "?" : ""
+              }${search}`;
+
+              if (router.history.location.state?.state) {
+                router.history.push(newRoute, {
+                  ...router.history.location.state,
+                  state: {
+                    ...router.history.location.state.state,
+                    view: savedViewSlug ? value : viewResponse,
+                    viewCls: dataset.viewCls,
+                    selected: [],
+                    selectedLabels: [],
+                    viewName,
+                    savedViews: savedViews,
+                  },
+                });
+              } else {
+                window.history.replaceState(
+                  { view: savedViewSlug ? value : viewResponse },
+                  undefined,
+                  newRoute
+                );
+              }
             },
           });
         });

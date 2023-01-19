@@ -1,7 +1,7 @@
 """
 FiftyOne Server /sort route
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -34,10 +34,10 @@ class Sort(HTTPEndpoint):
             dataset.add_sample_field(dist_field, fof.FloatField)
             changed = True
 
-        fosv.get_view(dataset_name, stages, filters, extended_stages=None)
+        fosv.get_view(dataset_name, stages=stages, filters=filters)
 
         state = fose.get_state().copy()
-        view = fosv.get_view(dataset_name, stages, filters)
+        view = fosv.get_view(dataset_name, stages=stages, filters=filters)
         state.dataset = view._dataset
 
         if isinstance(view, fov.DatasetView):
@@ -46,7 +46,11 @@ class Sort(HTTPEndpoint):
             view = None
 
         return {
-            "dataset": await serialize_dataset(dataset_name, stages)
+            "dataset": await serialize_dataset(
+                dataset_name=dataset_name,
+                serialized_view=stages,
+                view_name=view.name,
+            )
             if changed
             else None,
             "state": state.serialize(),

@@ -1,10 +1,11 @@
 """
 FiftyOne video-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
 from datetime import date, datetime
 
 from bson import ObjectId
@@ -1632,6 +1633,25 @@ class VideoTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             sample["events"]
 
+        # Test saving a clips view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
+
     @drop_datasets
     def test_to_clips_expr(self):
         dataset = fo.Dataset()
@@ -1997,6 +2017,25 @@ class VideoTests(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             frame["ground_truth"]
+
+        # Test saving a frame view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
 
     @drop_datasets
     def test_to_frames_schema(self):
@@ -2542,6 +2581,22 @@ class VideoTests(unittest.TestCase):
         )
         self.assertEqual(patches.count("ground_truth.label_upper"), 2)
         self.assertEqual(view2.count("ground_truth.label_upper"), 2)
+        self.assertIsNone(patches.get_field("ground_truth.label_upper"))
+        self.assertIsNone(
+            frames.get_field("ground_truth.detections.label_upper")
+        )
+        self.assertIsNone(
+            dataset.get_field("frames.ground_truth.detections.label_upper")
+        )
+
+        view2.set_values("ground_truth.label_dynamic", values, dynamic=True)
+        self.assertIsNotNone(patches.get_field("ground_truth.label_dynamic"))
+        self.assertIsNotNone(
+            frames.get_field("ground_truth.detections.label_dynamic")
+        )
+        self.assertIsNotNone(
+            dataset.get_field("frames.ground_truth.detections.label_dynamic")
+        )
 
         values = {
             _id: v
@@ -2784,6 +2839,16 @@ class VideoTests(unittest.TestCase):
         )
         self.assertEqual(patches.count("ground_truth.label_upper"), 2)
         self.assertEqual(view2.count("ground_truth.label_upper"), 2)
+        self.assertIsNone(patches.get_field("ground_truth.label_upper"))
+        self.assertIsNone(
+            dataset.get_field("frames.ground_truth.detections.label_upper")
+        )
+
+        view2.set_values("ground_truth.label_dynamic", values, dynamic=True)
+        self.assertIsNotNone(patches.get_field("ground_truth.label_dynamic"))
+        self.assertIsNotNone(
+            dataset.get_field("frames.ground_truth.detections.label_dynamic")
+        )
 
         view3 = patches.skip(2).set_field(
             "ground_truth.label", F("label").upper()

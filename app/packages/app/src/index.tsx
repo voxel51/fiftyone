@@ -1,28 +1,28 @@
-import { ThemeProvider } from "@fiftyone/components";
-import { Loading, makeRoutes, Setup } from "@fiftyone/core";
+import { Loading, ThemeProvider } from "@fiftyone/components";
+import { Setup, makeRoutes } from "@fiftyone/core";
+import { usePlugins } from "@fiftyone/plugins";
 import {
   BeforeScreenshotContext,
+  EventsContext,
+  getDatasetName,
+  modal,
   screenshotCallbacks,
-  useRefresh,
+  State,
+  stateSubscription,
+  useReset,
+  useClearModal,
   useScreenshot,
+  useRouter,
+  useRefresh,
+  getSavedViewName,
 } from "@fiftyone/state";
+import { isElectron } from "@fiftyone/utilities";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot, useRecoilValue } from "recoil";
 import Network from "./Network";
 
-import { usePlugins } from "@fiftyone/plugins";
-import {
-  EventsContext,
-  getDatasetName,
-  modal,
-  State,
-  stateSubscription,
-  useClearModal,
-  useReset,
-  useRouter,
-} from "@fiftyone/state";
 import "./index.css";
 
 import { useErrorHandler } from "react-error-boundary";
@@ -52,7 +52,7 @@ const App: React.FC = ({}) => {
 
   useEffect(() => {
     readyState === AppReadyState.CLOSED && reset();
-  }, [readyState]);
+  }, [readyState, reset]);
 
   const screenshot = useScreenshot(
     new URLSearchParams(window.location.search).get("context")
@@ -87,35 +87,48 @@ const App: React.FC = ({}) => {
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
               const { colorscale, config, ...data } = payload.state;
-              payload.refresh && refresh();
 
+              payload.refresh && refresh();
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
+                viewName: data.view_name,
               } as State.Description;
-              let dataset = getDatasetName(contextRef.current);
-              if (readyStateRef.current !== AppReadyState.OPEN) {
-                if (dataset !== state.dataset) {
-                  dataset = state.dataset;
-                }
 
+              if (readyStateRef.current !== AppReadyState.OPEN) {
                 setReadyState(AppReadyState.OPEN);
+              }
+
+              const searchParams = new URLSearchParams(
+                context.history.location.search
+              );
+
+              if (state.savedViewSlug) {
+                searchParams.set(
+                  "view",
+                  encodeURIComponent(state.savedViewSlug)
+                );
               } else {
-                dataset = state.dataset;
+                searchParams.delete("view");
+              }
+
+              let search = searchParams.toString();
+              if (search.length) {
+                search = `?${search}`;
               }
 
               const path = state.dataset
-                ? `/datasets/${encodeURIComponent(state.dataset)}${
-                    window.location.search
-                  }`
-                : `/${window.location.search}`;
+                ? `/datasets/${encodeURIComponent(state.dataset)}${search}`
+                : `/${search}`;
 
               contextRef.current.history.replace(path, {
                 state,
                 colorscale,
                 config,
                 refresh: payload.refresh,
-                variables: dataset ? { view: state.view || null } : undefined,
+                variables: state.dataset
+                  ? { view: state.view || null }
+                  : undefined,
               });
 
               break;
@@ -130,7 +143,10 @@ const App: React.FC = ({}) => {
       },
       controller.signal,
       {
-        initializer: getDatasetName(contextRef.current),
+        initializer: {
+          dataset: getDatasetName(contextRef.current),
+          view: getSavedViewName(contextRef.current),
+        },
         subscription,
         events: [Events.DEACTIVATE_NOTEBOOK_CELL, Events.STATE_UPDATE],
       }
@@ -147,7 +163,7 @@ const App: React.FC = ({}) => {
       return loadingElement;
     case AppReadyState.OPEN:
       if (plugins.isLoading) return loadingElement;
-      if (plugins.error) return <Loading>Plugin error...</Loading>;
+      if (plugins.hasError) return <Loading>Plugin error...</Loading>;
       return <Network environment={environment} context={context} />;
     default:
       return <Setup />;
