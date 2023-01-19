@@ -343,7 +343,7 @@ or reach out to us at support@voxel51.com.
    Recipes <recipes/index>
    Cheat Sheets <cheat_sheets/index>
    User Guide <user_guide/index>
-   Teams <teams/index>
+   FiftyOne Teams <teams/index>
    Integrations <integrations/index>
    Release Notes <release-notes>
    API Reference <api/fiftyone>
