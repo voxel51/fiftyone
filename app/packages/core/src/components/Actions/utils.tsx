@@ -12,7 +12,11 @@ import {
   isGroup,
   State,
 } from "@fiftyone/state";
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
+import {
+  CLIPS_SAMPLE_FIELDS,
+  getFetchFunction,
+  toSnakeCase,
+} from "@fiftyone/utilities";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background.body};
@@ -170,21 +174,25 @@ export const tagParameters = ({
   targetLabels: boolean;
   sampleId: string | null;
 }) => {
-  const hasSelected =
-    selectedSamples.size || selectedLabels.length || hiddenLabels.length;
+  const shouldShowCurrentSample =
+    params.modal && selectedSamples.size == 0 && hiddenLabels.length == 0;
   const groups = groupData?.mode === "group";
+
+  const getSampleIds = () => {
+    if (shouldShowCurrentSample && !groups) {
+      return [sampleId];
+    } else if (selectedSamples.size) {
+      return [...selectedSamples];
+    }
+    return null;
+  };
 
   return {
     ...params,
     label_fields: activeFields,
     target_labels: targetLabels,
     slice: !params.modal && !groups ? groupData?.slice : null,
-    sample_ids:
-      params.modal && !hasSelected && !groups
-        ? [sampleId]
-        : selectedSamples.size
-        ? [...selectedSamples]
-        : null,
+    sample_ids: getSampleIds(),
     labels:
       params.modal && targetLabels && selectedLabels && selectedLabels.length
         ? toSnakeCase(selectedLabels)
