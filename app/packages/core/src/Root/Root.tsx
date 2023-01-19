@@ -32,14 +32,17 @@ import ViewBar from "../components/ViewBar/ViewBar";
 import Teams from "../components/Teams/Teams";
 
 import { RootQuery } from "./__generated__/RootQuery.graphql";
-import { RootConfig_query$key } from "./__generated__/RootConfig_query.graphql";
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
-import { clone, isElectron } from "@fiftyone/utilities";
-import { RGB } from "@fiftyone/looker";
+import { isElectron } from "@fiftyone/utilities";
 import * as fos from "@fiftyone/state";
-import { getDatasetName, Route, RouterContext } from "@fiftyone/state";
+import {
+  DatasetKeys,
+  getDatasetSlug,
+  Route,
+  RouterContext,
+} from "@fiftyone/state";
 
 import DatasetSelector from "../components/DatasetSelector";
 import { useColorScheme, IconButton } from "@mui/material";
@@ -69,7 +72,9 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
             edges {
               cursor
               node {
+                id
                 name
+                slug
                 # can the view selector reuse the savedViews {} fragment?
               }
             }
@@ -90,7 +95,9 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
     return useMemo(() => {
       return {
         total: data.datasets.total === null ? undefined : data.datasets.total,
-        values: data.datasets.edges.map((edge) => edge.node.name),
+        values: data.datasets.edges.map(
+          (edge) => ({ ...edge.node } as DatasetKeys)
+        ),
       };
     }, [data]);
   };
@@ -157,7 +164,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   const [teams, setTeams] = useRecoilState(fos.appTeamsIsOpen);
   const refresh = fos.useRefresh();
   const context = useContext(RouterContext);
-  const dataset = getDatasetName(context);
+  const dataset = getDatasetSlug(context);
   const { mode, setMode } = useColorScheme();
   const [_, setTheme] = useRecoilState(fos.theme);
 

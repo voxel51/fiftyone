@@ -106,7 +106,7 @@ export const transformDataset = (dataset: any): Readonly<State.Dataset> => {
   };
 };
 
-export const getDatasetName = (context: RoutingContext<any>): string => {
+export const getDatasetSlug = (context: RoutingContext<any>): string => {
   const result = matchPath(
     context.pathname,
     {
@@ -116,9 +116,9 @@ export const getDatasetName = (context: RoutingContext<any>): string => {
     {},
     ""
   );
-
-  if (result) {
-    return decodeURIComponent(result.variables.slug);
+  const slug = result?.variables?.slug;
+  if (slug) {
+    return decodeURIComponent(slug);
   }
 
   return null;
@@ -128,8 +128,8 @@ export type ResponseFrom<TQuery extends { response: unknown }> =
   TQuery["response"];
 
 export const getSavedViewName = (context: RoutingContext<any>): string => {
-  const datasetName = getDatasetName(context);
-  if (datasetName) {
+  const datasetSlug = getDatasetSlug(context);
+  if (datasetSlug) {
     const queryString = context.history.location.search;
     const params = new URLSearchParams(queryString);
     const viewName = params.get("view");

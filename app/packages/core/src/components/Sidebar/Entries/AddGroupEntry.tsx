@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import React, { useContext, useState } from "react";
 import { useRecoilCallback } from "recoil";
 
-import { getDatasetName, RouterContext } from "@fiftyone/state";
+import { getDatasetSlug, RouterContext } from "@fiftyone/state";
 import { InputDiv } from "./utils";
 
 const AddGroup = () => {
@@ -30,7 +30,7 @@ const AddGroup = () => {
         const view = await snapshot.getPromise(fos.view);
         set(fos.sidebarGroupsDefinition(false), newGroups);
         fos.persistSidebarGroups({
-          dataset: getDatasetName(context),
+          dataset: getDatasetSlug(context),
           stages: view,
           sidebarGroups: newGroups,
         });

@@ -2,7 +2,7 @@ import * as foq from "@fiftyone/relay";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
 import { useRecoilValue } from "recoil";
-import { stateSubscription } from "../recoil";
+import { DatasetKeys, stateSubscription } from "../recoil";
 import useSendEvent from "./useSendEvent";
 import useTo from "./useTo";
 import { getSavedViewName } from "../utils";
@@ -26,8 +26,9 @@ const useSetDataset = () => {
   const onError = useErrorHandler();
   const router = useContext(RouterContext);
   const viewName = getSavedViewName(router);
-  return (name?: string) => {
-    to(name ? `/datasets/${encodeURIComponent(name)}` : "/");
+  return (datasetKeys: DatasetKeys) => {
+    const { id, name, slug } = datasetKeys;
+    to(slug ? `/datasets/${encodeURIComponent(slug)}` : "/");
 
     send((session) =>
       commit({

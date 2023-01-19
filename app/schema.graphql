@@ -137,6 +137,7 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
+  slug: String
   stages(slug: String = null): BSONArray
 }
 
@@ -330,7 +331,7 @@ type Mutation {
     subscription: String!
     session: String
     viewName: String!
-    datasetName: String
+    datasetName: String = null
   ): String
   updateSavedView(
     viewName: String!
@@ -492,7 +493,7 @@ type SidebarGroup {
 input SidebarGroupInput {
   name: String!
   paths: [String!]
-  expanded: Boolean = true
+  expanded: Boolean = null
 }
 
 enum SidebarMode {

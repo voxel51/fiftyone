@@ -390,11 +390,6 @@ class Query(fosa.AggregateQuery):
             SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
         ]
 
-    @gql.field
-    def get_dataset_name(self, dataset_slug: str) -> t.Optional[str]:
-        ds = fo.load_dataset(dataset_slug)
-        return ds.name
-
 
 def _flatten_fields(
     path: t.List[str], fields: t.List[t.Dict]

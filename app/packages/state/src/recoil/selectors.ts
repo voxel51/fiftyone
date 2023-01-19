@@ -24,6 +24,13 @@ export const datasetName = selector<string>({
   },
 });
 
+export const datasetSlug = selector<string>({
+  key: "datasetSlug",
+  get: ({ get }) => {
+    return get(atoms.dataset)?.slug;
+  },
+});
+
 export const isNotebook = selector<boolean>({
   key: "isNotebook",
   get: () => {

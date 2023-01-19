@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<adb7fa002d1d2f24704b51697291bb06>>
+ * @generated SignedSource<<7c54f189907299de43fa79e859bc66f9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,7 +15,9 @@ export type RootDatasets_query$data = {
     readonly edges: ReadonlyArray<{
       readonly cursor: string;
       readonly node: {
+        readonly id: string;
         readonly name: string;
+        readonly slug: string | null;
       };
     }>;
     readonly total: number | null;
@@ -121,7 +123,21 @@ return {
                   "alias": null,
                   "args": null,
                   "kind": "ScalarField",
+                  "name": "id",
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
+                  "kind": "ScalarField",
                   "name": "name",
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
+                  "kind": "ScalarField",
+                  "name": "slug",
                   "storageKey": null
                 },
                 {
@@ -171,6 +187,6 @@ return {
 };
 })();
 
-(node as any).hash = "280afc557752c2245a140c58ccb00248";
+(node as any).hash = "29184ddb7489d362d3bfddd99c671e78";
 
 export default node;

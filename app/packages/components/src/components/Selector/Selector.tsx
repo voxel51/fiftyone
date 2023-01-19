@@ -75,7 +75,13 @@ const Selector = <T extends unknown>({
   placeholder,
   useSearch,
   component,
-  toKey = (value) => String(value),
+  toKey = (value) => {
+    if (value && typeof value === "object") {
+      return String(value?.id || value?.name);
+    } else {
+      return String(value);
+    }
+  },
   inputStyle,
   inputClassName,
   containerStyle,

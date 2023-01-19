@@ -4,7 +4,7 @@ import { usePlugins } from "@fiftyone/plugins";
 import {
   BeforeScreenshotContext,
   EventsContext,
-  getDatasetName,
+  getDatasetSlug,
   modal,
   screenshotCallbacks,
   State,
@@ -87,6 +87,7 @@ const App: React.FC = ({}) => {
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
               const { colorscale, config, ...data } = payload.state;
+              console.log("payload data", data);
 
               payload.refresh && refresh();
               const state = {
@@ -116,9 +117,10 @@ const App: React.FC = ({}) => {
               if (search.length) {
                 search = `?${search}`;
               }
+              console.log("onmessage() state", state);
 
               const path = state.dataset
-                ? `/datasets/${encodeURIComponent(state.dataset)}${search}`
+                ? `/datasets/${encodeURIComponent(state.datasetSlug)}${search}`
                 : `/${search}`;
 
               contextRef.current.history.replace(path, {
@@ -126,7 +128,7 @@ const App: React.FC = ({}) => {
                 colorscale,
                 config,
                 refresh: payload.refresh,
-                variables: state.dataset
+                variables: state.datasetSlug
                   ? { view: state.view || null }
                   : undefined,
               });
@@ -144,7 +146,7 @@ const App: React.FC = ({}) => {
       controller.signal,
       {
         initializer: {
-          dataset: getDatasetName(contextRef.current),
+          dataset: getDatasetSlug(contextRef.current),
           view: getSavedViewName(contextRef.current),
         },
         subscription,

@@ -1,20 +1,20 @@
 import { Link, Selector } from "@fiftyone/components";
 import {
+  DatasetKeys,
   datasetName,
-  getDatasetName,
-  RouterContext,
+  datasetSlug,
   useSetDataset,
 } from "@fiftyone/state";
-import React, { useContext } from "react";
+import React from "react";
 import { useRecoilValue } from "recoil";
 
-const DatasetLink: React.FC<{ value: string; className: string }> = ({
+const DatasetLink: React.FC<{ value: DatasetKeys; className: string }> = ({
   className,
   value,
 }) => {
   return (
-    <Link title={value} className={className}>
-      {value}
+    <Link title={value.name} className={className}>
+      {value.name}
     </Link>
   );
 };
@@ -24,19 +24,19 @@ const DatasetSelector: React.FC<{
 }> = ({ useSearch }) => {
   const setDataset = useSetDataset();
   const dataset = useRecoilValue(datasetName);
-  const context = useContext(RouterContext);
+  const currentSlug = useRecoilValue(datasetSlug);
   return (
-    <Selector<string>
+    <Selector<DatasetKeys>
       component={DatasetLink}
       placeholder={"Select dataset"}
       inputStyle={{ height: 40, maxWidth: 300 }}
       containerStyle={{ position: "relative" }}
-      onSelect={(name) => {
-        name !== dataset && setDataset(name);
+      onSelect={(datasetKeys) => {
+        datasetKeys.slug !== currentSlug && setDataset(datasetKeys);
       }}
       overflow={true}
       useSearch={useSearch}
-      value={getDatasetName(context) || ""}
+      value={dataset || ""}
     />
   );
 };

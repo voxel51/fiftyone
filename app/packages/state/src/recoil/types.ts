@@ -192,6 +192,7 @@ export namespace State {
 
   export interface Description {
     dataset: string;
+    datasetSlug: string;
     selected: string[];
     selectedLabels: SelectedLabel[];
     view: Stage[];
@@ -201,4 +202,10 @@ export namespace State {
     savedViews: SavedView[];
     spaces?: SpaceNodeJSON;
   }
+}
+
+export interface DatasetKeys {
+  id: string;
+  name: string;
+  slug: string;
 }
