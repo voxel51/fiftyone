@@ -26,12 +26,13 @@ export interface Sample {
   metadata: {
     width: number;
     height: number;
+    mime_type?: string;
   };
   id: string;
-  media_type: "image" | "video" | "point-cloud";
   filepath: string;
   tags: string[];
   _label_tags: string[];
+  _media_type: "image" | "video" | "point-cloud";
 }
 
 export interface LabelData {
