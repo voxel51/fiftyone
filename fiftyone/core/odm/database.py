@@ -1034,6 +1034,16 @@ def delete_evaluations(name, dry_run=False):
     )
 
 
+def get_cloud_credentials():
+    """Retrieves a list of all cloud credentials stored in mongo.
+
+    Returns:
+        a list of cloud credentials
+    """
+    conn = get_db_conn()
+    return list(conn["cloud.creds"].find({}))
+
+
 def _get_logger(dry_run=False):
     if dry_run:
         return _DryRunLoggerAdapter(logger, {})

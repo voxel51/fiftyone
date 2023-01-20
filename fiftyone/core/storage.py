@@ -31,6 +31,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
+import fiftyone.internal.credentials as foc
 
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ http_client = None
 bucket_regions = {}
 region_clients = {}
 client_lock = threading.Lock()
+creds_manager = None
 
 minio_alias_prefix = None
 minio_endpoint_prefix = None
@@ -56,9 +58,15 @@ def init_storage():
     """Initializes storage client use."""
     global minio_alias_prefix
     global minio_endpoint_prefix
+    global creds_manager
 
     minio_alias_prefix = None
     minio_endpoint_prefix = None
+
+    if foc.has_encryption_key():
+        creds_manager = foc.CloudCredentialsManager()
+    else:
+        creds_manager = None
 
     credentials = _load_minio_credentials()
     if not credentials:
@@ -1815,6 +1823,19 @@ def run(fcn, tasks, num_workers=None, progress=False):
     return results
 
 
+def clear_clients():
+    global s3_client
+    global gcs_client
+    global minio_client
+    global bucket_regions
+    global region_clients
+    s3_client = None
+    gcs_client = None
+    minio_client = None
+    bucket_regions.clear()
+    region_clients.clear()
+
+
 def _get_client(fs=None, path=None):
     if path is not None:
         fs = get_file_system(path)
@@ -1847,35 +1868,32 @@ def _get_regional_client(fs, bucket):
         _bucket_regions[bucket] = region
 
     client = _region_clients.get(region, None)
-    if client is not None:
-        return client
 
-    client = _make_regional_client(fs, region)
-    _region_clients[region] = client
+    if client is None or _must_refresh_clients():
+        client = _make_regional_client(fs, region)
+        _region_clients[region] = client
+
     return client
 
 
 def _get_default_client(fs):
     if fs == FileSystem.S3:
         global s3_client
-
-        if s3_client is None:
+        if s3_client is None or _must_refresh_clients():
             s3_client = _make_client(fs)
 
         return s3_client
 
     if fs == FileSystem.GCS:
         global gcs_client
-
-        if gcs_client is None:
+        if gcs_client is None or _must_refresh_clients():
             gcs_client = _make_client(fs)
 
         return gcs_client
 
     if fs == FileSystem.MINIO:
         global minio_client
-
-        if minio_client is None:
+        if minio_client is None or _must_refresh_clients():
             minio_client = _make_client(fs)
 
         return minio_client
@@ -1946,26 +1964,60 @@ def _make_regional_client(fs, region, num_workers=None):
     raise ValueError("Unsupported file system '%s'" % fs)
 
 
+def _must_refresh_clients():
+    if creds_manager is None:
+        return False
+
+    return creds_manager.is_expired
+
+
+def _get_managed_credentials(provider):
+    if creds_manager is None:
+        return None
+
+    return creds_manager.get_stored_credentials(provider)
+
+
 def _load_s3_credentials():
+    credentials_path = _get_managed_credentials("AWS")
+    profile = None
+
+    if not credentials_path:
+        credentials_path = fo.media_cache_config.aws_config_file
+        profile = fo.media_cache_config.aws_profile
+
     credentials, _ = S3StorageClient.load_credentials(
-        credentials_path=fo.media_cache_config.aws_config_file,
-        profile=fo.media_cache_config.aws_profile,
+        credentials_path=credentials_path, profile=profile
     )
+
     return credentials
 
 
 def _load_gcs_credentials():
+    credentials_path = _get_managed_credentials("GCP")
+
+    if not credentials_path:
+        credentials_path = fo.media_cache_config.google_application_credentials
+
     credentials, _ = GoogleCloudStorageClient.load_credentials(
-        credentials_path=fo.media_cache_config.google_application_credentials
+        credentials_path=credentials_path
     )
+
     return credentials
 
 
 def _load_minio_credentials():
+    credentials_path = _get_managed_credentials("MINIO")
+    profile = None
+
+    if not credentials_path:
+        credentials_path = fo.media_cache_config.minio_config_file
+        profile = fo.media_cache_config.minio_profile
+
     credentials, _ = MinIOStorageClient.load_credentials(
-        credentials_path=fo.media_cache_config.minio_config_file,
-        profile=fo.media_cache_config.minio_profile,
+        credentials_path=credentials_path, profile=profile
     )
+
     return credentials
 
 
