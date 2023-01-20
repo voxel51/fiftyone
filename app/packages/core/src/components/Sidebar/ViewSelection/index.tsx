@@ -159,7 +159,7 @@ export default function ViewSelection() {
       }
     } else {
       // no view param
-      if (!isIPython && selected && selected.slug !== DEFAULT_SELECTED.slug) {
+      if (selected && selected.slug !== DEFAULT_SELECTED.slug) {
         setSelected(DEFAULT_SELECTED);
         // do not reset view to [] again. The viewbar sets it once.
       }
