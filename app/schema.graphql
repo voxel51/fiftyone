@@ -493,7 +493,7 @@ type SidebarGroup {
 input SidebarGroupInput {
   name: String!
   paths: [String!]
-  expanded: Boolean = null
+  expanded: Boolean = true
 }
 
 enum SidebarMode {
