@@ -331,7 +331,7 @@ type Mutation {
     subscription: String!
     session: String
     viewName: String!
-    datasetName: String = null
+    datasetName: String!
   ): String
   updateSavedView(
     viewName: String!

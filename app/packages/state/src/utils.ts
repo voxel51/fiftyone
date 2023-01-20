@@ -116,9 +116,8 @@ export const getDatasetSlug = (context: RoutingContext<any>): string => {
     {},
     ""
   );
-  const slug = result?.variables?.slug;
-  if (slug) {
-    return decodeURIComponent(slug);
+  if (result) {
+    return decodeURIComponent(result.variables.slug);
   }
 
   return "";

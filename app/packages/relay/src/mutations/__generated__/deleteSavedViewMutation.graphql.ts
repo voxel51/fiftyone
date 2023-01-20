@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3e290d98eb9b0f8dcabed230f9c39003>>
+ * @generated SignedSource<<ed51bd23fb0317282e5328d2b8fd3b04>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,7 @@
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type deleteSavedViewMutation$variables = {
-  datasetName?: string | null;
+  datasetName: string;
   session?: string | null;
   subscription: string;
   viewName: string;
@@ -102,16 +102,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "4ba96f75c5f2f30f1824a2aaf49fd7eb",
+    "cacheID": "230b61e300bebfcd2070297268774198",
     "id": null,
     "metadata": {},
     "name": "deleteSavedViewMutation",
     "operationKind": "mutation",
-    "text": "mutation deleteSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $datasetName: String\n) {\n  deleteSavedView(subscription: $subscription, session: $session, viewName: $viewName, datasetName: $datasetName)\n}\n"
+    "text": "mutation deleteSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $datasetName: String!\n) {\n  deleteSavedView(subscription: $subscription, session: $session, viewName: $viewName, datasetName: $datasetName)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d25e17a369c05534c3d06f3319bef86c";
+(node as any).hash = "84d78454364f1727214a88869db57d4f";
 
 export default node;

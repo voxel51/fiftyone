@@ -322,7 +322,7 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         view_name: str,
-        dataset_name: t.Optional[str] = None,
+        dataset_name: str,
     ) -> t.Optional[str]:
         state = get_state()
         if state is None and dataset_name is None:

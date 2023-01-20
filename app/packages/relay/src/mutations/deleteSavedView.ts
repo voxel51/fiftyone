@@ -5,7 +5,7 @@ export default graphql`
     $subscription: String!
     $session: String
     $viewName: String!
-    $datasetName: String
+    $datasetName: String!
   ) {
     deleteSavedView(
       subscription: $subscription
