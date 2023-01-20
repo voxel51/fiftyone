@@ -186,12 +186,9 @@ class Mutation:
                 doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
                 result_view = ds._load_saved_view_from_doc(doc)
             except:
-                logging.error(
-                    f"[mutation.py] ERROR: Unable to load saved view with "
-                    f"slug={saved_view_slug}"
-                )
+                pass
 
-        if not result_view:
+        if result_view is None:
             # Update current view with form parameters
             result_view = get_view(
                 dataset_name,
