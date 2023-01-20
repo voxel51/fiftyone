@@ -5,9 +5,9 @@ import relay from "vite-plugin-relay";
 import { basePlugins } from "../../vite.base.config";
 import pluginRewriteAll from "vite-plugin-rewrite-all";
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(() => {
   return {
-    base: mode === "desktop" ? "" : "/",
+    base: "",
     plugins: [
       ...basePlugins,
       reactRefresh({

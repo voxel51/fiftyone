@@ -1,7 +1,7 @@
 """
 Interface for sample collections.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -3260,8 +3260,9 @@ class SampleCollection(object):
 
         .. note::
 
-            The mask value ``0`` is treated as a background class for the
-            purposes of computing evaluation metrics like precision and recall.
+            The mask values ``0`` and ``#000000`` are treated as a background
+            class for the purposes of computing evaluation metrics like
+            precision and recall.
 
         Args:
             pred_field: the name of the field containing the predicted
@@ -3270,8 +3271,9 @@ class SampleCollection(object):
                 ground truth :class:`fiftyone.core.labels.Segmentation`
                 instances
             eval_key (None): a string key to use to refer to this evaluation
-            mask_targets (None): a dict mapping mask values to labels. If not
-                provided, the observed pixel values are used
+            mask_targets (None): a dict mapping pixel values or RGB hex strings
+                to labels. If not provided, the observed values are used as
+                labels
             method ("simple"): a string specifying the evaluation method to
                 use. Supported values are ``("simple")``
             **kwargs: optional keyword arguments for the constructor of the
@@ -3327,17 +3329,20 @@ class SampleCollection(object):
         """
         return foev.EvaluationMethod.get_run_info(self, eval_key)
 
-    def load_evaluation_results(self, eval_key):
+    def load_evaluation_results(self, eval_key, cache=True):
         """Loads the results for the evaluation with the given key on this
         collection.
 
         Args:
             eval_key: an evaluation key
+            cache (True): whether to cache the results on the collection
 
         Returns:
             a :class:`fiftyone.core.evaluation.EvaluationResults`
         """
-        return foev.EvaluationMethod.load_run_results(self, eval_key)
+        return foev.EvaluationMethod.load_run_results(
+            self, eval_key, cache=cache
+        )
 
     def load_evaluation_view(self, eval_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -3404,17 +3409,22 @@ class SampleCollection(object):
         """
         return fob.BrainMethod.get_run_info(self, brain_key)
 
-    def load_brain_results(self, brain_key):
+    def load_brain_results(self, brain_key, cache=True, load_view=True):
         """Loads the results for the brain method run with the given key on
         this collection.
 
         Args:
             brain_key: a brain key
+            cache (True): whether to cache the results on the collection
+            load_view (True): whether to load the view on which the results
+                were computed (True) or the full dataset (False)
 
         Returns:
             a :class:`fiftyone.core.brain.BrainResults`
         """
-        return fob.BrainMethod.load_run_results(self, brain_key)
+        return fob.BrainMethod.load_run_results(
+            self, brain_key, cache=cache, load_view=load_view
+        )
 
     def load_brain_view(self, brain_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -8063,7 +8073,7 @@ class SampleCollection(object):
         """
         return foan.AnnotationMethod.get_run_info(self, anno_key)
 
-    def load_annotation_results(self, anno_key, **kwargs):
+    def load_annotation_results(self, anno_key, cache=True, **kwargs):
         """Loads the results for the annotation run with the given key on this
         collection.
 
@@ -8077,6 +8087,7 @@ class SampleCollection(object):
 
         Args:
             anno_key: an annotation key
+            cache (True): whether to cache the results on the collection
             **kwargs: optional keyword arguments for
                 :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
 
@@ -8084,7 +8095,7 @@ class SampleCollection(object):
             a :class:`fiftyone.utils.annotations.AnnotationResults`
         """
         results = foan.AnnotationMethod.load_run_results(
-            self, anno_key, load_view=False
+            self, anno_key, cache=cache, load_view=False
         )
         results.load_credentials(**kwargs)
         return results

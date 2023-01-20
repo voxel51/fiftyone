@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 import {
   IconButton,
@@ -10,17 +10,17 @@ import {
 import {
   Dataset as CoreDataset,
   DatasetNodeQuery,
+  DatasetQuery,
+  DatasetQueryRef,
   usePreLoadedDataset,
   ViewBar,
 } from "@fiftyone/core";
 import { usePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import React, { Suspense } from "react";
-import { PreloadedQuery, useQueryLoader } from "react-relay";
+import { PreloadedQuery, useQueryLoader, usePreloadedQuery } from "react-relay";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
-
-import { DatasetQuery } from "@fiftyone/core";
 
 // built-in plugins
 import "@fiftyone/looker-3d";
@@ -145,6 +145,7 @@ const DatasetLoader: React.FC<
 > = ({ children, dataset, queryRef }) => {
   const [data, ready] = usePreLoadedDataset(queryRef);
   const datasetData = useRecoilValue(fos.dataset);
+  const query = usePreloadedQuery<DatasetQuery>(DatasetNodeQuery, queryRef);
 
   if (!data) {
     return <h4>Dataset not found!</h4>;
@@ -156,5 +157,9 @@ const DatasetLoader: React.FC<
 
   if (!ready) return null;
 
-  return <>{children}</>;
+  return (
+    <DatasetQueryRef.Provider value={query}>
+      {children}
+    </DatasetQueryRef.Provider>
+  );
 };

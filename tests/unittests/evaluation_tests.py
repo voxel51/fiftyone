@@ -1,7 +1,7 @@
 """
 FiftyOne evaluation-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -2125,6 +2125,100 @@ class SegmentationTests(unittest.TestCase):
         self.assertEqual(metrics["support"], 4)
 
         # rows = GT, cols = predicted, labels = [background, cat, dog]
+        actual = results.confusion_matrix()
+        expected = np.array([[2, 1, 1], [1, 1, 0], [1, 0, 1]], dtype=int)
+
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        self.assertIn("eval", dataset.list_evaluations())
+        self.assertIn("eval_accuracy", dataset.get_field_schema())
+        self.assertIn("eval_precision", dataset.get_field_schema())
+        self.assertIn("eval_recall", dataset.get_field_schema())
+
+        dataset.delete_evaluation("eval")
+
+        self.assertNotIn("eval", dataset.list_evaluations())
+        self.assertNotIn("eval_accuracy", dataset.get_field_schema())
+        self.assertNotIn("eval_precision", dataset.get_field_schema())
+        self.assertNotIn("eval_recall", dataset.get_field_schema())
+
+    @drop_datasets
+    def test_evaluate_segmentations_rgb(self):
+        dataset = self._make_segmentation_dataset()
+
+        # Use opposite case in `mask_targets` to test case-insensitivity
+        targets_map = {0: "#000000", 1: "#FF6D04", 2: "#499cef"}
+        mask_targets = {
+            "#000000": "background",
+            "#ff6d04": "cat",
+            "#499CEF": "dog",
+        }
+
+        # Convert to RGB segmentations
+        foul.transform_segmentations(dataset, "ground_truth", targets_map)
+        foul.transform_segmentations(dataset, "predictions", targets_map)
+
+        # Convert to on-disk segmentations
+        foul.export_segmentations(dataset, "ground_truth", self._new_dir())
+        foul.export_segmentations(dataset, "predictions", self._new_dir())
+
+        #
+        # Test empty view
+        #
+
+        empty_view = dataset.limit(0)
+        self.assertEqual(len(empty_view), 0)
+
+        results = empty_view.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+            method="simple",
+        )
+
+        self.assertIn("eval_accuracy", dataset.get_field_schema())
+        self.assertIn("eval_precision", dataset.get_field_schema())
+        self.assertIn("eval_recall", dataset.get_field_schema())
+
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 0)
+
+        actual = results.confusion_matrix()
+        self.assertEqual(actual.shape, (0, 0))
+
+        #
+        # Test evaluation (including missing data)
+        #
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing masks warning
+
+            results = dataset.evaluate_segmentations(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="eval",
+                method="simple",
+                mask_targets=mask_targets,
+            )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 4)
+
+        # rows = GT, cols = predicted, labels = [background, cat, dog]
+        # Ordering is based on int representation of hex color strings
         actual = results.confusion_matrix()
         expected = np.array([[2, 1, 1], [1, 1, 0], [1, 0, 1]], dtype=int)
 

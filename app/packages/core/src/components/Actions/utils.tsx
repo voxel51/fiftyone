@@ -69,52 +69,58 @@ export const tagStatistics = selectorFamily<
   { modal: boolean; labels: boolean }
 >({
   key: "tagStatistics",
-  get: ({ modal, labels: count_labels }) => async ({ get }) => {
-    return await getFetchFunction()(
-      "POST",
-      "/tagging",
-      tagParameters({
-        activeFields: get(fos.activeLabelFields({ modal })),
+  get:
+    ({ modal, labels: count_labels }) =>
+    async ({ get }) => {
+      return await getFetchFunction()(
+        "POST",
+        "/tagging",
+        tagParameters({
+          activeFields: get(fos.activeLabelFields({ modal })),
 
-        dataset: get(fos.datasetName),
-        filters: get(modal ? fos.modalFilters : fos.filters),
+          dataset: get(fos.datasetName),
+          filters: get(modal ? fos.modalFilters : fos.filters),
 
-        groupData: get(isGroup)
-          ? {
-              id: modal ? get(groupId) : null,
-              slice: get(currentSlice(modal)),
-              mode: get(groupStatistics(modal)),
-            }
-          : null,
-        hiddenLabels: get(fos.hiddenLabelsArray),
-        modal,
-        sampleId: modal ? get(fos.sidebarSampleId) : null,
-        selectedSamples: get(fos.selectedSamples),
-        selectedLabels: Object.entries(get(fos.selectedLabels)).map(
-          ([labelId, data]) => ({
-            labelId,
-            ...data,
-          })
-        ),
-        targetLabels: count_labels,
-        view: get(fos.view),
-      })
-    );
-  },
+          groupData: get(isGroup)
+            ? {
+                id: modal ? get(groupId) : null,
+                slice: get(currentSlice(modal)),
+                mode: get(groupStatistics(modal)),
+              }
+            : null,
+          hiddenLabels: get(fos.hiddenLabelsArray),
+          modal,
+          sampleId: modal ? get(fos.sidebarSampleId) : null,
+          selectedSamples: get(fos.selectedSamples),
+          selectedLabels: Object.entries(get(fos.selectedLabels)).map(
+            ([labelId, data]) => ({
+              labelId,
+              ...data,
+            })
+          ),
+          targetLabels: count_labels,
+          view: get(fos.view),
+        })
+      );
+    },
 });
 
 export const numItemsInSelection = selectorFamily<number, boolean>({
   key: "numLabelsInSelectedSamples",
-  get: (labels) => ({ get }) => {
-    return get(tagStatistics({ modal: false, labels })).count;
-  },
+  get:
+    (labels) =>
+    ({ get }) => {
+      return get(tagStatistics({ modal: false, labels })).count;
+    },
 });
 
 export const selectedSamplesCount = selectorFamily<number, boolean>({
   key: "selectedSampleCount",
-  get: (modal) => ({ get }) => {
-    return get(tagStatistics({ modal, labels: false })).items;
-  },
+  get:
+    (modal) =>
+    ({ get }) => {
+      return get(tagStatistics({ modal, labels: false })).items;
+    },
 });
 
 export const tagStats = selectorFamily<
@@ -122,18 +128,20 @@ export const tagStats = selectorFamily<
   { modal: boolean; labels: boolean }
 >({
   key: "tagStats",
-  get: ({ modal, labels }) => ({ get }) => {
-    const data = get(
-      labels
-        ? fos.labelTagCounts({ modal: false, extended: false })
-        : fos.sampleTagCounts({ modal: false, extended: false })
-    );
+  get:
+    ({ modal, labels }) =>
+    ({ get }) => {
+      const data = get(
+        labels
+          ? fos.labelTagCounts({ modal: false, extended: false })
+          : fos.sampleTagCounts({ modal: false, extended: false })
+      );
 
-    return {
-      ...data,
-      ...get(tagStatistics({ modal, labels })).tags,
-    };
-  },
+      return {
+        ...data,
+        ...get(tagStatistics({ modal, labels })).tags,
+      };
+    },
 });
 
 export const tagParameters = ({
@@ -162,21 +170,25 @@ export const tagParameters = ({
   targetLabels: boolean;
   sampleId: string | null;
 }) => {
-  const hasSelected =
-    selectedSamples.size || selectedLabels.length || hiddenLabels.length;
+  const shouldShowCurrentSample =
+    params.modal && selectedSamples.size == 0 && hiddenLabels.length == 0;
   const groups = groupData?.mode === "group";
+
+  const getSampleIds = () => {
+    if (shouldShowCurrentSample && !groups) {
+      return [sampleId];
+    } else if (selectedSamples.size) {
+      return [...selectedSamples];
+    }
+    return null;
+  };
 
   return {
     ...params,
     label_fields: activeFields,
     target_labels: targetLabels,
     slice: !params.modal && !groups ? groupData?.slice : null,
-    sample_ids:
-      params.modal && !hasSelected && !groups
-        ? [sampleId]
-        : selectedSamples.size
-        ? [...selectedSamples]
-        : null,
+    sample_ids: getSampleIds(),
     labels:
       params.modal && targetLabels && selectedLabels && selectedLabels.length
         ? toSnakeCase(selectedLabels)

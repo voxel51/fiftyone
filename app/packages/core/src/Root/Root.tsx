@@ -24,6 +24,7 @@ import {
 // built in plugins
 import "@fiftyone/map";
 import "@fiftyone/looker-3d";
+import "@fiftyone/embeddings";
 
 import gaConfig from "../ga";
 import style from "./Root.module.css";
@@ -49,30 +50,6 @@ const rootQuery = graphql`
     ...RootDatasets_query
     ...RootGA_query
     ...RootNav_query
-  }
-`;
-
-export const DatasetSavedViewsQuery = graphql`
-  query RootDatasetSavedViewsQuery($name: String!) {
-    ...RootDatasetSavedViewsFragment
-  }
-`;
-
-export const DatasetSavedViewsFragment = graphql`
-  fragment RootDatasetSavedViewsFragment on Query
-  @refetchable(queryName: "RootDatasetSavedViewsFragmentQuery") {
-    savedViews(datasetName: $name) {
-      id
-      datasetId
-      name
-      slug
-      description
-      color
-      viewStages
-      createdAt
-      lastModifiedAt
-      lastLoadedAt
-    }
   }
 `;
 
