@@ -53,7 +53,8 @@ const LABEL_LIST_KEY = Object.fromEntries(
 const LABELS_SET = new Set(LABELS);
 
 const getLabelsWorker = (() => {
-  const numWorkers = navigator.hardwareConcurrency || 4;
+  const numWorkers =
+    typeof window !== "undefined" ? navigator.hardwareConcurrency || 4 : 1;
   let workers: Worker[];
 
   let next = -1;
