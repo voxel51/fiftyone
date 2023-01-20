@@ -1,13 +1,14 @@
-.. _install-overview:
+.. _teams-installation:
 
-Installation overview
-======================
+FiftyOne Teams Installation
+===========================
 
+.. default-role:: code
 
 An installation of FiftyOne Teams results in a centralized FiftyOne Teams App
-and database allowing your entire team to collaborate securely on the same datasets.
-FiftyOne Teams is deployed entirely into your environment, either on-premises
-or in a private cloud. Your data never leaves your environment.
+and database allowing your entire team to collaborate securely on the same
+datasets. FiftyOne Teams is deployed entirely into your environment, either
+on-premises or in a private cloud. Your data never leaves your environment.
 
 A FiftyOne Teams installation involves a set of interoperable services hosted
 in your environment that connect to your authentication solution and your
@@ -19,199 +20,186 @@ solutions, including Kubernetes and Docker.
 .. note::
 
     The specific details of the FiftyOne Teams installation, along with all
-    necessary components, are made available to you by the Voxel51 team during the
-    onboarding process.
-
+    necessary components, are made available to you by the Voxel51 team during
+    the onboarding process.
 
 .. _teams-python-sdk:
 
 Python SDK
 ----------
 
-While the :ref:`FiftyOne Teams App <teams-app>` allows for countless new App-centric
-workflows, any existing Python-based workflows that you've fallen in love with
-in the open-source version of FiftyOne are still directly applicable!
+While the :ref:`FiftyOne Teams App <teams-app>` allows for countless new
+App-centric workflows, any existing Python-based workflows that you've fallen
+in love with in the open-source version of FiftyOne are still directly
+applicable!
 
-.. note::
+FiftyOne Teams uses an updated Python SDK, which is a wrapper around the
+open-source FiftyOne package that adds new functionality, like support for
+cloud-backed media.
 
-   The FiftyOne Teams Python module is still named ``fiftyone`` so any existing
-   scripts are able to run immediately after you upgrade!
-
-FiftyOne Teams comes with an updated Python SDK which is a wrapper around the
-open-source FiftyOne package adding new functionality (like support for
-cloud-backed media!).
-
-You can find the pip installation instructions under the "Install FiftyOne"
-section after you click on your user icon in the FiftyOne Teams App.
+You can find the installation instructions under the ``Install FiftyOne``
+section of the Teams App by clicking on your user icon in the upper right
+corner:
 
 .. image:: ../images/teams/install_fiftyone.png
    :alt: install-teams
    :align: center
    :width: 300
 
-
-
-
-|br|
-
 .. code-block:: shell
 
     pip install --index-url https://{$TOKEN}@pypi.fiftyone.ai fiftyone
 
+.. note::
 
-**Next Steps:**
+   The Teams Python package is named ``fiftyone`` and has the same module
+   structure, so any existing scripts you built using open source will continue
+   to run after you upgrade!
 
-After installing the FiftyOne Teams-specific ``fiftyone`` package in your virtual
-environment, you then need to configure:
+**Next Steps**
 
-* the :ref:`connection to the centralized database <configuring-mongodb-connection>`
+After installing the Teams SDK in your virtual environment, you just need to
+configure two things:
 
-* the :ref:`cloud credentials <cloud-credentials>` to access your cloud-backed
-  media
+*   The :ref:`connection to <configuring-mongodb-connection>` your team's
+    centralized database
 
+*   The :ref:`cloud credentials <teams-cloud-credentials>` to access your
+    cloud-backed media
 
 .. note::
 
-   You may need to ask your FiftyOne Teams admin for the necessary MongoDB
-   connection URI and relevant cloud credentials.
+   Ask your FiftyOne Teams admin for the necessary MongoDB connection URI and
+   relevant cloud credentials.
 
+That's it! Any operations you perform will be stored on thecentralized database
+and will be available to all users with access to the same datasets in the
+Teams App or their Python workflows.
 
-That's it! Any datasets you now load through Python will automatically show up
-in the deployed FiftyOne Teams App and can be shared with the rest of your
-team.
-
-
-.. _cloud-credentials:
+.. _teams-cloud-credentials:
 
 Cloud credentials
 -----------------
 
-.. default-role:: code
-
-
-.. _amazon-s3:
+.. _teams-amazon-s3:
 
 Amazon S3
-_____________________
+_________
 
-To work with FiftyOne datasets whose media are stored in Amazon S3, you simply need to provide `AWS credentials <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_ to your Teams client with read access to the relevant files.
+To work with FiftyOne datasets whose media are stored in Amazon S3, you simply
+need to provide
+`AWS credentials <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_
+to your Teams client with read access to the relevant files.
 
 You can do this in any of the following ways:
 
-#. Permanently register AWS credentials on a particular machine by adding the following keys to your media cache config:
+1. Configure/provide AWS credentials in accordance with the
+`boto3 <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials>`_
+python library.
 
-	|
+2. Permanently register AWS credentials on a particular machine by adding the
+following keys to your :ref:`media cache config <teams-media-cache-config>`:
 
-    .. code-block:: python
+.. code-block:: json
 
-        {
+    {
         "aws_config_file": "/path/to/aws-config.ini",
         "aws_profile": "default"  # optional
-        }
+    }
 
-    In the above, the ``.ini`` file should use the syntax of the `boto3 configuration file <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_.
+In the above, the ``.ini`` file should use the syntax of the
+`boto3 configuration file <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_.
 
-#. Configure/provide AWS credentials in accordance with the `boto3 <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials>`_ python library.
-
-.. _google-cloud:
+.. _teams-google-cloud:
 
 Google Cloud Storage
-_____________________
+____________________
 
-To work with FiftyOne datasets whose media are stored in Google Cloud Storage, you simply need to provide `service account credentials <https://cloud.google.com/iam/docs/service-accounts>`_ to your Teams client with read access to the relevant files.
+To work with FiftyOne datasets whose media are stored in Google Cloud Storage,
+you simply need to provide
+`service account credentials <https://cloud.google.com/iam/docs/service-accounts>`_
+to your Teams client with read access to the relevant files.
 
-You can register GCP credentials on a particular machine by adding the following key to your media cache config:
+You can register GCP credentials on a particular machine by adding the
+following key to your :ref:`media cache config <teams-media-cache-config>`:
 
-	|
+.. code-block:: json
 
-    .. code-block:: python
+    {
+        "google_application_credentials": "/path/to/gcp-service-account.json"
+    }
 
-        {
-            "google_application_credentials": "/path/to/gcp-service-account.json"
-        }
-
-
-
-.. _minio:
+.. _teams-minio:
 
 MinIO
 _____
 
-To work with FiftyOne datasets whose media are stored in `MinIO <https://min.io/>`_, you simply need to provide the credentials to your Teams client with read access to the relevant files.
+To work with FiftyOne datasets whose media are stored in
+`MinIO <https://min.io/>`_, you simply need to provide the credentials to your
+Teams client with read access to the relevant files.
 
 You can do this in any of the following ways:
 
-#. Permanently register MinIO credentials on a particular machine by adding the following keys to your media cache config:
+1. Permanently register MinIO credentials on a particular machine by adding the
+following keys to your :ref:`media cache config <teams-media-cache-config>`:
 
-	|
+.. code-block:: json
 
-    .. code-block:: python
+    {
+        "minio_config_file": "/path/to/minio-config.ini",
+        "minio_profile": "default"  # optional
+    }
 
-        {
-            "minio_config_file": "/path/to/minio-config.ini",
-            "minio_profile": "default"  # optional
-        }
+2. Provide MinIO credentials on a per-session basis by setting the following
+environment variables to point to your MinIO credentials:
 
-#. Provide MinIO credentials on a per-session basis by setting the following environment variables to point to your MinIO credentials:
+.. code-block:: shell
 
-	|
+    export MINIO_CONFIG_FILE=/path/to/minio-config.ini
+    export MINIO_PROFILE=default  # optional
 
-    .. code-block:: shell
+3. Provide your MinIO credentials on a per-session basis by setting the
+individual environment variables shown below:
 
-        export MINIO_CONFIG_FILE=/path/to/minio-config.ini
-        export MINIO_PROFILE=default  # optional
+.. code-block:: shell
 
-#. Provide your MinIO credentials on a per-session basis by setting the individual environment variables shown below:
+    export MINIO_ACCESS_KEY=...
+    export MINIO_SECRET_ACCESS_KEY=...
+    export MINIO_ENDPOINT_URL=...
+    export MINIO_ALIAS=...  # optional
+    export MINIO_REGION=...  # if applicable
 
-	|
+If you combine multiple options above, environment variables will take
+precedence over JSON config settings.
 
-    .. code-block:: shell
+In the options above, the ``.ini`` file should have syntax similar the
+following:
 
-        export MINIO_ACCESS_KEY=...
-        export MINIO_SECRET_ACCESS_KEY=...
-        export MINIO_ENDPOINT_URL=...
-        export MINIO_ALIAS=...  # optional
-        export MINIO_REGION=...  # if applicable
+.. code-block:: shell
 
-    If you combine multiple options above, environment variables will take precedence over JSON config settings.
+    [default]
+    access_key = ...
+    secret_access_key = ...
+    endpoint_url = ...
+    alias = ...  # optional
+    region = ...  # if applicable
 
-    |
+When populating samples with MinIO filepaths, you can either specify paths by
+prefixing your MinIO endpoint URL:
 
-    In the options above, the ``.ini`` file should have syntax similar the following:
+.. code-block:: python
 
-    |
+    filepath = "${endpoint_url}/bucket/path/to/object.ext"
 
-    .. code-block:: shell
+    # For example
+    filepath = "https://voxel51.min.io/test-bucket/image.jpg"
 
-        [default]
-        access_key = ...
-        secret_access_key = ...
-        endpoint_url = ...
-        alias = ...  # optional
-        region = ...  # if applicable
+or, if you have defined an alias in your config, you may instead prefix the
+alias:
 
+.. code-block:: python
 
-    When creating samples with MinIO-backed media, specify paths by prefixing your endpoint URL:
+    filepath = "${alias}://bucket/path/to/object.ext"
 
-    |
-
-    .. code-block:: shell
-
-        filepath = ${endpoint_url}/bucket/path/to/object.ext
-
-        # For example
-        filepath = https://play.min.io/test-bucket/image.jpg
-
-
-    Or, if you have defined an alias in your config, you may instead prefix the alias:
-
-    |
-
-    .. code-block:: shell
-
-        filepath = ${alias}://bucket/path/to/object.ext
-
-        # For example
-        filepath = voxel51://test-bucket/image.jpg
-
-
+    # For example
+    filepath = "minio://test-bucket/image.jpg"

@@ -42,9 +42,9 @@ pages on this site apply to Teams deployments.
     :button_link: overview.html
 
 .. customcalloutitem::
-    :header: Installation Overview
+    :header: Installation
     :description: Learn how to install the FiftyOne Teams Python SDK.
-    :button_text: Install SDK
+    :button_text: Install the SDK
     :button_link: installation.html
 
 .. customcalloutitem::
@@ -88,5 +88,5 @@ pages on this site apply to Teams deployments.
     Installation <installation>
     Cloud-backed media <cloud_media>
     Roles and permissions <roles_and_permissions>
-    Teams App <teams_app>
+    FiftyOne Teams App <teams_app>
     Migrations <migrations>
