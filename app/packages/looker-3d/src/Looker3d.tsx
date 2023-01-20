@@ -1,40 +1,34 @@
-import * as fop from "@fiftyone/plugins";
-import React, {
-  useState,
-  useRef,
-  useEffect,
-  Fragment,
-  MutableRefObject,
-  useCallback,
-  Suspense,
-} from "react";
 import {
-  Canvas,
-  ThreeEvent,
-  useFrame,
-  useLoader,
-  useThree,
-} from "@react-three/fiber";
-import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
-import { OrbitControls } from "@react-three/drei";
-import * as THREE from "three";
-import styled from "styled-components";
-import ColorLensIcon from "@mui/icons-material/ColorLens";
-import * as pcState from "./state";
-import * as recoil from "recoil";
-import * as fos from "@fiftyone/state";
-import { ShadeByIntensity, ShadeByZ } from "./shaders";
-import _ from "lodash";
-import {
-  JSONPanel,
+  HelpIcon,
+  JSONIcon,
   Loading,
   PopoutSectionTitle,
   TabOption,
-  JSONIcon,
-  HelpIcon,
+  useTheme,
 } from "@fiftyone/components";
-import { colorMap, dataset, useBeforeScreenshot } from "@fiftyone/state";
-import { removeListener } from "process";
+import { Slider } from "@fiftyone/core/src/components/Common/RangeSlider";
+import * as fop from "@fiftyone/plugins";
+import * as fos from "@fiftyone/state";
+import { useBeforeScreenshot } from "@fiftyone/state";
+import ColorLensIcon from "@mui/icons-material/ColorLens";
+import PointSizeIcon from "@mui/icons-material/ScatterPlot";
+import { OrbitControls } from "@react-three/drei";
+import { Canvas, useLoader, useThree } from "@react-three/fiber";
+import _ from "lodash";
+import React, {
+  Fragment,
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import * as recoil from "recoil";
+import styled from "styled-components";
+import * as THREE from "three";
+import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
+import { ShadeByIntensity, ShadeByZ } from "./shaders";
+import * as pcState from "./state";
 
 const deg2rad = (degrees) => degrees * (Math.PI / 180);
 const hasFocusAtom = recoil.atom({
@@ -42,7 +36,14 @@ const hasFocusAtom = recoil.atom({
   default: false,
 });
 
-function PointCloudMesh({ minZ, colorBy, points, rotation, onLoad }) {
+function PointCloudMesh({
+  minZ,
+  colorBy,
+  pointSize,
+  points,
+  rotation,
+  onLoad,
+}) {
   const colorMinMaxRef = React.useRef();
   const geo = points.geometry;
   geo.computeBoundingBox();
@@ -56,6 +57,7 @@ function PointCloudMesh({ minZ, colorBy, points, rotation, onLoad }) {
       colorMinMaxRef.current = { min: 0, max: 1 };
     }
   }, [geo, points]);
+
   const gradients = [
     [0.0, "rgb(165,0,38)"],
     [0.111, "rgb(215,48,39)"],
@@ -76,7 +78,9 @@ function PointCloudMesh({ minZ, colorBy, points, rotation, onLoad }) {
   let material;
   switch (colorBy) {
     case "none":
-      material = <pointsMaterial color={"white"} size={0.0001} />;
+      // material = <pointsMaterial color={"white"} size={0.0001} />;
+      console.log("point size is ", pointSize);
+      material = <pointsMaterial color={"white"} size={pointSize} />;
       break;
     case "height":
       material = (
@@ -84,19 +88,29 @@ function PointCloudMesh({ minZ, colorBy, points, rotation, onLoad }) {
           gradients={gradients}
           minZ={minZ}
           maxZ={geo.boundingBox.max.z}
+          pointSize={pointSize}
         />
       );
       break;
     case "intensity":
       if (colorMinMaxRef.current)
         material = (
-          <ShadeByIntensity {...colorMinMaxRef.current} gradients={gradients} />
+          <ShadeByIntensity
+            {...colorMinMaxRef.current}
+            gradients={gradients}
+            pointSize={pointSize}
+          />
         );
       break;
   }
 
   return (
-    <primitive key={colorBy} scale={1} object={points} rotation={rotation}>
+    <primitive
+      key={`${pointSize}`}
+      scale={1}
+      object={points}
+      rotation={rotation}
+    >
       {material}
     </primitive>
   );
@@ -327,6 +341,7 @@ function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
   };
 
   const colorBy = recoil.useRecoilValue(pcState.colorBy);
+  const pointSize = recoil.useRecoilValue(pcState.currentPointSize);
 
   const onChangeView = useCallback(
     (view) => {
@@ -480,6 +495,7 @@ function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
         <PointCloudMesh
           minZ={minZ}
           colorBy={colorBy}
+          pointSize={pointSize}
           points={points}
           rotation={pcRotation}
           onLoad={(geo) => {
@@ -494,6 +510,7 @@ function Looker3dCore({ api: { sample, src, mediaFieldValue } }) {
           onMouseLeave={() => (hoveringRef.current = false)}
         >
           <ActionsBar>
+            <SetPointSizeButton />
             <ChooseColorSpace />
             <SetViewButton
               onChangeView={onChangeView}
@@ -615,6 +632,47 @@ const ViewButton = styled.div`
   opacity: 1;
 `;
 
+function PointSizeSlider() {
+  const theme = useTheme();
+
+  return (
+    <ActionPopOver>
+      <PopoutSectionTitle>Set point size</PopoutSectionTitle>
+      <Slider
+        valueAtom={pcState.currentPointSize}
+        color={theme.primary.mainChannel}
+        boundsAtom={pcState.pointSizeRange}
+      />
+    </ActionPopOver>
+  );
+}
+
+function SetPointSizeButton() {
+  const [currentAction, setAction] = recoil.useRecoilState(
+    pcState.currentAction
+  );
+  return (
+    <Fragment>
+      <ActionItem>
+        <PointSizeIcon
+          sx={{ fontSize: 24 }}
+          color="inherit"
+          onClick={(e) => {
+            const targetAction = pcState.ACTION_SET_POINT_SIZE;
+            const nextAction =
+              currentAction === targetAction ? null : targetAction;
+            setAction(nextAction);
+            e.stopPropagation();
+            e.preventDefault();
+            return false;
+          }}
+        />
+      </ActionItem>
+      {currentAction === pcState.ACTION_SET_POINT_SIZE && <PointSizeSlider />}
+    </Fragment>
+  );
+}
+
 function SetViewButton({ onChangeView, view, label, hint }) {
   return (
     <ActionItem onClick={() => onChangeView(view)}>
@@ -635,7 +693,7 @@ function ChooseColorSpace() {
           sx={{ fontSize: 24 }}
           color="inherit"
           onClick={(e) => {
-            const targetAction = "colorBy";
+            const targetAction = pcState.ACTION_COLOR_BY;
             const nextAction =
               currentAction === targetAction ? null : targetAction;
             setAction(nextAction);
@@ -645,7 +703,7 @@ function ChooseColorSpace() {
           }}
         />
       </ActionItem>
-      {currentAction === "colorBy" && <ColorSpaceChoices />}
+      {currentAction === pcState.ACTION_COLOR_BY && <ColorSpaceChoices />}
     </Fragment>
   );
 }
