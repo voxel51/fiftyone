@@ -1,5 +1,5 @@
-import * as THREE from "three";
 import React from "react";
+import * as THREE from "three";
 
 function useGradientMap(gradients) {
   return React.useMemo(
@@ -8,7 +8,7 @@ function useGradientMap(gradients) {
   );
 }
 
-const zVertex = `
+const zVertex = (pointSize) => `
   uniform float maxZ;
   uniform float minZ;
   varying vec2 vUv;
@@ -29,7 +29,8 @@ const zVertex = `
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
-var zFragment = `
+
+const zFragment = `
   uniform sampler2D gradientMap;
   varying float hValue;
 
@@ -40,7 +41,7 @@ var zFragment = `
   }
 `;
 
-export function ShadeByZ({ gradients, minZ, maxZ }) {
+export function ShadeByZ({ gradients, minZ, maxZ, pointSize }) {
   const gradientMap = useGradientMap(gradients);
 
   return (
@@ -51,7 +52,7 @@ export function ShadeByZ({ gradients, minZ, maxZ }) {
           maxZ: { value: maxZ },
           gradientMap: { value: gradientMap },
         },
-        vertexShader: zVertex,
+        vertexShader: zVertex(pointSize),
         fragmentShader: zFragment,
       }}
     />
@@ -81,7 +82,7 @@ function generateTexture(gradients: [number, string][]) {
   return canvas;
 }
 
-const intensityVertex = `
+const intensityVertex = (pointSize) => `
   uniform float max;
   uniform float min;
   varying vec2 vUv;
@@ -113,7 +114,7 @@ var intensityFragment = `
     gl_FragColor = vec4(col, 1.);
   }
 `;
-export function ShadeByIntensity({ min, max, gradients }) {
+export function ShadeByIntensity({ min, max, gradients, pointSize }) {
   const gradientMap = useGradientMap(gradients);
 
   return (
@@ -124,7 +125,7 @@ export function ShadeByIntensity({ min, max, gradients }) {
           max: { value: max },
           gradientMap: { value: gradientMap },
         },
-        vertexShader: intensityVertex,
+        vertexShader: intensityVertex(pointSize),
         fragmentShader: intensityFragment,
       }}
     />
