@@ -187,7 +187,8 @@ class Mutation:
                 result_view = ds._load_saved_view_from_doc(doc)
             except:
                 logging.error(
-                    f"[mutation.py] ERROR: Unable to load saved view with slug={saved_view_slug}"
+                    f"[mutation.py] ERROR: Unable to load saved view with "
+                    f"slug={saved_view_slug}"
                 )
 
         if not result_view:
@@ -202,6 +203,7 @@ class Mutation:
         slug = fou.to_slug(result_view.name) if result_view.name else None
         # Set view state
         state.view = result_view
+        # name will only exist if the result_view is an unmodified saved_view
         state.view_name = result_view.name
         state.saved_view_slug = slug
         await dispatch_event(
