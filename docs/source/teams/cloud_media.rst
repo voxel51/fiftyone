@@ -1,6 +1,6 @@
 .. _teams-cloud-media:
 
-Cloud-backed Media
+Cloud-Backed Media
 ==================
 
 .. default-role:: code
@@ -26,6 +26,7 @@ and can significantly improve performance in workflows where you access the
 same media file repeatedly:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone as fo
     import fiftyone.brain as fob
@@ -39,6 +40,7 @@ When launching the App locally using the Teams SDK, viewing image datasets in
 the App will also cache the images locally:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -48,15 +50,13 @@ the App will also cache the images locally:
     session = fo.launch_app(dataset)
 
 If desired, this can be disabled via the ``cache_app_images`` parameter of your
-:ref:`media cache config <teams-media-cache-config>`.
-
-Viewing video datasets in the App will never cause previously uncached videos
-to be cached locally.
+:ref:`media cache config <teams-media-cache-config>`. Viewing video datasets in
+the App will never cause previously uncached videos to be cached locally.
 
 .. note::
 
-    Pro tip: it is strongly encouraged to populate the metadata on your
-    datasets at creation time:
+    Pro tip: we recommend that you populate the metadata on your datasets at
+    creation time:
 
     .. code-block:: python
 
@@ -119,6 +119,7 @@ datasets, use ``sample.local_path`` instead of ``sample.filepath`` to retrieve
 the location of the locally cached version of the media file:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -140,11 +141,12 @@ code as if the dataset contains cloud-backed media.
     If you access ``sample.local_path`` and the corresponding media file is not
     cached locally, it will immediately be downloaded.
 
-You can use ``download_media()`` to efficiently download and
-cache the source media files for an entire dataset or view using the cache's
-full thread pool to maximize throughput:
+You can use ``download_media()`` to efficiently download and cache the source
+media files for an entire dataset or view using the cache's full thread pool to
+maximize throughput:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -159,42 +161,224 @@ full thread pool to maximize throughput:
 
     By default, ``download_media()`` will ignore any already cached media.
 
+You can also use ``download_context()`` to download smaller batches of media
+when iterating over samples in a collection:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("a-teams-dataset")
+
+    # Pre-download in batches of 50
+    with dataset.download_context(batch_size=50):
+        for sample in dataset:
+            sample.local_path  # already downloaded
+
+This context provides a middle ground between the following other patterns:
+
+.. code-block:: python
+    :linenos:
+
+    # Download all media in advance
+    dataset.download_media()
+    for sample in dataset:
+        sample.local_path  # already downloaded
+
+    # Download individual images just in time
+    for sample in dataset:
+        sample.local_path   # downloads media now
+
+.. note::
+
+    Download contexts are useful if your cache is not large enough to store all
+    the media in the collection you're working with simultaneously.
+
 You can also use ``get_local_paths()`` to retrieve the list of local paths
 for each sample in a potentially cloud-backed dataset:
 
 .. code-block:: python
+    :linenos:
 
     # Retrieve the local paths for all media in a collection
-    sample_collection.get_local_paths()
+    local_paths = sample_collection.get_local_paths()
+
+    print(local_paths[0])
+    # ex: ~/fiftyone/__cache__/media/s3/voxel51-test/images/000001.jpg
 
     # Retrieve the possibly-cloud paths for all media in a collection
-    sample_collection.values("filepath")
+    cloud_paths = sample_collection.values("filepath")
+
+    print(cloud_paths[0])
+    # ex: s3://voxel51-test/images/000001.jpg
 
 You can get information about currently cached media files for a sample
 collection by calling ``cache_stats()``:
 
 .. code-block:: python
+    :linenos:
 
+    # View cache stats for the current collection
     sample_collection.cache_stats()
+
+.. code-block:: text
+
+    {'cache_dir': '~/fiftyone/__cache__',
+     'cache_size': 34359738368,
+     'cache_size_str': '32.0GB',
+     'current_size': 24412374,
+     'current_size_str': '23.3MB',
+     'current_count': 200,
+     'load_factor': 0.000710493593942374}
 
 and you can call ``clear_media()`` to delete any cached copies of media in the
 collection:
 
 .. code-block:: python
+    :linenos:
 
+    # Clear this collection's media from the cache
     sample_collection.clear_media()
 
 You can also perform these operations on the full cache as follows:
 
 .. code-block:: python
+    :linenos:
 
-    import fiftyone.core.cache as foc
+    # View global cache stats
+    print(fo.media_cache.stats())
 
-    print(foc.media_cache.stats())
-    foc.media_cache.clear()
+.. code-block:: text
 
-Some other convenient methods provided in the FiftyOne Teams Python SDK that
-can be used to manipulate both local and cloud media include:
+    {'cache_dir': '~/fiftyone/__cache__',
+     'cache_size': 34359738368,
+     'cache_size_str': '32.0GB',
+     'current_size': 49097587,
+     'current_size_str': '46.8MB',
+     'current_count': 600,
+     'load_factor': 0.0014289278478827327}
+
+.. code-block:: python
+    :linenos:
+
+    # Clear the entire cache
+    fo.media_cache.clear()
+
+.. _teams-cloud-api-reference:
+
+API reference
+-------------
+
+Here's the cloud-relevant methods available on ``Dataset`` and ``DatasetView``
+instances:
+
+.. code-block:: python
+
+    import fiftyone as fo
+
+    fo.Dataset.download_media?
+    fo.Dataset.download_context?
+    fo.Dataset.get_local_paths?
+    fo.Dataset.cache_stats?
+    fo.Dataset.clear_media?
+
+.. code-block:: python
+
+    fo.Dataset.download_media(
+        self, media_fields=None, update=False, skip_failures=True
+    ):
+        """Downloads the source media files for all samples in the collection.
+
+        This method is only useful for collections that contain remote media.
+
+        Any existing files are not re-downloaded, unless ``update == True`` and
+        their checksums no longer match.
+
+        Args:
+            media_fields (None): a field or iterable of fields containing media
+                to download. By default, all media fields in the collection's
+                :meth:`app_config` are used
+            update (False): whether to re-download media whose checksums no
+                longer match
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+        """
+
+.. code-block:: python
+
+    fo.Dataset.download_context(
+        self, batch_size=100, clear=False, quiet=None, **kwargs
+    ):
+        """Returns a context that can be used to automatically pre-download
+        media when iterating over samples in this collection.
+
+        Args:
+            batch_size (100): the sample batch size to use when downloading
+                media
+            clear (False): whether to clear the media from the cache when the
+                context exits
+            quiet (None): whether to display (False) or not display (True) a
+                progress bar tracking the status of any downloads. By default,
+                ``fiftyone.config.show_progress_bars`` is used to set this
+            **kwargs: valid keyword arguments for :meth:`download_media`
+
+        Returns:
+            a :class:`DownloadContext`
+        """
+
+.. code-block:: python
+
+    fo.Dataset.get_local_paths(
+        self, media_field="filepath", download=True, skip_failures=True
+    ):
+        """Returns a list of local paths to the media files in this collection.
+
+        This method is only useful for collections that contain remote media.
+
+        Args:
+            media_field ("filepath"): the field containing the media paths
+            download (True): whether to download any non-cached media files
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+
+        Returns:
+            a list of local filepaths
+        """
+
+.. code-block:: python
+
+    fo.Dataset.cache_stats(self, media_fields=None):
+        """Returns a dictionary of stats about the cached media files in this
+        collection.
+
+        This method is only useful for collections that contain remote media.
+
+        Args:
+            media_fields (None): a field or iterable of fields containing media
+                paths. By default, all media fields in the collection's
+                :meth:`app_config` are included
+
+        Returns:
+            a stats dict
+        """
+
+.. code-block:: python
+
+    fo.Dataset.clear_media(self, media_fields=None):
+        """Deletes any local copies of media files in this collection from the
+        media cache.
+
+        This method is only useful for collections that contain remote media.
+
+        Args:
+            media_fields (None): a field or iterable of fields containing media
+                paths to clear from the cache. By default, all media fields
+                in the collection's :meth:`app_config` are cleared
+        """
+
+The ``fiftyone.core.storage`` module also provides a number of convenient
+methods that can be used to manipulate both cloud (and local) media:
 
 .. code-block:: python
 
@@ -317,7 +501,7 @@ can be used to manipulate both local and cloud media include:
 .. _teams-annotating-cloud-media:
 
 Annotating cloud-backed datasets with CVAT
-____________________________________________
+__________________________________________
 
 When using FiftyOne to
 `annotate data with CVAT <https://voxel51.com/docs/fiftyone/integrations/cvat.html>`_,
@@ -329,24 +513,27 @@ than the default behavior of uploading copies of the media to the CVAT server.
 First, follow
 `these instructions <https://opencv.github.io/cvat/docs/manual/basics/attach-cloud-storage/>`_
 to attach a cloud storage bucket to CVAT. Then, simply provide the
-``cloud_manifest`` parameter to FiftyOne’s ``annotate()`` method to specify the
-URL of the manifest file in your cloud bucket:
+``cloud_manifest`` parameter to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate` to
+specify the URL of the manifest file in your cloud bucket:
 
 .. code-block:: python
+    :linenos:
 
     anno_key = "cloud_annotations"
+
     results = dataset.annotate(
         anno_key,
         label_field="ground_truth",
         cloud_manifest="s3://voxel51/manifest.jsonl",
     )
 
-Alternatively, if your ``cloud_manifest`` file follows the default name
-``manifest.jsonl`` and exists in the root of the bucket containing the data in
-the sample collection being annotated, then you can simply provide
-``cloud_manifest=True``:
+Alternatively, if your cloud manifest has the default name ``manifest.jsonl``
+and exists in the root of the bucket containing the data in the sample
+collection being annotated, then you can simply pass ``cloud_manifest=True``:
 
 .. code-block:: python
+    :linenos:
 
     results = dataset.annotate(
         anno_key,
@@ -357,8 +544,7 @@ the sample collection being annotated, then you can simply provide
 .. note::
 
     The cloud manifest file must contain all media files in the sample
-    collection being annotated. For example, the collection may not also
-    contain local filepaths.
+    collection being annotated.
 
 .. _teams-cloud-functions:
 
