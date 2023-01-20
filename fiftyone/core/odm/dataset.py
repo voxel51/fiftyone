@@ -1,7 +1,7 @@
 """
 Documents that track datasets and their sample schemas in the database.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -17,10 +17,10 @@ from fiftyone.core.fields import (
     FloatField,
     IntField,
     ListField,
+    MaskTargetsField,
     ObjectIdField,
     ReferenceField,
     StringField,
-    TargetsField,
 )
 import fiftyone.core.utils as fou
 
@@ -453,8 +453,8 @@ class DatasetDocument(Document):
     )
     classes = DictField(ClassesField())
     default_classes = ClassesField()
-    mask_targets = DictField(TargetsField())
-    default_mask_targets = TargetsField()
+    mask_targets = DictField(MaskTargetsField())
+    default_mask_targets = MaskTargetsField()
     skeletons = DictField(EmbeddedDocumentField(KeypointSkeleton))
     default_skeleton = EmbeddedDocumentField(KeypointSkeleton)
     sample_fields = EmbeddedDocumentListField(SampleFieldDocument)

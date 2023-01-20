@@ -1,3 +1,4 @@
+import { Sample } from "@fiftyone/looker/src/state";
 import _ from "lodash";
 import mime from "mime";
 import { isElectron } from "./electron";
@@ -92,6 +93,7 @@ interface BaseField {
   name: string;
   embeddedDocType: string | null;
   subfield: string | null;
+  path: string | null;
 }
 
 export interface StrictField extends BaseField {
@@ -191,6 +193,14 @@ export const LABELS_MAP = {
 };
 
 export const MASK_LABELS = new Set([DETECTION, SEGMENTATION]);
+
+// defined as labels that can have on-disk overlays
+export const DENSE_LABELS = new Set([
+  SEGMENTATION,
+  HEATMAP,
+  DETECTION,
+  DETECTIONS,
+]);
 
 export const VALID_OBJECT_TYPES = [
   DETECTION,
@@ -473,14 +483,17 @@ type Mutable<T> = {
   -readonly [K in keyof T]: Mutable<T[K]>;
 };
 
-export const clone = <T extends unknown>(data: T): Mutable<T> => {
+export const clone = <T>(data: T): Mutable<T> => {
   return JSON.parse(JSON.stringify(data));
 };
 
-export const getMimeType = (sample: any) => {
-  return (
-    (sample.metadata && sample.metadata.mime_type) ||
-    mime.getType(sample.filepath) ||
-    "image/jpg"
-  );
+export const getMimeType = (sample: Sample) => {
+  if (sample.metadata && sample.metadata.mime_type) {
+    return sample.metadata.mime_type;
+  }
+
+  const mimeFromFilePath = mime.getType(sample.filepath);
+
+  // mime type is null for certain file types like point-clouds
+  return mimeFromFilePath ?? null;
 };

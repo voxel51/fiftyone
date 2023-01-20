@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { Buffer } from "buffer";
@@ -28,9 +28,10 @@ export type TypedArray =
   | Float32Array
   | Float64Array;
 
-export interface NumpyResult {
+export interface OverlayMask {
   buffer: ArrayBuffer;
   shape: [number, number];
+  channels: number;
   arrayType: keyof typeof ARRAY_TYPES;
 }
 
@@ -119,7 +120,7 @@ function readStringAt(array: Uint8Array, start: number, end: number) {
 /**
  * Parses a saved numpy array
  */
-function parse(array: Uint8Array): NumpyResult {
+function parse(array: Uint8Array): OverlayMask {
   const version = readUint16At(array, 6);
   if (version !== 1) {
     throw new Error(`Unsupported version: ${version}`);
@@ -158,15 +159,16 @@ function parse(array: Uint8Array): NumpyResult {
         );
 
   return {
-    shape: header.shape,
-    buffer: typedData.buffer,
     arrayType: typedData.constructor.name,
+    buffer: typedData.buffer,
+    channels: header.shape[2] ?? 1,
+    shape: [header.shape[0], header.shape[1]],
   };
 }
 
 /**
  * Deserializes and parses a base64 encoded numpy array
  */
-function deserialize(compressedBase64Array: string): NumpyResult {
+function deserialize(compressedBase64Array: string): OverlayMask {
   return parse(pako.inflate(Buffer.from(compressedBase64Array, "base64")));
 }

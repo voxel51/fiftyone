@@ -1,7 +1,7 @@
 """
 FiftyOne datasets.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -808,17 +808,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def mask_targets(self):
         """A dict mapping field names to mask target dicts, each of which
-        defines a mapping between pixel values and label strings for the
-        segmentation masks in the corresponding field of the dataset.
-
-        .. note::
-
-            The pixel value `0` is a reserved "background" class that is
-            rendered as invisible in the App.
+        defines a mapping between pixel values (2D masks) or RGB hex strings
+        (3D masks) and label strings for the segmentation masks in the
+        corresponding field of the dataset.
 
         Examples::
 
             import fiftyone as fo
+
+            #
+            # 2D masks
+            #
 
             dataset = fo.Dataset()
 
@@ -828,8 +828,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "predictions": {1: "cat", 2: "dog", 255: "other"},
             }
 
+            # Or, for RGB mask targets
+            dataset.mask_targets = {
+                "segmentations": {"#3f0a44": "road", "#eeffee": "building", "#ffffff": "other"}
+            }
+
             # Edit an existing mask target
             dataset.mask_targets["ground_truth"][255] = "other"
+            dataset.save()  # must save after edits
+
+            #
+            # 3D masks
+            #
+
+            dataset = fo.Dataset()
+
+            # Set mask targets for the `ground_truth` and `predictions` fields
+            dataset.mask_targets = {
+                "ground_truth": {"#499CEF": "cat", "#6D04FF": "dog"},
+                "predictions": {
+                    "#499CEF": "cat", "#6D04FF": "dog", "#FF6D04": "person"
+                },
+            }
+
+            # Edit an existing mask target
+            dataset.mask_targets["ground_truth"]["#FF6D04"] = "person"
             dataset.save()  # must save after edits
         """
         return self._doc.mask_targets
@@ -841,27 +864,43 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def default_mask_targets(self):
-        """A dict defining a default mapping between pixel values and label
-        strings for the segmentation masks of all
-        :class:`fiftyone.core.labels.Segmentation` fields of this dataset that
-        do not have customized mask targets defined in :meth:`mask_targets`.
-
-        .. note::
-
-            The pixel value `0` is a reserved "background" class that is
-            rendered as invisible in the App.
+        """A dict defining a default mapping between pixel values (2D masks) or
+        RGB hex strings (3D masks) and label strings for the segmentation masks
+        of all :class:`fiftyone.core.labels.Segmentation` fields of this
+        dataset that do not have customized mask targets defined in
+        :meth:`mask_targets`.
 
         Examples::
 
             import fiftyone as fo
+
+            #
+            # 2D masks
+            #
 
             dataset = fo.Dataset()
 
             # Set default mask targets
             dataset.default_mask_targets = {1: "cat", 2: "dog"}
 
+            # Or, for RGB mask targets
+            dataset.default_mask_targets = {"#3f0a44": "road", "#eeffee": "building", "#ffffff": "other"}
+
             # Edit the default mask targets
             dataset.default_mask_targets[255] = "other"
+            dataset.save()  # must save after edits
+
+            #
+            # 3D masks
+            #
+
+            dataset = fo.Dataset()
+
+            # Set default mask targets
+            dataset.default_mask_targets = {"#499CEF": "cat", "#6D04FF": "dog"}
+
+            # Edit the default mask targets
+            dataset.default_mask_targets["#FF6D04"] = "person"
             dataset.save()  # must save after edits
         """
         return self._doc.default_mask_targets
@@ -1262,6 +1301,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
+    def _merge_sample_field_schema(
+        self,
+        schema,
+        expand_schema=True,
+        recursive=True,
+        validate=True,
+    ):
+        expanded = self._sample_doc_cls.merge_field_schema(
+            schema,
+            expand_schema=expand_schema,
+            recursive=recursive,
+            validate=validate,
+        )
+
+        if expanded:
+            self._reload()
+
     def add_dynamic_sample_fields(self, fields=None, add_mixed=False):
         """Adds all dynamic sample fields to the dataset's schema.
 
@@ -1291,10 +1347,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             elif field is not None:
                 schema[path] = field
 
-        expanded = self._sample_doc_cls.merge_field_schema(schema)
-
-        if expanded:
-            self._reload()
+        self._merge_sample_field_schema(schema)
 
     def add_frame_field(
         self,
@@ -1369,6 +1422,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
+    def _merge_frame_field_schema(
+        self,
+        schema,
+        expand_schema=True,
+        recursive=True,
+        validate=True,
+    ):
+        expanded = self._frame_doc_cls.merge_field_schema(
+            schema,
+            expand_schema=expand_schema,
+            recursive=recursive,
+            validate=validate,
+        )
+
+        if expanded:
+            self._reload()
+
     def add_dynamic_frame_fields(self, fields=None, add_mixed=False):
         """Adds all dynamic frame fields to the dataset's schema.
 
@@ -1403,10 +1473,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             elif field is not None:
                 schema[path] = field
 
-        expanded = self._frame_doc_cls.merge_field_schema(schema)
-
-        if expanded:
-            self._reload()
+        self._merge_frame_field_schema(schema)
 
     def add_group_field(
         self, field_name, default=None, description=None, info=None
@@ -3246,7 +3313,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             view_doc.last_modified_at = datetime.utcnow()
             view_doc.save()
 
-    def load_saved_view(self, name):
+    def load_saved_view(
+        self,
+        name,
+    ):
         """Loads the saved view with the given name.
 
         Examples::
@@ -3301,10 +3371,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.saved_views = []
         self._doc.save()
 
-    def _get_saved_view_doc(self, name, pop=False):
+    def _get_saved_view_doc(self, name, pop=False, slug=False):
         idx = None
+        key = "slug" if slug else "name"
+
         for i, view_doc in enumerate(self._doc.saved_views):
-            if name == view_doc.name:
+            if name == getattr(view_doc, key):
                 idx = i
                 break
 
@@ -3318,7 +3390,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _validate_saved_view_name(self, name, skip=None, overwrite=False):
         slug = fou.to_slug(name)
-
         for view_doc in self._doc.saved_views:
             if view_doc is skip:
                 continue

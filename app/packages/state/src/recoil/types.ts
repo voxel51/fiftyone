@@ -1,4 +1,5 @@
 import { StrictField } from "@fiftyone/utilities";
+import { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export namespace State {
   export type MediaType = "image" | "group" | "point_cloud" | "video";
@@ -8,6 +9,11 @@ export namespace State {
     SAMPLE = "SAMPLE",
   }
 
+  /**
+   * An object containing the configuration for plugins.
+   * Each key is the name of a plugin, and the value is the
+   * configuration for that plugin.
+   */
   export type PluginConfig = { [pluginName: string]: object };
   export interface Config {
     colorPool: string[];
@@ -43,9 +49,9 @@ export namespace State {
     id: string;
     datasetId: string;
     name: string;
-    slug: string;
     description?: string;
     color?: string;
+    slug: string;
     viewStages: Stage[];
     createdAt: DateTime;
     lastLoadedAt: DateTime;
@@ -67,6 +73,7 @@ export namespace State {
       embeddingsField: string | null;
       method: string;
       patchesField: string | null;
+      cls: string;
     };
   }
 
@@ -104,7 +111,12 @@ export namespace State {
     sidebarGroups?: SidebarGroup[];
     sidebarMode?: "all" | "best" | "fast";
   }
+
+  /**
+   * The dataset object returned by the API.
+   */
   export interface Dataset {
+    stages?: Stage[];
     id: string;
     brainMethods: BrainRun[];
     createdAt: DateTime;
@@ -122,17 +134,21 @@ export namespace State {
     sampleFields: StrictField[];
     version: string;
     skeletons: StrictKeypointSkeleton[];
-    defaultSkeleton: KeypointSkeleton;
+    defaultSkeleton?: KeypointSkeleton;
     groupMediaTypes?: {
       name: string;
       mediaType: MediaType;
     }[];
-    defaultGroupSlice: string;
+    defaultGroupSlice?: string;
     groupField: string;
     appConfig: DatasetAppConfig;
     info: { [key: string]: string };
+    viewCls: string;
   }
 
+  /**
+   * @hidden
+   */
   export interface Filter {}
 
   export enum TagKey {
@@ -180,8 +196,8 @@ export namespace State {
     view: Stage[];
     viewCls: string | null;
     viewName: string | null;
-    savedViews: SavedView[];
     savedViewSlug: string | null;
-    changingSavedView: Boolean | null;
+    savedViews: SavedView[];
+    spaces?: SpaceNodeJSON;
   }
 }

@@ -1,7 +1,7 @@
 """
 FiftyOne Server /sort route
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -49,7 +49,7 @@ class Sort(HTTPEndpoint):
             "dataset": await serialize_dataset(
                 dataset_name=dataset_name,
                 serialized_view=stages,
-                view_name=view.name,
+                saved_view_slug=view.name,
             )
             if changed
             else None,
