@@ -934,13 +934,12 @@ class SampleCollection(object):
 
             import time
             import fiftyone as fo
-            import fiftyone.core.cache as foc
 
             dataset = fo.load_dataset("a-cloud-backed-dataset")
 
             with dataset.download_context(batch_size=100):
                 for sample in dataset.iter_samples(progress=True):
-                    assert foc.media_cache.is_local_or_cached(sample.filepath)
+                    assert fo.media_cache.is_local_or_cached(sample.filepath)
                     time.sleep(0.01)
 
         Args:
