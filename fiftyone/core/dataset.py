@@ -3324,10 +3324,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`fiftyone.core.view.DatasetView`
         """
         view_doc = self._get_saved_view_doc(name)
-
-        stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
-        view = fov.DatasetView._build(self, stage_dicts)
-        view._set_name(name)
+        view = self._load_saved_view_from_doc(view_doc)
 
         view_doc.last_loaded_at = datetime.utcnow()
         view_doc.save()
@@ -3371,6 +3368,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return self._doc.saved_views.pop(idx)
 
         return self._doc.saved_views[idx]
+
+    def _load_saved_view_from_doc(self, view_doc):
+        """Load a saved view using the SavedViewDocument"""
+        stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
+        name = getattr(view_doc, "name")
+        view = fov.DatasetView._build(self, stage_dicts)
+        view._set_name(name)
+        return view
 
     def _validate_saved_view_name(self, name, skip=None, overwrite=False):
         slug = fou.to_slug(name)
