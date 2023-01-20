@@ -129,13 +129,6 @@ export const isFramesView = selector<boolean>({
   },
 });
 
-export const selectedViewName = selector<string>({
-  key: "currentViewName",
-  get: ({ get }) => {
-    return get(viewName);
-  },
-});
-
 export const currentViewSlug = selector<string>({
   key: "currentViewSlug",
   get: () => {
