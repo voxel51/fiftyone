@@ -1,7 +1,7 @@
 """
 FiftyOne Teams context
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -18,7 +18,9 @@ from fiftyone.server.data import Context
 
 class GraphQL(gqla.GraphQL):
     async def get_context(
-        self, request: strq.Request, response: strp.Response,
+        self,
+        request: strq.Request,
+        response: strp.Response,
     ) -> Context:
         db_client = mtr.AsyncIOMotorClient(fo.config.database_uri)
         db = db_client[fo.config.database_name]
