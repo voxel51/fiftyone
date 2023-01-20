@@ -1470,6 +1470,44 @@ def _transform_mask(in_mask, targets_map):
     return out_mask
 
 
+def _transform_mask(in_mask, targets_map):
+    rgb_in = fof.is_rgb_mask_targets(targets_map)
+    rgb_out = fof.is_rgb_mask_targets({v: k for k, v in targets_map.items()})
+
+    if rgb_in:
+        if in_mask.ndim != 3:
+            raise ValueError(
+                "Cannot use RGB input targets to transform grayscale mask"
+            )
+
+        in_mask = _rgb_array_to_int(in_mask)
+        targets_map = {_hex_to_int(k): v for k, v in targets_map.items()}
+    else:
+        if in_mask.ndim == 3:
+            raise ValueError(
+                "Cannot use integer input targets to transform RGB mask"
+            )
+
+    if rgb_out:
+        targets_map = {k: _hex_to_int(v) for k, v in targets_map.items()}
+
+    if rgb_out:
+        dtype = int
+    elif max(targets_map.values(), default=0) > 255:
+        dtype = np.uint16
+    else:
+        dtype = np.uint8
+
+    out_mask = np.zeros_like(in_mask, dtype=dtype)
+    for in_val, out_val in targets_map.items():
+        out_mask[in_mask == in_val] = out_val
+
+    if rgb_out:
+        out_mask = _int_array_to_rgb(out_mask)
+
+    return out_mask
+
+
 def _mask_to_image(mask):
     if mask.dtype in (np.uint8, np.uint16):
         return mask

@@ -72,14 +72,20 @@ class Mutation(fosm.Mutation):
         session: t.Optional[str],
         dataset_name: str,
         view: t.Optional[BSONArray],
-        view_name: t.Optional[str],
         saved_view_slug: t.Optional[str],
-        changing_saved_view: t.Optional[bool],
         form: t.Optional[fosm.StateForm],
         info: Info,
     ) -> fosm.ViewResponse:
 
         result_view = None
+        ds = fod.load_dataset(dataset_name)
+        view_name = None
+        if saved_view_slug is not None:
+            try:
+                doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
+                view_name = doc.name
+            except:
+                pass
 
         if view_name is not None:
             ds = fod.load_dataset(dataset_name)
@@ -131,24 +137,10 @@ class Mutation(fosm.Mutation):
         dataset = await Dataset.resolver(
             name=dataset_name,
             view=view,
-            view_name=view_name
-            if view_name
-            else result_view.name
-            if result_view
-            else None,
             info=info,
+            saved_view_slug=saved_view_slug,
         )
-        return fosm.ViewResponse(
-            view=view,
-            dataset=dataset,
-            view_name=view_name
-            if view_name
-            else result_view.name
-            if result_view
-            else None,
-            saved_view_slug=saved_view_slug if saved_view_slug else None,
-            changing_saved_view=changing_saved_view,
-        )
+        return fosm.ViewResponse(view=view, dataset=dataset)
 
 
 async def _update_view_activity(
@@ -170,7 +162,11 @@ async def _update_view_activity(
     # use `ObjectId` instead of `name` to avoid issues resolving renamed
     # views and datasets
     view_id = next(
-        (view.id for view in dataset._saved_views() if view.name == view_name),
+        (
+            view.id
+            for view in dataset._doc.saved_views
+            if view.name == view_name
+        ),
         None,
     )
     if not view_id:
