@@ -5,7 +5,6 @@ FiftyOne Server mutations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 from dataclasses import asdict
 import strawberry as gql
 import typing as t
@@ -179,9 +178,10 @@ class Mutation:
         state.selected_labels = []
 
         result_view = None
+
+        # Load saved views
         if saved_view_slug is not None:
             try:
-                # Load a DatasetView using a slug
                 ds = fod.load_dataset(dataset_name)
                 doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
                 result_view = ds._load_saved_view_from_doc(doc)
@@ -196,11 +196,10 @@ class Mutation:
                 filters=form.filters if form else None,
             )
 
+        # Set view state
         result_view = _build_result_view(result_view, form)
         slug = fou.to_slug(result_view.name) if result_view.name else None
-        # Set view state
         state.view = result_view
-        # name will only exist if the result_view is an unmodified saved_view
         state.view_name = result_view.name
         state.saved_view_slug = slug
         await dispatch_event(

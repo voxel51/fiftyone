@@ -3370,11 +3370,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.saved_views[idx]
 
     def _load_saved_view_from_doc(self, view_doc):
-        """Load a saved view using the SavedViewDocument"""
         stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
-        name = getattr(view_doc, "name")
         view = fov.DatasetView._build(self, stage_dicts)
-        view._set_name(name)
+        view._set_name(view_doc.name)
         return view
 
     def _validate_saved_view_name(self, name, skip=None, overwrite=False):
