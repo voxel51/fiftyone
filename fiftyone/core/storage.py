@@ -651,14 +651,14 @@ class LocalFiles(object):
                 with open(local_path, "w") as f:
                     f.write("Hello, world!")
 
-        with fos.LocalFile(remote_paths, "r") as local_path:
+        with fos.LocalFiles(remote_paths, "r") as local_paths:
             for local_path in local_paths:
                 with open(local_path, "r") as f:
                     print(r.read())
 
     Args:
         paths: a list of filepaths, or a dict mapping keys to filepaths
-        mode ("r"): the mode. Supported values are ``("r", "w")``
+        mode ("r"): the mode. Supported values are ``("r", "w", "rw")``
         basedir (None): an optional directory in which to create temporary
             local files
         skip_failures (False): whether to gracefully continue without raising
@@ -679,7 +679,7 @@ class LocalFiles(object):
         type_str="files",
         quiet=None,
     ):
-        if mode not in ("r", "w"):
+        if not set(mode).issubset("rw"):
             raise ValueError("Unsupported mode '%s'" % mode)
 
         if basedir is not None and not is_local(basedir):
@@ -738,7 +738,7 @@ class LocalFiles(object):
         self._local_paths = local_paths
         self._remote_paths = remote_paths
 
-        if self._mode == "r" and self._remote_paths:
+        if "r" in self._mode and self._remote_paths:
             progress = not self.quiet
 
             if progress and self._type_str:
@@ -758,7 +758,7 @@ class LocalFiles(object):
             return
 
         try:
-            if self._mode == "w" and self._local_paths:
+            if "w" in self._mode and self._local_paths:
                 progress = not self.quiet
 
                 if progress and self._type_str:
