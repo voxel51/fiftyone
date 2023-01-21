@@ -333,6 +333,8 @@ def transform_segmentations(
     else:
         mask_field = in_field + ".mask_path"
         mask_paths = sample_collection.values(mask_field, unwind=True)
+        local_paths = sample_collection.get_local_paths(in_field)
+        local_map = dict(zip(mask_paths, local_paths))
 
     samples = sample_collection.select_fields(in_field)
     in_field, processing_frames = samples._handle_frame_field(in_field)
@@ -350,10 +352,7 @@ def transform_segmentations(
                 idempotent=False,
             )
         else:
-            local_paths = context.enter_context(
-                fos.LocalFiles(mask_paths, "rw")
-            )
-            local_map = dict(zip(mask_paths, local_paths))
+            writer = context.enter_context(fos.FileWriter())
 
         for sample in samples.iter_samples(autosave=True, progress=True):
             if processing_frames:
@@ -374,6 +373,7 @@ def transform_segmentations(
                 else:
                     mask_path = label.mask_path
                     local_path = local_map[mask_path]
+                    writer.register_local_path(mask_path, local_path)
 
                 _mask = label.transform_mask(targets_map, outpath=local_path)
 

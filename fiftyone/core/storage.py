@@ -970,6 +970,39 @@ class FileWriter(object):
         """
         return [self.get_local_path(p) for p in filepaths]
 
+    def register_local_path(self, filepath, local_path):
+        """Registers the local path for the given filepath.
+
+        If the provided ``filepath`` is remote, it will be populated from the
+        ``local_path`` you provide in the exit context's upload.
+
+        If the provided ``filepath`` is local, this method has no effect.
+
+        Args:
+            filepath: a filepath
+            local_path: a corresponding local path
+        """
+        if is_local(filepath):
+            return
+
+        self._inpaths.append(local_path)
+        self._outpaths.append(filepath)
+
+    def register_local_paths(self, filepaths, local_paths):
+        """Registers the local paths for the given filepaths.
+
+        Any remote paths in ``filepaths`` will be populated from the
+        corresponding ``local_paths`` in the exit context's upload.
+
+        Any local filepaths in ``filepaths`` are skipped.
+
+        Args:
+            filepaths: a list of filepaths
+            local_paths: a list of corresponding local paths
+        """
+        for filepath, local_path in zip(filepaths, local_paths):
+            self.register_local_path(filepath, local_path)
+
 
 @contextmanager
 def open_file(path, mode="r"):
