@@ -484,7 +484,13 @@ def _get_cache_result(local_path):
 
 def _read_cache_result(cache_path):
     with open(cache_path, "r") as f:
-        filepath, success_str, checksum = f.read().split(",")
+        chunks = f.read().split(",")
+        if len(chunks) > 3:
+            filepath = ",".join(chunks[:-2])
+            success_str, checksum = chunks[-2:]
+        else:
+            filepath, success_str, checksum = chunks
+
         success = success_str == "1"
         return filepath, success, checksum
 
