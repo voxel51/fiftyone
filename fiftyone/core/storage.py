@@ -91,6 +91,7 @@ class FileSystem(object):
 
 _FILE_SYSTEMS_WITH_BUCKETS = {FileSystem.S3, FileSystem.GCS, FileSystem.MINIO}
 _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS = {FileSystem.S3, FileSystem.MINIO}
+_UNKNOWN_REGION = "unknown"
 
 
 class S3StorageClient(etast.S3StorageClient):
@@ -297,13 +298,7 @@ def get_client(fs=None, path=None):
     # Client creation may not be thread-safe, so we lock for safety
     # https://stackoverflow.com/a/61943955/16823653
     with client_lock:
-        try:
-            return _get_client(fs=fs, path=path)
-        except Exception as e:
-            if path is not None:
-                raise ValueError("Failed to get client for '%s'" % path) from e
-
-            raise
+        return _get_client(fs=fs, path=path)
 
 
 def get_url(path, **kwargs):
@@ -1870,6 +1865,8 @@ def clear_clients():
 
 
 def _get_client(fs=None, path=None):
+    _check_managed_credentials()
+
     if path is not None:
         fs = get_file_system(path)
     elif fs is None:
@@ -1892,19 +1889,20 @@ def _get_regional_client(fs, bucket):
     if fs not in region_clients:
         region_clients[fs] = {}
 
-    _bucket_regions = bucket_regions[fs]
-    _region_clients = region_clients[fs]
-
-    region = _bucket_regions.get(bucket, None)
+    region = bucket_regions[fs].get(bucket, None)
     if region is None:
         region = _get_region(fs, bucket)
-        _bucket_regions[bucket] = region
+        bucket_regions[fs][bucket] = region
 
-    client = _region_clients.get(region, None)
+    client = region_clients[fs].get(region, None)
 
-    if client is None or _must_refresh_clients():
-        client = _make_regional_client(fs, region)
-        _region_clients[region] = client
+    if client is None:
+        if region == _UNKNOWN_REGION:
+            client = _get_default_client(fs)
+        else:
+            client = _make_regional_client(fs, region)
+
+        region_clients[fs][region] = client
 
     return client
 
@@ -1912,21 +1910,21 @@ def _get_regional_client(fs, bucket):
 def _get_default_client(fs):
     if fs == FileSystem.S3:
         global s3_client
-        if s3_client is None or _must_refresh_clients():
+        if s3_client is None:
             s3_client = _make_client(fs)
 
         return s3_client
 
     if fs == FileSystem.GCS:
         global gcs_client
-        if gcs_client is None or _must_refresh_clients():
+        if gcs_client is None:
             gcs_client = _make_client(fs)
 
         return gcs_client
 
     if fs == FileSystem.MINIO:
         global minio_client
-        if minio_client is None or _must_refresh_clients():
+        if minio_client is None:
             minio_client = _make_client(fs)
 
         return minio_client
@@ -1944,8 +1942,12 @@ def _get_default_client(fs):
 
 def _get_region(fs, bucket):
     client = _get_default_client(fs)
-    resp = client._client.get_bucket_location(Bucket=bucket)
-    return resp["LocationConstraint"] or "us-east-1"
+
+    try:
+        resp = client._client.get_bucket_location(Bucket=bucket)
+        return resp["LocationConstraint"] or "us-east-1"
+    except:
+        return _UNKNOWN_REGION
 
 
 def _make_client(fs, num_workers=None):
@@ -1997,11 +1999,12 @@ def _make_regional_client(fs, region, num_workers=None):
     raise ValueError("Unsupported file system '%s'" % fs)
 
 
-def _must_refresh_clients():
+def _check_managed_credentials():
     if creds_manager is None:
-        return False
+        return
 
-    return creds_manager.is_expired
+    if creds_manager.is_expired:
+        clear_clients()
 
 
 def _get_managed_credentials(provider):
