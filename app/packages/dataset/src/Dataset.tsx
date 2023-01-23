@@ -25,6 +25,7 @@ import styled from "styled-components";
 // built-in plugins
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
+import { useRouter } from "next/router";
 
 const Container = styled.div`
   width: 100%;
@@ -72,13 +73,14 @@ export const Dataset: React.FC<DatasetProps> = ({
   const setCanChangeSavedViews = useSetRecoilState(fos.canEditSavedViews);
   const setCompactLayout = useSetRecoilState(fos.compactLayout);
   const setReadOnly = useSetRecoilState(fos.readOnly);
+  const { view } = useRouter().query;
 
   React.useLayoutEffect(() => {
     setCompactLayout(compactLayout);
   }, [compactLayout]);
   React.useEffect(() => {
-    loadQuery({ name: dataset });
-  }, [dataset]);
+    loadQuery({ name: dataset, savedViewSlug: view as string });
+  }, [dataset, view]);
   React.useEffect(() => {
     setCanChangeSavedViews(canEditSavedViews);
   }, [canEditSavedViews]);

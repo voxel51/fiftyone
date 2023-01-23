@@ -2,11 +2,21 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  atom,
+  useRecoilCallback,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { State, stateSubscription, view, viewStateForm } from "../recoil";
 import { RouterContext } from "../routing";
 import useSendEvent from "./useSendEvent";
 import * as fos from "../";
+
+export const stateProxy = atom({
+  key: "stateProxy",
+  default: null,
+});
 
 const useSetView = (patch = false, selectSlice = false) => {
   const send = useSendEvent(true);
@@ -14,6 +24,7 @@ const useSetView = (patch = false, selectSlice = false) => {
   const router = useContext(RouterContext);
   const [commit] = useMutation<setViewMutation>(setView);
   const onError = useErrorHandler();
+  const setStateProxy = useSetRecoilState(stateProxy);
 
   return useRecoilCallback(
     ({ snapshot }) =>
@@ -82,6 +93,10 @@ const useSetView = (patch = false, selectSlice = false) => {
                   },
                 });
               } else {
+                setStateProxy({
+                  view: savedViewSlug ? value : viewResponse,
+                  viewName,
+                });
                 window.history.replaceState(
                   { view: savedViewSlug ? value : viewResponse },
                   undefined,
