@@ -1,6 +1,23 @@
 """
 FiftyOne import/export-related unit tests.
 
+These tests can optionally be configured to read/write from a cloud bucket
+rather than a local directory by passing the extra ``--basedir`` argument::
+
+    BASEDIR=s3://voxel51-test/io
+    BASEDIR=gs://voxel51-test/io
+
+    python tests/unittests/import_export_tests.py --basedir $BASEDIR
+
+You can run specific test(s) as follows::
+
+    BASEDIR=s3://voxel51-test/io
+    BASEDIR=gs://voxel51-test/io
+
+    python tests/unittests/import_export_tests.py \
+        ClassName.method_name \
+        --basedir $BASEDIR
+
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
