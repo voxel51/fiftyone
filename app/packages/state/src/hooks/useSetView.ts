@@ -104,12 +104,13 @@ const useSetView = (patch = false, selectSlice = false) => {
                 const newRoute = `${window.location.pathname}${
                   search.length ? "?" : ""
                 }${search}`;
+
                 setStateProxy({
                   view: savedViewSlug ? value : viewResponse,
                   viewName,
                 });
                 window.history.replaceState(
-                  { view: savedViewSlug ? value : viewResponse },
+                  window.history.state,
                   undefined,
                   newRoute
                 );

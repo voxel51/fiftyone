@@ -179,7 +179,7 @@ export const usePreLoadedDataset = (
 
     if (stateProxyValue) {
       view = stateProxyValue.view;
-      viewName = stateProxy.viewName;
+      viewName = stateProxyValue.viewName;
     }
 
     const { colorscale, config, state } = router?.state || {};
@@ -197,7 +197,7 @@ export const usePreLoadedDataset = (
       });
       setReady(true);
     }
-  }, [dataset, router, stateProxy]);
+  }, [dataset, router, stateProxyValue]);
 
   return [dataset, ready];
 };
