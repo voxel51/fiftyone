@@ -66,20 +66,19 @@ const useSetView = (patch = false, selectSlice = false) => {
                 dataset: { stages: value, viewName, ...dataset },
               },
             }) => {
-              const searchParams = new URLSearchParams(
-                router.history.location.search
-              );
-
-              savedViewSlug
-                ? searchParams.set("view", encodeURIComponent(savedViewSlug))
-                : searchParams.delete("view");
-
-              const search = searchParams.toString();
-              const newRoute = `${router.history.location.pathname}${
-                search.length ? "?" : ""
-              }${search}`;
-
               if (router.history.location.state?.state) {
+                const searchParams = new URLSearchParams(
+                  router.history.location.search
+                );
+
+                savedViewSlug
+                  ? searchParams.set("view", encodeURIComponent(savedViewSlug))
+                  : searchParams.delete("view");
+
+                const search = searchParams.toString();
+                const newRoute = `${router.history.location.pathname}${
+                  search.length ? "?" : ""
+                }${search}`;
                 router.history.push(newRoute, {
                   ...router.history.location.state,
                   state: {
@@ -93,6 +92,18 @@ const useSetView = (patch = false, selectSlice = false) => {
                   },
                 });
               } else {
+                const searchParams = new URLSearchParams(
+                  window.location.search
+                );
+
+                savedViewSlug
+                  ? searchParams.set("view", encodeURIComponent(savedViewSlug))
+                  : searchParams.delete("view");
+
+                const search = searchParams.toString();
+                const newRoute = `${window.location.pathname}${
+                  search.length ? "?" : ""
+                }${search}`;
                 setStateProxy({
                   view: savedViewSlug ? value : viewResponse,
                   viewName,
