@@ -1,9 +1,6 @@
-import { useRef, useLayoutEffect, Fragment } from "react";
-import { useRecoilCallback, atom } from "recoil";
-import * as fos from "@fiftyone/state";
+import { useRef, Fragment } from "react";
 import { useExternalLink } from "@fiftyone/utilities";
 import { Loading, Selector, useTheme } from "@fiftyone/components";
-import { useToPatches } from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import {
   HighlightAlt,
@@ -24,7 +21,6 @@ import { Warnings } from "./Warnings";
 import { useWarnings } from "./useWarnings";
 import { EmbeddingsPlot } from "./EmbeddingsPlot";
 import { usePlotSelection } from "./usePlotSelection";
-import { useBrainResultInfo } from "./useBrainResultInfo";
 import { useResetPlotZoom } from "./useResetPlotZoom";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
@@ -37,8 +33,6 @@ export default function Embeddings({ containerHeight, dimensions }) {
   const resetZoom = useResetPlotZoom();
   const brainResultSelector = useBrainResultsSelector();
   const labelSelector = useLabelSelector();
-  const setView = fos.useSetView();
-  const brainResultInfo = useBrainResultInfo();
   const canSelect = brainResultSelector.canSelect;
   const showPlot = brainResultSelector.hasSelection;
   const plotSelection = usePlotSelection();
