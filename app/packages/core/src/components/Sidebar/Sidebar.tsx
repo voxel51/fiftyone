@@ -13,17 +13,18 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
+import { DatasetSavedViewsQuery } from "../../Root/Root";
+import { useQueryLoader } from "react-relay";
 import { resizeHandle } from "./Sidebar.module.css";
-
 const MARGIN = 3;
 
 const fn = (
   items: InteractiveItems,
   currentOrder: string[],
   newOrder: string[],
-  activeKey: string = null,
+  activeKey: string | null = null,
   delta = 0,
-  lastTouched: string = null
+  lastTouched: string | null = null
 ) => {
   let groupActive = false;
   const currentY = {};
@@ -441,7 +442,7 @@ const InteractiveSidebar = ({
   if (entries instanceof Error) {
     throw entries;
   }
-
+  console.info("entries", entries);
   let group = null;
   order.current = [...entries].map((entry) => getEntryKey(entry));
   for (const entry of entries) {

@@ -194,6 +194,7 @@ const fieldsReducer =
 const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 
 const DEFAULT_IMAGE_GROUPS = [
+  { name: "all tags", paths: [] },
   { name: "tags", paths: [] },
   { name: "label tags", paths: [] },
   { name: "metadata", paths: [] },
@@ -205,6 +206,7 @@ const DEFAULT_IMAGE_GROUPS = [
 const DEFAULT_VIDEO_GROUPS = [
   { name: "tags", paths: [] },
   { name: "label tags", paths: [] },
+  { name: "all tags", paths: [] },
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
   { name: "frame labels", paths: [] },
@@ -220,6 +222,9 @@ export const resolveGroups = (
 ): State.SidebarGroup[] => {
   const sidebarGroups = dataset?.appConfig?.sidebarGroups;
 
+  // TODO: hard code side bar to combine tags and label tags into one group
+  console.info("appconfig", sidebarGroups);
+  console.info("current", current);
   let groups = sidebarGroups
     ? JSON.parse(JSON.stringify(sidebarGroups))
     : undefined;
@@ -237,6 +242,7 @@ export const resolveGroups = (
       )
     );
   }
+  console.info(groups);
 
   groups = groups.map((group) => {
     return expanded[group.name] !== undefined
@@ -247,7 +253,6 @@ export const resolveGroups = (
   const present = new Set(groups.map(({ paths }) => paths).flat());
 
   const updater = groupUpdater(groups, buildSchema(dataset));
-
   const primitives = dataset.sampleFields
     .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
     .filter((path) => path !== "tags" && !present.has(path));
@@ -268,6 +273,8 @@ export const resolveGroups = (
   const fields = Object.fromEntries(
     dataset.sampleFields.map(({ name, ...rest }) => [name, rest])
   );
+
+  console.info("sampleFields", fields);
 
   let other = dataset.sampleFields.reduce(
     fieldsReducer([DICT_FIELD, null, undefined]),
@@ -304,7 +311,7 @@ export const resolveGroups = (
     "other",
     other.filter((path) => !present.has(path))
   );
-
+  console.info("resolve groups", groups);
   return groups;
 };
 
@@ -346,6 +353,8 @@ export const sidebarGroups = selectorFamily<
     ({ modal, loading, filtered = true, persist = true }) =>
     ({ get }) => {
       const f = get(textFilter(modal));
+      const groupDef = get(sidebarGroupsDefinition(modal));
+      console.info(groupDef);
       let groups = get(sidebarGroupsDefinition(modal))
         .map(({ paths, ...rest }) => ({
           ...rest,
@@ -361,9 +370,11 @@ export const sidebarGroups = selectorFamily<
       if (!groups.length) return [];
 
       const groupNames = groups.map(({ name }) => name);
-
+      // TODO: may need to rename all tags after it's done. Need to use it now to differient between tags (which is sample tags)
+      const newTagGroupIndex = groupNames.indexOf("all tags");
       const tagsIndex = groupNames.indexOf("tags");
       const labelTagsIndex = groupNames.indexOf("label tags");
+
       const framesIndex = groupNames.indexOf("frame labels");
       const video = get(isVideoDataset);
 
@@ -376,6 +387,12 @@ export const sidebarGroups = selectorFamily<
         ) {
           groups[framesIndex].expanded = !largeVideo;
         }
+        // add same logic for new tag group
+        if (NONE.includes(groups[newTagGroupIndex].expanded)) {
+          groups[newTagGroupIndex].expanded =
+            get(resolvedSidebarMode(false)) === "all";
+        }
+        // later will need to figure out whether how to determine mode of this new group based on the mode;
 
         if (NONE.includes(groups[tagsIndex].expanded)) {
           groups[tagsIndex].expanded =
@@ -385,6 +402,7 @@ export const sidebarGroups = selectorFamily<
           groups[labelTagsIndex].expanded =
             get(resolvedSidebarMode(false)) === "all" ? !largeVideo : false;
         }
+
         groups[tagsIndex].expanded &&
           (groups[tagsIndex].paths = get(
             aggregationAtoms.values({ extended: false, modal, path: "tags" })
@@ -404,7 +422,38 @@ export const sidebarGroups = selectorFamily<
           )
             .filter((tag) => !filtered || tag.includes(f))
             .map((tag) => `_label_tags.${tag}`));
+
+        const sampleTagFields = get(
+          aggregationAtoms.values({ extended: false, modal, path: "tags" })
+        )
+          .filter((tag) => !filtered || tag.includes(f))
+          .map((tag) => `tags.${tag}`);
+
+        const labelTagFields = get(
+          aggregationAtoms.cumulativeValues({
+            extended: false,
+            modal: false,
+            path: "tags",
+            ftype: EMBEDDED_DOCUMENT_FIELD,
+            embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
+          })
+        )
+          .filter((tag) => !filtered || tag.includes(f))
+          .map((tag) => `_label_tags.${tag}`);
+
+        groups[newTagGroupIndex].expanded &&
+          (groups[newTagGroupIndex].paths = [
+            ...sampleTagFields,
+            ...labelTagFields,
+          ]);
       } else {
+        if (NONE.includes(groups[newTagGroupIndex].expanded)) {
+          groups[newTagGroupIndex].expanded = false;
+        }
+        // TODO: need to delete the following two once all done;
+        if (NONE.includes(groups[tagsIndex].expanded)) {
+          groups[tagsIndex].expanded = false;
+        }
         if (NONE.includes(groups[labelTagsIndex].expanded)) {
           groups[labelTagsIndex].expanded = false;
         }
@@ -415,10 +464,6 @@ export const sidebarGroups = selectorFamily<
           NONE.includes(groups[framesIndex].expanded)
         ) {
           groups[framesIndex].expanded = false;
-        }
-
-        if (NONE.includes(groups[tagsIndex].expanded)) {
-          groups[tagsIndex].expanded = false;
         }
       }
 
@@ -432,7 +477,7 @@ export const sidebarGroups = selectorFamily<
       const allPaths = new Set(groups.map(({ paths }) => paths).flat());
 
       groups = groups.map(({ name, paths, expanded }) => {
-        if (["tags", "label tags"].includes(name)) {
+        if (["tags", "label tags", "all tags"].includes(name)) {
           return { name, paths: [], expanded };
         }
 
@@ -545,7 +590,8 @@ export const sidebarEntries = selectorFamily<
           })
           .flat(),
       ];
-
+      const x = get(sidebarGroups(params));
+      console.info(x);
       if (params.modal) {
         return entries;
       }

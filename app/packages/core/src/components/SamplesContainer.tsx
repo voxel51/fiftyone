@@ -30,11 +30,14 @@ function SamplesContainer() {
         cb: () => void
       ) => void
     ) => {
+      // console.info(entry.kind, group, key)
       switch (entry.kind) {
-        case fos.EntryKind.PATH:
-          const isTag = entry.path.startsWith("tags.");
-          const isLabelTag = entry.path.startsWith("_label_tags.");
+        case fos.EntryKind.PATH: // e.g. metadata
+          // const isTag = entry.path.startsWith("tags.");
+          // const isLabelTag = entry.path.startsWith("_label_tags.");
           const isDisabled = disabled.has(entry.path);
+          const isTag = false;
+          const isLabelTag = false;
 
           return {
             children:
@@ -71,7 +74,7 @@ function SamplesContainer() {
         case fos.EntryKind.GROUP:
           const isTags = entry.name === "tags";
           const isLabelTags = entry.name === "label tags";
-
+          // TODO: clean up
           return {
             children:
               isTags || isLabelTags ? (
@@ -92,7 +95,7 @@ function SamplesContainer() {
                   key={key}
                   name={entry.name}
                   modal={false}
-                  mutable={entry.name !== "other"}
+                  mutable={!["other", "all tags"].includes(entry.name)}
                   trigger={trigger}
                 />
               ),
