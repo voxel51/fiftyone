@@ -445,6 +445,34 @@ export const cumulativeValues = selectorFamily<
     },
 });
 
+export const cumulativePaths = selectorFamily<
+  string[],
+  {
+    extended: boolean;
+    path: string;
+    modal: boolean;
+    ftype: string | string[];
+    embeddedDocType?: string | string[];
+  }
+>({
+  key: "cumulativeValues",
+  get:
+    ({ extended, path: key, modal, ftype, embeddedDocType }) =>
+    ({ get }) => {
+      return Array.from(
+        new Set<string>(
+          gatherPaths(get, ftype, embeddedDocType).reduce(
+            (result) => [
+              ...result,
+              ...get(values({ extended, modal, path: `${key}` })),
+            ],
+            []
+          )
+        )
+      ).sort();
+    },
+});
+
 export const bounds = selectorFamily({
   key: "bounds",
   get:

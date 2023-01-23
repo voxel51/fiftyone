@@ -377,6 +377,7 @@ export const sidebarGroups = selectorFamily<
 
       const framesIndex = groupNames.indexOf("frame labels");
       const video = get(isVideoDataset);
+      console.info(groups);
 
       if (!loading) {
         const largeVideo = get(isLargeVideo);
@@ -423,29 +424,8 @@ export const sidebarGroups = selectorFamily<
             .filter((tag) => !filtered || tag.includes(f))
             .map((tag) => `_label_tags.${tag}`));
 
-        const sampleTagFields = get(
-          aggregationAtoms.values({ extended: false, modal, path: "tags" })
-        )
-          .filter((tag) => !filtered || tag.includes(f))
-          .map((tag) => `tags.${tag}`);
-
-        const labelTagFields = get(
-          aggregationAtoms.cumulativeValues({
-            extended: false,
-            modal: false,
-            path: "tags",
-            ftype: EMBEDDED_DOCUMENT_FIELD,
-            embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
-          })
-        )
-          .filter((tag) => !filtered || tag.includes(f))
-          .map((tag) => `_label_tags.${tag}`);
-
         groups[newTagGroupIndex].expanded &&
-          (groups[newTagGroupIndex].paths = [
-            ...sampleTagFields,
-            ...labelTagFields,
-          ]);
+          (groups[newTagGroupIndex].paths = ["_label_tags", "tags"]);
       } else {
         if (NONE.includes(groups[newTagGroupIndex].expanded)) {
           groups[newTagGroupIndex].expanded = false;

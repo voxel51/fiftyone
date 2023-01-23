@@ -260,7 +260,7 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const field = useRecoilValue(fos.field(path));
-
+  console.info(field);
   return field.ftype !== LIST_FIELD ? (
     <ScalarValueEntry entryKey={entryKey} path={path} trigger={trigger} />
   ) : (

@@ -270,6 +270,8 @@ const FilterableEntry = React.memo(
     const hidden = modal ? useHidden(path) : null;
 
     if (!field) {
+      console.info(fields, expandedPath, VALID_PRIMITIVE_TYPES);
+      console.info(entryKey, modal, path);
       return null;
     }
 

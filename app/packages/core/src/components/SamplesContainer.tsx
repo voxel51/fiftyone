@@ -33,12 +33,12 @@ function SamplesContainer() {
       // console.info(entry.kind, group, key)
       switch (entry.kind) {
         case fos.EntryKind.PATH: // e.g. metadata
-          // const isTag = entry.path.startsWith("tags.");
-          // const isLabelTag = entry.path.startsWith("_label_tags.");
+          const isTag = entry.path.startsWith("tags.");
+          const isLabelTag = entry.path.startsWith("_label_tags.");
           const isDisabled = disabled.has(entry.path);
-          const isTag = false;
-          const isLabelTag = false;
-
+          // const isTag = false;
+          // const isLabelTag = false;
+          console.info(entry.path, key, group);
           return {
             children:
               isTag || isLabelTag ? (
@@ -69,7 +69,7 @@ function SamplesContainer() {
                   trigger={isDisabled ? null : trigger}
                 />
               ),
-            disabled: isTag || isLabelTag || disabled.has(entry.path),
+            disabled: disabled.has(entry.path),
           };
         case fos.EntryKind.GROUP:
           const isTags = entry.name === "tags";
