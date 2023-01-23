@@ -1,154 +1,225 @@
 .. _teams-app:
 
 FiftyOne Teams App
-===================
+==================
 
 .. default-role:: code
 
-Like the open source FiftyOne App, the FiftyOne Teams App allows you to visually inspect, filter, sort, and concatenate view stages on the level of samples in individual datasets. In addition to these features, the FiftyOne Teams App facilitates the organization, versioning, permissioning, and sharing of datasets on a per-dataset basis. This page will walk through some of the added functionality available in the FiftyOne Teams App.
+The FiftyOne Teams App allows you to visualize, browse, and interact with your
+individual datasets like you can with the :ref:`FiftyOne App <fiftyone-app>`,
+but with expanded features for organizing, permissionsing, versioning, and
+sharing your team's datasets, all from a centralized web portal.
 
-.. image:: ../images/teams/feature_management.png
-   :alt: app-hero
+This page provides a brief overview of some features available only in the
+FiftyOne Teams App.
+
+.. _teams-homepage:
+
+The homepage
+____________
+
+When you login to the FiftyOne Teams App, you'll land on the homepage pictured
+below.
+
+In the top bar of this page, on the left side, the gray number next to
+"All datasets" indicates the total number of datasets that you have access to.
+If there are more than 20 datasets, you can use the "Previous" and "Next"
+buttons at the bottom of the page to see different batches of datasets.
+
+.. note::
+
+   You can return to the homepage from any page of the Teams App by clicking on
+   the Voxel51 logo in the upper left corner.
+
+.. image:: /images/teams/homepage.png
+   :alt: app-homepage
    :align: center
 
+.. _teams-pinned-datasets:
 
-.. _teams-app-homepage:
+Pinned datasets
+---------------
 
-Navigating the homepage
-________________________
+You can pin datasets for easy access by hovering over the dataset's name in
+the main table and clicking the pin icon.
 
+The "Your pinned datasets" widget on the right-hand side of the hompage shows
+your pinned datasets at a glance and allows you to quickly open one by
+clicking on its name. Pinned datasets are listed in reverse chronological order
+(most recently pinned on top).
 
-In the top bar on this page, on the left side, the grey number directly to the right of “All datasets” indicates the total number of datasets that your team has. If there are more than 20 datasets, you can use the “Previous” and “Next” buttons at the bottom of the page to see a different batch of datasets, sorted or filtered to your specifications.
+To unpin a dataset, click the pin icon next to the dataset name in the "Your
+pinned datasets" widget or the pin next to the dataset's name in the main
+table.
 
-No matter what page you are on in the FiftyOne Teams App, clicking on the Voxel51 logo in the upper left will bring you back to ``<team-name>.fiftyone.ai/datasets``.
-
-.. _pinning-datasets:
-
-Pinning and unpinning datasets
--------------------------------
-
-To pin a dataset for easy access, hover your cursor over the row corresponding to the dataset you want to pin. Immediately to the right of the dataset name you should see a “pin” icon. Click on this icon to pin this dataset to the “Your pinned datasets” section on the right hand side. The order in which datasets appear in the pinned datasets section is the order in which they are added, with the most recently pinned dataset appearing on top.
-
-To unpin a dataset, click on the pin icon next to the dataset name under the “Your pinned datasets” header, or the pin next to the dataset name in the main view.
-
-.. image:: ../images/teams/pinned_datasets.png
+.. image:: /images/teams/pinned_datasets.png
    :alt: pin-datasets
    :align: center
    :width: 500
 
-.. _ordering-datasets:
+.. _teams-sorting-datasets:
 
-Ordering datasets
-------------------
+Sorting datasets
+----------------
 
-You can use the drop-down menu in the upper left to select the criterion by which to arrange the datasets, including number of samples, date of creation, and alphabetically by name.
+You can use the drop-down menu in the upper left of the main table to sort your
+datasets by various criteria, including size, creation date, recently used, and
+alphabetically by name:
 
-.. image:: ../images/teams/ordering_datasets.png
+.. image:: /images/teams/ordering_datasets.png
    :alt: order-datasets
    :align: center
    :width: 500
 
-.. _filtering-datasets:
+.. _teams-filtering-datasets:
 
 Filtering datasets
--------------------
+------------------
 
-You can use the search bar (with the magnifying glass icon) to the right of the sorting dropdown to filter datasets by name, tags, and media type. One important detail is that the filtering and sorting operations are compatible with each other: so long as the search text remains in the search bar, changing the sorting order will continue to show only the datasets matching the query.
+You can use the search bar (with the magnifying glass icon) in the upper right
+corner of the dataset table to filter datasets by name, tags, and media type:
 
-
-.. image:: ../images/teams/filtering_datasets.png
-   :alt: filtering-datasets
+.. image:: /images/teams/dataset_search_bar.png
+   :alt: dataset-search-bar
    :align: center
    :width: 500
 
+By default, datasets that match across any supported field are returned, but
+you can narrow the search to specific fields by selecting the relevant option
+in the search dropdown:
 
+.. image:: /images/teams/dataset_search_fields.png
+   :alt: dataset-search-fields
+   :align: center
+   :width: 500
 
-.. _teams-dataset-samples:
+.. _teams-creating-datasets:
 
-Viewing a dataset
+Creating datasets
 _________________
 
-After clicking on a dataset from the homepage, you will be presented with the
-familiar FiftyOne sample grid akin to the open-source App.
+To create a new dataset, click on the "New dataset" button in the upper right
+corner of the homepage. A pop-up will appear allowing you to choose a name,
+description, and tags for the dataset:
 
-Here you can interact with your dataset to view, tag, and filter samples and more!
+*  **Name**: as you’re typing a name for your dataset, a URL will appear below
+   denoting the address at which the dataset will be accessible. If the name or
+   URL is not available, you will be prompted to try another name.
 
-.. image:: ../images/teams/samples_page.png
+*  **Description**: an optional free text description that you can use to store
+   relevant information about your dataset.
+
+*  **Tags**: an optional list of tag(s) for your dataset. For example, you may
+   want to record the media type, task type, project name, or other pertinent
+   information. To add a tag, type it in the text bar. If you have previously
+   used a tag, it will automatically appear in a dropdown and you can select
+   it. To add a new tag, type tab or comma.
+
+.. note::
+
+   A dataset's name, desription, and tags can be edited later from the
+   dataset's :ref:`Manage tab <teams-managing-datasets>`.
+
+.. image:: /images/teams/create_dataset.png
+   :alt: create-dataset
+   :align: center
+
+.. note::
+
+   What next? Use the :ref:`Teams Python SDK <teams-python-sdk>` to upload new
+   samples, labels, and metadata to your dataset. A common approach is to
+   automate this process via :ref:`cloud functions <teams-cloud-functions>`.
+
+.. _teams-using-datasets:
+
+Using a dataset
+_______________
+
+Click on a dataset from the homepage to open the dataset's "Samples" tab.
+
+From the Samples tab you can visualize, tag, filter, and explore your dataset
+just as you would via the :ref:`FiftyOne App <fiftyone-app>`.
+
+.. image:: /images/teams/samples_page.png
    :alt: samples-page
    :align: center
 
+.. note::
+
+   Did you know? You can also navigate directly to a dataset of interest by
+   pasting its URL into your browser's URL bar.
+
+.. _teams-managing-datasets:
+
+Managing a dataset
+__________________
+
+The FiftyOne Teams App provides a number of options for managing existing
+datasets, as described below.
+
+You can access these options from the :ref:`Samples tab <teams-using-datasets>`
+by clicking on the "Manage" tab in the upper left corner of the page.
+
+You can also directly navigate to this page from the
+:ref:`homepage <teams-homepage>` by clicking the three dots on the
+right hand side of a row of the dataset listing table and selecting
+"Edit dataset".
 
 .. note::
 
-    :ref:`Check out this page <fiftyone-app>` to learn what you can do with the "Samples"
-    tab of the FiftyOne App.
+   Did you know? You can also use the :ref:`Teams SDK <teams-python-sdk>` to
+   programmatically, create, edit, and delete datasets.
 
+.. _teams-dataset-basic-info:
 
-Clicking on a dataset will take you to this "Samples" tab. In the
-next section, we discuss how you can edit and delete datasets from the "Manage"
-tab.
+Basic info
+----------
 
+The "Basic info" tab is accessible to all users with
+:ref:`Can view <teams-can-view>` access to the dataset.
 
-.. _create-edit-delete:
+Users with :ref:`Can manage <teams-can-manage>` permissions on the dataset can
+edit the name, description, and tags of a dataset from this page.
 
-Creating, editing, and deleting datasets
-_________________________________________
+Additionally, members can create a copy of the dataset by clicking on the
+"Clone this dataset" button.
 
-While with FiftyOne Teams it is still possible to create, edit, and delete datasets programmatically with the Python SDK, with the Teams App, it is now possible to perform these operations without writing a single line of code.
-
-.. _create-dataset:
-
-Create new dataset
--------------------
-
-To create a new dataset, click on the red “+ New dataset…” button in the upper right. A pop-up will then appear, allowing you to set the name of the dataset and enter a description and tags. All of these properties can be edited later. While it is strongly recommended to provide tags and a description, the only requirement for dataset creation is a unique dataset name.
-
-* **Name**: when you’re entering the text for the dataset name, a URL will appear below the name, denoting the address at which the dataset will be accessible, as well as either a green checkmark or a red “x” denoting whether the entered name is or is not available.
-* **Tags**: you can enter as many tags as you want, for the split, media type, context, version, or any other pertinent information. To add a tag, start typing in the text bar. If the tag you want to add is not present in the dropdown, type out the full text of the desired tag and then press the tab key. If the tag you want to add is present in the dropdown list, either
-	#. Navigate to it using the down arrow until that entry is highlighted and then press the enter key, or
-	#. Use your mouse to select that entry and click to add.
-
-.. image:: ../images/teams/create_new_datasets.png
-   :alt: create-datasets
+.. image:: /images/teams/dataset_basic_info.png
+   :alt: dataset-basic-info
    :align: center
 
+.. _teams-dataset-access:
 
-.. note::
+Access
+------
 
-   Currently, you still need to use the :ref:`FiftyOne Python SDK <teams-python-sdk>` to upload new
-   samples, labels, and metadata to your dataset after it is created.
+The "Access" tab is only accessible to users with
+:ref:`Can manage <teams-can-manage>` permissions on the dataset.
 
-   A common approach is to automate this process with :ref:`cloud functions <cloud-functions>`.
+From this tab, users can add, remove, edit, or invite users to the dataset.
+Refer to :ref:`this page <teams-permissions>` for more information about the
+available dataset-level permissions that you can grant.
 
-
-.. _edit-dataset:
-
-Edit dataset
--------------------
-
-To edit a dataset click on the three vertical dots on the right side of the dataset row in the main view and click on the “Edit dataset” pop-up that appears. This is equivalent to clicking on the dataset’s row itself and then toggling from the “Samples” tab to the “Manage” tab in the screen the appears.
-
-* **Edit basic info**: in the “Basic Info” tab, you can change the name, description, and tags for the dataset. Additionally, you can clone the dataset, as long as you are not a Guest. To clone the dataset, all you need to do is specify a name for the cloned dataset.
-* **Manage dataset access**: in the “Manage dataset access” tab, you can configure two different types of access.
-	#. Under the “Default access” header, you can specify the default level of access for all members of the team. Unless otherwise specified in the “People with access” section, this is the level of access people on your team will have.
-	#. Under the “People with access” header, you can grant a different level of access to individuals. To grant any level of access to someone who is not a member of the team, they will already need to be registered as a “Guest”, and they must first be invited as a Guest from the Team Settings page. See this page for details on managing team settings.
-
-.. image:: ../images/teams/edit_datasets.png
-   :alt: edit-datasets
+.. image:: /images/teams/dataset_access.png
+   :alt: dataset-access
    :align: center
 
+.. _teams-dataset-danger-zone:
 
-.. _delete-dataset:
+Danger zone
+-----------
 
-Delete dataset
--------------------
+The "Danger zone" tab is only accessible to users with
+:ref:`Can manage <teams-can-manage>` permissions on the dataset.
 
-To delete a dataset, switch to the “Danger zone” tab and select “Delete entire dataset”. One should proceed with caution as this operation is permanent.
+From this tab, you can select "Delete entire dataset" to permanently delete a
+dataset from your Teams deployment. You must type the dataset's full name in
+the modal to confirm this action.
 
-.. image:: ../images/teams/delete_dataset.png
-   :alt: delete-dataset
+.. image:: /images/teams/dataset_danger_zone.png
+   :alt: danger-zone
    :align: center
 
+.. warning::
 
-
-
+   Deleting a dataset is permanent!

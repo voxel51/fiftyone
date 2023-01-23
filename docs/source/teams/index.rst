@@ -12,11 +12,11 @@ you're already relying on.
 
 FiftyOne Teams is fully backwards-compatible with the
 `open source project <https://github.com/voxel51/fiftyone>`_, so all other
-pages on this site apply to Teams deployments.
+pages on this site apply to Teams deployments as well.
 
 |br|
 
-.. image:: ../images/teams/hero.png
+.. image:: /images/teams/hero.png
    :alt: teams-hero
    :align: center
 

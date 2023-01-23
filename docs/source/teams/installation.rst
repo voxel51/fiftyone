@@ -5,23 +5,22 @@ FiftyOne Teams Installation
 
 .. default-role:: code
 
-An installation of FiftyOne Teams results in a centralized FiftyOne Teams App
-and database allowing your entire team to collaborate securely on the same
+FiftyOne Teams deployments come with a centralized FiftyOne Teams App and
+database that allows your entire team to collaborate securely on the same
 datasets. FiftyOne Teams is deployed entirely into your environment, either
 on-premises or in a private cloud. Your data never leaves your environment.
 
-A FiftyOne Teams installation involves a set of interoperable services hosted
-in your environment that connect to your authentication solution and your
-media, no matter where it lives.
-
-Importantly, FiftyOne Teams can be deployed on a wide variety of infrastructure
-solutions, including Kubernetes and Docker.
+FiftyOne Teams can be deployed on a wide variety of infrastructure solutions,
+including Kubernetes and Docker.
 
 .. note::
 
-    The specific details of the FiftyOne Teams installation, along with all
-    necessary components, are made available to you by the Voxel51 team during
-    the onboarding process.
+    Detailed instructions for the initial FiftyOne Teams deployment, along with
+    all necessary components, are made available by your Voxel51 CS engineer
+    during the onboarding process.
+
+    This page focuses on SDK installation for technical users that wish to
+    interact with their team's dataests via Python.
 
 .. _teams-python-sdk:
 
@@ -33,18 +32,20 @@ App-centric workflows, any existing Python-based workflows that you've fallen
 in love with in the open-source version of FiftyOne are still directly
 applicable!
 
-FiftyOne Teams uses an updated Python SDK, which is a wrapper around the
-open-source FiftyOne package that adds new functionality, like support for
+FiftyOne Teams requires an updated Python SDK, which is a wrapper around the
+open-source FiftyOne package that adds new functionality like support for
 cloud-backed media.
 
-You can find the installation instructions under the ``Install FiftyOne``
-section of the Teams App by clicking on your user icon in the upper right
-corner:
+You can find the installation instructions under the "Install FiftyOne" section
+of the Teams App by clicking on your user icon in the upper right corner:
 
-.. image:: ../images/teams/install_fiftyone.png
+.. image:: /images/teams/install_fiftyone.png
    :alt: install-teams
    :align: center
    :width: 300
+
+There you'll see instructions for installing a `fiftyone` package from the
+private PyPI server as shown below:
 
 .. code-block:: shell
 
@@ -52,29 +53,29 @@ corner:
 
 .. note::
 
-   The Teams Python package is named ``fiftyone`` and has the same module
-   structure, so any existing scripts you built using open source will continue
-   to run after you upgrade!
+   The Teams Python package is named `fiftyone` and has the same module
+   structure as :doc:`fiftyone <../api/fiftyone>`, so any existing scripts you
+   built using open source will continue to run after you upgrade!
 
 **Next Steps**
 
-After installing the Teams SDK in your virtual environment, you just need to
-configure two things:
+After installing the Teams Python SDK in your virtual environment, you'll need
+to configure two things:
 
-*   The :ref:`connection to <configuring-mongodb-connection>` your team's
+*   The :ref:`connection <configuring-mongodb-connection>` to your team's
     centralized database
 
 *   The :ref:`cloud credentials <teams-cloud-credentials>` to access your
     cloud-backed media
 
+That's it! Any operations you perform will be stored on thecentralized database
+and will be available to all users with access to the same datasets in the
+Teams App or their Python workflows.
+
 .. note::
 
    Ask your FiftyOne Teams admin for the necessary MongoDB connection URI and
    relevant cloud credentials.
-
-That's it! Any operations you perform will be stored on thecentralized database
-and will be available to all users with access to the same datasets in the
-Teams App or their Python workflows.
 
 .. _teams-cloud-credentials:
 
@@ -107,7 +108,7 @@ following keys to your :ref:`media cache config <teams-media-cache-config>`:
         "aws_profile": "default"  # optional
     }
 
-In the above, the ``.ini`` file should use the syntax of the
+In the above, the `.ini` file should use the syntax of the
 `boto3 configuration file <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_.
 
 .. _teams-google-cloud:
@@ -172,8 +173,7 @@ individual environment variables shown below:
 If you combine multiple options above, environment variables will take
 precedence over JSON config settings.
 
-In the options above, the ``.ini`` file should have syntax similar the
-following:
+In the options above, the `.ini` file should have syntax similar the following:
 
 .. code-block:: shell
 

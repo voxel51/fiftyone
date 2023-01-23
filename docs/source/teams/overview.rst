@@ -120,7 +120,7 @@ ___________________
 FiftyOne Teams is implemented as a set of interoperable services, as described
 in the figure below.
 
-.. image:: ../images/teams/teams-architecture.png
+.. image:: /images/teams/teams_architecture.png
    :alt: teams-architecture
    :align: center
 

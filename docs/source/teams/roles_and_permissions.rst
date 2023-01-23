@@ -5,26 +5,44 @@ Roles and permissions
 
 .. default-role:: code
 
-FiftyOne Teams is built for collaboration. Our goal is to make it as easy as
-possible for engineers, data scientists, and stakeholders to work together to
-build high quality datasets and computer vision models.
+FiftyOne Teams is built for collaboration, with the goal of making it as easy
+as possible for engineers, data scientists, and stakeholders to work together
+to build high quality datasets and computer vision models.
 
 Accordingly, FiftyOne Teams gives you the flexibility to configure user roles
-and fine-grained permissions, so that you can safely and securly collaborate
+and fine-grained permissions so that you can safely and securly collaborate
 both inside and outside your organization at all stages of your workflows.
 
-Here we'll introduce the basic roles available in the FiftyOne Teams, and
-give you the tools you need to customize access to your data.
+This page introduces the basic roles and permissions available in FiftyOne
+Teams.
 
 .. _teams-roles:
 
 Roles
 _____
 
-FiftyOne Teams has three basic user roles: **Admin**, **Member**, and **Guest**
+FiftyOne Teams has three user roles: Admin, Member, and Guest.
 
-.. image:: ../images/teams/roles.png
-   :alt: roles
+Admins can access user management features by clicking on their account icon in
+the upper-right of the FiftyOne Teams App and navigating to the
+"Settings > Team" page:
+
+.. image:: /images/teams/admin_team_page.png
+   :alt: admin-team-page
+   :align: center
+
+Admins can invite new users by clicking on "Invite people", as shown below.
+Invited users will receive an email invitation with a link to accept the
+invitation.
+
+.. note::
+
+   Invited users may login using any identity provider that has been enabled
+   on your deployment. Contact your Voxel51 CS engineer for more information
+   about configuring IdPs.
+
+.. image:: /images/teams/user_invitation.png
+   :alt: user-invitation
    :align: center
 
 .. _teams-admin:
@@ -32,27 +50,23 @@ FiftyOne Teams has three basic user roles: **Admin**, **Member**, and **Guest**
 Admin
 -----
 
-Admins have full access to all of the organization's datasets, and can
-create/delete any dataset. Admins can also invite or remove users from the
-organization and change other user's roles, including promoting/demoting users
-to admins.
+Admins have full access to all of an organization's datasets and can
+create, edit, and delete any dataset.
+
+Admins can also invite or remove users from the organization and change any
+other user's roles, including promoting/demoting users to admins.
 
 .. _teams-member:
 
 Member
 ------
 
-Members can create datasets and can be granted any desired level of permissions
-on existing datasets. Members may also have a
-:ref:`default access level <teams-default-access-level>` to datasets that use
-this feature.
+Members can create new datasets and can be granted any desired level of
+permission on existing datasets. Members may also have a
+:ref:`default access level <teams-default-access>` to datasets that use this
+feature.
 
-Members do not have the ability to see or manage the organization's users.
-
-.. note::
-
-   Members with **Can manage** permissions on a dataset may invite a **Guest**
-   to access (only) that dataset by sending an email invitation.
+Members do not have the ability to see or manage an organization's users.
 
 .. _teams-guest:
 
@@ -61,95 +75,134 @@ Guest
 
 Guests only have access to datasets to which they have been specifically
 granted access (a dataset's
-:ref:`default access level <teams-default-access-level>` does not apply to
-guests), and they may only be granted **Can view** access to datasets.
+:ref:`default access level <teams-default-access>` does not apply to guests),
+and they may only be granted **Can view** access to datasets.
 
 Guests cannot create new datasets, clone existing datasets, or view other users
 of the deployment.
 
-.. _dataset-permissions:
+.. _teams-permissions:
 
-Dataset-level permissions
-_________________________
+Permissions
+___________
 
-As an Admin, you can configure permissions for Members and Guests on a
-per-dataset level in the "Manage" tab for the dataset in the FiftyOne Teams
-App. The "Default access" option allows you to set a default level of access
-for all Members. To give individual Members upgraded access, you can use the
-"Grant Access" button, find the desired Member, and select the access level of
-interest from the dropdown.
+Admins and members with the **Can manage** permission on a dataset can
+configure a dataset's permissions under the dataset's
+:ref:`Manage tab <teams-managing-datasets>` in the FiftyOne Teams App.
 
-To give a non-Member access to a dataset, you must first invite them as a Guest
-on the Team Settings page and, once they accept the invite, grant them access
-to the dataset following the same procedure as for Members.
+A user's permissions on a dataset is the maximum of their permissions from the
+following sources:
 
-The available permissions level on a dataset are: No Access, View, Edit,
-Manage.
+-  Admins implicitly have full access to all datasets
+-  Members have the dataset's
+   :ref:`default access level <teams-default-access>`
+-  Users may be granted :ref:`specific access <teams-specific-access>` to the
+   dataset
 
-.. image:: ../images/teams/dataset_permissions.png
-   :alt: permissions
+.. _teams-default-access:
+
+Default access
+--------------
+
+All datasets have a default access level, which defines a minimum permission
+level that all Members have on the dataset.
+
+A dataset's default access level can be set to **No access**, **Can view**,
+**Can edit**, or **Can manage** as shown below:
+
+.. image:: /images/teams/dataset_default_access.png
+   :alt: default-access
    :align: center
-
-.. _teams-no-access-permission:
-
-No Access
----------
-
-If a user has no access to a dataset, then the dataset will not appear in the
-user's search results or show on their dataset listing page. Any direct links
-to this dataset that the user attempts to open will show a 404 page.
-
-.. _teams-view-permission:
-
-View
-----
-
-A user with **Can view** access to a dataset can find the dataset from their
-dataset listing page, view the dataset,
-listing page and view the samples as well as the dataset tags and description.
 
 .. note::
 
-   Members (not guests) with **Can view** access to a dataset may clone
-   The user will not be able to modify the dataset, for example by adding or
-   removing tags.
+   Default access level only applies to Members. Guests must be granted
+   :ref:`specific access <teams-specific-access>` to datasets.
 
-If the user is not a Guest, then they will have the ability to clone the
-dataset, creating their own copy of it for which they will have manage
-permissions.
+.. _teams-specific-access:
 
-.. _teams-edit-permission:
+People with access
+------------------
 
-Edit
-----
+Authorized users can grant specific access to a dataset using the "People with
+access" section shown below. To give access to an existing user, simply click
+"Grant access" and select the user from the dropdown:
+
+.. image:: /images/teams/dataset_specific_access.png
+   :alt: specific-access
+   :align: center
+
+The following permissions are available to each user role:
+
+-  Members may be granted **Can view**, **Can edit**, or **Can manage**
+   permissions
+-  Guests may be granted **Can view** or **Can edit** permissions
+
+.. note::
+
+   Authorized users can use the "Grant access" workflow to give **Can view**
+   access to a dataset to an email address that is not yet a user of your
+   FiftyOne Teams deployment.
+
+   When the invitation is accepted, this user will become a Guest of your
+   deployment, and an Admin can upgrade this user to another role if desired
+   via the Team Settings page.
+
+.. _teams-no-access:
+
+No access
+---------
+
+If a user has no access to a dataset, the dataset will not appear in the user's
+search results or show on their dataset listing page. Any direct links to this
+dataset that the user attempts to open will show a 404 page.
+
+.. _teams-can-view:
+
+Can view
+--------
+
+A user with **Can view** permissions on a dataset can find the dataset from
+their dataset listing page and all aspects of the dataset in the App excpet the
+dataset's "Manage" tab.
+
+Users with **Can view** permissions cannot modify the dataset in any way, for
+example by adding or removing samples, tags, annotation runs, brain runs, etc.
+
+.. note::
+
+   Members (but not Guests) with **Can view** access to a dataset may clone
+   the dataset.
+
+.. _teams-can-edit:
+
+Can edit
+--------
 
 A user with **Can edit** permissions on a dataset has all permissions from
-**Can view**, and, in addition, can modify the dataset, including:
+**Can view** and, in addition, can modify the dataset, including:
 
--  Adding/editing/deleting samples
--  Adding/editing/deleting tags
+-  Adding, editing, and deleting samples
+-  Adding, editing, and deleting tags
+-  Adding and deleting annotation runs, brain runs, etc.
 
 .. note::
 
    Deleting a dataset requires the **Can manage** permission.
 
-user with `view` access, except that they will have the ability to modify a
-dataset. For example, they can add or remove tags and samples from the dataset.
-However, they will not be able to delete it.
-
-.. _teams-manage-permission:
+.. _teams-can-manage:
 
 Can manage
 ----------
 
 A user with **Can manage** permissions on a dataset has all permissions from
-**Can view** and **Can edit**, and, in addition, they can delete the dataset
-and configure the permissions on the dataset of other users.
+**Can view** and **Can edit** and, in addition, can delete the dataset and
+configure the permissions on the dataset of other users.
+
+Remember that all admins can implicitly access and manage all datasets created
+on your team's deployment.
 
 .. note::
 
-   Any **Member** who creates a dataset (including cloning an existing dataset
-   or view) will be gratned **Can manage** permissions on the new dataset.
-
-   Additionally, all **Admins** can implicitly access and manage all datasets
-   created on your team's deployment.
+   Any member who creates a dataset (including cloning an existing dataset or
+   view) will be gratned **Can manage** permissions on the new dataset.

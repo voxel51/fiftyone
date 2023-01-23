@@ -18,12 +18,13 @@ object storage paths and/or publicly available URLs.
 Cloud media caching
 ___________________
 
-When you work with cloud-backed datasets in Teams, media files will
-automatically be downloaded and cached on the machine you’re working from when
-you execute workflows such as model inference or Brain methods that require
-access to the pixels of the media files. This design minimizes bandwidth usage
-and can significantly improve performance in workflows where you access the
-same media file repeatedly:
+When you work with cloud-backed datasets using the
+:ref:`Teams SDK <teams-python-sdk>`, media files will automatically be
+downloaded and cached on the machine you’re working from when you execute
+workflows such as model inference or Brain methods that require access to the
+pixels of the media files. This design minimizes bandwidth usage and can
+significantly improve performance in workflows where you access the same media
+file repeatedly:
 
 .. code-block:: python
     :linenos:
@@ -36,8 +37,9 @@ same media file repeatedly:
     # Automatically downloads cloud media to your local cache for processing
     fob.compute_visualization(dataset, brain_key="img_viz")
 
-When launching the App locally using the Teams SDK, viewing image datasets in
-the App will also cache the images locally:
+When launching the App locally using the Teams SDK, media will be served from
+your local cache whenever possible; otherwise it will be automatically
+retrieved from the cloud:
 
 .. code-block:: python
     :linenos:
@@ -46,17 +48,19 @@ the App will also cache the images locally:
 
     dataset = fo.load_dataset("a-teams-dataset")
 
-    # By default, images you view in the grid will be cached locally
+    # Any media you view will be automatically retrieved from the cloud
     session = fo.launch_app(dataset)
 
-If desired, this can be disabled via the ``cache_app_images`` parameter of your
-:ref:`media cache config <teams-media-cache-config>`. Viewing video datasets in
-the App will never cause previously uncached videos to be cached locally.
+By default, viewing media in the App will not add it to your local media cache,
+but, if desired, you can enable caching of images via the `cache_app_images`
+parameter of your :ref:`media cache config <teams-media-cache-config>`. Viewing
+video datasets in the App will never cause previously uncached videos to be
+cached locally.
 
 .. note::
 
-    Pro tip: we recommend that you populate the metadata on your datasets at
-    creation time:
+    We recommend that you populate the metadata on your datasets at creation
+    time:
 
     .. code-block:: python
 
@@ -71,7 +75,7 @@ the App will never cause previously uncached videos to be cached locally.
 Media cache config
 __________________
 
-By default, your local media cache is located at ``~/fiftyone/__cache__``, has
+By default, your local media cache is located at `~/fiftyone/__cache__`, has
 a size of 32GB, and will use a thread pool whose size equals the number of
 virtual CPU cores on your machine to download media files.
 
@@ -91,8 +95,8 @@ following environment variables (default values shown):
     export FIFTYONE_MEDIA_CACHE_NUM_WORKERS=16
     export FIFTYONE_MEDIA_CACHE_APP_IMAGES=false
 
-2. Create a media cache config file at ``~/.fiftyone/media_cache_config.json``
-that contains any of the following keys:
+2. Create a media cache config file at `~/.fiftyone/media_cache_config.json`
+that contains any of the following keys (default values shown):
 
 .. code-block:: json
 
@@ -103,20 +107,20 @@ that contains any of the following keys:
         "cache_app_images": false
     }
 
-You can change the location of this file via the
-``FIFTYONE_MEDIA_CACHE_CONFIG_PATH`` environment variable.
+You can change the location of this file by setting the
+`FIFTYONE_MEDIA_CACHE_CONFIG_PATH` environment variable.
 
 If you combine multiple options above, environment variables will take
 precedence over JSON config settings.
 
-.. _teams-cloud-media-python-code:
+.. _teams-cloud-media-python:
 
-Writing Python code for cloud-backed datasets
-______________________________________________
+Working with cloud-backed datasets
+__________________________________
 
 When writing Python code using the Teams client that may involve cloud-backed
-datasets, use ``sample.local_path`` instead of ``sample.filepath`` to retrieve
-the location of the locally cached version of the media file:
+datasets, use `sample.local_path` instead of `sample.filepath` to retrieve
+the location of the locally cached version of a media file:
 
 .. code-block:: python
     :linenos:
@@ -132,16 +136,18 @@ the location of the locally cached version of the media file:
     print(sample.local_path)
     # ex: ~/fiftyone/__cache__/media/s3/voxel51-test/images/000001.jpg
 
-If ``sample.filepath`` itself is a local path, then ``sample.local_path`` will
-simply return that path. In other words, it is safe to write all Teams Python
-code as if the dataset contains cloud-backed media.
+.. note::
+
+    If `sample.filepath` itself is a local path, then `sample.local_path`
+    will simply return that path. In other words, it is safe to write all Teams
+    Python code as if the dataset contains cloud-backed media.
 
 .. note::
 
-    If you access ``sample.local_path`` and the corresponding media file is not
+    If you access `sample.local_path` and the corresponding media file is not
     cached locally, it will immediately be downloaded.
 
-You can use ``download_media()`` to efficiently download and cache the source
+You can use `download_media()` to efficiently download and cache the source
 media files for an entire dataset or view using the cache's full thread pool to
 maximize throughput:
 
@@ -159,9 +165,10 @@ maximize throughput:
 
 .. note::
 
-    By default, ``download_media()`` will ignore any already cached media.
+    By default, `download_media()` will automatically skip any already cached
+    media.
 
-You can also use ``download_context()`` to download smaller batches of media
+You can also use `download_context()` to download smaller batches of media
 when iterating over samples in a collection:
 
 .. code-block:: python
@@ -176,7 +183,7 @@ when iterating over samples in a collection:
         for sample in dataset:
             sample.local_path  # already downloaded
 
-This context provides a middle ground between the following other patterns:
+This context provides a middle ground between the two extremes:
 
 .. code-block:: python
     :linenos:
@@ -195,7 +202,7 @@ This context provides a middle ground between the following other patterns:
     Download contexts are useful if your cache is not large enough to store all
     the media in the collection you're working with simultaneously.
 
-You can also use ``get_local_paths()`` to retrieve the list of local paths
+You can also use `get_local_paths()` to retrieve the list of local paths
 for each sample in a potentially cloud-backed dataset:
 
 .. code-block:: python
@@ -214,7 +221,7 @@ for each sample in a potentially cloud-backed dataset:
     # ex: s3://voxel51-test/images/000001.jpg
 
 You can get information about currently cached media files for a sample
-collection by calling ``cache_stats()``:
+collection by calling `cache_stats()`:
 
 .. code-block:: python
     :linenos:
@@ -232,7 +239,7 @@ collection by calling ``cache_stats()``:
      'current_count': 200,
      'load_factor': 0.000710493593942374}
 
-and you can call ``clear_media()`` to delete any cached copies of media in the
+and you can call `clear_media()` to delete any cached copies of media in the
 collection:
 
 .. code-block:: python
@@ -265,13 +272,101 @@ You can also perform these operations on the full cache as follows:
     # Clear the entire cache
     fo.media_cache.clear()
 
+The `fiftyone.core.storage` module also provides a number of convenient
+methods that can be used to manipulate cloud and/or local media.
+
+The `upload_media()` method provides a convenient wrapper for uploading a local
+dataset's media to the cloud:
+
+.. code-block:: python
+
+    import fiftyone.core.storage as fos
+
+    # Create a dataset from media stored locally
+    dataset = fo.Dataset.from_dir("/tmp/local", ...)
+
+    # Upload the dataset's media to the cloud
+    fos.upload_media(
+        dataset,
+        "s3://voxel51-test/your-media",
+        update_filepaths=True,
+        progress=True,
+    )
+
+The `fiftyone.core.storage` module also provides a number of lower-level
+methods that you can use to work with cloud and local assets.
+
+.. code-block:: python
+
+    import fiftyone.core.storage as fos
+
+    s3_paths = [
+        "s3://voxel51-test/images/000001.jpg",
+        "s3://voxel51-test/images/000002.jpg",
+        ...
+    ]
+
+    gcs_paths = [
+        "gs://voxel51-test/images/000001.jpg",
+        "gs://voxel51-test/images/000002.jpg",
+        ...
+
+    ]
+
+    local_paths = [
+        "/tmp/voxel51-test/images/000001.jpg",
+        "/tmp/voxel51-test/images/000002.jpg",
+        ...
+    ]
+
+For example, you can use `list_files()` to list the contents of a folder:
+
+.. code-block:: python
+
+    cloud_paths = fos.list_files(
+        "s3://voxel51-test", abs_paths=True, recursive=True
+    )
+
+    print(cloud_paths)[0]
+    # ex: s3://voxel51-test/images/000001.jpg
+
+or you can use `copy_files()` and `move_files()` to transfer files between
+destinations:
+
+.. code-block:: python
+
+    # S3 -> local
+    fos.copy_files(s3_paths, local_paths)
+    fos.move_files(s3_paths, local_paths)
+
+    # local -> S3
+    fos.copy_files(local_paths, s3_paths)
+    fos.move_files(local_paths, s3_paths)
+
+    # S3 -> GCS
+    fos.copy_files(s3_paths, gcs_paths)
+    fos.move_files(s3_paths, gcs_paths)
+
+or you can use `delete_files()` to delete assets:
+
+.. code-block:: python
+
+    fos.delete_files(s3_paths)
+    fos.delete_files(gcs_paths)
+    fos.delete_files(local_paths)
+
+.. note::
+
+    All of the above methods use the media cache's thread pool to maximize
+    throughput.
+
 .. _teams-cloud-api-reference:
 
 API reference
--------------
+_____________
 
-Here's the cloud-relevant methods available on ``Dataset`` and ``DatasetView``
-instances:
+`Dataset` methods
+-----------------
 
 .. code-block:: python
 
@@ -377,8 +472,8 @@ instances:
                 in the collection's :meth:`app_config` are cleared
         """
 
-The ``fiftyone.core.storage`` module also provides a number of convenient
-methods that can be used to manipulate both cloud (and local) media:
+`fiftyone.core.storage`
+-----------------------
 
 .. code-block:: python
 
@@ -513,7 +608,7 @@ than the default behavior of uploading copies of the media to the CVAT server.
 First, follow
 `these instructions <https://opencv.github.io/cvat/docs/manual/basics/attach-cloud-storage/>`_
 to attach a cloud storage bucket to CVAT. Then, simply provide the
-``cloud_manifest`` parameter to
+`cloud_manifest` parameter to
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate` to
 specify the URL of the manifest file in your cloud bucket:
 
@@ -528,9 +623,9 @@ specify the URL of the manifest file in your cloud bucket:
         cloud_manifest="s3://voxel51/manifest.jsonl",
     )
 
-Alternatively, if your cloud manifest has the default name ``manifest.jsonl``
+Alternatively, if your cloud manifest has the default name `manifest.jsonl`
 and exists in the root of the bucket containing the data in the sample
-collection being annotated, then you can simply pass ``cloud_manifest=True``:
+collection being annotated, then you can simply pass `cloud_manifest=True`:
 
 .. code-block:: python
     :linenos:
@@ -556,9 +651,9 @@ Functions.
 
 **Requirements**
 
-We recommend including Teams in your  function’s ``requirements.txt`` file by
+We recommend including Teams in your  function’s `requirements.txt` file by
 passing your token as a build environment variable, e.g.,
-``FIFTYONE_TEAMS_TOKEN`` and then using the syntax below to specify the version
+`FIFTYONE_TEAMS_TOKEN` and then using the syntax below to specify the version
 of the Teams client to use:
 
 .. code-block:: text
