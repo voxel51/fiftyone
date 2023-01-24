@@ -5,13 +5,13 @@ CVAT Integration
 
 .. default-role:: code
 
-`CVAT <https://github.com/openvinotoolkit/cvat>`_ is one of the most popular
+`CVAT <https://github.com/opencv/cvat>`_ is one of the most popular
 open-source image and video annotation tools available, and we've made it easy
 to upload your data directly from FiftyOne to CVAT to add or edit labels.
 
 You can use CVAT either through the demo server at
 `cvat.org <https://cvat.org>`_ or through a
-`self-hosted server <https://openvinotoolkit.github.io/cvat/docs/administration/basics/installation/>`_.
+`self-hosted server <https://opencv.github.io/cvat/docs/administration/basics/installation/>`_.
 In either case, FiftyOne provides :ref:`simple setup <cvat-setup>` instructions
 that you can use to specify the necessary account credentials and server
 endpoint to use.
@@ -174,7 +174,7 @@ Setup
 _____
 
 FiftyOne supports both `cvat.org <https://cvat.org>`_ and
-`self-hosted servers <https://openvinotoolkit.github.io/cvat/docs/administration/basics/installation/>`_.
+`self-hosted servers <https://opencv.github.io/cvat/docs/administration/basics/installation/>`_.
 
 The easiest way to get started is to use the default server
 `cvat.org <https://cvat.org>`_, which simply requires creating an account and
@@ -274,7 +274,7 @@ Self-hosted servers
 -------------------
 
 If you wish to use a
-`self-hosted server <https://openvinotoolkit.github.io/cvat/docs/administration/basics/installation/>`_,
+`self-hosted server <https://opencv.github.io/cvat/docs/administration/basics/installation/>`_,
 you can configure the URL of your server in any of the following ways:
 
 -   Set the `FIFTYONE_CVAT_URL` environment variable:
@@ -921,7 +921,7 @@ shapes:
     existing |Label|
 
 Unfortunately,
-`CVAT does not guarantee <https://github.com/openvinotoolkit/cvat/issues/893#issuecomment-578020576>`_
+`CVAT does not guarantee <https://github.com/opencv/cvat/issues/893#issuecomment-578020576>`_
 that its internal IDs are immutable. Thus, if both the `label_id` attribute and
 (unknown to the user) the internal CVAT ID of a shape are both modified,
 merging the shape with its source |Label| is impossible.
@@ -1711,9 +1711,9 @@ uploading annotation runs for large sample collections.
 
 .. note::
 
-    The CVAT maintainers are working on
-    `an update <https://github.com/openvinotoolkit/cvat/pull/3692>`_
-    to resolve this issue natively. In the meantime, the following workflow is
+    The CVAT maintainers are worked on
+    `an update <https://github.com/opencv/cvat/pull/3692>`_
+    to resolve this issue natively. If you still encounter errors, the following workflow is
     our recommended approach to circumvent this issue.
 
 You can use the `task_size` parameter to break image annotation runs into
@@ -2324,9 +2324,9 @@ Using the CVAT API
 
 You can use the
 :meth:`connect_to_api() <fiftyone.utils.cvat.CVATAnnotationResults.connect_to_api>`
-to retrive a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
+to retrieve a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
 instance, which is a wrapper around the
-`CVAT REST API <https://openvinotoolkit.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
+`CVAT REST API <https://opencv.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
 that provides convenient methods for performing common actions on your CVAT
 tasks.
 
