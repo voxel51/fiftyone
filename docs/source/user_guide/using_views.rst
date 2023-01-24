@@ -179,12 +179,14 @@ to manage your saved views.
 
 .. note::
 
-    Remember that |DatasetView| objects only store the rule(s) used to extract
-    content from the underlying |Dataset|, not the actual content itself.
-    Saving views is cheap. Don't worry about storage space!
+    Saved views only store the rule(s) used to extract content from the
+    underlying dataset, not the actual content itself. Saving views is cheap.
+    Don't worry about storage space!
 
-    Keep in mind though, the contents of a |DatasetView| may change as the
-    underlying |Dataset| is modified.
+    Keep in mind, though, that the contents of a saved view may change as the
+    underlying dataset is modified. For example, if a save view contains
+    samples with a certain tag, the view's contents will change as you
+    add/remove this tag from samples.
 
 .. _view-stages:
 
