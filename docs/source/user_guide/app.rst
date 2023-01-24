@@ -633,7 +633,7 @@ FiftyOne natively includes the following Panel types:
 
 .. note::
 
-    You can also configure custom panels :ref:`via plugins <fiftyone-plugins>`!
+    You can also configure custom Panels :ref:`via plugins <fiftyone-plugins>`!
 
 .. image:: /images/app/app-spaces-hero.png
     :alt: spaces-hero
