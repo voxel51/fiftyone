@@ -137,6 +137,7 @@ In order to develop and test your plugin you will need the following:
     `voxel51/fiftyone-plugins`)
 -   npm link / symlink to the `@fiftyone/plugins` package
 -   npm link / symlink to the `@fiftyone/aggregations` package (optional)
+-   npm link / symlink to the `@fiftyone/components` package (optional)
 
 .. note::
 
@@ -179,8 +180,8 @@ Then follow the steps below, in separate terminal sessions as needed.
     cd $MY_PLUGIN
     npm link @fiftyone/plugins
 
-    # note: if you are using the @fiftyone/aggregations package
-    # you will need to follow the same linking steps for that package
+    # note: if you are using other @fiftyone/* packages
+    # you will need to follow the same linking steps for those packages
 
     # now you can build your plugin for development
     yarn build
@@ -228,8 +229,8 @@ Below are introductory examples to the FiftyOne plugin API.
 Hello world
 ~~~~~~~~~~~
 
-A simple hello world plugin, that renders "hello world" in place of the plots
-main content area, would look like this:
+A simple hello world plugin, that renders "hello world" in a panel, would look
+like this:
 
 .. code-block:: jsx
 
@@ -241,7 +242,7 @@ main content area, would look like this:
 
     registerComponent({
         copmponent: HelloWorld,
-        type: PluginComponentTypes.Plot,
+        type: PluginComponentTypes.Panel,
     });
 
 Installing the plugin above would require building a bundle JS file and placing
@@ -287,7 +288,7 @@ Adding a custom Plot
 .. code-block:: jsx
 
     import * as fop from "@fiftyone/plugins";
-    import * as fos from "@fiftyone/plugins";
+    import * as fos from "@fiftyone/state";
     import * as foa from "@fiftyone/aggregations";
     import AwesomeMap from "react-mapping-library";
 
@@ -323,13 +324,18 @@ Adding a custom Plot
     fop.registerComponent({
         // component to delegate to
         copmponent: CustomPlot,
-        // tell FiftyOne you want to provide a custom Plot
-        type: PluginComponentTypes.Plot,
+        // tell FiftyOne you want to provide a custom Panel
+        type: PluginComponentTypes.Panel,
         // used for the plot selector button
         label: "Map",
         // only show the Map plot when the dataset has Geo data
         activator: ({ dataset }) => dataset.sampleFields.location,
     });
+
+.. note::
+
+    The `PluginComponentType.Plot` type is deprecated. Use
+    `PluginComponentType.Panel` instead.
 
 Reacting to state changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -370,10 +376,41 @@ your plugin, you can use the `@fiftyone/state` package:
     // in a callback
     selectLabel({ id: "labelId", field: "fieldName" });
 
+Panel state
+-----------
+
+Plugins that provide `PluginComponentTypes.Panel` components should use the
+`@fiftyone/spaces` package to manage their state. This package provides hooks
+to allow plugins to manage the state of individual panel instances.
+
+.. code-block:: jsx
+
+    import { usePanelStatePartial, usePanelTitle } from "@fiftyone/spaces";
+    import { Button } from '@fiftyone/components';
+
+    // in your panel component, you can use the usePanelStatePartial hook
+    // to read and write to the panel state
+    function MyPanel() {
+        const [state, setState] = usePanelStatePartial('choice');
+        const setTitle = usePanelTitle();
+
+        React.useEffect(() => {
+          setTitle(`My Panel: ${state}`);
+        }, [state]);
+
+        return (
+          <div>
+            <h1>Choice: {state}</h1>
+            <Button onClick={() => setState('A')}>A</Button>
+            <Button onClick={() => setState('B')}>B</Button>
+          </div>
+        );
+    }
+
 Reading settings in your plugin
 -------------------------------
 
-Somme plugins use libraries or tools that require credentials such as API keys
+Some plugins use libraries or tools that require credentials such as API keys
 or tokens. Below is an example for how to provide and read these credentials.
 
 The same mechanism can be used to expose configuration to plugin users, such as
