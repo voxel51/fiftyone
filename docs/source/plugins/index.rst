@@ -124,7 +124,7 @@ information on changing a plugin's configuration.
 .. note::
 
     You can see an example of dataset level plugin configuration on the
-    :ref:`map tab page <app-map-tab>`.
+    :ref:`map panel page <app-map-panel>`.
 
 Developing plugins
 ------------------

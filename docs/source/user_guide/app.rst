@@ -612,46 +612,328 @@ hovering, a slider appears to adjust the setting manually.
     navigate between samples/labels to restrict your inputs to the App and thus
     prevent them from also affecting your browser window.
 
-.. _app-stats-tabs:
+.. _app-spaces:
 
-Statistics tabs
-_______________
+Spaces
+______
 
-The `Sample tags`, `Label tags`, `Labels`, and `Scalars` tabs in the App let
-you visualize different statistics about your dataset.
+Spaces provide a customizable framework for organizing interactive Panels of
+information within the App.
+
+FiftyOne natively includes the following Panel types:
+
+-   :ref:`Samples panel <app-samples-panel>`: the media grid that loads by
+    default when you launch the App
+-   :ref:`Histograms panel <app-histograms-panel>`: a dashboard of histograms
+    for the fields of your dataset
+-   :ref:`Embeddings panel <app-embeddings-panel>`: a canvas for working with
+    :ref:`embeddings visualizations <brain-embeddings-visualization>`
+-   :ref:`Map panel <app-map-panel>`: visualizes the geolocation data of
+    datasets that have a |GeoLocation| field
 
 .. note::
 
-    The statistics in these tabs automatically update to reflect the current
-    :ref:`view <using-views>` that you have loaded in the App, or the entire
-    :ref:`dataset <using-datasets>` if no view is loaded.
+    You can also configure custom Panels :ref:`via plugins <fiftyone-plugins>`!
 
-The `Sample tags` and `Label tags` tabs show the distribution of any
-:ref:`tags <app-tagging>` that you've added to your dataset.
-
-The `Labels` tab shows the class distributions for each
-:ref:`labels field <using-labels>` that you've added to your dataset. For
-example, you may have histograms of ground truth labels and one more sets of
-model predictions.
-
-The `Scalars` tab shows distributions for numeric (integer or float) or
-categorical (e.g., string) :ref:`primitive fields <adding-sample-fields>` that
-you've added to your dataset. For example, if you computed
-:ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
-uniqueness values will be displayed under the `Scalars` tab.
-
-.. image:: /images/app/app-stats.gif
-    :alt: app-stats
+.. image:: /images/app/app-spaces-hero.png
+    :alt: spaces-hero
     :align: center
 
-.. _app-map-tab:
+.. _app-spaces-layout:
 
-Map tab
-_______
+Configuring spaces in the App
+-----------------------------
+
+Consider the following example dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    fob.compute_visualization(dataset, brain_key="img_viz")
+
+    session = fo.launch_app(dataset)
+
+You can configure spaces visually in the App in a variety of ways described
+below.
+
+Click the `+` icon in any Space to add a new Panel:
+
+.. image:: /images/app/app-spaces-layout1.gif
+    :alt: app-spaces-layout1
+    :align: center
+
+When you have multiple Panels open in a Space, you can use the divider buttons
+to split the Space either horizontally or vertically:
+
+.. image:: /images/app/app-spaces-layout2.gif
+    :alt: app-spaces-layout2
+    :align: center
+
+You can rearrange Panels at any time by dragging their tabs between Spaces, or
+close Panels by clicking their `x` icon:
+
+.. image:: /images/app/app-spaces-layout3.gif
+    :alt: app-spaces-layout3
+    :align: center
+
+.. _app-spaces-python:
+
+Configuring spaces in Python
+----------------------------
+
+You can also programmatically configure your Space layout and the states of the
+individual Panels via the |Space| and |Panel| classes in Python, as shown
+below:
+
+.. code-block:: python
+    :linenos:
+
+    samples_panel = fo.Panel(type="Samples", pinned=True)
+
+    histograms_panel = fo.Panel(
+        type="Histograms",
+        state=dict(plot="Labels"),
+    )
+
+    embeddings_panel = fo.Panel(
+        type="Embeddings",
+        state=dict(brainResult="img_viz", colorByField="metadata.size_bytes"),
+    )
+
+    spaces = fo.Space(
+        children=[
+            fo.Space(
+                children=[
+                    fo.Space(children=[samples_panel]),
+                    fo.Space(children=[histograms_panel]),
+                ],
+                orientation="horizontal",
+            ),
+            fo.Space(children=[embeddings_panel]),
+        ],
+        orientation="vertical",
+    )
+
+The :meth:`children <fiftyone.core.spaces.Space.children>` property of each
+|Space| describes what the Space contains, which can be either:
+
+-   A list of |Space| instances. In this case, the Space contains a nested list
+    of Spaces, arranged either horizontally or vertically, as per the
+    :meth:`orientation <fiftyone.core.spaces.Space.children>` property of the
+    parent Space
+-   A list of |Panel| instances describing the Panels that should be available
+    as tabs within the Space
+
+Set a Panel's :meth:`pinned <fiftyone.core.spaces.Panel.pinned>` property to
+`True` if you do not want a Panel's tab to have a close icon `x` in the App.
+Each |Panel| also has a :meth:`state <fiftyone.core.spaces.Panel.state>` dict
+that can be used to configure the specific state of the Panel to load. Refer to
+the sections below for each Panel's available state.
+
+You can launch the App with an initial spaces layout by passing the optional
+`spaces` parameter to
+:func:`launch_app() <fiftyone.core.session.launch_app>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Launch the App with an initial Spaces layout
+    session = fo.launch_app(dataset, spaces=spaces)
+
+Once the App is launched, you can retrieve your current layout at any time via
+the :meth:`session.spaces <fiftyone.core.session.Session.spaces>` property:
+
+.. code-block:: python
+    :linenos:
+
+    print(session.spaces)
+
+You can also programmatically configure the App's current layout by setting
+:meth:`session.spaces <fiftyone.core.session.Session.spaces>` to any valid
+|Space| instance:
+
+.. code-block:: python
+    :linenos:
+
+    # Change the session's current Spaces layout
+    session.spaces = spaces
+
+.. note::
+
+    Inspecting :meth:`session.spaces <fiftyone.core.session.Session.spaces>` of
+    a session whose Spaces layout you've configured in the App is a convenient
+    way to discover the available state options for each Panel type!
+
+You can reset your spaces to their default state by setting
+:meth:`session.spaces <fiftyone.core.session.Session.spaces>` to None:
+
+.. code-block:: python
+    :linenos:
+
+    # Reset spaces layout in the App
+    session.spaces = None
+
+.. _app-samples-panel:
+
+Samples panel
+_____________
+
+By default, when you launch the App, your spaces layout will contain a single
+space with the Samples panel active:
+
+.. image:: /images/app/app-histograms-panel.gif
+    :alt: app-histograms-panel
+    :align: center
+
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can create a
+Samples panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    samples_panel = fo.Panel(type="Samples")
+
+.. _app-histograms-panel:
+
+Histograms panel
+________________
+
+The Histograms panel in the App lets you visualize different statistics about
+the fields of your dataset.
+
+-   The `Sample tags` and `Label tags` modes show the distribution of any
+    :ref:`tags <app-tagging>` that you've added to your dataset
+-   The `Labels` mode shows the class distributions for each
+    :ref:`labels field <using-labels>` that you've added to your dataset. For
+    example, you may have histograms of ground truth labels and one more sets
+    of model predictions
+-   The `Other fields` mode shows distributions for numeric (integer or float)
+    or categorical (e.g., string)
+    :ref:`primitive fields <adding-sample-fields>` that you've added to your
+    dataset. For example, if you computed
+    :ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
+    uniqueness values will be available under this mode.
+
+.. note::
+
+    The statistics in the plots automatically update to reflect the current
+    :ref:`view <using-views>` that you have loaded in the App!
+
+.. image:: /images/app/app-histograms-panel.gif
+    :alt: app-histograms-panel
+    :align: center
+
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can define a
+Histograms panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    histograms_panel = fo.Panel(type="Histograms", state=dict(plot="Labels"))
+
+The Histograms panel supports the following `state` parameters:
+
+-   **plot**: the histograms to plot. Supported values are `"Sample tags"`,
+    `"Label tags"`, `"Labels"`, and `"Other fields"`
+
+.. _app-embeddings-panel:
+
+Embeddings panel
+________________
+
+When you load a dataset in the App that contains an
+:ref:`embeddings visualization <brain-embeddings-visualization>`, you can open
+the Embeddings panel to visualize and interactively explore a scatterplot of
+the embedddings in the App:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Image embeddings
+    fob.compute_visualization(dataset, brain_key="img_viz")
+
+    # Object patch embeddings
+    fob.compute_visualization(
+        dataset, patches_field="ground_truth", brain_key="gt_viz"
+    )
+
+    session = fo.launch_app(dataset)
+
+Use the two menus in the upper-left corner of the Panel to configure your plot:
+
+-   **Brain Result**: the brain key associated with the
+    :func:`compute_visualization() <fiftyone.brain.compute_visualization>` run
+    to display
+-   **Color By**: an optional sample field (or label attribute, for patches
+    embeddings) to color the points by
+
+From there you can lasso points in the plot to show only the corresponding
+samples/patches in the Samples panel:
+
+.. image:: /images/app/app-embeddings-panel.gif
+    :alt: app-embeddings-panel
+    :align: center
+
+The embeddings UI also provides a number of additional controls:
+
+-   Press the `pan` icon in the menu (or type `g`) to switch to pan mode, in
+    which you can click and drag to change your current field of view
+-   Press the `lasso` icon (or type `s`) to switch back to lasso mode
+-   Press the `locate` icon to reset the plot's viewport to a tight crop of the
+    current view's embeddings
+-   Press the `x` icon (or double click anywhere in the plot) to clear the
+    current selection
+
+When coloring points by categorial fields (strings and integers) with fewer
+than 100 unique classes, you can also use the legend to toggle the visibility
+of each class of points:
+
+-   Single click on a legend trace to show/hide that class in the plot
+-   Double click on a legend trace to show/hide all other classes in the plot
+
+.. image:: /images/app/app-embeddings-panel-controls.gif
+    :alt: app-embeddings-panel-controls
+    :align: center
+
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can define an
+Embeddings panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    embeddings_panel = fo.Panel(
+        type="Embeddings",
+        state=dict(brainResult="img_viz", colorByField="uniqueness"),
+    )
+
+The Embeddings panel supports the following `state` parameters:
+
+-   **brainResult**: the brain key associated with the
+    :func:`compute_visualization() <fiftyone.brain.compute_visualization>` run
+    to display
+-   **colorByField**: an optional sample field (or label attribute, for patches
+    embeddings) to color the points by
+
+.. _app-map-panel:
+
+Map panel
+_________
 
 When you load a dataset in the App that contains a |GeoLocation| field with
 :attr:`point <fiftyone.core.labels.GeoLocation.point>` data populated, you can
-open the `Map` tab to visualize a scatterplot of the location data:
+open the Map panel to visualize and interactively explore a scatterplot of the
+location data:
 
 .. code-block:: python
     :linenos:
@@ -673,16 +955,16 @@ open the `Map` tab to visualize a scatterplot of the location data:
     `which is free <https://www.mapbox.com/pricing/#maps>`_ up to 50,000 map
     loads each month.
 
-.. image:: /images/app/app-map.gif
-    :alt: app-map
+.. image:: /images/app/app-map-panel.gif
+    :alt: app-map-panel
     :align: center
 
-You can lasso points in the map to show only the corresponding samples in the
-grid view below. Confirm the selection by either double-clicking the last
-vertex or pressing `ENTER`:
+You can lasso points in the map to show only the corresponding data in the
+Samples panel. Confirm the selection by either double-clicking the last
+vertex or typing `enter`:
 
-.. image:: /images/app/app-map-selection.gif
-    :alt: app-map-selection
+.. image:: /images/app/app-map-panel-selection.gif
+    :alt: app-map-panel-selection
     :align: center
 
 The map UI also provides a number of additional controls:
@@ -691,14 +973,22 @@ The map UI also provides a number of additional controls:
     map types
 -   Press the `locate` icon to reset the map's viewport to a tight crop of the
     current view's location data
--   Press the `x` icon to clear the current selection in the map
+-   Press the `x` icon to clear the current selection
 
-.. image:: /images/app/app-map-controls.gif
-    :alt: app-map-controls
+.. image:: /images/app/app-map-panel-controls.gif
+    :alt: app-map-panel-controls
     :align: center
 
-The map UI can be configured by including any subset of the settings shown
-below under the `plugins.map` key of your
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can define a
+Map panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    map_panel = fo.Panel(type="Map")
+
+Additionally, the map UI can be configured by including any subset of the
+settings shown below under the `plugins.map` key of your
 :ref:`App config <configuring-fiftyone-app>`:
 
 .. code-block:: json
@@ -1396,6 +1686,5 @@ __________________
 FiftyOne provides a plugin system that you can use to customize and extend its
 behavior!
 
-Check out
-`this page <https://github.com/voxel51/fiftyone/blob/develop/app/packages/plugins/README.md>`_
-for documentation on developing and installing custom plugins.
+Check out :ref:`this page <fiftyone-plugins>` for documentation on developing
+and installing custom plugins.
