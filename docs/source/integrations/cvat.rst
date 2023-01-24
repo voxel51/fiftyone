@@ -1711,7 +1711,7 @@ uploading annotation runs for large sample collections.
 
 .. note::
 
-    The CVAT maintainers are worked on
+    The CVAT maintainers worked on
     `an update <https://github.com/opencv/cvat/pull/3692>`_
     to resolve this issue natively. If you still encounter errors, the following workflow is
     our recommended approach to circumvent this issue.
