@@ -229,7 +229,8 @@ Below are introductory examples to the FiftyOne plugin API.
 Hello world
 ~~~~~~~~~~~
 
-A simple hello world plugin, that renders "hello world" in a panel, would look like this:
+A simple hello world plugin, that renders "hello world" in a panel, would look
+like this:
 
 .. code-block:: jsx
 
@@ -333,7 +334,8 @@ Adding a custom Plot
 
 .. note::
 
-    The `PluginComponentType.Plot` type is deprecated. Use `PluginComponentType.Panel` instead.
+    The `PluginComponentType.Plot` type is deprecated. Use
+    `PluginComponentType.Panel` instead.
 
 Reacting to state changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~
