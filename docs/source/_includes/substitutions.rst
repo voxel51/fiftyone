@@ -142,3 +142,6 @@
 
 .. |EmbeddedDocument| replace:: :class:`EmbeddedDocument <fiftyone.core.odm.embedded_document.EmbeddedDocument>`
 .. |DynamicEmbeddedDocument| replace:: :class:`DynamicEmbeddedDocument <fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument>`
+
+.. |Space| replace:: :class:`Space <fiftyone.core.spaces.Space>`
+.. |Panel| replace:: :class:`Panel <fiftyone.core.spaces.Panel>`
