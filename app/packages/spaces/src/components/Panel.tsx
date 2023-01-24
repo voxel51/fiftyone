@@ -10,12 +10,12 @@ function Panel({ node, spaceId }: PanelProps) {
   const { spaces } = useSpaces(spaceId);
   const panelName = node.type;
   const panel = usePanel(panelName);
+  const dimensions = fos.useDimensions();
   if (!panel) {
     spaces.removeNode(node);
     return warnPanelNotFound(panelName);
   }
   const { component: Component } = panel;
-  const dimensions = fos.useDimensions();
 
   return (
     <StyledPanel id={node.id} ref={dimensions.ref}>
