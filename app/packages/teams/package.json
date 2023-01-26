@@ -6,7 +6,7 @@
         "dev": "vite",
         "relay": "relay-compiler relay.config.json",
         "build": "yarn build-bare && yarn copy-to-python",
-        "build-bare": "vite build",
+        "build-bare": "NODE_OPTIONS=--max-old-space-size=4096 vite build",
         "copy-to-python": "rm -rf ../../../package/teams/fiftyone/teams/static && cp -r ./dist ../../../package/teams/fiftyone/teams/static"
     },
     "peerDependencies": {
