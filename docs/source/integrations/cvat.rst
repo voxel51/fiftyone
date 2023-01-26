@@ -2368,8 +2368,9 @@ Using the CVAT API
 
 You can use the
 :func:`connect_to_api() <fiftyone.utils.annotations.connect_to_api>`
-to retrive a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
-instance, which is a wrapper around the
+to retrieve a
+:class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>` instance,
+which is a wrapper around the
 `CVAT REST API <https://opencv.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
 that provides convenient methods for performing common actions on your CVAT
 tasks:
