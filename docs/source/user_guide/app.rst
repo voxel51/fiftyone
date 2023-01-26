@@ -21,6 +21,8 @@ a local IPython shell, to a remote machine or cloud instance, to a Jupyter or
 Colab notebook. Check out the :ref:`environments guide <environments>` for best
 practices when working in each environment.
 
+.. _app-sessions:
+
 Sessions
 ________
 
@@ -75,6 +77,20 @@ install if you would like to run the App as a desktop application.
 
         # Blocks execution until the App is closed
         session.wait()
+
+.. note::
+
+    When working inside a Docker container, FiftyOne should automatically
+    detect and appropriately configure networking. However, if you are unable
+    to load the App in your browser, you many need to manually
+    :ref:`set the App address <restricting-app-address>` to `0.0.0.0`:
+
+    .. code:: python
+
+        session = fo.launch_app(..., address="0.0.0.0")
+
+    See :ref:`this page <docker>` for more information about working with
+    FiftyOne inside Docker.
 
 .. note::
 
@@ -259,15 +275,144 @@ session by either manually configuring port forwarding or via the FiftyOne CLI:
 
 .. _app-fields-sidebar:
 
-Fields
-______
+Using the sidebar
+_________________
 
 Any labels, tags, and scalar fields can be overlaid on the samples in the App
-by toggling the corresponding display options on the lefthand side of the App.
+by toggling the corresponding display options in the App's sidebar:
 
 .. image:: /images/app/app-fields.gif
     :alt: app-fields
     :align: center
+
+If you have :ref:`stored metadata <storing-field-metadata>` on your fields,
+then you can view this information in the App by hovering over field or
+attribute names in the App's sidebar:
+
+.. image:: /images/app/app-field-tooltips.gif
+    :alt: app-field-tooltips
+    :align: center
+
+.. _app-sidebar-mode:
+
+Sidebar mode
+------------
+
+Each time you load a new dataset or view in the App, the sidebar updates to
+show statistics for the current collection. For large datasets with many
+samples or fields, this may involve substantial computation.
+
+Therefore, the App supports three sidebar modes that you can choose between:
+
+-   `all`: always compute counts for all fields
+-   `fast`: only compute counts for fields whose filter tray is expanded
+-   `best` (*default*): automatically choose between `all` and `fast` mode
+    based on the size of the dataset
+
+When the sidebar mode is `best`, the App will choose `fast` mode if any of the
+following conditions are met:
+
+-   Any dataset with 10,000+ samples
+-   Any dataset with 1,000+ samples and 15+ top-level fields in the sidebar
+-   Any video dataset with frame-level label fields
+
+You can toggle the sidebar mode dynamically for your current session via the
+App's settings menu:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    session = fo.launch_app(dataset)
+
+.. image:: /images/app/app-sidebar-mode.gif
+    :alt: app-sidebar-mode
+    :align: center
+
+You can permanently configure the default sidebar mode of a dataset by
+modifying the
+:class:`sidebar_mode <fiftyone.core.odm.dataset.DatasetAppConfig>` property of
+the :ref:`dataset's App config <custom-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Set the default sidebar mode to "fast"
+    dataset.app_config.sidebar_mode = "fast"
+    dataset.save()  # must save after edits
+
+    session.refresh()
+
+.. _app-sidebar-groups:
+
+Sidebar groups
+--------------
+
+You can customize the layout of the App's sidebar by creating/renaming/deleting
+groups and dragging fields between groups directly in the App:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    session = fo.launch_app(dataset)
+
+.. image:: /images/app/app-sidebar-groups.gif
+    :alt: app-sidebar-groups
+    :align: center
+
+.. note::
+
+    Any changes you make to a dataset's sidebar groups in the App are saved on
+    the dataset and will persist between sessions.
+
+You can also programmatically modify a dataset's sidebar groups by editing the
+:class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>` property
+of the :ref:`dataset's App config <custom-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Get the default sidebar groups for the dataset
+    sidebar_groups = fo.DatasetAppConfig.default_sidebar_groups(dataset)
+
+    # Collapse the `metadata` section by default
+    print(sidebar_groups[2].name)  # metadata
+    sidebar_groups[2].expanded = False
+
+    # Add a new group
+    sidebar_groups.append(fo.SidebarGroupDocument(name="new"))
+
+    # Modify the dataset's App config
+    dataset.app_config.sidebar_groups = sidebar_groups
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+You can conveniently reset the sidebar groups to their default state by setting
+:class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>` to `None`:
+
+.. code-block:: python
+    :linenos:
+
+    # Reset sidebar groups
+    dataset.app_config.sidebar_groups = None
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    If a dataset has fields that do not appear in the dataset's
+    :class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>`
+    property, these fields will be dynamically assigned to default groups in
+    the App at runtime.
 
 .. _app-filtering:
 
@@ -280,6 +425,12 @@ field, click the caret icon to the right of the field's name.
 
 Whenever you modify a filter element, the App will automatically update to show
 only those samples and/or labels that match the filter.
+
+.. note::
+
+    Did you know? When you
+    :ref:`declare custom attributes <dynamic-attributes>` on your dataset's
+    schema, they will automatically become filterable in the App!
 
 .. note::
 
@@ -311,6 +462,58 @@ the App.
 .. image:: /images/app/app-views2.gif
     :alt: app-views2
     :align: center
+
+.. _app-saving-views:
+
+Saving views
+____________
+
+You can use the menu in the upper-left of the App to record the current state
+of the App's view bar and filters sidebar as a **saved view** into your
+dataset:
+
+.. image:: /images/app/app-save-view.gif
+    :alt: app-save-view
+    :align: center
+
+Saved views are persisted on your dataset under a name of your choice so that
+you can quickly load them in a future session via this UI.
+
+Saved views are a convenient way to record semantically relevant subsets of a
+dataset, such as:
+
+-   Samples in a particular state, eg with certain tag(s)
+-   A subset of a dataset that was used for a task, eg training a model
+-   Samples that contain content of interest, eg object types or image
+    characteristics
+
+.. note::
+
+    Saved views only store the rule(s) used to extract content from the
+    underlying dataset, not the actual content itself. Saving views is cheap.
+    Don't worry about storage space!
+
+    Keep in mind, though, that the contents of a saved view may change as the
+    underlying dataset is modified. For example, if a save view contains
+    samples with a certain tag, the view's contents will change as you
+    add/remove this tag from samples.
+
+You can load a saved view at any time by selecting it from the saved view menu:
+
+.. image:: /images/app/app-load-saved-view.gif
+    :alt: app-load-saved-view
+    :align: center
+
+You can also edit or delete saved views by clicking on their pencil icon:
+
+.. image:: /images/app/app-edit-saved-view.gif
+    :alt: app-edit-saved-view
+    :align: center
+
+.. note::
+
+    Did you know? You can also programmatically create, modify, and delete
+    saved views :ref:`via Python <saving-views>`!
 
 .. _app-sample-view:
 
@@ -409,37 +612,447 @@ hovering, a slider appears to adjust the setting manually.
     navigate between samples/labels to restrict your inputs to the App and thus
     prevent them from also affecting your browser window.
 
-.. _app-stats-tabs:
+.. _app-spaces:
 
-Statistics tabs
-_______________
+Spaces
+______
 
-The `Sample tags`, `Label tags`, `Labels`, and `Scalars` tabs in the App let
-you visualize different statistics about your dataset.
+Spaces provide a customizable framework for organizing interactive Panels of
+information within the App.
+
+FiftyOne natively includes the following Panel types:
+
+-   :ref:`Samples panel <app-samples-panel>`: the media grid that loads by
+    default when you launch the App
+-   :ref:`Histograms panel <app-histograms-panel>`: a dashboard of histograms
+    for the fields of your dataset
+-   :ref:`Embeddings panel <app-embeddings-panel>`: a canvas for working with
+    :ref:`embeddings visualizations <brain-embeddings-visualization>`
+-   :ref:`Map panel <app-map-panel>`: visualizes the geolocation data of
+    datasets that have a |GeoLocation| field
 
 .. note::
 
-    The statistics in these tabs automatically update to reflect the current
-    :ref:`view <using-views>` that you have loaded in the App, or the entire
-    :ref:`dataset <using-datasets>` if no view is loaded.
+    You can also configure custom Panels :ref:`via plugins <fiftyone-plugins>`!
 
-The `Sample tags` and `Label tags` tabs show the distribution of any
-:ref:`tags <app-tagging>` that you've added to your dataset.
-
-The `Labels` tab shows the class distributions for each
-:ref:`labels field <using-labels>` that you've added to your dataset. For
-example, you may have histograms of ground truth labels and one more sets of
-model predictions.
-
-The `Scalars` tab shows distributions for numeric (integer or float) or
-categorical (e.g., string) :ref:`primitive fields <adding-sample-fields>` that
-you've added to your dataset. For example, if you computed
-:ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
-uniqueness values will be displayed under the `Scalars` tab.
-
-.. image:: /images/app/app-stats.gif
-    :alt: app-stats
+.. image:: /images/app/app-spaces-hero.png
+    :alt: spaces-hero
     :align: center
+
+.. _app-spaces-layout:
+
+Configuring spaces in the App
+-----------------------------
+
+Consider the following example dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    fob.compute_visualization(dataset, brain_key="img_viz")
+
+    session = fo.launch_app(dataset)
+
+You can configure spaces visually in the App in a variety of ways described
+below.
+
+Click the `+` icon in any Space to add a new Panel:
+
+.. image:: /images/app/app-spaces-layout1.gif
+    :alt: app-spaces-layout1
+    :align: center
+
+When you have multiple Panels open in a Space, you can use the divider buttons
+to split the Space either horizontally or vertically:
+
+.. image:: /images/app/app-spaces-layout2.gif
+    :alt: app-spaces-layout2
+    :align: center
+
+You can rearrange Panels at any time by dragging their tabs between Spaces, or
+close Panels by clicking their `x` icon:
+
+.. image:: /images/app/app-spaces-layout3.gif
+    :alt: app-spaces-layout3
+    :align: center
+
+.. _app-spaces-python:
+
+Configuring spaces in Python
+----------------------------
+
+You can also programmatically configure your Space layout and the states of the
+individual Panels via the |Space| and |Panel| classes in Python, as shown
+below:
+
+.. code-block:: python
+    :linenos:
+
+    samples_panel = fo.Panel(type="Samples", pinned=True)
+
+    histograms_panel = fo.Panel(
+        type="Histograms",
+        state=dict(plot="Labels"),
+    )
+
+    embeddings_panel = fo.Panel(
+        type="Embeddings",
+        state=dict(brainResult="img_viz", colorByField="metadata.size_bytes"),
+    )
+
+    spaces = fo.Space(
+        children=[
+            fo.Space(
+                children=[
+                    fo.Space(children=[samples_panel]),
+                    fo.Space(children=[histograms_panel]),
+                ],
+                orientation="horizontal",
+            ),
+            fo.Space(children=[embeddings_panel]),
+        ],
+        orientation="vertical",
+    )
+
+The :meth:`children <fiftyone.core.spaces.Space.children>` property of each
+|Space| describes what the Space contains, which can be either:
+
+-   A list of |Space| instances. In this case, the Space contains a nested list
+    of Spaces, arranged either horizontally or vertically, as per the
+    :meth:`orientation <fiftyone.core.spaces.Space.children>` property of the
+    parent Space
+-   A list of |Panel| instances describing the Panels that should be available
+    as tabs within the Space
+
+Set a Panel's :meth:`pinned <fiftyone.core.spaces.Panel.pinned>` property to
+`True` if you do not want a Panel's tab to have a close icon `x` in the App.
+Each |Panel| also has a :meth:`state <fiftyone.core.spaces.Panel.state>` dict
+that can be used to configure the specific state of the Panel to load. Refer to
+the sections below for each Panel's available state.
+
+You can launch the App with an initial spaces layout by passing the optional
+`spaces` parameter to
+:func:`launch_app() <fiftyone.core.session.launch_app>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Launch the App with an initial Spaces layout
+    session = fo.launch_app(dataset, spaces=spaces)
+
+Once the App is launched, you can retrieve your current layout at any time via
+the :meth:`session.spaces <fiftyone.core.session.Session.spaces>` property:
+
+.. code-block:: python
+    :linenos:
+
+    print(session.spaces)
+
+You can also programmatically configure the App's current layout by setting
+:meth:`session.spaces <fiftyone.core.session.Session.spaces>` to any valid
+|Space| instance:
+
+.. code-block:: python
+    :linenos:
+
+    # Change the session's current Spaces layout
+    session.spaces = spaces
+
+.. note::
+
+    Inspecting :meth:`session.spaces <fiftyone.core.session.Session.spaces>` of
+    a session whose Spaces layout you've configured in the App is a convenient
+    way to discover the available state options for each Panel type!
+
+You can reset your spaces to their default state by setting
+:meth:`session.spaces <fiftyone.core.session.Session.spaces>` to None:
+
+.. code-block:: python
+    :linenos:
+
+    # Reset spaces layout in the App
+    session.spaces = None
+
+.. _app-samples-panel:
+
+Samples panel
+_____________
+
+By default, when you launch the App, your spaces layout will contain a single
+space with the Samples panel active:
+
+.. image:: /images/app/app-histograms-panel.gif
+    :alt: app-histograms-panel
+    :align: center
+
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can create a
+Samples panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    samples_panel = fo.Panel(type="Samples")
+
+.. _app-histograms-panel:
+
+Histograms panel
+________________
+
+The Histograms panel in the App lets you visualize different statistics about
+the fields of your dataset.
+
+-   The `Sample tags` and `Label tags` modes show the distribution of any
+    :ref:`tags <app-tagging>` that you've added to your dataset
+-   The `Labels` mode shows the class distributions for each
+    :ref:`labels field <using-labels>` that you've added to your dataset. For
+    example, you may have histograms of ground truth labels and one more sets
+    of model predictions
+-   The `Other fields` mode shows distributions for numeric (integer or float)
+    or categorical (e.g., string)
+    :ref:`primitive fields <adding-sample-fields>` that you've added to your
+    dataset. For example, if you computed
+    :ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
+    uniqueness values will be available under this mode.
+
+.. note::
+
+    The statistics in the plots automatically update to reflect the current
+    :ref:`view <using-views>` that you have loaded in the App!
+
+.. image:: /images/app/app-histograms-panel.gif
+    :alt: app-histograms-panel
+    :align: center
+
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can define a
+Histograms panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    histograms_panel = fo.Panel(type="Histograms", state=dict(plot="Labels"))
+
+The Histograms panel supports the following `state` parameters:
+
+-   **plot**: the histograms to plot. Supported values are `"Sample tags"`,
+    `"Label tags"`, `"Labels"`, and `"Other fields"`
+
+.. _app-embeddings-panel:
+
+Embeddings panel
+________________
+
+When you load a dataset in the App that contains an
+:ref:`embeddings visualization <brain-embeddings-visualization>`, you can open
+the Embeddings panel to visualize and interactively explore a scatterplot of
+the embedddings in the App:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Image embeddings
+    fob.compute_visualization(dataset, brain_key="img_viz")
+
+    # Object patch embeddings
+    fob.compute_visualization(
+        dataset, patches_field="ground_truth", brain_key="gt_viz"
+    )
+
+    session = fo.launch_app(dataset)
+
+Use the two menus in the upper-left corner of the Panel to configure your plot:
+
+-   **Brain Result**: the brain key associated with the
+    :func:`compute_visualization() <fiftyone.brain.compute_visualization>` run
+    to display
+-   **Color By**: an optional sample field (or label attribute, for patches
+    embeddings) to color the points by
+
+From there you can lasso points in the plot to show only the corresponding
+samples/patches in the Samples panel:
+
+.. image:: /images/app/app-embeddings-panel.gif
+    :alt: app-embeddings-panel
+    :align: center
+
+The embeddings UI also provides a number of additional controls:
+
+-   Press the `pan` icon in the menu (or type `g`) to switch to pan mode, in
+    which you can click and drag to change your current field of view
+-   Press the `lasso` icon (or type `s`) to switch back to lasso mode
+-   Press the `locate` icon to reset the plot's viewport to a tight crop of the
+    current view's embeddings
+-   Press the `x` icon (or double click anywhere in the plot) to clear the
+    current selection
+
+When coloring points by categorial fields (strings and integers) with fewer
+than 100 unique classes, you can also use the legend to toggle the visibility
+of each class of points:
+
+-   Single click on a legend trace to show/hide that class in the plot
+-   Double click on a legend trace to show/hide all other classes in the plot
+
+.. image:: /images/app/app-embeddings-panel-controls.gif
+    :alt: app-embeddings-panel-controls
+    :align: center
+
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can define an
+Embeddings panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    embeddings_panel = fo.Panel(
+        type="Embeddings",
+        state=dict(brainResult="img_viz", colorByField="uniqueness"),
+    )
+
+The Embeddings panel supports the following `state` parameters:
+
+-   **brainResult**: the brain key associated with the
+    :func:`compute_visualization() <fiftyone.brain.compute_visualization>` run
+    to display
+-   **colorByField**: an optional sample field (or label attribute, for patches
+    embeddings) to color the points by
+
+.. _app-map-panel:
+
+Map panel
+_________
+
+When you load a dataset in the App that contains a |GeoLocation| field with
+:attr:`point <fiftyone.core.labels.GeoLocation.point>` data populated, you can
+open the Map panel to visualize and interactively explore a scatterplot of the
+location data:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-geo")
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    You must configure a
+    `Mapbox access token <https://docs.mapbox.com/help/getting-started/access-tokens>`_
+    in order to use the Map UI. See below for instructions.
+
+    FiftyOne uses the Mapbox GL JS API,
+    `which is free <https://www.mapbox.com/pricing/#maps>`_ up to 50,000 map
+    loads each month.
+
+.. image:: /images/app/app-map-panel.gif
+    :alt: app-map-panel
+    :align: center
+
+You can lasso points in the map to show only the corresponding data in the
+Samples panel. Confirm the selection by either double-clicking the last
+vertex or typing `enter`:
+
+.. image:: /images/app/app-map-panel-selection.gif
+    :alt: app-map-panel-selection
+    :align: center
+
+The map UI also provides a number of additional controls:
+
+-   Use the menu in the upper-left corner to choose between the available
+    map types
+-   Press the `locate` icon to reset the map's viewport to a tight crop of the
+    current view's location data
+-   Press the `x` icon to clear the current selection
+
+.. image:: /images/app/app-map-panel-controls.gif
+    :alt: app-map-panel-controls
+    :align: center
+
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can define a
+Map panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    map_panel = fo.Panel(type="Map")
+
+Additionally, the map UI can be configured by including any subset of the
+settings shown below under the `plugins.map` key of your
+:ref:`App config <configuring-fiftyone-app>`:
+
+.. code-block:: json
+
+    // The default values are shown below
+    {
+        "plugins": {
+            "map": {
+                // Your mapbox token. This is required
+                "mapboxAccessToken": "XXXXXXXX",
+
+                // Whether to enable clustering
+                "clustering": true,
+
+                // Never use clustering beyond this zoom level
+                // https://docs.mapbox.com/help/glossary/zoom-level
+                "clusterMaxZoom": 11,
+
+                // Controls the look and feel of clusters
+                "clusters": {
+                    "paint": {
+                        "circle-color": "rgb(244, 113, 6)",
+                        "circle-opacity": 0.7,
+
+                        // Step expressions can be used
+                        // https://docs.mapbox.com/mapbox-gl-js/style-spec/#expressions-step
+                        // 20px circles when point count is less than 10
+                        // 30px circles when point count is between 10 and 25
+                        // 40px circles when point count is greater than or equal to 25
+                        "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 25, 40]
+                    }
+                },
+
+                // Controls the look and feel of individual scatter points
+                "pointPaint": {
+                    "circle-color": "rgb(244, 113, 6)",
+                    "circle-opacity": 0.7,
+                    "circle-radius": 4
+                }
+            }
+        }
+    }
+
+If you prefer, you can provide your Mapbox token by setting the `MAPBOX_TOKEN`
+environment variable:
+
+.. code-block:: shell
+
+    export MAPBOX_TOKEN=XXXXXXXX
+
+You can also store dataset-specific plugin settings by storing any subset of
+the above values on a :ref:`dataset's App config <custom-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Disable clustering for this dataset
+    dataset.app_config.plugins["map"] = {"clustering": False}
+    dataset.save()
+
+.. note::
+
+    Dataset-specific plugin settings will override any settings from your
+    :ref:`global App config <configuring-fiftyone-app>`.
 
 .. _app-select-samples:
 
@@ -885,13 +1498,108 @@ appears in the upper-right corner of the modal:
     a similarity index in a session. Subsequent similarity searches will use
     cached results and will be faster!
 
+.. _app-multiple-media-fields:
+
+Multiple media fields
+_____________________
+
+There are use cases where you may want to associate multiple media versions
+with each sample in your dataset, such as:
+
+-   Thumbnail images
+-   Anonymized (e.g., blurred) versions of the images
+
+You can work with multiple media sources in FiftyOne by simply adding extra
+field(s) to your dataset containing the paths to each media source and then
+configuring your dataset to expose these multiple media fields in the App.
+
+For example, let's create thumbnail images for use in the App's grid view and
+store their paths in a `thumbnail_path` field:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.image as foui
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Generate some thumbnail images
+    foui.transform_images(
+        dataset,
+        size=(-1, 32),
+        output_field="thumbnail_path",
+        output_dir="/tmp/thumbnails",
+    )
+
+    print(dataset)
+
+.. code-block:: text
+
+    Name:        quickstart
+    Media type:  image
+    Num samples: 200
+    Persistent:  False
+    Tags:        []
+    Sample fields:
+        id:             fiftyone.core.fields.ObjectIdField
+        filepath:       fiftyone.core.fields.StringField
+        tags:           fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:       fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        ground_truth:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        uniqueness:     fiftyone.core.fields.FloatField
+        predictions:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        thumbnail_path: fiftyone.core.fields.StringField
+
+We can expose the thumbnail images to the App by modifying the
+:ref:`dataset's App config <custom-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Modify the dataset's App config
+    dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+    dataset.app_config.grid_media_field = "thumbnail_path"
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+Adding `thumbnail_path` to the
+:class:`media_fields <fiftyone.core.odm.dataset.DatasetAppConfig>` property
+adds it to the `Media Field` selector under the App's settings menu, and
+setting the
+:meth:`grid_media_field <fiftyone.core.odm.dataset.DatasetAppConfig>` property
+to `thumbnail_path` instructs the App to use the thumbnail images by default in
+the grid view:
+
+.. image:: /images/app/app-multiple-media-fields.gif
+    :alt: multiple-media-fields
+    :align: center
+
+.. warning::
+
+    When populating multiple media fields on samples, keep in mind that all
+    media sources must have the same **type** (e.g., image) and
+    **aspect ratio** as the sample's primary `filepath`, since the media must
+    be compatible with the dataset's spatial labels (e.g., object detections).
+
 .. _app-config:
 
 Configuring the App
 ___________________
 
-The behavior of the App can be configured in various ways. The code sample
-below shows the basic pattern for customizing the App on a one-off basis:
+The behavior of the App can be configured globally, on a per-session basis, and
+on a per-dataset basis.
+
+Global App config
+-----------------
+
+FiftyOne provides a :ref:`global App config <configuring-fiftyone-app>` that
+you can use to customize the default App behavior for all sessions and datasets
+on your machine.
+
+You can also customize the global App config on a per-session basis:
 
 .. code-block:: python
     :linenos:
@@ -901,12 +1609,18 @@ below shows the basic pattern for customizing the App on a one-off basis:
 
     dataset = foz.load_zoo_dataset("quickstart")
 
+    # Your default App config
+    print(fo.app_config)
+
     # Create a custom App config
-    app_config = fo.AppConfig()
+    app_config = fo.app_config.copy()
     app_config.show_confidence = False
     app_config.show_label = True
+    print(app_config)
 
+    # Launch App with custom config
     session = fo.launch_app(dataset, config=app_config)
+    print(session.config)
 
 You can also reconfigure a live |Session| by editing its
 :meth:`session.config <fiftyone.core.session.Session.config>` property and
@@ -916,12 +1630,61 @@ apply the changes:
 .. code-block:: python
     :linenos:
 
-    # Customize the config of a live Session
+    # Customize the config of a live session
     session.config.show_confidence = True
     session.config.show_label = True
+    session.refresh()  # must refresh after edits
 
-    # Refresh the session to apply the changes
-    session.refresh()
+See :ref:`this page <configuring-fiftyone-app>` for information about the
+available App configuration options.
 
-See :ref:`this page <configuring-fiftyone-app>` for more information about
-configuring the App.
+Dataset App config
+------------------
+
+Datasets also provide an :ref:`app_config property <custom-app-config>` that
+you can use to customize the behavior of the App for that particular dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.image as foui
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # View the dataset's current App config
+    print(dataset.app_config)
+
+    # Generate some thumbnail images
+    foui.transform_images(
+        dataset,
+        size=(-1, 32),
+        output_field="thumbnail_path",
+        output_dir="/tmp/thumbnails",
+    )
+
+    # Modify the dataset's App config
+    dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+    dataset.app_config.grid_media_field = "thumbnail_path"
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    Any settings stored in a dataset's
+    :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
+    the corresponding settings from your
+    :ref:`global App config <configuring-fiftyone-app>`.
+
+.. _app-plugins:
+
+Custom App plugins
+__________________
+
+FiftyOne provides a plugin system that you can use to customize and extend its
+behavior!
+
+Check out :ref:`this page <fiftyone-plugins>` for documentation on developing
+and installing custom plugins.

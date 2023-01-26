@@ -1,7 +1,7 @@
 """
 Service tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -17,6 +17,8 @@ import requests
 import retrying
 
 os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
+os.environ["FIFTYONE_DATABASE_ADMIN"] = "true"
+os.environ["FIFTYONE_DO_NOT_TRACK"] = "true"
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.service as fos

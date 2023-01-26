@@ -1,7 +1,7 @@
 """
 FiftyOne config.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -104,7 +104,13 @@ class FiftyOneConfig(EnvConfig):
             d, "model_zoo_dir", env_var="FIFTYONE_MODEL_ZOO_DIR", default=None
         )
         self.module_path = self.parse_string_array(
-            d, "module_path", env_var="FIFTYONE_MODULE_PATH", default=None,
+            d,
+            "module_path",
+            env_var="FIFTYONE_MODULE_PATH",
+            default=None,
+        )
+        self.plugins_dir = self.parse_string(
+            d, "plugins_dir", env_var="FIFTYONE_PLUGINS_DIR", default=None
         )
         self.dataset_zoo_manifest_paths = self.parse_path_array(
             d,
@@ -164,10 +170,19 @@ class FiftyOneConfig(EnvConfig):
             d,
             "default_app_address",
             env_var="FIFTYONE_DEFAULT_APP_ADDRESS",
-            default=None,
+            default="localhost",
         )
         self.desktop_app = self.parse_bool(
-            d, "desktop_app", env_var="FIFTYONE_DESKTOP_APP", default=False,
+            d,
+            "desktop_app",
+            env_var="FIFTYONE_DESKTOP_APP",
+            default=False,
+        )
+        self.logging_level = self.parse_string(
+            d,
+            "logging_level",
+            env_var="FIFTYONE_LOGGING_LEVEL",
+            default="INFO",
         )
         self._show_progress_bars = None  # declare
         self.show_progress_bars = self.parse_bool(
@@ -177,7 +192,10 @@ class FiftyOneConfig(EnvConfig):
             default=True,
         )
         self.do_not_track = self.parse_bool(
-            d, "do_not_track", env_var="FIFTYONE_DO_NOT_TRACK", default=False,
+            d,
+            "do_not_track",
+            env_var="FIFTYONE_DO_NOT_TRACK",
+            default=False,
         )
         self.requirement_error_level = self.parse_int(
             d,
@@ -265,11 +283,11 @@ class AppConfig(EnvConfig):
         if d is None:
             d = {}
 
-        self.color_by_value = self.parse_bool(
+        self.color_by = self.parse_string(
             d,
-            "color_by_value",
-            env_var="FIFTYONE_APP_COLOR_BY_VALUE",
-            default=False,
+            "color_by",
+            env_var="FIFTYONE_APP_COLOR_BY",
+            default="field",
         )
         self.color_pool = self.parse_string_array(
             d,
@@ -292,6 +310,12 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_LOOP_VIDEOS",
             default=False,
         )
+        self.multicolor_keypoints = self.parse_bool(
+            d,
+            "multicolor_keypoints",
+            env_var="FIFTYONE_APP_MULTICOLOR_KEYPOINTS",
+            default=False,
+        )
         self.notebook_height = self.parse_int(
             d,
             "notebook_height",
@@ -305,10 +329,16 @@ class AppConfig(EnvConfig):
             default=True,
         )
         self.show_index = self.parse_bool(
-            d, "show_index", env_var="FIFTYONE_APP_SHOW_INDEX", default=True,
+            d,
+            "show_index",
+            env_var="FIFTYONE_APP_SHOW_INDEX",
+            default=True,
         )
         self.show_label = self.parse_bool(
-            d, "show_label", env_var="FIFTYONE_APP_SHOW_LABEL", default=True,
+            d,
+            "show_label",
+            env_var="FIFTYONE_APP_SHOW_LABEL",
+            default=True,
         )
         self.show_skeletons = self.parse_bool(
             d,
@@ -322,12 +352,25 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_SHOW_TOOLTIP",
             default=True,
         )
+        self.sidebar_mode = self.parse_string(
+            d,
+            "sidebar_mode",
+            env_var="FIFTYONE_APP_SIDEBAR_MODE",
+            default="best",
+        )
+        self.theme = self.parse_string(
+            d,
+            "theme",
+            env_var="FIFTYONE_APP_THEME",
+            default="browser",
+        )
         self.use_frame_number = self.parse_bool(
             d,
             "use_frame_number",
             env_var="FIFTYONE_APP_USE_FRAME_NUMBER",
             default=False,
         )
+        self.plugins = d.get("plugins", {})
 
         self._init()
 
@@ -375,11 +418,54 @@ class AppConfig(EnvConfig):
         return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
 
     def _init(self):
+        supported_color_bys = {"field", "instance", "label"}
+        default_color_by = "field"
+        if self.color_by not in supported_color_bys:
+            logger.warning(
+                "Invalid color_by=%s. Must be one of %s. Defaulting to '%s'",
+                self.color_by,
+                supported_color_bys,
+                default_color_by,
+            )
+            self.color_by = default_color_by
+
+        supported_sidebar_modes = {"all", "best", "fast"}
+        default_sidebar_mode = "best"
+        if self.sidebar_mode not in supported_sidebar_modes:
+            logger.warning(
+                "Invalid sidebar_mode=%s. Must be one of %s. Defaulting to '%s'",
+                self.sidebar_mode,
+                supported_sidebar_modes,
+                default_sidebar_mode,
+            )
+            self.sidebar_mode = default_sidebar_mode
+
+        supported_themes = {"browser", "dark", "light"}
+        default_theme = "browser"
+        if self.theme not in supported_themes:
+            logger.warning(
+                "Invalid theme=%s. Must be one of %s. Defaulting to '%s'",
+                self.theme,
+                supported_themes,
+                default_theme,
+            )
+            self.theme = default_theme
+
         if self.grid_zoom < 0 or self.grid_zoom > 10:
             logger.warning(
                 "`grid_zoom` must be in [0, 10]; found %d", self.grid_zoom
             )
             self.grid_zoom = 5
+
+        if "MAPBOX_TOKEN" in os.environ:
+            try:
+                _set_nested_dict_value(
+                    self.plugins,
+                    "map.mapboxAccessToken",
+                    os.environ["MAPBOX_TOKEN"],
+                )
+            except Exception as e:
+                logger.warning("Failed to set mapbox token: %s", e)
 
 
 class AppConfigError(etac.EnvConfigError):
@@ -396,11 +482,15 @@ class AnnotationConfig(EnvConfig):
     _BUILTIN_BACKENDS = {
         "cvat": {
             "config_cls": "fiftyone.utils.cvat.CVATBackendConfig",
-            "url": "https://cvat.org",
+            "url": "https://app.cvat.ai",
         },
         "labelbox": {
             "config_cls": "fiftyone.utils.labelbox.LabelboxBackendConfig",
             "url": "https://labelbox.com",
+        },
+        "labelstudio": {
+            "config_cls": "fiftyone.utils.labelstudio.LabelStudioBackendConfig",
+            "url": "https://labelstud.io",
         },
     }
 
@@ -622,3 +712,15 @@ def _get_installed_packages():
     except:
         logger.debug("Failed to get installed packages")
         return set()
+
+
+def _set_nested_dict_value(d, path, value):
+    keys = path.split(".")
+
+    for key in keys[:-1]:
+        if key not in d:
+            d[key] = {}
+
+        d = d[key]
+
+    d[keys[-1]] = value

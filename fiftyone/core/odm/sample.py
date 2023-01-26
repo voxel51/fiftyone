@@ -42,12 +42,11 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
     dataset.add_sample(sample)
     sample._doc  # my_dataset(DatasetSampleDocument)
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from collections import OrderedDict
-import os
 import random
 
 import fiftyone.core.fields as fof

@@ -12,7 +12,7 @@ media.
 Basic recipe
 ------------
 
-The interface for drawing labels on samples in exposed via the Python library
+The interface for drawing labels on samples is exposed via the Python library
 and the CLI. You can easily annotate one or more
 :ref:`label fields <using-labels>` on entire datasets or arbitrary subsets of
 your datasets that you have identified by constructing a |DatasetView|.

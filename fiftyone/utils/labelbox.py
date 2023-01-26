@@ -2,7 +2,7 @@
 Utilities for working with annotations in
 `Labelbox format <https://labelbox.com/docs/exporting-data/export-format-detail>`_.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -28,6 +28,7 @@ import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 import fiftyone.utils.annotations as foua
 
 lb = fou.lazy_import(
@@ -42,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 
 class LabelboxBackendConfig(foua.AnnotationBackendConfig):
-    """Base class for configuring :class:`LabelboxBackend` instances.
+    """Class for configuring :class:`LabelboxBackend` instances.
 
     Args:
         name: the name of the backend
@@ -107,6 +108,10 @@ class LabelboxBackend(foua.AnnotationBackend):
     """Class for interacting with the Labelbox annotation backend."""
 
     @property
+    def supported_media_types(self):
+        return [fomm.IMAGE, fomm.VIDEO]
+
+    @property
     def supported_label_types(self):
         return [
             "classification",
@@ -146,6 +151,10 @@ class LabelboxBackend(foua.AnnotationBackend):
     def supports_video_sample_fields(self):
         return False  # @todo resolve FiftyOne bug to allow this to be True
 
+    @property
+    def requires_label_schema(self):
+        return True
+
     def recommend_attr_tool(self, name, value):
         if isinstance(value, bool):
             return {"type": "radio", "values": [True, False]}
@@ -155,7 +164,7 @@ class LabelboxBackend(foua.AnnotationBackend):
     def requires_attr_values(self, attr_type):
         return attr_type != "text"
 
-    def connect_to_api(self):
+    def _connect_to_api(self):
         return LabelboxAnnotationAPI(
             self.config.name,
             self.config.url,
@@ -493,8 +502,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         backend's annotation and server configuration.
 
         Args:
-            samples: a :class:`fiftyone.core.collections.SampleCollection` to
-                upload to CVAT
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
             backend: a :class:`LabelboxBackend` to use to perform the upload
 
         Returns:
@@ -539,7 +547,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         )
 
     def download_annotations(self, results):
-        """Download the annotations from the Labelbox server for the given
+        """Downloads the annotations from the Labelbox server for the given
         results instance and parses them into the appropriate FiftyOne types.
 
         Args:
@@ -599,7 +607,10 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     frames[frame_id] = labels_dict
 
                 self._add_video_labels_to_results(
-                    annotations, frames, sample_id, label_schema,
+                    annotations,
+                    frames,
+                    sample_id,
+                    label_schema,
                 )
 
             else:
@@ -611,7 +622,10 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                         label_schema, labels_dict
                     )
                 annotations = self._add_labels_to_results(
-                    annotations, labels_dict, sample_id, label_schema,
+                    annotations,
+                    labels_dict,
+                    sample_id,
+                    label_schema,
                 )
 
         return annotations
@@ -748,7 +762,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             class_type = self.attr_type_map[attr_type]
             if attr_type == "text":
                 attr = lbo.Classification(
-                    class_type=class_type, instructions=attr_name,
+                    class_type=class_type,
+                    instructions=attr_name,
                 )
             else:
                 attr_values = attr_info["values"]
@@ -803,7 +818,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         if label_type == "scalar" and not classes:
             classification = lbo.Classification(
-                class_type=lbo.Classification.Type.TEXT, instructions=name,
+                class_type=lbo.Classification.Type.TEXT,
+                instructions=name,
             )
             classifications.append(classification)
         elif label_type == "classifications":
@@ -861,7 +877,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
     def _build_tool_for_class(self, class_name, label_type, attributes):
         tool_type = self._tool_types_map[label_type]
         return lbo.Tool(
-            name=str(class_name), tool=tool_type, classifications=attributes,
+            name=str(class_name),
+            tool=tool_type,
+            classifications=attributes,
         )
 
     def _create_classes_as_attrs(self, classes, general_attrs):
@@ -917,7 +935,11 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return download_labels_from_labelbox(project)
 
     def _add_labels_to_results(
-        self, results, labels_dict, sample_id, label_schema,
+        self,
+        results,
+        labels_dict,
+        sample_id,
+        label_schema,
     ):
         """Adds the labels in ``labels_dict`` to ``results``.
 
@@ -948,13 +970,21 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         # Parse remaining label fields and add classification attributes if
         # necessary
         results = self._parse_expected_label_fields(
-            results, labels_dict, sample_id, label_schema, attributes,
+            results,
+            labels_dict,
+            sample_id,
+            label_schema,
+            attributes,
         )
 
         return results
 
     def _add_video_labels_to_results(
-        self, results, frames_dict, sample_id, label_schema,
+        self,
+        results,
+        frames_dict,
+        sample_id,
+        label_schema,
     ):
         """Adds the video labels in ``frames_dict`` to ``results``.
 
@@ -1238,14 +1268,6 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
         """
         self._load_config_parameters(url=url, api_key=api_key)
 
-    def connect_to_api(self):
-        """Returns an API instance connected to the Labelbox server.
-
-        Returns:
-            a :class:`LabelboxAnnotationAPI`
-        """
-        return self._backend.connect_to_api()
-
     def launch_editor(self):
         """Launches the Labelbox editor and loads the project for this
         annotation run.
@@ -1355,7 +1377,11 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
     @classmethod
     def _from_dict(cls, d, samples, config):
         return cls(
-            samples, config, d["id_map"], d["project_id"], d["frame_id_map"],
+            samples,
+            config,
+            d["id_map"],
+            d["project_id"],
+            d["frame_id_map"],
         )
 
 
@@ -1431,6 +1457,9 @@ def import_from_labelbox(
         labelbox_id_field ("labelbox_id"): the sample field to lookup/store the
             IDs of the Labelbox DataRows
     """
+    fov.validate_collection(dataset, media_type=(fomm.IMAGE, fomm.VIDEO))
+    is_video = dataset.media_type == fomm.VIDEO
+
     if download_dir:
         filename_maker = fou.UniqueFilenameMaker(output_dir=download_dir)
 
@@ -1443,8 +1472,6 @@ def import_from_labelbox(
         label_key = lambda k: label_prefix + "_" + k
     else:
         label_key = lambda k: k
-
-    is_video = dataset.media_type == fomm.VIDEO
 
     # Load labels
     d_list = etas.read_json(json_path)
@@ -1574,11 +1601,17 @@ def export_to_labelbox(
 
             By default, no frame labels are exported
     """
+    fov.validate_collection(
+        sample_collection, media_type=(fomm.IMAGE, fomm.VIDEO)
+    )
     is_video = sample_collection.media_type == fomm.VIDEO
 
     # Get label fields to export
     label_fields = sample_collection._parse_label_field(
-        label_field, allow_coercion=False, force_dict=True, required=False,
+        label_field,
+        allow_coercion=False,
+        force_dict=True,
+        required=False,
     )
 
     # Get frame label fields to export
@@ -1596,6 +1629,8 @@ def export_to_labelbox(
                 "for video datasets"
             )
 
+    sample_collection.compute_metadata()
+
     etau.ensure_empty_file(ndjson_path)
 
     # Export the labels
@@ -1609,16 +1644,6 @@ def export_to_labelbox(
                     labelbox_id_field,
                 )
                 continue
-
-            # Compute metadata if necessary
-            if sample.metadata is None:
-                if is_video:
-                    metadata = fom.VideoMetadata.build_for(sample.filepath)
-                else:
-                    metadata = fom.ImageMetadata.build_for(sample.filepath)
-
-                sample.metadata = metadata
-                sample.save()
 
             # Get frame size
             if is_video:
@@ -1937,7 +1962,7 @@ def _get_nested_classifications(label):
 
 # https://labelbox.com/docs/automation/model-assisted-labeling#mask_annotations
 def _to_mask(name, label, data_row_id):
-    mask = np.asarray(label.mask)
+    mask = np.asarray(label.get_mask())
     if mask.ndim < 3 or mask.dtype != np.uint8:
         raise ValueError(
             "Segmentation masks must be stored as RGB color uint8 images"

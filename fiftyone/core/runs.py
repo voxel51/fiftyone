@@ -1,7 +1,7 @@
 """
 Dataset runs framework.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -363,9 +363,13 @@ class Run(Configurable):
 
         dataset_doc = samples._root_dataset._doc
         run_docs = getattr(dataset_doc, cls._runs_field())
-        view_stages = [json_util.dumps(s) for s in samples.view()._serialize()]
+        view_stages = [
+            json_util.dumps(s)
+            for s in samples.view()._serialize(include_uuids=False)
+        ]
 
-        run_docs[key] = RunDocument(
+        run_doc = RunDocument(
+            dataset_id=dataset_doc.id,
             key=key,
             version=run_info.version,
             timestamp=run_info.timestamp,
@@ -373,6 +377,9 @@ class Run(Configurable):
             view_stages=view_stages,
             results=None,
         )
+        run_doc.save()
+
+        run_docs[key] = run_doc
         dataset_doc.save()
 
     @classmethod
@@ -391,7 +398,7 @@ class Run(Configurable):
         run_docs = getattr(dataset._doc, cls._runs_field())
         run_doc = run_docs[key]
         run_doc.config = deepcopy(config.serialize())
-        dataset._doc.save()
+        run_doc.save()
 
     @classmethod
     def save_run_results(
@@ -428,7 +435,8 @@ class Run(Configurable):
             run_doc.results = None
         else:
             # Write run result to GridFS
-            results_bytes = run_results.to_str().encode()
+            # We use `json_util.dumps` so that run results may contain BSON
+            results_bytes = json_util.dumps(run_results.serialize()).encode()
             run_doc.results.put(results_bytes, content_type="application/json")
 
         # Cache the results for future use in this session
@@ -436,16 +444,18 @@ class Run(Configurable):
             results_cache = getattr(dataset, cls._results_cache_field())
             results_cache[key] = run_results
 
-        dataset._doc.save()
+        run_doc.save()
 
     @classmethod
-    def load_run_results(cls, samples, key, cache=True):
+    def load_run_results(cls, samples, key, cache=True, load_view=True):
         """Loads the :class:`RunResults` for the given key on the collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
             cache (True): whether to cache the results on the collection
+            load_view (True): whether to load the run view in the results
+                (True) or the full dataset (False)
 
         Returns:
             a :class:`RunResults`, or None if the run did not save results
@@ -467,13 +477,17 @@ class Run(Configurable):
         run_info = cls.get_run_info(samples, key)
         config = run_info.config
 
+        if load_view:
+            run_samples = cls.load_run_view(samples, key)
+        else:
+            run_samples = dataset
+
         # Load run result from GridFS
-        view = cls.load_run_view(samples, key)
         run_doc.results.seek(0)
-        results_str = run_doc.results.read().decode()
+        d = json_util.loads(run_doc.results.read().decode())
 
         try:
-            run_results = RunResults.from_str(results_str, view, config)
+            run_results = RunResults.from_dict(d, run_samples, config)
         except Exception as e:
             if run_doc.version == foc.VERSION:
                 raise e
@@ -526,29 +540,25 @@ class Run(Configurable):
         #
 
         fields = cls._get_run_fields(samples, key)
-        root_fields = [f for f in fields if "." not in f]
-        _select_fields = root_fields
-        for field in fields:
-            if not any(f.startswith(field) for f in root_fields):
-                _select_fields.append(field)
+        root_fields = samples._get_root_fields(fields)
 
-        view = view.select_fields(_select_fields)
+        view = view.select_fields(root_fields)
 
         #
         # Hide any ancillary info on the same fields
         #
 
-        _exclude_fields = []
+        exclude_fields = []
         for _key in cls.list_runs(samples):
             if _key == key:
                 continue
 
             for field in cls._get_run_fields(samples, _key):
-                if "." in field and field.startswith(root_fields):
-                    _exclude_fields.append(field)
+                if any(field.startswith(r + ".") for r in root_fields):
+                    exclude_fields.append(field)
 
-        if _exclude_fields:
-            view = view.exclude_fields(_exclude_fields)
+        if exclude_fields:
+            view = view.exclude_fields(exclude_fields)
 
         return view
 
@@ -587,6 +597,7 @@ class Run(Configurable):
         if run_doc.results:
             run_doc.results.delete()
 
+        run_doc.delete()
         dataset._doc.save()
 
     @classmethod

@@ -1,0 +1,28 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "skipLibCheck": true,
+
+        "jsx": "react",
+        "module": "ESNext",
+        "declaration": true,
+        "declarationDir": "types",
+        "sourceMap": true,
+        "outDir": "dist",
+        "moduleResolution": "node",
+        "allowSyntheticDefaultImports": true,
+        "emitDeclarationOnly": true,
+
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "resolveJsonModule": true,
+        "allowJs": false,
+
+        "plugins": [{ "name": "typescript-plugin-css-modules" }],
+        "composite": true
+    },
+    "include": ["./src"],
+    "references": [{ "path": "../utilities" }]
+}

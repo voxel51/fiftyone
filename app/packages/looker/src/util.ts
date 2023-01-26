@@ -1,8 +1,8 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
-import mime from "mime";
 import { mergeWith } from "immutable";
+import mime from "mime";
 
 import { MIN_PIXELS } from "./constants";
 import {
@@ -12,9 +12,17 @@ import {
   Buffers,
   Coordinates,
   Dimensions,
+  DispatchEvent,
   Optional,
 } from "./state";
 
+import {
+  AppError,
+  getFetchParameters,
+  GraphQLError,
+  NetworkError,
+  ServerError,
+} from "@fiftyone/utilities";
 import LookerWorker from "./worker.ts?worker&inline";
 
 /**
@@ -34,6 +42,13 @@ export function compareData(a: object, b: object): boolean {
     }
   }
   return true;
+}
+
+/**
+ * Elementwise vector multiplication
+ */
+export function multiply<T extends number[]>(one: T, two: T): T {
+  return one.map((i, j) => i * two[j]) as T;
 }
 
 /**
@@ -78,13 +93,6 @@ export function distance(
  */
 export function dot2d(ax: number, ay: number, bx: number, by: number): number {
   return ax * bx + ay * by;
-}
-
-/**
- * Elementwise vector multiplication
- */
-export function multiply<T extends number[]>(one: T, two: T): T {
-  return one.map((i, j) => i * two[j]) as T;
 }
 
 /**
@@ -399,13 +407,13 @@ export const mergeUpdates = <State extends BaseState>(
     if (n instanceof Function) {
       return n;
     }
+    if (n instanceof Error) {
+      return n;
+    }
     if (typeof n !== "object") {
       return n === undefined ? o : n;
     }
-    if (n === null) {
-      return n;
-    }
-    if (o === null) {
+    if (n === null || o === null) {
       return n;
     }
     return mergeWith(merger, o, n);
@@ -413,10 +421,46 @@ export const mergeUpdates = <State extends BaseState>(
   return mergeWith(merger, state, updates);
 };
 
-export const createWorker = (listeners?: {
-  [key: string]: ((worker: Worker, args: any) => void)[];
-}): Worker => {
-  const worker = new LookerWorker();
+const ERRORS = [AppError, GraphQLError, NetworkError, ServerError].reduce(
+  (acc, cur) => {
+    return {
+      ...acc,
+      [cur.constructor.name]: cur,
+    };
+  },
+  {}
+);
+
+export const createWorker = (
+  listeners?: {
+    [key: string]: ((worker: Worker, args: any) => void)[];
+  },
+  dispatchEvent?: DispatchEvent
+): Worker => {
+  let worker: Worker = null;
+
+  try {
+    worker = new LookerWorker();
+  } catch {
+    worker = new Worker(new URL("./worker.ts", import.meta.url));
+  }
+
+  worker.onerror = (error) => {
+    dispatchEvent("error", error);
+  };
+  worker.addEventListener("message", ({ data }) => {
+    if (data.error) {
+      const error = !ERRORS[data.error.cls]
+        ? new Error(data.error.message)
+        : new ERRORS[data.error.cls](data.error.data, data.error.message);
+      dispatchEvent("error", new ErrorEvent("error", { error }));
+    }
+  });
+
+  worker.postMessage({
+    method: "init",
+    ...getFetchParameters(),
+  });
 
   if (!listeners) {
     return worker;
@@ -493,88 +537,12 @@ export const getDPR = (() => {
   };
 })();
 
-const isElectron = (): boolean => {
-  return (
-    window.process &&
-    window.process.versions &&
-    Boolean(window.process.versions.electron)
-  );
-};
-
-const host = import.meta.env.DEV ? "localhost:5151" : window.location.host;
-const path =
-  window.location.pathname +
-  (window.location.pathname.endsWith("/") ? "" : "/");
-
-export const port = isElectron()
-  ? parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151
-  : parseInt(window.location.port);
-
-const address = isElectron()
-  ? process.env.FIFTYONE_SERVER_ADDRESS || "localhost"
-  : window.location.hostname;
-
-export const getURL = () => {
-  return isElectron()
-    ? `http://${address}:${port}${path}`
-    : window.location.protocol + "//" + host + path;
-};
-
 export const getMimeType = (sample: any) => {
   return (
     (sample.metadata && sample.metadata.mime_type) ||
     mime.getType(sample.filepath) ||
     "image/jpg"
   );
-};
-
-export const formatDateTime = (timeStamp: number, timeZone: string): string => {
-  const twoDigit = "2-digit";
-  const MS = 1000;
-  const S = 60 * MS;
-  const M = 60 * S;
-  const H = 24 * M;
-
-  const options: Intl.DateTimeFormatOptions = {
-    timeZone,
-    year: "numeric",
-    day: twoDigit,
-    month: twoDigit,
-    hour: twoDigit,
-    minute: twoDigit,
-    second: twoDigit,
-  };
-
-  if (!(timeStamp % S)) {
-    delete options.second;
-  }
-
-  if (!(timeStamp % M)) {
-    delete options.minute;
-  }
-
-  if (!(timeStamp % H)) {
-    delete options.hour;
-  }
-
-  return new Intl.DateTimeFormat("en-ZA", options)
-    .format(timeStamp)
-    .replaceAll("/", "-");
-};
-
-export const formatDate = (timeStamp: number): string => {
-  const twoDigit = "2-digit";
-
-  const options: Intl.DateTimeFormatOptions = {
-    timeZone: "UTC",
-    year: "numeric",
-    day: twoDigit,
-    month: twoDigit,
-  };
-
-  return new Intl.DateTimeFormat("en-ZA", options)
-    .format(timeStamp)
-    .replaceAll("/", "-");
 };
 
 export const isFloatArray = (arr) =>

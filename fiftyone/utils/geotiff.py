@@ -1,7 +1,7 @@
 """
 GeoTIFF utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -96,9 +96,10 @@ class GeoTIFFDatasetImporter(
                 "Either `dataset_dir` or `image_path` must be provided"
             )
 
-        image_path = self._parse_labels_path(
-            dataset_dir=dataset_dir, labels_path=image_path
-        )
+        if not etau.is_container(image_path):
+            image_path = self._parse_labels_path(
+                dataset_dir=dataset_dir, labels_path=image_path
+            )
 
         super().__init__(
             dataset_dir=dataset_dir,

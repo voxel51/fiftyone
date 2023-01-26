@@ -1,7 +1,7 @@
 """
 DICOM utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -172,7 +172,9 @@ class DICOMDatasetImporter(
             )
 
         dicom_path = self._parse_labels_path(
-            dataset_dir=dataset_dir, labels_path=dicom_path, default="*.dcm",
+            dataset_dir=dataset_dir,
+            labels_path=dicom_path,
+            default="*.dcm",
         )
 
         if images_dir is None:

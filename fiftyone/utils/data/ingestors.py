@@ -1,7 +1,7 @@
 """
 Dataset ingestors.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -436,7 +436,11 @@ class LabeledVideoDatasetIngestor(LabeledVideoDatasetImporter, VideoIngestor):
     """
 
     def __init__(
-        self, dataset_dir, samples, sample_parser, max_samples=None,
+        self,
+        dataset_dir,
+        samples,
+        sample_parser,
+        max_samples=None,
     ):
         LabeledVideoDatasetImporter.__init__(
             self, dataset_dir=dataset_dir, max_samples=max_samples

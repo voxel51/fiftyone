@@ -1,7 +1,7 @@
 """
 Backing document classes for :class:`fiftyone.core.frame.Frame` instances.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -38,7 +38,11 @@ class NoDatasetFrameDocument(NoDatasetMixin, SerializableDocument):
     )
 
     def __init__(self, **kwargs):
+        # If we're loading a serialized dict with a sample ID, it will come in
+        # as `sample_id` here
+        sample_id = kwargs.pop("sample_id", None)
+
         self._data = OrderedDict(
-            [("id", None), ("frame_number", None), ("_sample_id", None)]
+            [("id", None), ("frame_number", None), ("_sample_id", sample_id)]
         )
         self._data.update(kwargs)

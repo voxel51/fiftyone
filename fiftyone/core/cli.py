@@ -1,7 +1,7 @@
 """
 Definition of the `fiftyone` command-line interface (CLI).
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -442,7 +442,10 @@ class DatasetsInfoCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", nargs="?", metavar="NAME", help="the name of a dataset",
+            "name",
+            nargs="?",
+            metavar="NAME",
+            help="the name of a dataset",
         )
         parser.add_argument(
             "-s",
@@ -481,6 +484,7 @@ def _print_all_dataset_info(sort_by, reverse):
         "version",
         "persistent",
         "media_type",
+        "tags",
         "num_samples",
     ]
 
@@ -509,6 +513,9 @@ def _format_cell(cell):
     if isinstance(cell, datetime):
         return cell.replace(microsecond=0)
 
+    if etau.is_container(cell):
+        return ",".join(cell)
+
     return cell
 
 
@@ -524,7 +531,9 @@ class DatasetsStatsCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name",
+            metavar="NAME",
+            help="the name of the dataset",
         )
         parser.add_argument(
             "-m",
@@ -575,7 +584,10 @@ class DatasetsCreateCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-n", "--name", metavar="NAME", help="a name for the dataset",
+            "-n",
+            "--name",
+            metavar="NAME",
+            help="a name for the dataset",
         )
         parser.add_argument(
             "-d",
@@ -744,7 +756,9 @@ class DatasetsExportCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset to export",
+            "name",
+            metavar="NAME",
+            help="the name of the dataset to export",
         )
         parser.add_argument(
             "-d",
@@ -824,7 +838,9 @@ class DatasetsDrawCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name",
+            metavar="NAME",
+            help="the name of the dataset",
         )
         parser.add_argument(
             "-d",
@@ -866,10 +882,14 @@ class DatasetsRenameCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name",
+            metavar="NAME",
+            help="the name of the dataset",
         )
         parser.add_argument(
-            "new_name", metavar="NEW_NAME", help="a new name for the dataset",
+            "new_name",
+            metavar="NEW_NAME",
+            help="a new name for the dataset",
         )
 
     @staticmethod
@@ -1738,7 +1758,10 @@ class DatasetZooFindCommand(Command):
             "name", metavar="NAME", help="the name of the dataset"
         )
         parser.add_argument(
-            "-s", "--split", metavar="SPLIT", help="a dataset split",
+            "-s",
+            "--split",
+            metavar="SPLIT",
+            help="a dataset split",
         )
 
     @staticmethod
@@ -1968,7 +1991,10 @@ class DatasetZooDeleteCommand(Command):
             "name", metavar="NAME", help="the name of the dataset"
         )
         parser.add_argument(
-            "-s", "--split", metavar="SPLIT", help="a dataset split",
+            "-s",
+            "--split",
+            metavar="SPLIT",
+            help="a dataset split",
         )
 
     @staticmethod
@@ -2222,8 +2248,8 @@ class ModelZooRequirementsCommand(Command):
             metavar="LEVEL",
             type=int,
             help=(
-                "the error level in {0, 1, 2} to use when installing or "
-                "ensuring model requirements"
+                "the error level (0=error, 1=warn, 2=ignore) to use when "
+                "installing or ensuring model requirements"
             ),
         )
 
@@ -2362,8 +2388,8 @@ class ModelZooApplyCommand(Command):
             metavar="LEVEL",
             type=int,
             help=(
-                "the error level in {0, 1, 2} to use when installing or "
-                "ensuring model requirements"
+                "the error level (0=error, 1=warn, 2=ignore) to use when "
+                "installing or ensuring model requirements"
             ),
         )
 
@@ -2431,8 +2457,8 @@ class ModelZooEmbedCommand(Command):
             metavar="LEVEL",
             type=int,
             help=(
-                "the error level in {0, 1, 2} to use when installing or "
-                "ensuring model requirements"
+                "the error level (0=error, 1=warn, 2=ignore) to use when "
+                "installing or ensuring model requirements"
             ),
         )
 
@@ -2483,7 +2509,7 @@ class MigrateCommand(Command):
         # Print information about the current revisions of all datasets
         fiftyone migrate --info
 
-        # Migrate the database and all datasets to the current package version
+        # Migrate the database and all datasets to the current client version
         fiftyone migrate --all
 
         # Migrate to a specific revision
@@ -2524,6 +2550,16 @@ class MigrateCommand(Command):
             help="the name of a specific dataset to migrate",
         )
         parser.add_argument(
+            "--error-level",
+            metavar="LEVEL",
+            type=int,
+            default=1,
+            help=(
+                "the error level (0=error, 1=warn, 2=ignore) to use when "
+                "migrating individual datasets"
+            ),
+        )
+        parser.add_argument(
             "--verbose",
             action="store_true",
             help="whether to log incremental migrations that are performed",
@@ -2549,22 +2585,35 @@ class MigrateCommand(Command):
             return
 
         if args.all:
-            fom.migrate_all(destination=args.version, verbose=args.verbose)
+            fom.migrate_all(
+                destination=args.version,
+                error_level=args.error_level,
+                verbose=args.verbose,
+            )
             return
-
-        fom.migrate_database_if_necessary(
-            destination=args.version, verbose=args.verbose
-        )
 
         if args.dataset_name:
             for name in args.dataset_name:
                 fom.migrate_dataset_if_necessary(
-                    name, destination=args.version, verbose=args.verbose
+                    name,
+                    destination=args.version,
+                    error_level=args.error_level,
+                    verbose=args.verbose,
                 )
+        else:
+            fom.migrate_database_if_necessary(
+                destination=args.version,
+                verbose=args.verbose,
+            )
 
 
 def _print_migration_table(db_ver, dataset_vers):
-    print("FiftyOne version: %s" % foc.VERSION)
+    print("Client version: %s" % foc.VERSION)
+
+    if foc.COMPATIBLE_VERSIONS:
+        print("Compatible versions: %s" % foc.COMPATIBLE_VERSIONS)
+        print("")
+
     print("Database version: %s" % db_ver)
 
     if dataset_vers:
@@ -2691,6 +2740,13 @@ class TransformImagesCommand(Command):
             ),
         )
         parser.add_argument(
+            "-i",
+            "--interpolation",
+            default=None,
+            type=int,
+            help="an optional `interpolation` argument for `cv2.resize()`",
+        )
+        parser.add_argument(
             "-e",
             "--ext",
             metavar="EXT",
@@ -2703,6 +2759,39 @@ class TransformImagesCommand(Command):
             help=(
                 "whether to re-encode images whose parameters already meet "
                 "the specified values"
+            ),
+        )
+        parser.add_argument(
+            "--media-field",
+            metavar="MEDIA_FIELD",
+            default="filepath",
+            help="the input field containing the image paths to transform",
+        )
+        parser.add_argument(
+            "--output-field",
+            metavar="OUTPUT_FIELD",
+            help=(
+                "an optional field in which to store the paths to the "
+                "transformed images. By default, `media_field` is updated "
+                "in-place"
+            ),
+        )
+        parser.add_argument(
+            "--output-dir",
+            metavar="OUTPUT_DIR",
+            help=(
+                "an optional output directory in which to write the "
+                "transformed images. If none is provided, the images are "
+                "updated in-place"
+            ),
+        )
+        parser.add_argument(
+            "--rel-dir",
+            metavar="REL_DIR",
+            help=(
+                "an optional relative directory to strip from each input "
+                "filepath to generate a unique identifier that is joined with "
+                "`output_dir` to generate an output path for each image"
             ),
         )
         parser.add_argument(
@@ -2739,8 +2828,13 @@ class TransformImagesCommand(Command):
             size=args.size,
             min_size=args.min_size,
             max_size=args.max_size,
+            interpolation=args.interpolation,
             ext=args.ext,
             force_reencode=args.force_reencode,
+            media_field=args.media_field,
+            output_field=args.output_field,
+            output_dir=args.output_dir,
+            rel_dir=args.rel_dir,
             delete_originals=args.delete_originals,
             num_workers=args.num_workers,
             skip_failures=args.skip_failures,
@@ -2835,6 +2929,39 @@ class TransformVideosCommand(Command):
             ),
         )
         parser.add_argument(
+            "--media-field",
+            metavar="MEDIA_FIELD",
+            default="filepath",
+            help="the input field containing the video paths to transform",
+        )
+        parser.add_argument(
+            "--output-field",
+            metavar="OUTPUT_FIELD",
+            help=(
+                "an optional field in which to store the paths to the "
+                "transformed videos. By default, `media_field` is updated "
+                "in-place"
+            ),
+        )
+        parser.add_argument(
+            "--output-dir",
+            metavar="OUTPUT_DIR",
+            help=(
+                "an optional output directory in which to write the "
+                "transformed videos. If none is provided, the videos are "
+                "updated in-place"
+            ),
+        )
+        parser.add_argument(
+            "--rel-dir",
+            metavar="REL_DIR",
+            help=(
+                "an optional relative directory to strip from each input "
+                "filepath to generate a unique identifier that is joined with "
+                "`output_dir` to generate an output path for each video"
+            ),
+        )
+        parser.add_argument(
             "-d",
             "--delete-originals",
             action="store_true",
@@ -2869,6 +2996,10 @@ class TransformVideosCommand(Command):
             max_size=args.max_size,
             reencode=args.reencode,
             force_reencode=args.force_reencode,
+            media_field=args.media_field,
+            output_field=args.output_field,
+            output_dir=args.output_dir,
+            rel_dir=args.rel_dir,
             delete_originals=args.delete_originals,
             skip_failures=args.skip_failures,
             verbose=args.verbose,
@@ -2996,7 +3127,7 @@ def _register_main_command(command, version=None, recursive_help=True):
         parser.add_argument(
             "--all-help",
             action=_RecursiveHelpAction,
-            help="show help recurisvely and exit",
+            help="show help recursively and exit",
         )
 
     argcomplete.autocomplete(parser)
@@ -3018,7 +3149,7 @@ def _register_command(parent, name, command, recursive_help=True):
         parser.add_argument(
             "--all-help",
             action=_RecursiveHelpAction,
-            help="show help recurisvely and exit",
+            help="show help recursively and exit",
         )
 
     return parser

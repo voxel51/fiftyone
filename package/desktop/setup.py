@@ -2,7 +2,7 @@
 """
 Installs the ``fiftyone-desktop`` package.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,7 +16,7 @@ import os
 import shutil
 
 
-VERSION = "0.19.5"
+VERSION = "0.24.0"
 
 
 def get_version():
@@ -187,11 +187,11 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     cmdclass=cmdclass,
 )

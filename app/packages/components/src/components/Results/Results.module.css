@@ -1,0 +1,66 @@
+.container {
+  background-color: var(--joy-palette-background-level2);
+  border: 1px solid var(--joy-palette-primary-plainBorder);
+  border-radius: 2px;
+  box-shadow: 0 2px 20px var(--joy-palette-custom-shadow);
+  box-sizing: border-box;
+  width: auto;
+  position: relative;
+  overflow: hidden;
+  min-width: 90px;
+}
+
+.scrollContainer {
+  overflow: auto;
+  max-height: 250px;
+}
+
+.result {
+  display: flex;
+  padding: 0 1rem;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  user-select: none;
+  cursor: pointer;
+  color: var(--joy-palette-text-secondary);
+  background: var(--joy-palette-background-level2);
+  transition: all 0.1 ease-in;
+  text-decoration: none;
+  white-space: nowrap;
+  font-size: 1.2rem;
+  min-width: none;
+}
+
+.result.active,
+.result:hover {
+  background: var(--joy-palette-background-body);
+  color: var(--joy-palette-text-primary);
+}
+
+.resultComponent {
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+
+.footer {
+  text-align: right;
+  color: var(--joy-palette-text-primary);
+  padding: 0 0.25rem;
+  font-size: 1rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+  text-decoration: none;
+  border-top: 1px solid var(--joy-palette-primary-plainBorder);
+  background: var(--joy-palette-background-level2);
+  position: absolute;
+  bottom: 0;
+  min-width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

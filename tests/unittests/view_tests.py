@@ -1,7 +1,7 @@
 """
 FiftyOne view-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,6 +9,7 @@ from copy import deepcopy
 from datetime import date, datetime, timedelta
 import math
 
+from bson import ObjectId
 import unittest
 import numpy as np
 
@@ -17,26 +18,68 @@ from fiftyone import ViewField as F, VALUE
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 
-from decorators import drop_datasets
+from decorators import drop_datasets, skip_windows
 
 
 class DatasetViewTests(unittest.TestCase):
     @drop_datasets
+    def test_eq(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i) for i in range(5)]
+        )
+
+        view1 = dataset.shuffle(seed=51).limit(3)
+        view2 = dataset.shuffle(seed=51).limit(3)
+        view3 = deepcopy(view1)
+
+        self.assertEqual(view1, view2)
+        self.assertEqual(view1, view3)
+
+        view1 = dataset.limit(1).concat(dataset.skip(1).limit(1))
+        view2 = dataset.limit(1).concat(dataset.skip(1).limit(1))
+        view3 = deepcopy(view1)
+
+        self.assertEqual(view1, view2)
+        self.assertEqual(view1, view3)
+
+    @drop_datasets
     def test_iter_samples(self):
         dataset = fo.Dataset()
         dataset.add_samples(
-            [fo.Sample(filepath="image%d.jpg" % i) for i in range(50)]
+            [fo.Sample(filepath="image%d.jpg" % i) for i in range(51)]
         )
 
-        view = dataset.view()
+        first_sample = dataset.first()
+        view = dataset.limit(50)
 
-        self.assertEqual(len(dataset), len(view))
+        for idx, sample in enumerate(view):
+            sample["int"] = idx + 1
+            sample.save()
 
-        for sample in view:
-            pass
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+        self.assertEqual(first_sample.int, 1)
 
-        for sample in view.iter_samples(progress=True):
-            pass
+        for idx, sample in enumerate(view.iter_samples(progress=True)):
+            sample["int"] = idx + 2
+            sample.save()
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+        self.assertEqual(first_sample.int, 2)
+
+        for idx, sample in enumerate(view.iter_samples(autosave=True)):
+            sample["int"] = idx + 3
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+        self.assertEqual(first_sample.int, 3)
+
+        with view.save_context() as context:
+            for idx, sample in enumerate(view):
+                sample["int"] = idx + 4
+                context.save(sample)
+
+        self.assertTupleEqual(dataset.bounds("int"), (4, 53))
+        self.assertEqual(first_sample.int, 4)
 
     @drop_datasets
     def test_view(self):
@@ -175,10 +218,71 @@ class DatasetViewTests(unittest.TestCase):
         detections = dataset[sample_view.id].test_dets.detections
         self.assertListEqual(detections, [])
 
+    @drop_datasets
+    def test_view_ids(self):
+        sample = fo.Sample(filepath="image.jpg")
+
+        self.assertIsNone(sample.id, str)
+        self.assertIsNone(sample._id, ObjectId)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertIsInstance(sample.id, str)
+        self.assertIsInstance(sample._id, ObjectId)
+
+        view = dataset.select_fields()
+        sample_view = view.first()
+
+        self.assertIsInstance(sample_view.id, str)
+        self.assertIsInstance(sample_view._id, ObjectId)
+
+    @drop_datasets
+    def test_view_ids_video(self):
+        sample = fo.Sample(filepath="video.mp4")
+        frame = fo.Frame()
+        sample.frames[1] = frame
+
+        self.assertIsNone(sample.id, str)
+        self.assertIsNone(sample._id, ObjectId)
+        self.assertIsNone(frame.id, str)
+        self.assertIsNone(frame._id, ObjectId)
+        self.assertIsNone(frame.sample_id, str)
+        self.assertIsNone(frame._sample_id, ObjectId)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertIsInstance(sample.id, str)
+        self.assertIsInstance(sample._id, ObjectId)
+        self.assertIsInstance(frame.id, str)
+        self.assertIsInstance(frame._id, ObjectId)
+        self.assertIsInstance(frame.sample_id, str)
+        self.assertIsInstance(frame._sample_id, ObjectId)
+
+        view = dataset.select_fields()
+        sample_view = view.first()
+        frame_view = sample_view.frames.first()
+
+        self.assertIsInstance(sample_view.id, str)
+        self.assertIsInstance(sample_view._id, ObjectId)
+        self.assertIsInstance(frame_view.id, str)
+        self.assertIsInstance(frame_view._id, ObjectId)
+        self.assertIsInstance(frame_view.sample_id, str)
+        self.assertIsInstance(frame_view._sample_id, ObjectId)
+
+    @drop_datasets
+    def test_view_name_readonly(self):
+        dataset = fo.Dataset()
+        view = dataset.view()
+
+        with self.assertRaises(AttributeError):
+            view.name = "new_name"
+
 
 class ViewFieldTests(unittest.TestCase):
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields(self):
         dataset = fo.Dataset()
         sample1 = fo.Sample(
@@ -202,8 +306,8 @@ class ViewFieldTests(unittest.TestCase):
         self.assertIsNone(sample1.predictions.field)
         self.assertIsNotNone(sample2.predictions.field)
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields_array(self):
         dataset = fo.Dataset()
         sample1 = fo.Sample(
@@ -747,6 +851,7 @@ class SetValuesTests(unittest.TestCase):
         )
 
         filepaths = dataset.values("filepath")
+
         values = {
             filepaths[0]: {2: 3, 4: 5},
             filepaths[1]: {3: 4, 5: 6, 7: 8},
@@ -773,6 +878,30 @@ class SetValuesTests(unittest.TestCase):
 
         int_fields = dataset.values("frames.int_field", unwind=True)
         self.assertListEqual(int_fields, [-1, 4, -1, 4, 6, 8, 2, -1, 6])
+
+        values = {
+            filepaths[0]: {1: fo.Classification(label="cat")},
+            filepaths[1]: {
+                1: fo.Classification(label="cat"),
+                2: fo.Classification(label="dog"),
+            },
+            filepaths[2]: {
+                1: fo.Classification(label="cat"),
+                2: fo.Classification(label="dog"),
+                3: fo.Classification(label="rabbit"),
+            },
+        }
+
+        dataset.set_values(
+            "frames.classification_field",
+            values,
+            key_field="filepath",
+        )
+
+        labels = dataset.values("frames.classification_field.label")
+        self.assertListEqual(labels[0][:1], ["cat"])
+        self.assertListEqual(labels[1][:2], ["cat", "dog"])
+        self.assertListEqual(labels[2][:3], ["cat", "dog", "rabbit"])
 
     def test_set_values_dataset(self):
         n = len(self.dataset)
@@ -1002,11 +1131,556 @@ class SetValuesTests(unittest.TestCase):
 
         _dataset_labels = self.dataset.values("detections.detections.label")
         self.assertListEqual(
-            _dataset_labels, [[], ["0"], ["0", "ONE"], ["0", "ONE", "2"]],
+            _dataset_labels,
+            [[], ["0"], ["0", "ONE"], ["0", "ONE", "2"]],
+        )
+
+    def test_set_values_dynamic1(self):
+        dataset = _make_labels_dataset()
+
+        values = dataset.values("labels.classifications.label")
+
+        dataset.set_values("labels.classifications.also_label", values)
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("labels.classifications.also_label", schema)
+
+        also_values = dataset.values("labels.classifications.also_label")
+        self.assertEqual(values, also_values)
+
+        dataset.set_values(
+            "labels.classifications.still_label", values, dynamic=True
+        )
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("labels.classifications.still_label", schema)
+
+        still_values = dataset.values("labels.classifications.still_label")
+        self.assertEqual(values, still_values)
+
+    def test_set_values_dynamic2(self):
+        dataset = _make_labels_dataset()
+
+        values = [
+            [fo.Classification(label=v) for v in vv]
+            if vv is not None
+            else None
+            for vv in dataset.values("labels.classifications.label")
+        ]
+
+        dataset.set_values("labels.classifications.also_label", values)
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("labels.classifications.also_label", schema)
+
+        # Since this field is not in the schema, the values are loaded as dicts
+        also_values = [
+            [fo.Classification.from_dict(d) for d in dd]
+            if dd is not None
+            else None
+            for dd in dataset.values("labels.classifications.also_label")
+        ]
+        self.assertEqual(values, also_values)
+
+        dataset.set_values(
+            "labels.classifications.still_label", values, dynamic=True
+        )
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("labels.classifications.still_label", schema)
+
+        # Now the field is in the schema, so `Classification`s are loaded
+        still_values = dataset.values("labels.classifications.still_label")
+        self.assertEqual(values, still_values)
+
+    def test_set_values_dynamic3(self):
+        dataset = _make_labels_dataset()
+        values = dataset.values("labels")
+
+        dataset.set_values("also_labels", values)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertNotIn("also_labels.classifications.mood", schema)
+        self.assertNotIn("also_labels.classifications.age", schema)
+        self.assertNotIn("also_labels.classifications.fluffy", schema)
+
+        self.assertListEqual(
+            dataset.values("labels.classifications.mood"),
+            dataset.values("also_labels.classifications.mood"),
+        )
+        self.assertListEqual(
+            dataset.values("labels.classifications.age"),
+            dataset.values("also_labels.classifications.age"),
+        )
+        self.assertListEqual(
+            dataset.values("labels.classifications.fluffy"),
+            dataset.values("also_labels.classifications.fluffy"),
+        )
+
+        dataset.set_values("still_labels", values, dynamic=True)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("still_labels.classifications.mood", schema)
+        self.assertIn("still_labels.classifications.age", schema)
+        self.assertIn("still_labels.classifications.fluffy", schema)
+
+        self.assertListEqual(
+            dataset.values("labels.classifications.mood"),
+            dataset.values("still_labels.classifications.mood"),
+        )
+        self.assertListEqual(
+            dataset.values("labels.classifications.age"),
+            dataset.values("still_labels.classifications.age"),
+        )
+        self.assertListEqual(
+            dataset.values("labels.classifications.fluffy"),
+            dataset.values("still_labels.classifications.fluffy"),
+        )
+
+    def test_set_frame_values_dynamic1(self):
+        dataset = _make_frame_labels_dataset()
+
+        values = dataset.values("frames.labels.classifications.label")
+
+        dataset.set_values("frames.labels.classifications.also_label", values)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertNotIn("labels.classifications.also_label", schema)
+
+        also_values = dataset.values(
+            "frames.labels.classifications.also_label"
+        )
+        self.assertEqual(values, also_values)
+
+        dataset.set_values(
+            "frames.labels.classifications.still_label", values, dynamic=True
+        )
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("labels.classifications.still_label", schema)
+
+        still_values = dataset.values(
+            "frames.labels.classifications.still_label"
+        )
+        self.assertEqual(values, still_values)
+
+    def test_set_frame_values_dynamic2(self):
+        dataset = _make_frame_labels_dataset()
+
+        values = [
+            [
+                [fo.Classification(label=v) for v in vv]
+                if vv is not None
+                else None
+                for vv in ff
+            ]
+            for ff in dataset.values("frames.labels.classifications.label")
+        ]
+
+        dataset.set_values("frames.labels.classifications.also_label", values)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertNotIn("labels.classifications.also_label", schema)
+
+        # Since this field is not in the schema, the values are loaded as dicts
+        also_values = [
+            [
+                [fo.Classification.from_dict(d) for d in dd]
+                if dd is not None
+                else None
+                for dd in ff
+            ]
+            for ff in dataset.values(
+                "frames.labels.classifications.also_label"
+            )
+        ]
+        self.assertEqual(values, also_values)
+
+        dataset.set_values(
+            "frames.labels.classifications.still_label", values, dynamic=True
+        )
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("labels.classifications.still_label", schema)
+
+        # Now the field is in the schema, so `Classification`s are loaded
+        still_values = dataset.values(
+            "frames.labels.classifications.still_label"
+        )
+        self.assertEqual(values, still_values)
+
+    def test_set_frame_values_dynamic3(self):
+        dataset = _make_frame_labels_dataset()
+        values = dataset.values("frames.labels")
+
+        dataset.set_values("frames.also_labels", values)
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertNotIn("also_labels.classifications.mood", schema)
+        self.assertNotIn("also_labels.classifications.age", schema)
+        self.assertNotIn("also_labels.classifications.fluffy", schema)
+
+        self.assertListEqual(
+            dataset.values("frames.labels.classifications.mood"),
+            dataset.values("frames.also_labels.classifications.mood"),
+        )
+        self.assertListEqual(
+            dataset.values("frames.labels.classifications.age"),
+            dataset.values("frames.also_labels.classifications.age"),
+        )
+        self.assertListEqual(
+            dataset.values("frames.labels.classifications.fluffy"),
+            dataset.values("frames.also_labels.classifications.fluffy"),
+        )
+
+        dataset.set_values("frames.still_labels", values, dynamic=True)
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertIn("still_labels.classifications.mood", schema)
+        self.assertIn("still_labels.classifications.age", schema)
+        self.assertIn("still_labels.classifications.fluffy", schema)
+
+        self.assertListEqual(
+            dataset.values("frames.labels.classifications.mood"),
+            dataset.values("frames.still_labels.classifications.mood"),
+        )
+        self.assertListEqual(
+            dataset.values("frames.labels.classifications.age"),
+            dataset.values("frames.still_labels.classifications.age"),
+        )
+        self.assertListEqual(
+            dataset.values("frames.labels.classifications.fluffy"),
+            dataset.values("frames.still_labels.classifications.fluffy"),
         )
 
 
-class ViewSaveTest(unittest.TestCase):
+class SetLabelValuesTests(unittest.TestCase):
+    @drop_datasets
+    def test_set_label_values(self):
+        dataset = _make_classification_dataset()
+
+        view = dataset.match(F("label.label") == "cat")
+        cat_ids = set(view.values("label.id"))
+
+        values = {_id: True for _id in cat_ids}
+
+        dataset.set_label_values("label.is_cat1", values)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertNotIn("label.is_cat1", schema)
+        self.assertDictEqual(
+            dataset.count_values("label.is_cat1"), {True: 1, None: 4}
+        )
+
+        dataset.set_label_values("label.is_cat2", values, dynamic=True)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("label.is_cat2", schema)
+        self.assertDictEqual(
+            dataset.count_values("label.is_cat2"), {True: 1, None: 4}
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_label_values("wrong_field.id", values)
+
+        all_ids = dataset.exists("label").values("label.id", unwind=True)
+        values = {_id: _id in cat_ids for _id in all_ids}
+        dataset.set_label_values("label.is_cat3", values)
+
+        self.assertDictEqual(
+            dataset.count_values("label.is_cat3"),
+            {True: 1, False: 2, None: 2},
+        )
+
+        cats_view = dataset.filter_labels("label", F("is_cat3") == True)
+        self.assertListEqual(cats_view.distinct("label.label"), ["cat"])
+
+    @drop_datasets
+    def test_set_label_list_values(self):
+        dataset = _make_labels_dataset()
+
+        view = dataset.filter_labels("labels", F("label") == "cat")
+        cat_ids = set(view.values("labels.classifications.id", unwind=True))
+
+        values = {_id: True for _id in cat_ids}
+
+        dataset.set_label_values("labels.classifications.is_cat1", values)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertNotIn("labels.classifications.is_cat1", schema)
+        self.assertDictEqual(
+            dataset.count_values("labels.classifications.is_cat1"),
+            {True: 2, None: 4},
+        )
+
+        dataset.set_label_values(
+            "labels.classifications.is_cat2", values, dynamic=True
+        )
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("labels.classifications.is_cat2", schema)
+        self.assertDictEqual(
+            dataset.count_values("labels.classifications.is_cat2"),
+            {True: 2, None: 4},
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_label_values("wrong_field.classifications.id", values)
+
+        all_ids = dataset.values("labels.classifications.id", unwind=True)
+        values = {_id: _id in cat_ids for _id in all_ids}
+        dataset.set_label_values(
+            "labels.classifications.is_cat3",
+            values,
+        )
+
+        self.assertDictEqual(
+            dataset.count_values("labels.classifications.is_cat3"),
+            {True: 2, False: 4},
+        )
+
+        cats_view = dataset.filter_labels("labels", F("is_cat3") == True)
+        self.assertListEqual(
+            cats_view.distinct("labels.classifications.label"),
+            ["cat"],
+        )
+
+    @drop_datasets
+    def test_set_frame_label_values(self):
+        dataset = _make_frame_classification_dataset()
+
+        view = dataset.match_frames(F("label.label") == "cat")
+        cat_ids = set(view.values("frames.label.id", unwind=True))
+
+        values = {_id: True for _id in cat_ids}
+
+        dataset.set_label_values("frames.label.is_cat1", values)
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertNotIn("label.is_cat1", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.label.is_cat1"), {True: 1, None: 3}
+        )
+
+        dataset.set_label_values("frames.label.is_cat2", values, dynamic=True)
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertIn("label.is_cat2", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.label.is_cat2"), {True: 1, None: 3}
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_label_values("frames.wrong_field.id", values)
+
+        all_ids = dataset.match_frames(F("label") != None).values(
+            "frames.label.id", unwind=True
+        )
+        values = {_id: _id in cat_ids for _id in all_ids}
+        dataset.set_label_values("frames.label.is_cat3", values)
+
+        self.assertDictEqual(
+            dataset.count_values("frames.label.is_cat3"),
+            {True: 1, False: 2, None: 1},
+        )
+
+        cats_view = dataset.filter_labels("frames.label", F("is_cat3") == True)
+        self.assertListEqual(cats_view.distinct("frames.label.label"), ["cat"])
+
+    @drop_datasets
+    def test_set_frame_label_list_values(self):
+        dataset = _make_frame_labels_dataset()
+
+        view = dataset.filter_labels("frames.labels", F("label") == "cat")
+        cat_ids = set(
+            view.values("frames.labels.classifications.id", unwind=True)
+        )
+
+        values = {_id: True for _id in cat_ids}
+
+        dataset.set_label_values(
+            "frames.labels.classifications.is_cat1", values
+        )
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertNotIn("labels.classifications.is_cat1", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.labels.classifications.is_cat1"),
+            {True: 2, None: 4},
+        )
+
+        dataset.set_label_values(
+            "frames.labels.classifications.is_cat2", values, dynamic=True
+        )
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertIn("labels.classifications.is_cat2", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.labels.classifications.is_cat2"),
+            {True: 2, None: 4},
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_label_values(
+                "frames.wrong_field.classifications.id", values
+            )
+
+        all_ids = dataset.values(
+            "frames.labels.classifications.id", unwind=True
+        )
+        values = {_id: _id in cat_ids for _id in all_ids}
+        dataset.set_label_values(
+            "frames.labels.classifications.is_cat3",
+            values,
+        )
+
+        self.assertDictEqual(
+            dataset.count_values("frames.labels.classifications.is_cat3"),
+            {True: 2, False: 4},
+        )
+
+        cats_view = dataset.filter_labels(
+            "frames.labels", F("is_cat3") == True
+        )
+        self.assertListEqual(
+            cats_view.distinct("frames.labels.classifications.label"),
+            ["cat"],
+        )
+
+
+def _make_classification_dataset():
+    sample1 = fo.Sample(
+        filepath="image1.jpg",
+        label=fo.Classification(label="cat", mood="surly"),
+    )
+
+    sample2 = fo.Sample(filepath="image2.jpg")
+
+    sample3 = fo.Sample(
+        filepath="image3.jpg",
+        label=fo.Classification(label="dog", age=51),
+    )
+
+    sample4 = fo.Sample(
+        filepath="image4.jpg",
+        label=fo.Classification(label="squirrel", fluffy=True),
+    )
+
+    sample5 = fo.Sample(filepath="image5.jpg")
+
+    dataset = fo.Dataset()
+    dataset.add_samples([sample1, sample2, sample3, sample4, sample5])
+
+    return dataset
+
+
+def _make_frame_classification_dataset():
+    sample1 = fo.Sample("video1.mp4")
+    sample1.frames[1] = fo.Frame(
+        label=fo.Classification(label="cat", mood="surly"),
+    )
+
+    sample2 = fo.Sample("video2.mp4")
+    sample2.frames[2] = fo.Frame()
+
+    sample3 = fo.Sample("video3.mp4")
+    sample3.frames[3] = fo.Frame(
+        label=fo.Classification(label="dog", age=51),
+    )
+
+    sample4 = fo.Sample("video4.mp4")
+    sample4.frames[4] = fo.Frame(
+        label=fo.Classification(label="squirrel", fluffy=True)
+    )
+
+    sample5 = fo.Sample("video5.mp4")
+
+    dataset = fo.Dataset()
+    dataset.add_samples([sample1, sample2, sample3, sample4, sample5])
+
+    return dataset
+
+
+def _make_labels_dataset():
+    sample1 = fo.Sample(
+        filepath="image1.jpg",
+        labels=fo.Classifications(
+            classifications=[fo.Classification(label="cat", mood="surly")]
+        ),
+    )
+
+    sample2 = fo.Sample(filepath="image2.jpg")
+
+    sample3 = fo.Sample(
+        filepath="image3.jpg",
+        labels=fo.Classifications(
+            classifications=[
+                fo.Classification(label="cat"),
+                fo.Classification(label="dog", age=51),
+            ]
+        ),
+    )
+
+    sample4 = fo.Sample(
+        filepath="image4.jpg",
+        labels=fo.Classifications(
+            classifications=[
+                fo.Classification(label="rabbit"),
+                fo.Classification(label="squirrel", fluffy=True),
+                fo.Classification(label="frog"),
+            ]
+        ),
+    )
+
+    sample5 = fo.Sample(filepath="image5.jpg")
+
+    dataset = fo.Dataset()
+    dataset.add_samples([sample1, sample2, sample3, sample4, sample5])
+
+    return dataset
+
+
+def _make_frame_labels_dataset():
+    sample1 = fo.Sample(filepath="video1.mp4")
+    sample1.frames[1] = fo.Frame(
+        labels=fo.Classifications(
+            classifications=[fo.Classification(label="cat", mood="surly")]
+        )
+    )
+
+    sample2 = fo.Sample(filepath="video2.mp4")
+    sample2.frames[2] = fo.Frame()
+
+    sample3 = fo.Sample(filepath="video3.mp4")
+    sample3.frames[3] = fo.Frame(
+        labels=fo.Classifications(
+            classifications=[
+                fo.Classification(label="cat"),
+                fo.Classification(label="dog", age=51),
+            ]
+        )
+    )
+
+    sample4 = fo.Sample(filepath="video4.mp4")
+    sample4.frames[4] = fo.Frame(
+        labels=fo.Classifications(
+            classifications=[
+                fo.Classification(label="rabbit"),
+                fo.Classification(label="squirrel", fluffy=True),
+                fo.Classification(label="frog"),
+            ]
+        )
+    )
+
+    sample5 = fo.Sample(filepath="video5.mp4")
+
+    dataset = fo.Dataset()
+    dataset.add_samples([sample1, sample2, sample3, sample4, sample5])
+
+    return dataset
+
+
+class ViewSaveTests(unittest.TestCase):
     @drop_datasets
     def setUp(self):
         self.dataset = fo.Dataset()
@@ -1102,9 +1776,11 @@ class ViewSaveTest(unittest.TestCase):
         dataset.add_samples([sample1, sample2])
 
         view = dataset.limit(1).match_frames(F("frame_number") == 1)
+        sample = view.first()
 
         self.assertEqual(dataset.count("frames"), 4)
         self.assertEqual(view.count("frames"), 1)
+        self.assertEqual(len(sample.frames), 1)
 
         view.keep_frames()
 
@@ -1122,14 +1798,10 @@ class ViewSaveTest(unittest.TestCase):
         view = dataset.exclude_fields("classifications")
         view.keep_fields()
 
-        self.assertNotIn("classifications", view.get_field_schema())
         self.assertNotIn("classifications", dataset.get_field_schema())
 
-        sample_view = view.first()
-        with self.assertRaises(KeyError):
-            sample_view["classifications"]
-
         sample = dataset.first()
+
         with self.assertRaises(KeyError):
             sample["classifications"]
 
@@ -1188,11 +1860,15 @@ class ViewStageTests(unittest.TestCase):
 
     def _setUp_detection(self):
         self.sample1["test_det"] = fo.Detection(
-            label="friend", confidence=0.9, bounding_box=[0, 0, 0.5, 0.5],
+            label="friend",
+            confidence=0.9,
+            bounding_box=[0, 0, 0.5, 0.5],
         )
         self.sample1.save()
         self.sample2["test_det"] = fo.Detection(
-            label="hex", confidence=0.8, bounding_box=[0.35, 0, 0.2, 0.25],
+            label="hex",
+            confidence=0.8,
+            bounding_box=[0.35, 0, 0.2, 0.25],
         )
         self.sample2.save()
 
@@ -1251,6 +1927,32 @@ class ViewStageTests(unittest.TestCase):
         self.sample2["numeric_list_field"] = [-2, -1, 0, 1]
         self.sample2.save()
 
+    def test_concat(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.jpg", field=1),
+                fo.Sample(filepath="image2.jpg", field=2),
+                fo.Sample(filepath="image3.jpg", field=3),
+                fo.Sample(filepath="image4.jpg", field=4),
+            ]
+        )
+
+        view1 = dataset.skip(0).limit(1)
+        view2 = dataset.skip(1).limit(1)
+        view3 = dataset.skip(2).limit(1)
+        view4 = dataset.skip(3).limit(1)
+
+        view = view1.concat(view2)
+
+        self.assertEqual(len(view), 2)
+        self.assertListEqual(view.values("field"), [1, 2])
+
+        view = view1.concat(view2).concat(view3).concat(view4)
+
+        self.assertEqual(len(view), 4)
+        self.assertListEqual(view.values("field"), [1, 2, 3, 4])
+
     def test_exclude(self):
         result = list(self.dataset.exclude([self.sample1.id]))
         self.assertIs(len(result), 1)
@@ -1259,6 +1961,10 @@ class ViewStageTests(unittest.TestCase):
     def test_exclude_fields(self):
         self.dataset.add_sample_field("exclude_fields_field1", fo.IntField)
         self.dataset.add_sample_field("exclude_fields_field2", fo.IntField)
+
+        for default_field in ("id", "filepath", "tags", "metadata"):
+            with self.assertRaises(ValueError):
+                self.dataset.exclude_fields(default_field)
 
         for sample in self.dataset.exclude_fields(["exclude_fields_field1"]):
             self.assertIsNone(sample.selected_field_names)
@@ -1270,12 +1976,59 @@ class ViewStageTests(unittest.TestCase):
 
             self.assertIsNone(sample.exclude_fields_field2)
 
+    def test_exclude_frame_fields(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(int_field=1)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        for default_field in ("frames.id", "frames.frame_number"):
+            with self.assertRaises(ValueError):
+                dataset.exclude_fields(default_field)
+
+        for sample in dataset.exclude_fields("frames.int_field"):
+            for frame in sample.frames.values():
+                with self.assertRaises(AttributeError):
+                    frame.int_field
+
     def test_exists(self):
-        self.sample1["exists"] = True
-        self.sample1.save()
-        result = list(self.dataset.exists("exists"))
-        self.assertIs(len(result), 1)
-        self.assertEqual(result[0].id, self.sample1.id)
+        sample1 = fo.Sample(filepath="video1.mp4", index=1)
+        sample1.frames[1] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video2.mp4", foo="bar", index=2)
+        sample2.frames[1] = fo.Frame(foo="bar")
+
+        sample3 = fo.Sample(filepath="video3.mp4", index=3)
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.exists("foo")
+
+        self.assertEqual(view.values("index"), [2])
+
+        view = dataset.exists("foo", bool=False)
+
+        self.assertEqual(view.values("index"), [1, 3])
+
+        view = dataset.exists("frames")
+
+        self.assertEqual(view.values("index"), [1, 2])
+
+        view = dataset.exists("frames", bool=False)
+
+        self.assertEqual(view.values("index"), [3])
+
+        view = dataset.exists("frames.foo")
+
+        self.assertEqual(view.values("index"), [2])
+        self.assertEqual(view.count("frames"), 1)
+
+        view = dataset.exists("frames.foo", bool=False)
+
+        self.assertEqual(view.values("index"), [1, 3])
+        self.assertEqual(view.count("frames"), 1)
 
     def test_filter_field(self):
         self.sample1["test_class"] = fo.Classification(label="friend")
@@ -1443,7 +2196,8 @@ class ViewStageTests(unittest.TestCase):
 
         self.assertEqual(num_detections, 4)
         self.assertListEqual(
-            view.distinct("frames.detections.detections.index"), [1, 2],
+            view.distinct("frames.detections.detections.index"),
+            [1, 2],
         )
         self.assertDictEqual(
             view.count_values("frames.detections.detections.type"),
@@ -1830,6 +2584,7 @@ class ViewStageTests(unittest.TestCase):
         view = self.dataset.set_field(
             "test_dets.detections.is_best_friend",
             (F("confidence") > 0.5) & (F("label") == "friend"),
+            _allow_missing=True,
         )
 
         for sample in view:
@@ -1839,7 +2594,9 @@ class ViewStageTests(unittest.TestCase):
 
         # Set an embedded field
         view = self.dataset.set_field(
-            "test_dets.num_predictions", F("detections").length()
+            "test_dets.num_predictions",
+            F("detections").length(),
+            _allow_missing=True,
         )
 
         for sample in view:
@@ -1924,10 +2681,14 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="friend", confidence=0.9, tags=["good"],
+                        label="friend",
+                        confidence=0.9,
+                        tags=["good"],
                     ),
                     fo.Classification(
-                        label="big bro", confidence=0.6, tags=["bad"],
+                        label="big bro",
+                        confidence=0.6,
+                        tags=["bad"],
                     ),
                 ]
             ),
@@ -1938,7 +2699,9 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="tricam", confidence=0.99, tags=["good"],
+                        label="tricam",
+                        confidence=0.99,
+                        tags=["good"],
                     )
                 ]
             ),
@@ -1987,10 +2750,14 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="friend", confidence=0.9, tags=["good"],
+                        label="friend",
+                        confidence=0.9,
+                        tags=["good"],
                     ),
                     fo.Classification(
-                        label="big bro", confidence=0.6, tags=["bad"],
+                        label="big bro",
+                        confidence=0.6,
+                        tags=["bad"],
                     ),
                 ]
             )
@@ -1999,7 +2766,9 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="tricam", confidence=0.99, tags=["good"],
+                        label="tricam",
+                        confidence=0.99,
+                        tags=["good"],
                     )
                 ]
             )
@@ -2010,7 +2779,9 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="big bro", confidence=0.4, tags=["bad"],
+                        label="big bro",
+                        confidence=0.4,
+                        tags=["bad"],
                     )
                 ]
             )
@@ -2060,11 +2831,51 @@ class ViewStageTests(unittest.TestCase):
         )
 
     def test_match_tags(self):
-        self.sample1.tags.append("test")
-        self.sample1.save()
-        result = list(self.dataset.match_tags(["test"]))
-        self.assertIs(len(result), 1)
-        self.assertEqual(result[0].id, self.sample1.id)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.png", tags=["train"], i=1),
+                fo.Sample(filepath="image2.png", tags=["test"], i=2),
+                fo.Sample(filepath="image3.png", tags=["train", "test"], i=3),
+                fo.Sample(filepath="image4.png", i=4),
+            ]
+        )
+
+        view = dataset.match_tags("test")
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 2)
+        self.assertListEqual(indexes, [2, 3])
+
+        view = dataset.match_tags("test", bool=False)
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 2)
+        self.assertListEqual(indexes, [1, 4])
+
+        view = dataset.match_tags(["test", "train"])
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 3)
+        self.assertListEqual(indexes, [1, 2, 3])
+
+        view = dataset.match_tags(["test", "train"], all=True)
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 1)
+        self.assertListEqual(indexes, [3])
+
+        view = dataset.match_tags(["test", "train"], bool=False)
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 1)
+        self.assertListEqual(indexes, [4])
+
+        view = dataset.match_tags(["test", "train"], bool=False, all=True)
+        indexes = view.values("i")
+
+        self.assertEqual(len(view), 3)
+        self.assertListEqual(indexes, [1, 2, 4])
 
     def test_re_match(self):
         result = list(self.dataset.match(F("filepath").re_match(r"two\.png$")))
@@ -2096,6 +2907,46 @@ class ViewStageTests(unittest.TestCase):
         self.assertIs(len(view), 2)
         for sample, _id in zip(view, ids):
             self.assertEqual(sample.id, _id)
+
+    def test_select_by(self):
+        filepaths = self.dataset.values("filepath")
+
+        values = [filepaths[1], filepaths[0]]
+        unordered_values = [filepaths[0], filepaths[1]]
+
+        result = self.dataset.select_by("filepath", values)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("filepath"), unordered_values)
+
+        ids = self.dataset.values("id")
+
+        values = [ids[1], ids[0]]
+        unordered_values = [ids[0], ids[1]]
+
+        result = self.dataset.select_by("id", values)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("id"), unordered_values)
+
+    def test_select_by_ordered(self):
+        filepaths = self.dataset.values("filepath")
+
+        values = [filepaths[1], filepaths[0]]
+
+        result = self.dataset.select_by("filepath", values, ordered=True)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("filepath"), values)
+
+        ids = self.dataset.values("id")
+
+        values = [ids[1], ids[0]]
+
+        result = self.dataset.select_by("id", values, ordered=True)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.values("id"), values)
 
     def test_select_fields(self):
         self.dataset.add_sample_field("select_fields_field", fo.IntField)

@@ -1,8 +1,8 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
-import { getColor } from "../color";
+import { getColor } from "@fiftyone/utilities";
 import { BaseState, Coordinates, NONFINITE } from "../state";
 import { sizeBytes } from "./util";
 
@@ -45,22 +45,13 @@ export interface RegularLabel extends BaseLabel {
   confidence?: number | NONFINITE;
 }
 
-export interface SelectData {
-  id: string;
-  field: string;
-}
-
 export const isShown = <State extends BaseState, Label extends RegularLabel>(
   state: Readonly<State>,
   field: string,
   label: Label
 ) => {
-  if (state.options.activePaths && !state.options.activePaths.includes(field)) {
-    return false;
-  }
-
-  if (state.options.filter && state.options.filter[field]) {
-    return state.options.filter[field](label);
+  if (state.options.filter) {
+    return state.options.filter(field, label);
   }
 
   return true;
@@ -81,10 +72,10 @@ export interface Overlay<State extends BaseState> {
 export abstract class CoordinateOverlay<
   State extends BaseState,
   Label extends RegularLabel
-> implements Overlay<State> {
+> implements Overlay<State>
+{
   readonly field: string;
   protected label: Label;
-  private color: string;
 
   constructor(field: string, label: Label) {
     this.field = field;
@@ -101,12 +92,20 @@ export abstract class CoordinateOverlay<
     return state.options.selectedLabels.includes(this.label.id);
   }
 
-  getColor({ options }: Readonly<State>): string {
-    if (!this.color) {
-      const key = options.coloring.byLabel ? this.label.label : this.field;
-      this.color = getColor(options.coloring.pool, options.coloring.seed, key);
+  getColor({ options: { coloring } }: Readonly<State>): string {
+    let key;
+
+    switch (coloring.by) {
+      case "field":
+        return getColor(coloring.pool, coloring.seed, this.field);
+      case "instance":
+        key = this.label.index !== undefined ? "index" : "id";
+        break;
+      default:
+        key = "label";
     }
-    return this.color;
+
+    return getColor(coloring.pool, coloring.seed, this.label[key]);
   }
 
   abstract containsPoint(state: Readonly<State>): CONTAINS;

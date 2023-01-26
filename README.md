@@ -17,7 +17,7 @@ models**
 <a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
 <a href="https://github.com/voxel51/fiftyone-examples">Examples</a> •
 <a href="https://medium.com/voxel51">Blog</a> •
-<a href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg">Community</a>
+<a href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ">Community</a>
 
 [![PyPI python](https://img.shields.io/pypi/pyversions/fiftyone)](https://pypi.org/project/fiftyone)
 [![PyPI version](https://badge.fury.io/py/fiftyone.svg)](https://pypi.org/project/fiftyone)
@@ -51,7 +51,7 @@ failure modes, finding annotation mistakes, and much more!
 You can get involved by joining our Slack community, reading our blog on
 Medium, and following us on social media:
 
-[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg)
+[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ)
 [![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
 [![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white)](https://twitter.com/voxel51)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/voxel51)
@@ -131,7 +131,7 @@ to make adjustments. If you are working in Google Colab,
 
 You will need:
 
--   [Python](https://www.python.org) (3.6 or newer)
+-   [Python](https://www.python.org) (3.7 or newer)
 -   [Node.js](https://nodejs.org) - on Linux, we recommend using
     [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
 -   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can install
@@ -212,109 +212,34 @@ cd fiftyone
 bash install.bash
 ```
 
+### Docker installs
+
+Refer to
+[these instructions](https://voxel51.com/docs/fiftyone/environments/index.html#docker)
+to see how to build and run Docker images containing source or release builds
+of FiftyOne.
+
+### UI Development on Storybook
+
+Voxel51 is currently in the process of implementing a
+[Storybook](https://storybook.js.org/) which contains examples of its basic UI
+components. You can access the current storybook instances by running **yarn
+storybook** in **/app/packages/components**. While the storybook instance is
+running, any changes to the component will trigger a refresh in the storybook
+app.
+
+```shell
+%%shell
+
+cd /app/packages/components
+yarn storybook
+```
+
 ### Generating documentation
 
 See the
-[docs guide](https://github.com/voxel51/fiftyone/blob/develop/docs/docs_guide.md)
+[docs guide](https://github.com/voxel51/fiftyone/blob/develop/docs/README.md)
 for information on building and contributing to the documentation.
-
-## Docker installs
-
-Follow the instructions below to build and run a Docker image containing a
-source build of FiftyOne.
-
-### Building an image
-
-First, clone the repository:
-
-```shell
-git clone https://github.com/voxel51/fiftyone
-cd fiftyone
-```
-
-Then build a FiftyOne wheel:
-
-```shell
-make python
-```
-
-and then build the image:
-
-```shell
-docker build -t voxel51/fiftyone .
-```
-
-The default image uses Ubuntu 20.04 and Python 3.8, but you can customize these
-via optional build arguments:
-
-```shell
-docker build \
-    --build-arg BASE_IMAGE=ubuntu:18.04 \
-    --build-arg PYTHON_VERSION=3.9 \
-    -t voxel51/fiftyone .
-```
-
-Refer to the `Dockerfile` itself for additional Python packages that you may
-wish to include in your build.
-
-### Running an image
-
-The image is designed to persist all data in a single `/fityone` directory with
-the following organization:
-
-```
-/fiftyone/
-    db/             # FIFTYONE_DATABASE_DIR
-    default/        # FIFTYONE_DEFAULT_DATASET_DIR
-    zoo/
-        datasets/   # FIFTYONE_DATASET_ZOO_DIR
-        models/     # FIFTYONE_MODEL_ZOO_DIR
-```
-
-Therefore, to run a container, you should mount `/fiftyone` as a local volume
-via `--mount` or `-v`, as shown below:
-
-```shell
-SHARED_DIR=/path/to/shared/dir
-
-docker run -v ${SHARED_DIR}:/fiftyone -p 5151:5151 -it voxel51/fiftyone
-```
-
-The `-p 5151:5151` option is required so that when you
-[launch the App](https://voxel51.com/docs/fiftyone/user_guide/app.html#sessions)
-from within the container you can connect to it at http://localhost:5151 in
-your browser.
-
-You can also include the `-e` or `--env-file` options if you need to further
-[configure FiftyOne](https://voxel51.com/docs/fiftyone/user_guide/config.html).
-
-By default, running the image launches an IPython shell, which you can use as
-normal:
-
-```py
-import fiftyone as fo
-import fiftyone.zoo as foz
-
-dataset = foz.load_zoo_dataset("quickstart")
-session = fo.launch_app(dataset)
-```
-
-Note that any datasets you create inside the Docker image must refer to media
-files within `SHARED_DIR` or another mounted volume if you intend to work with
-datasets between sessions.
-
-### Connecting to a localhost database
-
-If you are using a
-[self-managed database](https://voxel51.com/docs/fiftyone/user_guide/config.html#configuring-a-mongodb-connection)
-that you ordinarily connect to via a URI like `mongodb://localhost`, then you
-will need to tweak this slightly when working in Docker. See
-[this question](https://stackoverflow.com/q/24319662) for details.
-
-On Linux, include `--network="host"` in your `docker run` command and use
-`mongodb://127.0.0.1` for your URI.
-
-On Mac or Windows, use `mongodb://host.docker.internal` for your URI.
 
 ## Uninstallation
 

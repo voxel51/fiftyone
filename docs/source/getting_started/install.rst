@@ -21,7 +21,7 @@ Prerequisites
 -------------
 
 You will need a working Python installation. FiftyOne currently requires
-**Python 3.6 - 3.9**.
+**Python 3.7 - 3.10**.
 
 On Linux, we recommended installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
@@ -117,7 +117,7 @@ install as follows:
 
 .. code-block:: shell
 
-  pip install fiftyone[desktop]
+  pip install "fiftyone[desktop]"
 
 .. note::
 
@@ -146,13 +146,6 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
 
         pip install --upgrade pip setuptools wheel
         pip install fiftyone
-
-**Apple Silicon users**:
-
-- MongoDB does not yet provide a native build for Apple Silicon, so you must
-  follow :ref:`these instructions <configuring-mongodb-connection>` to
-  configure FiftyOne to use a MongoDB instance that you have installed
-  yourself.
 
 **Mac users:**
 
@@ -230,7 +223,7 @@ If you use the desktop App, you should also run:
 
 .. code-block:: shell
 
-   pip install fiftyone[desktop]
+   pip install "fiftyone[desktop]"
 
 to ensure that you have the proper version of the desktop App installed for
 your current FiftyOne version.
@@ -267,21 +260,24 @@ Here's the workflow for downgrading to an older version of FiftyOne:
 .. code-block:: shell
 
     # The version that you wish to downgrade to
-    VERSION=0.14.4  # for example
+    VERSION=0.15.1
 
     # Migrate the database
     fiftyone migrate --all -v $VERSION
 
-    # Optional: verify that your datasets were migrated
-    fiftyone migrate --info
-
     # Now install the older version of `fiftyone`
     pip install fiftyone==$VERSION
+
+    # Optional: verify that your datasets were migrated
+    fiftyone migrate --info
 
 If you are reading this after encountering an error resulting from downgrading
 your ``fiftyone`` package without first running
 :ref:`fiftyone migrate <cli-fiftyone-migrate>`, don't worry, you simply need to
 reinstall the newer version of FiftyOne and then follow these instructions.
+
+See :ref:`this page <troubleshooting-downgrades>` if you need to install
+FiftyOne v0.7.3 or earlier.
 
 .. note::
 
@@ -289,22 +285,6 @@ reinstall the newer version of FiftyOne and then follow these instructions.
   :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`, you
   can use :ref:`database admin privileges <database-migrations>` to control
   which clients are allowed to downgrade your FiftyOne deployment.
-
-.. note::
-
-    The :ref:`fiftyone migrate <cli-fiftyone-migrate>` command was introduced
-    in FiftyOne v0.7.3. If you would like to downgrade from a FiftyOne version
-    prior to v0.7.3 (to a yet older version), then you will first need to
-    *upgrade* to v0.7.3 or later and then follow the instructions above.
-
-.. note::
-
-    To install a FiftyOne version **prior to v0.7.0**, you must add an
-    ``--index`` option to ``pip install``:
-
-    .. code-block:: shell
-
-        pip install --index https://pypi.voxel51.com fiftyone==<version>
 
 .. _uninstalling-fiftyone:
 

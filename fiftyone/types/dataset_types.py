@@ -1,7 +1,7 @@
 """
 FiftyOne dataset types.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -45,8 +45,7 @@ class UnlabeledDataset(Dataset):
 
 
 class UnlabeledImageDataset(UnlabeledDataset):
-    """Base type for datasets that represent an unlabeled collection of images.
-    """
+    """Base type for datasets that represent an unlabeled collection of images."""
 
     def get_dataset_importer_cls(self):
         """Returns the
@@ -72,8 +71,7 @@ class UnlabeledImageDataset(UnlabeledDataset):
 
 
 class UnlabeledVideoDataset(UnlabeledDataset):
-    """Base type for datasets that represent an unlabeled collection of videos.
-    """
+    """Base type for datasets that represent an unlabeled collection of videos."""
 
     def get_dataset_importer_cls(self):
         """Returns the
@@ -216,6 +214,30 @@ class VideoLabelsDataset(LabeledVideoDataset):
     """
 
     pass
+
+
+class GroupDataset(Dataset):
+    """Base type for datasets that contain grouped samples of any type(s)."""
+
+    def get_dataset_importer_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.importers.GroupDatasetImporter` class for
+        importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.GroupDatasetImporter` class
+        """
+        return super().get_dataset_importer_cls()
+
+    def get_dataset_exporter_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.exporters.GroupDatasetExporter` class for
+        exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.GroupDatasetExporter` class
+        """
+        return super().get_dataset_exporter_cls()
 
 
 class ImageDirectory(UnlabeledImageDataset):
@@ -454,6 +476,18 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
         import fiftyone.utils.openimages as fouo
 
         return fouo.OpenImagesV6DatasetImporter
+
+
+class OpenImagesV7Dataset(ImageDetectionDataset):
+    """A labeled dataset consisting of images and their associated annotations
+    saved in
+    `Open Images format <https://storage.googleapis.com/openimages/web/download.html>`_.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.openimages as fouo
+
+        return fouo.OpenImagesV7DatasetImporter
 
 
 class FIWDataset(Dataset):
@@ -730,6 +764,20 @@ class GeoTIFFDataset(ImageLabelsDataset):
         return foug.GeoTIFFDatasetImporter
 
 
+class CSVDataset(Dataset):
+    """A flexible CSV format that represents slice(s) of field values of a
+    dataset as columns of a CSV file.
+
+    See :ref:`this page <CSVDataset-export>` for exporting datasets of this
+    type.
+    """
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.csv as fouc
+
+        return fouc.CSVDatasetExporter
+
+
 class FiftyOneDataset(Dataset):
     """A disk representation of an entire
     :class:`fiftyone.core.dataset.Dataset` stored on disk in a serialized JSON
@@ -765,21 +813,26 @@ class LegacyFiftyOneDataset(Dataset):
                 <filename1>.<ext>
                 <filename2>.<ext>
                 ...
-            evaluations/
-                <eval_key1>.json
-                <eval_key2>.json
+            annotations/
+                <anno_key1>.json
+                <anno_key2>.json
                 ...
             brain/
                 <brain_key1>.json
                 <brain_key2>.json
                 ...
+            evaluations/
+                <eval_key1>.json
+                <eval_key2>.json
+                ...
 
     where ``metadata.json`` is a JSON file containing metadata associated with
     the dataset, ``samples.json`` is a JSON file containing a serialized
-    representation of the samples in the dataset, ``evaluations/`` contains any
-    serialized :class:`fiftyone.core.evaluations.EvaluationResults` for the
-    dataset, and ``brain/`` contains any serialized
-    :class:`fiftyone.core.brain.BrainResults` for the dataset.
+    representation of the samples in the dataset, ``annotations/`` contains any
+    serialized :class:`fiftyone.core.annotations.AnnotationResults`, ``brain/``
+    contains any serialized :class:`fiftyone.core.brain.BrainResults`, and
+    ``evaluations/`` contains any serialized
+    :class:`fiftyone.core.evaluations.EvaluationResults`.
 
     Video datasets have an additional ``frames/`` directory that contains a
     serialized representation of the frame labels for each video in the

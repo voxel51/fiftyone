@@ -1,7 +1,7 @@
 """
 FiftyOne singleton implementations.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -33,8 +33,11 @@ class DatasetSingleton(type):
             instance.__init__(name=name, _create=_create, *args, **kwargs)
             name = instance.name  # `__init__` may have changed `name`
             cls._instances[name] = instance
+        else:
+            instance = cls._instances[name]
+            instance._update_last_loaded_at()
 
-        return cls._instances[name]
+        return instance
 
 
 class DocumentSingleton(type):
@@ -236,7 +239,7 @@ class FrameSingleton(DocumentSingleton):
         return cls
 
     def _register_instance(cls, obj):
-        cls._instances[obj._doc.collection_name][str(obj._sample_id)][
+        cls._instances[obj._doc.collection_name][obj.sample_id][
             obj.frame_number
         ] = obj
 
@@ -251,7 +254,7 @@ class FrameSingleton(DocumentSingleton):
     def _reload_instance(cls, obj):
         # pylint: disable=no-value-for-parameter
         cls._reload_doc(
-            obj._doc.collection_name, str(obj._sample_id), obj.frame_number
+            obj._doc.collection_name, obj.sample_id, obj.frame_number
         )
 
     def _get_instances(cls, collection_name, sample_id):
@@ -296,8 +299,7 @@ class FrameSingleton(DocumentSingleton):
                     frame._doc._data.pop(field_name, None)
 
     def _reload_doc(cls, collection_name, sample_id, frame_number, hard=False):
-        """Reloads the backing document for the given frame if it is in-memory.
-        """
+        """Reloads the backing document for the given frame if it is in-memory."""
         if collection_name not in cls._instances:
             return
 
@@ -321,8 +323,15 @@ class FrameSingleton(DocumentSingleton):
         samples = cls._instances[collection_name]
         frames = samples.get(sample_id, {})
 
+        if not frames:
+            return
+
+        if callable(frame_numbers):
+            frame_numbers = frame_numbers()
+
         frame_numbers = set(frame_numbers)
         reset_fns = set()
+
         for frame_number, frame in frames.items():
             if frame_number in frame_numbers:
                 frame.reload(hard=hard)
@@ -419,6 +428,12 @@ class FrameSingleton(DocumentSingleton):
 
         samples = cls._instances[collection_name]
         frames = samples.get(sample_id, {})
+
+        if not frames:
+            return
+
+        if callable(frame_numbers):
+            frame_numbers = frame_numbers()
 
         frame_numbers = set(frame_numbers)
         reset_fns = set()

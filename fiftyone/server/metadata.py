@@ -1,74 +1,105 @@
 """
-FiftyOne Server JIT metadata utilities.
+FiftyOne Server JIT metadata utilities
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from enum import Enum
 import logging
 import shutil
 import struct
+import typing as t
 
 import asyncio
 import aiofiles
+import strawberry as gql
 
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
+from fiftyone.core.collections import SampleCollection
 
 import fiftyone.core.media as fom
-
 
 logger = logging.getLogger(__name__)
 
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def get_metadata(filepath, media_type, metadata=None):
-    """Gets the metadata for the given media file.
+@gql.enum
+class MediaType(Enum):
+    image = "image"
+    group = "group"
+    point_cloud = "point-cloud"
+    video = "video"
+
+
+async def get_metadata(
+    collection: SampleCollection,
+    sample: t.Dict,
+    media_type: t.Dict[str, t.Dict],
+    metadata_cache: t.Dict[str, t.Dict[str, str]],
+    url_cache: t.Dict[str, str],
+):
+    """Gets the metadata for the given local media file.
 
     Args:
         filepath: the path to the file
-        media_type: the media type of the collection
+        media_type: the file's media type
         metadata (None): a pre-existing metadata dict to use if possible
 
     Returns:
         metadata dict
     """
+    filepath = sample["filepath"]
     is_video = media_type == fom.VIDEO
+    metadata = sample.get("metadata", None)
+    urls = _create_media_urls(collection, sample, url_cache)
 
-    if metadata:
+    # If sufficient pre-existing metadata exists, use it
+    if filepath not in metadata_cache and metadata:
         if is_video:
             width = metadata.get("frame_width", None)
             height = metadata.get("frame_height", None)
             frame_rate = metadata.get("frame_rate", None)
 
             if width and height and frame_rate:
-                return {
-                    "width": width,
-                    "height": height,
-                    "frame_rate": frame_rate,
-                }
+                metadata_cache[sample["filepath"]] = dict(
+                    aspect_ratio=width / height,
+                    frame_rate=frame_rate,
+                )
+
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
 
             if width and height:
-                return {"width": width, "height": height}
+                metadata_cache[sample["filepath"]] = dict(
+                    aspect_ratio=width / height,
+                )
 
-    try:
-        return await read_metadata(filepath, is_video)
-    except:
-        pass
+    if filepath not in metadata_cache:
+        try:
+            # Retrieve media metadata from disk
+            metadata_cache[filepath] = await read_metadata(filepath, is_video)
+        except Exception as exc:
+            # Immediately fail so the user knows they should install FFmpeg
+            if isinstance(exc, FFmpegNotFoundException):
+                raise exc
 
-    if is_video:
-        return {"width": 512, "height": 512, "frame_rate": 30}
+            # Something went wrong (ie non-existent file), so we gracefully return
+            # some placeholder metadata so the App grid can be rendered
+            if is_video:
+                metadata_cache[filepath] = dict(aspect_ratio=1, frame_rate=30)
+            else:
+                metadata_cache[filepath] = dict(aspect_ratio=1)
 
-    return {"width": 512, "height": 512}
+    return dict(urls=urls, **metadata_cache[filepath])
 
 
 async def read_metadata(filepath, is_video):
-    """Calculates the metadata for the given media path.
+    """Calculates the metadata for the given local media path.
 
     Args:
         filepath: a filepath
@@ -79,15 +110,40 @@ async def read_metadata(filepath, is_video):
     """
     if is_video:
         info = await get_stream_info(filepath)
-        return {
-            "width": info.frame_size[0],
-            "height": info.frame_size[1],
-            "frame_rate": info.frame_rate,
-        }
+        return dict(
+            aspect_ratio=info.frame_size[0] / info.frame_size[1],
+            frame_rate=info.frame_rate,
+        )
 
     async with aiofiles.open(filepath, "rb") as f:
         width, height = await get_image_dimensions(f)
-        return {"width": width, "height": height}
+        return dict(aspect_ratio=width / height)
+
+
+class Reader(object):
+    """Asynchronous file-like reader.
+
+    Args:
+        content: a :class:`aiohttp.StreamReader`
+    """
+
+    def __init__(self, content):
+        self._data = b""
+        self._content = content
+
+    async def read(self, bytes):
+        data = await self._content.read(bytes)
+        self._data += data
+        return data
+
+    async def seek(self, bytes):
+        delta = bytes - len(self._data)
+        if delta < 0:
+            data = self._data[delta:]
+            self._data = data[:delta]
+            self._content.unread_data(data)
+        else:
+            self._data += await self._content.read(delta)
 
 
 async def get_stream_info(path):
@@ -101,7 +157,7 @@ async def get_stream_info(path):
         a :class:`eta.core.video.VideoStreamInfo`
     """
     if _FFPROBE_BINARY_PATH is None:
-        raise RuntimeError(
+        raise FFmpegNotFoundException(
             "You must have ffmpeg installed on your machine in order to view "
             "video datasets in the App, but we failed to find it"
         )
@@ -144,7 +200,8 @@ async def get_stream_info(path):
 
 
 async def get_image_dimensions(input):
-    """Gets the dimensions of an image from its asynchronous byte stream.
+    """Gets the dimensions of an image from its file-like asynchronous byte
+    stream.
 
     Args:
         input: file-like object with async read and seek methods
@@ -287,6 +344,28 @@ async def get_image_dimensions(input):
 
 
 class MetadataException(Exception):
-    """"Exception raised when metadata for a media file cannot be computed."""
+    """Exception raised when metadata for a media file cannot be computed."""
 
     pass
+
+
+class FFmpegNotFoundException(RuntimeError):
+    """Exception raised when FFmpeg or FFprobe cannot be found."""
+
+    pass
+
+
+def _create_media_urls(
+    collection: SampleCollection, sample: t.Dict, cache: t.Dict
+) -> t.Dict[str, str]:
+    media_fields = collection.app_config.media_fields
+    media_urls = []
+
+    for field in media_fields:
+        path = sample.get(field, None)
+        if path not in cache:
+            cache[path] = path
+
+        media_urls.append(dict(field=field, url=path))
+
+    return media_urls

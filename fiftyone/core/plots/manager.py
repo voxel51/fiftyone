@@ -1,7 +1,7 @@
 """
 Session plot manager.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,7 +15,6 @@ import eta.core.utils as etau
 
 import fiftyone.core.clips as foc
 from fiftyone.core.expressions import ViewField as F
-import fiftyone.core.media as fom
 import fiftyone.core.patches as fop
 import fiftyone.core.video as fov
 
@@ -28,7 +27,7 @@ logger = logging.getLogger(__name__)
 class PlotManager(object):
     """Class that manages communication between a
     :class:`fiftyone.core.session.Session` and one or more
-    :class:`ResponsivePlot` instances.
+    :class:`fiftyone.core.plots.base.ResponsivePlot` instances.
 
     Each plot can be linked to either the view, samples, frames, or labels of a
     session:
@@ -58,7 +57,6 @@ class PlotManager(object):
     """
 
     _MIN_UPDATE_DELTA_SECONDS = 1
-    _LISTENER_NAME = "plots"
 
     def __init__(self, session):
         self._session = None
@@ -169,7 +167,8 @@ class PlotManager(object):
         """Returns an iterator over the plots in this manager.
 
         Returns:
-            an iterator that emits :class:`ResponsivePlot` instances
+            an iterator that emits
+            :class:`fiftyone.core.plots.base.ResponsivePlot` instances
         """
         return self._plots.values()
 
@@ -292,7 +291,7 @@ class PlotManager(object):
             name: the name of a plot
 
         Returns:
-            the :class:`ResponsivePlot`
+            the :class:`fiftyone.core.plots.base.ResponsivePlot`
         """
         if name not in self._plots:
             raise ValueError("No plot with name '%s'" % name)
@@ -315,8 +314,8 @@ class PlotManager(object):
         for name in self._plots:
             self._connect_plot(name)
 
-        self._session.add_listener(
-            self._LISTENER_NAME, self._on_session_update
+        self._session._client.add_event_listener(
+            "state_update", self._on_session_update
         )
 
         self._connected = True
@@ -351,9 +350,9 @@ class PlotManager(object):
         if not self.is_connected:
             return
 
-        key = self._LISTENER_NAME
-        if self._session.has_listener(key):
-            self._session.delete_listener(key)
+        self._session._client.remove_event_listener(
+            "state_update", self._on_session_update
+        )
 
         for name in self._plots:
             self._disconnect_plot(name)
@@ -443,7 +442,7 @@ class PlotManager(object):
             if self.has_frame_links:
                 if isinstance(plot_view, fov.FramesView):
                     frame_ids = plot_view.values("id")
-                elif plot_view.media_type == fom.VIDEO:
+                elif plot_view._contains_videos():
                     frame_ids = plot_view.values("frames.id", unwind=True)
 
             # If the session has plots linked to labels, retrieve the current
@@ -534,7 +533,7 @@ class PlotManager(object):
             if self.has_frame_links:
                 if isinstance(plot_view, fov.FramesView):
                     frame_ids = plot_view.values("id")
-                elif plot_view.media_type == fom.VIDEO:
+                elif plot_view._contains_videos():
                     frame_ids = plot_view.values("frames.id", unwind=True)
 
             # This plot is linked to labels, so we already know exactly which
@@ -592,7 +591,7 @@ class PlotManager(object):
 
             if isinstance(_view, fov.FramesView):
                 frame_ids = _view.values("id")
-            elif _view.media_type == fom.VIDEO:
+            elif _view._contains_videos():
                 frame_ids = _view.values("frames.id", unwind=True)
             else:
                 frame_ids = None

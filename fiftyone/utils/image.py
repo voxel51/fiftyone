@@ -1,7 +1,7 @@
 """
 Image utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -23,14 +23,23 @@ def reencode_images(
     sample_collection,
     ext=".png",
     force_reencode=True,
+    media_field="filepath",
+    output_field=None,
+    output_dir=None,
+    rel_dir=None,
     delete_originals=False,
     num_workers=None,
     skip_failures=False,
 ):
     """Re-encodes the images in the sample collection to the given format.
 
-    The ``filepath`` of the samples are updated to point to the re-encoded
-    images.
+    .. note::
+
+        This method will not update the ``metadata`` field of the collection
+        after transforming. You can repopulate the ``metadata`` field if needed
+        by calling::
+
+            sample_collection.compute_metadata(overwrite=True)
 
     Args:
         sample_collection: a
@@ -38,8 +47,22 @@ def reencode_images(
         ext (".png"): the image format to use (e.g., ".png" or ".jpg")
         force_reencode (True): whether to re-encode images whose extension
             already matches ``ext``
+        media_field ("filepath"): the input field containing the image paths to
+            transform
+        output_field (None): an optional field in which to store the paths to
+            the transformed images. By default, ``media_field`` is updated
+            in-place
+        output_dir (None): an optional output directory in which to write the
+            transformed images. If none is provided, the images are updated
+            in-place
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each image. This
+            argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths
         delete_originals (False): whether to delete the original images after
-            re-encoding
+            re-encoding. This parameter has no effect if the images are being
+            updated in-place
         num_workers (None): the number of worker processes to use. By default,
             ``multiprocessing.cpu_count()`` is used
         skip_failures (False): whether to gracefully continue without raising
@@ -51,6 +74,10 @@ def reencode_images(
         sample_collection,
         ext=ext,
         force_reencode=force_reencode,
+        media_field=media_field,
+        output_field=output_field,
+        output_dir=output_dir,
+        rel_dir=rel_dir,
         delete_originals=delete_originals,
         num_workers=num_workers,
         skip_failures=skip_failures,
@@ -62,8 +89,13 @@ def transform_images(
     size=None,
     min_size=None,
     max_size=None,
+    interpolation=None,
     ext=None,
     force_reencode=False,
+    media_field="filepath",
+    output_field=None,
+    output_dir=None,
+    rel_dir=None,
     delete_originals=False,
     num_workers=None,
     skip_failures=False,
@@ -71,13 +103,10 @@ def transform_images(
     """Transforms the images in the sample collection according to the provided
     parameters.
 
-    The ``filepath`` of the samples are updated to point to the transformed
-    images.
-
     .. note::
 
         This method will not update the ``metadata`` field of the collection
-        after transforming. You can repopulate the ``metadata` field if needed
+        after transforming. You can repopulate the ``metadata`` field if needed
         by calling::
 
             sample_collection.compute_metadata(overwrite=True)
@@ -95,12 +124,28 @@ def transform_images(
             image. A dimension can be -1 if no constraint should be applied.
             The images are resized (aspect-preserving) if necessary to meet
             this constraint
+        interpolation (None): an optional ``interpolation`` argument for
+            ``cv2.resize()``
         ext (None): an optional image format to re-encode the source images
             into (e.g., ".png" or ".jpg")
         force_reencode (False): whether to re-encode images whose parameters
             already match the specified values
+        media_field ("filepath"): the input field containing the image paths to
+            transform
+        output_field (None): an optional field in which to store the paths to
+            the transformed images. By default, ``media_field`` is updated
+            in-place
+        output_dir (None): an optional output directory in which to write the
+            transformed images. If none is provided, the images are updated
+            in-place
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each image. This
+            argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths
         delete_originals (False): whether to delete the original images if any
-            transformation was applied
+            transformation was applied. This parameter has no effect if the
+            images are being updated in-place
         num_workers (None): the number of worker processes to use. By default,
             ``multiprocessing.cpu_count()`` is used
         skip_failures (False): whether to gracefully continue without raising
@@ -113,8 +158,13 @@ def transform_images(
         size=size,
         min_size=min_size,
         max_size=max_size,
+        interpolation=interpolation,
         ext=ext,
         force_reencode=force_reencode,
+        media_field=media_field,
+        output_field=output_field,
+        output_dir=output_dir,
+        rel_dir=rel_dir,
         delete_originals=delete_originals,
         num_workers=num_workers,
         skip_failures=skip_failures,
@@ -132,7 +182,12 @@ def reencode_image(input_path, output_path):
 
 
 def transform_image(
-    input_path, output_path, size=None, min_size=None, max_size=None
+    input_path,
+    output_path,
+    size=None,
+    min_size=None,
+    max_size=None,
+    interpolation=None,
 ):
     """Transforms the image according to the provided parameters.
 
@@ -147,6 +202,8 @@ def transform_image(
         max_size (None): an optional maximum ``(width, height)`` for the image.
             A dimension can be -1 if no constraint should be applied. The image
             is resized (aspect-preserving) if necessary to meet this constraint
+        interpolation (None): an optional ``interpolation`` argument for
+            ``cv2.resize()``
     """
     _transform_image(
         input_path,
@@ -154,6 +211,7 @@ def transform_image(
         size=size,
         min_size=min_size,
         max_size=max_size,
+        interpolation=interpolation,
     )
 
 
@@ -162,8 +220,13 @@ def _transform_images(
     size=None,
     min_size=None,
     max_size=None,
+    interpolation=None,
     ext=None,
     force_reencode=False,
+    media_field="filepath",
+    output_field=None,
+    output_dir=None,
+    rel_dir=None,
     delete_originals=False,
     num_workers=None,
     skip_failures=False,
@@ -179,8 +242,13 @@ def _transform_images(
             size=size,
             min_size=min_size,
             max_size=max_size,
+            interpolation=interpolation,
             ext=ext,
             force_reencode=force_reencode,
+            media_field=media_field,
+            output_field=output_field,
+            output_dir=output_dir,
+            rel_dir=rel_dir,
             delete_originals=delete_originals,
             skip_failures=skip_failures,
         )
@@ -191,8 +259,13 @@ def _transform_images(
             size=size,
             min_size=min_size,
             max_size=max_size,
+            interpolation=interpolation,
             ext=ext,
             force_reencode=force_reencode,
+            media_field=media_field,
+            output_field=output_field,
+            output_dir=output_dir,
+            rel_dir=rel_dir,
             delete_originals=delete_originals,
             skip_failures=skip_failures,
         )
@@ -203,21 +276,33 @@ def _transform_images_single(
     size=None,
     min_size=None,
     max_size=None,
+    interpolation=None,
     ext=None,
     force_reencode=False,
+    media_field="filepath",
+    output_field=None,
+    output_dir=None,
+    rel_dir=None,
     delete_originals=False,
     skip_failures=False,
 ):
-    view = sample_collection.select_fields()
+    if output_field is None:
+        output_field = media_field
+
+    diff_field = output_field != media_field
+
+    view = sample_collection.select_fields(media_field)
 
     with fou.ProgressBar() as pb:
         for sample in pb(view):
-            inpath = sample.filepath
+            inpath = sample[media_field]
+
+            outpath = _get_outpath(
+                inpath, output_dir=output_dir, rel_dir=rel_dir
+            )
 
             if ext is not None:
-                outpath = os.path.splitext(inpath)[0] + ext
-            else:
-                outpath = inpath
+                outpath = os.path.splitext(outpath)[0] + ext
 
             _transform_image(
                 inpath,
@@ -225,13 +310,14 @@ def _transform_images_single(
                 size=size,
                 min_size=min_size,
                 max_size=max_size,
+                interpolation=interpolation,
                 force_reencode=force_reencode,
                 delete_original=delete_originals,
                 skip_failures=skip_failures,
             )
 
-            if outpath != inpath:
-                sample.filepath = outpath
+            if diff_field or outpath != inpath:
+                sample[output_field] = outpath
                 sample.save()
 
 
@@ -241,19 +327,29 @@ def _transform_images_multi(
     size=None,
     min_size=None,
     max_size=None,
+    interpolation=None,
     ext=None,
     force_reencode=False,
+    media_field="filepath",
+    output_field=None,
+    output_dir=None,
+    rel_dir=None,
     delete_originals=False,
     skip_failures=False,
 ):
-    sample_ids, filepaths = sample_collection.values(["id", "filepath"])
+    if output_field is None:
+        output_field = media_field
+
+    diff_field = output_field != media_field
+
+    sample_ids, inpaths = sample_collection.values(["id", media_field])
 
     inputs = []
-    for sample_id, inpath in zip(sample_ids, filepaths):
+    for sample_id, inpath in zip(sample_ids, inpaths):
+        outpath = _get_outpath(inpath, output_dir=output_dir, rel_dir=rel_dir)
+
         if ext is not None:
-            outpath = os.path.splitext(inpath)[0] + ext
-        else:
-            outpath = inpath
+            outpath = os.path.splitext(outpath)[0] + ext
 
         inputs.append(
             (
@@ -263,23 +359,27 @@ def _transform_images_multi(
                 size,
                 min_size,
                 max_size,
+                interpolation,
                 force_reencode,
                 delete_originals,
                 skip_failures,
             )
         )
 
-    view = sample_collection.select_fields()
+    outpaths = {}
 
-    with fou.ProgressBar(inputs) as pb:
-        with multiprocessing.Pool(processes=num_workers) as pool:
-            for sample_id, inpath, outpath, _ in pb(
-                pool.imap_unordered(_do_transform, inputs)
-            ):
-                if outpath != inpath:
-                    sample = view[sample_id]
-                    sample.filepath = outpath
-                    sample.save()
+    try:
+        with fou.ProgressBar(inputs) as pb:
+            with fou.get_multiprocessing_context().Pool(
+                processes=num_workers
+            ) as pool:
+                for sample_id, inpath, outpath, _ in pb(
+                    pool.imap_unordered(_do_transform, inputs)
+                ):
+                    if diff_field or outpath != inpath:
+                        outpaths[sample_id] = outpath
+    finally:
+        sample_collection.set_values(output_field, outpaths, key_field="id")
 
 
 def _do_transform(args):
@@ -294,6 +394,7 @@ def _transform_image(
     size=None,
     min_size=None,
     max_size=None,
+    interpolation=None,
     force_reencode=False,
     delete_original=False,
     skip_failures=False,
@@ -316,27 +417,22 @@ def _transform_image(
             img = etai.read(inpath)
             size = _parse_parameters(img, size, min_size, max_size)
 
-        diff_params = size is not None
-        should_reencode = diff_params or force_reencode
+        if size is not None:
+            if interpolation is not None:
+                kwargs = dict(interpolation=interpolation)
+            else:
+                kwargs = {}
 
-        if (inpath == outpath) and should_reencode and not delete_original:
-            _inpath = inpath
-            inpath = etau.make_unique_path(inpath, suffix="-original")
-            etau.move_file(_inpath, inpath)
-
-        diff_path = inpath != outpath
-
-        if diff_params:
-            img = etai.resize(img, width=size[0], height=size[1])
+            img = etai.resize(img, width=size[0], height=size[1], **kwargs)
             etai.write(img, outpath)
             did_transform = True
         elif force_reencode or (in_ext != out_ext):
             etai.write(img, outpath)
             did_transform = True
-        elif diff_path:
+        elif inpath != outpath:
             etau.copy_file(inpath, outpath)
 
-        if delete_original and diff_path:
+        if delete_original and inpath != outpath:
             etau.delete_file(inpath)
     except Exception as e:
         if not skip_failures:
@@ -368,3 +464,16 @@ def _parse_ext(ext):
         ext = "." + ext
 
     return ext.lower()
+
+
+def _get_outpath(inpath, output_dir=None, rel_dir=None):
+    if output_dir is None:
+        return inpath
+
+    if rel_dir is not None:
+        rel_dir = fou.normalize_path(rel_dir)
+        filename = os.path.relpath(inpath, rel_dir)
+    else:
+        filename = os.path.basename(inpath)
+
+    return os.path.join(output_dir, filename)

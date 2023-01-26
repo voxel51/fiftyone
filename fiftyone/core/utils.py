@@ -1,7 +1,7 @@
 """
 Core utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -17,23 +17,37 @@ import inspect
 import io
 import itertools
 import logging
+import multiprocessing
 import ntpath
 import os
 import posixpath
 import platform
+import re
 import signal
+import string
 import struct
 import subprocess
+import sys
 import timeit
 import types
+from xml.parsers.expat import ExpatError
 import zlib
 
 try:
     import pprintpp as _pprint
+    from mongoengine.base.datastructures import BaseDict, BaseList
 
     # Monkey patch to prevent sorting keys
     # https://stackoverflow.com/a/25688431
     _pprint._sorted = lambda x: x
+
+    try:
+        # Monkey patch to render `BaseList` as `list` and `BaseDict` as `dict`
+        _d = _pprint.PrettyPrinter._open_close_empty
+        _d[BaseList] = (BaseList, "list", "[", "]", "[]")
+        _d[BaseDict] = (BaseDict, "dict", "{", "}", "{}")
+    except:
+        pass
 except:
     import pprint as _pprint
 
@@ -662,8 +676,11 @@ def load_xml_as_json_dict(xml_path):
     Returns:
         a JSON dict
     """
-    with open(xml_path, "rb") as f:
-        return xmltodict.parse(f.read())
+    try:
+        with open(xml_path, "rb") as f:
+            return xmltodict.parse(f.read())
+    except ExpatError as ex:
+        raise ExpatError(f"Failed to read {xml_path}: {ex}")
 
 
 def parse_serializable(obj, cls):
@@ -835,54 +852,154 @@ class DynamicBatcher(object):
 
         import fiftyone.core.utils as fou
 
-        total = int(1e7)
-        elements = range(total)
+        elements = range(int(1e7))
 
-        batches = fou.DynamicBatcher(elements, 0.1, max_batch_beta=2.0)
+        batcher = fou.DynamicBatcher(
+            elements, target_latency=0.1, max_batch_beta=2.0
+        )
 
-        with fou.ProgressBar(total) as pb:
-            for batch in batches:
-                batch_size = len(batch)
-                print("batch size: %d" % batch_size)
-                pb.update(count=batch_size)
+        for batch in batcher:
+            print("batch size: %d" % len(batch))
+
+        batcher = fou.DynamicBatcher(
+            elements,
+            target_latency=0.1,
+            max_batch_beta=2.0,
+            progress=True,
+        )
+
+        with batcher:
+            for batch in batcher:
+                print("batch size: %d" % len(batch))
 
     Args:
         iterable: an iterable
-        target_latency_seconds: the target latency between ``next()`` calls,
-            in seconds
+        target_latency (0.2): the target latency between ``next()``
+            calls, in seconds
         init_batch_size (1): the initial batch size to use
         min_batch_size (1): the minimum allowed batch size
         max_batch_size (None): an optional maximum allowed batch size
         max_batch_beta (None): an optional lower/upper bound on the ratio
             between successive batch sizes
+        return_views (False): whether to return each batch as a
+            :class:`fiftyone.core.view.DatasetView`. Only applicable when the
+            iterable is a :class:`fiftyone.core.collections.SampleCollection`
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches
+        total (None): the length of ``iterable``. Only applicable when
+            ``progress=True``. If not provided, it is computed via
+            ``len(iterable)``, if possible
     """
 
     def __init__(
         self,
         iterable,
-        target_latency_seconds,
+        target_latency=0.2,
         init_batch_size=1,
         min_batch_size=1,
         max_batch_size=None,
         max_batch_beta=None,
+        return_views=False,
+        progress=False,
+        total=None,
     ):
+        import fiftyone.core.collections as foc
+
+        if not isinstance(iterable, foc.SampleCollection):
+            return_views = False
+
         self.iterable = iterable
-        self.target_latency_seconds = target_latency_seconds
+        self.target_latency = target_latency
         self.init_batch_size = init_batch_size
         self.min_batch_size = min_batch_size
         self.max_batch_size = max_batch_size
         self.max_batch_beta = max_batch_beta
+        self.return_views = return_views
+        self.progress = progress
+        self.total = total
 
         self._iter = None
         self._last_time = None
         self._last_batch_size = None
+        self._pb = None
+        self._in_context = False
+        self._last_offset = None
+        self._num_samples = None
+
+    def __enter__(self):
+        self._in_context = True
+        return self
+
+    def __exit__(self, *args):
+        self._in_context = False
+
+        if self.progress:
+            if self._last_batch_size is not None:
+                self._pb.update(count=self._last_batch_size)
+
+            self._pb.__exit__(*args)
 
     def __iter__(self):
-        self._iter = iter(self.iterable)
-        self._last_batch_size = None
+        if self.return_views:
+            self._last_offset = 0
+            self._num_samples = len(self.iterable)
+        else:
+            self._iter = iter(self.iterable)
+
+        if self.progress:
+            if self._in_context:
+                total = self.total
+                if total is None:
+                    try:
+                        total = len(self.iterable)
+                    except:
+                        pass
+
+                self._pb = ProgressBar(total=total)
+                self._pb.__enter__()
+            else:
+                logger.warning(
+                    "DynamicBatcher must be invoked as a context manager in "
+                    "order to print progress"
+                )
+                self.progress = False
+
         return self
 
     def __next__(self):
+        if self.progress and self._last_batch_size is not None:
+            self._pb.update(count=self._last_batch_size)
+
+        batch_size = self._compute_batch_size()
+
+        if self.return_views:
+            if self._last_offset >= self._num_samples:
+                raise StopIteration
+
+            offset = self._last_offset
+            self._last_offset += batch_size
+
+            return self.iterable[offset : (offset + batch_size)]
+
+        batch = []
+        idx = 0
+
+        try:
+            while idx < batch_size:
+                batch.append(next(self._iter))
+                idx += 1
+
+        except StopIteration:
+            self._last_batch_size = len(batch)
+
+            if not batch:
+                raise StopIteration
+
+        self._last_batch_size = len(batch)
+
+        return batch
+
+    def _compute_batch_size(self):
         current_time = timeit.default_timer()
 
         if self._last_batch_size is None:
@@ -890,9 +1007,7 @@ class DynamicBatcher(object):
         else:
             # Compute optimal batch size
             try:
-                beta = self.target_latency_seconds / (
-                    current_time - self._last_time
-                )
+                beta = self.target_latency / (current_time - self._last_time)
             except ZeroDivisionError:
                 beta = 1e6
 
@@ -913,19 +1028,7 @@ class DynamicBatcher(object):
         self._last_batch_size = batch_size
         self._last_time = current_time
 
-        batch = []
-
-        try:
-            idx = 0
-            while idx < batch_size:
-                batch.append(next(self._iter))
-                idx += 1
-
-        except StopIteration:
-            if not batch:
-                raise StopIteration
-
-        return batch
+        return batch_size
 
 
 @contextmanager
@@ -961,26 +1064,47 @@ class UniqueFilenameMaker(object):
     basename). This argument allows for populating nested subdirectories in
     ``output_dir`` that match the shape of the input paths.
 
+    If ``alt_dir`` is provided, you can use :meth:`get_alt_path` to retrieve
+    the equivalent path rooted in this directory rather than ``output_dir``.
+
     Args:
         output_dir (None): a directory in which to generate output paths
-        rel_dir (None): an optional relative directory to strip from each path
+        rel_dir (None): an optional relative directory to strip from each path.
+            The path is converted to an absolute path (if necessary) via
+            :func:`normalize_path`
+        alt_dir (None): an optional alternate directory in which to generate
+            paths when :meth:`get_alt_path` is called
         default_ext (None): the file extension to use when generating default
             output paths
         ignore_exts (False): whether to omit file extensions when checking for
             duplicate filenames
+        ignore_existing (False): whether to ignore existing files in
+            ``output_dir`` for output filename generation purposes
+        idempotent (True): whether to return the same output path when the same
+            input path is provided multiple times (True) or to generate new
+            output paths (False)
     """
 
     def __init__(
         self,
         output_dir=None,
         rel_dir=None,
+        alt_dir=None,
         default_ext=None,
         ignore_exts=False,
+        ignore_existing=False,
+        idempotent=True,
     ):
+        if rel_dir is not None:
+            rel_dir = normalize_path(rel_dir)
+
         self.output_dir = output_dir
         self.rel_dir = rel_dir
+        self.alt_dir = alt_dir
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
+        self.ignore_existing = ignore_existing
+        self.idempotent = idempotent
 
         self._filepath_map = {}
         self._filename_counts = defaultdict(int)
@@ -996,11 +1120,27 @@ class UniqueFilenameMaker(object):
             return
 
         etau.ensure_dir(self.output_dir)
-        filenames = etau.list_files(self.output_dir)
+
+        if self.ignore_existing:
+            return
+
+        recursive = self.rel_dir is not None
+        filenames = etau.list_files(self.output_dir, recursive=recursive)
 
         self._idx = len(filenames)
         for filename in filenames:
             self._filename_counts[filename] += 1
+
+    def seen_input_path(self, input_path):
+        """Checks whether we've already seen the given input path.
+
+        Args:
+            input_path: an input path
+
+        Returns:
+            True/False
+        """
+        return normalize_path(input_path) in self._filepath_map
 
     def get_output_path(self, input_path=None, output_ext=None):
         """Returns a unique output path.
@@ -1014,15 +1154,18 @@ class UniqueFilenameMaker(object):
         """
         found_input = bool(input_path)
 
-        if found_input and input_path in self._filepath_map:
-            return self._filepath_map[input_path]
+        if found_input:
+            input_path = normalize_path(input_path)
+
+            if self.idempotent and input_path in self._filepath_map:
+                return self._filepath_map[input_path]
 
         self._idx += 1
 
         if not found_input:
             filename = self._default_filename_patt % self._idx
-        elif self.rel_dir:
-            filename = os.path.relpath(input_path, self.rel_dir)
+        elif self.rel_dir is not None:
+            filename = safe_relpath(input_path, self.rel_dir)
         else:
             filename = os.path.basename(input_path)
 
@@ -1054,6 +1197,51 @@ class UniqueFilenameMaker(object):
             self._filepath_map[input_path] = output_path
 
         return output_path
+
+    def get_alt_path(self, output_path, alt_dir=None):
+        """Returns the alternate path for the given output path generated by
+        :meth:`get_output_path`.
+
+        Args:
+            output_path: an output path
+            alt_dir (None): a directory in which to return the alternate path.
+                If not provided, :attr:`alt_dir` is used
+
+        Returns:
+            the corresponding alternate path
+        """
+        root_dir = alt_dir or self.alt_dir or self.output_dir
+        rel_path = os.path.relpath(output_path, self.output_dir)
+        return os.path.join(root_dir, rel_path)
+
+
+def safe_relpath(path, start=None, default=None):
+    """A safe version of ``os.path.relpath`` that returns a configurable
+    default value if the given path if it does not lie within the given
+    relative start.
+
+    Args:
+        path: a path
+        start (None): the relative prefix to strip from ``path``
+        default (None): a default value to return if ``path`` does not lie
+            within ``start``. By default, the basename of the path is returned
+
+    Returns:
+        the relative path
+    """
+    relpath = os.path.relpath(path, start)
+    if relpath.startswith(".."):
+        if default is not None:
+            return default
+
+        logger.warning(
+            "Path '%s' is not in '%s'. Using filename as unique identifier",
+            path,
+            start,
+        )
+        relpath = os.path.basename(path)
+
+    return relpath
 
 
 def compute_filehash(filepath, method=None, chunk_size=None):
@@ -1281,6 +1469,25 @@ class SetAttributes(object):
             setattr(self._obj, k, v)
 
 
+class SuppressLogging(object):
+    """Context manager that temporarily disables system-wide logging.
+
+    Args:
+        level (logging.CRITICAL): the ``logging`` level at or below which to
+            suppress all messages
+    """
+
+    def __init__(self, level=logging.CRITICAL):
+        self.level = level
+
+    def __enter__(self):
+        logging.disable(self.level)
+        return self
+
+    def __exit__(self, *args):
+        logging.disable(logging.NOTSET)
+
+
 def is_arm_mac():
     """Determines whether the system is an ARM-based Mac (Apple Silicon).
 
@@ -1300,6 +1507,46 @@ def is_32_bit():
         True/False
     """
     return struct.calcsize("P") * 8 == 32
+
+
+def is_docker():
+    """Determines if we're currently running in a Docker container.
+
+    Returns:
+        True/False
+    """
+    path = "/proc/self/cgroup"
+    return (
+        os.path.exists("/.dockerenv")
+        or os.path.isfile(path)
+        and any("docker" in line for line in open(path))
+    )
+
+
+def get_multiprocessing_context():
+    """Returns the preferred ``multiprocessing`` context for the current OS.
+
+    Returns:
+        a ``multiprocessing`` context
+    """
+    if (
+        sys.platform == "darwin"
+        and multiprocessing.get_start_method(allow_none=True) is None
+    ):
+        #
+        # If we're running on macOS and the user didn't manually configure the
+        # default multiprocessing context, force 'fork' to be used
+        #
+        # Background: on macOS, multiprocessing's default context was changed
+        # from 'fork' to 'spawn' in Python 3.8, but we prefer 'fork' because
+        # the startup time is much shorter. Also, this is not fully proven, but
+        # @brimoor believes he's seen cases where 'spawn' causes some of our
+        # `multiprocessing.Pool.imap_unordered()` calls to run twice...
+        #
+        return multiprocessing.get_context("fork")
+
+    # Use the default context
+    return multiprocessing.get_context()
 
 
 def datetime_to_timestamp(dt):
@@ -1403,3 +1650,102 @@ class ResponseStream(object):
                 current_position += self._bytes.write(next(self._iterator))
             except StopIteration:
                 break
+
+
+_SAFE_CHARS = set(string.ascii_letters) | set(string.digits)
+_HYPHEN_CHARS = set(string.whitespace) | set("+_.-")
+_NAME_LENGTH_RANGE = (1, 100)
+
+
+def _sanitize_char(c):
+    if c in _SAFE_CHARS:
+        return c
+
+    if c in _HYPHEN_CHARS:
+        return "-"
+
+    return ""
+
+
+def to_slug(name):
+    """Returns the URL-friendly slug for the given string.
+
+    The following strategy is used to generate slugs:
+
+        -   The characters ``A-Za-z0-9`` are converted to lowercase
+        -   Whitespace and ``+_.-`` are converted to ``-``
+        -   All other characters are omitted
+        -   All consecutive ``-`` characters are reduced to a single ``-``
+        -   All leading and trailing ``-`` are stripped
+        -   Both the input name and the resulting string must be ``[1, 100]``
+            characters in length
+
+    Examples::
+
+        name                             | slug
+        ---------------------------------+-----------------------
+        coco_2017                        | coco-2017
+        c+o+c+o 2-0-1-7                  | c-o-c-o-2-0-1-7
+        cat.DOG                          | cat-dog
+        ---name----                      | name
+        Brian's #$&@ (Awesome?) Dataset! | brians-awesome-dataset
+        sPaM     aNd  EgGs               | spam-and-eggs
+
+    Args:
+        name: a string
+
+    Returns:
+        the slug string
+
+    Raises:
+        ValueError: if the name is invalid
+    """
+    if not etau.is_str(name):
+        raise ValueError("Expected string; found %s: %s" % (type(name), name))
+
+    if len(name) > _NAME_LENGTH_RANGE[1]:
+        raise ValueError(
+            "'%s' is too long; length %d > %d"
+            % (name, len(name), _NAME_LENGTH_RANGE[1])
+        )
+
+    safe = []
+    last = ""
+    for c in name:
+        s = _sanitize_char(c)
+        if s and (s != "-" or last != "-"):
+            safe.append(s)
+            last = s
+
+    slug = "".join(safe).strip("-").lower()
+
+    if len(slug) < _NAME_LENGTH_RANGE[0]:
+        raise ValueError(
+            "'%s' has invalid slug-friendly name '%s'; length %d < %d"
+            % (name, slug, len(slug), _NAME_LENGTH_RANGE[0])
+        )
+
+    if len(slug) > _NAME_LENGTH_RANGE[1]:
+        raise ValueError(
+            "'%s' has invalid slug-friendly name '%s'; length %d > %d"
+            % (name, slug, len(slug), _NAME_LENGTH_RANGE[1])
+        )
+
+    return slug
+
+
+def validate_hex_color(value):
+    """Validates that the given value is a hex color string.
+
+    Args:
+        value: a value
+
+    Raises:
+        ValueError: if ``value`` is not a hex color string
+    """
+    if not etau.is_str(value) or not re.search(
+        r"^#(?:[0-9a-fA-F]{3}){1,2}$", value
+    ):
+        raise ValueError(
+            "%s is not a valid hex color string (ex: '#FF6D04')" % value
+        )

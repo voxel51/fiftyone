@@ -108,6 +108,8 @@ shell and run the command again:
 you'll see that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have
 been deleted because they were not persistent.
 
+.. _dataset-media-type:
+
 Dataset media type
 ------------------
 
@@ -140,6 +142,8 @@ Datasets are homogeneous; they must contain samples of the same media type:
     dataset.add_sample(fo.Sample(filepath="/path/to/video.mp4"))
     # MediaTypeError: Sample media type 'video' does not match dataset media type 'image'
 
+.. _dataset-version:
+
 Dataset version
 ---------------
 
@@ -150,6 +154,93 @@ of the dataset.
 If you upgrade your `fiftyone` package and then load a dataset that was created
 with an older version of the package, it will be automatically migrated to the
 new package version (if necessary) the first time you load it.
+
+.. _dataset-tags:
+
+Dataset tags
+------------
+
+All |Dataset| instances have a
+:meth:`tags <fiftyone.core.dataset.Dataset.tags>` property that you can use to
+store an arbitrary list of string tags.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Add some tags
+    dataset.tags = ["test", "projectA"]
+
+    # Edit the tags
+    dataset.tags.pop()
+    dataset.tags.append("projectB")
+    dataset.save()  # must save after edits
+
+.. note::
+
+    You must call
+    :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
+    the dataset's :meth:`tags <fiftyone.core.dataset.Dataset.tags>` property
+    in-place to save the changes to the database.
+
+.. _dataset-stats:
+
+Dataset stats
+-------------
+
+You can use the :meth:`stats() <fiftyone.core.dataset.Dataset.stats>` method on
+a dataset to obtain information about the size of the dataset on disk,
+including its metadata in the database and optionally the size of the physical
+media on disk:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    fo.pprint(dataset.stats(include_media=True))
+
+.. code-block:: text
+
+    {
+        'samples_count': 200,
+        'samples_bytes': 1290762,
+        'samples_size': '1.2MB',
+        'media_bytes': 24412374,
+        'media_size': '23.3MB',
+        'total_bytes': 25703136,
+        'total_size': '24.5MB',
+    }
+
+You can also invoke
+:meth:`stats() <fiftyone.core.collections.SampleCollection.stats>` on a
+:ref:`dataset view <using-views>` to retrieve stats for a specific subset of
+the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    view = dataset[:10].select_fields("ground_truth")
+
+    fo.pprint(view.stats(include_media=True))
+
+.. code-block:: text
+
+    {
+        'samples_count': 10,
+        'samples_bytes': 10141,
+        'samples_size': '9.9KB',
+        'media_bytes': 1726296,
+        'media_size': '1.6MB',
+        'total_bytes': 1736437,
+        'total_size': '1.7MB',
+    }
 
 .. _storing-info:
 
@@ -186,8 +277,170 @@ Datasets can also store more specific types of ancillary information such as
 
     You must call
     :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
-    the dataset's :meth:`info <fiftyone.core.dataset.Dataset.info>` property to
+    the dataset's :meth:`info <fiftyone.core.dataset.Dataset.info>` property
+    in-place to save the changes to the database.
+
+.. _storing-field-metadata:
+
+Storing field metadata
+----------------------
+
+You can store metadata such as descriptions and other info on the
+:ref:`fields <using-fields>` of your dataset.
+
+One approach is to manually declare the field with
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`
+with the appropriate metadata provided:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+    dataset.add_sample_field(
+        "int_field", fo.IntField, description="An integer field"
+    )
+
+    field = dataset.get_field("int_field")
+    print(field.description)  # An integer field
+
+You can also use
+:meth:`get_field() <fiftyone.core.collections.SampleCollection.get_field>` to
+retrieve a field and update it's metadata at any time:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.add_dynamic_sample_fields()
+
+    field = dataset.get_field("ground_truth")
+    field.description = "Ground truth annotations"
+    field.info = {"url": "https://fiftyone.ai"}
+    field.save()  # must save after edits
+
+    field = dataset.get_field("ground_truth.detections.area")
+    field.description = "Area of the box, in pixels^2"
+    field.info = {"url": "https://fiftyone.ai"}
+    field.save()  # must save after edits
+
+    dataset.reload()
+
+    field = dataset.get_field("ground_truth")
+    print(field.description)  # Ground truth annotations
+    print(field.info)  # {'url': 'https://fiftyone.ai'}
+
+    field = dataset.get_field("ground_truth.detections.area")
+    print(field.description)  # Area of the box, in pixels^2
+    print(field.info)  # {'url': 'https://fiftyone.ai'}
+
+.. note::
+
+    You must call
+    :meth:`field.save() <fiftyone.core.fields.Field.save>` after updating
+    the fields's :attr:`description <fiftyone.core.fields.Field.description>`
+    and :meth:`info <fiftyone.core.fields.Field.info>` attributes in-place to
     save the changes to the database.
+
+.. note::
+
+    Did you know? You can view field metadata directly in the App by hovering
+    over fields or attributes :ref:`in the sidebar <app-fields-sidebar>`!
+
+.. _custom-app-config:
+
+Custom App config
+-----------------
+
+All |Dataset| instances have an
+:meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property that
+contains a |DatasetAppConfig| that you can use to store dataset-specific
+settings that customize how the dataset is visualized in the
+:ref:`FiftyOne App <fiftyone-app>`.
+
+For example, you can declare
+:ref:`multiple media fields <app-multiple-media-fields>` on a dataset and
+configure which field is used by various components of the App by default:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.image as foui
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # View the dataset's current App config
+    print(dataset.app_config)
+
+    # Generate some thumbnail images
+    foui.transform_images(
+        dataset,
+        size=(-1, 32),
+        output_field="thumbnail_path",
+        output_dir="/tmp/thumbnails",
+    )
+
+    # Modify the dataset's App config
+    dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+    dataset.app_config.grid_media_field = "thumbnail_path"
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+You can also configure the default loading behavior of the
+:ref:`filters sidebar <app-sidebar-mode>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Set the default sidebar mode to "fast"
+    dataset.app_config.sidebar_mode = "fast"
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+or even configure the organization and default expansion state of the
+:ref:`sidebar's field groups <app-sidebar-groups>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Get the default sidebar groups for the dataset
+    sidebar_groups = fo.DatasetAppConfig.default_sidebar_groups(dataset)
+
+    # Collapse the `metadata` section by default
+    print(sidebar_groups[2].name)  # metadata
+    sidebar_groups[2].expanded = False
+
+    # Modify the dataset's App config
+    dataset.app_config.sidebar_groups = sidebar_groups
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+You can conveniently reset a dataset's App config by setting the
+:meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property to
+`None`:
+
+.. code-block:: python
+    :linenos:
+
+    # Reset App config
+    dataset.app_config = None
+    print(dataset.app_config)
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    Check out :ref:`this section <app-config>` for more information about
+    customizing the behavior of the App.
 
 .. _storing-classes:
 
@@ -245,7 +498,7 @@ require knowledge of the possible classes in a dataset or field(s).
     :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
     the dataset's :meth:`classes <fiftyone.core.dataset.Dataset.classes>` and
     :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
-    properties to save the changes to the database.
+    properties in-place to save the changes to the database.
 
 .. _storing-mask-targets:
 
@@ -260,8 +513,9 @@ properties that you can use to store label strings for the pixel values of
 
 The :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` property
 is a dictionary mapping field names to target dicts, each of which is a
-dictionary defining the mapping between pixel values and label strings for the
-|Segmentation| masks in the specified field of the dataset.
+dictionary defining the mapping between pixel values (2D masks) or RGB hex
+strings (3D masks) and label strings for the |Segmentation| masks in the
+specified field of the dataset.
 
 If all |Segmentation| fields in your dataset have the same semantics, you can
 store a single target dictionary in the
@@ -276,6 +530,8 @@ Mask targets are also automatically used, if available, by methods such as
 :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
 and :meth:`export() <fiftyone.core.collections.SampleCollection.export>` that
 require knowledge of the mask targets for a dataset or field(s).
+
+If you are working with 2D segmentation masks, specify target keys as integers:
 
 .. code-block:: python
     :linenos:
@@ -301,6 +557,35 @@ require knowledge of the mask targets for a dataset or field(s).
     dataset.mask_targets["ground_truth"][255] = "other"
     dataset.save()  # must save after edits
 
+If you are working with RGB segmentation masks, specify target keys as RGB hex
+strings:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Set default mask targets
+    dataset.default_mask_targets = {"#499CEF": "cat", "#6D04FF": "dog"}
+
+    # Edit the default mask targets
+    dataset.default_mask_targets["#FF6D04"] = "person"
+    dataset.save()  # must save after edits
+
+    # Set mask targets for the `ground_truth` and `predictions` fields
+    dataset.mask_targets = {
+        "ground_truth": {"#499CEF": "cat", "#6D04FF": "dog"},
+        "predictions": {
+            "#499CEF": "cat", "#6D04FF": "dog", "#FF6D04": "person"
+        },
+    }
+
+    # Edit an existing mask target
+    dataset.mask_targets["ground_truth"]["#FF6D04"] = "person"
+    dataset.save()  # must save after edits
+
 .. note::
 
     You must call
@@ -308,7 +593,7 @@ require knowledge of the mask targets for a dataset or field(s).
     the dataset's
     :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` and
     :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
-    properties to save the changes to the database.
+    properties in-place to save the changes to the database.
 
 .. _storing-keypoint-skeletons:
 
@@ -392,7 +677,7 @@ nodes:
     the dataset's
     :meth:`skeletons <fiftyone.core.dataset.Dataset.skeletons>` and
     :meth:`default_skeleton <fiftyone.core.dataset.Dataset.default_skeleton>`
-    properties to save the changes to the database.
+    properties in-place to save the changes to the database.
 
 Deleting a dataset
 ------------------
@@ -566,7 +851,7 @@ or in batches via
     # equivalent to above
     del dataset[sample_id]
 
-    dataset.delete_samples([sample_id2, sample_id3])
+    dataset.delete_samples([sample_id1, sample_id2])
 
 Samples can also be removed from a |Dataset| by passing |Sample| instance(s)
 or |DatasetView| instances:
@@ -613,8 +898,10 @@ other samples in the dataset.
 If a field exists on a dataset but has not been set on a particular sample, its
 value will be ``None``.
 
-Default fields
---------------
+.. _default-sample-fields:
+
+Default sample fields
+---------------------
 
 By default, all |Sample| instances have the following fields:
 
@@ -629,16 +916,16 @@ By default, all |Sample| instances have the following fields:
     |              |                                    |               | added to a dataset, or `None` if the sample does  |
     |              |                                    |               | not belong to a dataset                           |
     +--------------+------------------------------------+---------------+---------------------------------------------------+
-    | `media_type` | string                             | N/A           | The media type of the sample. Computed            |
-    |              |                                    |               | automatically from the provided `filepath`        |
-    +--------------+------------------------------------+---------------+---------------------------------------------------+
     | `filepath`   | string                             | **REQUIRED**  | The path to the source data on disk. Must be      |
     |              |                                    |               | provided at sample creation time                  |
     +--------------+------------------------------------+---------------+---------------------------------------------------+
-    | `metadata`   | :class:`Metadata                   | `None`        | Type-specific metadata about the source data      |
-    |              | <fiftyone.core.metadata.Metadata>` |               |                                                   |
+    | `media_type` | string                             | N/A           | The media type of the sample. Computed            |
+    |              |                                    |               | automatically from the provided `filepath`        |
     +--------------+------------------------------------+---------------+---------------------------------------------------+
     | `tags`       | list                               | `[]`          | A list of string tags for the sample              |
+    +--------------+------------------------------------+---------------+---------------------------------------------------+
+    | `metadata`   | :class:`Metadata                   | `None`        | Type-specific metadata about the source data      |
+    |              | <fiftyone.core.metadata.Metadata>` |               |                                                   |
     +--------------+------------------------------------+---------------+---------------------------------------------------+
 
 .. code-block:: python
@@ -660,6 +947,8 @@ By default, all |Sample| instances have the following fields:
         'metadata': None,
     }>
 
+.. _accessing-sample-fields:
+
 Accessing fields of a sample
 ----------------------------
 
@@ -671,24 +960,42 @@ The names of available fields can be checked on any individual |Sample|:
     sample.field_names
     # ('filepath', 'media_type', 'tags', 'metadata')
 
-You can retrieve detailed information about the schema of the samples in a
-|Dataset|:
+The value of a |Field| for a given |Sample| can be accessed either by either
+attribute or item access:
 
 .. code-block:: python
     :linenos:
+
+    sample.filepath
+    sample["filepath"]  # equivalent
+
+.. _field-schemas:
+
+Field schemas
+-------------
+
+You can use
+:meth:`get_field_schema() <fiftyone.core.dataset.Dataset.get_field_schema>` to
+retrieve detailed information about the schema of the samples in a dataset:
+
+.. code-block:: python
+    :linenos:
+
+    dataset = fo.Dataset("a_dataset")
+    dataset.add_sample(sample)
 
     dataset.get_field_schema()
 
 .. code-block:: text
 
     OrderedDict([
-        ('media_type', <fiftyone.core.fields.StringField at 0x11c77add8>),
+        ('id', <fiftyone.core.fields.ObjectIdField at 0x7fbaa862b358>),
         ('filepath', <fiftyone.core.fields.StringField at 0x11c77ae10>),
         ('tags', <fiftyone.core.fields.ListField at 0x11c790828>),
         ('metadata', <fiftyone.core.fields.EmbeddedDocumentField at 0x11c7907b8>)
     ])
 
-You can view helpful information about a dataset, including its schema, by
+You can also view helpful information about a dataset, including its schema, by
 printing it:
 
 .. code-block:: python
@@ -700,24 +1007,19 @@ printing it:
 
     Name:           a_dataset
     Media type:     image
-    Num samples:    0
+    Num samples:    1
     Persistent:     False
     Tags:           []
     Sample fields:
         id:         fiftyone.core.fields.ObjectIdField
-        media_type: fiftyone.core.fields.StringField
         filepath:   fiftyone.core.fields.StringField
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
 
-The value of a |Field| for a given |Sample| can be accessed either by either
-attribute or item access:
+.. note::
 
-.. code-block:: python
-    :linenos:
-
-    sample.filepath
-    sample["filepath"]  # equivalent
+    Did you know? You can :ref:`store metadata <storing-field-metadata>` such
+    as descriptions on your dataset's fields!
 
 .. _adding-sample-fields:
 
@@ -744,15 +1046,14 @@ updated to reflect the new field:
 
     Name:           a_dataset
     Media type:     image
-    Num samples:    0
+    Num samples:    1
     Persistent:     False
     Tags:           []
     Sample fields:
         id:            fiftyone.core.fields.ObjectIdField
-        media_type:    fiftyone.core.fields.StringField
         filepath:      fiftyone.core.fields.StringField
         tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         integer_field: fiftyone.core.fields.IntField
 
 A |Field| can be any primitive type, such as `bool`, `int`, `float`, `str`,
@@ -822,6 +1123,45 @@ You can make any edits you wish to the fields of an existing |Sample|:
     You must call :meth:`sample.save() <fiftyone.core.sample.Sample.save>` in
     order to persist changes to the database when editing samples that are in
     datasets.
+
+A common workflow is to iterate over a dataset
+:ref:`or view <editing-view-fields>` and edit each sample:
+
+.. code-block:: python
+    :linenos:
+
+    for sample in dataset:
+        sample["new_field"] = ...
+        sample.save()
+
+The :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>` method
+is an equivalent way to iterate over a dataset that provides a
+``progress=True`` option that prints a progress bar tracking the status of the
+iteration:
+
+.. code-block:: python
+    :linenos:
+
+    # Prints a progress bar tracking the status of the iteration
+    for sample in dataset.iter_samples(progress=True):
+        sample["new_field"] = ...
+        sample.save()
+
+The :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>` method
+also provides an ``autosave=True`` option that causes all changes to samples
+emitted by the iterator to be automatically saved using efficient batch
+updates:
+
+.. code-block:: python
+    :linenos:
+
+    # Automatically saves sample edits in efficient batches
+    for sample in dataset.iter_samples(autosave=True):
+        sample["new_field"] = ...
+
+Using ``autosave=True`` can significantly improve performance when editing
+large datasets. See :ref:`this section <batch-updates>` for more information
+on batch update patterns.
 
 .. _removing-sample-fields:
 
@@ -1191,8 +1531,9 @@ labels.
         label["bool"] = True
         label["dict"] = {"key": ["list", "of", "values"]}
 
-    You can view custom attributes in the :ref:`App tooltip <app-sample-view>`
-    by hovering over the objects.
+    You can also :ref:`declare dynamic attributes <dynamic-attributes>` on your
+    dataset's schema, which allows you to enforce type constraints, filter by
+    these custom attributes :ref:`in the App <app-filtering>`, and more.
 
 FiftyOne provides a dedicated |Label| subclass for many common tasks. The
 subsections below describe them.
@@ -1235,13 +1576,13 @@ visualized in the App or used, for example, when
         'metadata': None,
         'ground_truth': <Regression: {
             'id': '616c4bef36297ec40a26d112',
-            'tags': BaseList([]),
+            'tags': [],
             'value': 51.0,
             'confidence': None,
         }>,
         'prediction': <Classification: {
             'id': '616c4bef36297ec40a26d113',
-            'tags': BaseList([]),
+            'tags': [],
             'label': None,
             'confidence': 0.9,
             'logits': None,
@@ -1357,7 +1698,7 @@ overarching model (if applicable) in the
         'tags': [],
         'metadata': None,
         'ground_truth': <Classifications: {
-            'classifications': BaseList([
+            'classifications': [
                 <Classification: {
                     'id': '5f8708f62018186b6ef66823',
                     'label': 'animal',
@@ -1376,11 +1717,11 @@ overarching model (if applicable) in the
                     'confidence': None,
                     'logits': None,
                 }>,
-            ]),
+            ],
             'logits': None,
         }>,
         'prediction': <Classifications: {
-            'classifications': BaseList([
+            'classifications': [
                 <Classification: {
                     'id': '5f8708f62018186b6ef66826',
                     'label': 'animal',
@@ -1399,7 +1740,7 @@ overarching model (if applicable) in the
                     'confidence': 0.72,
                     'logits': None,
                 }>,
-            ]),
+            ],
             'logits': None,
         }>,
     }>
@@ -1469,30 +1810,30 @@ detection can be stored in the
         'tags': [],
         'metadata': None,
         'ground_truth': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'id': '5f8709172018186b6ef66829',
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                     'label': 'cat',
-                    'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+                    'bounding_box': [0.5, 0.5, 0.4, 0.3],
                     'mask': None,
                     'confidence': None,
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
         'prediction': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'id': '5f8709172018186b6ef6682a',
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                     'label': 'cat',
-                    'bounding_box': BaseList([0.48, 0.513, 0.397, 0.288]),
+                    'bounding_box': [0.48, 0.513, 0.397, 0.288],
                     'mask': None,
                     'confidence': 0.96,
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
     }>
 
@@ -1522,10 +1863,10 @@ by dynamically adding new fields to each |Detection| instance:
 
     <Detection: {
         'id': '60f7458c467d81f41c200551',
-        'attributes': BaseDict({}),
-        'tags': BaseList([]),
+        'attributes': {},
+        'tags': [],
         'label': 'cat',
-        'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+        'bounding_box': [0.5, 0.5, 0.4, 0.3],
         'mask': None,
         'confidence': None,
         'index': None,
@@ -1588,12 +1929,12 @@ object's bounding box when visualizing in the App.
         'tags': [],
         'metadata': None,
         'prediction': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'id': '5f8709282018186b6ef6682b',
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                     'label': 'cat',
-                    'bounding_box': BaseList([0.48, 0.513, 0.397, 0.288]),
+                    'bounding_box': [0.48, 0.513, 0.397, 0.288],
                     'mask': array([[False,  True, False, ...,  True,  True, False],
                            [ True, False,  True, ..., False,  True,  True],
                            [False,  True, False, ..., False,  True, False],
@@ -1604,7 +1945,7 @@ object's bounding box when visualizing in the App.
                     'confidence': 0.96,
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
     }>
 
@@ -1631,10 +1972,10 @@ by dynamically adding new fields to each |Detection| instance:
 
     <Detection: {
         'id': '60f74568467d81f41c200550',
-        'attributes': BaseDict({}),
-        'tags': BaseList([]),
+        'attributes': {},
+        'tags': [],
         'label': 'cat',
-        'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+        'bounding_box': [0.5, 0.5, 0.4, 0.3],
         'mask': array([[False, False,  True, ...,  True,  True, False],
                [ True,  True, False, ...,  True, False,  True],
                [False, False,  True, ..., False, False, False],
@@ -1717,26 +2058,26 @@ Polylines can also have string labels, which are stored in their
         'tags': [],
         'metadata': None,
         'polylines': <Polylines: {
-            'polylines': BaseList([
+            'polylines': [
                 <Polyline: {
                     'id': '5f87094e2018186b6ef6682e',
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                     'label': None,
-                    'points': BaseList([BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)])]),
+                    'points': [[(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)]],
                     'index': None,
                     'closed': False,
                     'filled': False,
                 }>,
                 <Polyline: {
                     'id': '5f87094e2018186b6ef6682f',
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                     'label': 'triangle',
-                    'points': BaseList([BaseList([(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)])]),
+                    'points': [[(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)]],
                     'index': None,
                     'closed': True,
                     'filled': True,
                 }>,
-            ]),
+            ],
         }>,
     }>
 
@@ -1762,10 +2103,10 @@ dynamically adding new fields to each |Polyline| instance:
 
     <Polyline: {
         'id': '60f746b4467d81f41c200555',
-        'attributes': BaseDict({}),
-        'tags': BaseList([]),
+        'attributes': {},
+        'tags': [],
         'label': 'triangle',
-        'points': BaseList([BaseList([(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)])]),
+        'points': [[(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)]],
         'confidence': None,
         'index': None,
         'closed': True,
@@ -1834,16 +2175,16 @@ optionally have a list of per-point confidences in `[0, 1]` in its
         'tags': [],
         'metadata': None,
         'keypoints': <Keypoints: {
-            'keypoints': BaseList([
+            'keypoints': [
                 <Keypoint: {
                     'id': '5f8709702018186b6ef66831',
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                     'label': 'square',
-                    'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
-                    'confidence': BaseList([0.6, 0.7, 0.8, 0.9]),
+                    'points': [(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)],
+                    'confidence': [0.6, 0.7, 0.8, 0.9],
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
     }>
 
@@ -1872,14 +2213,14 @@ attributes and rendered as such in the App:
 
     <Keypoint: {
         'id': '60f74723467d81f41c200556',
-        'attributes': BaseDict({}),
-        'tags': BaseList([]),
+        'attributes': {},
+        'tags': [],
         'label': 'rectangle',
-        'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
-        'confidence': BaseList([0.6, 0.7, 0.8, 0.9]),
+        'points': [(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)],
+        'confidence': [0.6, 0.7, 0.8, 0.9],
         'index': None,
         'kind': 'square',
-        'occluded': BaseList([False, False, True, False]),
+        'occluded': [False, False, True, False],
     }>
 
 .. note::
@@ -1895,28 +2236,44 @@ attributes and rendered as such in the App:
 Semantic segmentation
 ---------------------
 
-The |Segmentation| class represents a semantic segmentation mask for an image.
-The mask itself is stored in the
-:attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute of the
-|Segmentation| object.
+The |Segmentation| class represents a semantic segmentation mask for an image
+with integer values encoding the semantic labels for each pixel in the image.
 
-The mask should be a 2D numpy array with integer values encoding the semantic
-labels for each pixel in the image. The array can be of any size; it is
-stretched as necessary to fit the image's extent when visualizing in the App.
+The mask can either be stored on disk and referenced via the
+:attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>` attribute or
+stored directly in the database via the
+:attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute.
+
+.. note::
+
+    It is recommended to store segmentations on disk and reference them via the
+    :attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>` attribute,
+    for efficiency.
+
+Segmentation masks can be stored in either of these formats:
+
+-   2D 8-bit or 16-bit images or numpy arrays
+-   3D 8-bit RGB images or numpy arrays
+
+Segmentation masks can have any size; they are stretched as necessary to fit
+the image's extent when visualizing in the App.
 
 .. code-block:: python
     :linenos:
 
+    import cv2
     import numpy as np
 
     import fiftyone as fo
 
     # Example segmentation mask
-    mask = np.random.randint(10, size=(128, 128))
+    mask_path = "/tmp/segmentation.png"
+    mask = np.random.randint(10, size=(128, 128), dtype=np.uint8)
+    cv2.imwrite(mask_path, mask)
 
     sample = fo.Sample(filepath="/path/to/image.png")
-
-    sample["segmentation"] = fo.Segmentation(mask=mask)
+    sample["segmentation1"] = fo.Segmentation(mask_path=mask_path)
+    sample["segmentation2"] = fo.Segmentation(mask=mask)
 
     print(sample)
 
@@ -1928,24 +2285,30 @@ stretched as necessary to fit the image's extent when visualizing in the App.
         'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
-        'segmentation': <Segmentation: {
-            'mask': array([[3, 1, 0, ..., 1, 1, 9],
-                   [5, 5, 4, ..., 1, 8, 7],
-                   [7, 7, 7, ..., 2, 2, 4],
+        'segmentation1': <Segmentation: {
+            'id': '6371d72425de9907b93b2a6b',
+            'tags': [],
+            'mask': None,
+            'mask_path': '/tmp/segmentation.png',
+        }>,
+        'segmentation2': <Segmentation: {
+            'id': '6371d72425de9907b93b2a6c',
+            'tags': [],
+            'mask': array([[8, 5, 5, ..., 9, 8, 5],
+                   [0, 7, 8, ..., 3, 4, 4],
+                   [5, 0, 2, ..., 0, 3, 4],
                    ...,
-                   [1, 0, 4, ..., 8, 8, 5],
-                   [4, 3, 8, ..., 1, 9, 8],
-                   [0, 2, 5, ..., 5, 3, 2]]),
+                   [4, 4, 4, ..., 3, 6, 6],
+                   [0, 9, 8, ..., 8, 0, 8],
+                   [0, 6, 8, ..., 2, 9, 1]], dtype=uint8),
+            'mask_path': None,
         }>,
     }>
 
-When you load datasets with |Segmentation| fields in the App, each pixel value
-is rendered as a different color (if possible) from the App's color pool.
-
-.. note::
-
-    The mask value `0` is a reserved "background" class that is rendered as
-    invisible in the App.
+When you load datasets with |Segmentation| fields containing 2D masks in the
+App, each pixel value is rendered as a different color (if possible) from the
+App's color pool. When you view RGB segmentation masks in the App, the mask
+colors are always used.
 
 .. note::
 
@@ -1954,36 +2317,59 @@ is rendered as a different color (if possible) from the App's color pool.
     dataset in the App, label strings will appear in the App's tooltip when you
     hover over pixels.
 
+.. note::
+
+    The pixel value `0` and RGB value `#000000` are reserved "background"
+    classes that are always rendered as invisible in the App.
+
+    If :ref:`mask targets <storing-mask-targets>` are provided, all observed
+    values not present in the targets are also rendered as invisible in the
+    App.
+
 .. _heatmaps:
 
 Heatmaps
 --------
 
-The |Heatmap| class represents a heatmap for an image. The map itself is stored
-in the :attr:`map <fiftyone.core.labels.Heatmap.map>` attribute of the
-|Heatmap| object.
+The |Heatmap| class represents a continuous-valued heatmap for an image.
 
-Maps should be 2D numpy arrays. By default, the map values are assumed to be in
-`[0, 1]` for floating point arrays and `[0, 255]` for integer-valued arrays,
-but you can specify a custom `[min, max]` range for a map by setting its
-optional :attr:`range <fiftyone.core.labels.Heatmap.range>` attribute.
+The map can either be stored on disk and referenced via the
+:attr:`map_path <fiftyone.core.labels.Heatmap.map_path>` attribute or stored
+directly in the database via the :attr:`map <fiftyone.core.labels.Heatmap.map>`
+attribute. When using the
+:attr:`map_path <fiftyone.core.labels.Heatmap.map_path>` attribute, heatmaps
+may be 8-bit or 16-bit grayscale images. When using the
+:attr:`map <fiftyone.core.labels.Heatmap.map>` attribute, heatmaps should be 2D
+numpy arrays. By default, the map values are assumed to be in `[0, 1]` for
+floating point arrays and `[0, 255]` for integer-valued arrays, but you can
+specify a custom `[min, max]` range for a map by setting its optional
+:attr:`range <fiftyone.core.labels.Heatmap.range>` attribute.
 
-The array can be of any size; it is stretched as necessary to fit the image's
-extent when visualizing in the App.
+Heatmaps can have any size; they are stretched as necessary to fit the
+image's extent when visualizing in the App.
+
+.. note::
+
+    It is recommended to store heatmaps on disk and reference them via the
+    :attr:`map_path <fiftyone.core.labels.Heatmap.map_path>` attribute, for
+    efficiency.
 
 .. code-block:: python
     :linenos:
 
+    import cv2
     import numpy as np
 
     import fiftyone as fo
 
     # Example heatmap
-    heatmap = np.random.randint(256, size=(128, 128), dtype=np.uint8)
+    map_path = "/tmp/heatmap.png"
+    map = np.random.randint(256, size=(128, 128), dtype=np.uint8)
+    cv2.imwrite(map_path, map)
 
     sample = fo.Sample(filepath="/path/to/image.png")
-
-    sample["heatmap"] = fo.Heatmap(map=heatmap)
+    sample["heatmap1"] = fo.Heatmap(map_path=map_path)
+    sample["heatmap2"] = fo.Heatmap(map=map)
 
     print(sample)
 
@@ -1995,16 +2381,25 @@ extent when visualizing in the App.
         'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
-        'heatmap': <Heatmap: {
-            'id': '6129495c9e526ca632663cca',
-            'tags': BaseList([]),
-            'map': array([[  9,  65,  55, ...,  75, 203,  49],
-                          [151,  50,   3, ..., 136, 145, 144],
-                          [242, 110, 150, ...,  90, 214, 151],
-                          ...,
-                          [197, 195, 140, ..., 245, 128, 153],
-                          [145, 124,   9, ..., 205, 254,  68],
-                          [107, 123,  29, ..., 247,  74,   2]], dtype=uint8),
+        'heatmap1': <Heatmap: {
+            'id': '6371d9e425de9907b93b2a6f',
+            'tags': [],
+            'map': None,
+            'map_path': '/tmp/heatmap.png',
+            'range': None,
+        }>,
+        'heatmap2': <Heatmap: {
+            'id': '6371d9e425de9907b93b2a70',
+            'tags': [],
+            'map': array([[179, 249, 119, ...,  94, 213,  68],
+                   [190, 202, 209, ..., 162,  16,  39],
+                   [252, 251, 181, ..., 221, 118, 231],
+                   ...,
+                   [ 12,  91, 201, ...,  14,  95,  88],
+                   [164, 118, 171, ...,  21, 170,   5],
+                   [232, 156, 218, ..., 224,  97,  65]], dtype=uint8),
+            'map_path': None,
+            'range': None,
         }>,
     }>
 
@@ -2044,6 +2439,7 @@ dataset and configuring the App's colorscale in various ways on-the-fly:
 .. code-block:: python
     :linenos:
 
+    import os
     import numpy as np
     import fiftyone as fo
     import fiftyone.zoo as foz
@@ -2061,7 +2457,13 @@ dataset and configuring the App's colorscale in various ways on-the-fly:
     dataset.compute_metadata()
 
     for sample in dataset:
-        sample["heatmap"] = random_kernel(sample.metadata)
+        heatmap = random_kernel(sample.metadata)
+
+        # Convert to on-disk
+        map_path = os.path.join("/tmp/heatmaps", os.path.basename(sample.filepath))
+        heatmap.export_map(map_path, update=True)
+
+        sample["heatmap"] = heatmap
         sample.save()
 
     session = fo.launch_app(dataset)
@@ -2139,9 +2541,9 @@ App.
         'metadata': None,
         'events': <TemporalDetection: {
             'id': '61321c8ea36cb17df655f44f',
-            'tags': BaseList([]),
+            'tags': [],
             'label': 'meeting',
-            'support': BaseList([10, 20]),
+            'support': [10, 20],
             'confidence': None,
         }>,
         'frames': <Frames: 0>,
@@ -2191,9 +2593,9 @@ based on the sample's :ref:`video metadata <using-metadata>`:
         }>,
         'events': <TemporalDetection: {
             'id': '61321e498d5f587970b29183',
-            'tags': BaseList([]),
+            'tags': [],
             'label': 'meeting',
-            'support': BaseList([31, 60]),
+            'support': [31, 60],
             'confidence': None,
         }>,
         'frames': <Frames: 0>,
@@ -2226,22 +2628,22 @@ sample:
         'tags': [],
         'metadata': None,
         'events': <TemporalDetections: {
-            'detections': BaseList([
+            'detections': [
                 <TemporalDetection: {
                     'id': '61321ed78d5f587970b29184',
-                    'tags': BaseList([]),
+                    'tags': [],
                     'label': 'meeting',
-                    'support': BaseList([10, 20]),
+                    'support': [10, 20],
                     'confidence': None,
                 }>,
                 <TemporalDetection: {
                     'id': '61321ed78d5f587970b29185',
-                    'tags': BaseList([]),
+                    'tags': [],
                     'label': 'party',
-                    'support': BaseList([30, 60]),
+                    'support': [30, 60],
                     'confidence': None,
                 }>,
-            ]),
+            ],
         }>,
         'frames': <Frames: 0>,
     }>
@@ -2318,7 +2720,7 @@ properites to do so.
         'metadata': None,
         'location': <GeoLocation: {
             'id': '60481f3936dc48428091e926',
-            'tags': BaseList([]),
+            'tags': [],
             'point': [-73.9855, 40.758],
             'line': None,
             'polygon': [
@@ -2524,42 +2926,42 @@ schema of the attributes that you're storing.
         'tags': [],
         'metadata': None,
         'ground_truth': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'id': '60f738e7467d81f41c20054c',
-                    'attributes': BaseDict({
+                    'attributes': {
                         'age': <NumericAttribute: {'value': 51}>,
                         'mood': <CategoricalAttribute: {
                             'value': 'salty', 'confidence': None, 'logits': None
                         }>,
-                    }),
-                    'tags': BaseList([]),
+                    },
+                    'tags': [],
                     'label': 'cat',
-                    'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+                    'bounding_box': [0.5, 0.5, 0.4, 0.3],
                     'mask': None,
                     'confidence': None,
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
         'prediction': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'id': '60f738e7467d81f41c20054d',
-                    'attributes': BaseDict({
+                    'attributes': {
                         'age': <NumericAttribute: {'value': 51}>,
                         'mood': <CategoricalAttribute: {
                             'value': 'surly', 'confidence': 0.95, 'logits': None
                         }>,
-                    }),
-                    'tags': BaseList([]),
+                    },
+                    'tags': [],
                     'label': 'cat',
-                    'bounding_box': BaseList([0.48, 0.513, 0.397, 0.288]),
+                    'bounding_box': [0.48, 0.513, 0.397, 0.288],
                     'mask': None,
                     'confidence': 0.96,
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
     }>
 
@@ -2567,6 +2969,393 @@ schema of the attributes that you're storing.
 
     Did you know? You can view attribute values in the
     :ref:`App tooltip <app-sample-view>` by hovering over the objects.
+
+.. _label-conversions:
+
+Converting label types
+----------------------
+
+FiftyOne provides a number of utility methods to convert between different
+representations of certain label types, such as converting between
+:ref:`instance segmentations <instance-segmentation>`,
+:ref:`semantic segmentations <semantic-segmentation>`,
+and :ref:`polylines <polylines>`.
+
+Let's load some instance segmentations from the COCO dataset to see this in
+action:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        label_types=["segmentations"],
+        classes=["cat", "dog"],
+        label_field="instances",
+        max_samples=25,
+        only_matching=True,
+    )
+
+    sample = dataset.first()
+    detections = sample["instances"]
+
+For example, you can use
+:meth:`Detections.to_polylines() <fiftyone.core.labels.Detections.to_polylines>`
+to convert instance segmentations to polylines:
+
+.. code-block:: python
+    :linenos:
+
+    # Convert `Detections` to `Polylines`
+    polylines = detections.to_polylines(tolerance=2)
+    print(polylines)
+
+Or you can use
+:meth:`Detections.to_segmentation() <fiftyone.core.labels.Detections.to_segmentation>`
+to convert instance segmentations to semantic segmentation masks:
+
+.. code-block:: python
+    :linenos:
+
+    metadata = fo.ImageMetadata.build_for(sample.filepath)
+
+    # Convert `Detections` to `Segmentation`
+    segmentation = detections.to_segmentation(
+        frame_size=(metadata.width, metadata.height),
+        mask_targets={1: "cat", 2: "dog"},
+    )
+
+    # Export the segmentation to disk
+    segmentation.export_mask("/tmp/mask.png", update=True)
+
+    print(segmentation)
+
+Methods such as
+:meth:`Segmentation.to_detections() <fiftyone.core.labels.Segmentation.to_detections>`
+and :meth:`Segmentation.to_polylines() <fiftyone.core.labels.Segmentation.to_polylines>`
+also exist to transform semantic segmentations back into individual shapes.
+
+In addition, the :mod:`fiftyone.utils.labels` module contains a variety of
+utility methods for converting entire collections' labels between common
+formats:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.labels as foul
+
+    # Convert instance segmentations to semantic segmentations stored on disk
+    foul.objects_to_segmentations(
+        dataset,
+        "instances",
+        "segmentations",
+        output_dir="/tmp/segmentations",
+        mask_targets={1: "cat", 2: "dog"},
+    )
+
+    # Convert instance segmentations to polylines format
+    foul.instances_to_polylines(dataset, "instances", "polylines", tolerance=2)
+
+    # Convert semantic segmentations to instance segmentations
+    foul.segmentations_to_detections(
+        dataset,
+        "segmentations",
+        "instances2",
+        mask_targets={1: "cat", 2: "dog"},
+        mask_types="thing",  # give each connected region a separate instance
+    )
+
+    print(dataset)
+
+.. code-block:: shell
+
+    Name:        coco-2017-validation-25
+    Media type:  image
+    Num samples: 25
+    Persistent:  False
+    Tags:        []
+    Sample fields:
+        id:            fiftyone.core.fields.ObjectIdField
+        filepath:      fiftyone.core.fields.StringField
+        tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        instances:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        segmentations: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Segmentation)
+        polylines:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Polylines)
+        instances2:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+
+Note that, if your goal is to export the labels to disk, FiftyOne can
+:ref:`automatically coerce <export-label-coercion>` the labels into the correct
+format based on the type of the `label_field` and the `dataset_type` that you
+specify for the export without explicitly storing the transformed labels as a
+new field on your dataset:
+
+.. code-block:: python
+    :linenos:
+
+    # Export the instance segmentations in the `instances` field as semantic
+    # segmentation images on disk
+    dataset.export(
+        label_field="instances",
+        dataset_type=fo.types.ImageSegmentationDirectory,
+        labels_path="/tmp/masks",
+        mask_targets={1: "cat", 2: "dog"},
+    )
+
+.. _dynamic-attributes:
+
+Dynamic attributes
+__________________
+
+Any field(s) of your FiftyOne datasets that contain |DynamicEmbeddedDocument|
+values can have arbitrary custom attributes added to their instances.
+
+For example, all :ref:`Label classes <using-labels>` and
+:ref:`Metadata classes <using-metadata>` are dynamic, so you can add custom
+attributes to them as follows:
+
+.. code-block:: python
+    :linenos:
+
+    # Provide some default attributes
+    label = fo.Classification(label="cat", confidence=0.98)
+
+    # Add custom attributes
+    label["int"] = 5
+    label["float"] = 51.0
+    label["list"] = [1, 2, 3]
+    label["bool"] = True
+    label["dict"] = {"key": ["list", "of", "values"]}
+
+By default, dynamic attributes are not included in a
+:ref:`dataset's schema <field-schemas>`, which means that these attributes may
+contain arbitrary heterogeneous values across the dataset's samples.
+
+However, FiftyOne provides methods that you can use to formally declare custom
+dynamic attributes, which allows you to enforce type constraints, filter by
+these custom attributes :ref:`in the App <app-filtering>`, and more.
+
+You can use
+:meth:`get_dynamic_field_schema() <fiftyone.core.dataset.Dataset.get_dynamic_field_schema>`
+to detect the names and type(s) of any undeclared dynamic embedded document
+attributes on a dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    print(dataset.get_dynamic_field_schema())
+
+.. code-block:: text
+
+    {
+        'ground_truth.detections.iscrowd': <fiftyone.core.fields.FloatField>,
+        'ground_truth.detections.area': <fiftyone.core.fields.FloatField>,
+    }
+
+You can then use
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>` to
+declare a specific dynamic embedded document attribute:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.add_sample_field("ground_truth.detections.iscrowd", fo.FloatField)
+
+or you can use the
+:meth:`add_dynamic_sample_fields() <fiftyone.core.dataset.Dataset.add_dynamic_sample_fields>`
+method to declare all dynamic embedded document attribute(s) that contain
+values of a single type:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.add_dynamic_sample_fields()
+
+.. note::
+
+    Pass the `add_mixed=True` option to
+    :meth:`add_dynamic_sample_fields() <fiftyone.core.dataset.Dataset.add_dynamic_sample_fields>`
+    if you wish to declare all dynamic attributes that contain mixed values
+    using a generic |Field| type.
+
+You can provide the optional `flat=True` option to
+:meth:`get_field_schema() <fiftyone.core.dataset.Dataset.get_field_schema>` to
+retrieve a flattened version of a dataset's schema that includes all embedded
+document attributes as top-level keys:
+
+.. code-block:: python
+    :linenos:
+
+    print(dataset.get_field_schema(flat=True))
+
+.. code-block:: text
+
+    {
+        'id': <fiftyone.core.fields.ObjectIdField>,
+        'filepath': <fiftyone.core.fields.StringField>,
+        'tags': <fiftyone.core.fields.ListField>,
+        'metadata': <fiftyone.core.fields.EmbeddedDocumentField>,
+        'metadata.size_bytes': <fiftyone.core.fields.IntField>,
+        'metadata.mime_type': <fiftyone.core.fields.StringField>,
+        'metadata.width': <fiftyone.core.fields.IntField>,
+        'metadata.height': <fiftyone.core.fields.IntField>,
+        'metadata.num_channels': <fiftyone.core.fields.IntField>,
+        'ground_truth': <fiftyone.core.fields.EmbeddedDocumentField>,
+        'ground_truth.detections': <fiftyone.core.fields.ListField>,
+        'ground_truth.detections.id': <fiftyone.core.fields.ObjectIdField>,
+        'ground_truth.detections.tags': <fiftyone.core.fields.ListField>,
+        ...
+        'ground_truth.detections.iscrowd': <fiftyone.core.fields.FloatField>,
+        'ground_truth.detections.area': <fiftyone.core.fields.FloatField>,
+        ...
+    }
+
+By default, dynamic attributes are not declared on a dataset's schema when
+samples are added to it:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(
+        filepath="/path/to/image.jpg",
+        ground_truth=fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="cat",
+                    bounding_box=[0.1, 0.1, 0.4, 0.4],
+                    mood="surly",
+                ),
+                fo.Detection(
+                    label="dog",
+                    bounding_box=[0.5, 0.5, 0.4, 0.4],
+                    mood="happy",
+                )
+            ]
+        )
+    )
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    schema = dataset.get_field_schema(flat=True)
+
+    assert "ground_truth.detections.mood" not in schema
+
+However, methods such as
+:meth:`add_sample() <fiftyone.core.dataset.Dataset.add_sample>`,
+:meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`,
+:meth:`add_dir() <fiftyone.core.dataset.Dataset.add_dir>`,
+:meth:`from_dir() <fiftyone.core.dataset.Dataset.from_dir>`, and
+:meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+provide an optional `dynamic=True` option that you can provide to automatically
+declare any dynamic embedded document attributes encountered while importing
+data:
+
+.. code-block:: python
+    :linenos:
+
+    dataset = fo.Dataset()
+
+    dataset.add_sample(sample, dynamic=True)
+    schema = dataset.get_field_schema(flat=True)
+
+    assert "ground_truth.detections.mood" in schema
+
+Note that, when declaring dynamic attributes on non-empty datasets, you must
+ensure that the attribute's type is consistent with any existing values in that
+field, e.g., by first running
+:meth:`get_dynamic_field_schema() <fiftyone.core.dataset.Dataset.get_dynamic_field_schema>`
+to check the existing type(s). Methods like
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`
+and
+:meth:`add_samples(..., dynamic=True) <fiftyone.core.dataset.Dataset.add_samples>`
+do not validate newly declared field's types against existing field values:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample1 = fo.Sample(
+        filepath="/path/to/image1.jpg",
+        ground_truth=fo.Classification(
+            label="cat",
+            mood="surly",
+            age="bad-value",
+        ),
+    )
+
+    sample2 = fo.Sample(
+        filepath="/path/to/image2.jpg",
+        ground_truth=fo.Classification(
+            label="dog",
+            mood="happy",
+            age=5,
+        ),
+    )
+
+    dataset = fo.Dataset()
+
+    dataset.add_sample(sample1)
+
+    # Either of these are problematic
+    dataset.add_sample(sample2, dynamic=True)
+    dataset.add_sample_field("ground_truth.age", fo.IntField)
+
+    sample1.reload()  # ValidationError: bad-value could not be converted to int
+
+If you declare a dynamic attribute with a type that is not compatible with
+existing values in that field, you will need to remove that field from the
+dataset's schema using
+:meth:`remove_dynamic_sample_field() <fiftyone.core.dataset.Dataset.remove_dynamic_sample_field>`
+in order for the dataset to be usable again:
+
+.. code-block:: python
+    :linenos:
+
+    # Removes dynamic field from dataset's schema without deleting the values
+    dataset.remove_dynamic_sample_field("ground_truth.age")
+
+You can use
+:meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`
+and
+:meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
+to create :ref:`views <using-views>` that select/exclude specific dynamic
+attributes from your dataset and its schema:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.add_sample_field("ground_truth.age", fo.Field)
+    sample = dataset.first()
+
+    assert "ground_truth.age" in dataset.get_field_schema(flat=True)
+    assert sample.ground_truth.has_field("age")
+
+    # Omits the `age` attribute from the `ground_truth` field
+    view = dataset.exclude_fields("ground_truth.age")
+    sample = view.first()
+
+    assert "ground_truth.age" not in view.get_field_schema(flat=True)
+    assert not sample.ground_truth.has_field("age")
+
+    # Only include `mood` (and default) attributes of the `ground_truth` field
+    view = dataset.select_fields("ground_truth.mood")
+    sample = view.first()
+
+    assert "ground_truth.age" not in view.get_field_schema(flat=True)
+    assert not sample.ground_truth.has_field("age")
 
 .. _custom-embedded-documents:
 
@@ -2668,7 +3457,7 @@ future sessions and manipulated as usual:
         'id': '6217b696d181786cff360740',
         'media_type': 'image',
         'filepath': '/path/to/image.png',
-        'tags': BaseList([]),
+        'tags': [],
         'metadata': None,
         'camera_info': <CameraInfo: {
             'camera_id': '123456789',
@@ -2677,7 +3466,7 @@ future sessions and manipulated as usual:
         }>,
         'weather': <Classification: {
             'id': '6217b696d181786cff36073e',
-            'tags': BaseList([]),
+            'tags': [],
             'label': 'sunny',
             'confidence': 0.95,
             'logits': None,
@@ -2784,34 +3573,34 @@ You can iterate over the frames in a video sample using the expected syntax:
         'quality': 97.12,
         'weather': <Classification: {
             'id': '609078d54653b0094e9baa52',
-            'tags': BaseList([]),
+            'tags': [],
             'label': 'sunny',
             'confidence': None,
             'logits': None,
         }>,
         'objects': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'id': '609078d54653b0094e9baa53',
-                    'attributes': BaseDict({}),
-                    'tags': BaseList([]),
+                    'attributes': {},
+                    'tags': [],
                     'label': 'cat',
-                    'bounding_box': BaseList([0.1, 0.1, 0.2, 0.2]),
+                    'bounding_box': [0.1, 0.1, 0.2, 0.2],
                     'mask': None,
                     'confidence': None,
                     'index': None,
                 }>,
                 <Detection: {
                     'id': '609078d54653b0094e9baa54',
-                    'attributes': BaseDict({}),
-                    'tags': BaseList([]),
+                    'attributes': {},
+                    'tags': [],
                     'label': 'dog',
-                    'bounding_box': BaseList([0.7, 0.7, 0.2, 0.2]),
+                    'bounding_box': [0.7, 0.7, 0.2, 0.2],
                     'mask': None,
                     'confidence': None,
                     'index': None,
                 }>,
-            ]),
+            ],
         }>,
     }>
 
@@ -2836,7 +3625,7 @@ Video samples can be added to datasets just like image samples:
         id:       fiftyone.core.fields.ObjectIdField
         filepath: fiftyone.core.fields.StringField
         tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
     Frame fields:
         id:           fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField
@@ -3063,6 +3852,36 @@ which samples to merge:
     :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` to
     perform the merge.
 
+.. _cloning-datasets:
+
+Cloning datasets
+________________
+
+You can use :meth:`clone() <fiftyone.core.dataset.Dataset.clone>` to create a
+copy of a dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    dataset2 = dataset.clone()
+    dataset2.add_sample_field("new_field", fo.StringField)
+
+    # The source dataset is unaffected
+    assert "new_field" not in dataset.get_field_schema()
+
+Dataset clones contain deep copies of all samples and dataset-level information
+in the source dataset. The source *media files*, however, are not copied.
+
+.. note::
+
+    Did you know? You can also
+    :ref:`clone specific subsets <saving-and-cloning-views>` of your datasets.
+
 .. _batch-updates:
 
 Batch updates
@@ -3170,7 +3989,56 @@ its contents and editing the samples directly:
     print(dataset.count("random"))  # 200
     print(dataset.bounds("random")) # (0.0007, 0.9987)
 
-Alternatively, you can use
+However, the above pattern can be inefficient for large datasets because each
+:meth:`sample.save() <fiftyone.core.sample.Sample.save>` call makes a new
+connection to the database.
+
+The :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>` method
+provides an ``autosave=True`` option that causes all changes to samples
+emitted by the iterator to be automatically saved using an efficient batch
+update strategy:
+
+.. code-block:: python
+    :linenos:
+
+    # Automatically saves sample edits in efficient batches
+    for sample in dataset.select_fields().iter_samples(autosave=True):
+        sample["random"] = random.random()
+
+.. note::
+
+    As the above snippet shows, you should also optimize your iteration by
+    :ref:`selecting only <efficient-iteration-views>` the required fields.
+
+By default, updates are batched and submitted every 0.2 seconds, but you can
+configure the batching strategy by passing the optional ``batch_size`` argument
+to :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>`.
+
+You can also use the
+:meth:`save_context() <fiftyone.core.collections.SampleCollection.save_context>`
+method to perform batched edits using the pattern below:
+
+.. code-block:: python
+    :linenos:
+
+    # Use a context to save sample edits in efficient batches
+    with dataset.save_context() as context:
+        for sample in dataset.select_fields():
+            sample["random"] = random.random()
+            context.save(sample)
+
+The benefit of the above approach versus passing ``autosave=True`` to
+:meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>` is that
+:meth:`context.save() <fiftyone.core.collections.SaveContext.save>` allows you
+to be explicit about which samples you are editing, which avoids unnecessary
+computations if your loop only edits certain samples.
+
+.. _set-values:
+
+Setting values
+--------------
+
+Another strategy for performing efficient batch edits is to use
 :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>` to
 set a field (or embedded field) on each sample in the dataset in a single
 batch operation:
@@ -3178,10 +4046,10 @@ batch operation:
 .. code-block:: python
     :linenos:
 
-    # Delete the field we added in the previous variation
+    # Delete the field we added earlier
     dataset.delete_sample_field("random")
 
-    # Equivalent way to populate a new field on each sample in a view
+    # Equivalent way to populate the field on each sample in the dataset
     values = [random.random() for _ in range(len(dataset))]
     dataset.set_values("random", values)
 
@@ -3194,7 +4062,7 @@ batch operation:
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     is often more efficient than performing the equivalent operation via an
     explicit iteration over the |Dataset| because it avoids the need to read
-    the entire |Sample| instances into memory and then save them.
+    |Sample| instances into memory and sequentially save them.
 
 Similarly, you can edit nested sample fields of a |Dataset| by iterating over
 the dataset and editing the necessary data:
@@ -3240,3 +4108,28 @@ save the updated data in a single batch operation:
 
     print(dataset.count_label_tags())
     # {'low_confidence': 447}
+
+.. _set-label-values:
+
+Setting label values
+--------------------
+
+Often when working with |Label| fields, the edits you want to make may be
+naturally represented as a mapping between label IDs and corresponding
+attribute values to set on each |Label| instance. In such cases, you can use
+:meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
+to conveniently perform the updates:
+
+.. code-block:: python
+    :linenos:
+
+    # Grab some random label IDs
+    view = dataset.take(5, seed=51)
+    label_ids = view.values("predictions.detections.id", unwind=True)
+
+    # Populate a `random` attribute on all labels
+    values = {_id: True for _id in label_ids}
+    dataset.set_label_values("predictions.detections.random", values)
+
+    print(dataset.count_values("predictions.detections.random"))
+    # {True: 111, None: 5509}

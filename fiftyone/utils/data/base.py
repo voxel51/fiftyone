@@ -1,7 +1,7 @@
 """
 Data utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -111,8 +111,7 @@ def download_image_classification_dataset(
     unique.
 
     The dataset is written to disk in
-    :class:`fiftyone.types.dataset_types.FiftyOneImageClassificationDataset`
-    format.
+    :class:`fiftyone.types.FiftyOneImageClassificationDataset` format.
 
     Args:
         csv_path: a CSV file containing the labels and image URLs
@@ -193,7 +192,9 @@ def _download_images(inputs):
 
 def _download_images_multi(inputs, num_workers):
     with fou.ProgressBar(inputs) as pb:
-        with multiprocessing.Pool(processes=num_workers) as pool:
+        with fou.get_multiprocessing_context().Pool(
+            processes=num_workers
+        ) as pool:
             for _ in pb(pool.imap_unordered(_download_image, inputs)):
                 pass
 

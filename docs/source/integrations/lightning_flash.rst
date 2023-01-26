@@ -54,16 +54,6 @@ to install some package extras:
 You can always proceed without these initially, as you'll be prompted to
 install the appropriate extras when you use a feature that requires them.
 
-.. note::
-
-    Flash video tasks require Python 3.7 or later, due to their dependence on
-    `pytorchvideo <https://github.com/facebookresearch/pytorchvideo>`_.
-
-    In addition, it is currently recommended that you use Python 3.7 or later
-    for image tasks as well, as you may
-    `encounter issues <https://github.com/PyTorchLightning/lightning-flash/issues/451>`_
-    trying to use Flash image tasks on Python 3.6.
-
 .. _flash-model-training:
 
 Model training
@@ -94,7 +84,7 @@ method, which is implemented for each of the Flash tasks shown below.
             from flash import Trainer
 
             import fiftyone as fo
-            import fiftyone.utils.splits as fous
+            import fiftyone.utils.random as four
             import fiftyone.zoo as foz
 
             # 1 Load your FiftyOne dataset
@@ -105,7 +95,7 @@ method, which is implemented for each of the Flash tasks shown below.
 
             # Create splits from the dataset
             splits = {"train": 0.7, "test": 0.1, "val": 0.1, "pred": 0.1}
-            fous.random_split(dataset, splits)
+            four.random_split(dataset, splits)
 
             # Here we use views into one dataset,
             # but you can also use a different dataset for each split
@@ -177,7 +167,7 @@ method, which is implemented for each of the Flash tasks shown below.
             from flash.image.detection.output import FiftyOneDetectionLabelsOutput
 
             import fiftyone as fo
-            import fiftyone.utils.splits as fous
+            import fiftyone.utils.random as four
             import fiftyone.zoo as foz
 
             # 1 Load your FiftyOne dataset
@@ -190,7 +180,7 @@ method, which is implemented for each of the Flash tasks shown below.
 
             # Create splits from the dataset
             splits = {"train": 0.7, "test": 0.1, "val": 0.1}
-            fous.random_split(dataset, splits)
+            four.random_split(dataset, splits)
 
             # Here we use views into one dataset,
             # but you can also use a different dataset for each split
@@ -353,7 +343,7 @@ method, which is implemented for each of the Flash tasks shown below.
             from flash.video import VideoClassificationData, VideoClassifier
 
             import fiftyone as fo
-            import fiftyone.utils.splits as fous
+            import fiftyone.utils.random as four
             import fiftyone.zoo as foz
 
             # 1 Load the data
@@ -375,7 +365,7 @@ method, which is implemented for each of the Flash tasks shown below.
 
             # Create splits from the dataset
             splits = {"train": 0.7, "pred": 0.3}
-            fous.random_split(dataset, splits)
+            four.random_split(dataset, splits)
 
             # Here we use views into one dataset,
             # but you can also use a different dataset for each split

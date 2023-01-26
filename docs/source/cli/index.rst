@@ -54,7 +54,7 @@ To enable tab completion in `tcsh`, add these lines to your `~/.tcshrc`:
 
     eval `register-python-argcomplete --shell tcsh fiftyone`
 
-.._cli-fiftyone-main:
+.. _cli-fiftyone-main:
 
 FiftyOne CLI
 ------------
@@ -74,7 +74,7 @@ The FiftyOne command-line interface.
     optional arguments:
       -h, --help            show this help message and exit
       -v, --version         show version info
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {quickstart,annotation,app,config,constants,convert,datasets,migrate,utils,zoo}
@@ -295,7 +295,7 @@ Tools for working with FiftyOne datasets.
 
     optional arguments:
       -h, --help            show this help message and exit
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {list,info,create,head,tail,stream,export,delete}
@@ -723,8 +723,11 @@ FiftyOne deployments.
 
 .. code-block:: text
 
-    fiftyone migrate [-h] [-i] [-a] [-v VERSION]
-                     [-n DATASET_NAME [DATASET_NAME ...]] [--verbose]
+    fiftyone migrate [-h] [-i] [-a]
+                     [-v VERSION]
+                     [-n DATASET_NAME [DATASET_NAME ...]]
+                     [--error-level LEVEL]
+                     [--verbose]
 
 **Arguments**
 
@@ -738,6 +741,8 @@ FiftyOne deployments.
                             the revision to migrate to
       -n DATASET_NAME [DATASET_NAME ...], --dataset-name DATASET_NAME [DATASET_NAME ...]
                             the name of a specific dataset to migrate
+      --error-level LEVEL   the error level (0=error, 1=warn, 2=ignore) to use
+                            when migrating individual datasets
       --verbose             whether to log incremental migrations that are performed
 
 **Examples**
@@ -749,7 +754,7 @@ FiftyOne deployments.
 
 .. code-block:: shell
 
-    # Migrate the database and all datasets to the current package version
+    # Migrate the database and all datasets to the current client version
     fiftyone migrate --all
 
 .. code-block:: shell
@@ -841,9 +846,11 @@ Transforms the images in a dataset per the specified parameters.
 
 .. code-block:: text
 
-    fiftyone utils transform-images [-h] [--size SIZE]
-                                    [--min-size MIN_SIZE]
-                                    [--max-size MAX_SIZE] [-e EXT] [-f]
+    fiftyone utils transform-images [-h] [--size SIZE] [--min-size MIN_SIZE]
+                                    [--max-size MAX_SIZE] [-i INTERPOLATION]
+                                    [-e EXT] [-f] [--media-field MEDIA_FIELD]
+                                    [--output-field OUTPUT_FIELD]
+                                    [-o OUTPUT_DIR] [-r REL_DIR]
                                     [-d] [-n NUM_WORKERS] [-s]
                                     DATASET_NAME
 
@@ -862,9 +869,27 @@ Transforms the images in a dataset per the specified parameters.
                             can be -1 if no constraint should be applied
       --max-size MAX_SIZE   a maximum `width,height` for each image. A dimension
                             can be -1 if no constraint should be applied
+      -i INTERPOLATION, --interpolation INTERPOLATION
+                            an optional `interpolation` argument for `cv2.resize()`
       -e EXT, --ext EXT     an image format to convert to (e.g., '.png' or '.jpg')
       -f, --force-reencode  whether to re-encode images whose parameters already
                             meet the specified values
+      --media-field MEDIA_FIELD
+                            the input field containing the image paths to
+                            transform
+      --output-field OUTPUT_FIELD
+                            an optional field in which to store the paths to
+                            the transformed images. By default, `media_field`
+                            is updated in-place
+      -o OUTPUT_DIR, --output-dir OUTPUT_DIR
+                            an optional output directory in which to write the
+                            transformed images. If none is provided, the images
+                            are updated in-place
+      -r REL_DIR, --rel-dir REL_DIR
+                            an optional relative directory to strip from each
+                            input filepath to generate a unique identifier that
+                            is joined with `output_dir` to generate an output
+                            path for each image
       -d, --delete-originals
                             whether to delete the original images after transforming
       -n NUM_WORKERS, --num-workers NUM_WORKERS
@@ -894,11 +919,16 @@ Transforms the videos in a dataset per the specified parameters.
 
 .. code-block:: text
 
+
     fiftyone utils transform-videos [-h] [--fps FPS] [--min-fps MIN_FPS]
                                     [--max-fps MAX_FPS] [--size SIZE]
-                                    [--min-size MIN_SIZE]
-                                    [--max-size MAX_SIZE] [-r] [-f] [-d]
-                                    [-s] [-v]
+                                    [--min-size MIN_SIZE] [--max-size MAX_SIZE]
+                                    [-r] [-f]
+                                    [--media-field MEDIA_FIELD]
+                                    [--output-field OUTPUT_FIELD]
+                                    [--output-dir OUTPUT_DIR]
+                                    [--rel-dir REL_DIR]
+                                    [-d] [-s] [-v]
                                     DATASET_NAME
 
 **Arguments**
@@ -924,6 +954,21 @@ Transforms the videos in a dataset per the specified parameters.
       -r, --reencode        whether to re-encode the videos as H.264 MP4s
       -f, --force-reencode  whether to re-encode videos whose parameters already
                             meet the specified values
+      --media-field MEDIA_FIELD
+                            the input field containing the video paths to
+                            transform
+      --output-field OUTPUT_FIELD
+                            an optional field in which to store the paths to
+                            the transformed videos. By default, `media_field`
+                            is updated in-place
+      --output-dir OUTPUT_DIR
+                            an optional output directory in which to write the
+                            transformed videos. If none is provided, the videos
+                            are updated in-place
+      --rel-dir REL_DIR     an optional relative directory to strip from each
+                            input filepath to generate a unique identifier that
+                            is joined with `output_dir` to generate an output
+                            path for each video
       -d, --delete-originals
                             whether to delete the original videos after transforming
       -s, --skip-failures   whether to gracefully continue without raising an
@@ -1292,7 +1337,7 @@ Tools for working with the FiftyOne Zoo.
 
     optional arguments:
       -h, --help         show this help message and exit
-      --all-help         show help recurisvely and exit
+      --all-help         show help recursively and exit
 
     available commands:
       {datasets,models}
@@ -1317,7 +1362,7 @@ Tools for working with the FiftyOne Dataset Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {list,find,info,download,load}
@@ -1623,7 +1668,7 @@ Tools for working with the FiftyOne Model Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {list,find,info,requirements,download,apply,embed,delete}
@@ -1761,8 +1806,8 @@ Handles package requirements for zoo models.
       -p, --print          print the requirements for the zoo model
       -i, --install        install any requirements for the zoo model
       -e, --ensure         ensure the requirements for the zoo model are satisfied
-      --error-level LEVEL  the error level in {0, 1, 2} to use when installing
-                           or ensuring model requirements
+      --error-level LEVEL  the error level (0=error, 1=warn, 2=ignore) to use
+                           when installing or ensuring model requirements
 
 **Examples**
 
@@ -1842,8 +1887,8 @@ Apply zoo models to datasets.
                             applicable labels generated by the model
       -l, --store-logits    store logits for the predictions
       -i, --install         install any requirements for the zoo model
-      --error-level LEVEL   the error level in {0, 1, 2} to use when installing
-                            or ensuring model requirements
+      --error-level LEVEL   the error level (0=error, 1=warn, 2=ignore) to use
+                            when installing or ensuring model requirements
 
 **Examples**
 
@@ -1888,8 +1933,8 @@ Generate embeddings for datasets with zoo models.
       -b BATCH_SIZE, --batch-size BATCH_SIZE
                             an optional batch size to use during inference
       -i, --install         install any requirements for the zoo model
-      --error-level LEVEL   the error level in {0, 1, 2} to use when installing
-                            or ensuring model requirements
+      --error-level LEVEL   the error level (0=error, 1=warn, 2=ignore) to use
+                            when installing or ensuring model requirements
 
 **Examples**
 

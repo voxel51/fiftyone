@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { SCALE_FACTOR } from "../../constants";
@@ -16,19 +16,22 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
 > {
   private width: number = 0;
   private height: number = 0;
+  private hide: boolean = true;
   private mousedownCoordinates?: Coordinates;
   private mousedown: boolean = false;
-  private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
   private start: Coordinates = [0, 0];
   private wheelTimeout: ReturnType<typeof setTimeout> | null = null;
-  private hide: boolean = true;
   private cursor: string;
 
   getEvents(): Events<State> {
     return {
       click: ({ event, update, dispatchEvent }) => {
-        update({ showOptions: false }, (state, overlays) => {
-          if (state.config.thumbnail || state.disableOverlays) {
+        update({ showOptions: false }, (state, overlays, sample) => {
+          if (
+            state.config.thumbnail ||
+            state.disableOverlays ||
+            !state.options.showOverlays
+          ) {
             return;
           }
           let moved = false;
@@ -41,7 +44,10 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
           if (!moved && overlays.length) {
             const top = overlays[0];
             top.containsPoint(state) &&
-              dispatchEvent("select", top.getSelectData(state));
+              dispatchEvent("select", {
+                ...top.getSelectData(state),
+                sampleId: sample.id,
+              });
           }
         });
       },
@@ -50,20 +56,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
         dispatchEvent("tooltip", null);
       },
       mousemove: ({ event, update, dispatchEvent }) => {
-        if (this.hideControlsTimeout) {
-          clearTimeout(this.hideControlsTimeout);
-        }
-        this.hideControlsTimeout = setTimeout(
-          () =>
-            update(({ showOptions, hoveringControls }) => {
-              this.hideControlsTimeout = null;
-              if (!showOptions && !hoveringControls) {
-                return { showControls: false };
-              }
-              return {};
-            }),
-          3500
-        );
         update((state) => {
           if (state.config.thumbnail) {
             return {};
@@ -74,7 +66,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
               (<MouseEvent>event).pageY,
             ],
             rotate: 0,
-            showControls: true,
           };
           if (!this.mousedown) {
             return newState;
@@ -113,7 +104,8 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
         requestAnimationFrame(() => {
           update(
             ({
-              config: { thumbnail, dimensions },
+              config: { thumbnail },
+              dimensions,
               pan: [px, py],
               scale,
               windowBBox: [tlx, tly, width, height],
@@ -181,29 +173,18 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     };
   }
 
-  createHTMLElement(update) {
+  createHTMLElement() {
     const element = document.createElement("canvas");
     element.classList.add(lookerCanvas, invisible);
-    this.hideControlsTimeout = setTimeout(
-      () =>
-        update(({ showOptions, hoveringControls }) => {
-          this.hideControlsTimeout = null;
-          if (!showOptions && !hoveringControls) {
-            return { showControls: false };
-          }
-          return {};
-        }),
-      3500
-    );
     return element;
   }
 
   renderSelf({
     loaded,
-    error,
-    config: { thumbnail },
-    disabled,
     reloading,
+    error,
+    disabled,
+    config: { thumbnail },
     panning,
     windowBBox: [_, __, width, height],
     mouseIsOnOverlay,
@@ -235,14 +216,13 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
       this.element.style.cursor = this.cursor;
     }
 
-    const hide = !loaded || disabled || reloading || error;
+    const hide = Boolean(!loaded || disabled || reloading || error);
     if (this.hide !== hide) {
       this.hide = hide;
       this.hide
         ? this.element.classList.add(invisible)
         : this.element.classList.remove(invisible);
     }
-
     return this.element;
   }
 

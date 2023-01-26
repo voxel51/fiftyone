@@ -1,15 +1,27 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
-import { get32BitColor, getColor, getRGBA, getRGBAColor } from "../color";
-import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
+import {
+  get32BitColor,
+  getColor,
+  getRGBA,
+  getRGBAColor,
+} from "@fiftyone/utilities";
+import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { isFloatArray } from "../util";
-import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
+import {
+  BaseLabel,
+  CONTAINS,
+  isShown,
+  Overlay,
+  PointInfo,
+  SelectData,
+} from "./base";
 import { sizeBytes, strokeCanvasRect, t } from "./util";
 
 interface HeatMap {
-  data: NumpyResult;
+  data: OverlayMask;
   image: ArrayBuffer;
 }
 
@@ -26,7 +38,8 @@ interface HeatmapInfo extends BaseLabel {
 }
 
 export default class HeatmapOverlay<State extends BaseState>
-  implements Overlay<State> {
+  implements Overlay<State>
+{
   readonly field: string;
   private label: HeatmapLabel;
   private targets?: TypedArray;
@@ -37,50 +50,33 @@ export default class HeatmapOverlay<State extends BaseState>
   constructor(field: string, label: HeatmapLabel) {
     this.field = field;
     this.label = label;
-    if (this.label.map) {
-      this.targets = new ARRAY_TYPES[this.label.map.data.arrayType](
-        this.label.map.data.buffer
-      );
-      this.range = this.label.range
-        ? label.range
-        : isFloatArray(this.targets)
-        ? [0, 1]
-        : [0, 255];
-      const [height, width] = this.label.map.data.shape;
-      this.canvas = document.createElement("canvas");
-      this.canvas.width = width;
-      this.canvas.height = height;
-      this.imageData = new ImageData(
-        new Uint8ClampedArray(this.label.map.image),
-        width,
-        height
-      );
-      const maskCtx = this.canvas.getContext("2d");
-      maskCtx.imageSmoothingEnabled = false;
-      maskCtx.clearRect(
-        0,
-        0,
-        this.label.map.data.shape[1],
-        this.label.map.data.shape[0]
-      );
-      maskCtx.putImageData(this.imageData, 0, 0);
+    if (!this.label.map) {
+      return;
     }
-  }
 
-  containsPoint(state: Readonly<State>): CONTAINS {
-    const {
-      pixelCoordinates: [x, y],
-      config: {
-        dimensions: [w, h],
-      },
-    } = state;
-    if (x >= 0 && x <= w && y >= 0 && y <= h && this.getTarget(state)) {
-      return CONTAINS.CONTENT;
+    this.targets = new ARRAY_TYPES[this.label.map.data.arrayType](
+      this.label.map.data.buffer
+    );
+    this.range = this.label.range
+      ? label.range
+      : isFloatArray(this.targets)
+      ? [0, 1]
+      : [0, 255];
+    const [height, width] = this.label.map.data.shape;
+
+    if (!width || !height) {
+      return;
     }
-    return CONTAINS.NONE;
-  }
 
-  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
+    this.canvas = document.createElement("canvas");
+    this.canvas.width = width;
+    this.canvas.height = height;
+
+    this.imageData = new ImageData(
+      new Uint8ClampedArray(this.label.map.image),
+      width,
+      height
+    );
     const maskCtx = this.canvas.getContext("2d");
     maskCtx.imageSmoothingEnabled = false;
     maskCtx.clearRect(
@@ -90,13 +86,38 @@ export default class HeatmapOverlay<State extends BaseState>
       this.label.map.data.shape[0]
     );
     maskCtx.putImageData(this.imageData, 0, 0);
+  }
 
-    const [tlx, tly] = t(state, 0, 0);
-    const [brx, bry] = t(state, 1, 1);
-    const tmp = ctx.globalAlpha;
-    ctx.globalAlpha = state.options.alpha;
-    ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
-    ctx.globalAlpha = tmp;
+  containsPoint(state: Readonly<State>): CONTAINS {
+    const {
+      pixelCoordinates: [x, y],
+      dimensions: [w, h],
+    } = state;
+    if (x >= 0 && x <= w && y >= 0 && y <= h && this.getTarget(state)) {
+      return CONTAINS.CONTENT;
+    }
+    return CONTAINS.NONE;
+  }
+
+  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
+    if (this.imageData) {
+      const maskCtx = this.canvas.getContext("2d");
+      maskCtx.imageSmoothingEnabled = false;
+      maskCtx.clearRect(
+        0,
+        0,
+        this.label.map.data.shape[1],
+        this.label.map.data.shape[0]
+      );
+      maskCtx.putImageData(this.imageData, 0, 0);
+
+      const [tlx, tly] = t(state, 0, 0);
+      const [brx, bry] = t(state, 1, 1);
+      const tmp = ctx.globalAlpha;
+      ctx.globalAlpha = state.options.alpha;
+      ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
+      ctx.globalAlpha = tmp;
+    }
 
     if (this.isSelected(state)) {
       strokeCanvasRect(
@@ -146,7 +167,7 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   isShown(state: Readonly<State>): boolean {
-    return state.options.activePaths.includes(this.field);
+    return isShown(state, this.field, this.label);
   }
 
   getPoints(): Coordinates[] {
@@ -167,9 +188,7 @@ export default class HeatmapOverlay<State extends BaseState>
 
   private getMapCoordinates({
     pixelCoordinates: [x, y],
-    config: {
-      dimensions: [mw, mh],
-    },
+    dimensions: [mw, mh],
   }: Readonly<State>): Coordinates {
     const [h, w] = this.label.map.data.shape;
     const sx = Math.floor(x * (w / mw));
@@ -184,7 +203,7 @@ export default class HeatmapOverlay<State extends BaseState>
       return 0;
     }
 
-    if (state.options.coloring.byLabel) {
+    if (state.options.coloring.by === "label") {
       const index = Math.round(
         (Math.max(value - start, 0) / (stop - start)) *
           (state.options.coloring.scale.length - 1)

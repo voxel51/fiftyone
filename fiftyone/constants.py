@@ -1,7 +1,7 @@
 """
 Package-wide constants.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -28,6 +28,19 @@ FIFTYONE_APP_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "app_config.json")
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 TEAMS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "teams.json")
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
+
+#
+# The compatible versions for this client
+#
+# RULES: Datasets from all compatible versions must be...
+#   - Loadable by this client without error
+#   - Editable by this client without causing any database edits that would
+#     break the original client's ability to work with the dataset
+#
+# This setting may be ``None`` if this client has no compatibility with other
+# versions
+#
+COMPATIBLE_VERSIONS = ">=0.19,<0.20"
 
 # Package metadata
 _META = metadata("fiftyone")
@@ -78,7 +91,8 @@ MIGRATIONS_HEAD_PATH = os.path.join(MIGRATIONS_PATH, "head.json")
 MIGRATIONS_REVISIONS_DIR = os.path.join(
     FIFTYONE_DIR, "migrations", "revisions"
 )
-MONGODB_VERSION_RANGE = (Version("4.4"), Version("4.5"))  # [min, max)
+
+MIN_MONGODB_VERSION = Version("4.4")
 DATABASE_APPNAME = "fiftyone"
 
 # Server setup

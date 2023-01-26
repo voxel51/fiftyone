@@ -5,7 +5,7 @@ You must run these tests interactively as follows::
 
     python tests/intensive/lightning_flash_tests.py
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -25,7 +25,7 @@ from flash.video import VideoClassificationData, VideoClassifier
 
 import fiftyone as fo
 import fiftyone.brain as fob
-import fiftyone.utils.splits as fous
+import fiftyone.utils.random as four
 import fiftyone.zoo as foz
 
 
@@ -49,7 +49,8 @@ class LightningFlashTests(unittest.TestCase):
 
         # Predict!
         dataset.apply_model(
-            cls_model, label_field="flash_classifications",
+            cls_model,
+            label_field="flash_classifications",
         )
 
         transform_kwargs = {"image_size": 512}
@@ -68,7 +69,7 @@ class LightningFlashTests(unittest.TestCase):
 
         # Create splits from the dataset
         splits = {"train": 0.7, "test": 0.1, "val": 0.1, "pred": 0.1}
-        fous.random_split(dataset, splits)
+        four.random_split(dataset, splits)
 
         # Here we use views into one dataset,
         # but you can also use a different dataset for each split
@@ -93,7 +94,9 @@ class LightningFlashTests(unittest.TestCase):
 
         # 4 Create the trainer
         trainer = Trainer(
-            max_epochs=1, limit_train_batches=10, limit_val_batches=10,
+            max_epochs=1,
+            limit_train_batches=10,
+            limit_val_batches=10,
         )
 
         # 5 Finetune the model
@@ -115,7 +118,9 @@ class LightningFlashTests(unittest.TestCase):
 
         # Add predictions to FiftyOne dataset
         predict_dataset.set_values(
-            "flash_predictions", predictions, key_field="filepath",
+            "flash_predictions",
+            predictions,
+            key_field="filepath",
         )
 
     def test_object_detector(self):
@@ -129,7 +134,7 @@ class LightningFlashTests(unittest.TestCase):
 
         # Create splits from the dataset
         splits = {"train": 0.7, "test": 0.1, "val": 0.1}
-        fous.random_split(dataset, splits)
+        four.random_split(dataset, splits)
 
         # Here we use views into one dataset,
         # but you can also use a different dataset for each split
@@ -182,7 +187,9 @@ class LightningFlashTests(unittest.TestCase):
 
         # Add predictions to FiftyOne dataset
         dataset.set_values(
-            "flash_predictions", predictions, key_field="filepath",
+            "flash_predictions",
+            predictions,
+            key_field="filepath",
         )
 
     def test_semantic_segmentation(self):
@@ -248,7 +255,9 @@ class LightningFlashTests(unittest.TestCase):
 
         # Add predictions to FiftyOne dataset
         dataset.set_values(
-            "flash_predictions", predictions, key_field="filepath",
+            "flash_predictions",
+            predictions,
+            key_field="filepath",
         )
 
         # Test segmentation apply_model
@@ -274,7 +283,7 @@ class LightningFlashTests(unittest.TestCase):
 
         # Create splits from the dataset
         splits = {"train": 0.7, "pred": 0.3}
-        fous.random_split(dataset, splits)
+        four.random_split(dataset, splits)
 
         # Here we use views into one dataset,
         # but you can also use a different dataset for each split
@@ -294,7 +303,9 @@ class LightningFlashTests(unittest.TestCase):
 
         # 3 Build the model
         model = VideoClassifier(
-            backbone="x3d_xs", labels=datamodule.labels, pretrained=False,
+            backbone="x3d_xs",
+            labels=datamodule.labels,
+            pretrained=False,
         )
 
         # 4 Create the trainer
@@ -319,7 +330,9 @@ class LightningFlashTests(unittest.TestCase):
 
         # Add predictions to FiftyOne dataset
         predict_dataset.set_values(
-            "flash_predictions", predictions, key_field="filepath",
+            "flash_predictions",
+            predictions,
+            key_field="filepath",
         )
 
     def test_manually_adding_predictions(self):
@@ -336,7 +349,8 @@ class LightningFlashTests(unittest.TestCase):
 
         # Create prediction datamodule
         datamodule = ImageClassificationData.from_fiftyone(
-            predict_dataset=dataset, batch_size=1,
+            predict_dataset=dataset,
+            batch_size=1,
         )
 
         # Output FiftyOne format
@@ -404,7 +418,8 @@ class LightningFlashTests(unittest.TestCase):
             fo.types.ImageClassificationDirectoryTree,
         )
         datamodule = ImageClassificationData.from_fiftyone(
-            predict_dataset=dataset, batch_size=1,
+            predict_dataset=dataset,
+            batch_size=1,
         )
 
         # 3 Load model

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { BaseState, DispatchEvent, Sample, StateUpdate } from "../state";
@@ -27,9 +27,9 @@ export abstract class BaseElement<
 > {
   children: BaseElement<State>[] = [];
   element: Element;
-  protected events: LoadedEvents = {};
+  protected readonly events: LoadedEvents = {};
 
-  constructor(
+  boot(
     config: Readonly<State["config"]>,
     update: StateUpdate<State>,
     dispatchEvent: (eventType: string, details?: any) => void
@@ -38,7 +38,7 @@ export abstract class BaseElement<
       return;
     }
 
-    this.element = this.createHTMLElement(update, dispatchEvent);
+    this.element = this.createHTMLElement(update, dispatchEvent, config);
 
     for (const [eventType, handler] of Object.entries(this.getEvents())) {
       this.events[eventType] = (event) =>
@@ -75,7 +75,8 @@ export abstract class BaseElement<
 
   abstract createHTMLElement(
     update: StateUpdate<State>,
-    dispatchEvent: (eventType: string, details?: any) => void
+    dispatchEvent: (eventType: string, details?: any) => void,
+    config: Readonly<State["config"]>
   ): Element | null;
 
   abstract renderSelf(
@@ -88,16 +89,14 @@ export abstract class BaseElement<
   }
 
   protected removeEvents() {
-    for (const [eventType, handler] of Object.entries(this.events)) {
-      // @ts-ignore
-      this.element.removeEventListener(eventType, handler);
+    for (const eventType in this.events) {
+      this.element.removeEventListener(eventType, this.events[eventType]);
     }
   }
 
   protected attachEvents() {
-    for (const [eventType, handler] of Object.entries(this.events)) {
-      // @ts-ignore
-      this.element.addEventListener(eventType, handler);
+    for (const eventType in this.events) {
+      this.element.addEventListener(eventType, this.events[eventType]);
     }
   }
 }

@@ -1,7 +1,7 @@
 """
 FiftyOne v0.6.2 revision.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -34,7 +34,7 @@ def up(db, dataset_name):
         if c.startswith("frames.") and ".".join(c.split(".")[1:]) not in colls:
             db[c].drop()
 
-    colls = set(db.collection_names())
+    colls = set(db.list_collection_names())
 
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)

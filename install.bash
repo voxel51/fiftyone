@@ -4,7 +4,7 @@
 # Usage:
 #   bash install.bash
 #
-# Copyright 2017-2022, Voxel51, Inc.
+# Copyright 2017-2023, Voxel51, Inc.
 # voxel51.com
 #
 
@@ -45,8 +45,9 @@ done
 [ ${SHOW_HELP} = true ] && usage && exit 0
 
 set -e
-NODE_VERSION=16.4.2
+NODE_VERSION=17.9.0
 OS=$(uname -s)
+ARCH=$(uname -m)
 
 if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
     echo "***** INSTALLING MONGODB *****"
@@ -57,18 +58,31 @@ if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
     if [ -x bin/mongod ]; then
         VERSION_FULL=$(bin/mongod --version | grep 'db version')
         VERSION="${VERSION_FULL:12}"
-        if [ ${VERSION} != "4.4.2" ]; then
-            echo "Upgrading MongoDB v${VERSION} to v4.4.2"
+        if [ "${OS}" == "Darwin" ] && [ "${ARCH}" == "arm64" ]; then
+            if [ ${VERSION} != "6.0.2" ]; then
+                echo "Upgrading MongoDB v${VERSION} to v6.0.2"
+            else
+                echo "MongoDB v6.0.2 already installed"
+                INSTALL_MONGODB=false
+            fi
         else
-            echo "MongoDB v4.4.2 already installed"
-            INSTALL_MONGODB=false
+            if [ ${VERSION} != "5.0.4" ]; then
+                echo "Upgrading MongoDB v${VERSION} to v5.0.4"
+            else
+                echo "MongoDB v5.0.4 already installed"
+                INSTALL_MONGODB=false
+            fi
         fi
     else
-        echo "Installing MongoDB v4.4.2"
+        echo "Installing MongoDB v5.0.4"
     fi
     if [ ${INSTALL_MONGODB} = true ]; then
+        MONGODB_VERSION=5.0.4
         if [ "${OS}" == "Darwin" ]; then
-            MONGODB_BUILD=mongodb-macos-x86_64-4.4.2
+            if [ "${ARCH}" == "arm64" ]; then
+                MONGODB_VERSION=6.0.2
+            fi
+            MONGODB_BUILD=mongodb-macos-x86_64-${MONGODB_VERSION}
 
             curl https://fastdl.mongodb.org/osx/${MONGODB_BUILD}.tgz --output mongodb.tgz
             tar -zxvf mongodb.tgz
@@ -76,7 +90,7 @@ if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
             rm mongodb.tgz
             rm -rf ${MONGODB_BUILD}
         elif [ "${OS}" == "Linux" ]; then
-            MONGODB_BUILD=mongodb-linux-x86_64-ubuntu1804-4.4.2
+            MONGODB_BUILD=mongodb-linux-x86_64-ubuntu2004-${MONGODB_VERSION}
 
             curl https://fastdl.mongodb.org/linux/${MONGODB_BUILD}.tgz --output mongodb.tgz
             tar -zxvf mongodb.tgz
@@ -91,28 +105,6 @@ if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
 else
     echo "***** INSTALLING FIFTYONE-DB *****"
     pip install fiftyone-db
-fi
-
-if [ ${BUILD_APP} = true ]; then
-    echo "***** INSTALLING FIFTYONE-APP *****"
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
-    export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
-    nvm install ${NODE_VERSION}
-    nvm use ${NODE_VERSION}
-    npm -g install yarn
-    if [ -f ~/.bashrc ]; then
-        source ~/.bashrc
-    elif [ -f ~/.bash_profile ]; then
-        source ~/.bash_profile
-    else
-        echo "WARNING: unable to locate a bash profile to 'source'; you may need to start a new shell"
-    fi
-    cd app
-    echo "Building the App. This will take a minute or two..."
-    yarn install > /dev/null 2>&1
-    yarn build
-    cd ..
 fi
 
 if [ ${VOXEL51_INSTALL} = false ]; then
@@ -138,8 +130,6 @@ if [ ${SOURCE_ETA_INSTALL} = true ]; then
         git clone https://github.com/voxel51/eta
     fi
     cd eta
-    git checkout develop
-    git pull
     if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
         pip install -e .
     else
@@ -149,6 +139,29 @@ if [ ${SOURCE_ETA_INSTALL} = true ]; then
         echo "Installing default ETA config"
         cp config-example.json eta/config.json
     fi
+    cd ..
+fi
+
+# Do this last since `source` can exit Python virtual environments
+if [ ${BUILD_APP} = true ]; then
+    echo "***** INSTALLING FIFTYONE-APP *****"
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
+    export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+    nvm install ${NODE_VERSION}
+    nvm use ${NODE_VERSION}
+    npm -g install yarn
+    if [ -f ~/.bashrc ]; then
+        source ~/.bashrc
+    elif [ -f ~/.bash_profile ]; then
+        source ~/.bash_profile
+    else
+        echo "WARNING: unable to locate a bash profile to 'source'; you may need to start a new shell"
+    fi
+    cd app
+    echo "Building the App. This will take a minute or two..."
+    yarn install > /dev/null 2>&1
+    yarn build
     cd ..
 fi
 

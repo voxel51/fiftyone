@@ -143,15 +143,19 @@ to the above command.
 Restricting the App address
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-By default, the App will listen to any connection to its port. However, you can
-provide the optional `address` parameter to
+By default, the App will listen on `localhost`. However, you can provide the
+optional `address` parameter to
 :meth:`launch_app() <fiftyone.core.session.launch_app>` to specify a particular
-IP address or hostname to which to restrict access to your session.
+IP address or hostname for the App to listen on.
 
-For example, a common pattern is to set the App address to `"localhost"` so
-that the App can only be accessed via http://localhost:5151 on either the local
-machine itself or a machine that was able to setup ssh port forwarding as
+Using the default of `localhost` means the App can only be accessed from the
+local machine or a machine that was able to setup ssh port forwarding as
 described in the previous section.
+
+An alternative is to set the App address to `"0.0.0.0"` so that the App can be
+accessed from a remote host or from the local machine itself.  Using `"0.0.0.0"`
+will bind the App to all available interfaces and will allow access to the App
+from any remote resource with access to your network.
 
 .. code-block:: python
     :linenos:
@@ -160,8 +164,8 @@ described in the previous section.
 
     dataset = fo.load_dataset(...)
 
-    # Restrict to http://localhost:5151 connections made via port forwarding
-    session = fo.launch_app(dataset, remote=True, address="localhost")
+    # Enable connections from remote hosts
+    session = fo.launch_app(dataset, remote=True, address="0.0.0.0")
 
 If desired, you can permanently configure an App address by setting the
 `default_app_address` of your :ref:`FiftyOne config <configuring-fiftyone>`.
@@ -171,14 +175,14 @@ You can achieve this by adding the following entry to your
 .. code-block:: json
 
     {
-        "default_app_address": "localhost"
+        "default_app_address": "0.0.0.0"
     }
 
 or by setting the following environment variable:
 
 .. code-block:: shell
 
-    export FIFTYONE_DEFAULT_APP_ADDRESS=localhost
+    export FIFTYONE_DEFAULT_APP_ADDRESS='0.0.0.0'
 
 .. _notebooks:
 
@@ -384,6 +388,129 @@ Note that you can also open the App
     session = fo.launch_app(dataset, auto=False)  # port=YYYY
     session.open_tab()
 
+.. _docker:
+
+Docker
+______
+
+The FiftyOne repository contains a
+`Dockerfile <https://github.com/voxel51/fiftyone/blob/develop/Dockerfile>`_
+that you can use/customize to build and run Docker images containing source
+or release builds of FiftyOne.
+
+Building an image
+~~~~~~~~~~~~~~~~~
+
+First, clone the repository:
+
+.. code:: shell
+
+    git clone https://github.com/voxel51/fiftyone
+    cd fiftyone
+
+If you want a source install of FiftyOne, then build a wheel:
+
+.. code:: shell
+
+    make python
+
+If you want to install a FiftyOne release, then make the suggested modification
+in the
+`Dockerfile <https://github.com/voxel51/fiftyone/blob/develop/Dockerfile>`_.
+
+Next, build the image:
+
+.. code:: shell
+
+    docker build -t voxel51/fiftyone .
+
+The default image uses Ubuntu 20.04 and Python 3.8, but you can customize these
+via optional build arguments:
+
+.. code:: shell
+
+    docker build \
+        --build-arg BASE_IMAGE=ubuntu:18.04 \
+        --build-arg PYTHON_VERSION=3.9 \
+        -t voxel51/fiftyone .
+
+Refer to the
+`Dockerfile <https://github.com/voxel51/fiftyone/blob/develop/Dockerfile>`_ for
+additional Python packages that you may wish to include in your build.
+
+Running an image
+~~~~~~~~~~~~~~~~
+
+The image is designed to persist all data in a single `/fiftyone` directory
+with the following organization:
+
+.. code:: text
+
+    /fiftyone/
+        db/             # FIFTYONE_DATABASE_DIR
+        default/        # FIFTYONE_DEFAULT_DATASET_DIR
+        zoo/
+            datasets/   # FIFTYONE_DATASET_ZOO_DIR
+            models/     # FIFTYONE_MODEL_ZOO_DIR
+
+Therefore, to run a container, you should mount `/fiftyone` as a local volume
+via `--mount` or `-v`, as shown below:
+
+.. code:: shell
+
+    SHARED_DIR=/path/to/shared/dir
+
+    docker run -v ${SHARED_DIR}:/fiftyone -p 5151:5151 -it voxel51/fiftyone
+
+The `-p 5151:5151` option is required so that when you
+:ref:`launch the App <creating-an-app-session>` from within the container you
+can connect to it at http://localhost:5151 in your browser.
+
+You can also include the `-e` or `--env-file` options if you need to further
+:ref:`configure FiftyOne <configuring-fiftyone>`.
+
+By default, running the image launches an IPython shell, which you can use as
+normal:
+
+.. code:: python
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    Any datasets you create inside the Docker image must refer to media
+    files within `SHARED_DIR` or another mounted volume if you intend to work
+    with datasets between sessions.
+
+.. note::
+
+    FiftyOne should automatically detect that it is running inside a Docker
+    container. However, if you are unable to load the App in your browser, you
+    may need to manually :ref:`set the App address <restricting-app-address>`
+    to `0.0.0.0`:
+
+    .. code:: python
+
+        session = fo.launch_app(..., address="0.0.0.0")
+
+Connecting to a localhost database
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are using a
+:ref:`self-managed database <configuring-mongodb-connection>` that you
+ordinarily connect to via a URI like `mongodb://localhost`, then you will need
+to tweak this slightly when working in Docker. See
+`this question <https://stackoverflow.com/q/24319662>`_ for details.
+
+On Linux, include `--network="host"` in your `docker run` command and use
+`mongodb://127.0.0.1` for your URI.
+
+On Mac or Windows, use `mongodb://host.docker.internal` for your URI.
+
 .. _cloud-storage:
 
 Cloud storage
@@ -400,10 +527,10 @@ environments.
 
     Want native cloud data support?
 
-    `Contact us <https://voxel51.com/#teams-form>`_ about becoming an early
-    adopter of FiftyOne Teams, an open source-compatible enterprise deployment
-    of FiftyOne with multiuser collaboration features, native cloud dataset
-    support, and much more!
+    `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about FiftyOne
+    Teams, an open source-compatible enterprise deployment of FiftyOne with
+    multiuser collaboration features, native cloud dataset support, and much
+    more!
 
 .. _aws:
 

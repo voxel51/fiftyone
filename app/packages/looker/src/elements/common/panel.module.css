@@ -6,14 +6,15 @@
   padding: 1rem;
   line-height: 1;
   font-weight: bold;
-  color: #eee;
-  background-color: hsl(210, 11%, 11%);
-  border: 1px solid #191c1f;
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  color: var(--joy-palette-text-secondary);
+  background-color: var(--joy-palette-background-level2);
+  border: 1px solid var(--joy-palette-primary-plainBorder);
+  box-shadow: 0 8px 15px 0 var(--joy-palette-neutral-softBg);
   border-radius: 3px;
   overflow: auto;
   scrollbar-width: none;
   position: relative;
+  pointer-events: all;
 }
 
 .lookerPanel::-webkit-scrollbar {
@@ -30,21 +31,27 @@
   top: 0;
   left: 0;
   height: 100%;
+  width: 100%;
   display: flex;
   justify-content: center;
-  padding: 10px 60px 50px;
+  position: absolute;
+  overflow: hidden;
+  z-index: 10000;
+  pointer-events: none;
 }
 
 .lookerPanelVerticalContainer {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  position: relative;
+  margin: 3.5rem;
 }
 
 .lookerPanelHeader {
   font-size: 18px;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid rgb(225, 100, 40);
+  border-bottom: 2px solid var(--joy-palette-primary-plainColor);
 }
 
 .lookerPanelClose {
@@ -62,7 +69,7 @@
 }
 
 .lookerPanelClose:hover {
-  background-color: rgb(225, 100, 40);
+  background-color: var(--joy-palette-primary-plainColor);
   transform: translate(0, -1px);
 }
 

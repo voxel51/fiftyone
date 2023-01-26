@@ -238,6 +238,38 @@ aggregation to compute the histograms of numeric fields of a collection:
    :alt: histogram-values
    :align: center
 
+.. _aggregations-schema:
+
+Schema
+______
+
+You can use the
+:meth:`schema() <fiftyone.core.collections.SampleCollection.schema>`
+aggregation to extract the names and types of the attributes of a specified
+embedded document field across all samples in a collection.
+
+Schema aggregations are useful for detecting the presence and types of
+:ref:`dynamic attributes <dynamic-attributes>` of |Label| fields across a
+collection.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Extract the names and types of all dynamic attributes on the
+    # `ground_truth` detections
+    print(dataset.schema("ground_truth.detections", dynamic_only=True))
+
+.. code-block:: text
+
+    {
+        'area': <fiftyone.core.fields.FloatField object at 0x7fc94015fb50>,
+        'iscrowd': <fiftyone.core.fields.FloatField object at 0x7fc964869fd0>,
+    }
+
 .. _aggregations-sum:
 
 Sum values
@@ -281,6 +313,35 @@ collection:
     # Compute average confidence of detections in the `predictions` field
     print(dataset.mean("predictions.detections.confidence"))
     # 0.34994137249820706
+
+.. _aggregations-quantiles:
+
+Quantiles
+_________
+
+You can use the
+:meth:`quantiles() <fiftyone.core.collections.SampleCollection.quantiles>`
+aggregation to compute the quantile(s) of the (non-``None``) values of a field
+in a collection:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Compute quantiles of the `uniqueness` field
+    print(dataset.quantiles("uniqueness", [0.25, 0.5, 0.75, 0.9]))
+    # [0.22027, 0.33771, 0.62554, 0.69488]
+
+    # Compute quantiles of detection confidence in the `predictions` field
+    quantiles = dataset.quantiles(
+        "predictions.detections.confidence",
+        [0.25, 0.5, 0.75, 0.9],
+    )
+    print(quantiles)
+    # [0.09231, 0.20251, 0.56273, 0.94354]
 
 .. _aggregations-std:
 

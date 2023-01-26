@@ -10,7 +10,7 @@ labels on your :ref:`datasets <using-datasets>` or specific
 :ref:`views <using-views>` into them.
 
 By default, all annotation is performend via a native
-:ref:`CVAT integration <cvat-integration>` that uses `cvat.org <https://cvat.org>`_, but
+:ref:`CVAT integration <cvat-integration>` that uses `app.cvat.ai <https://app.cvat.ai>`_, but
 you can use a :ref:`self-hosted CVAT server <cvat-setup>`, switch to the
 :ref:`Labelbox backend <labelbox-integration>`, or even use a
 :ref:`custom annotation backend <custom-annotation-backend>`.
@@ -55,7 +55,7 @@ The example below demonstrates this workflow using the default
 
 .. note::
 
-    You must create an account at `cvat.org <https://cvat.org>`_ in order to
+    You must create an account at `app.cvat.ai <https://app.cvat.ai>`_ in order to
     run this example.
 
     Note that you can store your credentials as described in
@@ -150,7 +150,7 @@ FiftyOne:
 Setup
 _____
 
-By default, all annotation is performed via `cvat.org <https://cvat.org>`_,
+By default, all annotation is performed via `app.cvat.ai <https://app.cvat.ai>`_,
 which simply requires that you create an account and then configure your
 username and password credentials.
 
@@ -260,7 +260,7 @@ and the CLI:
             "backends": {
                 "cvat": {
                     "config_cls": "fiftyone.utils.cvat.CVATBackendConfig",
-                    "url": "https://cvat.org"
+                    "url": "https://app.cvat.ai"
                 }
             }
         }
@@ -279,7 +279,7 @@ and the CLI:
             "backends": {
                 "cvat": {
                     "config_cls": "fiftyone.utils.cvat.CVATBackendConfig",
-                    "url": "https://cvat.org"
+                    "url": "https://app.cvat.ai"
                 }
             }
         }
@@ -472,9 +472,8 @@ more details:
     `label_field` or all fields in `label_schema` without classes specified.
     All new label fields must have a class list provided via one of the
     supported methods. For existing label fields, if classes are not provided
-    by this argument nor `label_schema`, they are retrieved from
-    :meth:`Dataset.get_classes() <fiftyone.core.dataset.Dataset.get_classes>`
-    if possible, or else the observed labels on your dataset are used
+    by this argument nor `label_schema`, the observed labels on your dataset
+    are used
 -   **attributes** (*True*): specifies the label attributes of each label field
     to include (other than their `label`, which is always included) in the
     annotation export. Can be any of the following:
@@ -484,6 +483,10 @@ more details:
     -   a list of label attributes to export
     -   a dict mapping attribute names to dicts specifying the `type`,
         `values`, and `default` for each attribute
+
+    If a `label_schema` is also provided, this parameter determines which
+    attributes are included for all fields that do not explicitly define their
+    per-field attributes (in addition to any per-class attributes)
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
     strings. Only applicable when annotating semantic segmentations
 -   **allow_additions** (*True*): whether to allow new labels to be added. Only
@@ -644,16 +647,8 @@ FiftyOne can infer the appropriate values to use:
 
 -   **label_type**: if omitted, the |Label| type of the field will be used to
     infer the appropriate value for this parameter
--   **classes**: if omitted for a non-semantic segmentation field, the class
-    lists from the :meth:`classes <fiftyone.core.dataset.Dataset.classes>` or
-    :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
-    properties of your dataset will be used, if available. Otherwise, the
-    observed labels on your dataset will be used to construct a classes list
--   **mask_targets**: if omitted for a semantic segmentation field, the mask
-    targets from the
-    :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` or
-    :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
-    properties of your dataset will be used, if available
+-   **classes**: if omitted for a non-semantic segmentation field, the observed
+    labels on your dataset will be used to construct a classes list
 
 .. _annotation-label-attributes:
 

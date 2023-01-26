@@ -2,7 +2,7 @@
 Utilities for working with the
 `Kinetics dataset <https://deepmind.com/research/open-source/kinetics>`.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -603,7 +603,8 @@ class KineticsDatasetInfo(object):
     def _get_split_download_urls(self):
         if not os.path.exists(self.urls_path):
             etaw.download_file(
-                self.urls_s3_file, path=self.urls_path,
+                self.urls_s3_file,
+                path=self.urls_path,
             )
 
         with open(self.urls_path, "rb") as f:

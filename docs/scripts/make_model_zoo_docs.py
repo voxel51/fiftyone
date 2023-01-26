@@ -2,7 +2,7 @@
 Script for generating the model zoo docs page contents
 ``docs/source/user_guide/model_zoo/models.rst``.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -111,6 +111,21 @@ _MODEL_TEMPLATE = """
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
+
+{% if 'zero-shot' in tags %}
+    #
+    # Make zero-shot predictions with custom classes
+    #
+
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        text_prompt="A photo of a",
+        classes=["person", "dog", "cat", "bird", "car", "tree", "chair"],
+    )
+
+    dataset.apply_model(model, label_field="predictions")
+    session.refresh()
+{% endif %}
 """
 
 
@@ -299,7 +314,9 @@ def main():
     # Render model sections
 
     environment = Environment(
-        loader=BaseLoader, trim_blocks=True, lstrip_blocks=True,
+        loader=BaseLoader,
+        trim_blocks=True,
+        lstrip_blocks=True,
     )
 
     section_template = environment.from_string(_SECTION_TEMPLATE)

@@ -1,10 +1,9 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
-import { ICONS } from "../util";
 import {
   fullscreen,
   help,
@@ -15,9 +14,22 @@ import {
   zoomOut,
   cropToContent,
   json,
+  toggleOverlays,
 } from "./actions";
-import cropIcon from "../../icons/crop.svg";
-import jsonIcon from "../../icons/json.svg";
+import {
+  plus,
+  minus,
+  arrowLeft,
+  arrowRight,
+  overlaysHidden,
+  overlaysVisible,
+  fullscreen as fullscreenIcon,
+  fullscreenExit,
+  options,
+  crop,
+  help as helpIcon,
+  json as jsonIcon,
+} from "../../icons";
 
 import {
   lookerArrow,
@@ -48,10 +60,10 @@ export class NextElement<State extends BaseState> extends BaseElement<
   }
 
   createHTMLElement() {
-    const element = document.createElement("img");
+    const element = document.createElement("div");
     element.classList.add(lookerArrow);
-    element.src = ICONS.arrowRight;
     element.style.right = "0.5rem";
+    element.appendChild(arrowRight);
     return element;
   }
 
@@ -60,7 +72,7 @@ export class NextElement<State extends BaseState> extends BaseElement<
   }
 
   renderSelf({
-    showControls,
+    options: { showControls },
     disableControls,
     options: { hasNext },
   }: Readonly<State>) {
@@ -69,9 +81,9 @@ export class NextElement<State extends BaseState> extends BaseElement<
       return this.element;
     }
     if (showControls) {
-      this.element.style.opacity = "0.9";
+      this.element.style.opacity = "0.95";
       this.element.style.height = "unset";
-      this.element.style.display = "block";
+      this.element.style.display = "flex";
     } else {
       this.element.style.opacity = "0.0";
       this.element.style.height = "0";
@@ -104,10 +116,10 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
   }
 
   createHTMLElement() {
-    const element = document.createElement("img");
-    element.src = ICONS.arrowLeft;
+    const element = document.createElement("div");
     element.classList.add(lookerArrow);
     element.style.left = "0.5rem";
+    element.appendChild(arrowLeft);
     return element;
   }
 
@@ -116,7 +128,7 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
   }
 
   renderSelf({
-    showControls,
+    options: { showControls },
     disableControls,
     options: { hasPrevious },
   }: Readonly<State>) {
@@ -125,9 +137,9 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
       return this.element;
     }
     if (showControls) {
-      this.element.style.opacity = "0.9";
+      this.element.style.opacity = "0.95";
       this.element.style.height = "unset";
-      this.element.style.display = "block";
+      this.element.style.display = "flex";
     } else {
       this.element.style.opacity = "0.0";
       this.element.style.height = "0";
@@ -138,9 +150,9 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
   }
 }
 
-export class ControlsElement<State extends BaseState> extends BaseElement<
-  State
-> {
+export class ControlsElement<
+  State extends BaseState
+> extends BaseElement<State> {
   private showControls: boolean = false;
 
   getEvents(): Events<State> {
@@ -165,7 +177,7 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
   }
 
   renderSelf({
-    showControls,
+    options: { showControls },
     disableControls,
     error,
     loaded,
@@ -175,7 +187,7 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
       return this.element;
     }
     if (showControls) {
-      this.element.style.opacity = "0.9";
+      this.element.style.opacity = "0.95";
       this.element.style.height = "unset";
     } else {
       this.element.style.opacity = "0.0";
@@ -202,9 +214,10 @@ export class FullscreenButtonElement<
   }
 
   createHTMLElement() {
-    const element = document.createElement("img");
+    const element = document.createElement("div");
     element.classList.add(lookerClickable);
     element.style.padding = "2px";
+    element.style.display = "flex";
     element.style.gridArea = "2 / 12 / 2 / 12";
     return element;
   }
@@ -215,8 +228,55 @@ export class FullscreenButtonElement<
       fullscreen
         ? this.element.classList.add(lookerControlActive)
         : this.element.classList.remove(lookerControlActive);
-      this.element.src = fullscreen ? ICONS.fullscreenExit : ICONS.fullscreen;
+      if (this.element.firstChild) this.element.firstChild.remove();
+      this.element.appendChild(fullscreen ? fullscreenExit : fullscreenIcon);
       this.element.title = `Toggle fullscreen (f)`;
+    }
+
+    return this.element;
+  }
+}
+
+export class ToggleOverlaysButtonElement<
+  State extends BaseState
+> extends BaseElement<State, HTMLImageElement> {
+  private overlaysVisible: boolean;
+
+  getEvents(): Events<State> {
+    const afterAction = ({ event, update, dispatchEvent }) => {
+      event.stopPropagation();
+      event.preventDefault();
+      toggleOverlays.afterAction(update, dispatchEvent);
+    };
+    return {
+      mousedown: ({ event, update, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        toggleOverlays.action(update, dispatchEvent);
+      },
+      mouseup: afterAction,
+      mouseout: afterAction,
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("div");
+    element.classList.add(lookerClickable);
+    element.style.padding = "2px";
+    element.style.display = "flex";
+    element.style.gridArea = "2 / 14 / 2 / 14";
+    return element;
+  }
+
+  renderSelf({ options: { showOverlays } }: Readonly<State>) {
+    if (this.overlaysVisible !== showOverlays) {
+      this.overlaysVisible = showOverlays;
+
+      this.element.title = `Hold down to hide all overlays (shift)`;
+      this.element.classList.remove(lookerControlActive);
+
+      if (this.element.firstChild) this.element.firstChild.remove();
+      this.element.appendChild(showOverlays ? overlaysHidden : overlaysVisible);
     }
 
     return this.element;
@@ -238,12 +298,13 @@ export class PlusElement<State extends BaseState> extends BaseElement<
   }
 
   createHTMLElement() {
-    const element = document.createElement("img");
+    const element = document.createElement("div");
     element.classList.add(lookerClickable);
     element.style.padding = "2px";
-    element.src = ICONS.plus;
+    element.style.display = "flex";
     element.title = "Zoom in (+)";
     element.style.gridArea = "2 / 10 / 2 / 10";
+    element.appendChild(plus);
     return element;
   }
 
@@ -267,12 +328,13 @@ export class MinusElement<State extends BaseState> extends BaseElement<
   }
 
   createHTMLElement() {
-    const element = document.createElement("img");
+    const element = document.createElement("div");
     element.classList.add(lookerClickable);
     element.style.padding = "2px";
-    element.src = ICONS.minus;
+    element.style.display = "flex";
     element.title = "Zoom out (-)";
     element.style.gridArea = "2 / 9 / 2 / 9";
+    element.appendChild(minus);
     return element;
   }
 
@@ -281,9 +343,9 @@ export class MinusElement<State extends BaseState> extends BaseElement<
   }
 }
 
-export class HelpButtonElement<State extends BaseState> extends BaseElement<
-  State
-> {
+export class HelpButtonElement<
+  State extends BaseState
+> extends BaseElement<State> {
   private active: boolean;
 
   getEvents(): Events<State> {
@@ -297,16 +359,18 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
   }
 
   createHTMLElement() {
-    const element = document.createElement("img");
+    const element = document.createElement("div");
     element.classList.add(lookerClickable);
     element.style.padding = "2px";
-    element.src = ICONS.help;
+    element.style.display = "flex";
     element.title = "Help (?)";
-    element.style.gridArea = "2 / 14 / 2 / 14";
+    element.style.gridArea = "2 / 16 / 2 / 16";
+    element.setAttribute("data-for-panel", "help");
+    element.appendChild(helpIcon);
     return element;
   }
 
-  renderSelf({ showHelp }) {
+  renderSelf({ options: { showHelp } }) {
     if (this.active !== showHelp) {
       showHelp
         ? this.element.classList.add(lookerControlActive)
@@ -318,9 +382,9 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
   }
 }
 
-export class OptionsButtonElement<State extends BaseState> extends BaseElement<
-  State
-> {
+export class OptionsButtonElement<
+  State extends BaseState
+> extends BaseElement<State> {
   private active: boolean;
 
   getEvents(): Events<State> {
@@ -334,12 +398,13 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
   }
 
   createHTMLElement() {
-    const element = document.createElement("img");
+    const element = document.createElement("div");
     element.classList.add(lookerClickable);
     element.style.padding = "2px";
-    element.src = ICONS.options;
+    element.style.display = "flex";
     element.title = "Settings (s)";
     element.style.gridArea = "2 / 15 / 2 / 15";
+    element.appendChild(options);
     return element;
   }
 
@@ -371,11 +436,12 @@ export class CropToContentButtonElement<
   }
 
   createHTMLElement() {
-    const element = document.createElement("img");
+    const element = document.createElement("div");
     element.style.padding = "2px";
-    element.src = cropIcon;
+    element.style.display = "flex";
     element.title = `${cropToContent.title} (${cropToContent.shortcut})`;
     element.style.gridArea = "2 / 11 / 2 / 11";
+    element.appendChild(crop);
     return element;
   }
 
@@ -390,15 +456,15 @@ export class CropToContentButtonElement<
   }
 }
 
-export class JSONButtonElement<State extends BaseState> extends BaseElement<
-  State
-> {
+export class JSONButtonElement<
+  State extends BaseState
+> extends BaseElement<State> {
   private disabled: boolean;
   private active: boolean;
 
   getEvents(): Events<State> {
     return {
-      click: ({ event, update, dispatchEvent }) => {
+      mousedown: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
         json.action(update, dispatchEvent);
@@ -407,11 +473,13 @@ export class JSONButtonElement<State extends BaseState> extends BaseElement<
   }
 
   createHTMLElement() {
-    const element = document.createElement("img");
+    const element = document.createElement("div");
     element.style.padding = "2px";
-    element.src = jsonIcon;
+    element.style.display = "flex";
     element.title = `${json.title} (${json.shortcut})`;
     element.style.gridArea = "2 / 13 / 2 / 13";
+    element.setAttribute("data-for-panel", "json");
+    element.appendChild(jsonIcon);
     return element;
   }
 

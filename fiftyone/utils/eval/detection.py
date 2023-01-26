@@ -1,7 +1,7 @@
 """
 Detection evaluation.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,11 +13,9 @@ import numpy as np
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 from .base import BaseEvaluationResults
-from .utils import compute_ious
 
 
 logger = logging.getLogger(__name__)
@@ -35,6 +33,7 @@ def evaluate_detections(
     use_masks=False,
     use_boxes=False,
     classwise=True,
+    dynamic=True,
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -69,7 +68,7 @@ def evaluate_detections(
     object- and sample-level recording the results of the evaluation:
 
     -   True positive (TP), false positive (FP), and false negative (FN) counts
-        for the each sample are saved in top-level fields of each sample::
+        for each sample are saved in top-level fields of each sample::
 
             TP: sample.<eval_key>_tp
             FP: sample.<eval_key>_fp
@@ -101,10 +100,8 @@ def evaluate_detections(
             :class:`fiftyone.core.labels.Polylines`,
             or :class:`fiftyone.core.labels.TemporalDetections`
         eval_key (None): an evaluation key to use to refer to this evaluation
-        classes (None): the list of possible classes. If not provided, classes
-            are loaded from :meth:`fiftyone.core.dataset.Dataset.classes` or
-            :meth:`fiftyone.core.dataset.Dataset.default_classes` if possible,
-            or else the observed ground truth/predicted labels are used
+        classes (None): the list of possible classes. If not provided, the
+            observed ground truth/predicted labels are used
         missing (None): a missing label string. Any unmatched objects are given
             this label for results purposes
         method (None): a string specifying the evaluation method to use.
@@ -121,6 +118,8 @@ def evaluate_detections(
             rather than using their actual geometries
         classwise (True): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
+        dynamic (True): whether to declare the dynamic object-level attributes
+            that are populated on the dataset's schema
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -152,24 +151,11 @@ def evaluate_detections(
         **kwargs,
     )
 
-    if classes is None:
-        if pred_field in samples.classes:
-            classes = samples.classes[pred_field]
-        elif gt_field in samples.classes:
-            classes = samples.classes[gt_field]
-        elif samples.default_classes:
-            classes = samples.default_classes
-
     eval_method = config.build()
     eval_method.ensure_requirements()
 
     eval_method.register_run(samples, eval_key)
-    eval_method.register_samples(samples)
-
-    if config.requires_additional_fields:
-        _samples = samples
-    else:
-        _samples = samples.select_fields([gt_field, pred_field])
+    eval_method.register_samples(samples, eval_key, dynamic=dynamic)
 
     processing_frames = samples._is_frame_field(pred_field)
 
@@ -178,16 +164,10 @@ def evaluate_detections(
         fp_field = "%s_fp" % eval_key
         fn_field = "%s_fn" % eval_key
 
-        # note: fields are manually declared so they'll exist even when
-        # `samples` is empty
-        dataset = samples._dataset
-        dataset._add_sample_field_if_necessary(tp_field, fof.IntField)
-        dataset._add_sample_field_if_necessary(fp_field, fof.IntField)
-        dataset._add_sample_field_if_necessary(fn_field, fof.IntField)
-        if processing_frames:
-            dataset._add_frame_field_if_necessary(tp_field, fof.IntField)
-            dataset._add_frame_field_if_necessary(fp_field, fof.IntField)
-            dataset._add_frame_field_if_necessary(fn_field, fof.IntField)
+    if config.requires_additional_fields:
+        _samples = samples
+    else:
+        _samples = samples.select_fields([gt_field, pred_field])
 
     matches = []
     logger.info("Evaluating detections...")
@@ -225,62 +205,6 @@ def evaluate_detections(
     eval_method.save_run_results(samples, eval_key, results)
 
     return results
-
-
-def compute_max_ious(
-    sample_collection, label_field, attr_name="max_iou", **kwargs
-):
-    """Populates an attribute on each label in the given spatial field that
-    records the max IoU between the object and another object in the same
-    sample/frame.
-
-    Args:
-        sample_collection: a
-            :class:`fiftyone.core.collections.SampleCollection`
-        label_field: a label field of type
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
-        attr_name ("max_iou"): the name of the label attribute to populate
-        **kwargs: optional keyword arguments for
-            :meth:`fiftyone.utils.eval.utils.compute_ious`
-    """
-    fov.validate_collection_label_fields(
-        sample_collection, label_field, (fol.Detections, fol.Polylines)
-    )
-
-    is_frame_field = sample_collection._is_frame_field(label_field)
-    _, labels_path = sample_collection._get_label_field_path(label_field)
-    _, iou_path = sample_collection._get_label_field_path(
-        label_field, attr_name
-    )
-
-    all_labels = sample_collection.values(labels_path)
-
-    max_ious = []
-    with fou.ProgressBar(total=len(all_labels)) as pb:
-        for labels in pb(all_labels):
-            if labels is None:
-                sample_ious = None
-            elif is_frame_field:
-                sample_ious = [_compute_max_ious(l, **kwargs) for l in labels]
-            else:
-                sample_ious = _compute_max_ious(labels, **kwargs)
-
-            max_ious.append(sample_ious)
-
-    sample_collection.set_values(iou_path, max_ious)
-
-
-def _compute_max_ious(labels, **kwargs):
-    if labels is None:
-        return None
-
-    if len(labels) < 2:
-        return [0] * len(labels)
-
-    all_ious = compute_ious(labels, labels, **kwargs)
-    np.fill_diagonal(all_ious, 0)  # exclude self
-    return list(all_ious.max(axis=1))
 
 
 class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
@@ -331,21 +255,78 @@ class DetectionEvaluation(foe.EvaluationMethod):
         self.gt_field = None
         self.pred_field = None
 
-    def register_samples(self, samples):
-        """Registers the sample collection on which evaluation will be
-        performed.
+    def register_samples(self, samples, eval_key, dynamic=True):
+        """Registers the collection on which evaluation will be performed.
 
-        This method will be called before the first call to
-        :meth:`evaluate`. Subclasses can extend this method to perform
-        any setup required for an evaluation run.
+        This method will be called before the first call to :meth:`evaluate`.
+        Subclasses can extend this method to perform any setup required for an
+        evaluation run.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
+            eval_key: the evaluation key for this evaluation
+            dynamic (True): whether to declare the dynamic object-level
+                attributes that are populated on the dataset's schema
         """
-        self.gt_field, _ = samples._handle_frame_field(self.config.gt_field)
-        self.pred_field, _ = samples._handle_frame_field(
-            self.config.pred_field
-        )
+        _gt_field = self.config.gt_field
+        _pred_field = self.config.pred_field
+
+        self.gt_field, _ = samples._handle_frame_field(_gt_field)
+        self.pred_field, _ = samples._handle_frame_field(_pred_field)
+
+        if eval_key is None:
+            return
+
+        processing_frames = samples._is_frame_field(_pred_field)
+        dataset = samples._dataset
+
+        tp_field = "%s_tp" % eval_key
+        fp_field = "%s_fp" % eval_key
+        fn_field = "%s_fn" % eval_key
+
+        dataset.add_sample_field(tp_field, fof.IntField)
+        dataset.add_sample_field(fp_field, fof.IntField)
+        dataset.add_sample_field(fn_field, fof.IntField)
+
+        if processing_frames:
+            dataset.add_frame_field(tp_field, fof.IntField)
+            dataset.add_frame_field(fp_field, fof.IntField)
+            dataset.add_frame_field(fn_field, fof.IntField)
+
+        if not dynamic:
+            return
+
+        id_key = "%s_id" % eval_key
+        iou_key = "%s_iou" % eval_key
+
+        _, gt_prefix = samples._get_label_field_path(_gt_field)
+        gt_prefix, _ = samples._handle_frame_field(gt_prefix)
+
+        gt_eval = gt_prefix + "." + eval_key
+        gt_id = gt_prefix + "." + id_key
+        gt_iou = gt_prefix + "." + iou_key
+
+        _, pred_prefix = samples._get_label_field_path(_pred_field)
+        pred_prefix, _ = samples._handle_frame_field(pred_prefix)
+
+        pred_eval = pred_prefix + "." + eval_key
+        pred_id = pred_prefix + "." + id_key
+        pred_iou = pred_prefix + "." + iou_key
+
+        if processing_frames:
+            dataset.add_frame_field(gt_eval, fof.StringField)
+            dataset.add_frame_field(gt_id, fof.StringField)
+            dataset.add_frame_field(gt_iou, fof.FloatField)
+            dataset.add_frame_field(pred_eval, fof.StringField)
+            dataset.add_frame_field(pred_id, fof.StringField)
+            dataset.add_frame_field(pred_iou, fof.FloatField)
+        else:
+            dataset.add_sample_field(gt_eval, fof.StringField)
+            dataset.add_sample_field(gt_id, fof.StringField)
+            dataset.add_sample_field(gt_iou, fof.FloatField)
+            dataset.add_sample_field(pred_eval, fof.StringField)
+            dataset.add_sample_field(pred_id, fof.StringField)
+            dataset.add_sample_field(pred_iou, fof.FloatField)
 
     def evaluate(self, doc, eval_key=None):
         """Evaluates the ground truth and predictions in the given document.

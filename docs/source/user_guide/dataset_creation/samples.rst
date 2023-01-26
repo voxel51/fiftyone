@@ -665,20 +665,17 @@ You can use a |SampleParser| to
 | <fiftyone.utils.data.parsers.ImageLabelsSampleParser>`                 | `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.             |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`FiftyOneImageClassificationSampleParser                        | Parser for samples in FiftyOne image classification datasets. See                                               |
-| <fiftyone.utils.data.parsers.FiftyOneImageClassificationSampleParser>` | :class:`FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`   |
-|                                                                        | for format details.                                                                                             |
+| <fiftyone.utils.data.parsers.FiftyOneImageClassificationSampleParser>` | :class:`FiftyOneImageClassificationDataset <fiftyone.types.FiftyOneImageClassificationDataset>` for format      |
+|                                                                        | details.                                                                                                        |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`FiftyOneImageDetectionSampleParser                             | Parser for samples in FiftyOne image detection datasets. See                                                    |
-| <fiftyone.utils.data.parsers.FiftyOneImageDetectionSampleParser>`      | :class:`FiftyOneImageDetectionDataset <fiftyone.types.dataset_types.FiftyOneImageDetectionDataset>` for format  |
-|                                                                        | details.                                                                                                        |
+| <fiftyone.utils.data.parsers.FiftyOneImageDetectionSampleParser>`      | :class:`FiftyOneImageDetectionDataset <fiftyone.types.FiftyOneImageDetectionDataset>` for format details.       |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`FiftyOneImageLabelsSampleParser                                | Parser for samples in FiftyOne image labels datasets. See                                                       |
-| <fiftyone.utils.data.parsers.FiftyOneImageLabelsSampleParser>`         | :class:`FiftyOneImageLabelsDataset <fiftyone.types.dataset_types.FiftyOneImageLabelsDataset>` for format        |
-|                                                                        | details.                                                                                                        |
+| <fiftyone.utils.data.parsers.FiftyOneImageLabelsSampleParser>`         | :class:`FiftyOneImageLabelsDataset <fiftyone.types.FiftyOneImageLabelsDataset>` for format details.             |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`FiftyOneVideoLabelsSampleParser                                | Parser for samples in FiftyOne video labels datasets. See                                                       |
-| <fiftyone.utils.data.parsers.FiftyOneVideoLabelsSampleParser>`         | :class:`FiftyOneVideoLabelsDataset <fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset>` for format        |
-|                                                                        | details.                                                                                                        |
+| <fiftyone.utils.data.parsers.FiftyOneVideoLabelsSampleParser>`         | :class:`FiftyOneVideoLabelsDataset <fiftyone.types.FiftyOneVideoLabelsDataset>` for format details.             |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`TFImageClassificationSampleParser                              | Parser for image classification samples stored as                                                               |
 | <fiftyone.utils.tf.TFImageClassificationSampleParser>`                 | `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.                                         |
@@ -932,6 +929,14 @@ classification or object detections) associated with the image.
             sample_parser = CustomLabeledImageSampleParser(...)
             label_field = ...
 
+            if isinstance(label_field, dict):
+                label_key = lambda k: label_field.get(k, k)
+            elif label_field is not None:
+                label_key = lambda k: label_field + "_" + k
+            else:
+                label_field = "ground_truth"
+                label_key = lambda k: k
+
             for sample in samples:
                 sample_parser.with_sample(sample)
 
@@ -947,9 +952,7 @@ classification or object detections) associated with the image.
                 sample = fo.Sample(filepath=image_path, metadata=metadata)
 
                 if isinstance(label, dict):
-                    sample.update_fields(
-                        {label_field + "_" + k: v for k, v in label.items()}
-                    )
+                    sample.update_fields({label_key(k): v for k, v in label.items()})
                 elif label is not None:
                     sample[label_field] = label
 
@@ -1191,6 +1194,14 @@ classification or object detections) associated with the image.
             sample_parser = CustomLabeledVideoSampleParser(...)
             label_field = ...
 
+            if isinstance(label_field, dict):
+                label_key = lambda k: label_field.get(k, k)
+            elif label_field is not None:
+                label_key = lambda k: label_field + "_" + k
+            else:
+                label_field = "ground_truth"
+                label_key = lambda k: k
+
             for sample in samples:
                 sample_parser.with_sample(sample)
 
@@ -1207,9 +1218,7 @@ classification or object detections) associated with the image.
                 sample = fo.Sample(filepath=video_path, metadata=metadata)
 
                 if isinstance(label, dict):
-                    sample.update_fields(
-                        {label_field + "_" + k: v for k, v in label.items()}
-                    )
+                    sample.update_fields({label_key(k): v for k, v in label.items()})
                 elif label is not None:
                     sample[label_field] = label
 
@@ -1219,8 +1228,7 @@ classification or object detections) associated with the image.
                     for frame_number, _label in frames.items():
                         if isinstance(_label, dict):
                             frame_labels[frame_number] = {
-                                label_field + "_" + field_name: label
-                                for field_name, label in _label.items()
+                                label_key(k): v for k, v in _label.items()
                             }
                         elif _label is not None:
                             frame_labels[frame_number] = {label_field: _label}

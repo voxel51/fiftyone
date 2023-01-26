@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { Optional, StateUpdate, VideoState } from "../state";
@@ -33,14 +33,12 @@ import {
   lookerThumb,
   lookerThumbSeeking,
 } from "./video.module.css";
-import volumeOff from "../icons/volumeOff.svg";
-import volumeOn from "../icons/volume.svg";
-import playbackRateIcon from "../icons/playbackRate.svg";
 import lockIcon from "../icons/lock.svg";
 import lockOpenIcon from "../icons/lockOpen.svg";
 
 import { lookerLoader } from "./common/looker.module.css";
 import { dispatchTooltipEvent } from "./common/util";
+import { volume as volumeIcon, volumeMuted, playbackRate } from "../icons";
 
 export class LoaderBar extends BaseElement<VideoState> {
   private buffering: boolean = false;
@@ -123,7 +121,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     this.pause.setAttribute("viewBox", "0 0 24 24");
 
     let path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("fill", "rgb(238, 238, 238)");
+    path.setAttribute("fill", "var(--joy-palette-text-secondary)");
     path.setAttribute("d", "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
     this.pause.appendChild(path);
 
@@ -182,7 +180,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     config: { frameRate, support },
   }: Readonly<VideoState>) {
     let updatePlay = false;
-    if (this.singleFrame === null && loaded) {
+    if (loaded) {
       if (this.locked !== lockedToSupport) {
         this.singleFrame = lockedToSupport
           ? support[0] === support[1]
@@ -219,7 +217,9 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
       const path = this.play.children[0];
       path.setAttribute(
         "fill",
-        this.singleFrame ? "rgb(138, 138, 138)" : "rgb(238, 238, 238)"
+        this.singleFrame
+          ? "var(--joy-palette-text-tertiary)"
+          : "var(--joy-palette-text-secondary)"
       );
       this.element.style.cursor = this.singleFrame ? "unset" : "pointer";
       this.element.title = this.singleFrame ? "Only one frame" : "Play (space)";
@@ -417,10 +417,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   getEvents(): Events<VideoState> {
     return {
-      error: ({ update, event, dispatchEvent }) => {
+      error: ({ update }) => {
         this.releaseVideo();
         update({ error: true });
-        dispatchEvent("error", { event });
       },
       loadedmetadata: ({ update }) => {
         update(({ config: { frameRate }, frameNumber }) => {
@@ -431,19 +430,31 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       seeked: ({ update, dispatchEvent }) => {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            update(({ loaded, playing, options: { autoplay } }) => {
-              if (!loaded) {
+            update(
+              ({
+                config: { thumbnail },
+                loaded,
+                playing,
+                options: { autoplay },
+              }) => {
+                // thumbnails are initialized with a poster
+                if (!thumbnail && !loaded) {
+                  return {
+                    loaded: true,
+                    playing: autoplay || playing,
+                    dimensions: [
+                      this.element.videoWidth,
+                      this.element.videoHeight,
+                    ],
+                    waitingForVideo: false,
+                  };
+                }
+
                 return {
-                  loaded: true,
-                  playing: autoplay || playing,
                   waitingForVideo: false,
                 };
               }
-
-              return {
-                waitingForVideo: false,
-              };
-            });
+            );
             dispatchEvent("load");
           });
         });
@@ -525,30 +536,18 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   createHTMLElement(update: StateUpdate<VideoState>) {
     this.update = update;
     this.element = null;
-    update(({ config: { thumbnail, dimensions, src, frameRate, support } }) => {
+    update(({ config: { thumbnail, src, frameRate, support } }) => {
       this.src = src;
       this.posterFrame = support ? support[0] : 1;
       if (thumbnail) {
         this.canvas = document.createElement("canvas");
-        this.canvas.width = dimensions[0];
-        this.canvas.height = dimensions[1];
         this.canvas.style.imageRendering = "pixelated";
         acquireThumbnailer().then(([video, release]) => {
-          const error = (event) => {
-            // Chrome v60
-            if (event.path && event.path[0]) {
-              event = event.path[0].error;
-            }
-
-            // Firefox v55
-            if (event.originalTarget) {
-              event = event.originalTarget.error;
-            }
-
+          const error = () => {
             video.removeEventListener("error", error);
             video.removeEventListener("seeked", seeked);
             release();
-            update({ error: true });
+            update({ error: true, loaded: true, dimensions: [512, 512] });
           };
 
           const seeked = () => {
@@ -575,11 +574,16 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             video.addEventListener("seeked", seeked);
             video.currentTime = support ? getTime(support[0], frameRate) : 0;
             video.removeEventListener("loadedmetadata", load);
+
+            this.canvas.width = video.videoWidth;
+            this.canvas.height = video.videoHeight;
+
+            update({ dimensions: [video.videoWidth, video.videoHeight] });
           };
 
+          video.src = src;
           video.addEventListener("error", error);
           video.addEventListener("loadedmetadata", load);
-          video.src = src;
         });
       } else {
         this.element = document.createElement("video");
@@ -874,7 +878,7 @@ class VolumBarElement extends BaseElement<VideoState, HTMLInputElement> {
   }
 }
 
-class VolumeIconElement extends BaseElement<VideoState, HTMLImageElement> {
+class VolumeIconElement extends BaseElement<VideoState, HTMLDivElement> {
   private muted: boolean;
 
   getEvents(): Events<VideoState> {
@@ -888,9 +892,10 @@ class VolumeIconElement extends BaseElement<VideoState, HTMLImageElement> {
   }
 
   createHTMLElement() {
-    const element = document.createElement("img");
+    const element = document.createElement("div");
     element.classList.add(lookerClickable);
     element.style.padding = "2px";
+    element.style.display = "flex";
     return element;
   }
 
@@ -900,12 +905,14 @@ class VolumeIconElement extends BaseElement<VideoState, HTMLImageElement> {
     }
 
     this.muted = volume === 0;
+    if (this.element.firstChild) this.element.firstChild.remove();
     if (this.muted) {
       this.element.title = "Unmute (m)";
-      this.element.src = volumeOff;
+      this.element.appendChild(volumeMuted);
     } else {
       this.element.title = "Mute (m)";
-      this.element.src = volumeOn;
+      this.element.appendChild(volumeIcon);
+      this.element;
     }
 
     return this.element;
@@ -986,10 +993,7 @@ class PlaybackRateBarElement extends BaseElement<VideoState, HTMLInputElement> {
   }
 }
 
-class PlaybackRateIconElement extends BaseElement<
-  VideoState,
-  HTMLImageElement
-> {
+class PlaybackRateIconElement extends BaseElement<VideoState, HTMLDivElement> {
   getEvents(): Events<VideoState> {
     return {
       click: ({ event, update, dispatchEvent }) => {
@@ -1001,11 +1005,12 @@ class PlaybackRateIconElement extends BaseElement<
   }
 
   createHTMLElement() {
-    const element = document.createElement("img");
+    const element = document.createElement("div");
     element.classList.add(lookerClickable);
     element.style.padding = "2px";
+    element.style.display = "flex";
     element.title = "Reset playback rate (p)";
-    element.src = playbackRateIcon;
+    element.appendChild(playbackRate);
     return element;
   }
 
