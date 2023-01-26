@@ -8,7 +8,7 @@ function MainSpace() {
     useSessionSpaces();
   const { spaces, updateSpaces } = useSpaces("main", sessionSpaces);
   const [panelsState, setPanelsState] = usePanelsState();
-  const oldSpaces = useRef(sessionSpaces);
+  const oldSpaces = useRef(spaces);
   const oldPanelsState = useRef(panelsState);
   const isMounted = useRef(false);
 
