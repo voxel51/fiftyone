@@ -2,11 +2,21 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  atom,
+  useRecoilCallback,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { State, stateSubscription, view, viewStateForm } from "../recoil";
 import { RouterContext } from "../routing";
 import useSendEvent from "./useSendEvent";
 import * as fos from "../";
+
+export const stateProxy = atom({
+  key: "stateProxy",
+  default: null,
+});
 
 const useSetView = (patch = false, selectSlice = false) => {
   const send = useSendEvent(true);
@@ -14,6 +24,7 @@ const useSetView = (patch = false, selectSlice = false) => {
   const router = useContext(RouterContext);
   const [commit] = useMutation<setViewMutation>(setView);
   const onError = useErrorHandler();
+  const setStateProxy = useSetRecoilState(stateProxy);
 
   return useRecoilCallback(
     ({ snapshot }) =>
@@ -55,20 +66,19 @@ const useSetView = (patch = false, selectSlice = false) => {
                 dataset: { stages: value, viewName, ...dataset },
               },
             }) => {
-              const searchParams = new URLSearchParams(
-                router.history.location.search
-              );
-
-              savedViewSlug
-                ? searchParams.set("view", encodeURIComponent(savedViewSlug))
-                : searchParams.delete("view");
-
-              const search = searchParams.toString();
-              const newRoute = `${router.history.location.pathname}${
-                search.length ? "?" : ""
-              }${search}`;
-
               if (router.history.location.state?.state) {
+                const searchParams = new URLSearchParams(
+                  router.history.location.search
+                );
+
+                savedViewSlug
+                  ? searchParams.set("view", encodeURIComponent(savedViewSlug))
+                  : searchParams.delete("view");
+
+                const search = searchParams.toString();
+                const newRoute = `${router.history.location.pathname}${
+                  search.length ? "?" : ""
+                }${search}`;
                 router.history.push(newRoute, {
                   ...router.history.location.state,
                   state: {
@@ -82,8 +92,25 @@ const useSetView = (patch = false, selectSlice = false) => {
                   },
                 });
               } else {
+                const searchParams = new URLSearchParams(
+                  window.location.search
+                );
+
+                savedViewSlug
+                  ? searchParams.set("view", encodeURIComponent(savedViewSlug))
+                  : searchParams.delete("view");
+
+                const search = searchParams.toString();
+                const newRoute = `${window.location.pathname}${
+                  search.length ? "?" : ""
+                }${search}`;
+
+                setStateProxy({
+                  view: savedViewSlug ? value : viewResponse,
+                  viewName,
+                });
                 window.history.replaceState(
-                  { view: savedViewSlug ? value : viewResponse },
+                  window.history.state,
                   undefined,
                   newRoute
                 );
