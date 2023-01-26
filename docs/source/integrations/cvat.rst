@@ -1716,10 +1716,10 @@ uploading annotation runs for large sample collections.
 
 .. note::
 
-    The CVAT maintainers are working on
+    The CVAT maintainers made
     `an update <https://github.com/opencv/cvat/pull/3692>`_
-    to resolve this issue natively. In the meantime, the following workflow is
-    our recommended approach to circumvent this issue.
+    to resolve this issue natively, but if you still encounter issues, try
+    the following workflow to circumvent the issue.
 
 You can use the `task_size` parameter to break image annotation runs into
 multiple CVAT tasks, each with a specified maximum number of images. Note that
