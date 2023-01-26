@@ -24,7 +24,7 @@ jobs:
         with:
           workflow: build.yml
           workflow_conclusion: success
-          commit: ${{github.sha}}
+          run_id: ${{github.run_id}}
           name: dist
           path: dist
       - name: Install dependencies
