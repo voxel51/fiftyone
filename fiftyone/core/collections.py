@@ -890,10 +890,17 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    def iter_groups(self, progress=False, autosave=False, batch_size=None):
+    def iter_groups(
+        self,
+        group_slices=None,
+        progress=False,
+        autosave=False,
+        batch_size=None,
+    ):
         """Returns an iterator over the groups in the collection.
 
         Args:
+            group_slices (None): an optional subset of group slices to load
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
             autosave (False): whether to automatically save changes to samples
@@ -909,11 +916,12 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_groups()")
 
-    def get_group(self, group_id):
+    def get_group(self, group_id, group_slices=None):
         """Returns a dict containing the samples for the given group ID.
 
         Args:
             group_id: a group ID
+            group_slices (None): an optional subset of group slices to load
 
         Returns:
             a dict mapping group names to :class:`fiftyone.core.sample.Sample`
@@ -8872,8 +8880,8 @@ class SampleCollection(object):
         support=None,
         group_slice=None,
         group_slices=None,
-        groups_only=False,
         detach_groups=False,
+        groups_only=False,
         manual_group_select=False,
         post_pipeline=None,
     ):
@@ -8897,13 +8905,12 @@ class SampleCollection(object):
             group_slice (None): the current group slice of the collection, if
                 different than the source dataset's group slice. Only
                 applicable for grouped collections
-            group_slices (None): a list of group slices to attach immediately
-                prior to executing ``pipeline``. Only applicable for grouped
-                collections
-            groups_only (False): whether to generate a pipeline that contains
-                *only* the flattened group documents for the collection
+            group_slices (None): an optional list of group slices to attach
+                when ``groups_only`` is True
             detach_groups (False): whether to detach the group documents at the
                 end of the pipeline. Only applicable to grouped collections
+            groups_only (False): whether to generate a pipeline that contains
+                *only* the flattened group documents for the collection
             manual_group_select (False): whether the pipeline has manually
                 handled the initial group selection. Only applicable to grouped
                 collections
@@ -8926,8 +8933,8 @@ class SampleCollection(object):
         support=None,
         group_slice=None,
         group_slices=None,
-        groups_only=False,
         detach_groups=False,
+        groups_only=False,
         manual_group_select=False,
         post_pipeline=None,
     ):
@@ -8952,13 +8959,12 @@ class SampleCollection(object):
             group_slice (None): the current group slice of the collection, if
                 different than the source dataset's group slice. Only
                 applicable for grouped collections
-            group_slices (None): a list of group slices to attach immediately
-                prior to executing ``pipeline``. Only applicable for grouped
-                collections
-            groups_only (False): whether to generate a pipeline that contains
-                *only* the flattened group documents for the collection
+            group_slices (None): an optional list of group slices to attach
+                when ``groups_only`` is True
             detach_groups (False): whether to detach the group documents at the
                 end of the pipeline. Only applicable to grouped collections
+            groups_only (False): whether to generate a pipeline that contains
+                *only* the flattened group documents for the collection
             manual_group_select (False): whether the pipeline has manually
                 handled the initial group selection. Only applicable to grouped
                 collections

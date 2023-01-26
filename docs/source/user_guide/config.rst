@@ -327,6 +327,8 @@ You must also add `?authSource=admin` to your database URI:
 
     mongodb://[username:password@]host[:port]/?authSource=admin
 
+.. _using-a-different-mongodb-version:
+
 Using a different MongoDB version
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

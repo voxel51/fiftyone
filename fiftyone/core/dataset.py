@@ -2110,7 +2110,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return make_sample
 
-    def iter_groups(self, progress=False, autosave=False, batch_size=None):
+    def iter_groups(
+        self,
+        group_slices=None,
+        progress=False,
+        autosave=False,
+        batch_size=None,
+    ):
         """Returns an iterator over the groups in the dataset.
 
         Examples::
@@ -2147,6 +2153,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     sample["test"] = make_label()
 
         Args:
+            group_slices (None): an optional subset of group slices to load
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
             autosave (False): whether to automatically save changes to samples
@@ -2163,7 +2170,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError("%s does not contain groups" % type(self))
 
         with contextlib.ExitStack() as exit_context:
-            groups = self._iter_groups()
+            groups = self._iter_groups(group_slices=group_slices)
 
             if progress:
                 pb = fou.ProgressBar(total=len(self))
@@ -2189,7 +2196,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     for sample in group.values():
                         save_context.save(sample)
 
-    def _iter_groups(self, pipeline=None):
+    def _iter_groups(self, group_slices=None, pipeline=None):
         make_sample = self._make_sample_fcn()
         index = 0
 
@@ -2198,7 +2205,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         group = {}
 
         try:
-            for d in self._aggregate(pipeline=pipeline, groups_only=True):
+            for d in self._aggregate(
+                detach_frames=True,
+                pipeline=pipeline,
+                group_slices=group_slices,
+                groups_only=True,
+            ):
                 sample = make_sample(d)
 
                 group_id = sample[group_field].id
@@ -2225,14 +2237,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # The cursor has timed out so we yield from a new one after
             # skipping to the last offset
             pipeline = [{"$skip": index}] + (pipeline or [])
-            for group in self._iter_groups(pipeline=pipeline):
+            for group in self._iter_groups(
+                group_slices=group_slices, pipeline=pipeline
+            ):
                 yield group
 
-    def get_group(self, group_id):
+    def get_group(self, group_id, group_slices=None):
         """Returns a dict containing the samples for the given group ID.
 
         Args:
             group_id: a group ID
+            group_slices (None): an optional subset of group slices to load
 
         Returns:
             a dict mapping group names to :class:`fiftyone.core.sample.Sample`
@@ -2259,7 +2274,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ]
 
         try:
-            return next(iter(self._iter_groups(pipeline=pipeline)))
+            return next(
+                iter(
+                    self._iter_groups(
+                        group_slices=group_slices, pipeline=pipeline
+                    )
+                )
+            )
         except StopIteration:
             raise KeyError(
                 "No group found with ID '%s' in field '%s'"
@@ -3340,10 +3361,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`fiftyone.core.view.DatasetView`
         """
         view_doc = self._get_saved_view_doc(name)
-
-        stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
-        view = fov.DatasetView._build(self, stage_dicts)
-        view._set_name(name)
+        view = self._load_saved_view_from_doc(view_doc)
 
         view_doc.last_loaded_at = datetime.utcnow()
         view_doc.save()
@@ -3387,6 +3405,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return self._doc.saved_views.pop(idx)
 
         return self._doc.saved_views[idx]
+
+    def _load_saved_view_from_doc(self, view_doc):
+        stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
+        view = fov.DatasetView._build(self, stage_dicts)
+        view._set_name(view_doc.name)
+        return view
 
     def _validate_saved_view_name(self, name, skip=None, overwrite=False):
         slug = fou.to_slug(name)
@@ -5664,8 +5688,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         support=None,
         group_slice=None,
         group_slices=None,
-        groups_only=False,
         detach_groups=False,
+        groups_only=False,
         manual_group_select=False,
         post_pipeline=None,
     ):
@@ -5698,8 +5722,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if media_type != fom.GROUP:
             group_slices = None
-            groups_only = False
             detach_groups = False
+            groups_only = False
 
         if groups_only:
             detach_groups = False
@@ -5714,11 +5738,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if attach_frames:
             _pipeline.extend(self._attach_frames_pipeline(support=support))
 
-        if group_slices:
-            _pipeline.extend(
-                self._attach_groups_pipeline(group_slices=group_slices)
-            )
-
         if pipeline is not None:
             _pipeline.extend(pipeline)
 
@@ -5730,7 +5749,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if detach_groups:
             _pipeline.append({"$project": {"groups": False}})
         elif groups_only:
-            _pipeline.extend(self._groups_only_pipeline())
+            _pipeline.extend(
+                self._groups_only_pipeline(group_slices=group_slices)
+            )
 
         if post_pipeline is not None:
             _pipeline.extend(post_pipeline)
@@ -5899,8 +5920,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         support=None,
         group_slice=None,
         group_slices=None,
-        groups_only=False,
         detach_groups=False,
+        groups_only=False,
         manual_group_select=False,
         post_pipeline=None,
     ):
@@ -5913,8 +5934,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             support=support,
             group_slice=group_slice,
             group_slices=group_slices,
-            groups_only=groups_only,
             detach_groups=detach_groups,
+            groups_only=groups_only,
             manual_group_select=manual_group_select,
             post_pipeline=post_pipeline,
         )
