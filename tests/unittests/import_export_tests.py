@@ -20,6 +20,7 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.utils.coco as fouc
+import fiftyone.utils.csv as foucsv
 import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
 from fiftyone import ViewField as F
@@ -2104,17 +2105,12 @@ class CSVDatasetTests(ImageDatasetTests):
     def test_csv_dataset(self):
         dataset = self._make_dataset()
 
-        # @todo uncomment once CSVDatasetImporter is implemented
-        """
         field_parsers = {
-            "weather": lambda value: (
-                fo.Classification(label=value) if value is not None else None
-            ),
+            "weather": foucsv.Parsers.ClassificationParser,
             "filepath": None,  # default parser
-            "tags": lambda value: value.strip("").split(","),
-            "float_field": lambda value: float(value),
+            "tags": foucsv.Parsers.ListParser(foucsv.Parsers.StringParser),
+            "float_field": foucsv.Parsers.FloatParser,
         }
-        """
 
         # Standard format
 
@@ -2126,7 +2122,6 @@ class CSVDatasetTests(ImageDatasetTests):
             fields=["filepath", "tags", "float_field", "weather.label"],
         )
 
-        """
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.CSVDataset,
@@ -2135,7 +2130,8 @@ class CSVDatasetTests(ImageDatasetTests):
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertSetEqual(
-            set(dataset.values("filepath")), set(dataset2.values("filepath"))
+            set(f.split("/")[-1] for f in dataset.values("filepath")),
+            set(f.split("/")[-1] for f in dataset2.values("filepath")),
         )
         self.assertSetEqual(
             set(dataset.values("tags", unwind=True)),
@@ -2145,13 +2141,12 @@ class CSVDatasetTests(ImageDatasetTests):
             np.isclose(
                 dataset.bounds("float_field"),
                 dataset2.bounds("float_field"),
-            )
+            ).all()
         )
         self.assertSetEqual(
             set(dataset.values("weather.label")),
             set(dataset2.values("weather.label")),
         )
-        """
 
         # Labels-only
 
@@ -2164,7 +2159,6 @@ class CSVDatasetTests(ImageDatasetTests):
             fields=["filepath", "tags", "float_field", "weather.label"],
         )
 
-        """
         dataset2 = fo.Dataset.from_dir(
             data_path=data_path,
             labels_path=labels_path,
@@ -2184,13 +2178,12 @@ class CSVDatasetTests(ImageDatasetTests):
             np.isclose(
                 dataset.bounds("float_field"),
                 dataset2.bounds("float_field"),
-            )
+            ).all()
         )
         self.assertSetEqual(
             set(dataset.values("weather.label")),
             set(dataset2.values("weather.label")),
         )
-        """
 
         # Labels-only (absolute paths)
 
@@ -2203,7 +2196,6 @@ class CSVDatasetTests(ImageDatasetTests):
             abs_paths=True,
         )
 
-        """
         dataset2 = fo.Dataset.from_dir(
             labels_path=labels_path,
             dataset_type=fo.types.CSVDataset,
@@ -2222,13 +2214,12 @@ class CSVDatasetTests(ImageDatasetTests):
             np.isclose(
                 dataset.bounds("float_field"),
                 dataset2.bounds("float_field"),
-            )
+            ).all()
         )
         self.assertSetEqual(
             set(dataset.values("weather.label")),
             set(dataset2.values("weather.label")),
         )
-        """
 
         # Standard format (with rel dir)
 
@@ -2242,7 +2233,6 @@ class CSVDatasetTests(ImageDatasetTests):
             fields=["filepath", "tags", "float_field", "weather.label"],
         )
 
-        """
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.CSVDataset,
@@ -2251,7 +2241,11 @@ class CSVDatasetTests(ImageDatasetTests):
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertSetEqual(
-            set(dataset.values("filepath")), set(dataset2.values("filepath"))
+            set(f.split(rel_dir)[-1] for f in dataset.values("filepath")),
+            set(
+                f.split(export_dir + "/data")[-1]
+                for f in dataset2.values("filepath")
+            ),
         )
         self.assertSetEqual(
             set(dataset.values("tags", unwind=True)),
@@ -2261,7 +2255,7 @@ class CSVDatasetTests(ImageDatasetTests):
             np.isclose(
                 dataset.bounds("float_field"),
                 dataset2.bounds("float_field"),
-            )
+            ).all()
         )
         self.assertSetEqual(
             set(dataset.values("weather.label")),
@@ -2272,7 +2266,6 @@ class CSVDatasetTests(ImageDatasetTests):
 
         # data/_images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
-        """
 
 
 class GeoLocationDatasetTests(ImageDatasetTests):

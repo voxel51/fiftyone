@@ -777,6 +777,11 @@ class CSVDataset(Dataset):
 
         return fouc.CSVDatasetExporter
 
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.csv as fouc
+
+        return fouc.CSVDatasetImporter
+
 
 class FiftyOneDataset(Dataset):
     """A disk representation of an entire
