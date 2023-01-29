@@ -111,6 +111,7 @@ const FieldLabelAndInfo = ({
   template,
 }: FieldLabelAndInfo) => {
   const fieldInfo = useFieldInfo(field, nested, { expandedPath, color });
+
   return (
     <>
       {template({ ...fieldInfo, FieldInfoIcon })}

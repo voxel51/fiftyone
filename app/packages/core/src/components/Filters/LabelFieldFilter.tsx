@@ -8,8 +8,9 @@ import {
   stringSelectedValuesAtom,
 } from "@fiftyone/state";
 import CategoricalFilter from "./categoricalFilter/CategoricalFilter";
+import { labelTagsCount } from "../Sidebar/Entries/EntryCounts";
 
-const StringFieldFilter = ({
+const LabelTagFieldFilter = ({
   path,
   modal,
   ...rest
@@ -21,22 +22,14 @@ const StringFieldFilter = ({
   onBlur?: () => void;
   title: string;
 }) => {
-  const x = fos.stringCountResults({
-    modal,
-    path,
-    extended: false,
-  });
+  // tags have their own count
   return (
     <CategoricalFilter<{ value: string | null; count: number }>
       selectedValuesAtom={stringSelectedValuesAtom({ modal, path })}
       excludeAtom={stringExcludeAtom({ modal, path })}
       onlyMatchAtom={onlyMatchAtom({ modal, path })}
       isMatchingAtom={isMatchingAtom({ modal, path })}
-      countsAtom={fos.stringCountResults({
-        modal,
-        path,
-        extended: false,
-      })}
+      countsAtom={labelTagsCount({ modal, extended: false })}
       path={path}
       modal={modal}
       {...rest}
@@ -44,4 +37,4 @@ const StringFieldFilter = ({
   );
 };
 
-export default React.memo(StringFieldFilter);
+export default React.memo(LabelTagFieldFilter);

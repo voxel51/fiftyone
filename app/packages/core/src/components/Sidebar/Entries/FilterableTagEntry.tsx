@@ -139,12 +139,7 @@ const FilterableTagEntry = ({
           )}
           <NameAndCountContainer>
             <span>{tag}</span>
-            {tagKey === fos.State.TagKey.LABEL ? (
-              <LabelTagCounts modal={modal} tag={tag} />
-            ) : (
-              <PathEntryCounts path={`tags.${tag}`} modal={modal} />
-            )}
-
+            <PathEntryCounts path={`tags.${tag}`} modal={modal} />
             <MatchEye
               name={tag}
               elementsName={elementsName}

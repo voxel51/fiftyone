@@ -144,6 +144,8 @@ const ListValueEntry = ({
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
   });
+  const field = useRecoilValue(fos.field(path));
+  console.info(field);
   const { ftype, subfield, embeddedDocType } = useRecoilValue(fos.field(path));
 
   return (
@@ -260,6 +262,7 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const field = useRecoilValue(fos.field(path));
+  // for label tags, do not mess the field, get it else where and create a new entry if necessary
   console.info(field);
   return field.ftype !== LIST_FIELD ? (
     <ScalarValueEntry entryKey={entryKey} path={path} trigger={trigger} />

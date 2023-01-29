@@ -14,6 +14,7 @@ import * as viewAtoms from "./view";
 import { sidebarSampleId } from "./modal";
 import { refresher } from "./atoms";
 import { field } from "./schema";
+import { MATCH_LABEL_TAGS } from "./sidebar";
 
 /**
  * GraphQL Selector Family for Aggregations.
@@ -302,6 +303,12 @@ export const count = selectorFamily({
           ];
         }
 
+        if (split[0] === "_label_tags" && split.length > 1) {
+          return get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }))[
+            split.slice(1).join(".")
+          ];
+        }
+
         if (split.length < 2) {
           // this will never resolve, which allows for incoming schema changes
           // this shouldn't be necessary, but there is a mismatch between
@@ -340,7 +347,7 @@ export const counts = selectorFamily({
 
         if (
           VALID_KEYPOINTS.includes(
-            get(schemaAtoms.field(parent)).embeddedDocType
+            get(schemaAtoms.field(parent))?.embeddedDocType
           )
         ) {
           const skeleton = get(selectors.skeleton(parent));

@@ -13,8 +13,6 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
-import { DatasetSavedViewsQuery } from "../../Root/Root";
-import { useQueryLoader } from "react-relay";
 import { resizeHandle } from "./Sidebar.module.css";
 const MARGIN = 3;
 
@@ -442,7 +440,7 @@ const InteractiveSidebar = ({
   if (entries instanceof Error) {
     throw entries;
   }
-  console.info("entries", entries);
+
   let group = null;
   order.current = [...entries].map((entry) => getEntryKey(entry));
   for (const entry of entries) {
@@ -757,6 +755,7 @@ const InteractiveSidebar = ({
               if (entry.kind === fos.EntryKind.GROUP) {
                 group = entry.name;
               }
+
               const { shadow, cursor, ...springs } =
                 items.current[key].controller.springs;
               const { children } = render(

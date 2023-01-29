@@ -50,6 +50,7 @@ import { NameAndCountContainer } from "../../utils";
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { pathIsExpanded } from "./utils";
+import LabelFieldFilter from "../../Filters/LabelFieldFilter";
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
@@ -61,6 +62,7 @@ const FILTERS = {
   [INT_FIELD]: NumericFieldFilter,
   [OBJECT_ID_FIELD]: StringFieldFilter,
   [STRING_FIELD]: StringFieldFilter,
+  ["TAG_FIELD"]: LabelFieldFilter,
 };
 
 const EXCLUDED = {
@@ -219,6 +221,7 @@ const FilterableEntry = React.memo(
     entryKey,
     modal,
     path,
+    childPaths,
     onFocus,
     onBlur,
     disabled = false,
@@ -231,6 +234,7 @@ const FilterableEntry = React.memo(
     path: string;
     onFocus?: () => void;
     onBlur?: () => void;
+    childPaths: string[];
     trigger: (
       event: React.MouseEvent<HTMLDivElement>,
       key: string,
@@ -255,12 +259,42 @@ const FilterableEntry = React.memo(
       })
     );
 
-    const field = useRecoilValue(fos.field(path));
-    const data = useMemo(
-      () =>
-        getFilterData(expandedPath, modal, field as Field, fields, skeleton),
-      [field, fields, expandedPath, modal, skeleton]
+    const tagFields = useRecoilValue(
+      fos.fields({
+        path: expandedPath,
+      })
     );
+
+    const field = useRecoilValue(fos.field(path));
+    const isLabelTag = path.startsWith("_label_tag");
+    const isSampleTag = path.startsWith("tags.");
+    let pseudoField: Field = {};
+    // if it is labelTag
+    if (!field) {
+      // create pseudo field for tags
+      pseudoField = {
+        name: path.split(".").slice(1).join("."),
+        ftype: isLabelTag ? "label_tags" : "sample_tags",
+        subfield: null,
+        description: isLabelTag ? "label tags" : "sample tags",
+        info: null,
+        fields: {},
+        dbField: null,
+        path: path,
+        embeddedDocType: isLabelTag
+          ? "fiftyone.core.labels.labelTag"
+          : "fiftyone.core.labels.sampleTag",
+      };
+    }
+
+    const data = useMemo(() => {
+      if (field) {
+        return getFilterData(expandedPath, modal, field, fields, skeleton);
+      } else {
+        return;
+      }
+    }, [field, fields, expandedPath, modal, skeleton]);
+
     const fieldIsFiltered = useRecoilValue(
       fos.fieldIsFiltered({ path, modal })
     );
@@ -268,12 +302,16 @@ const FilterableEntry = React.memo(
       fos.activeField({ modal, path })
     );
     const hidden = modal ? useHidden(path) : null;
-
-    if (!field) {
-      console.info(fields, expandedPath, VALID_PRIMITIVE_TYPES);
-      console.info(entryKey, modal, path);
-      return null;
-    }
+    const renderTagFilter = () => {
+      return React.createElement(FILTERS["TAG_FIELD"], {
+        key: path,
+        onFocus,
+        onBlur,
+        title: `${LIST_FIELD}(${STRING_FIELD})`,
+        path: path,
+        modal: modal,
+      });
+    };
 
     return (
       <RegularEntry
@@ -300,50 +338,54 @@ const FilterableEntry = React.memo(
                 onClick={!disabled ? () => setActive(!active) : undefined}
               />
             )}
-            <FieldLabelAndInfo
-              field={field}
-              color={color}
-              expandedPath={expandedPath}
-              template={({ hoverHanlders, hoverTarget, container }) => (
-                <NameAndCountContainer ref={container}>
-                  <span key="path">
-                    <span ref={hoverTarget} {...hoverHanlders}>
-                      {path}
+            {
+              <FieldLabelAndInfo
+                field={field ?? (pseudoField as Field)}
+                color={color}
+                expandedPath={expandedPath}
+                template={({ hoverHanlders, hoverTarget, container }) => (
+                  <NameAndCountContainer ref={container}>
+                    <span key="path">
+                      <span ref={hoverTarget} {...hoverHanlders}>
+                        {isLabelTag ? "label tags" : path}
+                      </span>
                     </span>
-                  </span>
-                  {hidden}
-                  <PathEntryCounts
-                    key="count"
-                    modal={modal}
-                    path={expandedPath}
-                  />
-                  {!disabled && (
-                    <Arrow
-                      key="arrow"
-                      style={{ cursor: "pointer", margin: 0 }}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        setExpanded(!expanded);
-                      }}
-                      onMouseDown={(event) => {
-                        event.stopPropagation();
-                        event.preventDefault();
-                      }}
-                      onMouseUp={(event) => {
-                        event.stopPropagation();
-                        event.preventDefault();
-                      }}
+                    {hidden}
+                    <PathEntryCounts
+                      key="count"
+                      modal={modal}
+                      path={expandedPath}
                     />
-                  )}
-                </NameAndCountContainer>
-              )}
-            />
+                    {!disabled && (
+                      <Arrow
+                        key="arrow"
+                        style={{ cursor: "pointer", margin: 0 }}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setExpanded(!expanded);
+                        }}
+                        onMouseDown={(event) => {
+                          event.stopPropagation();
+                          event.preventDefault();
+                        }}
+                        onMouseUp={(event) => {
+                          event.stopPropagation();
+                          event.preventDefault();
+                        }}
+                      />
+                    )}
+                  </NameAndCountContainer>
+                )}
+              />
+            }
           </>
         }
         trigger={trigger}
       >
         {expanded &&
+          !isLabelTag &&
+          !isSampleTag &&
           data.map(({ ftype, listField, ...props }) => {
             return React.createElement(FILTERS[ftype], {
               key: props.path,
@@ -353,6 +395,7 @@ const FilterableEntry = React.memo(
               ...props,
             });
           })}
+        {expanded && (isLabelTag || isSampleTag) && renderTagFilter()}
       </RegularEntry>
     );
   }

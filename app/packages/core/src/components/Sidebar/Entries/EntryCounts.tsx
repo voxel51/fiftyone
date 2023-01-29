@@ -41,12 +41,28 @@ export const PathEntryCounts = ({
   modal: boolean;
 }) => {
   const getAtom = useCallback(
-    (extended: boolean) =>
-      fos.count({
+    (extended: boolean) => {
+      return fos.count({
         extended,
         modal,
         path,
-      }),
+      });
+
+      const split = path.split(".");
+      if (path.includes("_label_tags")) {
+        return fos.cumulativeCounts({
+          extended,
+          modal,
+          ...fos.MATCH_LABEL_TAGS,
+        })[split.slice(1).join(".")];
+      } else {
+        return fos.count({
+          extended,
+          modal,
+          path,
+        });
+      }
+    },
     [modal, path]
   );
   const shown = useRecoilValueLoadable(showEntryCounts({ path, modal }));
@@ -72,13 +88,38 @@ const labelTagCount = selectorFamily<
   key: `labelTagCount`,
   get:
     ({ tag, ...rest }) =>
-    ({ get }) =>
-      get(
+    ({ get }) => {
+      const labeltags = get(
         fos.cumulativeCounts({
           ...fos.MATCH_LABEL_TAGS,
           ...rest,
         })
-      )[tag] || 0,
+      );
+      return labeltags[tag] ?? 0;
+    },
+});
+
+export const labelTagsCount = selectorFamily<
+  { count: number; results: [string, number][] },
+  { modal: boolean; extended: boolean }
+>({
+  key: `labelTagsCount`,
+  get:
+    ({ ...props }) =>
+    ({ get }) => {
+      const r1 = get(
+        fos.cumulativeCounts({
+          ...fos.MATCH_LABEL_TAGS,
+          ...props,
+        })
+      );
+      console.info("props,", props);
+      console.info("match,", fos.MATCH_LABEL_TAGS);
+      if (!r1) return { count: 0, results: [] };
+      const r2 = Object.entries(r1);
+      const count = r2.reduce((acc, [key, value]) => acc + value, 0);
+      return { count, results: r2 };
+    },
 });
 
 export const tagIsMatched = selectorFamily<

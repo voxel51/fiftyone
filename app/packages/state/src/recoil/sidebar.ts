@@ -65,6 +65,7 @@ export interface PathEntry {
   kind: EntryKind.PATH;
   path: string;
   shown: boolean;
+  childPaths?: string[];
 }
 
 export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | InputEntry;
@@ -353,8 +354,6 @@ export const sidebarGroups = selectorFamily<
     ({ modal, loading, filtered = true, persist = true }) =>
     ({ get }) => {
       const f = get(textFilter(modal));
-      const groupDef = get(sidebarGroupsDefinition(modal));
-      console.info(groupDef);
       let groups = get(sidebarGroupsDefinition(modal))
         .map(({ paths, ...rest }) => ({
           ...rest,
@@ -377,7 +376,6 @@ export const sidebarGroups = selectorFamily<
 
       const framesIndex = groupNames.indexOf("frame labels");
       const video = get(isVideoDataset);
-      console.info(groups);
 
       if (!loading) {
         const largeVideo = get(isLargeVideo);
@@ -546,6 +544,7 @@ export const sidebarEntries = selectorFamily<
               name: name,
               kind: EntryKind.GROUP,
             };
+
             const shown = get(
               groupShown({
                 group: name,
@@ -570,8 +569,7 @@ export const sidebarEntries = selectorFamily<
           })
           .flat(),
       ];
-      const x = get(sidebarGroups(params));
-      console.info(x);
+
       if (params.modal) {
         return entries;
       }

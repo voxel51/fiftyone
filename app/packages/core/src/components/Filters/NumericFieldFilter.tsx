@@ -223,12 +223,9 @@ const NumericFieldFilter = ({
       {named && name && (
         <FieldLabelAndInfo
           nested
-          field={field!}
+          field={field}
           color={color}
-          template={({
-            label,
-            hoverTarget,
-          }) => (
+          template={({ label, hoverTarget }) => (
             <NamedRangeSliderHeader>
               <span ref={hoverTarget}>{label}</span>
             </NamedRangeSliderHeader>
@@ -281,7 +278,7 @@ const NumericFieldFilter = ({
             })}
             formatter={
               [DATE_TIME_FIELD, DATE_FIELD].includes(ftype)
-                ? (v) => v ? formatDateTime(v, timeZone) : null
+                ? (v) => (v ? formatDateTime(v, timeZone) : null)
                 : (v) => null
             }
             value={false}

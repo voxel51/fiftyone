@@ -38,7 +38,7 @@ function SamplesContainer() {
           const isDisabled = disabled.has(entry.path);
           // const isTag = false;
           // const isLabelTag = false;
-          console.info(entry.path, key, group);
+          // console.info(entry.path, key, group);
           return {
             children:
               isTag || isLabelTag ? (
@@ -60,6 +60,7 @@ function SamplesContainer() {
                   key={key}
                   modal={false}
                   path={entry.path}
+                  childPaths={entry.childPaths}
                   onBlur={() => {
                     controller.set({ zIndex: "0", overflow: "hidden" });
                   }}
