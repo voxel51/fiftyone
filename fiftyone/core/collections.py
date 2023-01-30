@@ -5869,8 +5869,8 @@ class SampleCollection(object):
     def sort_by_similarity(
         self, query, k=None, reverse=False, dist_field=None, brain_key=None
     ):
-        """Sorts the collection by similiarity to a specified set of query
-        ID(s) or vector(s).
+        """Sorts the collection by similiarity to a specified query ID(s),
+        vector(s), or prompt(s).
 
         In order to use this stage, you must first use
         :meth:`fiftyone.brain.compute_similarity` to index your dataset by
@@ -5891,6 +5891,44 @@ class SampleCollection(object):
             #
             # Sort the samples by their similarity to the first sample in the
             # dataset
+            #
+
+            query_id = dataset.first().id
+
+            view = dataset.sort_by_similarity(query_id, k=5)
+
+            #
+            # Sort samples by their similarity to a manually computed vector
+            #
+
+            model = foz.load_zoo_model("clip-vit-base32-torch")
+            embeddings = dataset.take(2, seed=51).compute_embeddings(model)
+            query = embeddings.mean(axis=0)
+
+            view = dataset.sort_by_similarity(query, k=5)
+
+            #
+            # Sort samples by their similarity to a text prompt
+            #
+
+            query = "kites high in the air"
+
+            view = dataset.sort_by_similarity(query, k=5)
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.brain as fob
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            fob.compute_similarity(
+                dataset, model="clip-vit-base32-torch", brain_key="clip"
+            )
+
+            #
+            # Sort samples by their similarity to a sample by its ID
             #
 
             query_id = dataset.first().id
