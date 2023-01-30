@@ -25,6 +25,7 @@ import styled from "styled-components";
 // built-in plugins
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
+import "@fiftyone/embeddings";
 
 const Container = styled.div`
   width: 100%;
@@ -56,6 +57,7 @@ export interface DatasetProps {
   theme?: "dark" | "light";
   toggleHeaders?: () => void;
   canEditSavedViews?: boolean;
+  savedViewSlug?: string;
 }
 
 export const Dataset: React.FC<DatasetProps> = ({
@@ -66,6 +68,7 @@ export const Dataset: React.FC<DatasetProps> = ({
   theme = "dark",
   toggleHeaders,
   canEditSavedViews = true,
+  savedViewSlug,
 }) => {
   const [queryRef, loadQuery] = useQueryLoader<DatasetQuery>(DatasetNodeQuery);
   const setTheme = useSetRecoilState(fos.theme);
@@ -77,8 +80,8 @@ export const Dataset: React.FC<DatasetProps> = ({
     setCompactLayout(compactLayout);
   }, [compactLayout]);
   React.useEffect(() => {
-    loadQuery({ name: dataset });
-  }, [dataset]);
+    loadQuery({ name: dataset, savedViewSlug });
+  }, [dataset, savedViewSlug]);
   React.useEffect(() => {
     setCanChangeSavedViews(canEditSavedViews);
   }, [canEditSavedViews]);

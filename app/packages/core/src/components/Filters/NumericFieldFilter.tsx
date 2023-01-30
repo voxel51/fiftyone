@@ -183,9 +183,15 @@ const NumericFieldFilter = ({
   const isSliderAtInitialPostion =
     bounds[0] === values[0] && bounds[1] === values[1];
 
-  if (!hasNonfinites && !hasBounds && named) {
-    return null;
-  }
+  // if range is not in default position, nonfinites should not be shown, but they should be set to false
+  useEffect(() => {
+    if (!isSliderAtInitialPostion) {
+      nonfinites.forEach(([_, { setValue }]) => {
+        setValue(false);
+      });
+    }
+  }, [isSliderAtInitialPostion, nonfinites]);
+
   // only show all four options the field is a nested ListField.
   // pass down nestedField as a prop to generate options
   const fieldPath = path.split(".").slice(0, -1).join(".");
@@ -204,14 +210,9 @@ const NumericFieldFilter = ({
     setIsMatching && setIsMatching(!nestedField);
   };
 
-  // if range is not in default position, nonfinites should not be shown, but they should be set to false
-  useEffect(() => {
-    if (!isSliderAtInitialPostion) {
-      nonfinites.forEach(([_, { setValue }]) => {
-        setValue(false);
-      });
-    }
-  }, [isSliderAtInitialPostion, nonfinites]);
+  if (!hasNonfinites && !hasBounds && named) {
+    return null;
+  }
 
   return (
     <NamedRangeSliderContainer
