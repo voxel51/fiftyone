@@ -159,6 +159,13 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
   );
 }
 
+/**
+ * The type of plugin component.
+ *
+ * - `Panel` - A panel that can be added to `@fiftyone/spaces`
+ * - `Plot` - **deprecated** - A plot that can be added as a panel
+ * - `Visualizer` - Visualizes sample data
+ */
 export enum PluginComponentType {
   Visualizer,
   Plot,
@@ -230,6 +237,10 @@ class PluginComponentRegistry {
     warn(
       !this.data.has(name),
       `${name} is already a registered Plugin Component`
+    );
+    warn(
+      registration.type === PluginComponentType.Plot,
+      `${name} is a Plot Plugin Component. This is deprecated. Please use "Panel" instead.`
     );
     this.data.set(name, registration);
   }
