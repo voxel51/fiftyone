@@ -22,6 +22,8 @@ import { useWarnings } from "./useWarnings";
 import { EmbeddingsPlot } from "./EmbeddingsPlot";
 import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
+import { Link } from "@mui/material";
+import styled from "styled-components";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -136,5 +138,26 @@ export default function Embeddings({ containerHeight, dimensions }) {
       </EmbeddingsContainer>
     );
 
-  return <Loading>No Brain Results Available</Loading>;
+  return (
+    <Loading style={{ background: theme.background.mediaSpace }}>
+      <NotFound style={{ textAlign: "center" }}>
+        <h3>
+          No <strong>embeddings visualizations</strong> found.
+        </h3>
+        <p>
+          <Link href="https://docs.voxel51.com/user_guide/brain.html#visualizing-embeddings">
+            Learn more
+          </Link>{" "}
+          about using this feature.
+        </p>
+      </NotFound>
+    </Loading>
+  );
 }
+
+const NotFound = styled.div`
+  text-align: center;
+  h3 > strong {
+    color: ${({ theme }) => theme.primary.main};
+  }
+`;

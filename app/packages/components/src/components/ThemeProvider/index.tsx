@@ -101,6 +101,7 @@ let theme = extendJoyTheme({
         },
         primary: {
           main: "hsl(25, 100%, 51%)",
+          mainChannel: "none",
           plainColor: "hsl(25, 100%, 51%)",
           plainBorder: "hsl(200, 0%, 5%)",
           softBg: "hsl(200, 0%, 25%)",
