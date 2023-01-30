@@ -327,6 +327,8 @@ You must also add `?authSource=admin` to your database URI:
 
     mongodb://[username:password@]host[:port]/?authSource=admin
 
+.. _using-a-different-mongodb-version:
+
 Using a different MongoDB version
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -900,7 +902,7 @@ App config.
 
 Plugins that you can configure include:
 
--   The builtin :ref:`Map tab <app-map-tab>`
+-   The builtin :ref:`Map panel <app-map-panel>`
 -   The builtin :ref:`3D visualizer <3d-visualizer-config>`
 -   Any :ref:`custom plugins <app-plugins>` that you've registered
 

@@ -187,20 +187,14 @@ class Mutation:
             except:
                 pass
 
-        if view_name is not None:
-            # Load a saved view by name
-
-            if ds.has_saved_view(view_name):
-                # Load a saved dataset view by name
-                result_view = ds.load_saved_view(view_name)
-                view = result_view._serialize()  # serialized view stages
-                # Set view state
-                state.view = result_view
-                state.view_name = result_view.name
-                state.saved_view_slug = saved_view_slug
-        else:
-            state.view_name = None
-            state.saved_view_slug = None
+        # Load saved views
+        if saved_view_slug is not None:
+            try:
+                ds = fod.load_dataset(dataset_name)
+                doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
+                result_view = ds._load_saved_view_from_doc(doc)
+            except:
+                pass
 
         if result_view is None:
             # Update current view with form parameters
@@ -210,10 +204,12 @@ class Mutation:
                 filters=form.filters if form else None,
             )
 
-        result_view = _build_result_view(result_view, form)
         # Set view state
+        result_view = _build_result_view(result_view, form)
+        slug = fou.to_slug(result_view.name) if result_view.name else None
         state.view = result_view
-
+        state.view_name = result_view.name
+        state.saved_view_slug = slug
         await dispatch_event(
             subscription,
             StateUpdate(state=state),

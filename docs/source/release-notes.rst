@@ -172,7 +172,7 @@ App
 - Added support for :ref:`visualizing point cloud samples <3d-visualizer>` in
   the modal `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
 - Added support for visualizing and interacting with |GeoLocation| data in a
-  new :ref:`Map tab <app-map-tab>`
+  new :ref:`Map panel <app-map-panel>`
   `#1976 <https://github.com/voxel51/fiftyone/pull/1976>`_
 - Added initial support for :ref:`custom App plugins <app-plugins>`
   `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_

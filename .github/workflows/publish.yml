@@ -3,8 +3,8 @@ name: Publish
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
+      - teams-v[0-9]+.[0-9]+.[0-9]+
+      - teams-v[0-9]+.[0-9]+.[0-9]+rc[0-9]+
 
 jobs:
   build:
@@ -22,10 +22,8 @@ jobs:
         id: download-artifact
         uses: dawidd6/action-download-artifact@v2
         with:
-          workflow: build.yml
           workflow_conclusion: success
-          commit: ${{github.sha}}
-          name: dist
+          run_id: ${{github.run_id}}
           path: dist
       - name: Install dependencies
         run: |

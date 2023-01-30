@@ -56,7 +56,7 @@ export interface DatasetProps {
   theme?: "dark" | "light";
   toggleHeaders?: () => void;
   canEditSavedViews?: boolean;
-  savedViewSlug: string;
+  savedViewSlug?: string;
 }
 
 export const Dataset: React.FC<DatasetProps> = ({

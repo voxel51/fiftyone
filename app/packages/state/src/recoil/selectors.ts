@@ -471,11 +471,19 @@ export const selectedPatchSamples = selector({
 
 function getLabelIdsFromSample(sample, path, matchesFilter) {
   const labelIds = [];
-  const labelContainer = sample[path];
-  const fullPath = [path, "detections"];
+  const labelContainer = sample[path] || {};
+  const containerKeys = Object.keys(labelContainer);
+  const targetKey = Array.isArray(containerKeys)
+    ? containerKeys[0]
+    : "detections";
+  const fullPath = [path, targetKey];
+  const labels = Array.isArray(labelContainer[targetKey])
+    ? labelContainer[targetKey]
+    : [];
 
-  for (const label of labelContainer?.detections || []) {
+  for (const label of labels) {
     if (matchesFilter(fullPath.join("."), label)) labelIds.push(label.id);
   }
+
   return labelIds;
 }
