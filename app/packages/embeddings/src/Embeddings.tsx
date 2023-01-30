@@ -59,7 +59,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
           <div>
             <Selector
               {...brainResultSelector.handlers}
-              placeholder={"Brain Result"}
+              placeholder={"Select brain key"}
               overflow={true}
               component={Value}
               containerStyle={selectorStyle}
@@ -67,7 +67,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
             {brainResultSelector.hasSelection && !labelSelector.isLoading && (
               <Selector
                 {...labelSelector.handlers}
-                placeholder={"Color By"}
+                placeholder={"Color by"}
                 overflow={true}
                 component={Value}
                 containerStyle={selectorStyle}
@@ -76,14 +76,14 @@ export default function Embeddings({ containerHeight, dimensions }) {
             {plotSelection.hasSelection && (
               <PlotOption
                 to={plotSelection.clearSelection}
-                title={"Clear Selection (Esc)"}
+                title={"Clear selection (Esc)"}
               >
                 <Close />
               </PlotOption>
             )}
             {showPlot && (
               <Fragment>
-                <PlotOption to={() => resetZoom()} title={"Reset Zoom (Esc)"}>
+                <PlotOption to={() => resetZoom()} title={"Reset zoom (Esc)"}>
                   <CenterFocusWeak />
                 </PlotOption>
                 <PlotOption
@@ -141,11 +141,12 @@ export default function Embeddings({ containerHeight, dimensions }) {
   return (
     <Loading style={{ background: theme.background.mediaSpace }}>
       <NotFound style={{ textAlign: "center" }}>
-        <h3>
-          No <strong>embeddings visualizations</strong> found.
-        </h3>
+        <h3>No embeddings visualizations found.</h3>
         <p>
-          <Link href="https://docs.voxel51.com/user_guide/brain.html#visualizing-embeddings">
+          <Link
+            style={{ color: theme.text.primary }}
+            href="https://docs.voxel51.com/user_guide/brain.html#visualizing-embeddings"
+          >
             Learn more
           </Link>{" "}
           about using this feature.
@@ -157,7 +158,4 @@ export default function Embeddings({ containerHeight, dimensions }) {
 
 const NotFound = styled.div`
   text-align: center;
-  h3 > strong {
-    color: ${({ theme }) => theme.primary.main};
-  }
 `;
