@@ -744,7 +744,7 @@ class ExcludeFields(ViewStage):
         return [
             {
                 "name": "field_names",
-                "type": "list<str>|str",
+                "type": "list<field>|field|list<str>|str",
                 "placeholder": "list,of,fields",
             },
             {"name": "_allow_missing", "type": "bool", "default": "False"},
@@ -1187,7 +1187,7 @@ class ExcludeLabels(ViewStage):
             },
             {
                 "name": "fields",
-                "type": "NoneType|list<str>|str",
+                "type": "NoneType|list<field>|field|list<str>|str",
                 "placeholder": "fields",
                 "default": "None",
             },

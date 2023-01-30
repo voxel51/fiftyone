@@ -5854,24 +5854,6 @@ class SampleCollection(object):
 
             dataset = foz.load_zoo_dataset("quickstart")
 
-            fob.compute_similarity(dataset, brain_key="similarity")
-
-            #
-            # Sort the samples by their similarity to the first sample in the
-            # dataset
-            #
-
-            query_id = dataset.first().id
-            view = dataset.sort_by_similarity(query_id)
-
-        Examples::
-
-            import fiftyone as fo
-            import fiftyone.brain as fob
-            import fiftyone.zoo as foz
-
-            dataset = foz.load_zoo_dataset("quickstart")
-
             fob.compute_similarity(
                 dataset, model="clip-vit-base32-torch", brain_key="clip"
             )
