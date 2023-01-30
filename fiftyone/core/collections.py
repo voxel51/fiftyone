@@ -5840,8 +5840,7 @@ class SampleCollection(object):
     def sort_by_similarity(
         self, query, k=None, reverse=False, dist_field=None, brain_key=None
     ):
-        """Sorts the collection by similiarity to a specified set of query
-        ID(s) or vector(s).
+        """Sorts the collection by similiarity to a specified query.
 
         In order to use this stage, you must first use
         :meth:`fiftyone.brain.compute_similarity` to index your dataset by
@@ -5865,12 +5864,51 @@ class SampleCollection(object):
             query_id = dataset.first().id
             view = dataset.sort_by_similarity(query_id)
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.brain as fob
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            fob.compute_similarity(
+                dataset, model="clip-vit-base32-torch", brain_key="clip"
+            )
+
+            #
+            # Sort samples by their similarity to a sample by its ID
+            #
+
+            query_id = dataset.first().id
+
+            view = dataset.sort_by_similarity(query_id, k=5)
+
+            #
+            # Sort samples by their similarity to a manually computed vector
+            #
+
+            model = foz.load_zoo_model("clip-vit-base32-torch")
+            embeddings = dataset.take(2, seed=51).compute_embeddings(model)
+            query = embeddings.mean(axis=0)
+
+            view = dataset.sort_by_similarity(query, k=5)
+
+            #
+            # Sort samples by their similarity to a text prompt
+            #
+
+            query = "kites high in the air"
+
+            view = dataset.sort_by_similarity(query, k=5)
+
         Args:
-            query: the query ID(s) or vector(s), which can be:
+            query: the query, which can be any of the following:
 
                 -   an ID or iterable of IDs
                 -   a ``num_dims`` vector or ``num_queries x num_dims`` array
                     of vectors
+                -   a prompt or iterable of prompts (if supported by the index)
 
             k (None): the number of matches to return. By default, the entire
                 collection is sorted
