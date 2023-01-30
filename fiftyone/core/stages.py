@@ -6265,8 +6265,8 @@ def _parse_sort_order(order):
 
 
 class SortBySimilarity(ViewStage):
-    """Sorts a collection by similiarity to a specified set of query ID(s) or
-    vector(s).
+    """Sorts a collection by similiarity to a specified query ID(s), vector(s),
+    or prompt(s).
 
     In order to use this stage, you must first use
     :meth:`fiftyone.brain.compute_similarity` to index your dataset by
@@ -6278,25 +6278,48 @@ class SortBySimilarity(ViewStage):
         import fiftyone.brain as fob
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("quickstart").clone()
+        dataset = foz.load_zoo_dataset("quickstart")
 
-        fob.compute_similarity(dataset, brain_key="similarity")
+        fob.compute_similarity(
+            dataset, model="clip-vit-base32-torch", brain_key="clip"
+        )
 
         #
-        # Sort the samples by their similarity to the first sample in the
-        # dataset
+        # Sort samples by their similarity to a sample by its ID
         #
 
         query_id = dataset.first().id
-        stage = fo.SortBySimilarity(query_id)
+
+        stage = fo.SortBySimilarity(query_id, k=5)
+        view = dataset.add_stage(stage)
+
+        #
+        # Sort samples by their similarity to a manually computed vector
+        #
+
+        model = foz.load_zoo_model("clip-vit-base32-torch")
+        embeddings = dataset.take(2, seed=51).compute_embeddings(model)
+        query = embeddings.mean(axis=0)
+
+        stage = fo.SortBySimilarity(query, k=5)
+        view = dataset.add_stage(stage)
+
+        #
+        # Sort samples by their similarity to a text prompt
+        #
+
+        query = "kites high in the air"
+
+        stage = fo.SortBySimilarity(query, k=5)
         view = dataset.add_stage(stage)
 
     Args:
-        query: the query ID(s) or vector(s), which can be:
+        query: the query, which can be any of the following:
 
             -   an ID or iterable of IDs
             -   a ``num_dims`` vector or ``num_queries x num_dims`` array of
                 vectors
+            -   a prompt or iterable of prompts (if supported by the index)
 
         k (None): the number of matches to return. By default, the entire
             collection is sorted
@@ -6332,7 +6355,7 @@ class SortBySimilarity(ViewStage):
 
     @property
     def query(self):
-        """The query ID(s) or vector(s)."""
+        """The query."""
         return self._query
 
     @property
@@ -6465,19 +6488,26 @@ def _parse_similarity_query(query):
         return query, query_kwarg
 
     if not etau.is_str(query):
-        # Query IDs
+        # Query IDs or prompts
         query = list(query)
         return query, query
 
     try:
+        # Query ID
         ObjectId(query)
+        return query, query
     except:
+        pass
+
+    try:
         # Already serialized query vector(s)
         query_kwarg = query
         query = fou.deserialize_numpy_array(query, ascii=True)
         return query, query_kwarg
+    except:
+        pass
 
-    # Query ID
+    # Query prompt
     return query, query
 
 
