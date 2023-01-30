@@ -3,8 +3,8 @@ name: Publish
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
+      - v[0-9]+.[0-9]+.[0-9]+
+      - v[0-9]+.[0-9]+.[0-9]+rc[0-9]+
 
 jobs:
   build:
@@ -24,7 +24,7 @@ jobs:
         with:
           workflow: build.yml
           workflow_conclusion: success
-          commit: ${{github.sha}}
+          run_id: ${{github.run_id}}
           name: dist
           path: dist
       - name: Install dependencies
