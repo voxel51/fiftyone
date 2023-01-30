@@ -8315,7 +8315,7 @@ class SampleCollection(object):
         index_spec = []
         for field, option in input_spec:
             self._validate_root_field(field, include_private=True)
-            _field, _ = self._parse_field(field, include_private=True)
+            _field, _, _ = self._handle_id_fields(field)
             _field, is_frame_field = self._handle_frame_field(_field)
             is_frame_fields.append(is_frame_field)
             index_spec.append((_field, option))

@@ -169,6 +169,13 @@ Then run the install script:
 bash install.bash
 ```
 
+**NOTE:** If you run into issues importing FiftyOne, you may need to add the
+path to the cloned repository to your `PYTHONPATH`:
+
+```shell
+export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+```
+
 **NOTE:** The install script adds to your `nvm` settings in your `~/.bashrc` or
 `~/.bash_profile`, which is needed for installing and building the App
 
