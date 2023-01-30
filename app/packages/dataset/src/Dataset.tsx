@@ -25,6 +25,7 @@ import styled from "styled-components";
 // built-in plugins
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
+import "@fiftyone/embeddings";
 
 const Container = styled.div`
   width: 100%;
