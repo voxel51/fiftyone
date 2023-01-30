@@ -1410,13 +1410,13 @@ to their labels) will not affect the sample tags of the underlying |Sample|.
 
 .. _app-similarity:
 
-Sorting by visual similarity
-____________________________
+Sorting by similarity
+_____________________
 
 Whenever you select samples, patches, or labels in the App in a |Dataset| that
-has been indexed by :ref:`visual similarity <brain-similarity>`, you can use
-the similarity menu in the App to sort or filter your current view based on
-visual similarity to the chosen image or object.
+has been :ref:`indexed by similarity <brain-similarity>`, you can use the
+similarity menu in the App to sort or filter your current view based on
+similarity to the chosen image or object.
 
 .. note::
 
@@ -1484,9 +1484,9 @@ similarity (``reverse``).
     :align: center
 
 |br|
-You can also sort by visual similarity to an object from the expanded sample
-view in the App by selecting an object and then using the similarity menu that
-appears in the upper-right corner of the modal:
+You can also sort by similarity to an object from the expanded sample view in
+the App by selecting an object and then using the similarity menu that appears
+in the upper-right corner of the modal:
 
 .. image:: /images/brain/brain-object-similarity-modal.gif
     :alt: object-similarity-modal
