@@ -1,10 +1,15 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { Looker3d } from "./Looker3d";
 
-export type ThreeDPluginSettings = {
+export type Looker3dPluginSettings = {
   useLegacyCoordinates: boolean;
   defaultUp: THREE.Vector3Tuple;
   defaultCameraPosition: THREE.Vector3;
+};
+
+export const defaultPluginSettings: Partial<Looker3dPluginSettings> = {
+  useLegacyCoordinates: false,
+  defaultUp: [0, 0, 1],
 };
 
 typeof window !== "undefined" &&

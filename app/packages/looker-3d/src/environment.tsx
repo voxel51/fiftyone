@@ -6,13 +6,12 @@ import { useThree } from "@react-three/fiber";
 import { MutableRefObject, useLayoutEffect } from "react";
 import { Camera } from "three";
 import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { ThreeDPluginSettings } from "./Looker3dPlugin";
+import { Looker3dPluginSettings } from "./Looker3dPlugin";
 
 type CameraProps = {
   cameraRef: MutableRefObject<Camera>;
-  controlsRef: MutableRefObject<{ useLayoutEffect: typeof useLayoutEffect }> &
-    React.Ref<OrbitControlsImpl>;
-  settings: ThreeDPluginSettings;
+  controlsRef: MutableRefObject<OrbitControlsImpl>;
+  settings: Looker3dPluginSettings;
 };
 
 export const CameraSetup = ({
@@ -22,7 +21,7 @@ export const CameraSetup = ({
 }: CameraProps) => {
   const camera = useThree((state) => state.camera);
 
-  controlsRef.current.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     if (settings.defaultCameraPosition) {
       camera.position.set(
         settings.defaultCameraPosition.x,
@@ -35,7 +34,7 @@ export const CameraSetup = ({
     camera.rotation.set(0, 0, 0);
     camera.updateProjectionMatrix();
     cameraRef.current = camera;
-  }, [camera, settings, cameraRef]);
+  }, [camera, cameraRef, settings]);
 
   return (
     <OrbitControls

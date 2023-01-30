@@ -28,7 +28,10 @@ import {
 import { ActionBarContainer, ActionsBar, Container } from "./containers";
 import { CameraSetup } from "./environment";
 import { useHotkey, usePathFilter } from "./hooks";
-import { ThreeDPluginSettings } from "./Looker3dPlugin";
+import {
+  defaultPluginSettings,
+  Looker3dPluginSettings,
+} from "./Looker3dPlugin";
 import {
   Cuboid,
   CuboidProps,
@@ -67,10 +70,10 @@ export const Looker3d = (props: Looker3dProps) => {
 };
 
 const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
-  const settings = fop.usePluginSettings<ThreeDPluginSettings>("3d", {
-    useLegacyCoordinates: false,
-    defaultUp: [0, 0, 1],
-  });
+  const settings = fop.usePluginSettings<Looker3dPluginSettings>(
+    "3d",
+    defaultPluginSettings
+  );
 
   const modal = true;
   const points = useLoader(PCDLoader, src);
