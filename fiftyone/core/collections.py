@@ -5869,7 +5869,8 @@ class SampleCollection(object):
     def sort_by_similarity(
         self, query, k=None, reverse=False, dist_field=None, brain_key=None
     ):
-        """Sorts the collection by similiarity to a specified query.
+        """Sorts the collection by similiarity to a specified set of query
+        ID(s) or vector(s).
 
         In order to use this stage, you must first use
         :meth:`fiftyone.brain.compute_similarity` to index your dataset by
@@ -5888,7 +5889,8 @@ class SampleCollection(object):
             )
 
             #
-            # Sort samples by their similarity to a sample by its ID
+            # Sort the samples by their similarity to the first sample in the
+            # dataset
             #
 
             query_id = dataset.first().id
