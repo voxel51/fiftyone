@@ -744,7 +744,7 @@ class ExcludeFields(ViewStage):
         return [
             {
                 "name": "field_names",
-                "type": "list<str>",
+                "type": "list<str>|str",
                 "placeholder": "list,of,fields",
             },
             {"name": "_allow_missing", "type": "bool", "default": "False"},
@@ -6265,11 +6265,11 @@ def _parse_sort_order(order):
 
 
 class SortBySimilarity(ViewStage):
-    """Sorts the samples in a collection by visual similiarity to a specified
-    set of query ID(s).
+    """Sorts a collection by similiarity to a specified set of query ID(s) or
+    vector(s).
 
     In order to use this stage, you must first use
-    :meth:`fiftyone.brain.compute_similarity` to index your dataset by visual
+    :meth:`fiftyone.brain.compute_similarity` to index your dataset by
     similiarity.
 
     Examples::
@@ -6283,8 +6283,8 @@ class SortBySimilarity(ViewStage):
         fob.compute_similarity(dataset, brain_key="similarity")
 
         #
-        # Sort the samples by their visual similarity to the first sample
-        # in the dataset
+        # Sort the samples by their similarity to the first sample in the
+        # dataset
         #
 
         query_id = dataset.first().id
@@ -6292,8 +6292,12 @@ class SortBySimilarity(ViewStage):
         view = dataset.add_stage(stage)
 
     Args:
-        query_ids: an ID or iterable of query IDs. These may be sample IDs or
-            label IDs depending on ``brain_key``
+        query: the query ID(s) or vector(s), which can be:
+
+            -   an ID or iterable of IDs
+            -   a ``num_dims`` vector or ``num_queries x num_dims`` array of
+                vectors
+
         k (None): the number of matches to return. By default, the entire
             collection is sorted
         reverse (False): whether to sort by least similarity
@@ -6308,19 +6312,17 @@ class SortBySimilarity(ViewStage):
 
     def __init__(
         self,
-        query_ids,
+        query,
         k=None,
         reverse=False,
         dist_field=None,
         brain_key=None,
         _state=None,
     ):
-        if etau.is_str(query_ids):
-            query_ids = [query_ids]
-        else:
-            query_ids = list(query_ids)
+        query, query_kwarg = _parse_similarity_query(query)
 
-        self._query_ids = query_ids
+        self._query = query
+        self._query_kwarg = query_kwarg
         self._k = k
         self._reverse = reverse
         self._dist_field = dist_field
@@ -6329,9 +6331,9 @@ class SortBySimilarity(ViewStage):
         self._pipeline = None
 
     @property
-    def query_ids(self):
-        """The list of query IDs."""
-        return self._query_ids
+    def query(self):
+        """The query ID(s) or vector(s)."""
+        return self._query
 
     @property
     def k(self):
@@ -6366,7 +6368,7 @@ class SortBySimilarity(ViewStage):
 
     def _kwargs(self):
         return [
-            ["query_ids", self._query_ids],
+            ["query", self._query_kwarg],
             ["k", self._k],
             ["reverse", self._reverse],
             ["dist_field", self._dist_field],
@@ -6378,9 +6380,9 @@ class SortBySimilarity(ViewStage):
     def _params(cls):
         return [
             {
-                "name": "query_ids",
-                "type": "list<id>|id",
-                "placeholder": "list,of,ids",
+                "name": "query",
+                "type": "list<str>|str",
+                "placeholder": "query",
             },
             {
                 "name": "k",
@@ -6413,7 +6415,7 @@ class SortBySimilarity(ViewStage):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
-            "query_ids": self._query_ids,
+            "query": self._query_kwarg,
             "k": self._k,
             "reverse": self._reverse,
             "dist_field": self._dist_field,
@@ -6448,12 +6450,35 @@ class SortBySimilarity(ViewStage):
                 context.enter_context(results)  # pylint: disable=no-member
 
             return results.sort_by_similarity(
-                self._query_ids,
+                self._query,
                 k=self._k,
                 reverse=self._reverse,
                 dist_field=self._dist_field,
                 _mongo=True,
             )
+
+
+def _parse_similarity_query(query):
+    if isinstance(query, np.ndarray):
+        # Query vector(s)
+        query_kwarg = fou.serialize_numpy_array(query, ascii=True)
+        return query, query_kwarg
+
+    if not etau.is_str(query):
+        # Query IDs
+        query = list(query)
+        return query, query
+
+    try:
+        ObjectId(query)
+    except:
+        # Already serialized query vector(s)
+        query_kwarg = query
+        query = fou.deserialize_numpy_array(query, ascii=True)
+        return query, query_kwarg
+
+    # Query ID
+    return query, query
 
 
 class Take(ViewStage):
