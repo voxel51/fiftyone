@@ -6265,8 +6265,7 @@ def _parse_sort_order(order):
 
 
 class SortBySimilarity(ViewStage):
-    """Sorts a collection by similiarity to a specified query ID(s), vector(s),
-    or prompt(s).
+    """Sorts a collection by similiarity to a specified query.
 
     In order to use this stage, you must first use
     :meth:`fiftyone.brain.compute_similarity` to index your dataset by
