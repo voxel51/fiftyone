@@ -3,6 +3,24 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.19.0:
+
+FiftyOne 0.19.0
+---------------
+*Released February 1, 2023*
+
+App
+
+- XXXX `#XXXX <https://github.com/voxel51/fiftyone/pull/XXXX>`_
+
+Core
+
+- XXXX `#XXXX <https://github.com/voxel51/fiftyone/pull/XXXX>`_
+
+Zoo
+
+- XXXX `#XXXX <https://github.com/voxel51/fiftyone/pull/XXXX>`_
+
 .. _release-notes-v0.18.0:
 
 FiftyOne 0.18.0
