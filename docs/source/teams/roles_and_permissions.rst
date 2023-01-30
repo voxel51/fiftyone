@@ -21,7 +21,7 @@ Teams.
 Roles
 _____
 
-FiftyOne Teams has three user roles: Admin, Member, and Guest.
+FiftyOne Teams has four user roles: Admin, Member, Collaborator, and Guest.
 
 Admins can access user management features by clicking on their account icon in
 the upper-right of the FiftyOne Teams App and navigating to the
@@ -68,6 +68,21 @@ feature.
 
 Members do not have the ability to see or manage an organization's users.
 
+.. _teams-collaborator:
+
+Collaborator
+------------
+
+Collaborators only have access to datasets to which they have been specifically
+granted access (a dataset's
+:ref:`default access level <teams-default-access>` does not apply to
+Collaborators), and they may only be granted **Can view** or **Can edit**
+access to datasets.
+
+Collaborators cannot create new datasets, clone existing datasets, or view
+other users of the deployment. Collaborators may export datasets to which
+they've been granted access.
+
 .. _teams-guest:
 
 Guest
@@ -75,19 +90,19 @@ Guest
 
 Guests only have access to datasets to which they have been specifically
 granted access (a dataset's
-:ref:`default access level <teams-default-access>` does not apply to guests),
+:ref:`default access level <teams-default-access>` does not apply to Guests),
 and they may only be granted **Can view** access to datasets.
 
-Guests cannot create new datasets, clone existing datasets, or view other users
-of the deployment.
+Guests cannot create new datasets, clone existing datasets, export datasets, or
+view other users of the deployment.
 
 .. _teams-permissions:
 
 Permissions
 ___________
 
-Admins and members with the **Can manage** permission on a dataset can
-configure a dataset's permissions under the dataset's
+Admins and users with the **Can manage** permission on a dataset can configure
+a dataset's permissions under the dataset's
 :ref:`Manage tab <teams-managing-datasets>` in the FiftyOne Teams App.
 
 A user's permissions on a dataset is the maximum of their permissions from the
@@ -116,8 +131,8 @@ A dataset's default access level can be set to **No access**, **Can view**,
 
 .. note::
 
-   Default access level only applies to Members. Guests must be granted
-   :ref:`specific access <teams-specific-access>` to datasets.
+   Default access level only applies to Members. Guests and Collaborators must
+   be granted :ref:`specific access <teams-specific-access>` to datasets.
 
 .. _teams-specific-access:
 
@@ -136,17 +151,19 @@ The following permissions are available to each user role:
 
 -  Members may be granted **Can view**, **Can edit**, or **Can manage**
    permissions
--  Guests may be granted **Can view** or **Can edit** permissions
+-  Collaborators may be granted **Can view** or **Can edit** permissions
+-  Guests may be granted **Can view** permissions
 
 .. note::
 
    Authorized users can use the "Grant access" workflow to give **Can view**
-   access to a dataset to an email address that is not yet a user of your
-   FiftyOne Teams deployment.
+   or **Can edit** access to a dataset to an email address that is not yet a
+   user of a FiftyOne Teams deployment.
 
-   When the invitation is accepted, this user will become a Guest of your
-   deployment, and an Admin can upgrade this user to another role if desired
-   via the Team Settings page.
+   When the invitation is accepted, the user will become a Guest or
+   Collaborator (depending on whether **Can view** or **Can edit** access was
+   granted, respectively), and an Admin can upgrade this user to another role
+   if desired via the Team Settings page.
 
 .. _teams-no-access:
 
@@ -163,16 +180,15 @@ Can view
 --------
 
 A user with **Can view** permissions on a dataset can find the dataset from
-their dataset listing page and all aspects of the dataset in the App excpet the
-dataset's "Manage" tab.
+their dataset listing page.
 
 Users with **Can view** permissions cannot modify the dataset in any way, for
 example by adding or removing samples, tags, annotation runs, brain runs, etc.
 
 .. note::
 
-   Members (but not Guests) with **Can view** access to a dataset may clone
-   the dataset.
+   Members (but not Guests or Collaborators) with **Can view** access to a
+   dataset may clone the dataset.
 
 .. _teams-can-edit:
 
