@@ -110,7 +110,6 @@ const Wrapper = ({
           key={String(value)}
           color={color}
           value={selectedSet.has(value)}
-          disabled={totalCount === 1}
           name={value}
           count={
             count < 0
