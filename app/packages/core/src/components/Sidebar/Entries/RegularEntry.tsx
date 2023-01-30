@@ -83,7 +83,7 @@ const RegularEntry = React.forwardRef(
           <Header
             ref={headerRef}
             style={{ justifyContent: left ? "left" : "space-between" }}
-          >
+          > 
             {heading}
           </Header>
           {children}
