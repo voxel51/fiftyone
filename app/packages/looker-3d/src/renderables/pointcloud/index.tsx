@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
-import { computeMinMaxForColorBufferAttribute } from "../../utils";
-import { ColorBy } from "../state";
-import { Gradients, ShadeByHeight, ShadeByIntensity } from "./shaders";
+import { computeMinMaxForColorBufferAttribute } from "../../../utils";
+import { ColorBy } from "../../state";
+import {
+  Gradients,
+  RgbShader,
+  ShadeByHeight,
+  ShadeByIntensity,
+} from "./shaders";
 
 type PointCloudMeshArgs = {
   colorBy: ColorBy;
@@ -70,13 +75,15 @@ export const PointCloudMesh = ({
   }
 
   const pointsMaterial = useMemo(() => {
+    const customShaderNormalizedPointSize = pointSize * 100;
+
     if (colorBy === "height") {
       return (
         <ShadeByHeight
           gradients={ShadingGradients}
           min={minZ}
           max={boundingBox.max.z}
-          pointSize={pointSize}
+          pointSize={customShaderNormalizedPointSize}
         />
       );
     }
@@ -86,13 +93,17 @@ export const PointCloudMesh = ({
         <ShadeByIntensity
           {...colorMinMax}
           gradients={ShadingGradients}
-          pointSize={pointSize}
+          pointSize={customShaderNormalizedPointSize}
         />
       );
     }
 
+    if (pointsGeometry.getAttribute("color")) {
+      return <RgbShader pointSize={customShaderNormalizedPointSize} />;
+    }
+
     return <pointsMaterial color={"white"} size={pointSize} />;
-  }, [colorMinMax, colorBy, minZ, pointSize, boundingBox]);
+  }, [colorMinMax, colorBy, minZ, pointSize, boundingBox, pointsGeometry]);
 
   return (
     <primitive

@@ -41,9 +41,11 @@ const useGradientMap = (gradients: Gradients) => {
 };
 
 const ColorByHeightShaders = {
-  vertexShader: (pointSize: number) => `
+  vertexShader: /* glsl */ `
   uniform float maxZ;
   uniform float minZ;
+  uniform float pointSize;
+
   varying vec2 vUv;
   varying float hValue;
 
@@ -58,10 +60,10 @@ const ColorByHeightShaders = {
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
 
-    gl_PointSize = 80. * (1. / - mvPosition.z);
+    gl_PointSize = pointSize * (1.0 / length(mvPosition.xyz));
     gl_Position = projectionMatrix * mvPosition;
   }`,
-  fragmentShader: `
+  fragmentShader: /* glsl */ `
   uniform sampler2D gradientMap;
   varying float hValue;
 
@@ -73,9 +75,11 @@ const ColorByHeightShaders = {
 };
 
 const ColorByIntensityShaders = {
-  vertexShader: (pointSize: number) => `
+  vertexShader: /* glsl */ `
   uniform float max;
   uniform float min;
+  uniform float pointSize;
+
   varying vec2 vUv;
   varying float hValue;
   attribute vec3 color;
@@ -91,11 +95,11 @@ const ColorByIntensityShaders = {
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
 
-    gl_PointSize = 80. * (1. / - mvPosition.z);
+    gl_PointSize = pointSize * (1.0 / length(mvPosition.xyz));
     gl_Position = projectionMatrix * mvPosition;
   }
 `,
-  fragmentShader: `
+  fragmentShader: /* glsl */ `
   uniform sampler2D gradientMap;
   varying float hValue;
 
@@ -122,20 +126,21 @@ export const ShadeByHeight = ({
           minZ: { value: min },
           maxZ: { value: max },
           gradientMap: { value: gradientMap },
+          pointSize: { value: pointSize },
         },
-        vertexShader: ColorByHeightShaders.vertexShader(pointSize),
+        vertexShader: ColorByHeightShaders.vertexShader,
         fragmentShader: ColorByHeightShaders.fragmentShader,
       }}
     />
   );
 };
 
-export function ShadeByIntensity({
+export const ShadeByIntensity = ({
   gradients,
   min,
   max,
   pointSize,
-}: ShaderProps) {
+}: ShaderProps) => {
   const gradientMap = useGradientMap(gradients);
 
   return (
@@ -145,10 +150,62 @@ export function ShadeByIntensity({
           min: { value: min }, // geo.boundingBox.min.z
           max: { value: max },
           gradientMap: { value: gradientMap },
+          pointSize: { value: pointSize },
         },
-        vertexShader: ColorByIntensityShaders.vertexShader(pointSize),
+        vertexShader: ColorByIntensityShaders.vertexShader,
         fragmentShader: ColorByIntensityShaders.fragmentShader,
       }}
     />
   );
-}
+};
+
+const ColorByRgbShaders = {
+  vertexShader: /* glsl */ `
+  // this uniform is used to pass the point size to the vertex shader from JS
+  uniform float pointSize;
+
+  // these attributes are injected into the vertex shader based on geometry
+  attribute vec3 color;
+  attribute float scale;
+
+  // this attribute is used to pass the color to the fragment shader
+  varying vec3 vColor;
+
+  void main() {
+    // assign color to the varying variable so that it can be used in fragment shader
+    vColor = color;
+
+    // do a model-view transform to get the position of the point in camera space
+    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+
+    // (scale / length(mvPosition.xyz)) is used to scale the point size based on distance from camera
+    gl_PointSize = pointSize * (1.0 / length(mvPosition.xyz));
+
+    // do a projection transform to get the position of the point in clip space
+    gl_Position = projectionMatrix * mvPosition;
+  }
+
+  `,
+  fragmentShader: /* glsl */ `
+  varying vec3 vColor;
+
+  void main() {
+    gl_FragColor = vec4(vColor, 1.0);
+  } 
+  `,
+};
+
+export const RgbShader = ({ pointSize }: { pointSize: number }) => {
+  return (
+    <shaderMaterial
+      {...{
+        scale: { value: 1 },
+        uniforms: {
+          pointSize: { value: pointSize },
+        },
+        vertexShader: ColorByRgbShaders.vertexShader,
+        fragmentShader: ColorByRgbShaders.fragmentShader,
+      }}
+    />
+  );
+};
