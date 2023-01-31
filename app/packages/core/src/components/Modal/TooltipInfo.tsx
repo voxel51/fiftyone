@@ -48,7 +48,7 @@ const ContentItem = ({
   value?: number | string | string[];
   style?: object;
 }) => {
-  if (typeof value === "object" && !value.length) {
+  if (typeof value === "object" && !value?.length) {
     return null;
   }
   
