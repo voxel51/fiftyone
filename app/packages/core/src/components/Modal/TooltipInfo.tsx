@@ -46,7 +46,6 @@ const ContentItem = ({
   value?: number | string | string[];
   style?: object;
 }) => {
-  debugger
   if (typeof value === "object" && !value.length) {
     return null;
   }
@@ -161,20 +160,20 @@ const useTarget = (field, target) => {
   return getTarget(field, target);
 };
 
-const AttrInfo = ({ label, children = null }) => {
+const AttrInfo = ({ label, infoType, children = null }) => {
   let entries = Object.entries(label).filter(
     ([k, v]) => "tags" !== k && !k.startsWith("_")
   );
   if (!entries || !entries.length) {
     return null;
   }
-
+  const defaultLabels = ["label", "confidence"]
   const defaults = entries.filter(([name]) =>
-    ["label", "confidence"].includes(name)
+    defaultLabels.includes(name)
   );
-
+  
   const other = entries.filter(
-    ([name]) => !["label", "confidence", "bounding_box"].includes(name)
+    ([name]) => !([...defaultLabels, ...HIDDENLABELS[infoType], "attributes"].includes(name))
   );
   const mapper = ([name, value]) => (
     <ContentItem key={name} name={name} value={value} />
@@ -203,7 +202,7 @@ const AttrInfo = ({ label, children = null }) => {
 const ClassificationInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} infoType={detail.type} />
     </AttrBlock>
   );
 };
@@ -211,7 +210,7 @@ const ClassificationInfo = ({ detail }) => {
 const DetectionInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} infoType={detail.type} />
     </AttrBlock>
   );
 };
@@ -220,7 +219,7 @@ const HeatmapInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
       <ContentItem key={"pixel-value"} name={"pixel"} value={detail.target} />
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} infoType={detail.type} />
     </AttrBlock>
   );
 };
@@ -228,7 +227,7 @@ const HeatmapInfo = ({ detail }) => {
 const KeypointInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} infoType={detail.type} />
       {detail.point && (
         <AttrInfo
           label={Object.fromEntries(
@@ -237,6 +236,7 @@ const KeypointInfo = ({ detail }) => {
               v,
             ])
           )}
+          infoType={detail.type} 
         />
       )}
     </AttrBlock>
@@ -246,7 +246,7 @@ const KeypointInfo = ({ detail }) => {
 const RegressionInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} infoType={detail.type} />
     </AttrBlock>
   );
 };
@@ -271,7 +271,7 @@ const SegmentationInfo = ({ detail }) => {
             value={detail.target}
           />
         ))}
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} infoType={detail.type} />
     </AttrBlock>
   );
 };
@@ -279,7 +279,7 @@ const SegmentationInfo = ({ detail }) => {
 const PolylineInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} infoType={detail.type} />
     </AttrBlock>
   );
 };
@@ -292,4 +292,14 @@ const OVERLAY_INFO = {
   Polyline: PolylineInfo,
   Regression: RegressionInfo,
   Segmentation: SegmentationInfo,
+};
+
+const HIDDENLABELS = {
+  Classification: ["logtis"],
+  Detection: ["bounding_box", "mask"],
+  Heatmap: ["map"],
+  Keypoint: ["points"],
+  Polyline: ["points"],
+  Regression: [],
+  Segmentation: ["mask"],
 };
