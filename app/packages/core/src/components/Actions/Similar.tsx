@@ -8,7 +8,10 @@ import {
 } from "recoil";
 
 import { SORT_BY_SIMILARITY } from "../../utils/links";
-import { useClearModal, useUnprocessedStateUpdate } from "@fiftyone/state";
+import { useClearModal,
+  similarityParameters,
+  useUnprocessedStateUpdate,
+} from "@fiftyone/state";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
@@ -67,29 +70,37 @@ const useSortBySimilarity = (close) => {
       async (parameters: fos.State.SortBySimilarityParameters) => {
         set(fos.similaritySorting, true);
 
-        const queryIds = await getQueryIds(snapshot, parameters.brainKey);
+        const queryIds = parameters.query ? null : await getQueryIds(snapshot, parameters.brainKey)
         const view = await snapshot.getPromise(fos.view);
-        const subscription = await snapshot.getPromise(fos.stateSubscription);
-        const data: fos.StateUpdate = await getFetchFunction()(
-          "POST",
-          "/sort",
-          {
+        const subscription = await snapshot.getPromise(fos.stateSubscription)
+
+        const { query, ...commonParams } = parameters;
+
+        const combinedParameters = {
+          ...commonParams,
+        };
+        if (query) {
+          combinedParameters.query = [query];
+        } else {
+          combinedParameters.queryIds = queryIds;
+        }
+
+        console.log("combinedParameters", combinedParameters);
+        try {
+          const data: fos.StateUpdate = await getFetchFunction()("POST", "/sort", {
             dataset: await snapshot.getPromise(fos.datasetName),
-            extended: toSnakeCase({
-              ...parameters,
-              queryIds,
-            }),
-            filters: await snapshot.getPromise(fos.filters),
-            subscription,
             view,
-          }
-        );
+            subscription,
+            filters: await snapshot.getPromise(fos.filters),
+            extended: toSnakeCase(combinedParameters),
+          });
+
+          // update selectedSamples atom to new set.
+          // modifying data, otherwise useStateUpdate will set the selectedSamples again
+          data.state.selected = [];
 
         update(({ set }) => {
-          set(fos.similarityParameters, {
-            ...parameters,
-            queryIds,
-          });
+          set(fos.similarityParameters, combinedParameters);
           set(fos.modal, null);
           set(fos.similaritySorting, false);
           set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
@@ -98,8 +109,24 @@ const useSortBySimilarity = (close) => {
           set(fos.modal, null);
           close();
 
+          set(fos.similarityParameters, combinedParameters);  
           return data;
-        });
+          close();
+          // update(({ set }) => {
+          //   console.log('setting...', {similarityParameters})
+          //   set(fos.similarityParameters, combinedParameters);
+          //   set(fos.modal, null);
+          //   set(fos.similaritySorting, false);
+          //   close();
+
+          //   console.log(data)
+
+          //   return data;
+          // });
+          });
+        } catch (error) {
+          handleError(error);
+        }
       },
     []
   );
@@ -207,6 +234,10 @@ const SortBySimilarity = React.memo(
           : { brainKey: null, distField: null, reverse: false, k: null }
     );
 
+    const dataset = useRecoilValue(fos.dataset);
+
+    console.log(dataset);
+
     const setParameter = useCallback(
       (name: string, value) =>
         setState((state) => ({ ...state, [name]: value })),
@@ -237,6 +268,8 @@ const SortBySimilarity = React.memo(
       current && setState(current);
     }, [current]);
 
+    const showTextPrompt = true;
+
     return (
       <Popout modal={modal} bounds={bounds}>
         <PopoutSectionTitle>
@@ -255,6 +288,16 @@ const SortBySimilarity = React.memo(
         </PopoutSectionTitle>
         {hasSimilarityKeys && hasSelectedSamples && (
           <>
+            {showTextPrompt && (
+              <Input
+                placeholder={"Text search"}
+                validator={(value) => true}
+                value={state.query || ""}
+                setter={(value) => {
+                  setParameter("query", value);
+                }}
+              />
+            )}
             <Input
               placeholder={"k (default = None)"}
               validator={(value) => value === "" || /^[0-9\b]+$/.test(value)}

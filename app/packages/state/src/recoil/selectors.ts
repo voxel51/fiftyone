@@ -372,6 +372,8 @@ export const extendedStages = selector({
   get: ({ get }) => {
     const similarity = get(atoms.similarityParameters);
 
+    console.log("similarity", toSnakeCase(similarity));
+
     return {
       ...get(extendedStagesUnsorted),
       "fiftyone.core.stages.SortBySimilarity": similarity

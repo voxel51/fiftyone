@@ -101,8 +101,8 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
-  const hasSimilarity = useRecoilValue(hasSimilarityKeys(modal));
-  const hasSorting = useRecoilValue(fos.similarityParameters);
+  const hasSimilaritySamples = useRecoilValue(hasSimilarityKeys(modal));
+  const similarityParameters = useRecoilValue(fos.similarityParameters);
   const [mRef, bounds] = useMeasure();
   const close = false;
 
@@ -110,9 +110,6 @@ const Similarity = ({ modal }: { modal: boolean }) => {
     close && setOpen(false);
   }, [close]);
 
-  if (!hasSimilarity && !hasSorting) {
-    return null;
-  }
   return (
     <ActionDiv ref={ref}>
       <PillButton

@@ -87,6 +87,8 @@ const Grid: React.FC<{}> = () => {
     return flashlight;
   });
 
+  console.log(useRecoilValue(fos.extendedStages));
+
   useEffect(
     deferred(() => {
       if (isModalOpen || isTagging || !flashlight.isAttached()) {
@@ -108,6 +110,7 @@ const Grid: React.FC<{}> = () => {
       useRecoilValue(fos.similarityParameters),
       useRecoilValue(fos.selectedMediaField(false)),
       useRecoilValue(fos.extendedStagesUnsorted),
+      useRecoilValue(fos.extendedStages),
     ]
   );
 
