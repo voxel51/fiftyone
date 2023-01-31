@@ -1,7 +1,9 @@
 import * as fos from "@fiftyone/state";
+import { stateProxy } from "@fiftyone/state";
 import { toCamelCase } from "@fiftyone/utilities";
 import React, { useState } from "react";
 import { usePreloadedQuery } from "react-relay";
+import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 import {
   DatasetQuery,
@@ -160,11 +162,13 @@ export const usePreLoadedDataset = (
   );
   const update = fos.useStateUpdate();
   const router = React.useContext(fos.RouterContext);
+  const stateProxyValue = useRecoilValue(stateProxy);
 
   React.useLayoutEffect(() => {
     let { viewName, stages: view, ...rest } = dataset;
 
     const params = new URLSearchParams(router.history.location.search);
+
     if (!viewName && params.has("view")) {
       params.delete("view");
       const search = params.toString();
@@ -173,12 +177,9 @@ export const usePreLoadedDataset = (
       );
     }
 
-    if (
-      !router.state &&
-      typeof window !== "undefined" &&
-      window.history.state?.view
-    ) {
-      view = window.history.state?.view;
+    if (stateProxyValue) {
+      view = stateProxyValue.view;
+      viewName = stateProxyValue.viewName;
     }
 
     const { colorscale, config, state } = router?.state || {};
@@ -191,12 +192,12 @@ export const usePreLoadedDataset = (
             ? (toCamelCase(config) as fos.State.Config)
             : undefined,
           dataset: fos.transformDataset(rest),
-          state,
+          state: { view, viewName, ...state },
         };
       });
       setReady(true);
     }
-  }, [dataset, router]);
+  }, [dataset, router, stateProxyValue]);
 
   return [dataset, ready];
 };

@@ -1,7 +1,7 @@
 """
 Documents that track datasets and their sample schemas in the database.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -210,7 +210,7 @@ class DatasetAppConfig(EmbeddedDocument):
         plugins ({}): an optional dict mapping plugin names to plugin
             configuration dicts. Builtin plugins include:
 
-            -   ``"map"``: See the :ref:`map plugin docs <app-map-tab>` for
+            -   ``"map"``: See the :ref:`map plugin docs <app-map-panel>` for
                 supported options
             -   ``"point-cloud"``: See the
                 :ref:`3D visualizer docs <3d-visualizer-config>` for supported

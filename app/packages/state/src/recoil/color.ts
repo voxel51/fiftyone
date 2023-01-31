@@ -1,13 +1,18 @@
 import { selectorFamily } from "recoil";
 
-import { Coloring, createColorGenerator } from "@fiftyone/looker";
-import { getColor, hexToRgb, RGB } from "@fiftyone/utilities";
+import { Coloring } from "@fiftyone/looker";
+import {
+  createColorGenerator,
+  getColor,
+  hexToRgb,
+  RGB,
+} from "@fiftyone/utilities";
 
 import * as atoms from "./atoms";
+import { colorPool, colorscale } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { State } from "./types";
-import { colorPool, colorscale } from "./config";
 
 export const coloring = selectorFamily<Coloring, boolean>({
   key: "coloring",
