@@ -16,10 +16,10 @@ News
 
 App
 
-- Added the :ref:`Spaces framework <app-spaces>`!
+- Added the :ref:`Spaces framework <app-spaces>`
   `#2524 <https://github.com/voxel51/fiftyone/pull/2524>`_
 - Added native support for
-  :ref:`visualizing embeddings <app-embeddings-panel>`!
+  :ref:`visualizing embeddings <app-embeddings-panel>`
   `#2524 <https://github.com/voxel51/fiftyone/pull/2524>`_
 - Refactored the map tab into a dedicated :ref:`map panel <app-map-panel>`
   `#2524 <https://github.com/voxel51/fiftyone/pull/2524>`_
@@ -32,11 +32,13 @@ App
   disk `#2358 <https://github.com/voxel51/fiftyone/pull/2358>`_
 - Added support for visualizing RGB segmentations
   `#2483 <https://github.com/voxel51/fiftyone/pull/2483>`_
+- Added retries for all network requests to improve stability
+  `#2406 <https://github.com/voxel51/fiftyone/pull/2406>`_
 - Optimized the tagging menu
   `#2368 <https://github.com/voxel51/fiftyone/pull/2368>`_
 - Optimized sample tagging on video datasets
   `#2440 <https://github.com/voxel51/fiftyone/pull/2440>`_
-- Only show supported evaluation keys in the evaluations dropdown
+- Only show supported keys in the evaluations dropdown
   `#2427 <https://github.com/voxel51/fiftyone/pull/2427>`_
 - Fixed handling of None values when filtering numeric/list fields
   `#2422 <https://github.com/voxel51/fiftyone/pull/2422>`_,
@@ -44,14 +46,12 @@ App
   `#2403 <https://github.com/voxel51/fiftyone/pull/2403>`_
 - Never show expanded filter list for ID fields
   `#2408 <https://github.com/voxel51/fiftyone/pull/2408>`_
-- Ensure that the view bookmark icon properly displays when extended selections
-  exist `#2366 <https://github.com/voxel51/fiftyone/pull/2366>`_
+- Ensure that the bookmark icon displays when extended selections exist
+  `#2366 <https://github.com/voxel51/fiftyone/pull/2366>`_
 - Use consistent loading dots throughout the App
   `#2321 <https://github.com/voxel51/fiftyone/pull/2321>`_
 - Fixed a bug when filtering by custom embedded list fields
   `#2407 <https://github.com/voxel51/fiftyone/pull/2407>`_
-- Added retries for all network requests to improve stability
-  `#2406 <https://github.com/voxel51/fiftyone/pull/2406>`_
 - Fixed bugs when screenshotting the App in notebook contexts
   `#2398 <https://github.com/voxel51/fiftyone/pull/2398>`_
 - Fixed bugs when launching the App in Databricks notebooks
@@ -100,12 +100,12 @@ Core
   :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
   utility for setting attributes on |Label| instances by their IDs
   `#2372 <https://github.com/voxel51/fiftyone/pull/2372>`_
-- Added support for :ref:`exporting in CSV format <CSVDataset-export>`
+- Added support for exporting in :ref:`CSV format <CSVDataset-export>`
   `#2450 <https://github.com/voxel51/fiftyone/pull/2450>`_
 - Always update dataset's `last_loaded_at` property when they are loaded
   `#2375 <https://github.com/voxel51/fiftyone/pull/2375>`_
-- Migrated annotation/brain/evaluation runs to a separate database collection,
-  for efficiency `#2189 <https://github.com/voxel51/fiftyone/pull/2189>`_
+- Migrated runs to a separate database collection, for efficiency
+  `#2189 <https://github.com/voxel51/fiftyone/pull/2189>`_
 - Fixed a bug when calling
   :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>` on
   a view that filters the frames of the input dataset
@@ -151,7 +151,7 @@ Annotation
 
 Zoo
 
-- Added :ref:`Open Images V7 <dataset-zoo-open-images-v7>`!
+- Added :ref:`Open Images V7 <dataset-zoo-open-images-v7>` to the zoo
   `#2446 <https://github.com/voxel51/fiftyone/pull/2446>`_
 - Updated the :ref:`KITTI multiview <dataset-zoo-kitti-multiview>` and
   :ref:`quickstart-groups <dataset-zoo-quickstart-groups>` datasets to not use
