@@ -87,7 +87,7 @@ Alternatively, if you have FiftyOne installed on your local machine, just run:
 
 fiftyone app connect --destination [<username>@]<hostname> --port {0}
 
-See https://voxel51.com/docs/fiftyone/user_guide/app.html#remote-sessions
+See https://docs.voxel51.com/user_guide/app.html#remote-sessions
 for more information about remote sessions.
 """
 

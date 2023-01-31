@@ -132,13 +132,13 @@ def migrate_database_if_necessary(destination=None, verbose=False):
 
             raise EnvironmentError(
                 "Cannot connect to database v%s with client v%s%s. "
-                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "See https://docs.voxel51.com/user_guide/config.html#database-migrations "
                 "for more information" % (head, destination, compat_str)
             )
         else:
             raise EnvironmentError(
                 "Cannot migrate database from v%s to v%s when database_admin=%s. "
-                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "See https://docs.voxel51.com/user_guide/config.html#database-migrations "
                 "for more information"
                 % (head, destination, fo.config.database_admin)
             )
@@ -252,13 +252,13 @@ def _migrate_dataset_if_necessary(name, destination, verbose):
 
             raise EnvironmentError(
                 "Cannot load dataset '%s' from v%s with client v%s%s. "
-                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "See https://docs.voxel51.com/user_guide/config.html#database-migrations "
                 "for more information" % (name, head, foc.VERSION, compat_str)
             )
         else:
             raise EnvironmentError(
                 "Cannot migrate dataset '%s' from v%s to v%s when database_admin=%s."
-                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "See https://docs.voxel51.com/user_guide/config.html#database-migrations "
                 "for more information"
                 % (name, head, destination, fo.config.database_admin)
             )
@@ -300,7 +300,7 @@ class MigrationRunner(object):
             raise EnvironmentError(
                 "You must have fiftyone>=%s installed in order to migrate "
                 "from v%s to v%s, but you are currently running fiftyone==%s."
-                "\n\nSee https://voxel51.com/docs/fiftyone/getting_started/install.html#downgrading-fiftyone "
+                "\n\nSee https://docs.voxel51.com/getting_started/install.html#downgrading-fiftyone "
                 "for information about downgrading FiftyOne."
                 % (max(head_ver, dest_ver), head_ver, dest_ver, pkg_ver)
             )

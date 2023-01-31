@@ -110,7 +110,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
 
                 <PlotOption
                   href={
-                    "https://voxel51.com/docs/fiftyone/user_guide/plots.html"
+                    "https://docs.voxel51.com/user_guide/app.html#embeddings-panel"
                   }
                   title={"Help"}
                   to={useExternalLink("https://docs.voxel51.com")}

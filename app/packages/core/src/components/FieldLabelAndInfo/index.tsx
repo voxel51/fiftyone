@@ -519,7 +519,7 @@ function convertTypeToDocLink(type) {
   }
   const fullPath = [...modulePath, className].join(".");
 
-  const BASE = "https://voxel51.com/docs/fiftyone/api/";
+  const BASE = "https://docs.voxel51.com/api/";
 
   if (className) {
     return {

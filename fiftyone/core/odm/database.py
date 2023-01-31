@@ -295,7 +295,7 @@ def _validate_db_version(config, client):
             "Found `mongod` version %s, but only %s and higher are "
             "compatible. You can suppress this exception by setting your "
             "`database_validation` config parameter to `False`. See "
-            "https://voxel51.com/docs/fiftyone/user_guide/config.html#configuring-a-mongodb-connection "
+            "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
             "for more information" % (version, foc.MIN_MONGODB_VERSION)
         )
 
