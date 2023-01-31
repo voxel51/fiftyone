@@ -1,10 +1,9 @@
+import * as fos from "@fiftyone/state";
+import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
+import * as _ from "lodash";
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
-import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
 import * as recoil from "recoil";
-import * as fos from "@fiftyone/state";
-import * as _ from "lodash";
-import { State } from "@fiftyone/state";
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
@@ -268,14 +267,17 @@ export function usePluginSettings<T>(
 ): T {
   const dataset = recoil.useRecoilValue(fos.dataset);
   const appConfig = recoil.useRecoilValue(fos.config);
-  const datasetPlugins = _.get(dataset, "appConfig.plugins", {});
-  const appConfigPlugins = _.get(appConfig, "plugins", {});
 
-  const settings = _.merge<T | {}, Partial<T>, Partial<T>>(
-    { ...defaults },
-    _.get(appConfigPlugins, pluginName, {}),
-    _.get(datasetPlugins, pluginName, {})
-  );
+  const settings = useMemo(() => {
+    const datasetPlugins = _.get(dataset, "appConfig.plugins", {});
+    const appConfigPlugins = _.get(appConfig, "plugins", {});
+
+    return _.merge<T | {}, Partial<T>, Partial<T>>(
+      { ...defaults },
+      _.get(appConfigPlugins, pluginName, {}),
+      _.get(datasetPlugins, pluginName, {})
+    );
+  }, [dataset, appConfig, pluginName, defaults]);
 
   return settings as T;
 }
