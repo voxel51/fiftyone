@@ -5,6 +5,7 @@ import {
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
   LABELS,
+  LIST_FIELD,
   OBJECT_ID_FIELD,
   STRING_FIELD,
   VALID_PRIMITIVE_TYPES,
@@ -17,7 +18,7 @@ import * as selectors from "../selectors";
 import { State } from "../types";
 import { boolean } from "./boolean";
 import { numeric } from "./numeric";
-import { string } from "./string";
+import { string, listString } from "./string";
 
 export * from "./boolean";
 export * from "./numeric";
@@ -49,6 +50,10 @@ const primitiveFilter = selectorFamily<
 
       if ([OBJECT_ID_FIELD, STRING_FIELD].includes(ftype)) {
         return get(string({ modal, path }));
+      }
+
+      if ([LIST_FIELD].includes(ftype)) {
+        return get(listString({ modal, path}));
       }
 
       return (value) => true;
