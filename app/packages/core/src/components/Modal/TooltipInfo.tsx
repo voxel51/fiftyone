@@ -6,6 +6,7 @@ import styled from "styled-components";
 import * as fos from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { ContentDiv, ContentHeader } from "../utils";
+import { joinStringArray } from '../Filters/utils';
 
 const TooltipDiv = animated(styled(ContentDiv)`
   position: absolute;
@@ -19,7 +20,7 @@ const TooltipDiv = animated(styled(ContentDiv)`
 const ContentItemDiv = styled.div`
   margin: 0;
   padding: 0;
-  max-width: 10rem;
+  max-width: 12rem;
   word-wrap: break-word;
 `;
 
@@ -42,13 +43,14 @@ const ContentItem = ({
   style,
 }: {
   name: string;
-  value?: number | string;
+  value?: number | string | string[];
   style?: object;
 }) => {
-  if (typeof value === "object") {
+  debugger
+  if (typeof value === "object" && !value.length) {
     return null;
   }
-
+  
   return (
     <ContentItemDiv style={style}>
       <ContentValue>
@@ -60,6 +62,8 @@ const ContentItem = ({
               return value.length ? value : '""';
             case "boolean":
               return value ? "True" : "False";
+            case "object":
+              return joinStringArray(value);
             default:
               return "None";
           }
@@ -170,7 +174,7 @@ const AttrInfo = ({ label, children = null }) => {
   );
 
   const other = entries.filter(
-    ([name]) => !["label", "confidence"].includes(name)
+    ([name]) => !["label", "confidence", "bounding_box"].includes(name)
   );
   const mapper = ([name, value]) => (
     <ContentItem key={name} name={name} value={value} />
