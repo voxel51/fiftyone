@@ -9,17 +9,174 @@ FiftyOne 0.19.0
 ---------------
 *Released February 1, 2023*
 
+News
+
+- :ref:`FiftyOne Teams <fiftyone-teams>` documentation is now publicly
+  available! `#2388 <https://github.com/voxel51/fiftyone/pull/2388>`_
+
 App
 
-- XXXX `#XXXX <https://github.com/voxel51/fiftyone/pull/XXXX>`_
+- Added the :ref:`Spaces framework <app-spaces>`!
+  `#2524 <https://github.com/voxel51/fiftyone/pull/2524>`_
+- Added native support for
+  :ref:`visualizing embeddings <app-embeddings-panel>`!
+  `#2524 <https://github.com/voxel51/fiftyone/pull/2524>`_
+- Refactored the map tab into a dedicated :ref:`map panel <app-map-panel>`
+  `#2524 <https://github.com/voxel51/fiftyone/pull/2524>`_
+- Refactored the histograms tab into a dedicated
+  :ref:`histograms panel <app-histograms-panel>`
+  `#2524 <https://github.com/voxel51/fiftyone/pull/2524>`_
+- Added support for :ref:`loading and saving views <app-saving-views>`
+  `#2461 <https://github.com/voxel51/fiftyone/pull/2461>`_
+- Added support for visualizing |Segmentation| and |Heatmap| masks stored on
+  disk `#2358 <https://github.com/voxel51/fiftyone/pull/2358>`_
+- Added support for visualizing RGB segmentations
+  `#2483 <https://github.com/voxel51/fiftyone/pull/2483>`_
+- Optimized the tagging menu
+  `#2368 <https://github.com/voxel51/fiftyone/pull/2368>`_
+- Optimized sample tagging on video datasets
+  `#2440 <https://github.com/voxel51/fiftyone/pull/2440>`_
+- Only show supported evaluation keys in the evaluations dropdown
+  `#2427 <https://github.com/voxel51/fiftyone/pull/2427>`_
+- Fixed handling of None values when filtering numeric/list fields
+  `#2422 <https://github.com/voxel51/fiftyone/pull/2422>`_,
+  `#2412 <https://github.com/voxel51/fiftyone/pull/2412>`_,
+  `#2403 <https://github.com/voxel51/fiftyone/pull/2403>`_
+- Never show expanded filter list for ID fields
+  `#2408 <https://github.com/voxel51/fiftyone/pull/2408>`_
+- Ensure that the view bookmark icon properly displays when extended selections
+  exist `#2366 <https://github.com/voxel51/fiftyone/pull/2366>`_
+- Use consistent loading dots throughout the App
+  `#2321 <https://github.com/voxel51/fiftyone/pull/2321>`_
+- Fixed a bug when filtering by custom embedded list fields
+  `#2407 <https://github.com/voxel51/fiftyone/pull/2407>`_
+- Added retries for all network requests to improve stability
+  `#2406 <https://github.com/voxel51/fiftyone/pull/2406>`_
+- Fixed bugs when screenshotting the App in notebook contexts
+  `#2398 <https://github.com/voxel51/fiftyone/pull/2398>`_
+- Fixed bugs when launching the App in Databricks notebooks
+  `#2397 <https://github.com/voxel51/fiftyone/pull/2397>`_
+- Show metadata for frame-level fields in the fields tooltip
+  `#2386 <https://github.com/voxel51/fiftyone/pull/2386>`_
+- Fixed bugs when configuring plugin settings and modal media fields
+  `#2383 <https://github.com/voxel51/fiftyone/pull/2383>`_
+- Fixed bugs with multiple media fields when loading views that exclude fields
+  `#2378 <https://github.com/voxel51/fiftyone/pull/2378>`_,
+  `#2303 <https://github.com/voxel51/fiftyone/pull/2303>`_
 
 Core
 
-- XXXX `#XXXX <https://github.com/voxel51/fiftyone/pull/XXXX>`_
+- Added support for programmatically
+  :ref:`configuring space layouts <app-spaces-python>`
+  `#2524 <https://github.com/voxel51/fiftyone/pull/2524>`_
+- Added support for :ref:`loading and saving views <saving-views>`
+  `#2461 <https://github.com/voxel51/fiftyone/pull/2461>`_
+- Added support for storing |Segmentation| and |Heatmap| masks on disk
+  `#2301 <https://github.com/voxel51/fiftyone/pull/2301>`_
+- Added support for RGB segmentations in
+  :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
+  `#2483 <https://github.com/voxel51/fiftyone/pull/2483>`_
+- Added a new
+  :func:`transform_segmentations() <fiftyone.utils.labels.transform_segmentations>`
+  utility `#2483 <https://github.com/voxel51/fiftyone/pull/2483>`_
+
+- Added support for declaring dynamic fields on generated views via
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+  `#2513 <https://github.com/voxel51/fiftyone/pull/2513>`_
+- Added a dedicated
+  :meth:`clear_cache() <fiftyone.core.dataset.Dataset.clear_cache>` method for
+  clearing a dataset's run cache
+  `#2471 <https://github.com/voxel51/fiftyone/pull/2471>`_
+- Added support for passing frame-level fields directly to
+  :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+  `#2418 <https://github.com/voxel51/fiftyone/pull/2418>`_
+- Added an optional `dynamic=True` flag to
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+  `#2372 <https://github.com/voxel51/fiftyone/pull/2372>`_
+- Added support for declaring custom |Label| attributes via
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+  `#2372 <https://github.com/voxel51/fiftyone/pull/2372>`_
+- Adds a new
+  :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
+  utility for setting attributes on |Label| instances by their IDs
+  `#2372 <https://github.com/voxel51/fiftyone/pull/2372>`_
+- Added support for :ref:`exporting in CSV format <CSVDataset-export>`
+  `#2450 <https://github.com/voxel51/fiftyone/pull/2450>`_
+- Always update dataset's `last_loaded_at` property when they are loaded
+  `#2375 <https://github.com/voxel51/fiftyone/pull/2375>`_
+- Migrated annotation/brain/evaluation runs to a separate database collection,
+  for efficiency `#2189 <https://github.com/voxel51/fiftyone/pull/2189>`_
+- Fixed a bug when calling
+  :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>` on
+  a view that filters the frames of the input dataset
+  `#2361 <https://github.com/voxel51/fiftyone/pull/2361>`_
+- Added an :func:`exact_frame_count() <fiftyone.utils.video.exact_frame_count>`
+  utility for computing extact video frame counts
+  `#2373 <https://github.com/voxel51/fiftyone/pull/2373>`_
+- Updated the :ref:`3D visualizer <3d-detections>` to use true centroid (not
+  bottom-center) coordinates for 3D detections
+  `#2474 <https://github.com/voxel51/fiftyone/pull/2474>`_
+- Added support for loading specific group slice(s) when using
+  :meth:`iter_groups() <fiftyone.core.collections.SampleCollection.iter_groups>`
+  and
+  :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+  `#2528 <https://github.com/voxel51/fiftyone/pull/2528>`_
+- Added an
+  :meth:`exclude_groups() <fiftyone.core.collections.SampleCollection.exclude_groups>`
+  view stage `#2451 <https://github.com/voxel51/fiftyone/pull/2451>`_
+- Added support for importing annotations directly on grouped datasets
+  `#2349 <https://github.com/voxel51/fiftyone/pull/2349>`_
+- Added a :func:`group_collections() <fiftyone.utils.groups.group_collections>`
+  utility for merging multiple collections into a grouped dataset
+  `#2332 <https://github.com/voxel51/fiftyone/pull/2332>`_
+- Added support for converting an existing dataset into a grouped dataset via
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+  `#2332 <https://github.com/voxel51/fiftyone/pull/2332>`_
+- Added support for deleting grouped fields when the dataset contains only one
+  media type `#2332 <https://github.com/voxel51/fiftyone/pull/2332>`_
+- Fixed a bug when loading datasets with CVAT attributes stored in
+  :ref:`VOC format <VOCDetectionDataset-import>`
+  `#2359 <https://github.com/voxel51/fiftyone/pull/2359>`_
+- Fixed a bug in default sidebar group expansion
+  `#2441 <https://github.com/voxel51/fiftyone/pull/2441>`_
+
+Annotation
+
+- Added support for providing custom task names for CVAT tasks
+  `#2353 <https://github.com/voxel51/fiftyone/pull/2353>`_
+- Fixed a bug when checking if CVAT projects exist
+  `#2491 <https://github.com/voxel51/fiftyone/pull/2491>`_
+- Fixed a bug when checking if CVAT tasks exist
+  `#2070 <https://github.com/voxel51/fiftyone/pull/2070>`_
 
 Zoo
 
-- XXXX `#XXXX <https://github.com/voxel51/fiftyone/pull/XXXX>`_
+- Added :ref:`Open Images V7 <dataset-zoo-open-images-v7>`!
+  `#2446 <https://github.com/voxel51/fiftyone/pull/2446>`_
+- Updated the :ref:`KITTI multiview <dataset-zoo-kitti-multiview>` and
+  :ref:`quickstart-groups <dataset-zoo-quickstart-groups>` datasets to not use
+  legacy 3D visualizer settings
+  `#2474 <https://github.com/voxel51/fiftyone/pull/2474>`_
+- Added support for filtering datasets when using
+  :func:`list_zoo_datasets() <fiftyone.zoo.datasets.list_zoo_datasets>`
+  `#2448 <https://github.com/voxel51/fiftyone/pull/2448>`_
+
+Docs
+
+- Added detailed :ref:`plugin documentation <fiftyone-plugins>`
+  `#2442 <https://github.com/voxel51/fiftyone/pull/2442>`_
+- Added :ref:`documentation <label-conversions>` for converting between common
+  label formats `#2498 <https://github.com/voxel51/fiftyone/pull/2498>`_
+- Added a :doc:`pandas vs FiftyOne </tutorials/pandas_comparison>` tutorial
+  `#2310 <https://github.com/voxel51/fiftyone/pull/2310>`_
+- Added a :ref:`pandas vs FiftyOne <pandas-cheat-sheet>` cheat sheet
+  `#2329 <https://github.com/voxel51/fiftyone/pull/2329>`_
+- Added a :ref:`FiftyOne terminology <terminology-cheat-sheet>` cheat sheet
+  `#2484 <https://github.com/voxel51/fiftyone/pull/2484>`_
+- Added a :ref:`view stage <views-cheat-sheet>` cheat sheet
+  `#2452 <https://github.com/voxel51/fiftyone/pull/2452>`_
+- Added a :ref:`filtering <filtering-cheat-sheet>` cheat sheet
+  `#2447 <https://github.com/voxel51/fiftyone/pull/2447>`_
 
 .. _release-notes-v0.18.0:
 
