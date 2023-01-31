@@ -20,7 +20,7 @@ const TooltipDiv = animated(styled(ContentDiv)`
 const ContentItemDiv = styled.div`
   margin: 0;
   padding: 0;
-  max-width: 10rem;
+  max-width: 12rem;
 `;
 
 const ContentValue = styled.div`
