@@ -405,7 +405,6 @@ export const GridActionsRow = () => {
       <Patches />
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
-      <Export />
       <Selected modal={false} />
     </ActionsRowDiv>
   );
