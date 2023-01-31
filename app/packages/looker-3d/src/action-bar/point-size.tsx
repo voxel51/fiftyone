@@ -21,6 +21,8 @@ export const PointSizeSlider = () => {
         valueAtom={currentPointSizeAtom}
         color={theme.primary.mainChannel}
         boundsAtom={pointSizeRangeAtom}
+        showValue={false}
+        showBounds={false}
       />
     </ActionPopOver>
   );

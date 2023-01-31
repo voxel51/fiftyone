@@ -39,7 +39,7 @@ export const COLOR_BY_CHOICES: { label: string; value: ColorBy }[] = [
 
 export const colorByAtom = atom<ColorBy>({
   key: "colorBy",
-  default: COLOR_BY_CHOICES[0].value,
+  default: COLOR_BY_NONE,
 });
 
 export const currentActionAtom = atom<Actions>({
@@ -49,10 +49,21 @@ export const currentActionAtom = atom<Actions>({
 
 export const currentPointSizeAtom = atom<number>({
   key: "pointSize",
-  default: 0.01,
+  default: 0.1,
+  effects: [
+    ({ setSelf, onSet }) => {
+      const pointSizeKey = "pointSize";
+      const pointSize = localStorage.getItem(pointSizeKey);
+      if (pointSize != null) setSelf(Number(pointSize));
+      onSet((newValue, _oldValue, isReset) => {
+        if (isReset) localStorage.removeItem(pointSizeKey);
+        else localStorage.setItem(pointSizeKey, String(newValue));
+      });
+    },
+  ],
 });
 
 export const pointSizeRangeAtom = atom<Range>({
   key: "pointSizeRange",
-  default: [0.1, 1.0],
+  default: [0.01, 0.2],
 });

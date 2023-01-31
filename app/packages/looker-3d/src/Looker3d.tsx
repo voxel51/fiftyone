@@ -40,7 +40,7 @@ import {
   Polyline,
   PolyLineProps,
 } from "./overlays";
-import { PointCloudMesh } from "./renderables/pointcloud";
+import { PointCloudMesh } from "./renderables";
 import { colorByAtom, currentActionAtom, currentPointSizeAtom } from "./state";
 
 type View = "pov" | "top";
