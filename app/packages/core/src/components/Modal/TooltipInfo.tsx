@@ -169,11 +169,11 @@ const AttrInfo = ({ label, infoType, children = null }) => {
   if (!entries || !entries.length) {
     return null;
   }
-  const defaultLabels = ["label", "confidence"]
+  const defaultLabels = infoType === "Keypoint" ? ["label"] : ["label", "confidence"]
   const defaults = entries.filter(([name]) =>
     defaultLabels.includes(name)
   );
-  
+
   const other = entries.filter(
     ([name]) => !([...defaultLabels, ...HIDDENLABELS[infoType], "attributes"].includes(name))
   );
@@ -233,8 +233,8 @@ const KeypointInfo = ({ detail }) => {
       {detail.point && (
         <AttrInfo
           label={Object.fromEntries(
-            detail.point.attributes.map(([k, v]) => [
-              `points[${detail.point.index}].${k}`,
+            detail.point.attributes.filter(([x, y]) => x !== "points").map(([k, v]) => [
+              `${k === "label" ? "skeleton" : k}[${detail.point.index}]`,
               v,
             ])
           )}
@@ -300,7 +300,7 @@ const HIDDENLABELS = {
   Classification: ["logtis"],
   Detection: ["bounding_box", "mask"],
   Heatmap: ["map"],
-  Keypoint: ["points"],
+  Keypoint: ["points", "occluded", "confidence"],
   Polyline: ["points"],
   Regression: [],
   Segmentation: ["mask"],
