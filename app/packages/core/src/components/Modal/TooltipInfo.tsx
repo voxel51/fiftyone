@@ -20,14 +20,16 @@ const TooltipDiv = animated(styled(ContentDiv)`
 const ContentItemDiv = styled.div`
   margin: 0;
   padding: 0;
-  max-width: 12rem;
-  word-wrap: break-word;
+  max-width: 10rem;
 `;
 
 const ContentValue = styled.div`
   font-size: 0.8rem;
   font-weight: bold;
   color: ${({ theme }) => theme.text.primary};
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 `;
 
 const ContentName = styled.div`
