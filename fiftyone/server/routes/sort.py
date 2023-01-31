@@ -11,6 +11,7 @@ from starlette.requests import Request
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.view as fov
+import fiftyone.core.stages as fos
 
 from fiftyone.server.decorators import route
 import fiftyone.server.events as fose
@@ -24,8 +25,11 @@ class Sort(HTTPEndpoint):
         dataset_name = data.get("dataset", None)
         filters = data.get("filters", {})
         stages = data.get("view", None)
-        extended = data.get("extended", None)
         dist_field = data.get("dist_field", None)
+        similarity = data.get("extended", None)
+
+        similarity_stage = None if similarity is None else fos.SortBySimilarity(**similarity)
+        stages = data.get("view", []).append(similarity_stage)
 
         dataset = fod.load_dataset(dataset_name)
 
