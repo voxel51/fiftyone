@@ -46,7 +46,7 @@ export const makeRouteDefinitions = <T extends OperationType | undefined>(
   const queries = createResourceGroup();
 
   return children.map(
-    ({ path, exact, children, component, query, ...rest }) => ({
+    ({ path, exact, children, component, query, queryParams, ...rest }) => ({
       path,
       exact,
       children: children
@@ -54,6 +54,7 @@ export const makeRouteDefinitions = <T extends OperationType | undefined>(
         : undefined,
       component: components(component.name, component.loader),
       query: query ? queries(query.name, query.loader) : undefined,
+      queryParams,
       ...rest,
     })
   );
