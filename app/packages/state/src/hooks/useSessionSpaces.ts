@@ -2,7 +2,7 @@ import * as foq from "@fiftyone/relay";
 import { useMemo } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import { stateSubscription, sessionSpaces } from "../recoil";
 import useSendEvent from "./useSendEvent";
 import { size } from "lodash";
@@ -10,8 +10,7 @@ import { size } from "lodash";
 const useSessionSpaces = () => {
   const send = useSendEvent();
   const subscription = useRecoilValue(stateSubscription);
-  const [sessionSpacesState, setSessionSpacesState] =
-    useRecoilState(sessionSpaces);
+  const sessionSpacesState = useRecoilValue(sessionSpaces);
   const [commit] = useMutation<foq.setSpacesMutation>(foq.setSpaces);
   const onError = useErrorHandler();
 
@@ -27,7 +26,6 @@ const useSessionSpaces = () => {
 
   function setSessionSpaces(spaces: object, panelsState?: object) {
     const formattedSpaces = toAPIFormat(spaces, panelsState);
-    setSessionSpacesState(formattedSpaces);
     return send((session) =>
       commit({
         onError,
