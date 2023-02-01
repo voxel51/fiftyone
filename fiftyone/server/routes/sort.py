@@ -11,7 +11,6 @@ from starlette.requests import Request
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.view as fov
-import fiftyone.core.stages as fos
 
 from fiftyone.server.decorators import route
 import fiftyone.server.events as fose
