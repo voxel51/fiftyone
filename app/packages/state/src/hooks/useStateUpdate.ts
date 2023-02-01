@@ -53,7 +53,7 @@ const useStateUpdate = () => {
       const { get, reset, set } = t;
       if (state) {
         const view = get(viewAtoms.view);
-        if (dataset.stages && !state.view) {
+        if (dataset?.stages && !state.view) {
           state.view = dataset.stages;
         }
 
