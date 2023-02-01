@@ -129,6 +129,7 @@ type Dataset {
   frameFields: [SampleField!]
   brainMethods: [BrainRun!]
   evaluations: [EvaluationRun!]
+  savedViewSlug: String
   savedViews: [SavedView!]
   version: String
   viewCls: String
@@ -456,8 +457,6 @@ type SampleItemStrPageInfo {
 }
 
 type SavedView {
-  id: String
-  datasetId: String
   name: String
   description: String
   color: String
@@ -466,6 +465,8 @@ type SavedView {
   createdAt: datetime
   lastModifiedAt: datetime
   lastLoadedAt: datetime
+  id: String
+  datasetId: String
   viewName: String
   stageDicts: BSONArray
 }
@@ -492,7 +493,7 @@ type SidebarGroup {
 input SidebarGroupInput {
   name: String!
   paths: [String!]
-  expanded: Boolean = true
+  expanded: Boolean = null
 }
 
 enum SidebarMode {

@@ -84,12 +84,13 @@ const evaluationKeys = selector<string[]>({
         })
       )
     );
-    
-    const evals = get(fos.dataset).evaluations.filter(
-      e => valid.includes(e.config.predField) || valid.includes(e.config.gtField)
-    )
 
-    const keys = evals.map(({key}) => key);
+    const evals = get(fos.dataset).evaluations.filter(
+      (e) =>
+        valid.includes(e.config.predField) || valid.includes(e.config.gtField)
+    );
+
+    const keys = evals.map(({ key }) => key);
 
     return keys;
   },
