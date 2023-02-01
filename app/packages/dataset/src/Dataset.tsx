@@ -61,7 +61,7 @@ export interface DatasetProps {
 }
 
 export const Dataset: React.FC<DatasetProps> = (props) => {
-  const [environment] = useState(fos.getEnvironment);
+  const environment = React.useMemo(() => fos.getEnvironment(), []);
 
   useEffect(() => {
     fos.setCurrentEnvironment(environment);
@@ -105,7 +105,10 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
   }, [theme]);
 
   const context = useContext(fos.RouterContext);
-  const savedViewSlug = fos.getSavedViewName(context);
+  const savedViewSlug = React.useMemo(
+    () => fos.getSavedViewName(context),
+    [context]
+  );
   React.useEffect(() => {
     loadQuery({ name: dataset, savedViewSlug: savedViewSlug });
   }, [dataset, savedViewSlug]);
