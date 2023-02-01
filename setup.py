@@ -33,7 +33,7 @@ INSTALL_REQUIRES = [
     "aiofiles",
     "argcomplete",
     "boto3",
-    "dacite>=1.6.0,<2",
+    "dacite>=1.6.0,<1.8.0",
     "Deprecated",
     "eventlet",
     "future",
