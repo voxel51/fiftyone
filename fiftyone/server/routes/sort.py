@@ -28,7 +28,7 @@ class Sort(HTTPEndpoint):
         dist_field = data.get("dist_field", None)
         similarity = data.get("extended", None)
 
-        similarity_stage = None if similarity is None else fos.SortBySimilarity(**similarity)
+        similarity_stage = None if similarity is None else fos.SortBySimilarity(**similarity)._serialize()
         stages = data.get("view", []).append(similarity_stage)
 
         dataset = fod.load_dataset(dataset_name)
