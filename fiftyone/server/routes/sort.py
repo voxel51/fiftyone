@@ -26,11 +26,8 @@ class Sort(HTTPEndpoint):
         filters = data.get("filters", {})
         stages = data.get("view", None)
         dist_field = data.get("dist_field", None)
-        similarity = data.get("extended", None)
-
-        similarity_stage = None if similarity is None else fos.SortBySimilarity(**similarity)._serialize()
-        stages = data.get("view", []).append(similarity_stage)
-
+        stages = data.get("view", [])
+        
         dataset = fod.load_dataset(dataset_name)
 
         changed = False
