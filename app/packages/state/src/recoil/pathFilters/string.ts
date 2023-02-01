@@ -153,3 +153,33 @@ export const string = selectorFamily<
       };
     },
 });
+
+export const listString = selectorFamily<
+(value: string | null) => boolean,
+{ modal: boolean; path: string }
+>({
+key: "stringFilterForListField",
+get:
+  (params) =>
+  ({ get }) => {
+    if (!get(filterAtoms.filter(params))) {
+      return (value) => true;
+    }
+    const isMatching = get(isMatchingAtom(params));
+    if (isMatching) {
+      return (value) => true;
+    }
+
+    const exclude = get(stringExcludeAtom(params));
+    const values = get(stringSelectedValuesAtom({ ...params }));
+    const none = values.includes(null);
+
+    return (value) => {
+      const c1 = values.every(v => value?.includes(v));
+      const c2 = (none && NONE.has(value));
+      const c3 = value;
+      const r = (c1 || c2) && c3;
+      return exclude ? !r : r;
+    };
+  },
+});
