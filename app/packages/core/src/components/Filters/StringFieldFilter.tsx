@@ -1,5 +1,4 @@
 import React from "react";
-
 import * as fos from "@fiftyone/state";
 
 import {
