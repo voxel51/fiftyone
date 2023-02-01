@@ -58,10 +58,8 @@ const primitiveFilter = selectorFamily<
   },
 });
 
-export const pathFilter = selectorFamily<
-  (path: string, value: any) => boolean,
-  boolean
->({
+export type PathFilterSelector = (path: string, value: unknown) => boolean;
+export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
   key: "pathFilter",
   get:
     (modal) =>
@@ -91,11 +89,11 @@ export const pathFilter = selectorFamily<
               primitiveFilter({ modal, path: `${expandedPath}.${name}` })
             );
 
-            return (value: any) =>
+            return (value: unknown) =>
               filter(value[name === "id" ? "id" : dbField || name]);
           });
 
-          f[path] = (value: any) => {
+          f[path] = (value: unknown) => {
             if (hidden.has(value.id)) {
               return false;
             }

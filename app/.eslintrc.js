@@ -44,6 +44,21 @@ module.exports = {
     ],
     // allow namespace for type export
     "@typescript-eslint/no-namespace": "off",
+    "react/no-unknown-property": [
+      "warn",
+      {
+        // this is for react-three-fiber props
+        ignore: [
+          "object",
+          "attach",
+          "rotation",
+          "position",
+          "args",
+          "linewidth",
+          "transparent",
+        ],
+      },
+    ],
   },
   settings: {
     react: {

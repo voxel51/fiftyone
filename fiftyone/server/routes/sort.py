@@ -24,9 +24,7 @@ class Sort(HTTPEndpoint):
         dataset_name = data.get("dataset", None)
         filters = data.get("filters", {})
         stages = data.get("view", None)
-        extended = data.get("extended", None)
         dist_field = data.get("dist_field", None)
-
         dataset = fod.load_dataset(dataset_name)
 
         changed = False
