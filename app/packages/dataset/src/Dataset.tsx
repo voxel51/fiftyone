@@ -17,9 +17,10 @@ import {
 } from "@fiftyone/core";
 import { usePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import React, { Suspense } from "react";
+import React, { Suspense, useContext, useEffect, useState } from "react";
 import { PreloadedQuery, useQueryLoader, usePreloadedQuery } from "react-relay";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
+import { RecoilRelayEnvironmentProvider } from "recoil-relay";
 import styled from "styled-components";
 
 // built-in plugins
@@ -57,10 +58,28 @@ export interface DatasetProps {
   theme?: "dark" | "light";
   toggleHeaders?: () => void;
   canEditSavedViews?: boolean;
-  savedViewSlug?: string;
 }
 
-export const Dataset: React.FC<DatasetProps> = ({
+export const Dataset: React.FC<DatasetProps> = (props) => {
+  const [environment] = useState(fos.getEnvironment);
+
+  useEffect(() => {
+    fos.setCurrentEnvironment(environment);
+  }, [environment]);
+
+  return (
+    <RecoilRoot>
+      <RecoilRelayEnvironmentProvider
+        environment={environment}
+        environmentKey={fos.RelayEnvironmentKey}
+      >
+        <DatasetRenderer {...props} />
+      </RecoilRelayEnvironmentProvider>
+    </RecoilRoot>
+  );
+};
+
+export const DatasetRenderer: React.FC<DatasetProps> = ({
   dataset,
   compactLayout = true,
   hideHeaders = false,
@@ -68,7 +87,6 @@ export const Dataset: React.FC<DatasetProps> = ({
   theme = "dark",
   toggleHeaders,
   canEditSavedViews = true,
-  savedViewSlug,
 }) => {
   const [queryRef, loadQuery] = useQueryLoader<DatasetQuery>(DatasetNodeQuery);
   const setTheme = useSetRecoilState(fos.theme);
@@ -79,18 +97,21 @@ export const Dataset: React.FC<DatasetProps> = ({
   React.useLayoutEffect(() => {
     setCompactLayout(compactLayout);
   }, [compactLayout]);
-  React.useEffect(() => {
-    loadQuery({ name: dataset, savedViewSlug });
-  }, [dataset, savedViewSlug]);
-  React.useEffect(() => {
-    setCanChangeSavedViews(canEditSavedViews);
-  }, [canEditSavedViews]);
   React.useLayoutEffect(() => {
     setReadOnly(readOnly);
   }, [readOnly]);
   React.useLayoutEffect(() => {
     setTheme(theme);
   }, [theme]);
+
+  const context = useContext(fos.RouterContext);
+  const savedViewSlug = fos.getSavedViewName(context);
+  React.useEffect(() => {
+    loadQuery({ name: dataset, savedViewSlug: savedViewSlug });
+  }, [dataset, savedViewSlug]);
+  React.useEffect(() => {
+    setCanChangeSavedViews(canEditSavedViews);
+  }, [canEditSavedViews]);
 
   const plugins = usePlugins();
   const loadingElement = <Loading>Pixelating...</Loading>;
@@ -99,25 +120,29 @@ export const Dataset: React.FC<DatasetProps> = ({
   if (plugins.hasError) return <div>Plugin error...</div>;
 
   return (
-    <Container>
-      <Suspense fallback={loadingElement}>
-        <DatasetLoader dataset={dataset} queryRef={queryRef}>
-          <ViewBarWrapper>
-            <ViewBar />
-            {toggleHeaders && (
-              <HeadersToggle
-                toggleHeaders={toggleHeaders}
-                hideHeaders={hideHeaders}
-              />
-            )}
-          </ViewBarWrapper>
-          <CoreDatasetContainer>
-            <CoreDataset />
-          </CoreDatasetContainer>
-        </DatasetLoader>
-      </Suspense>
-      <div id="modal" />
-    </Container>
+    <ThemeProvider>
+      <Container>
+        <Suspense fallback={loadingElement}>
+          <DatasetLoader dataset={dataset} queryRef={queryRef}>
+            <ViewBarWrapper>
+              <ViewBar />
+              {toggleHeaders && (
+                <HeadersToggle
+                  toggleHeaders={toggleHeaders}
+                  hideHeaders={hideHeaders}
+                />
+              )}
+            </ViewBarWrapper>
+            <Suspense fallback={loadingElement}>
+              <CoreDatasetContainer>
+                <CoreDataset />
+              </CoreDatasetContainer>
+            </Suspense>
+          </DatasetLoader>
+        </Suspense>
+        <div id="modal" />
+      </Container>
+    </ThemeProvider>
   );
 };
 

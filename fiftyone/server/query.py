@@ -109,7 +109,7 @@ class EvaluationRun(Run):
 
 @gql.type
 class SavedView:
-    _id: gql.Private[t.Optional[ObjectId]]
+    _id: gql.Private[ObjectId]
     dataset_id: t.Optional[str]
     name: t.Optional[str]
     description: t.Optional[str]
@@ -122,6 +122,8 @@ class SavedView:
 
     @gql.field
     def id(self) -> t.Optional[str]:
+        if isinstance(self, ObjectId):
+            return str(self)
         return str(self._id)
 
     @gql.field
@@ -196,6 +198,7 @@ class Dataset:
     frame_fields: t.Optional[t.List[SampleField]]
     brain_methods: t.Optional[t.List[BrainRun]]
     evaluations: t.Optional[t.List[EvaluationRun]]
+    saved_view_slug: t.Optional[str]
     saved_views: t.Optional[t.List[SavedView]]
     saved_view_ids: gql.Private[t.Optional[t.List[gql.ID]]]
     version: t.Optional[str]
