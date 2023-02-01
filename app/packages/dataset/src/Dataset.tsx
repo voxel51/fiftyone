@@ -120,29 +120,27 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
   if (plugins.hasError) return <div>Plugin error...</div>;
 
   return (
-    <ThemeProvider>
-      <Container>
-        <Suspense fallback={loadingElement}>
-          <DatasetLoader dataset={dataset} queryRef={queryRef}>
-            <ViewBarWrapper>
-              <ViewBar />
-              {toggleHeaders && (
-                <HeadersToggle
-                  toggleHeaders={toggleHeaders}
-                  hideHeaders={hideHeaders}
-                />
-              )}
-            </ViewBarWrapper>
-            <Suspense fallback={loadingElement}>
-              <CoreDatasetContainer>
-                <CoreDataset />
-              </CoreDatasetContainer>
-            </Suspense>
-          </DatasetLoader>
-        </Suspense>
-        <div id="modal" />
-      </Container>
-    </ThemeProvider>
+    <Container>
+      <Suspense fallback={loadingElement}>
+        <DatasetLoader dataset={dataset} queryRef={queryRef}>
+          <ViewBarWrapper>
+            <ViewBar />
+            {toggleHeaders && (
+              <HeadersToggle
+                toggleHeaders={toggleHeaders}
+                hideHeaders={hideHeaders}
+              />
+            )}
+          </ViewBarWrapper>
+          <Suspense fallback={loadingElement}>
+            <CoreDatasetContainer>
+              <CoreDataset />
+            </CoreDatasetContainer>
+          </Suspense>
+        </DatasetLoader>
+      </Suspense>
+      <div id="modal" />
+    </Container>
   );
 };
 
