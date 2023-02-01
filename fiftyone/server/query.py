@@ -129,7 +129,7 @@ class SavedView:
     @gql.field
     def dataset_id(self) -> t.Optional[str]:
         if isinstance(self, ObjectId):
-            return str(self)
+            return None
         return str(self._dataset_id)
 
     @gql.field
