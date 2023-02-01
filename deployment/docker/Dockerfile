@@ -47,12 +47,14 @@ ARG PYTHON_VERSION=3.10
 
 FROM python:${PYTHON_VERSION}-buster as builder
 
-ARG TEAMS_APP_VERSION=0.3.0
+ARG TEAMS_APP_VERSION=1.1.0rc3
 ARG TOKEN
 ARG INDEX_URL=https://${TOKEN}@pypi.fiftyone.ai
 
+COPY ./*.whl .
+
 RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython \
-    && pip wheel --wheel-dir=/tmp/wheels --index-url ${INDEX_URL} fiftyone-teams-app==${TEAMS_APP_VERSION}
+    && pip wheel --wheel-dir=/tmp/wheels ./*.whl
 
 
 FROM python:${PYTHON_VERSION}-slim-buster as release
