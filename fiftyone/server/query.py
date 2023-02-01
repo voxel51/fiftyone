@@ -109,7 +109,7 @@ class EvaluationRun(Run):
 
 @gql.type
 class SavedView:
-    id: t.Optional[str]
+    _id: gql.Private[t.Optional[ObjectId]]
     dataset_id: t.Optional[str]
     name: t.Optional[str]
     description: t.Optional[str]
@@ -119,6 +119,10 @@ class SavedView:
     created_at: t.Optional[datetime]
     last_modified_at: t.Optional[datetime]
     last_loaded_at: t.Optional[datetime]
+
+    @gql.field
+    def id(self) -> t.Optional[str]:
+        return str(self._id)
 
     @gql.field
     def view_name(self) -> t.Optional[str]:
