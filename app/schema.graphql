@@ -457,7 +457,6 @@ type SampleItemStrPageInfo {
 }
 
 type SavedView {
-  datasetId: String
   name: String
   description: String
   color: String
@@ -467,6 +466,7 @@ type SavedView {
   lastModifiedAt: datetime
   lastLoadedAt: datetime
   id: String
+  datasetId: String
   viewName: String
   stageDicts: BSONArray
 }

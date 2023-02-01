@@ -109,8 +109,8 @@ class EvaluationRun(Run):
 
 @gql.type
 class SavedView:
-    _id: gql.Private[ObjectId]
-    dataset_id: t.Optional[str]
+    _id: gql.Private[t.Optional[ObjectId]]
+    _dataset_id: gql.Private[t.Optional[ObjectId]]
     name: t.Optional[str]
     description: t.Optional[str]
     color: t.Optional[str]
@@ -125,6 +125,12 @@ class SavedView:
         if isinstance(self, ObjectId):
             return str(self)
         return str(self._id)
+
+    @gql.field
+    def dataset_id(self) -> t.Optional[str]:
+        if isinstance(self, ObjectId):
+            return str(self)
+        return str(self._dataset_id)
 
     @gql.field
     def view_name(self) -> t.Optional[str]:
