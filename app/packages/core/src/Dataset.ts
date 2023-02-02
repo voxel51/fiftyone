@@ -177,10 +177,6 @@ export const usePreLoadedDataset = (
       );
     }
 
-    if (stateProxyValue) {
-      view = stateProxyValue.view;
-      viewName = stateProxyValue.viewName;
-    }
     if (
       !router.state &&
       typeof window !== "undefined" &&
@@ -199,7 +195,7 @@ export const usePreLoadedDataset = (
             ? (toCamelCase(config) as fos.State.Config)
             : undefined,
           dataset: fos.transformDataset(rest),
-          state: { view, viewName, ...state },
+          state: { view, viewName, ...state, ...(stateProxyValue || {}) },
         };
       });
       setReady(true);
