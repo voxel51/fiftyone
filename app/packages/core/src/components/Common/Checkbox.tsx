@@ -21,7 +21,7 @@ interface CheckboxProps<T> {
   subcountAtom?: RecoilValueReadOnly<number>;
   disabled?: boolean;
   forceColor?: boolean;
-  formatter?: (value: T) => string;
+  formatter?: (value: T | undefined) => string | null | undefined;
 }
 
 const StyledCheckboxContainer = styled.div`
