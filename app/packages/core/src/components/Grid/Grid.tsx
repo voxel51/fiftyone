@@ -99,7 +99,6 @@ const Grid: React.FC<{}> = () => {
       freeVideos();
     }),
     [
-      isModalOpen,
       stringifyObj(useRecoilValue(fos.filters)),
       useRecoilValue(fos.datasetName),
       useRecoilValue(fos.cropToContent(false)),
