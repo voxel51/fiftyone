@@ -223,7 +223,9 @@ async def dispatch_polling_event_listener(
 
 
 def get_state() -> fos.StateDescription:
-    """Get the current state description singleton on the server
+    """Get the current state description singleton on the server if it
+    exists. Otherwise, initializes and sets the state description with
+    default values.
 
     Returns:
         the :class:`fiftyone.core.state.StateDescription` server singleton
