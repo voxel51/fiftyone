@@ -107,20 +107,19 @@ const useSetView = (
                 });
                 window.history.replaceState(window.history.state, "", newRoute);
               }
-              if (patch) {
-                updateState({
-                  dataset: fos.transformDataset(dataset),
-                  state: {
-                    view: value,
-                    viewCls: dataset.viewCls,
-                    selected: [],
-                    selectedLabels: [],
-                    viewName,
-                    savedViews,
-                    savedViewSlug,
-                  },
-                });
-              }
+              updateState({
+                dataset: fos.transformDataset(dataset),
+                state: {
+                  view: value,
+                  viewCls: dataset.viewCls,
+                  selected: [],
+                  selectedLabels: [],
+                  viewName,
+                  savedViews,
+                  savedViewSlug,
+                },
+              });
+
               onComplete && onComplete();
             },
           });
