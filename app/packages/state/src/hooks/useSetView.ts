@@ -10,9 +10,7 @@ import {
 } from "recoil";
 import { State, stateSubscription, view, viewStateForm } from "../recoil";
 import { RouterContext } from "../routing";
-import useSendEvent from "./useSendEvent";
 import * as fos from "../";
-import { transformDataset } from "../";
 
 export const stateProxy = atom({
   key: "stateProxy",
@@ -24,7 +22,7 @@ const useSetView = (
   selectSlice = false,
   onComplete?: () => void
 ) => {
-  const send = useSendEvent(true);
+  const send = fos.useSendEvent(true);
   const subscription = useRecoilValue(stateSubscription);
   const router = useContext(RouterContext);
   const [commit] = useMutation<setViewMutation>(setView);
@@ -111,7 +109,7 @@ const useSetView = (
               }
               if (patch) {
                 updateState({
-                  dataset: transformDataset(dataset),
+                  dataset: fos.transformDataset(dataset),
                   state: {
                     view: value,
                     viewCls: dataset.viewCls,
