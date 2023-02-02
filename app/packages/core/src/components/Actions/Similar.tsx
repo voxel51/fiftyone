@@ -64,6 +64,7 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
 const useSortBySimilarity = (close) => {
   const update = useUnprocessedStateUpdate();
   const handleError = useErrorHandler();
+
   return useRecoilCallback(
     ({ snapshot, set }) =>
       async (parameters: fos.State.SortBySimilarityParameters) => {
@@ -81,6 +82,10 @@ const useSortBySimilarity = (close) => {
               queryIds,
             }),
           });
+
+          // update selectedSamples atom to new set.
+          // modifying data, otherwise useStateUpdate will set the selectedSamples again
+          data.state.selected = [];
 
           update(({ set }) => {
             set(fos.similarityParameters, {
