@@ -12,6 +12,7 @@ import { State, stateSubscription, view, viewStateForm } from "../recoil";
 import { RouterContext } from "../routing";
 import useSendEvent from "./useSendEvent";
 import * as fos from "../";
+import { transformDataset } from "../";
 
 export const stateProxy = atom({
   key: "stateProxy",
@@ -29,6 +30,7 @@ const useSetView = (
   const [commit] = useMutation<setViewMutation>(setView);
   const onError = useErrorHandler();
   const setStateProxy = useSetRecoilState(stateProxy);
+  const updateState = fos.useStateUpdate();
 
   return useRecoilCallback(
     ({ snapshot }) =>
@@ -107,7 +109,20 @@ const useSetView = (
                 });
                 window.history.replaceState(window.history.state, "", newRoute);
               }
-
+              if (patch) {
+                updateState({
+                  dataset: transformDataset(dataset),
+                  state: {
+                    view: value,
+                    viewCls: dataset.viewCls,
+                    selected: [],
+                    selectedLabels: [],
+                    viewName,
+                    savedViews,
+                    savedViewSlug,
+                  },
+                });
+              }
               onComplete && onComplete();
             },
           });
