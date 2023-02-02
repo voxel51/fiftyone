@@ -4,7 +4,13 @@
 
 import { getColor } from "@fiftyone/utilities";
 import { INFO_COLOR, TOLERANCE } from "../constants";
-import { BaseState, Coordinates, KeypointSkeleton, NONFINITE } from "../state";
+import {
+  BaseState,
+  Coordinates,
+  KeypointSkeleton,
+  NONFINITE,
+  Point,
+} from "../state";
 import { distance, distanceFromLineSegment, multiply } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
@@ -39,8 +45,9 @@ export default class KeypointOverlay<
     ctx.lineWidth = 0;
 
     const skeleton = getSkeleton(this.field, state);
+    console.info(skeleton);
     const points = this.getFilteredPoints(state, skeleton);
-
+    // console.info(points)
     if (skeleton && state.options.showSkeletons) {
       for (let i = 0; i < skeleton.edges.length; i++) {
         const path = skeleton.edges[i].map((index) => points[index]);
@@ -185,7 +192,9 @@ export default class KeypointOverlay<
       return p.every((c) => typeof c === "number") &&
         state.options.pointFilter(
           this.field,
-          Object.fromEntries(getAttributes(skeleton, this.label, i))
+          Object.fromEntries(
+            getAttributes(skeleton, this.label, i)
+          ) as unknown as Point
         )
         ? p
         : null;

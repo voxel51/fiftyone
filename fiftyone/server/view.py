@@ -335,25 +335,33 @@ def _make_filter_stages(
             prefix = ""
 
         if _is_label(field):
+            # There are three cases for keypoints:
+            # The path ends in .points: filter by keypoint skeleton
+            # Ex: keypoint_detections.keypoints.points
+            # The path ends a field that is a ListField: use special keypoints handling
+            # Ex: keypoint_detections.keypoints.confidence
+            # The path ends in a field that is NOT a ListFIeld: use regular field handling
+            # Ex: keypoint_detections.keypoints.label
+
             keypoints = issubclass(
                 field.document_type, (fol.Keypoint, fol.Keypoints)
             )
-
-            if keypoints:
-                if path.endswith(".id") or path.endswith(".label"):
-                    keypoints = False
-
             parent = field
             field = view.get_field(path)
             key = field.db_field if field.db_field else field.name
             view_field = F(key)
+            is_listfield = isinstance(field, fof.ListField)
+            is_point = path.endswith(".points")
+
             expr = (
                 _make_keypoint_kwargs(
                     args,
                     view,
-                    path if path.endswith(".points") else None,
+                    path,
+                    is_listfield,
+                    is_point,
                 )
-                if keypoints
+                if keypoints and (is_listfield or is_point)
                 else _make_scalar_expression(
                     view_field, args, field, is_label=True
                 )
@@ -371,11 +379,22 @@ def _make_filter_stages(
                     new_field = None
 
                 if keypoints:
-                    stage = fosg.FilterKeypoints(
-                        prefix + parent.name,
-                        _new_field=new_field,
-                        **expr,
-                    )
+                    if is_listfield or is_point:
+                        stage = fosg.FilterKeypoints(
+                            prefix + parent.name,
+                            _new_field=new_field,
+                            only_matches=only_match,
+                            **expr,
+                        )
+                    else:
+                        stage = fosg.FilterLabels(
+                            cache.get(
+                                prefix + parent.name, prefix + parent.name
+                            ),
+                            expr,
+                            only_matches=only_match,
+                            _new_field=new_field,
+                        )
                 elif is_matching:
                     field = (
                         cache.get(prefix + parent.name, prefix + parent.name),
@@ -525,24 +544,26 @@ def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
     return _apply_others(expr, f, args, is_label)
 
 
-# generate expr for keypoint labels
-def _make_keypoint_kwargs(args, view, points):
-    if points:
-        ske = view._dataset.default_skeleton
-        name = points.split(".")[0]
-
+# generate expr for keypoint points and listfield labels
+def _make_keypoint_kwargs(args, view, path, is_listfield, is_point):
+    name = path.split(".")[0]
+    ske = view._dataset.default_skeleton
+    # e.g. "keypoints.points"
+    if is_point:
         if name in view._dataset.skeletons:
             ske = view._dataset.skeletons[name]
-
         values = args.get("values", [])
         if args["exclude"]:
             values = set(ske.labels).difference(values)
-
         return {"labels": values}
-
-    f = F("confidence")
-    mn, mx = args["range"]
-    return {"filter": (f >= mn) & (f <= mx)}
+    # e.g. "keypoints.confidence"
+    elif is_listfield:
+        f = F(name)
+        mn, mx = args["range"]
+        expr = (f >= mn) & (f <= mx)
+        if args["exclude"]:
+            expr = ~expr
+        return {"filter": expr}
 
 
 def _apply_others(expr, f, args, is_label):
