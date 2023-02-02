@@ -142,6 +142,8 @@ Core
 
 Annotation
 
+- Added support for CVAT 2.4
+  `#2597 <https://github.com/voxel51/fiftyone/pull/2597>`_
 - Added support for providing custom task names for CVAT tasks
   `#2353 <https://github.com/voxel51/fiftyone/pull/2353>`_
 - Fixed a bug when checking if CVAT projects exist
