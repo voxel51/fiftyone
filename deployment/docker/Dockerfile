@@ -1,15 +1,9 @@
 # Dockerfile for building an image with a FiftyOne Team App release atop a
 # Debian-based Linux distribution.
 #
-# REQUIRED BUILD ARGs::
-#
-#   TOKEN: Your Teams client install token
-#
 # OPTIONAL BUILD ARGs::
 #
 #   PYTHON_VERSION (3.10): The Python version to install. Must be >= 3.9
-#   TEAMS_APP_VERSION (0.3.0): The version of fiftyone-teams-app to install.
-#   INDEX_URL (https://${TOKEN}@pypi.fiftyone.ai): The URL to install fiftyone-teams-app from
 #
 # REQUIRED RUNTIME ENV VARS::
 #
@@ -46,10 +40,6 @@
 ARG PYTHON_VERSION=3.10
 
 FROM python:${PYTHON_VERSION}-buster as builder
-
-ARG TEAMS_APP_VERSION=1.1.0rc3
-ARG TOKEN
-ARG INDEX_URL=https://${TOKEN}@pypi.fiftyone.ai
 
 COPY ./*.whl .
 
