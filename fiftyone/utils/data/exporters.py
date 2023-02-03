@@ -2393,6 +2393,10 @@ class MediaDirectoryExporter(UnlabeledMediaDatasetExporter):
 
         self._media_exporter = None
 
+    @property
+    def requires_metadata(self):
+        return False
+
     def setup(self):
         self._media_exporter = MediaExporter(
             self.export_media,
