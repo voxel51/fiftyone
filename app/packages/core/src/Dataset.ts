@@ -49,12 +49,14 @@ export const DatasetNodeQuery = graphql`
       appConfig {
         gridMediaField
         mediaFields
+        modalMediaField
         plugins
         sidebarGroups {
           expanded
           paths
           name
         }
+        sidebarMode
       }
       sampleFields {
         ftype
@@ -132,17 +134,6 @@ export const DatasetNodeQuery = graphql`
       viewCls
       viewName
       savedViewSlug
-      appConfig {
-        gridMediaField
-        mediaFields
-        modalMediaField
-        plugins
-        sidebarGroups {
-          name
-          paths
-        }
-        sidebarMode
-      }
       info
     }
   }
