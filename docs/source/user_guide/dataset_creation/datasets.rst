@@ -207,6 +207,8 @@ refer to the corresponding dataset format when reading the dataset from disk.
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`VideoDirectory <VideoDirectory-import>`                                         | A directory of videos.                                                             |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`MediaDirectory <MediaDirectory-import>`                                         | A directory of media files.                                                        |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneImageClassificationDataset <FiftyOneImageClassificationDataset-import>` | A labeled dataset consisting of images and their associated classification labels  |
     |                                                                                       | in a simple JSON format.                                                           |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -455,6 +457,94 @@ You can create a FiftyOne dataset from a directory of videos as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.VideoDirectory
+
+.. _MediaDirectory-import:
+
+MediaDirectory
+--------------
+
+The :class:`fiftyone.types.MediaDirectory` type represents a directory of media
+files.
+
+Datasets of this type are read in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        <filename1>.<ext>
+        <filename2>.<ext>
+
+.. note::
+
+    All files must have the same media type (image, video, point cloud, etc.)
+
+By default, the dataset may contain nested subfolders of media files, which are
+recursively listed.
+
+.. note::
+
+    See :class:`MediaDirectoryImporter <fiftyone.utils.data.importers.MediaDirectoryImporter>`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
+You can create a FiftyOne dataset from a directory of media files as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        dataset_dir = "/path/to/media-dir"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.MediaDirectory,
+            name=name,
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code:: shell
+
+      NAME=my-dataset
+      DATASET_DIR=/path/to/media-dir
+
+      # Create the dataset
+      fiftyone datasets create \
+          --name $NAME \
+          --dataset-dir $DATASET_DIR \
+          --type fiftyone.types.MediaDirectory
+
+      # View summary info about the dataset
+      fiftyone datasets info $NAME
+
+      # Print the first few samples in the dataset
+      fiftyone datasets head $NAME
+
+    To view a directory of media in the FiftyOne App without creating
+    a persistent FiftyOne dataset, you can execute:
+
+    .. code-block:: shell
+
+        DATASET_DIR=/path/to/media-dir
+
+        # View the dataset in the App
+        fiftyone app view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.MediaDirectory
 
 .. _FiftyOneImageClassificationDataset-import:
 
