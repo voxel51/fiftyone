@@ -167,7 +167,17 @@ export const pinnedSliceSample = graphQLSelector<
       },
     };
   },
-  mapResponse: (response) => response.sample,
+  mapResponse: (response) => {
+    const actualRawSample = response?.sample?.sample;
+
+    if (actualRawSample && typeof actualRawSample === "string") {
+      return {
+        ...response.sample,
+        sample: JSON.parse(actualRawSample),
+      };
+    }
+    return response.sample;
+  },
 });
 
 export const groupPaginationFragment = selector<paginateGroup_query$key>({
