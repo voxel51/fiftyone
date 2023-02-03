@@ -45,9 +45,7 @@ export default class KeypointOverlay<
     ctx.lineWidth = 0;
 
     const skeleton = getSkeleton(this.field, state);
-    console.info(skeleton);
     const points = this.getFilteredPoints(state, skeleton);
-    // console.info(points)
     if (skeleton && state.options.showSkeletons) {
       for (let i = 0; i < skeleton.edges.length; i++) {
         const path = skeleton.edges[i].map((index) => points[index]);

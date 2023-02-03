@@ -12,12 +12,10 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
       (modal) =>
       ({ get, getCallback }) => {
         const f = get(modal ? modalFilters : filters);
-        console.info("line1");
         return getCallback(({ snapshot }) => (path: string, value: Point) => {
-          console.info("line2");
           path = snapshot.getLoadable(expandPath(path)).contents;
-
           const labels = f[`${path}.points`] as StringFilter;
+
           if (labels && labels.values.length && value.label) {
             const included = labels.values.includes(value.label);
             if (labels.exclude) {
@@ -32,7 +30,6 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
           }
 
           const confidence = f[`${path}.confidence`] as NumericFilter;
-
           if (confidence) {
             if (typeof value.confidence !== "number") {
               switch (value.confidence) {
