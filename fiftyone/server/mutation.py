@@ -206,7 +206,11 @@ class Mutation:
 
         # Set view state
         result_view = _build_result_view(result_view, form)
-        slug = fou.to_slug(result_view.name) if result_view.name else None
+        slug = (
+            fou.to_slug(result_view.name)
+            if result_view.name
+            else saved_view_slug
+        )
         state.view = result_view
         state.view_name = result_view.name
         state.saved_view_slug = slug

@@ -31,7 +31,7 @@ export const joinStringArray = (arr: string[]) => {
   } else if (arr.length === 1) {
     return arr[0];
   } else if (arr.length === 2) {
-    return `${arr[0]} and ${arr[1]}`;
+    return `${arr[0]}, ${arr[1]}`;
   } else {
     let result = "";
     for (let i = 0; i < arr.length - 1; i++) {

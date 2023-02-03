@@ -136,7 +136,7 @@ const Wrapper = ({
       ))}
       {Boolean(selectedSet.size) && (
         <>
-          {totalCount > 3 && (
+          {(
             <FilterOption
               nestedField={nestedField}
               shouldNotShowExclude={shouldNotShowExclude}

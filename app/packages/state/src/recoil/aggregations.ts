@@ -173,6 +173,7 @@ export const stringCountResults = selectorFamily({
       const keys = params.path.split(".");
       let parent = keys[0];
       let field = get(schemaAtoms.field(parent));
+
       if (!field && parent === "frames") {
         parent = `frames.${keys[1]}`;
       }
@@ -181,11 +182,12 @@ export const stringCountResults = selectorFamily({
         VALID_KEYPOINTS.includes(get(schemaAtoms.field(parent)).embeddedDocType)
       ) {
         const skeleton = get(selectors.skeleton(parent));
-
-        return {
-          count: skeleton.labels.length,
-          results: skeleton.labels.map((label) => [label as string | null, -1]),
-        };
+        if (skeleton && skeleton.labels) {
+          return {
+            count: skeleton.labels.length,
+            results: skeleton.labels.map((label) => [label as string | null, -1]),
+          };
+        }
       }
 
       let { values, count } = get(aggregation(params));

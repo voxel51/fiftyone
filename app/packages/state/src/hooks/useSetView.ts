@@ -18,7 +18,11 @@ export const stateProxy = atom({
   default: null,
 });
 
-const useSetView = (patch = false, selectSlice = false) => {
+const useSetView = (
+  patch = false,
+  selectSlice = false,
+  onComplete?: () => void
+) => {
   const send = useSendEvent(true);
   const subscription = useRecoilValue(stateSubscription);
   const router = useContext(RouterContext);
@@ -66,16 +70,17 @@ const useSetView = (patch = false, selectSlice = false) => {
                 dataset: { stages: value, viewName, ...dataset },
               },
             }) => {
-              if (router.history.location.state?.state) {
-                const searchParams = new URLSearchParams(
-                  router.history.location.search
-                );
+              const searchParamsString =
+                router.history.location.search || window.location.search;
+              const searchParams = new URLSearchParams(searchParamsString);
 
-                savedViewSlug
-                  ? searchParams.set("view", encodeURIComponent(savedViewSlug))
-                  : searchParams.delete("view");
+              savedViewSlug
+                ? searchParams.set("view", encodeURIComponent(savedViewSlug))
+                : searchParams.delete("view");
 
-                const search = searchParams.toString();
+              const search = searchParams.toString();
+
+              if (router.history.location.state) {
                 const newRoute = `${router.history.location.pathname}${
                   search.length ? "?" : ""
                 }${search}`;
@@ -92,15 +97,6 @@ const useSetView = (patch = false, selectSlice = false) => {
                   },
                 });
               } else {
-                const searchParams = new URLSearchParams(
-                  window.location.search
-                );
-
-                savedViewSlug
-                  ? searchParams.set("view", encodeURIComponent(savedViewSlug))
-                  : searchParams.delete("view");
-
-                const search = searchParams.toString();
                 const newRoute = `${window.location.pathname}${
                   search.length ? "?" : ""
                 }${search}`;
@@ -109,12 +105,10 @@ const useSetView = (patch = false, selectSlice = false) => {
                   view: savedViewSlug ? value : viewResponse,
                   viewName,
                 });
-                window.history.replaceState(
-                  window.history.state,
-                  undefined,
-                  newRoute
-                );
+                window.history.replaceState(window.history.state, "", newRoute);
               }
+
+              onComplete && onComplete();
             },
           });
         });

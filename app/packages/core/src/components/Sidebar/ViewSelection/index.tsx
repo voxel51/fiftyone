@@ -80,8 +80,8 @@ export default function ViewSelection() {
   const viewOptions = useMemo(
     () => [
       DEFAULT_SELECTED,
-      ...items.map(({ name, color, description, slug, viewStages }) => ({
-        id: name,
+      ...items.map(({ id, name, color, description, slug, viewStages }) => ({
+        id,
         name,
         label: name,
         color,
