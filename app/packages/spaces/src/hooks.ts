@@ -1,6 +1,6 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { useContext, useMemo, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 import { SortableEvent } from "react-sortablejs";
 import {
   useRecoilCallback,
@@ -25,14 +25,17 @@ import { getNodes } from "./utils";
 export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
   const [state, setState] = useRecoilState(spaceSelector(id));
 
-  if (!state) {
-    const baseState = new SpaceNode("root").toJSON();
-    setState(defaultState || baseState);
-  }
+  useEffect(() => {
+    if (!state) {
+      const baseState = new SpaceNode("root").toJSON();
+      setState(defaultState || baseState);
+    }
+  }, []);
 
   const spaces = new SpaceTree(state, (spaces: SpaceNodeJSON) => {
     setState(spaces);
   });
+
   return {
     spaces,
     updateSpaces: (

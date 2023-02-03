@@ -110,7 +110,6 @@ const Wrapper = ({
           key={String(value)}
           color={color}
           value={selectedSet.has(value)}
-          disabled={totalCount === 1}
           name={value}
           count={
             count < 0
@@ -137,7 +136,7 @@ const Wrapper = ({
       ))}
       {Boolean(selectedSet.size) && (
         <>
-          {totalCount > 3 && (
+          {(
             <FilterOption
               nestedField={nestedField}
               shouldNotShowExclude={shouldNotShowExclude}

@@ -19,9 +19,7 @@ export function useBrainResultsSelector() {
     toKey: (item) => item.key,
     useSearch: (search) => ({
       values: dataset.brainMethods
-        .filter((item) => {
-          return item.config.cls.includes("VisualizationConfig");
-        })
+        .filter(isVisualizationConfig)
         .filter((item) => item.key.toLowerCase().includes(search.toLowerCase()))
         .map((item) => {
           return item.key;
@@ -32,7 +30,16 @@ export function useBrainResultsSelector() {
   return {
     handlers,
     brainKey: selected,
-    canSelect: dataset?.brainMethods?.length > 0,
+    canSelect: countValidBrainMethods(dataset) > 0,
     hasSelection: selected !== null,
   };
+}
+
+function countValidBrainMethods(dataset) {
+  const methods = dataset?.brainMethods || [];
+  return methods.filter(isVisualizationConfig).length;
+}
+
+function isVisualizationConfig(item) {
+  return item.config.cls.includes("fiftyone.brain.visualization");
 }

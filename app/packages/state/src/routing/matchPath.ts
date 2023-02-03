@@ -71,10 +71,10 @@ export const matchPath = <T extends OperationType | undefined>(
     exact = false,
     strict = false,
     sensitive = false,
-    queryParams = [],
+    queryParams = {},
   } = options;
 
-  if (!path && path !== "") return null;
+  if (!path || path === "") return null;
 
   const { regexp, keys } = compilePath(path, {
     end: exact,

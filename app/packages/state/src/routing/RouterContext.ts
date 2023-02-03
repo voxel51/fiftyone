@@ -107,6 +107,7 @@ export const createRouter = (
   const context: RoutingContext = {
     history,
     get() {
+      const location = window.location;
       if (!currentEntry) {
         currentEntry = {
           pathname: history.location.pathname,
@@ -119,7 +120,7 @@ export const createRouter = (
               history.location.pathname,
               errors,
               history.location.state?.variables as Partial<VariablesOf<any>>,
-              history.location.search
+              history.location.search || location.search
             )
           ),
         };
@@ -197,7 +198,7 @@ const matchRoute = <T extends OperationType | undefined = OperationType>(
     matchedRoutes &&
     matchedRoutes.every(({ match }) => !match.isExact)
   ) {
-    throw new NotFoundError(pathname);
+    throw new NotFoundError({ path: pathname });
   }
 
   return matchedRoutes;
