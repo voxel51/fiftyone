@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.1.0"
+VERSION = "0.11.0"
 
 
 def get_version():
