@@ -1129,7 +1129,11 @@ class FacetAggregations(Aggregation):
 
     @staticmethod
     def _get_key(agg):
-        return agg.field_name.replace(".", "_") + "_" + agg.__class__.__name__
+        return (
+            agg.field_name.replace(".", "_").replace("[]", "")
+            + "_"
+            + agg.__class__.__name__
+        )
 
     @staticmethod
     def _parse_aggregations(field_name, aggregations):
