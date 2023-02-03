@@ -8591,21 +8591,27 @@ class SampleCollection(object):
                 compiled[idx] = aggregation
                 continue
 
-            keys = aggregation.field_name.split(".")
-            path = ""
-            subfield_name = keys[-1]
-            for num in range(len(keys), 0, -1):
-                path = ".".join(keys[:num])
-                subfield_name = ".".join(keys[num:])
-                field = self.get_field(path)
-                if isinstance(field, fof.ListField) and isinstance(
-                    field.field, fof.EmbeddedDocumentField
-                ):
-                    break
+            # @todo optimize this
+            field_name = aggregation.field_name
+            if "[]" in field_name:
+                root = field_name
+                leaf = ""
+            else:
+                keys = field_name.split(".")
+                root = ""
+                leaf = keys[-1]
+                for num in range(len(keys), 0, -1):
+                    root = ".".join(keys[:num])
+                    leaf = ".".join(keys[num:])
+                    field = self.get_field(root)
+                    if isinstance(field, fof.ListField) and isinstance(
+                        field.field, fof.EmbeddedDocumentField
+                    ):
+                        break
 
             aggregation = copy(aggregation)
-            aggregation._field_name = subfield_name
-            compiled[path][idx] = aggregation
+            aggregation._field_name = leaf
+            compiled[root][idx] = aggregation
 
         for field_name, aggregations in compiled.items():
             if isinstance(aggregations, foa.Aggregation):
