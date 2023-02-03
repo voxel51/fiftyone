@@ -5,27 +5,23 @@ FiftyOne Server view
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
 import asyncio
+import strawberry as gql
+from typing import List, Optional
+
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
+from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.odm as foo
 import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-import strawberry as gql
-
-from bson import ObjectId, json_util
-from dacite import Config, from_dict
-from fiftyone.core.expressions import ViewField as F, VALUE
 from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
 from fiftyone.server.utils import iter_label_fields
-from typing import List, Optional
 
 _LABEL_TAGS = "_label_tags"
 
@@ -314,14 +310,12 @@ def _make_filter_stages(
     cleanup = set()
     filtered_labels = set()
     for path in sorted(filters):
-        args = filters[path]
-
-        # use the setting within the filter, otherwise use default true settings
-        is_matching = True if "isMatching" not in args else args["isMatching"]
-        only_match = True if "onlyMatch" not in args else args["onlyMatch"]
-
         if path == "tags" or path.startswith("_"):
             continue
+
+        args = filters[path]
+        is_matching = args.get("isMatching", True)
+        only_matches = args.get("onlyMatch", True)
 
         frames = path.startswith(view._FRAMES_PREFIX)
         keys = path.split(".")
@@ -335,37 +329,20 @@ def _make_filter_stages(
             prefix = ""
 
         if _is_label(field):
-            # There are three cases for keypoints:
-            # The path ends in .points: filter by keypoint skeleton
-            # Ex: keypoint_detections.keypoints.points
-            # The path ends a field that is a ListField: use special keypoints handling
-            # Ex: keypoint_detections.keypoints.confidence
-            # The path ends in a field that is NOT a ListFIeld: use regular field handling
-            # Ex: keypoint_detections.keypoints.label
-
-            keypoints = issubclass(
-                field.document_type, (fol.Keypoint, fol.Keypoints)
-            )
             parent = field
             field = view.get_field(path)
-            key = field.db_field if field.db_field else field.name
-            view_field = F(key)
-            is_listfield = isinstance(field, fof.ListField)
-            is_point = path.endswith(".points")
-
-            expr = (
-                _make_keypoint_kwargs(
-                    args,
-                    view,
-                    path,
-                    is_listfield,
-                    is_point,
-                )
-                if keypoints and (is_listfield or is_point)
-                else _make_scalar_expression(
-                    view_field, args, field, is_label=True
-                )
+            is_keypoints = issubclass(
+                parent.document_type, (fol.Keypoint, fol.Keypoints)
             )
+            is_list_field = isinstance(field, fof.ListField)
+
+            if is_keypoints and is_list_field:
+                expr = _make_keypoint_list_filter(args, view, path)
+            else:
+                key = field.db_field if field.db_field else field.name
+                expr = _make_scalar_expression(
+                    F(key), args, field, is_label=True
+                )
 
             if expr is not None:
                 if hide_result:
@@ -378,37 +355,41 @@ def _make_filter_stages(
                 else:
                     new_field = None
 
-                if keypoints:
-                    if is_listfield or is_point:
+                if is_keypoints:
+                    if is_list_field:
                         stage = fosg.FilterKeypoints(
                             prefix + parent.name,
                             _new_field=new_field,
-                            only_matches=only_match,
+                            only_matches=only_matches,
                             **expr,
                         )
                     else:
+                        _field = prefix + parent.name
+                        _field = cache.get(_field, _field)
+
                         stage = fosg.FilterLabels(
-                            cache.get(
-                                prefix + parent.name, prefix + parent.name
-                            ),
+                            _field,
                             expr,
-                            only_matches=only_match,
+                            only_matches=only_matches,
                             _new_field=new_field,
                         )
                 elif is_matching:
-                    field = (
-                        cache.get(prefix + parent.name, prefix + parent.name),
-                    )
+                    _field = prefix + parent.name
+                    _field = cache.get(_field, _field)
+
                     stage = fosg.MatchLabels(
-                        fields=field[0],
+                        fields=_field[0],
                         filter=expr,
                         bool=(not args["exclude"]),
                     )
                 else:
+                    _field = prefix + parent.name
+                    _field = cache.get(_field, _field)
+
                     stage = fosg.FilterLabels(
-                        cache.get(prefix + parent.name, prefix + parent.name),
+                        _field,
                         expr,
-                        only_matches=only_match,
+                        only_matches=only_matches,
                         _new_field=new_field,
                     )
 
@@ -424,7 +405,6 @@ def _make_filter_stages(
                 stages.append(fosg.Match(expr))
 
     if label_tags is not None and hide_result:
-
         for path, _ in iter_label_fields(view):
             if hide_result:
                 new_field = _get_filtered_path(
@@ -485,7 +465,8 @@ def _is_label(field):
 
 def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
     expr = None
-    is_matching = False if "isMatching" not in args else args["isMatching"]
+
+    is_matching = args.get("isMatching", False)
     if isinstance(field, fof.ListField):
         expr = f.filter(
             _make_scalar_expression(F(), args, field.field, list_field=True)
@@ -544,30 +525,33 @@ def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
     return _apply_others(expr, f, args, is_label)
 
 
-# generate expr for keypoint points and listfield labels
-def _make_keypoint_kwargs(args, view, path, is_listfield, is_point):
-    name = path.split(".")[0]
-    ske = view._dataset.default_skeleton
-    # e.g. "keypoints.points"
-    if is_point:
-        if name in view._dataset.skeletons:
-            ske = view._dataset.skeletons[name]
+def _make_keypoint_list_filter(args, view, path):
+    name = path.split(".", 1)[0]
+
+    if path.endswith(".points"):
+        dataset = view._dataset
+        if name in dataset.skeletons:
+            skeleton = dataset.skeletons[name]
+        else:
+            skeleton = dataset.default_skeleton
+
         values = args.get("values", [])
         if args["exclude"]:
-            values = set(ske.labels).difference(values)
+            values = list(set(skeleton.labels).difference(values))
+
         return {"labels": values}
-    # e.g. "keypoints.confidence"
-    elif is_listfield:
-        f = F(name)
-        mn, mx = args["range"]
-        expr = (f >= mn) & (f <= mx)
-        if args["exclude"]:
-            expr = ~expr
-        return {"filter": expr}
+
+    f = F(name)
+    mn, mx = args["range"]
+    expr = (f >= mn) & (f <= mx)
+    if args["exclude"]:
+        expr = ~expr
+
+    return {"filter": expr}
 
 
 def _apply_others(expr, f, args, is_label):
-    is_matching = False if "isMatching" not in args else args["isMatching"]
+    is_matching = args.get("isMatching", False)
     nonfinites = {
         "nan": float("nan"),
         "ninf": -float("inf"),
@@ -591,7 +575,6 @@ def _apply_others(expr, f, args, is_label):
         and args["exclude"]
         and not (is_matching and is_label)
     ):
-        # pylint: disable=invalid-unary-operand-type
         expr = ~expr
 
     return expr
