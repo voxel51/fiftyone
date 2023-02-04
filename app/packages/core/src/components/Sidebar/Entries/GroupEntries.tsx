@@ -580,7 +580,6 @@ export const PathGroupEntry = React.memo(
     const renameGroup = useRenameGroup(modal, name);
     const onDelete = !modal ? useDeleteGroup(modal, name) : null;
     const empty = useRecoilValue(fos.groupIsEmpty({ modal, group: name }));
-    console.log(entryKey, name, modal, mutable, trigger);
 
     return (
       <GroupEntry
