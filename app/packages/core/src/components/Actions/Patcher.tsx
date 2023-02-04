@@ -17,11 +17,6 @@ import {
 } from "@fiftyone/utilities";
 
 import {
-  RouterContext,
-  useSetView,
-  useUnprocessedStateUpdate,
-} from "@fiftyone/state";
-import {
   OBJECT_PATCHES,
   EVALUATION_PATCHES,
   CLIPS_VIEWS,
@@ -32,7 +27,6 @@ import { ActionOption } from "./Common";
 import { SwitcherDiv, SwitchDiv } from "./utils";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { State } from "@fiftyone/state";
 
 export const patchesFields = selector<string[]>({
   key: "patchesFields",

@@ -37,6 +37,7 @@ import {
   DEFAULT_COLOR_OPTION,
 } from "@fiftyone/components/src/components/Selection/SelectionColors";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
+import { toSlug } from "../../Common/utils";
 
 interface Props {
   savedViews: fos.State.SavedView[];
@@ -82,13 +83,14 @@ export default function ViewDialog(props: Props) {
     description: "",
   });
 
-  const savedViewNames = new Set(
-    savedViews.map((sv: fos.State.SavedView) => sv.name.toLowerCase())
+  const savedViewSlugs = new Set(
+    savedViews.map((sv: fos.State.SavedView) => sv.slug.toLowerCase())
   );
   const nameExists =
-    nameValue && nameValue !== initialName && savedViewNames.has(nameValue);
+    nameValue &&
+    nameValue !== initialName &&
+    savedViewSlugs.has(toSlug(nameValue));
   const nameError = nameExists ? "Name already exists" : "";
-
   const title = isCreating ? "Create view" : "Edit view";
 
   useEffect(() => {

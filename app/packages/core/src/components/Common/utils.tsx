@@ -94,3 +94,34 @@ export const getStep = (
 
   return step;
 };
+
+export const toSlug = (str: string) => {
+  /**  Returns the URL-friendly slug for the given string.
+   *
+   * The following strategy is used to generate slugs:
+   *   (based on fiftyone.core.utils `to_slug` function)
+   *   -   The characters ``A-Za-z0-9`` are converted to lowercase
+   *   -   Whitespace and ``+_.-`` are converted to ``-``
+   *   -   All other characters are omitted
+   *   -   All consecutive ``-`` characters are reduced to a single ``-``
+   *   -   All leading and trailing ``-`` are stripped
+   *   -   Both the input name and the resulting string must be ``[1, 100]``
+   *       characters in length
+   */
+  if (str.length < 2) {
+    return str;
+  }
+  const valid_chars = new RegExp("[a-z0-9._+-]", "g");
+  const replace_symbols = new RegExp("[-._+]+", "g");
+  const trim = new RegExp("^[0-9a-z][0-9a-z-]*[0-9a-z]");
+
+  let matches = new Array();
+  let match;
+  while ((match = valid_chars.exec(str)) !== null) {
+    matches.push(match);
+  }
+  let slug = matches.join("").toLowerCase();
+  slug = slug.replaceAll(replace_symbols, "-");
+  console.log(trim.exec(slug)[0]);
+  return trim.exec(slug)[0];
+};
