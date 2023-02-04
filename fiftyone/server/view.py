@@ -337,7 +337,7 @@ def _make_filter_stages(
             is_list_field = isinstance(field, fof.ListField)
 
             if is_keypoints and is_list_field:
-                expr = _make_keypoint_list_filter(args, view, path)
+                expr = _make_keypoint_list_filter(args, view, path, field)
             else:
                 key = field.db_field if field.db_field else field.name
                 expr = _make_scalar_expression(
@@ -525,7 +525,7 @@ def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
     return _apply_others(expr, f, args, is_label)
 
 
-def _make_keypoint_list_filter(args, view, path):
+def _make_keypoint_list_filter(args, view, path, field):
     name = path.split(".", 1)[0]
 
     if path.endswith(".points"):
@@ -541,13 +541,31 @@ def _make_keypoint_list_filter(args, view, path):
 
         return {"labels": values}
 
-    f = F(name)
-    mn, mx = args["range"]
-    expr = (f >= mn) & (f <= mx)
-    if args["exclude"]:
-        expr = ~expr
+    if isinstance(field.field, fof.BooleanField):
+        true, false = args["true"], args["false"]
+        f = F(name)
+        if true and false:
+            expr = f.is_in([True, False])
 
-    return {"filter": expr}
+        if not true and false:
+            expr = f == False
+
+        if true and not false:
+            expr = f == True
+
+        if not true and not false:
+            expr = (f != True) & (f != False)
+
+        return {"filter": expr}
+
+    if isinstance(field.field, (fof.FloatField, fof.IntField)):
+        f = F(name)
+        mn, mx = args["range"]
+        expr = (f >= mn) & (f <= mx)
+        if args["exclude"]:
+            expr = ~expr
+
+        return {"filter": expr}
 
 
 def _apply_others(expr, f, args, is_label):

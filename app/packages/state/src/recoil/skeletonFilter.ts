@@ -1,6 +1,8 @@
 import { Point } from "@fiftyone/looker";
+import { initial } from "lodash";
 import { selectorFamily } from "recoil";
 import { filters, modalFilters } from "./filters";
+import { BooleanFilter } from "./pathFilters/boolean";
 import { NumericFilter } from "./pathFilters/numeric";
 import { StringFilter } from "./pathFilters/string";
 import { expandPath } from "./schema";
@@ -18,6 +20,7 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
 
           const stringListFilters: string[] = [];
           const numberListFilters: string[] = [];
+          const booleanListFilters: string[] = [];
 
           Object.entries(value).forEach(([k, v]) => {
             if (typeof v === "string" && !["label"].includes(k)) {
@@ -25,6 +28,9 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
             }
             if (typeof v === "number") {
               numberListFilters.push(k);
+            }
+            if (typeof v === "boolean") {
+              booleanListFilters.push(k);
             }
           });
 
@@ -97,6 +103,31 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
               }
             }
           });
+
+          booleanListFilters.forEach((key) => {
+            const boolFilter = f[`${path}.${key}`] as BooleanFilter;
+            const v = value[key];
+            const trueBool = boolFilter?.true;
+            const falseBool = boolFilter?.false;
+            const noneBool = boolFilter?.none;
+
+            const trueConditions =
+              (v === true && trueBool) ||
+              (v === false && falseBool) ||
+              ([null, undefined].includes(v) && noneBool);
+
+            const initialState =
+              trueBool == undefined &&
+              falseBool == undefined &&
+              noneBool == undefined;
+
+            if (!trueConditions) {
+              if (!initialState) {
+                result = false;
+              }
+            }
+          });
+
           return result;
         });
       },
