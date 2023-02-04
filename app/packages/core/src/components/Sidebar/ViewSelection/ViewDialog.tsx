@@ -86,11 +86,13 @@ export default function ViewDialog(props: Props) {
   const savedViewSlugs = new Set(
     savedViews.map((sv: fos.State.SavedView) => sv.slug.toLowerCase())
   );
+  const slugValue = toSlug(nameValue);
   const nameExists =
     nameValue &&
     nameValue !== initialName &&
-    savedViewSlugs.has(toSlug(nameValue));
-  const nameError = nameExists ? "Name already exists" : "";
+    slugValue.length > 0 &&
+    savedViewSlugs.has(slugValue);
+  const nameError = nameExists ? "Name" + " already exists" : "";
   const title = isCreating ? "Create view" : "Edit view";
 
   useEffect(() => {
@@ -286,6 +288,7 @@ export default function ViewDialog(props: Props) {
                 isUpdatingSavedView ||
                 isCreatingSavedView ||
                 isDeletingSavedView ||
+                slugValue.length < 1 ||
                 !!nameError ||
                 !nameValue ||
                 (isCreating && !view?.length && !extendedViewExists) ||

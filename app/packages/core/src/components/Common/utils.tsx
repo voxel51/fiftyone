@@ -85,7 +85,7 @@ export const getStep = (
   const delta = bounds[1] - bounds[0];
   const max = 100;
 
-  let step = delta / max;
+  const step = delta / max;
   if (
     [INT_FIELD, FRAME_NUMBER_FIELD, FRAME_SUPPORT_FIELD].includes(fieldType)
   ) {
@@ -105,23 +105,24 @@ export const toSlug = (str: string) => {
    *   -   All other characters are omitted
    *   -   All consecutive ``-`` characters are reduced to a single ``-``
    *   -   All leading and trailing ``-`` are stripped
-   *   -   Both the input name and the resulting string must be ``[1, 100]``
-   *       characters in length
    */
-  if (str.length < 2) {
-    return str;
+  if (str.length < 1) {
+    return "";
   }
   const valid_chars = new RegExp("[a-z0-9._+-]", "g");
   const replace_symbols = new RegExp("[-._+]+", "g");
-  const trim = new RegExp("^[0-9a-z][0-9a-z-]*[0-9a-z]");
+  const trim = new RegExp("-?(?<slug>[0-9a-z][0-9a-z-]*?)-?$");
 
-  let matches = new Array();
+  const matches = [];
   let match;
-  while ((match = valid_chars.exec(str)) !== null) {
+  while ((match = valid_chars.exec(str.toLowerCase())) !== null) {
     matches.push(match);
   }
-  let slug = matches.join("").toLowerCase();
-  slug = slug.replaceAll(replace_symbols, "-");
-  console.log(trim.exec(slug)[0]);
-  return trim.exec(slug)[0];
+  if (matches.length) {
+    const slug = matches.join("")?.replace(replace_symbols, "-");
+    if (slug.length && slug !== "-") {
+      return slug.length ? trim.exec(slug)?.groups?.slug : "";
+    }
+  }
+  return "";
 };
