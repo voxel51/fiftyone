@@ -109,8 +109,8 @@ export const toSlug = (name: string) => {
   if (name.length < 1) {
     return "";
   }
-  const valid_chars = new RegExp("[a-z0-9._+-]", "g");
-  const replace_symbols = new RegExp("[-._+]+", "g");
+  const valid_chars = new RegExp("[a-z0-9._+ -]", "g");
+  const replace_symbols = new RegExp("[-._+ ]+", "g");
   const trim = new RegExp("-?(?<slug>[0-9a-z][0-9a-z-]*?)-?$");
 
   let slug = name.toLowerCase();
