@@ -70,7 +70,7 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 # Install fiftyone-teams-app and chown everything to voxel51
 RUN --mount=type=cache,from=builder,target=/builder,ro \
-    pip --no-cache-dir install --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app \
+    pip --no-cache-dir install --pre --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app \
     && chown --changes --silent --no-dereference --recursive voxel51:voxel51 /opt
 
 # run as the voxel51 user
