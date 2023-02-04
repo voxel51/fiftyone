@@ -95,7 +95,7 @@ export const getStep = (
   return step;
 };
 
-export const toSlug = (str: string) => {
+export const toSlug = (name: string) => {
   /**  Returns the URL-friendly slug for the given string.
    *
    * The following strategy is used to generate slugs:
@@ -106,20 +106,21 @@ export const toSlug = (str: string) => {
    *   -   All consecutive ``-`` characters are reduced to a single ``-``
    *   -   All leading and trailing ``-`` are stripped
    */
-  if (str.length < 1) {
+  if (name.length < 1) {
     return "";
   }
   const valid_chars = new RegExp("[a-z0-9._+-]", "g");
   const replace_symbols = new RegExp("[-._+]+", "g");
   const trim = new RegExp("-?(?<slug>[0-9a-z][0-9a-z-]*?)-?$");
 
-  const matches = [];
+  let slug = name.toLowerCase();
+  let matches = [];
   let match;
-  while ((match = valid_chars.exec(str.toLowerCase())) !== null) {
+  while ((match = valid_chars.exec(name.toLowerCase())) !== null) {
     matches.push(match);
   }
   if (matches.length) {
-    const slug = matches.join("")?.replace(replace_symbols, "-");
+    slug = matches.join("")?.replace(replace_symbols, "-");
     if (slug.length && slug !== "-") {
       return slug.length ? trim.exec(slug)?.groups?.slug : "";
     }
