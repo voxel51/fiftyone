@@ -9263,6 +9263,25 @@ class SampleCollection(object):
             new_field=new_field,
         )
 
+    def _get_values_by_id(self, path_or_expr, ids, link_field=None):
+        if link_field == "frames":
+            if self._is_frames:
+                id_path = "id"
+            else:
+                id_path = "frames.id"
+        elif link_field is not None:
+            _, id_path = self._get_label_field_path(link_field, "id")
+        elif self._is_patches:
+            id_path = "sample_id"
+        else:
+            id_path = "id"
+
+        values_map = {
+            i: v
+            for i, v in zip(*self.values([id_path, path_or_expr], unwind=True))
+        }
+        return [values_map.get(i, None) for i in ids]
+
 
 def _unwind_values(values, level=0):
     if not values:
