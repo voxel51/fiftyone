@@ -18,9 +18,10 @@ import fiftyone.core.media as fom
 def load_dataset(name):
     """Loads the dataset with the given name.
 
-    Dataset objects are singletons, but we use a TTL + LRU cache here to ensure
-    that references to recently used datasets exist in memory so that dataset
-    objects aren't garbage collected between async calls.
+    Dataset objects are singletons and may have objects (eg brain results) that
+    are expensive to load cached on them, so we use a TTL + LRU cache here to
+    ensure that references to recently used datasets exist in memory so that
+    dataset objects aren't garbage collected between async calls.
 
     Args:
         name: the dataset name
