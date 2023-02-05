@@ -17,6 +17,7 @@ import random
 import string
 
 from bson import json_util, ObjectId
+import cachetools
 from deprecated import deprecated
 import mongoengine.errors as moe
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
@@ -278,9 +279,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._group_slice = doc.default_group_slice
 
-        self._annotation_cache = {}
-        self._brain_cache = {}
-        self._evaluation_cache = {}
+        self._annotation_cache = cachetools.LRUCache(10)
+        self._brain_cache = cachetools.LRUCache(10)
+        self._evaluation_cache = cachetools.LRUCache(10)
 
         self._deleted = False
 
