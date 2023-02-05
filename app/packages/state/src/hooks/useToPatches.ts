@@ -1,5 +1,5 @@
 import { useRecoilCallback } from "recoil";
-import { patching } from "../recoil";
+import { patching, viewCls } from "../recoil";
 import useSetView from "./useSetView";
 
 export default function useToPatches() {
@@ -15,6 +15,7 @@ export default function useToPatches() {
     ({ set }) =>
       async (field) => {
         set(patching, true);
+        set(viewCls, "fiftyone.core.patches.PatchesView");
         setView(
           (v) => v,
           [
