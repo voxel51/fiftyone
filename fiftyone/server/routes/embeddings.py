@@ -265,9 +265,9 @@ def _add_to_trace(traces, style, points, id, sample_id, label, selected):
 
     traces[key].append(
         {
+            "points": points,
             "id": id,
             "sample_id": sample_id or id,
-            "points": points,
             "label": label,
             "selected": selected,
         }
