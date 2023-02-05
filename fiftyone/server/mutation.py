@@ -1,5 +1,5 @@
 """
-FiftyOne Server mutations
+FiftyOne Server mutations.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -11,20 +11,19 @@ import typing as t
 
 import eta.core.serial as etas
 
-import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.odm as foo
 from fiftyone.core.session.events import StateUpdate
-import fiftyone.core.stages as fos
-import fiftyone.core.view as fov
-import fiftyone.core.dataset as fod
 from fiftyone.core.spaces import default_spaces, Space
+import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
+import fiftyone.core.view as fov
 
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
 from fiftyone.server.query import Dataset, SidebarGroup, SavedView
 from fiftyone.server.scalars import BSON, BSONArray, JSON
+import fiftyone.server.utils as fosu
 from fiftyone.server.view import get_view, extend_view
 
 
@@ -92,7 +91,7 @@ class Mutation:
         info: Info,
     ) -> bool:
         state = get_state()
-        state.dataset = fo.load_dataset(name) if name is not None else None
+        state.dataset = fosu.load_dataset(name) if name is not None else None
         state.selected = []
         state.selected_labels = []
         state.view = None
@@ -182,7 +181,7 @@ class Mutation:
         # Load saved views
         if saved_view_slug is not None:
             try:
-                ds = fod.load_dataset(dataset_name)
+                ds = fosu.load_dataset(dataset_name)
                 doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
                 result_view = ds._load_saved_view_from_doc(doc)
             except:
@@ -271,8 +270,7 @@ class Mutation:
         dataset = state.dataset
         use_state = dataset is not None
         if dataset is None:
-            # teams is stateless so dataset will be null
-            dataset = fo.load_dataset(dataset_name)
+            dataset = fosu.load_dataset(dataset_name)
 
         if dataset is None:
             raise ValueError(
@@ -322,7 +320,7 @@ class Mutation:
                 view_name,
             )
 
-        dataset = fo.load_dataset(dataset_name)
+        dataset = fosu.load_dataset(dataset_name)
         if not dataset:
             raise ValueError(f"No dataset found with name {dataset_name}")
 
@@ -366,7 +364,7 @@ class Mutation:
         """
         state = get_state()
         if state is None or state.dataset is None:
-            dataset = fo.load_dataset(dataset_name)
+            dataset = fosu.load_dataset(dataset_name)
         else:
             dataset = state.dataset
 

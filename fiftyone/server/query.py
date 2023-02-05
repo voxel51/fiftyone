@@ -1,5 +1,5 @@
 """
-FiftyOne Server queries
+FiftyOne Server queries.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -39,8 +39,9 @@ from fiftyone.server.samples import (
     SampleItem,
     paginate_samples,
 )
-
 from fiftyone.server.scalars import BSONArray, JSON
+import fiftyone.server.utils as fosu
+
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -393,7 +394,7 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
-        ds = fo.load_dataset(dataset_name)
+        ds = fosu.load_dataset(dataset_name)
         return [
             SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
         ]
@@ -426,7 +427,7 @@ async def serialize_dataset(
     saved_view_slug: t.Optional[str],
 ) -> Dataset:
     def run():
-        dataset = fo.load_dataset(dataset_name)
+        dataset = fosu.load_dataset(dataset_name)
         dataset.reload()
         view_name = None
         try:

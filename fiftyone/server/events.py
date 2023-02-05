@@ -1,5 +1,5 @@
 """
-FiftyOne Server events
+FiftyOne Server events.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -14,7 +14,6 @@ import asyncio
 from sse_starlette import ServerSentEvent
 from starlette.requests import Request
 
-import fiftyone as fo
 import fiftyone.core.context as focx
 from fiftyone.core.json import FiftyOneJSONEncoder
 from fiftyone.core.session.events import (
@@ -30,7 +29,9 @@ from fiftyone.core.session.events import (
 )
 import fiftyone.core.state as fos
 import fiftyone.core.utils as fou
+
 from fiftyone.server.query import serialize_dataset
+import fiftyone.server.utils as fosu
 
 
 @dataclass(frozen=True)
@@ -275,7 +276,7 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
         ):
             update = True
             try:
-                state.dataset = fo.load_dataset(payload.initializer.dataset)
+                state.dataset = fosu.load_dataset(payload.initializer.dataset)
                 state.selected = []
                 state.selected_labels = []
                 state.view = None

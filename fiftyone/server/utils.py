@@ -1,14 +1,34 @@
 """
-FiftyOne Server utils
+FiftyOne Server utils.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import cachetools.func
+
 import fiftyone.core.collections as foc
+import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+
+
+@cachetools.func.ttl_cache(maxsize=10, ttl=900)  # ttl in seconds
+def load_dataset(name):
+    """Loads the dataset with the given name.
+
+    Dataset objects are singletons, but we use a TTL + LRU cache here to ensure
+    that references to recently used datasets exist in memory so that dataset
+    objects aren't garbage collected between async calls.
+
+    Args:
+        name: the dataset name
+
+    Returns:
+        a :class:`fiftyone.core.dataset.Dataset`
+    """
+    return fod.load_dataset(name)
 
 
 def change_sample_tags(sample_collection, changes):
