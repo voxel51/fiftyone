@@ -7,6 +7,7 @@ FiftyOne Server ``/embeddings`` route.
 """
 import itertools
 
+import cachetools.func
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
@@ -17,8 +18,6 @@ import fiftyone.server.view as fosv
 
 MAX_CATEGORIES = 100
 COLOR_BY_TYPES = (fo.StringField, fo.BooleanField, fo.IntField, fo.FloatField)
-
-dataset_cache = {}
 
 
 class OnPlotLoad(HTTPEndpoint):
@@ -252,10 +251,12 @@ EmbeddingsRoutes = [
 ]
 
 
+# Dataset objects are singletons, but we use a TTL + LRU cache here to ensure
+# that references to recently used datasets exist in memory so that dataset
+# objects aren't garbage collected between async calls
+@cachetools.func.ttl_cache(maxsize=10, ttl=900)  # ttl in seconds
 def _load_dataset(dataset_name):
-    dataset = fo.load_dataset(dataset_name)
-    dataset_cache[dataset_name] = dataset
-    return dataset
+    return fo.load_dataset(dataset_name)
 
 
 def _add_to_trace(traces, style, id, points, label, selected, sample_id):
