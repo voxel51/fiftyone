@@ -158,7 +158,7 @@ including the following commands in your notebook before creating any plots:
     import plotly.offline as po
     po.init_notebook_mode(connected=True)
 
-Note that FiftyOne currently requires `plotly>=4.14,<5`, which should have been
+Note that FiftyOne currently requires `plotly`, which should have been
 automatically installed when you installed FiftyOne. If your Plotly package was
 upgraded after installing FiftyOne, some interactive plotting features may
 not work as expected.
