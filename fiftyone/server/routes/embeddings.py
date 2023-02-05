@@ -42,31 +42,6 @@ class OnPlotLoad(HTTPEndpoint):
         # only points we want to display in the embeddings plot
         results.use_view(view, allow_missing=True)
 
-        # Color by data
-        if label_field:
-            curr_view = results.view
-            if curr_view._is_patches:
-                # `label_field` is always provided with respect to root
-                # dataset, so we must translate for patches views
-                _, root = dataset._get_label_field_path(patches_field)
-                leaf = label_field[len(root) + 1 :]
-                _, label_field = curr_view._get_label_field_path(
-                    patches_field, leaf
-                )
-
-            labels = curr_view.values(label_field, unwind=True)
-            field = curr_view.get_field(label_field)
-            if isinstance(field, fo.FloatField):
-                style = "continuous"
-            else:
-                if len(set(labels)) <= MAX_CATEGORIES:
-                    style = "categorical"
-                else:
-                    style = "continuous"
-        else:
-            labels = itertools.repeat("uncolored")
-            style = "uncolored"
-
         # The total number of embeddings in `results`
         index_size = results.total_index_size
 
@@ -78,20 +53,45 @@ class OnPlotLoad(HTTPEndpoint):
         # embeddings for
         missing_count = results.missing_size
 
-        curr_points = results._curr_points
+        points = results._curr_points
         if is_patches_plot:
-            curr_ids = results._curr_label_ids
-            curr_sample_ids = results._curr_sample_ids
+            ids = results._curr_label_ids
+            sample_ids = results._curr_sample_ids
         else:
-            curr_ids = results._curr_sample_ids
-            curr_sample_ids = itertools.repeat(None)
+            ids = results._curr_sample_ids
+            sample_ids = itertools.repeat(None)
+
+        # Color by data
+        if label_field:
+            if view._is_patches:
+                # `label_field` is always provided with respect to root
+                # dataset, so we must translate for patches views
+                _, root = dataset._get_label_field_path(patches_field)
+                leaf = label_field[len(root) + 1 :]
+                _, label_field = view._get_label_field_path(
+                    patches_field, leaf
+                )
+
+            labels = view._get_values_by_id(
+                label_field, ids, link_field=patches_field
+            )
+
+            field = view.get_field(label_field)
+            if isinstance(field, fo.FloatField):
+                style = "continuous"
+            else:
+                if len(set(labels)) <= MAX_CATEGORIES:
+                    style = "categorical"
+                else:
+                    style = "continuous"
+        else:
+            labels = itertools.repeat(None)
+            style = "uncolored"
 
         selected = itertools.repeat(True)
 
         traces = {}
-        for data in zip(
-            curr_ids, curr_points, labels, selected, curr_sample_ids
-        ):
+        for data in zip(points, ids, sample_ids, labels, selected):
             _add_to_trace(traces, style, *data)
 
         return {
@@ -131,9 +131,9 @@ class EmbeddingsSelection(HTTPEndpoint):
         is_patches_plot = patches_field is not None
 
         if is_patches_plot:
-            curr_ids = results._curr_label_ids
+            ids = results._curr_label_ids
         else:
-            curr_ids = results._curr_sample_ids
+            ids = results._curr_sample_ids
 
         if filters or extended_stages:
             extended_view = fosv.get_view(
@@ -154,7 +154,7 @@ class EmbeddingsSelection(HTTPEndpoint):
             else:
                 extended_ids = extended_view.values("id")
 
-            selected_ids = set(curr_ids) & set(extended_ids)
+            selected_ids = set(ids) & set(extended_ids)
         else:
             selected_ids = None
 
@@ -258,7 +258,7 @@ def _load_dataset(dataset_name):
     return dataset
 
 
-def _add_to_trace(traces, style, id, points, label, selected, sample_id):
+def _add_to_trace(traces, style, points, id, sample_id, label, selected):
     key = label if style == "categorical" else "points"
     if key not in traces:
         traces[key] = []
