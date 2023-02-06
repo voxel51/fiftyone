@@ -172,6 +172,8 @@ export const pinnedSliceSample = graphQLSelector<
 
     // This value may be a string that needs to be deserialized
     // Only occurs after calling useUpdateSample for pinned sample
+    // - https://github.com/voxel51/fiftyone/pull/2622
+    // - https://github.com/facebook/relay/issues/91
     if (actualRawSample && typeof actualRawSample === "string") {
       return {
         ...response.sample,

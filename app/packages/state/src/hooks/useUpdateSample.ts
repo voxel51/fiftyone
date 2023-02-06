@@ -23,7 +23,8 @@ export const useUpdateSample = () => {
         const record = store.get(id);
 
         // Relay will not allow objects when hydrating a scalar value
-        // https://github.com/facebook/relay/issues/91
+        // - https://github.com/voxel51/fiftyone/pull/2622
+        // - https://github.com/facebook/relay/issues/91
         record?.setValue(JSON.stringify(sample), "sample");
       });
     },
