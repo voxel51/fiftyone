@@ -198,7 +198,7 @@ def _parse_fields(fields, media_field, export_media):
         media_idx = fields.index(media_field)
         include_media = True
     except ValueError:
-        if export_media != False:
+        if export_media:
             fields.append(media_field)
             media_idx = len(fields) - 1
             include_media = False
@@ -388,6 +388,11 @@ class CSVDatasetImporter(foud.BatchDatasetImporter, foud.ImportPathsMixin):
                     f"No media field '{self.media_field}'"
                     f" found in '{self.labels_path}'"
                 )
+
+            # Sane defaults
+            #   None: all columns as strings
+            #   List: All columns in list as strings
+            #   Dict: Column name -> Parser or function
             if self.field_parsers is None:
                 _field_parsers = {
                     field: Parsers.DefaultParser
@@ -419,11 +424,13 @@ class CSVDatasetImporter(foud.BatchDatasetImporter, foud.ImportPathsMixin):
             has_tags = self.TAGS_FIELD in labels_csv.fieldnames
             samples = []
             with fou.ProgressBar(total=self.max_samples) as pb:
+                # Rip through csv rows
                 for csv_row in pb(labels_csv):
                     media_loc = csv_row.pop(self.media_field)
                     if not os.path.isabs(media_loc):
                         media_loc = os.path.join(self.data_path, media_loc)
 
+                    # Get tags if we have them plus add global tags
                     _tags = None
                     if has_tags:
                         _tags = Parsers.ListParser(Parsers.DefaultParser)(
@@ -432,6 +439,7 @@ class CSVDatasetImporter(foud.BatchDatasetImporter, foud.ImportPathsMixin):
                         _tags += tags or []
                         csv_row.pop(self.TAGS_FIELD)
 
+                    # Make sample, parse&add all wanted fields
                     sample = fos.Sample(filepath=media_loc, tags=_tags)
                     for field, value in csv_row.items():
                         field = field.split(".")[0]
@@ -445,8 +453,8 @@ class CSVDatasetImporter(foud.BatchDatasetImporter, foud.ImportPathsMixin):
                     ):
                         break
 
-            if self.shuffle:
-                shuffler = random.Random(self.seed)
-                shuffler.shuffle(samples)
+        if self.shuffle:
+            shuffler = random.Random(self.seed)
+            shuffler.shuffle(samples)
 
-            return dataset.add_samples(samples)
+        return dataset.add_samples(samples)
