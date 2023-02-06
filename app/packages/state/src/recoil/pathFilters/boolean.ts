@@ -6,7 +6,7 @@ import {
 } from "recoil";
 import * as filterAtoms from "../filters";
 
-interface BooleanFilter {
+export interface BooleanFilter {
   false: boolean;
   true: boolean;
   none: boolean;

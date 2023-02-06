@@ -53,7 +53,7 @@ const primitiveFilter = selectorFamily<
       }
 
       if ([LIST_FIELD].includes(ftype)) {
-        return get(listString({ modal, path}));
+        return get(listString({ modal, path }));
       }
 
       return (value) => true;
@@ -79,6 +79,7 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
         if (path.startsWith("_")) return f;
 
         const field = get(schemaAtoms.field(path));
+        const isKeypoints = path.includes("keypoints");
 
         if (field && LABELS.includes(field.embeddedDocType)) {
           const expandedPath = get(schemaAtoms.expandPath(path));
@@ -95,7 +96,9 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
             );
 
             return (value: unknown) =>
-              filter(value[name === "id" ? "id" : dbField || name]);
+              isKeypoints && typeof value[name] === "object" // keypoints ListFields
+                ? () => true
+                : filter(value[name === "id" ? "id" : dbField || name]);
           });
 
           f[path] = (value: unknown) => {
