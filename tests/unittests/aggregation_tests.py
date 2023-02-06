@@ -1097,16 +1097,20 @@ class DatasetTests(unittest.TestCase):
             ]
         )
 
-        bounds = d.bounds("predictions.classifications.confidence", safe=True)
+        bounds = d.bounds("predictions.classifications.confidence")
         self.assertAlmostEqual(bounds[0], 0.4)
         self.assertAlmostEqual(bounds[1], 0.9)
 
-        bounds = d.bounds(F("predictions.classifications.confidence") - 0.1)
+        bounds = d.bounds(
+            "predictions.classifications.confidence", expr=F() - 0.1
+        )
         self.assertAlmostEqual(bounds[0], 0.3)
         self.assertAlmostEqual(bounds[1], 0.8)
 
-        agg1 = fo.Bounds("predictions.classifications.confidence", safe=True)
-        agg2 = fo.Bounds(F("predictions.classifications.confidence") - 0.1)
+        agg1 = fo.Bounds("predictions.classifications.confidence")
+        agg2 = fo.Bounds(
+            "predictions.classifications.confidence", expr=F() - 0.1
+        )
         agg3 = fo.Distinct("predictions.classifications.label")
         agg4 = fo.CountValues(F("filepath").ends_with("3.jpg"))
         agg5 = fo.Distinct("filepath")

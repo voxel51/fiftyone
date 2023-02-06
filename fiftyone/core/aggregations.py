@@ -1096,7 +1096,7 @@ class FacetAggregations(Aggregation):
         data = {}
         for key, agg in self._aggregations.items():
             try:
-                data[key] = agg.parse_result(d[self._get_key(agg)][0])
+                data[key] = agg.parse_result(d[self._get_key(key, agg)][0])
             except:
                 data[key] = agg.default_result()
 
@@ -1116,23 +1116,22 @@ class FacetAggregations(Aggregation):
         self._path = path
 
         facets = {}
-        for agg in self._aggregations.values():
-            facets[self._get_key(agg)] = []
-            for stage in agg.to_mongo(
+        for key, agg in self._aggregations.items():
+            facets[self._get_key(key, agg)] = agg.to_mongo(
                 sample_collection, context=self.field_name
-            ):
-                facets[self._get_key(agg)].append(stage)
+            )
 
         pipeline += [{"$facet": facets}]
 
         return pipeline
 
     @staticmethod
-    def _get_key(agg):
+    def _get_key(key, agg):
         return (
-            agg.field_name.replace(".", "_").replace("[]", "")
+            agg.field_name.replace(".", "_")
             + "_"
             + agg.__class__.__name__
+            + str(key)
         )
 
     @staticmethod
