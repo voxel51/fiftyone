@@ -37,7 +37,7 @@ import {
   DEFAULT_COLOR_OPTION,
 } from "@fiftyone/components/src/components/Selection/SelectionColors";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
+import { getFetchFunction } from "@fiftyone/utilities";
 
 interface Props {
   savedViews: fos.State.SavedView[];
