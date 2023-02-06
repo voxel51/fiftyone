@@ -2550,6 +2550,7 @@ def _parse_field_and_expr(
             expr,
             embedded_root=embedded_root,
             allow_missing=allow_missing,
+            context=context,
         )
     else:
         pipeline = []
@@ -2579,12 +2580,12 @@ def _parse_field_and_expr(
         if is_frame_field:
             context = ".".join(context.split(".")[1:])
 
-        unwind_list_fields = list(
-            filter(lambda f: not context.startswith(f), unwind_list_fields)
-        )
-        other_list_fields = list(
-            filter(lambda f: not context.startswith(f), other_list_fields)
-        )
+        unwind_list_fields = [
+            f for f in unwind_list_fields if not context.startswith(f)
+        ]
+        other_list_fields = [
+            f for f in other_list_fields if not context.startswith(f)
+        ]
 
     if keep_top_level:
         if is_frame_field:
