@@ -96,6 +96,7 @@ const useSetView = (
                     viewName,
                     savedViews: savedViews,
                   },
+                  // REQUIRED: here we define DatasetQuery GraphQL variables
                   variables: {
                     view: savedViewSlug ? value : viewResponse,
                     dataset: dataset.name,
