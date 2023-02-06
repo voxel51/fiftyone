@@ -1400,9 +1400,11 @@ def _plot_scatter(
     figsize=None,
     **kwargs,
 ):
-    if labels is not None:
+    if labels is not None and classes is not None:
         values_map = {c: i for i, c in enumerate(classes)}
         values = np.array([values_map.get(l, -1) for l in labels])
+    else:
+        values = labels
 
     scatter_3d = points.shape[1] == 3
 

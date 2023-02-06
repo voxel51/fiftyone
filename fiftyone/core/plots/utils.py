@@ -135,19 +135,20 @@ def parse_lines_inputs(
     if y is None:
         raise ValueError("You must provide 'y' values")
 
-    if etau.is_str(y) or isinstance(y, foe.ViewExpression):
-        if samples is not None and samples._contains_videos():
-            is_frames = foe.is_frames_expr(y)
-        else:
-            is_frames = False
-    else:
+    raw_y_values = not (etau.is_str(y) or _is_expr(y))
+
+    if raw_y_values:
         is_frames = y and etau.is_container(y[0])
+    elif samples is not None and samples._contains_videos():
+        is_frames = foe.is_frames_expr(y)
+    else:
+        is_frames = False
 
     if is_frames and link_field is None:
         link_field = "frames"
 
     if ids is None and samples is not None:
-        ref = y if etau.is_container(y) else None
+        ref = y if raw_y_values else None
         ids = _get_ids(
             samples, link_field=link_field, ref=ref, is_frames=is_frames
         )
@@ -233,6 +234,10 @@ def best_fit_line(points, label=None):
         label = "r^2: %0.3f" % r2_score
 
     return xline, yline, label
+
+
+def _is_expr(arg):
+    return isinstance(arg, (foe.ViewExpression, dict))
 
 
 def _parse_values(
