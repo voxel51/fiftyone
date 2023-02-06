@@ -49,12 +49,14 @@ export const DatasetNodeQuery = graphql`
       appConfig {
         gridMediaField
         mediaFields
+        modalMediaField
         plugins
         sidebarGroups {
           expanded
           paths
           name
         }
+        sidebarMode
       }
       sampleFields {
         ftype
@@ -132,17 +134,6 @@ export const DatasetNodeQuery = graphql`
       viewCls
       viewName
       savedViewSlug
-      appConfig {
-        gridMediaField
-        mediaFields
-        modalMediaField
-        plugins
-        sidebarGroups {
-          name
-          paths
-        }
-        sidebarMode
-      }
       info
     }
   }
@@ -194,7 +185,9 @@ export const usePreLoadedDataset = (
           config: config
             ? (toCamelCase(config) as fos.State.Config)
             : undefined,
-          dataset: fos.transformDataset(rest),
+          dataset: fos.transformDataset(
+            stateProxyValue ? stateProxyValue.dataset : rest
+          ),
           state: { view, viewName, ...state, ...(stateProxyValue || {}) },
         };
       });
