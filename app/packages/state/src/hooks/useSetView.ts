@@ -84,6 +84,7 @@ const useSetView = (
                 const newRoute = `${router.history.location.pathname}${
                   search.length ? "?" : ""
                 }${search}`;
+
                 router.history.push(newRoute, {
                   ...router.history.location.state,
                   state: {
@@ -94,6 +95,10 @@ const useSetView = (
                     selectedLabels: [],
                     viewName,
                     savedViews: savedViews,
+                  },
+                  variables: {
+                    view: savedViewSlug ? value : viewResponse,
+                    dataset: dataset.name,
                   },
                 });
               } else {
