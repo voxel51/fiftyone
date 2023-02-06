@@ -178,14 +178,20 @@ export const stringCountResults = selectorFamily({
         parent = `frames.${keys[1]}`;
       }
 
-      if (
-        VALID_KEYPOINTS.includes(get(schemaAtoms.field(parent)).embeddedDocType)
-      ) {
+      const isSkeletonPoints =
+        VALID_KEYPOINTS.includes(
+          get(schemaAtoms.field(parent)).embeddedDocType
+        ) && keys[2] === "points";
+
+      if (isSkeletonPoints) {
         const skeleton = get(selectors.skeleton(parent));
         if (skeleton && skeleton.labels) {
           return {
             count: skeleton.labels.length,
-            results: skeleton.labels.map((label) => [label as string | null, -1]),
+            results: skeleton.labels.map((label) => [
+              label as string | null,
+              -1,
+            ]),
           };
         }
       }

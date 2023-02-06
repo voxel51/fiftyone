@@ -76,8 +76,10 @@ const Wrapper = ({
     ? fieldSchema?.dbField?.toLowerCase()
     : undefined;
 
-  // if the field is a BooleanField, there is no need to show the exclude option
-  const shouldNotShowExclude = Boolean(schema?.ftype.includes("BooleanField"));
+  // if the field is a BooleanField or ListField(BooleanField), there is no need to show the exclude option
+  const shouldNotShowExclude =
+    schema?.ftype.includes("BooleanField") ||
+    schema?.subfield?.includes("BooleanField");
 
   // if the field is a keypoint label, there is no need to show match options
   const isKeyPoints = fieldSchema?.dbField === "keypoints";
@@ -136,7 +138,7 @@ const Wrapper = ({
       ))}
       {Boolean(selectedSet.size) && (
         <>
-          {(
+          {
             <FilterOption
               nestedField={nestedField}
               shouldNotShowExclude={shouldNotShowExclude}
@@ -148,7 +150,7 @@ const Wrapper = ({
               modal={modal}
               isKeyPointLabel={isKeyPoints}
             />
-          )}
+          }
           <Button
             text={"Reset"}
             color={color}

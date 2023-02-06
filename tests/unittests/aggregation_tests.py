@@ -147,6 +147,33 @@ class DatasetTests(unittest.TestCase):
             d.count_values("frames.classifications.classifications.label"),
             {"one": 1, "two": 2},
         )
+        self.assertEqual(
+            d.count_values(
+                F("frames.classifications.classifications.label").upper()
+            ),
+            {"ONE": 1, "TWO": 2},
+        )
+
+        self.assertEqual(
+            d.count_values("classifications.classifications[].label"),
+            {"one": 1, "two": 2},
+        )
+        self.assertEqual(
+            d.count_values(
+                F("classifications.classifications[].label").upper()
+            ),
+            {"ONE": 1, "TWO": 2},
+        )
+        self.assertEqual(
+            d.count_values("frames[].classifications.classifications[].label"),
+            {"one": 1, "two": 2},
+        )
+        self.assertEqual(
+            d.count_values(
+                F("frames[].classifications.classifications[].label").upper()
+            ),
+            {"ONE": 1, "TWO": 2},
+        )
 
     @drop_datasets
     def test_distinct(self):
