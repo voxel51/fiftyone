@@ -170,6 +170,8 @@ export const pinnedSliceSample = graphQLSelector<
   mapResponse: (response) => {
     const actualRawSample = response?.sample?.sample;
 
+    // This value may be a string that needs to be deserialized
+    // Only occurs after calling useUpdateSample for pinned sample
     if (actualRawSample && typeof actualRawSample === "string") {
       return {
         ...response.sample,
