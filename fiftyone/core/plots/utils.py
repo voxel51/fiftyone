@@ -171,16 +171,6 @@ def parse_lines_inputs(
         is_frames=is_frames,
     )
 
-    labels = _parse_values(
-        labels,
-        "labels",
-        samples=samples,
-        ids=ids,
-        link_field=link_field,
-        ref=y,
-        is_frames=is_frames,
-    )
-
     sizes = _parse_values(
         sizes,
         "sizes",
@@ -209,6 +199,8 @@ def parse_lines_inputs(
 
         if labels is None:
             labels = [str(i) for i in range(1, len(y) + 1)]
+        else:
+            labels = _parse_values(labels, "labels", samples=samples)
     else:
         x = [x]
         y = [y]
