@@ -4289,6 +4289,59 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
         self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
 
+class UnlabeledMediaDatasetTests(ImageDatasetTests):
+    def _make_dataset(self):
+        samples = [fo.Sample(filepath=self._new_image()) for _ in range(5)]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        return dataset
+
+    @drop_datasets
+    def test_media_directory(self):
+        dataset = self._make_dataset()
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.MediaDirectory,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.MediaDirectory,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        # Standard format (with rel dir)
+
+        export_dir = self._new_dir()
+        rel_dir = self.root_dir
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.MediaDirectory,
+            rel_dir=rel_dir,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.MediaDirectory,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        relpath = _relpath(dataset2.first().filepath, export_dir)
+
+        # _images/<filename>
+        self.assertEqual(len(relpath.split(os.path.sep)), 2)
+
+
 def _relpath(path, start):
     # Avoids errors related to symlinks in `/tmp` directories
     return os.path.relpath(os.path.realpath(path), os.path.realpath(start))
