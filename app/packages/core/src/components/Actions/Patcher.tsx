@@ -177,6 +177,7 @@ const EvaluationPatches = ({ close }) => {
 };
 
 type PatcherProps = {
+  bounds: any;
   close: () => void;
 };
 
