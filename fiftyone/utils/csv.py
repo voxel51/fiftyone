@@ -8,6 +8,7 @@ CSV utilities.
 import csv
 import os
 import random
+import re
 
 import eta.core.utils as etau
 
@@ -427,7 +428,10 @@ class CSVDatasetImporter(foud.BatchDatasetImporter, foud.ImportPathsMixin):
                 # Rip through csv rows
                 for csv_row in pb(labels_csv):
                     media_loc = csv_row.pop(self.media_field)
-                    if not os.path.isabs(media_loc):
+                    # Not absolute path (either local or remote)
+                    if not os.path.isabs(media_loc) and not re.match(
+                        r"^\w+://", media_loc
+                    ):
                         media_loc = os.path.join(self.data_path, media_loc)
 
                     # Get tags if we have them plus add global tags
