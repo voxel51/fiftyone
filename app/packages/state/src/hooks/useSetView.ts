@@ -109,6 +109,7 @@ const useSetView = (
                 setStateProxy({
                   ...(stateProxyValue || {}),
                   view: savedViewSlug ? value : viewResponse,
+                  viewCls: dataset.viewCls,
                   viewName,
                   dataset,
                 });
