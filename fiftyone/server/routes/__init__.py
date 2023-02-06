@@ -14,9 +14,10 @@ from .frames import Frames
 from .media import Media
 from .plugins import Plugins
 from .samples import Samples
-from .select import Select
-from .sort import Sort
 from .screenshot import Screenshot
+from .select import Select
+from .slugify import Slugify
+from .sort import Sort
 from .stages import Stages
 from .tag import Tag
 from .tagging import Tagging
@@ -33,6 +34,7 @@ routes = EmbeddingsRoutes + [
     ("/plugins", Plugins),
     ("/samples", Samples),
     ("/select", Select),
+    ("/slugify", Slugify),
     ("/sort", Sort),
     ("/stages", Stages),
     ("/screenshot/{img:str}", Screenshot),
