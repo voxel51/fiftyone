@@ -542,6 +542,11 @@ def lines(
     else:
         show_legend = labels[0] is not None
 
+    if ids[0] is not None:
+        ids = list(itertools.chain.from_iterable(ids))
+    else:
+        ids = None
+
     with plt.style.context(style):
         collection = _plot_lines(
             x,
@@ -1339,12 +1344,6 @@ def _plot_lines(
         num_points = sum(len(xi) for xi in x)
         marker_size = 2.0 * (10 ** (4 - np.log10(num_points)))
         marker_size = max(1, min(marker_size, 50))
-
-    if sizes is None:
-        sizes = itertools.repeat(None)
-
-    if labels is None:
-        labels = itertools.repeat(None)
 
     colors = _get_qualitative_colors(len(y), colors=colors)
 

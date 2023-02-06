@@ -192,10 +192,10 @@ def parse_lines_inputs(
 
     if is_frames:
         if sizes is None:
-            sizes = itertools.repeat(None)
+            sizes = [None] * len(y)
 
         if ids is None:
-            ids = itertools.repeat(None)
+            ids = [None] * len(y)
 
         if labels is None:
             labels = [str(i) for i in range(1, len(y) + 1)]

@@ -801,6 +801,12 @@ def lines(
             notebook but the above conditions aren't met
         -   a plotly figure, otherwise
     """
+    if sizes is not None and sizes_title is None:
+        if etau.is_str(sizes):
+            sizes_title = sizes.rsplit(".", 1)[-1]
+        else:
+            sizes_title = "size"
+
     x, y, ids, link_field, labels, sizes, is_frames = parse_lines_inputs(
         x=x,
         y=y,
@@ -826,31 +832,20 @@ def lines(
     else:
         ytitle = "y"
 
-    if sizes is not None and sizes_title is None:
-        if etau.is_str(sizes):
-            sizes_title = sizes.rsplit(".", 1)[-1]
-        else:
-            sizes_title = "size"
-
     hover_lines = ["%s: %%{x}" % xtitle, "%s: %%{y}" % ytitle]
 
-    if sizes is not None:
+    if sizes[0] is not None:
         hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
         if marker_size is None:
             marker_size = 15  # max marker size
 
-        if is_frames:
-            _sizes = list(itertools.chain(*sizes))
-        else:
-            _sizes = sizes
-
         try:
-            sizeref = 0.5 * max(_sizes) / marker_size
+            sizeref = 0.5 * max(itertools.chain(*sizes)) / marker_size
         except ValueError:
             sizeref = 1
 
-    if ids is not None or samples is not None:
+    if ids[0] is not None:
         hover_lines.append("ID: %{customdata}")
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
