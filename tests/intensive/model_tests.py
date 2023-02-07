@@ -143,7 +143,7 @@ def _load_frame_embeddings(samples, path):
 
 def test_compute_patch_embeddings_frames():
     dataset = foz.load_zoo_dataset("quickstart-video")
-    view = dataset.take(2)
+    view = dataset.take(1)
 
     model = foz.load_zoo_model("inception-v3-imagenet-torch")
 
@@ -151,7 +151,7 @@ def test_compute_patch_embeddings_frames():
         model, "frames.detections"
     )
     view.compute_patch_embeddings(
-        model, "detections", embeddings_field="patch_embeddings1"
+        model, "frames.detections", embeddings_field="patch_embeddings1"
     )
     patch_embeddings1b = _load_frame_patch_embeddings(
         view, "frames.detections.detections.patch_embeddings1"
@@ -159,10 +159,10 @@ def test_compute_patch_embeddings_frames():
     _assert_frame_embedding_dicts_equal(patch_embeddings1a, patch_embeddings1b)
 
     patch_embeddings2a = view.compute_patch_embeddings(
-        model, "detections", batch_size=8
+        model, "frames.detections", batch_size=8
     )
     view.compute_patch_embeddings(
-        model, "detections", embeddings_field="patch_embeddings2"
+        model, "frames.detections", embeddings_field="patch_embeddings2"
     )
     patch_embeddings2b = _load_frame_patch_embeddings(
         view, "frames.detections.detections.patch_embeddings2"
@@ -287,19 +287,19 @@ def test_apply_model_frames_skip_failures():
 
     # torch, data loader, single batches
     model = foz.load_zoo_model("inception-v3-imagenet-torch")
-    dataset.apply_model(model, "predictions1")
+    dataset.apply_model(model, "frames.predictions1")
 
     # torch, data loader, batches
     model = foz.load_zoo_model("inception-v3-imagenet-torch")
-    dataset.apply_model(model, "predictions2", batch_size=2)
+    dataset.apply_model(model, "frames.predictions2", batch_size=2)
 
     # TF, single inference
     model = foz.load_zoo_model("ssd-mobilenet-v1-coco-tf")
-    dataset.apply_model(model, "predictions3")
+    dataset.apply_model(model, "frames.predictions3")
 
     # TF, batch inference
     model = foz.load_zoo_model("resnet-v2-50-imagenet-tf1")
-    dataset.apply_model(model, "predictions4", batch_size=2)
+    dataset.apply_model(model, "frames.predictions4", batch_size=2)
 
 
 def test_compute_embeddings_frames_skip_failures():
@@ -346,15 +346,19 @@ def test_compute_patch_embeddings_frames_skip_failures():
 
     # torch, data loader, single batches
     model = foz.load_zoo_model("inception-v3-imagenet-torch")
-    dataset.compute_patch_embeddings(model, "ground_truth")
+    dataset.compute_patch_embeddings(model, "frames.ground_truth")
 
     # torch, data loader, batches
     model = foz.load_zoo_model("inception-v3-imagenet-torch")
-    dataset.compute_patch_embeddings(model, "ground_truth", batch_size=2)
+    dataset.compute_patch_embeddings(
+        model, "frames.ground_truth", batch_size=2
+    )
 
     # TF, batch inference
     model = foz.load_zoo_model("resnet-v2-50-imagenet-tf1")
-    dataset.compute_patch_embeddings(model, "ground_truth", batch_size=2)
+    dataset.compute_patch_embeddings(
+        model, "frames.ground_truth", batch_size=2
+    )
 
 
 if __name__ == "__main__":

@@ -1418,7 +1418,7 @@ def _embed_patches_single(model, img, detections, force_square, alpha):
         embedding = model.embed(patch)
         embeddings.append(embedding)
 
-    return np.concatenate(embeddings)
+    return np.stack(embeddings)
 
 
 def _embed_patches_batch(
