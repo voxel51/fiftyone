@@ -2478,7 +2478,7 @@ class MediaDirectoryExporter(UnlabeledMediaDatasetExporter):
             for each exported media. This argument allows for populating nested
             subdirectories that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
     """
 
     def __init__(self, export_dir, export_media=None, rel_dir=None):
