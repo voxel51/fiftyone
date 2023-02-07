@@ -779,6 +779,17 @@ def compute_embeddings(
             "Ignoring `num_workers` parameter; only supported for Torch models"
         )
 
+    if embeddings_field is not None:
+        _embeddings_field, _is_frame_field = samples._handle_frame_field(
+            embeddings_field
+        )
+        if "." in _embeddings_field:
+            ftype = "frame" if _is_frame_field else "sample"
+            raise ValueError(
+                "Invalid `embeddings_field=%s`. Expected a top-level %s field "
+                "name that contains no '.'" % (_embeddings_field, ftype)
+            )
+
     with contextlib.ExitStack() as context:
         if use_data_loader:
             # pylint: disable=no-member
@@ -851,13 +862,13 @@ def _compute_image_embeddings_single(
                 errors = True
                 logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
-            if embeddings_field:
+            if embeddings_field is not None:
                 sample[embeddings_field] = embedding
                 sample.save()
             else:
                 embeddings.append(embedding)
 
-    if embeddings_field:
+    if embeddings_field is not None:
         return None
 
     if errors:
@@ -894,7 +905,7 @@ def _compute_image_embeddings_batch(
                     e,
                 )
 
-            if embeddings_field:
+            if embeddings_field is not None:
                 for sample, embedding in zip(sample_batch, embeddings_batch):
                     sample[embeddings_field] = embedding
                     sample.save()
@@ -903,7 +914,7 @@ def _compute_image_embeddings_batch(
 
             pb.update(len(sample_batch))
 
-    if embeddings_field:
+    if embeddings_field is not None:
         return None
 
     if errors:
@@ -945,7 +956,7 @@ def _compute_image_embeddings_data_loader(
                     e,
                 )
 
-            if embeddings_field:
+            if embeddings_field is not None:
                 for sample, embedding in zip(sample_batch, embeddings_batch):
                     sample[embeddings_field] = embedding
                     sample.save()
@@ -954,7 +965,7 @@ def _compute_image_embeddings_data_loader(
 
             pb.update(len(sample_batch))
 
-    if embeddings_field:
+    if embeddings_field is not None:
         return None
 
     if errors:
@@ -1016,7 +1027,7 @@ def _compute_frame_embeddings_single(
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
 
-    if embeddings_field:
+    if embeddings_field is not None:
         return None
 
     return embeddings_dict
@@ -1080,7 +1091,7 @@ def _compute_frame_embeddings_batch(
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
 
-    if embeddings_field:
+    if embeddings_field is not None:
         return None
 
     return embeddings_dict
@@ -1113,13 +1124,13 @@ def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
                 errors = True
                 logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
-            if embeddings_field:
+            if embeddings_field is not None:
                 sample[embeddings_field] = embedding
                 sample.save()
             else:
                 embeddings.append(embedding)
 
-    if embeddings_field:
+    if embeddings_field is not None:
         return None
 
     if errors:
@@ -1166,9 +1177,8 @@ def compute_patch_embeddings(
             :class:`fiftyone.core.labels.Polyline`, or
             :class:`fiftyone.core.labels.Polylines`. When computing video frame
             embeddings, the "frames." prefix is optional
-        embeddings_field (None): the name of a field in which to store the
-            embeddings. When computing video frame embeddings, the "frames."
-            prefix is optional
+        embeddings_field (None): the name of a label attribute in which to
+            store the embeddings
         force_square (False): whether to minimally manipulate the patch
             bounding boxes into squares prior to extraction
         alpha (None): an optional expansion/contraction to apply to the patches
@@ -1248,9 +1258,6 @@ def compute_patch_embeddings(
         )
     elif samples.media_type == fom.VIDEO:
         patches_field, _ = samples._handle_frame_field(patches_field)
-        if embeddings_field is not None:
-            embeddings_field, _ = samples._handle_frame_field(embeddings_field)
-
         fov.validate_collection_label_fields(
             samples,
             samples._FRAMES_PREFIX + patches_field,
@@ -1261,6 +1268,12 @@ def compute_patch_embeddings(
     else:
         raise fom.MediaTypeError(
             "Unsupported media type '%s'" % samples.media_type
+        )
+
+    if embeddings_field is not None and "." in embeddings_field:
+        raise ValueError(
+            "Invalid `embeddings_field=%s`. Expected a label attribute name "
+            "that contains no '.'" % embeddings_field
         )
 
     batch_size = _parse_batch_size(batch_size, model, use_data_loader)
@@ -1326,7 +1339,10 @@ def _embed_patches(
 ):
     samples = samples.select_fields(patches_field)
 
-    embeddings_dict = {}
+    if embeddings_field is not None:
+        label_parser = _make_label_parser(samples, patches_field)
+    else:
+        embeddings_dict = {}
 
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
@@ -1360,13 +1376,17 @@ def _embed_patches(
 
                 logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
-            if embeddings_field:
-                sample[embeddings_field] = embeddings
-                sample.save()
+            if embeddings_field is not None:
+                if embeddings is not None:
+                    labels = label_parser(sample)
+                    for label, embedding in zip(labels, embeddings):
+                        label[embeddings_field] = embedding
+
+                    sample.save()
             else:
                 embeddings_dict[sample.id] = embeddings
 
-    if embeddings_field:
+    if embeddings_field is not None:
         return None
 
     return embeddings_dict
@@ -1414,6 +1434,7 @@ def _embed_patches_data_loader(
     skip_failures,
 ):
     samples = samples.select_fields(patches_field)
+
     data_loader = _make_patch_data_loader(
         samples,
         model,
@@ -1425,7 +1446,10 @@ def _embed_patches_data_loader(
         skip_failures,
     )
 
-    embeddings_dict = {}
+    if embeddings_field is not None:
+        label_parser = _make_label_parser(samples, patches_field)
+    else:
+        embeddings_dict = {}
 
     with fou.ProgressBar(samples) as pb:
         for sample, patches in pb(zip(samples, data_loader)):
@@ -1449,13 +1473,17 @@ def _embed_patches_data_loader(
 
                 logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
-            if embeddings_field:
-                sample[embeddings_field] = embeddings
-                sample.save()
+            if embeddings_field is not None:
+                if embeddings is not None:
+                    labels = label_parser(sample)
+                    for label, embedding in zip(labels, embeddings):
+                        label[embeddings_field] = embedding
+
+                    sample.save()
             else:
                 embeddings_dict[sample.id] = embeddings
 
-    if embeddings_field:
+    if embeddings_field is not None:
         return None
 
     return embeddings_dict
@@ -1472,11 +1500,15 @@ def _embed_frame_patches(
     batch_size,
     skip_failures,
 ):
-    samples = samples.select_fields(samples._FRAMES_PREFIX + patches_field)
+    _patches_field = samples._FRAMES_PREFIX + patches_field
+    samples = samples.select_fields(_patches_field)
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    embeddings_dict = {}
+    if embeddings_field is not None:
+        label_parser = _make_label_parser(samples, _patches_field)
+    else:
+        embeddings_dict = {}
 
     with fou.ProgressBar(total=total_frame_count) as pb:
         for idx, sample in enumerate(samples):
@@ -1515,11 +1547,9 @@ def _embed_frame_patches(
                                 )
 
                         if embeddings_field is not None:
-                            sample.add_labels(
-                                {frame_number: embeddings},
-                                label_field=embeddings_field,
-                            )
-                            sample.save()
+                            labels = label_parser(frame)
+                            for label, embedding in zip(labels, embeddings):
+                                label[embeddings_field] = embedding
                         else:
                             frame_embeddings_dict[frame_number] = embeddings
 
@@ -1531,13 +1561,15 @@ def _embed_frame_patches(
 
                 logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
-            if embeddings_field is None:
+            if embeddings_field is not None:
+                sample.save()
+            else:
                 embeddings_dict[sample.id] = frame_embeddings_dict
 
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
 
-    if embeddings_field:
+    if embeddings_field is not None:
         return None
 
     return embeddings_dict
@@ -1594,6 +1626,31 @@ def _parse_batch_size(batch_size, model, use_data_loader):
         batch_size = 1
 
     return batch_size
+
+
+def _make_label_parser(samples, patches_field):
+    patches_attr, _ = samples._handle_frame_field(patches_field)
+    label_type, _ = samples._get_label_field_path(patches_field)
+    is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+
+    if not is_list_field:
+
+        def parse_label(sample):
+            label = sample[patches_attr]
+            return [label] if label is not None else []
+
+        return parse_label
+
+    list_attr = label_type._LABEL_LIST_FIELD
+
+    def parse_list_labels(sample):
+        labels = sample[patches_attr]
+        if labels is None:
+            return []
+
+        return labels[list_attr]
+
+    return parse_list_labels
 
 
 def load_model(model_config_dict, model_path=None, **kwargs):

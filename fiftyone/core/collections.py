@@ -2703,9 +2703,8 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Polyline`, or
                 :class:`fiftyone.core.labels.Polylines`. When computing video
                 frame embeddings, the "frames." prefix is optional
-            embeddings_field (None): the name of a field in which to store the
-                embeddings. When computing video frame embeddings, the
-                "frames." prefix is optional
+            embeddings_field (None): the name of a label attribute in which to
+                store the embeddings
             force_square (False): whether to minimally manipulate the patch
                 bounding boxes into squares prior to extraction
             alpha (None): an optional expansion/contraction to apply to the
