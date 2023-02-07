@@ -67,12 +67,8 @@ const useSetView = (
               savedViewSlug,
             },
             onError,
-            onCompleted: ({
-              setView: {
-                view: viewResponse,
-                dataset: { stages: value, viewName, ...dataset },
-              },
-            }) => {
+            onCompleted: ({ setView: { view: viewResponse, dataset } }) => {
+              const { stages: value, viewName } = dataset;
               const searchParamsString =
                 router.history.location.search || window.location.search;
               const searchParams = new URLSearchParams(searchParamsString);
