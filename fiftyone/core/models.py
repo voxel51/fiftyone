@@ -1280,19 +1280,20 @@ def compute_patch_embeddings(
     batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
     if embeddings_field is not None:
-        if samples.media_type == fom.VIDEO:
-            _, embeddings_path = samples._get_label_field_path(
-                samples._FRAMES_PREFIX + patches_field, embeddings_field
+        dataset = samples._root_dataset
+        if dataset.media_type == fom.VIDEO:
+            _, embeddings_path = dataset._get_label_field_path(
+                dataset._FRAMES_PREFIX + patches_field, embeddings_field
             )
-            embeddings_path, _ = samples._handle_frame_field(embeddings_path)
-            if not samples.has_frame_field(embeddings_path):
-                samples.add_frame_field(embeddings_path, fof.VectorField)
+            embeddings_path, _ = dataset._handle_frame_field(embeddings_path)
+            if not dataset.has_frame_field(embeddings_path):
+                dataset.add_frame_field(embeddings_path, fof.VectorField)
         else:
-            _, embeddings_path = samples._get_label_field_path(
+            _, embeddings_path = dataset._get_label_field_path(
                 patches_field, embeddings_field
             )
-            if not samples.has_sample_field(embeddings_path):
-                samples.add_sample_field(embeddings_path, fof.VectorField)
+            if not dataset.has_sample_field(embeddings_path):
+                dataset.add_sample_field(embeddings_path, fof.VectorField)
 
     with contextlib.ExitStack() as context:
         if use_data_loader:
