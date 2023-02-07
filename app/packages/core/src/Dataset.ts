@@ -186,7 +186,7 @@ export const usePreLoadedDataset = (
             ? (toCamelCase(config) as fos.State.Config)
             : undefined,
           dataset: fos.transformDataset(
-            stateProxyValue ? stateProxyValue.dataset : rest
+            stateProxyValue?.dataset ? stateProxyValue.dataset : rest
           ),
           state: { view, viewName, ...state, ...(stateProxyValue || {}) },
         };
