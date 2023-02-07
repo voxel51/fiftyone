@@ -1,4 +1,15 @@
-from .registry import list_operators, operator_exists, load_operator
+"""
+FiftyOne operator execution.
+
+| Copyright 2017-2023, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+from .registry import list_operators, operator_exists, get_operator
+
+import fiftyone.server.view as fosv
+import fiftyone as fo
 
 
 def execute_operator(operator_name, request_params):
@@ -12,7 +23,7 @@ def execute_operator(operator_name, request_params):
     if operator_exists(operator_name) is False:
         raise ValueError("Operator '%s' does not exist" % operator_name)
 
-    operator = load_operator(operator_name)
+    operator = get_operator(operator_name)
     ctx = ExecutionContext(request_params)
     raw_result = operator.execute(ctx)
     return ExecutionResult(ctx, raw_result)
@@ -46,4 +57,4 @@ class ExecutionResult:
         self.result = result
 
     def to_json(self):
-        return foj.stringify(self.result)
+        return self.result
