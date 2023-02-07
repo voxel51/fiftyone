@@ -2323,7 +2323,7 @@ class MediaDirectoryImporter(UnlabeledMediaDatasetImporter):
         return self.compute_metadata
 
     def setup(self):
-        filepaths = etau.list_files(
+        filepaths = fos.list_files(
             self.dataset_dir, abs_paths=True, recursive=self.recursive
         )
         filepaths = self._preprocess_list(filepaths)
@@ -2334,7 +2334,7 @@ class MediaDirectoryImporter(UnlabeledMediaDatasetImporter):
     @staticmethod
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
-        return len(etau.list_files(dataset_dir, recursive=True))
+        return len(fos.list_files(dataset_dir, recursive=True))
 
 
 class FiftyOneImageClassificationDatasetImporter(

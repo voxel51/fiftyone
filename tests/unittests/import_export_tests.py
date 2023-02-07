@@ -2008,7 +2008,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
         # On-disk segmentations
 
         export_dir = self._new_dir()
-        field_dir = os.path.join(export_dir, "fields", "segmentations")
+        field_dir = fos.join(export_dir, "fields", "segmentations")
 
         dataset.export(
             export_dir=export_dir,
@@ -2177,7 +2177,7 @@ class CSVDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.csv")
+        labels_path = fos.join(self._new_dir(), "labels.csv")
 
         dataset.export(
             labels_path=labels_path,
@@ -2215,7 +2215,7 @@ class CSVDatasetTests(ImageDatasetTests):
 
         # Labels-only (absolute paths)
 
-        labels_path = os.path.join(self._new_dir(), "labels.csv")
+        labels_path = fos.join(self._new_dir(), "labels.csv")
 
         dataset.export(
             labels_path=labels_path,
@@ -2292,7 +2292,7 @@ class CSVDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
         """
 
 
@@ -3020,7 +3020,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         # Alternate media
 
         export_dir = self._new_dir()
-        field_dir = os.path.join(export_dir, "fields", "filepath2")
+        field_dir = fos.join(export_dir, "fields", "filepath2")
 
         dataset.clone_sample_field("filepath", "filepath2")
         dataset.app_config.media_fields.append("filepath2")
@@ -3233,7 +3233,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         # Alternate media
 
         export_dir = self._new_dir()
-        field_dir = os.path.join(export_dir, "fields", "filepath2")
+        field_dir = fos.join(export_dir, "fields", "filepath2")
 
         dataset.clone_sample_field("filepath", "filepath2")
         dataset.app_config.media_fields.append("filepath2")
@@ -4339,12 +4339,18 @@ class UnlabeledMediaDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # _images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 2)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 2)
 
 
 def _relpath(path, start):
     # Avoids errors related to symlinks in `/tmp` directories
-    return os.path.relpath(os.path.realpath(path), os.path.realpath(start))
+    if fos.is_local(path):
+        path = os.path.realpath(path)
+
+    if fos.is_local(start):
+        start = os.path.realpath(start)
+
+    return os.path.relpath(path, start)
 
 
 if __name__ == "__main__":
