@@ -6,6 +6,8 @@ import ReactDOM from "react-dom";
 import * as recoil from "recoil";
 import * as foc from "@fiftyone/components";
 import * as fou from "@fiftyone/utilities";
+import * as foo from "@fiftyone/operators";
+
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
@@ -15,6 +17,7 @@ declare global {
     __fos__: any;
     __foc__: any;
     __fou__: any;
+    __foo__: any;
   }
 }
 
@@ -26,6 +29,7 @@ if (typeof window !== "undefined") {
   window.__fos__ = fos;
   window.__foc__ = foc;
   window.__fou__ = fou;
+  window.__foo__ = foo;
 }
 
 function usingRegistry() {
@@ -80,12 +84,11 @@ type PluginFetchResult = {
 };
 async function fetchPluginsMetadata(): Promise<PluginFetchResult> {
   return getFetchFunction()("GET", "/plugins");
-  const res = await fetch("/plugins", { method: "GET" });
-  return res.json();
 }
 
 let _settings = null;
 export async function loadPlugins() {
+  await foo.loadOperatorsFromServer();
   const { plugins, settings } = await fetchPluginsMetadata();
   window.__fo_plugin_settings__ = settings;
   for (const { scriptPath, name } of plugins) {
