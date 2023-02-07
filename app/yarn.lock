@@ -4559,6 +4559,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@fiftyone/operators@workspace:packages/operators":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/operators@workspace:packages/operators"
+  dependencies:
+    "@babel/preset-typescript": ^7.17.12
+    "@fiftyone/utilities": "workspace:^"
+    "@types/react": ^18.0.12
+    jest: ^28.1.1
+    prettier: 2.2.1
+    typescript: 4.2.4
+    vite: 2.4.2
+  languageName: unknown
+  linkType: soft
+
 "@fiftyone/plugins@*, @fiftyone/plugins@workspace:packages/plugins":
   version: 0.0.0-use.local
   resolution: "@fiftyone/plugins@workspace:packages/plugins"
