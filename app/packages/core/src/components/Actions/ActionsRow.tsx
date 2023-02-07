@@ -8,6 +8,7 @@ import {
   Settings,
   VisibilityOff,
   Wallpaper,
+  Search,
 } from "@mui/icons-material";
 import React, {
   MutableRefObject,
@@ -102,8 +103,8 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
-  const hasSimilaritySamples = useRecoilValue(hasSimilarityKeys(modal));
-  const similarityParameters = useRecoilValue(fos.similarityParameters);
+  const hasSelectedSamples =
+    [...useRecoilValue(fos.selectedSamples)].length > 0;
   const [mRef, bounds] = useMeasure();
   const close = false;
 
@@ -111,17 +112,32 @@ const Similarity = ({ modal }: { modal: boolean }) => {
     close && setOpen(false);
   }, [close]);
 
+  const showImageSimilarityIcon = hasSelectedSamples;
+  const showTextSimilarityIcon = !hasSelectedSamples;
   return (
     <ActionDiv ref={ref}>
-      <PillButton
-        icon={<Wallpaper />}
-        open={open}
-        onClick={() => setOpen(!open)}
-        highlight={true}
-        ref={mRef}
-        title={"Sort by similarity"}
-        style={{ cursor: "pointer" }}
-      />
+      {showImageSimilarityIcon && (
+        <PillButton
+          icon={<Wallpaper />}
+          open={open}
+          onClick={() => setOpen(!open)}
+          highlight={true}
+          ref={mRef}
+          title={"Sort by image similarity"}
+          style={{ cursor: "pointer" }}
+        />
+      )}
+      {showTextSimilarityIcon && (
+        <PillButton
+          icon={<Search />}
+          open={open}
+          onClick={() => setOpen(!open)}
+          highlight={true}
+          ref={mRef}
+          title={"Sort by text similarity"}
+          style={{ cursor: "pointer" }}
+        />
+      )}
       {open && (
         <Similar modal={modal} close={() => setOpen(false)} bounds={bounds} />
       )}
