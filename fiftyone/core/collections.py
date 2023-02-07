@@ -7246,6 +7246,7 @@ class SampleCollection(object):
         _allow_missing=False,
         _big_result=True,
         _raw=False,
+        _field=None,
     ):
         """Extracts the values of a field from all samples in the collection.
 
@@ -7361,6 +7362,7 @@ class SampleCollection(object):
             _allow_missing=_allow_missing,
             _big_result=_big_result,
             _raw=_raw,
+            _field=_field,
         )
         return self._make_and_aggregate(make, field_or_expr)
 
