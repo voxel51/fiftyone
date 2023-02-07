@@ -1,7 +1,7 @@
 import { getFetchFunction } from "@fiftyone/utilities";
 import { atom, useRecoilState } from "recoil";
 import { useState } from "react";
-
+export { default as OperatorBrowser } from "./OperatorBrowser";
 class ExecutionContext {
   constructor(public params: Map<string, any> = new Map()) {}
 }
@@ -63,6 +63,9 @@ export class Operator {
   constructor(public name: string, description: string) {
     this.name = name;
     this.definition = new OperatorDefinition(description);
+  }
+  needsInput() {
+    return this.definition.inputs.length > 0;
   }
   async execute(ctx: ExecutionContext) {
     throw new Error(`Operator ${this.name} does not implement execute`);
@@ -129,12 +132,9 @@ export function useOperatorExecutor(name) {
   };
 }
 
-async function executeOperator(operatorName, params) {
+function getLocalOrRemoteOperator(operatorName) {
   let operator;
   let isRemote = false;
-
-  console.log(remoteRegistry);
-
   if (localRegistry.operatorExists(operatorName)) {
     operator = localRegistry.getOperator(operatorName);
   } else if (remoteRegistry.operatorExists(operatorName)) {
@@ -143,6 +143,12 @@ async function executeOperator(operatorName, params) {
   } else {
     throw new Error(`Operator "${operatorName}" not found`);
   }
+  return { operator, isRemote };
+}
+
+async function executeOperator(operatorName, params) {
+  const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
+
   const ctx = new ExecutionContext(params);
   let rawResult;
   if (isRemote) {
@@ -154,4 +160,8 @@ async function executeOperator(operatorName, params) {
     rawResult = await operator.execute(ctx);
   }
   return new OperatorResult(rawResult);
+}
+
+export function usePromptOperatorInput(operatorName) {
+  const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
 }
