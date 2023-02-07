@@ -161,6 +161,7 @@ export namespace State {
     distField?: string;
     k?: number;
     reverse?: boolean;
+    query?: string | string[];
   }
 
   export interface Filters {
