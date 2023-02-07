@@ -8581,46 +8581,49 @@ class SampleCollection(object):
         )
 
     def _build_facets(self, aggs_map):
-        pipelines = {}
-
-        compiled = defaultdict(dict)
+        compiled = {}
+        facetable = defaultdict(dict)
         for idx, aggregation in aggs_map.items():
             if aggregation.field_name is None or isinstance(
                 aggregation, foa.FacetAggregations
             ):
                 compiled[idx] = aggregation
-                continue
-
-            # @todo optimize this
-            field_name = aggregation.field_name
-            if "[]" in field_name:
-                root = field_name
-                leaf = ""
             else:
-                keys = field_name.split(".")
-                root = ""
-                leaf = keys[-1]
-                for num in range(len(keys), 0, -1):
-                    root = ".".join(keys[:num])
-                    leaf = ".".join(keys[num:])
-                    field = self.get_field(root)
-                    if isinstance(field, fof.ListField) and isinstance(
-                        field.field, fof.EmbeddedDocumentField
-                    ):
-                        break
+                # @todo optimize this
+                if "[]" in aggregation.field_name:
+                    root = aggregation.field_name
+                    leaf = ""
+                else:
+                    keys = aggregation.field_name.split(".")
+                    root = ""
+                    leaf = keys[-1]
+                    for num in range(len(keys), 0, -1):
+                        root = ".".join(keys[:num])
+                        leaf = ".".join(keys[num:])
+                        field = self.get_field(root)
+                        if isinstance(field, fof.ListField) and isinstance(
+                            field.field, fof.EmbeddedDocumentField
+                        ):
+                            break
 
-            aggregation = copy(aggregation)
-            aggregation._field_name = leaf
-            compiled[root][idx] = aggregation
+                facetable[root][idx] = (leaf, aggregation)
 
-        for field_name, aggregations in compiled.items():
-            if isinstance(aggregations, foa.Aggregation):
-                continue
+        for field_name, aggregations in facetable.items():
+            if len(aggregations) > 1:
+                _aggregations = {}
+                for idx, (leaf, aggregation) in aggregations.items():
+                    aggregation = copy(aggregation)
+                    aggregation._field_name = leaf
+                    _aggregations[idx] = aggregation
 
-            compiled[field_name] = foa.FacetAggregations(
-                field_name, aggregations, _compiled=True
-            )
+                compiled[field_name] = foa.FacetAggregations(
+                    field_name, _aggregations, _compiled=True
+                )
+            else:
+                idx, (_, aggregation) = next(iter(aggregations.items()))
+                compiled[idx] = aggregation
 
+        pipelines = {}
         for idx, aggregation in compiled.items():
             pipelines[idx] = self._pipeline(
                 pipeline=aggregation.to_mongo(self),
@@ -9253,6 +9256,7 @@ class SampleCollection(object):
         embedded_root=False,
         allow_missing=False,
         new_field=None,
+        context=None,
     ):
         return _make_set_field_pipeline(
             self,
@@ -9261,7 +9265,27 @@ class SampleCollection(object):
             embedded_root,
             allow_missing=allow_missing,
             new_field=new_field,
+            context=context,
         )
+
+    def _get_values_by_id(self, path_or_expr, ids, link_field=None):
+        if link_field == "frames":
+            if self._is_frames:
+                id_path = "id"
+            else:
+                id_path = "frames.id"
+        elif link_field is not None:
+            _, id_path = self._get_label_field_path(link_field, "id")
+        elif self._is_patches:
+            id_path = "sample_id"
+        else:
+            id_path = "id"
+
+        values_map = {
+            i: v
+            for i, v in zip(*self.values([id_path, path_or_expr], unwind=True))
+        }
+        return [values_map.get(i, None) for i in ids]
 
 
 def _unwind_values(values, level=0):
@@ -9857,6 +9881,7 @@ def _make_set_field_pipeline(
     embedded_root,
     allow_missing=False,
     new_field=None,
+    context=None,
 ):
     (
         path,
@@ -9871,6 +9896,12 @@ def _make_set_field_pipeline(
         allow_missing=allow_missing,
         new_field=new_field,
     )
+
+    if context:
+        if is_frame_field:
+            context = ".".join(context.split(".")[1:])
+
+        list_fields = [f for f in list_fields if not context.startswith(f)]
 
     if is_frame_field and path != "frames":
         path = sample_collection._FRAMES_PREFIX + path

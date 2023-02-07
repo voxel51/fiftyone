@@ -60,26 +60,7 @@ export interface DatasetProps {
   canEditSavedViews?: boolean;
 }
 
-export const Dataset: React.FC<DatasetProps> = (props) => {
-  const environment = React.useMemo(() => fos.getEnvironment(), []);
-
-  useEffect(() => {
-    fos.setCurrentEnvironment(environment);
-  }, [environment]);
-
-  return (
-    <RecoilRoot>
-      <RecoilRelayEnvironmentProvider
-        environment={environment}
-        environmentKey={fos.RelayEnvironmentKey}
-      >
-        <DatasetRenderer {...props} />
-      </RecoilRelayEnvironmentProvider>
-    </RecoilRoot>
-  );
-};
-
-export const DatasetRenderer: React.FC<DatasetProps> = ({
+export const Dataset: React.FC<DatasetProps> = ({
   dataset,
   compactLayout = true,
   hideHeaders = false,

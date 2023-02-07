@@ -16,7 +16,6 @@ from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.odm as foo
 import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -313,14 +312,12 @@ def _make_filter_stages(
     cleanup = set()
     filtered_labels = set()
     for path in sorted(filters):
-        args = filters[path]
-
-        # use the setting within the filter, otherwise use default true settings
-        is_matching = True if "isMatching" not in args else args["isMatching"]
-        only_match = True if "onlyMatch" not in args else args["onlyMatch"]
-
         if path == "tags" or path.startswith("_"):
             continue
+
+        args = filters[path]
+        is_matching = args.get("isMatching", True)
+        only_matches = args.get("onlyMatch", True)
 
         frames = path.startswith(view._FRAMES_PREFIX)
         keys = path.split(".")
@@ -334,29 +331,20 @@ def _make_filter_stages(
             prefix = ""
 
         if _is_label(field):
-            keypoints = issubclass(
-                field.document_type, (fol.Keypoint, fol.Keypoints)
-            )
-
-            if keypoints:
-                if path.endswith(".id") or path.endswith(".label"):
-                    keypoints = False
-
             parent = field
             field = view.get_field(path)
-            key = field.db_field if field.db_field else field.name
-            view_field = F(key)
-            expr = (
-                _make_keypoint_kwargs(
-                    args,
-                    view,
-                    path if path.endswith(".points") else None,
-                )
-                if keypoints
-                else _make_scalar_expression(
-                    view_field, args, field, is_label=True
-                )
+            is_keypoints = issubclass(
+                parent.document_type, (fol.Keypoint, fol.Keypoints)
             )
+            is_list_field = isinstance(field, fof.ListField)
+
+            if is_keypoints and is_list_field:
+                expr = _make_keypoint_list_filter(args, view, path, field)
+            else:
+                key = field.db_field if field.db_field else field.name
+                expr = _make_scalar_expression(
+                    F(key), args, field, is_label=True
+                )
 
             if expr is not None:
                 if hide_result:
@@ -369,26 +357,41 @@ def _make_filter_stages(
                 else:
                     new_field = None
 
-                if keypoints:
-                    stage = fosg.FilterKeypoints(
-                        prefix + parent.name,
-                        _new_field=new_field,
-                        **expr,
-                    )
+                if is_keypoints:
+                    if is_list_field:
+                        stage = fosg.FilterKeypoints(
+                            prefix + parent.name,
+                            _new_field=new_field,
+                            only_matches=only_matches,
+                            **expr,
+                        )
+                    else:
+                        _field = prefix + parent.name
+                        _field = cache.get(_field, _field)
+
+                        stage = fosg.FilterLabels(
+                            _field,
+                            expr,
+                            only_matches=only_matches,
+                            _new_field=new_field,
+                        )
                 elif is_matching:
-                    field = (
-                        cache.get(prefix + parent.name, prefix + parent.name),
-                    )
+                    _field = prefix + parent.name
+                    _field = cache.get(_field, _field)
+
                     stage = fosg.MatchLabels(
-                        fields=field[0],
+                        fields=_field[0],
                         filter=expr,
                         bool=(not args["exclude"]),
                     )
                 else:
+                    _field = prefix + parent.name
+                    _field = cache.get(_field, _field)
+
                     stage = fosg.FilterLabels(
-                        cache.get(prefix + parent.name, prefix + parent.name),
+                        _field,
                         expr,
-                        only_matches=only_match,
+                        only_matches=only_matches,
                         _new_field=new_field,
                     )
 
@@ -404,7 +407,6 @@ def _make_filter_stages(
                 stages.append(fosg.Match(expr))
 
     if label_tags is not None and hide_result:
-
         for path, _ in fosu.iter_label_fields(view):
             if hide_result:
                 new_field = _get_filtered_path(
@@ -465,7 +467,8 @@ def _is_label(field):
 
 def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
     expr = None
-    is_matching = False if "isMatching" not in args else args["isMatching"]
+
+    is_matching = args.get("isMatching", False)
     if isinstance(field, fof.ListField):
         expr = f.filter(
             _make_scalar_expression(F(), args, field.field, list_field=True)
@@ -524,28 +527,51 @@ def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
     return _apply_others(expr, f, args, is_label)
 
 
-# generate expr for keypoint labels
-def _make_keypoint_kwargs(args, view, points):
-    if points:
-        ske = view._dataset.default_skeleton
-        name = points.split(".")[0]
+def _make_keypoint_list_filter(args, view, path, field):
+    name = path.split(".", 1)[0]
 
-        if name in view._dataset.skeletons:
-            ske = view._dataset.skeletons[name]
+    if path.endswith(".points"):
+        dataset = view._dataset
+        if name in dataset.skeletons:
+            skeleton = dataset.skeletons[name]
+        else:
+            skeleton = dataset.default_skeleton
 
         values = args.get("values", [])
         if args["exclude"]:
-            values = set(ske.labels).difference(values)
+            values = list(set(skeleton.labels).difference(values))
 
         return {"labels": values}
 
-    f = F("confidence")
-    mn, mx = args["range"]
-    return {"filter": (f >= mn) & (f <= mx)}
+    if isinstance(field.field, fof.BooleanField):
+        true, false = args["true"], args["false"]
+        f = F(name)
+        if true and false:
+            expr = f.is_in([True, False])
+
+        if not true and false:
+            expr = f == False
+
+        if true and not false:
+            expr = f == True
+
+        if not true and not false:
+            expr = (f != True) & (f != False)
+
+        return {"filter": expr}
+
+    if isinstance(field.field, (fof.FloatField, fof.IntField)):
+        f = F(name)
+        mn, mx = args["range"]
+        expr = (f >= mn) & (f <= mx)
+        if args["exclude"]:
+            expr = ~expr
+
+        return {"filter": expr}
 
 
 def _apply_others(expr, f, args, is_label):
-    is_matching = False if "isMatching" not in args else args["isMatching"]
+    is_matching = args.get("isMatching", False)
     nonfinites = {
         "nan": float("nan"),
         "ninf": -float("inf"),
@@ -569,7 +595,6 @@ def _apply_others(expr, f, args, is_label):
         and args["exclude"]
         and not (is_matching and is_label)
     ):
-        # pylint: disable=invalid-unary-operand-type
         expr = ~expr
 
     return expr

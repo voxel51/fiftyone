@@ -16,7 +16,6 @@ import {
   useRefresh,
   getSavedViewName,
 } from "@fiftyone/state";
-import { isElectron } from "@fiftyone/utilities";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -126,6 +125,7 @@ const App: React.FC = ({}) => {
                 colorscale,
                 config,
                 refresh: payload.refresh,
+                // REQUIRED: here we define DatasetQuery GraphQL variables
                 variables: state.dataset
                   ? { view: state.view || null }
                   : undefined,
