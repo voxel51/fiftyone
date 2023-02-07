@@ -378,7 +378,7 @@ def _make_filter_stages(
                     _field = cache.get(_field, _field)
 
                     stage = fosg.MatchLabels(
-                        fields=_field[0],
+                        fields=_field,
                         filter=expr,
                         bool=(not args["exclude"]),
                     )
