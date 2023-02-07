@@ -12,6 +12,8 @@ import { useDebounce } from "react-use";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 
+import { OperatorBrowser } from "@fiftyone/operators";
+
 import {
   Button,
   DocsLink,
@@ -188,6 +190,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
           <GitHubLink />
           <DocsLink />
         </div>
+        <OperatorBrowser />
       </Header>
       {ReactDOM.createPortal(
         <AnimatePresence>
