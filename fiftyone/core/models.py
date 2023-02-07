@@ -781,15 +781,24 @@ def compute_embeddings(
         )
 
     if embeddings_field is not None:
-        _embeddings_field, _is_frame_field = samples._handle_frame_field(
+        dataset = samples._dataset
+        embeddings_field, _is_frame_field = dataset._handle_frame_field(
             embeddings_field
         )
-        if "." in _embeddings_field:
+
+        if "." in embeddings_field:
             ftype = "frame" if _is_frame_field else "sample"
             raise ValueError(
                 "Invalid `embeddings_field=%s`. Expected a top-level %s field "
-                "name that contains no '.'" % (_embeddings_field, ftype)
+                "name that contains no '.'" % (embeddings_field, ftype)
             )
+
+        if dataset.media_type == fom.VIDEO and model.media_type == "image":
+            if not dataset.has_frame_field(embeddings_field):
+                dataset.add_frame_field(embeddings_field, fof.VectorField)
+        else:
+            if not dataset.has_sample_field(embeddings_field):
+                dataset.add_sample_field(embeddings_field, fof.VectorField)
 
     with contextlib.ExitStack() as context:
         if use_data_loader:
@@ -807,11 +816,6 @@ def compute_embeddings(
         batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
         if samples.media_type == fom.VIDEO and model.media_type == "image":
-            if embeddings_field is not None:
-                embeddings_field, _ = samples._handle_frame_field(
-                    embeddings_field
-                )
-
             if batch_size is not None:
                 return _compute_frame_embeddings_batch(
                     samples, model, embeddings_field, batch_size, skip_failures
@@ -1271,16 +1275,14 @@ def compute_patch_embeddings(
             "Unsupported media type '%s'" % samples.media_type
         )
 
-    if embeddings_field is not None and "." in embeddings_field:
-        raise ValueError(
-            "Invalid `embeddings_field=%s`. Expected a label attribute name "
-            "that contains no '.'" % embeddings_field
-        )
-
-    batch_size = _parse_batch_size(batch_size, model, use_data_loader)
-
     if embeddings_field is not None:
-        dataset = samples._root_dataset
+        if "." in embeddings_field:
+            raise ValueError(
+                "Invalid `embeddings_field=%s`. Expected a label attribute "
+                "name that contains no '.'" % embeddings_field
+            )
+
+        dataset = samples._dataset
         if dataset.media_type == fom.VIDEO:
             _, embeddings_path = dataset._get_label_field_path(
                 dataset._FRAMES_PREFIX + patches_field, embeddings_field
@@ -1302,6 +1304,8 @@ def compute_patch_embeddings(
 
         # pylint: disable=no-member
         context.enter_context(model)
+
+        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
         if samples.media_type == fom.VIDEO:
             return _embed_frame_patches(
