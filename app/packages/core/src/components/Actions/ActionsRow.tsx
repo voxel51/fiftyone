@@ -43,9 +43,11 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
     const hasFiltersValue = get(fos.hasFilters(false));
     const extendedSelectionList = get(fos.extendedSelection);
     const selectedSampleSet = get(fos.selectedSamples);
+    const isSimilarityOn = get(fos.similarityParameters);
 
     const isExtendedSelectionOn =
-      extendedSelectionList && extendedSelectionList.length > 0;
+      (extendedSelectionList && extendedSelectionList.length > 0) ||
+      isSimilarityOn;
 
     return (
       isExtendedSelectionOn || hasFiltersValue || selectedSampleSet.size > 0

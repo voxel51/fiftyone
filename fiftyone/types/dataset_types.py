@@ -278,6 +278,25 @@ class VideoDirectory(UnlabeledImageDataset):
         return foud.VideoDirectoryExporter
 
 
+class MediaDirectory(UnlabeledDataset):
+    """A directory of media files.
+
+    See :ref:`this page <MediaDirectory-import>` for importing datasets of this
+    type, and see :ref:`this page <MediaDirectory-export>` for exporting
+    datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.MediaDirectoryImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.MediaDirectoryExporter
+
+
 class FiftyOneImageClassificationDataset(ImageClassificationDataset):
     """A labeled dataset consisting of images and their associated
     classification labels stored in a simple JSON format.

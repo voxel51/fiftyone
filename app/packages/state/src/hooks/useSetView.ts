@@ -13,7 +13,7 @@ import { RouterContext } from "../routing";
 import useSendEvent from "./useSendEvent";
 import * as fos from "../";
 
-export const stateProxy = atom({
+export const stateProxy = atom<object>({
   key: "stateProxy",
   default: null,
 });
@@ -41,6 +41,9 @@ const useSetView = (
       ) => {
         const dataset = snapshot.getLoadable(fos.dataset).contents;
         const savedViews = dataset.savedViews || [];
+        // temporary workaround to prevent spaces reset on view update
+        const spaces = snapshot.getLoadable(fos.sessionSpaces).contents;
+        const stateProxyValue = snapshot.getLoadable(fos.stateProxy).contents;
         send((session) => {
           const value =
             viewOrUpdater instanceof Function
@@ -84,6 +87,7 @@ const useSetView = (
                 const newRoute = `${router.history.location.pathname}${
                   search.length ? "?" : ""
                 }${search}`;
+
                 router.history.push(newRoute, {
                   ...router.history.location.state,
                   state: {
@@ -94,6 +98,11 @@ const useSetView = (
                     selectedLabels: [],
                     viewName,
                     savedViews: savedViews,
+                    spaces,
+                  },
+                  variables: {
+                    view: savedViewSlug ? value : viewResponse,
+                    dataset: dataset.name,
                   },
                 });
               } else {
@@ -102,12 +111,14 @@ const useSetView = (
                 }${search}`;
 
                 setStateProxy({
+                  ...(stateProxyValue || {}),
                   view: savedViewSlug ? value : viewResponse,
+                  viewCls: dataset.viewCls,
                   viewName,
+                  dataset,
                 });
                 window.history.replaceState(window.history.state, "", newRoute);
               }
-
               onComplete && onComplete();
             },
           });

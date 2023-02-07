@@ -361,9 +361,6 @@ contains |GeoLocation| data in its ``location`` field:
     dataset = foz.load_zoo_dataset("quickstart-geo")
     fob.compute_uniqueness(dataset)
 
-    # Index the dataset by visual uniqueness
-    fob.compute_uniqueness(dataset)
-
     # A list of ``[longitude, latitude]`` coordinates
     locations = dataset.values("location.point.coordinates")
 
@@ -570,7 +567,6 @@ notebook:
     :linenos:
 
     import fiftyone as fo
-    import fiftyone.core.plots as fop
     import fiftyone.zoo as foz
     from fiftyone import ViewField as F
 
@@ -587,7 +583,7 @@ notebook:
     view = dataset.filter_labels("frames.detections", F("label") == "vehicle")
 
     # Plot the number of vehicles in each frame of a video dataset
-    plot = fop.lines(
+    plot = fo.lines(
         x="frames.frame_number",
         y=F("frames.detections.detections").length(),
         labels="id",
@@ -745,7 +741,7 @@ notebook:
 
     # Define some interesting plots
     plot1 = fo.NumericalHistogram(F("metadata.size_bytes") / 1024, bins=50, xlabel="image size (KB)")
-    plot2 = fo.NumericalHistogram("predictions.detections.confidence", bins=50)
+    plot2 = fo.NumericalHistogram("predictions.detections.confidence", bins=50, range=[0, 1])
     plot3 = fo.CategoricalHistogram("ground_truth.detections.label", order="frequency")
     plot4 = fo.CategoricalHistogram("predictions.detections.label", order="frequency")
 
