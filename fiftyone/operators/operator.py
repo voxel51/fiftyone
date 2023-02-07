@@ -23,12 +23,13 @@ class Operator:
     def __init__(
         self,
         name=None,
+        description=None,
     ):
         if name is None:
             raise ValueError("Operator name cannot be None")
 
         self.name = name
-        self._definition = OperatorDefinition()
+        self.definition = OperatorDefinition(description)
 
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
@@ -42,3 +43,10 @@ class Operator:
     def execute(self, ctx):
         """Executes the operator. Subclasses must implement this method."""
         raise NotImplementedError("subclass must implement execute()")
+
+    def to_json(self):
+        """Returns a JSON representation of the operator."""
+        return {
+            "name": self.name,
+            "definition": self.definition.to_json(),
+        }
