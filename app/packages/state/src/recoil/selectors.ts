@@ -400,15 +400,20 @@ export const modalNavigation = selector<atoms.ModalNavigation>({
 
 export const viewStateForm = selectorFamily<
   StateForm,
-  { addStages?: string; modal?: boolean; selectSlice?: boolean }
+  {
+    addStages?: string;
+    modal?: boolean;
+    selectSlice?: boolean;
+    omitSelected?: boolean;
+  }
 >({
   key: "viewStateForm",
   get:
-    ({ addStages, modal, selectSlice }) =>
+    ({ addStages, modal, selectSlice, omitSelected }) =>
     ({ get }) => {
       return {
         filters: get(modal ? modalFilters : filters),
-        sampleIds: [...get(selectedSamples)],
+        sampleIds: omitSelected ? [] : [...get(selectedSamples)],
         labels: get(selectedLabelList),
         extended: get(extendedStages),
         slice: selectSlice ? get(resolvedGroupSlice(modal)) : null,
