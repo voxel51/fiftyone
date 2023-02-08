@@ -2312,6 +2312,7 @@ class Values(Aggregation):
         _allow_missing=False,
         _big_result=True,
         _raw=False,
+        _field=None,
     ):
         super().__init__(field_or_expr, expr=expr)
         self._missing_value = missing_value
@@ -2320,8 +2321,9 @@ class Values(Aggregation):
         self._big_result = _big_result
         self._raw = _raw
 
-        self._field_type = None
+        self._field = None
         self._big_field = None
+        self._manual_field = _field
         self._num_list_fields = None
 
     def _kwargs(self):
@@ -2398,8 +2400,8 @@ class Values(Aggregation):
             context=context,
         )
 
+        self._field = self._manual_field or field
         self._big_field = big_field
-        self._field = field
         self._num_list_fields = len(list_fields)
 
         pipeline.extend(
