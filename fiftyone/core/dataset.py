@@ -285,8 +285,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._deleted = False
 
         if not _virtual:
-            if name:
-                self._update_last_loaded_at()
+            self._update_last_loaded_at()
 
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
@@ -6205,6 +6204,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.to_dict(extended=True)
 
     def _update_last_loaded_at(self):
+        if self.name is None:
+            # It's possible that the dataset being accessed has been deleted.
+            # In this case, the name will be null and  we don't want to
+            # update the `last_loaded_at`
+            return
         self._doc.last_loaded_at = datetime.utcnow()
         self._doc.save()
 
