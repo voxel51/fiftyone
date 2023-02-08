@@ -87,8 +87,6 @@ const Grid: React.FC<{}> = () => {
     return flashlight;
   });
 
-  console.log(useRecoilValue(fos.extendedStages));
-
   useEffect(
     deferred(() => {
       if (isModalOpen || isTagging || !flashlight.isAttached()) {
