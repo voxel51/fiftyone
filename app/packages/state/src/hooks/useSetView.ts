@@ -37,7 +37,8 @@ const useSetView = (
           | State.Stage[]
           | ((current: State.Stage[]) => State.Stage[]),
         addStages?: State.Stage[],
-        savedViewSlug?: string
+        savedViewSlug?: string,
+        omitSelected?: boolean
       ) => {
         const dataset = snapshot.getLoadable(fos.dataset).contents;
         const savedViews = dataset.savedViews || [];
@@ -61,6 +62,7 @@ const useSetView = (
                       addStages: addStages ? JSON.stringify(addStages) : null,
                       modal: false,
                       selectSlice,
+                      omitSelected,
                     })
                   ).contents
                 : {},
