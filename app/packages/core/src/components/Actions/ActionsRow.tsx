@@ -35,7 +35,7 @@ import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
-import Similar from "./Similar";
+import Similar, { isImageSimilaritySearch } from "./Similar";
 import Tagger from "./Tagger";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
@@ -105,6 +105,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   useOutsideClick(ref, () => open && setOpen(false));
   const hasSelectedSamples =
     [...useRecoilValue(fos.selectedSamples)].length > 0;
+  const isImageSearch = useRecoilValue(isImageSimilaritySearch);
   const [mRef, bounds] = useMeasure();
   const close = false;
 
@@ -112,8 +113,8 @@ const Similarity = ({ modal }: { modal: boolean }) => {
     close && setOpen(false);
   }, [close]);
 
-  const showImageSimilarityIcon = hasSelectedSamples;
-  const showTextSimilarityIcon = !hasSelectedSamples;
+  const showImageSimilarityIcon = hasSelectedSamples || isImageSearch;
+
   return (
     <ActionDiv ref={ref}>
       {showImageSimilarityIcon && (
@@ -127,7 +128,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
           style={{ cursor: "pointer" }}
         />
       )}
-      {showTextSimilarityIcon && (
+      {!showImageSimilarityIcon && (
         <PillButton
           icon={<Search />}
           open={open}
