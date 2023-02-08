@@ -3465,7 +3465,7 @@ follows:
             --type fiftyone.types.CSVDataset \
             --kwargs fields=list,of,fields
 
-You can also directly export a CSV files of field values and absolute media
+You can also directly export a CSV file of field values and absolute media
 paths without exporting the actual media files by providing the `labels_path`
 parameter instead of `export_dir`:
 
