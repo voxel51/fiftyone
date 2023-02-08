@@ -1,4 +1,9 @@
-import React, { useCallback, useLayoutEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import SettingsIcon from "@mui/icons-material/Settings";
 import SettingsBackupRestoreIcon from "@mui/icons-material/SettingsBackupRestore";
 import InfoIcon from "@mui/icons-material/Info";
@@ -10,6 +15,7 @@ import {
   selectorFamily,
   Snapshot,
   useRecoilCallback,
+  useRecoilState,
   useRecoilValue,
 } from "recoil";
 
@@ -133,6 +139,11 @@ const searchBrainKeyValue = atom<string>({
   default: "",
 });
 
+export const isImageSimilaritySearch = atom<boolean>({
+  key: "isImageSimilaritySearch",
+  default: false,
+});
+
 const availableSimilarityKeys = selectorFamily<string[], boolean>({
   key: "availableSimilarityKeys",
   get:
@@ -230,13 +241,16 @@ const SortBySimilarity = React.memo(
     const current = useRecoilValue(fos.similarityParameters);
     const selectedSamples = useRecoilValue(fos.selectedSamples);
     const [open, setOpen] = useState(false);
-    const showTextPrompt = [...selectedSamples].length == 0;
+    const [isImageSearch, setIsImageSearch] = useRecoilState(
+      isImageSimilaritySearch
+    );
     const [state, setState] = useState<fos.State.SortBySimilarityParameters>(
       () =>
         current
           ? current
           : { brainKey: null, distField: null, reverse: false, k: 10 }
     );
+    const hasNoSelectedSamples = [...selectedSamples].length == 0;
 
     const setParameter = useCallback(
       (name: string, value) =>
@@ -245,11 +259,10 @@ const SortBySimilarity = React.memo(
     );
 
     const hasSorting = Boolean(current);
-    const reset = useRecoilCallback(
-      ({ reset }) =>
-        () =>
-          reset(fos.similarityParameters)
-    );
+    const reset = useRecoilCallback(({ reset }) => () => {
+      reset(fos.similarityParameters);
+      reset(isImageSimilaritySearch);
+    });
     const hasSimilarityKeys =
       useRecoilValue(availableSimilarityKeys(modal)).length > 0;
 
@@ -268,6 +281,12 @@ const SortBySimilarity = React.memo(
     useLayoutEffect(() => {
       current && setState(current);
     }, [current]);
+
+    useEffect(() => {
+      if (!hasNoSelectedSamples) {
+        setIsImageSearch(true);
+      }
+    }, [hasNoSelectedSamples]);
 
     const popoutStyle = { minWidth: 280 };
 
@@ -290,7 +309,7 @@ const SortBySimilarity = React.memo(
               flexDirection: "row",
             }}
           >
-            {showTextPrompt && (
+            {!isImageSearch && !hasSorting && (
               <Input
                 placeholder={"Search by text"}
                 validator={(value) => true}
@@ -299,9 +318,10 @@ const SortBySimilarity = React.memo(
                   setParameter("query", value);
                 }}
                 disabled={!state.brainKey}
+                onEnter={() => sortBySimilarity(state)}
               />
             )}
-            {!showTextPrompt && state.brainKey && (
+            {isImageSearch && state.brainKey && !hasSorting && (
               <Button
                 text={"Apply Sort"}
                 title={`Sort by similarity to the selected ${type}`}
@@ -317,7 +337,7 @@ const SortBySimilarity = React.memo(
                 }}
               ></Button>
             )}
-            {!showTextPrompt && hasSorting && (
+            {hasSorting && isImageSearch && (
               <Button
                 text={"Reset"}
                 title={`Clear sorting`}
@@ -326,15 +346,16 @@ const SortBySimilarity = React.memo(
                   reset();
                 }}
                 style={{
-                  margin: "0.25rem -0.5rem",
+                  margin: "0.25rem",
                   height: "2rem",
-                  borderRadius: 0,
+                  borderRadius: 2,
                   textAlign: "center",
+                  width: "185px",
                 }}
               ></Button>
             )}
             <ButtonGroup>
-              {state.brainKey && showTextPrompt && (
+              {state.brainKey && !isImageSearch && !hasSorting && (
                 <Tooltip
                   text={`Sort by similarity to the selected ${type}`}
                   placement={"top-center"}
@@ -351,7 +372,7 @@ const SortBySimilarity = React.memo(
                   </div>
                 </Tooltip>
               )}
-              {hasSorting && showTextPrompt && (
+              {hasSorting && !isImageSearch && (
                 <Tooltip
                   text="Clear similarity sorting"
                   placement={"top-center"}
@@ -415,7 +436,6 @@ const SortBySimilarity = React.memo(
             />
           </PopoutSectionTitle>
         )}
-
         {open && hasSimilarityKeys && (
           <div>
             <PopoutSectionTitle style={{ fontSize: 14 }}>
@@ -461,25 +481,6 @@ const SortBySimilarity = React.memo(
               />
             </div>
           </div>
-        )}
-        {hasSorting && (
-          <>
-            <PopoutSectionTitle></PopoutSectionTitle>
-            <Button
-              text={"Reset"}
-              title={`Clear sorting`}
-              onClick={() => {
-                close();
-                reset();
-              }}
-              style={{
-                margin: "0.25rem -0.5rem",
-                height: "2rem",
-                borderRadius: 0,
-                textAlign: "center",
-              }}
-            ></Button>
-          </>
         )}
       </Popout>
     );
