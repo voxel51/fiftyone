@@ -3465,8 +3465,9 @@ follows:
             --type fiftyone.types.CSVDataset \
             --kwargs fields=list,of,fields
 
-You can also directly export a CSV of field values with no media by providing
-the `labels_path` parameter instead of `export_dir`:
+You can also directly export a CSV files of field values and absolute media
+paths without exporting the actual media files by providing the `labels_path`
+parameter instead of `export_dir`:
 
 .. tabs::
 
@@ -3482,11 +3483,12 @@ the `labels_path` parameter instead of `export_dir`:
         # The dataset or view to export
         dataset_or_view = fo.Dataset(...)
 
-        # Export labels
+        # Export labels with absolute media paths
         dataset_or_view.export(
             dataset_type=fo.types.CSVDataset,
             labels_path=labels_path,
             fields=["list", "of", "fields"],
+            abs_paths=True,
         )
 
   .. group-tab:: CLI
@@ -3496,12 +3498,13 @@ the `labels_path` parameter instead of `export_dir`:
         NAME=my-dataset
         LABELS_PATH=/path/for/labels.csv
 
-        # Export labels
+        # Export labels with absolute media paths
         fiftyone datasets export $NAME \
             --type fiftyone.types.CSVDataset \
             --kwargs \
                 labels_path=$LABELS_PATH \
-                fields=list,of,fields
+                fields=list,of,fields \
+                abs_paths=True
 
 .. _GeoJSONDataset-export:
 

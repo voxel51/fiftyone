@@ -18,7 +18,7 @@ import fiftyone.utils.data as foud
 class CSVDatasetImporter(
     foud.GenericSampleDatasetImporter, foud.ImportPathsMixin
 ):
-    """A flexible CSV exporter that represents slice(s) of field values of a
+    """A flexible CSV importer that represents slice(s) of field values of a
     dataset as columns of a CSV file.
 
     See :ref:`this page <CSVDataset-import>` for format details.
