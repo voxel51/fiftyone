@@ -92,6 +92,7 @@ export default r(graphql`
             embeddingsField
             method
             patchesField
+            supportsPrompts
           }
         }
         lastLoadedAt
