@@ -768,19 +768,20 @@ class CSVDataset(Dataset):
     """A flexible CSV format that represents slice(s) of field values of a
     dataset as columns of a CSV file.
 
-    See :ref:`this page <CSVDataset-export>` for exporting datasets of this
-    type.
+    See :ref:`this page <CSVDataset-import>` for importing datasets of this
+    type, and see :ref:`this page <CSVDataset-export>` for exporting
+    datasets of this type.
     """
-
-    def get_dataset_exporter_cls(self):
-        import fiftyone.utils.csv as fouc
-
-        return fouc.CSVDatasetExporter
 
     def get_dataset_importer_cls(self):
         import fiftyone.utils.csv as fouc
 
         return fouc.CSVDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.csv as fouc
+
+        return fouc.CSVDatasetExporter
 
 
 class FiftyOneDataset(Dataset):
