@@ -1,124 +1,7 @@
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
-
-function filterChoicesByQuery(query, all) {
-  return all.filter(({ label, value, description }) => {
-    return (
-      label.toLowerCase().includes(query.toLowerCase()) ||
-      value.toLowerCase().includes(query.toLowerCase()) ||
-      description.toLowerCase().includes(query.toLowerCase())
-    );
-  });
-}
-
-function useOperatorBrowser() {
-  const [query, setQuery] = useState(null);
-  const [choices, setChoices] = useState([]);
-
-  const allChoices = [
-    {
-      label: "Hello World",
-      value: "hello-world",
-      description: "A simple operator that says hello",
-    },
-    {
-      label: "Compute Similarity",
-      value: "compute-sim",
-      description: "Compute similarity!",
-    },
-  ];
-
-  useEffect(() => {
-    if (query && query.length > 0) {
-      setChoices(filterChoicesByQuery(query, allChoices));
-    } else {
-      setChoices(allChoices);
-    }
-  }, [query]);
-
-  const onChangeQuery = (query) => {
-    console.log("query", query);
-    setQuery(query);
-  };
-
-  const onSubmit = (e) => {
-    e.preventDefault();
-    const selected =
-      choices.find((choice) => choice.selected) || choices[0] || allChoices[0];
-    console.log(selected.value);
-  };
-
-  const selectNext = useCallback(() => {
-    console.log("select next");
-    for (let i = 0; i < choices.length; i++) {
-      if (choices[i].selected) {
-        choices[i].selected = false;
-        if (choices[i + 1]) {
-          choices[i + 1].selected = true;
-        } else {
-          choices[0].selected = true;
-        }
-        setChoices([...choices]);
-        return;
-      }
-      choices[0].selected = true;
-      setChoices([...choices]);
-    }
-  }, [choices]);
-
-  const selectPrevious = useCallback(() => {
-    console.log("select prev");
-    for (let i = 0; i < choices.length; i++) {
-      if (choices[i].selected) {
-        choices[i].selected = false;
-        if (choices[i - 1]) {
-          choices[i - 1].selected = true;
-        } else {
-          choices[choices.length - 1].selected = true;
-        }
-        setChoices([...choices]);
-        return;
-      }
-    }
-    choices[choices.length - 1].selected = true;
-    setChoices([...choices]);
-  }, [choices]);
-
-  const onKeyDown = useCallback(
-    (e) => {
-      console.log("key", e.key);
-      switch (e.key) {
-        case "ArrowDown":
-          selectNext();
-          break;
-        case "ArrowUp":
-          selectPrevious();
-          break;
-        // case 'Enter':
-        //   onSubmit()
-        //   break
-      }
-    },
-    [selectNext, selectPrevious, onSubmit]
-  );
-
-  useEffect(() => {
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [onKeyDown]);
-
-  return {
-    isVisible: true,
-    choices,
-    onChangeQuery,
-    onSubmit,
-    selectNext,
-    selectPrevious,
-  };
-}
+import { useOperatorBrowser } from "./state";
 
 const BrowserContainer = styled.form`
   position: absolute;
@@ -179,10 +62,15 @@ const Choice = ({ choice }) => {
 export default function OperatorBrowser() {
   const browser = useOperatorBrowser();
 
+  if (!browser.isVisible) {
+    return null;
+  }
+
   return createPortal(
     <BrowserContainer onSubmit={browser.onSubmit} onKeyDown={browser.onKeyDown}>
       <BrowserModal>
         <QueryInput
+          autoFocus
           placeholder="Search operators by name..."
           onChange={(e) => browser.onChangeQuery(e.target.value)}
         />
