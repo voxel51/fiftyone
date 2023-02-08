@@ -92,8 +92,9 @@ export const createRouter = (
       location.pathname,
       errors,
       location.state?.variables as Partial<VariablesOf<any>>,
-      history.location.search
+      location.search
     );
+
     const entries = prepareMatches(environment, matches);
     const nextEntry: Entry<any> = {
       pathname: location.pathname,
@@ -197,7 +198,7 @@ const matchRoute = <T extends OperationType | undefined = OperationType>(
     matchedRoutes &&
     matchedRoutes.every(({ match }) => !match.isExact)
   ) {
-    throw new NotFoundError(pathname);
+    throw new NotFoundError({ path: pathname });
   }
 
   return matchedRoutes;

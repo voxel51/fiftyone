@@ -23,7 +23,20 @@ test("useBrainResultSelector", () => {
         <RecoilRoot
           initializeState={(snapshot) => {
             snapshot.set(fos.dataset, {
-              brainMethods: [{ key: "hello" }, { key: "world" }],
+              brainMethods: [
+                {
+                  key: "hello",
+                  config: {
+                    cls: "fiftyone.brain.visualization.VisualizationConfig",
+                  },
+                },
+                {
+                  key: "world",
+                  config: {
+                    cls: "fiftyone.brain.visualization.VisualizationConfig",
+                  },
+                },
+              ],
             });
           }}
         >

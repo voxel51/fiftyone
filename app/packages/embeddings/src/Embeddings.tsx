@@ -22,6 +22,8 @@ import { useWarnings } from "./useWarnings";
 import { EmbeddingsPlot } from "./EmbeddingsPlot";
 import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
+import { Link } from "@mui/material";
+import styled from "styled-components";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -57,7 +59,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
           <div>
             <Selector
               {...brainResultSelector.handlers}
-              placeholder={"Brain Result"}
+              placeholder={"Select brain key"}
               overflow={true}
               component={Value}
               containerStyle={selectorStyle}
@@ -65,7 +67,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
             {brainResultSelector.hasSelection && !labelSelector.isLoading && (
               <Selector
                 {...labelSelector.handlers}
-                placeholder={"Color By"}
+                placeholder={"Color by"}
                 overflow={true}
                 component={Value}
                 containerStyle={selectorStyle}
@@ -74,14 +76,14 @@ export default function Embeddings({ containerHeight, dimensions }) {
             {plotSelection.hasSelection && (
               <PlotOption
                 to={plotSelection.clearSelection}
-                title={"Clear Selection (Esc)"}
+                title={"Clear selection (Esc)"}
               >
                 <Close />
               </PlotOption>
             )}
             {showPlot && (
               <Fragment>
-                <PlotOption to={() => resetZoom()} title={"Reset Zoom (Esc)"}>
+                <PlotOption to={() => resetZoom()} title={"Reset zoom (Esc)"}>
                   <CenterFocusWeak />
                 </PlotOption>
                 <PlotOption
@@ -136,5 +138,24 @@ export default function Embeddings({ containerHeight, dimensions }) {
       </EmbeddingsContainer>
     );
 
-  return <Loading>No Brain Results Available</Loading>;
+  return (
+    <Loading style={{ background: theme.background.mediaSpace }}>
+      <NotFound style={{ textAlign: "center" }}>
+        <h3>No embeddings visualizations found.</h3>
+        <p>
+          <Link
+            style={{ color: theme.text.primary }}
+            href="https://docs.voxel51.com/user_guide/brain.html#visualizing-embeddings"
+          >
+            Learn more
+          </Link>{" "}
+          about using this feature.
+        </p>
+      </NotFound>
+    </Loading>
+  );
 }
+
+const NotFound = styled.div`
+  text-align: center;
+`;

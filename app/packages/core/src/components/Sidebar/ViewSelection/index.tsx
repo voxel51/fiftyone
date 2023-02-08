@@ -15,15 +15,6 @@ import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
 
-const DEFAULT_SELECTED: DatasetViewOption = {
-  id: "1",
-  label: "Unsaved view",
-  color: "#9e9e9e",
-  description: "Unsaved view",
-  slug: "unsaved-view",
-  viewStages: [],
-};
-
 export const viewSearchTerm = atom<string>({
   key: "viewSearchTerm",
   default: "",
@@ -32,15 +23,6 @@ export const viewDialogOpen = atom<boolean>({
   key: "viewDialogOpen",
   default: false,
 });
-export const selectedSavedViewState = atom<DatasetViewOption | null>({
-  key: "selectedSavedViewState",
-  default: DEFAULT_SELECTED,
-});
-
-export type DatasetViewOption = Pick<
-  fos.State.SavedView,
-  "id" | "description" | "color" | "viewStages"
-> & { label: string; slug: string };
 
 export interface DatasetView {
   id: string;
@@ -53,8 +35,8 @@ export interface DatasetView {
 }
 
 export default function ViewSelection() {
-  const [selected, setSelected] = useRecoilState<DatasetViewOption | null>(
-    selectedSavedViewState
+  const [selected, setSelected] = useRecoilState<fos.DatasetViewOption | null>(
+    fos.selectedSavedViewState
   );
   const datasetName = useRecoilValue(fos.datasetName);
   const canEditSavedViews = useRecoilValue<boolean>(fos.canEditSavedViews);
@@ -79,9 +61,9 @@ export default function ViewSelection() {
 
   const viewOptions = useMemo(
     () => [
-      DEFAULT_SELECTED,
-      ...items.map(({ name, color, description, slug, viewStages }) => ({
-        id: name,
+      fos.DEFAULT_SELECTED,
+      ...items.map(({ id, name, color, description, slug, viewStages }) => ({
+        id,
         name,
         label: name,
         color,
@@ -97,7 +79,7 @@ export default function ViewSelection() {
     () =>
       viewOptions.filter(
         ({ id, label, description, slug }) =>
-          id === DEFAULT_SELECTED.id ||
+          id === fos.DEFAULT_SELECTED.id ||
           label?.toLowerCase().includes(viewSearch) ||
           description?.toLowerCase().includes(viewSearch) ||
           slug?.toLowerCase().includes(viewSearch)
@@ -108,14 +90,14 @@ export default function ViewSelection() {
   useEffect(() => {
     if (
       selected &&
-      selected?.id !== DEFAULT_SELECTED.id &&
+      selected?.id !== fos.DEFAULT_SELECTED.id &&
       searchData?.length
     ) {
       const potentialView = searchData.filter(
         (v) => v.slug === selected.slug
       )?.[0];
       if (potentialView) {
-        setSelected(potentialView as DatasetViewOption);
+        setSelected(potentialView as fos.DatasetViewOption);
       }
     }
   }, [searchData, selected]);
@@ -133,7 +115,7 @@ export default function ViewSelection() {
         if (selected && selected.id === potentialView.id) {
           return;
         }
-        setSelected(potentialView as DatasetViewOption);
+        setSelected(potentialView as fos.DatasetViewOption);
       } else {
         const potentialUpdatedView = savedViewsV2.filter(
           (v) => v.name === savedViewParam
@@ -154,13 +136,13 @@ export default function ViewSelection() {
           );
         } else {
           // bad/old view param
-          setSelected(DEFAULT_SELECTED);
+          setSelected(fos.DEFAULT_SELECTED);
         }
       }
     } else {
       // no view param
-      if (selected && selected.slug !== DEFAULT_SELECTED.slug) {
-        setSelected(DEFAULT_SELECTED);
+      if (selected && selected.slug !== fos.DEFAULT_SELECTED.slug) {
+        setSelected(fos.DEFAULT_SELECTED);
         // do not reset view to [] again. The viewbar sets it once.
       }
     }
@@ -228,7 +210,7 @@ export default function ViewSelection() {
         <Selection
           readonly={!canEditSavedViews}
           selected={selected}
-          setSelected={(item: DatasetViewOption) => {
+          setSelected={(item: fos.DatasetViewOption) => {
             setSelected(item);
             setView(item.viewStages, [], item.slug);
           }}

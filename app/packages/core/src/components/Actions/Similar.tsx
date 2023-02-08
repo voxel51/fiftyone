@@ -64,6 +64,7 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
 const useSortBySimilarity = (close) => {
   const update = useUnprocessedStateUpdate();
   const handleError = useErrorHandler();
+
   return useRecoilCallback(
     ({ snapshot, set }) =>
       async (parameters: fos.State.SortBySimilarityParameters) => {
@@ -81,6 +82,10 @@ const useSortBySimilarity = (close) => {
               queryIds,
             }),
           });
+
+          // update selectedSamples atom to new set.
+          // modifying data, otherwise useStateUpdate will set the selectedSamples again
+          data.state.selected = [];
 
           update(({ set }) => {
             set(fos.similarityParameters, {
@@ -195,6 +200,7 @@ interface SortBySimilarityProps {
 const SortBySimilarity = React.memo(
   ({ modal, bounds, close }: SortBySimilarityProps) => {
     const current = useRecoilValue(fos.similarityParameters);
+    const selectedSamples = useRecoilValue(fos.selectedSamples);
     const [state, setState] = useState<fos.State.SortBySimilarityParameters>(
       () =>
         current
@@ -219,6 +225,7 @@ const SortBySimilarity = React.memo(
 
     const choices = useRecoilValue(currentSimilarityKeys(modal));
     const sortBySimilarity = useSortBySimilarity(close);
+    const hasSelectedSamples = [...selectedSamples].length > 0;
     const type = useRecoilValue(sortType(modal));
     const theme = useTheme();
 
@@ -247,7 +254,7 @@ const SortBySimilarity = React.memo(
             svgStyles={{ height: "1rem", marginTop: 7.5 }}
           />
         </PopoutSectionTitle>
-        {hasSimilarityKeys && (
+        {hasSimilarityKeys && hasSelectedSamples && (
           <>
             <Input
               placeholder={"k (default = None)"}

@@ -501,7 +501,7 @@
             "base_name": "keypoint-rcnn-resnet50-fpn-coco-torch",
             "base_filename": "keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
             "version": null,
-            "description": "Keypoint R-CNN model from `Keypoint Density-based Region Proposal for Fine-Grained Object Detection and Classification using Regions with Convolutional Neural Network Features <https://arxiv.org/abs/1603.00502>`_ with ResNet-50 FPN backbone trained on COCO",
+            "description": "Keypoint R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with ResNet-50 FPN backbone trained on COCO",
             "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 237034793,
             "manager": {

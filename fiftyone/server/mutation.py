@@ -31,16 +31,20 @@ from fiftyone.server.view import get_view, extend_view
 def _build_result_view(result_view, form):
     if form.slice:
         result_view = result_view.select_group_slices([form.slice])
+
     if form.sample_ids:
         result_view = fov.make_optimized_select_view(
             result_view, form.sample_ids
         )
+
+    if form.extended:
+        result_view = extend_view(result_view, form.extended, True)
+
     if form.add_stages:
         for d in form.add_stages:
             stage = fos.ViewStage._from_dict(d)
             result_view = result_view.add_stage(stage)
-    if form.extended:
-        result_view = extend_view(result_view, form.extended, True)
+
     return result_view
 
 
@@ -198,7 +202,11 @@ class Mutation:
 
         # Set view state
         result_view = _build_result_view(result_view, form)
-        slug = fou.to_slug(result_view.name) if result_view.name else None
+        slug = (
+            fou.to_slug(result_view.name)
+            if result_view.name
+            else saved_view_slug
+        )
         state.view = result_view
         state.view_name = result_view.name
         state.saved_view_slug = slug
@@ -309,17 +317,19 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         view_name: str,
-        dataset_name: t.Optional[str] = None,
+        dataset_name: t.Optional[str],
     ) -> t.Optional[str]:
-        state = get_state()
-        if state is None and dataset_name is None:
+        if not dataset_name:
             raise ValueError(
                 "Attempting to delete a saved view (%s) without a "
                 "dataset reference.",
                 view_name,
             )
 
-        dataset = state.dataset if state else fo.load_dataset(dataset_name)
+        dataset = fo.load_dataset(dataset_name)
+        if not dataset:
+            raise ValueError(f"No dataset found with name {dataset_name}")
+
         if dataset.has_saved_view(view_name):
             deleted_view_id = dataset.delete_saved_view(view_name)
         else:
@@ -330,7 +340,8 @@ class Mutation:
 
         # If the current view is deleted, set the view state to the full
         # dataset view
-        if state and state.view_name == view_name:
+        state = get_state()
+        if view_name and state.view_name == view_name:
             state.view = dataset.view()
             state.view_name = None
 

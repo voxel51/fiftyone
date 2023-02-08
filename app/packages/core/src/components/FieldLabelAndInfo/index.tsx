@@ -1,4 +1,3 @@
-import { InfoIcon, useTheme } from "@fiftyone/components";
 import React, {
   MutableRefObject,
   useEffect,
@@ -9,6 +8,8 @@ import React, {
 import { atom, useRecoilState } from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
+import { InfoIcon, useTheme } from "@fiftyone/components";
+import { Field } from "@fiftyone/utilities";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -93,13 +94,22 @@ function toLabel(path, nested) {
 }
 
 const FieldInfoIcon = (props) => <InfoIcon {...props} style={{ opacity: 1 }} />;
-export default function FieldLabelAndInfo({
+
+type FieldLabelAndInfo = {
+  nested?: boolean 
+  field: Field
+  color: string
+  expandedPath?: string 
+  template: (unknown) => JSX.Element
+}
+
+const FieldLabelAndInfo = ({
   nested,
   field,
   color,
   expandedPath,
   template,
-}) {
+}: FieldLabelAndInfo) => {
   const fieldInfo = useFieldInfo(field, nested, { expandedPath, color });
   return (
     <>
@@ -108,6 +118,8 @@ export default function FieldLabelAndInfo({
     </>
   );
 }
+
+export default FieldLabelAndInfo
 
 const FieldInfoExpandedContainer = styled.div`
   background: ${({ theme }) => {

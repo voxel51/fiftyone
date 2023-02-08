@@ -441,7 +441,10 @@ class CVATTests(unittest.TestCase):
                 self.assertEqual(task_json["name"], f"{task_name}_{idx + 1}")
                 if user is not None:
                     self.assertEqual(task_json["assignee"]["username"], user)
-                for job in api.get(api.jobs_url(task_id)).json():
+                jobs_json = api.get(api.jobs_url(task_id)).json()
+                if "results" in jobs_json:
+                    jobs_json = jobs_json["results"]
+                for job in jobs_json:
                     job_json = api.get(job["url"]).json()
                     if user is not None:
                         self.assertEqual(

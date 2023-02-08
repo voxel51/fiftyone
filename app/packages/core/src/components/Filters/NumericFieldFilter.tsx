@@ -210,7 +210,7 @@ const NumericFieldFilter = ({
     setIsMatching && setIsMatching(!nestedField);
   };
 
-  if (!hasNonfinites && !hasBounds && named) {
+  if (!(hasBounds || hasNonfinites) || !field) {
     return null;
   }
 
@@ -223,14 +223,11 @@ const NumericFieldFilter = ({
       {named && name && (
         <FieldLabelAndInfo
           nested
-          field={field}
+          field={field!}
           color={color}
           template={({
             label,
-            hoverHanlders,
-            FieldInfoIcon,
             hoverTarget,
-            container,
           }) => (
             <NamedRangeSliderHeader>
               <span ref={hoverTarget}>{label}</span>
@@ -284,8 +281,8 @@ const NumericFieldFilter = ({
             })}
             formatter={
               [DATE_TIME_FIELD, DATE_FIELD].includes(ftype)
-                ? (v) => formatDateTime(v, timeZone)
-                : null
+                ? (v) => v ? formatDateTime(v, timeZone) : null
+                : (v) => null
             }
             value={false}
           />

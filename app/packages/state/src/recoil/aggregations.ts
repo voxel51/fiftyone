@@ -173,19 +173,27 @@ export const stringCountResults = selectorFamily({
       const keys = params.path.split(".");
       let parent = keys[0];
       let field = get(schemaAtoms.field(parent));
+
       if (!field && parent === "frames") {
         parent = `frames.${keys[1]}`;
       }
 
-      if (
-        VALID_KEYPOINTS.includes(get(schemaAtoms.field(parent)).embeddedDocType)
-      ) {
-        const skeleton = get(selectors.skeleton(parent));
+      const isSkeletonPoints =
+        VALID_KEYPOINTS.includes(
+          get(schemaAtoms.field(parent)).embeddedDocType
+        ) && keys[2] === "points";
 
-        return {
-          count: skeleton.labels.length,
-          results: skeleton.labels.map((label) => [label as string | null, -1]),
-        };
+      if (isSkeletonPoints) {
+        const skeleton = get(selectors.skeleton(parent));
+        if (skeleton && skeleton.labels) {
+          return {
+            count: skeleton.labels.length,
+            results: skeleton.labels.map((label) => [
+              label as string | null,
+              -1,
+            ]),
+          };
+        }
       }
 
       let { values, count } = get(aggregation(params));

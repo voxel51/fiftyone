@@ -6,7 +6,7 @@ registerComponent({
   name: "Embeddings",
   label: "Embeddings",
   component: Embeddings,
-  type: PluginComponentType.Plot,
+  type: PluginComponentType.Panel,
   activator: () => true,
   Icon: ScatterPlotIcon,
 });
