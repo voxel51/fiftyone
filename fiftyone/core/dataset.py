@@ -285,7 +285,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._deleted = False
 
         if not _virtual:
-            self._update_last_loaded_at()
+            if name:
+                self._update_last_loaded_at()
 
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
