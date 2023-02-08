@@ -70,7 +70,7 @@ class CSVDatasetImporter(
             (False) when rows with no ``media_field`` are encountered
         include_all_data (False): whether to generate samples for all media in
             the data directory (True) rather than only creating samples for
-            media with label entries (False)
+            media with CSV rows (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
