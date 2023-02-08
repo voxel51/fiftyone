@@ -17,8 +17,8 @@ import fiftyone.core.media as fom
 _cache = cachetools.TTLCache(maxsize=10, ttl=900)  # ttl in seconds
 
 
-def load_dataset(name):
-    """Loads the dataset with the given name.
+def load_and_cache_dataset(name):
+    """Loads the dataset with the given name and caches it.
 
     This method is a wrapper around :func:`fiftyone.core.dataset.load_dataset`
     that stores a reference to every dataset it loads in a TTL cache to ensure

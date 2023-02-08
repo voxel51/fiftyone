@@ -36,7 +36,7 @@ class OnPlotLoad(HTTPEndpoint):
         stages = data["view"]
         label_field = data["labelField"]
 
-        dataset = fosu.load_dataset(dataset_name)
+        dataset = fosu.load_and_cache_dataset(dataset_name)
         results = dataset.load_brain_results(brain_key)
 
         view = fosv.get_view(dataset_name, stages=stages)
@@ -126,7 +126,7 @@ class EmbeddingsSelection(HTTPEndpoint):
         if not filters and not extended_stages and not extended_selection:
             return {"selected": None}
 
-        dataset = fosu.load_dataset(dataset_name)
+        dataset = fosu.load_and_cache_dataset(dataset_name)
         results = dataset.load_brain_results(brain_key)
 
         view = fosv.get_view(dataset_name, stages=stages)
@@ -215,7 +215,7 @@ class ColorByChoices(HTTPEndpoint):
         dataset_name = data["datasetName"]
         brain_key = data["brainKey"]
 
-        dataset = fosu.load_dataset(dataset_name)
+        dataset = fosu.load_and_cache_dataset(dataset_name)
         info = dataset.get_brain_info(brain_key)
 
         patches_field = info.config.patches_field
