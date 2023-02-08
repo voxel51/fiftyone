@@ -10,7 +10,6 @@ from starlette.requests import Request
 
 import fiftyone.core.fields as fof
 import fiftyone.core.utils as fou
-import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
 import fiftyone.server.events as fose

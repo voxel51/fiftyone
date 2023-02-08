@@ -6,8 +6,6 @@ FiftyOne Server view.
 |
 """
 import asyncio
-from bson import ObjectId, json_util
-from dacite import Config, from_dict
 import strawberry as gql
 from typing import List, Optional
 
