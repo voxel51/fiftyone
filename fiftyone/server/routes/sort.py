@@ -15,7 +15,6 @@ import fiftyone.core.view as fov
 from fiftyone.server.decorators import route
 import fiftyone.server.events as fose
 from fiftyone.server.query import serialize_dataset
-import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
 
 

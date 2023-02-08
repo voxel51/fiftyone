@@ -15,6 +15,7 @@ from sse_starlette import ServerSentEvent
 from starlette.requests import Request
 
 import fiftyone.core.context as focx
+import fiftyone.core.dataset as fod
 from fiftyone.core.json import FiftyOneJSONEncoder
 from fiftyone.core.session.events import (
     add_screenshot,
@@ -31,7 +32,6 @@ import fiftyone.core.state as fos
 import fiftyone.core.utils as fou
 
 from fiftyone.server.query import serialize_dataset
-import fiftyone.server.utils as fosu
 
 
 @dataclass(frozen=True)
@@ -276,7 +276,7 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
         ):
             update = True
             try:
-                state.dataset = fosu.load_dataset(payload.initializer.dataset)
+                state.dataset = fod.load_dataset(payload.initializer.dataset)
                 state.selected = []
                 state.selected_labels = []
                 state.view = None

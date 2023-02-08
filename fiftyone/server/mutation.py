@@ -12,6 +12,7 @@ import typing as t
 import eta.core.serial as etas
 
 import fiftyone.constants as foc
+import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 from fiftyone.core.session.events import StateUpdate
 from fiftyone.core.spaces import default_spaces, Space
@@ -23,7 +24,6 @@ from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
 from fiftyone.server.query import Dataset, SidebarGroup, SavedView
 from fiftyone.server.scalars import BSON, BSONArray, JSON
-import fiftyone.server.utils as fosu
 from fiftyone.server.view import get_view, extend_view
 
 
@@ -95,7 +95,7 @@ class Mutation:
         info: Info,
     ) -> bool:
         state = get_state()
-        state.dataset = fosu.load_dataset(name) if name is not None else None
+        state.dataset = fod.load_dataset(name) if name is not None else None
         state.selected = []
         state.selected_labels = []
         state.view = None
@@ -185,7 +185,7 @@ class Mutation:
         # Load saved views
         if saved_view_slug is not None:
             try:
-                ds = fosu.load_dataset(dataset_name)
+                ds = fod.load_dataset(dataset_name)
                 doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
                 result_view = ds._load_saved_view_from_doc(doc)
             except:
@@ -274,7 +274,7 @@ class Mutation:
         dataset = state.dataset
         use_state = dataset is not None
         if dataset is None:
-            dataset = fosu.load_dataset(dataset_name)
+            dataset = fod.load_dataset(dataset_name)
 
         if dataset is None:
             raise ValueError(
@@ -324,7 +324,7 @@ class Mutation:
                 view_name,
             )
 
-        dataset = fosu.load_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name)
         if not dataset:
             raise ValueError(f"No dataset found with name {dataset_name}")
 
@@ -368,7 +368,7 @@ class Mutation:
         """
         state = get_state()
         if state is None or state.dataset is None:
-            dataset = fosu.load_dataset(dataset_name)
+            dataset = fod.load_dataset(dataset_name)
         else:
             dataset = state.dataset
 

@@ -12,6 +12,7 @@ import strawberry as gql
 from typing import List, Optional
 
 import fiftyone.core.collections as foc
+import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -43,7 +44,7 @@ async def load_view(
     view_name: Optional[str] = None,
 ) -> foc.SampleCollection:
     def run() -> foc.SampleCollection:
-        dataset = fosu.load_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name)
         dataset.reload()
         if view_name:
             return dataset.load_saved_view(view_name)
@@ -100,7 +101,7 @@ def get_view(
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
-    dataset = fosu.load_dataset(dataset_name)
+    dataset = fod.load_dataset(dataset_name)
     dataset.reload()
 
     if view_name is not None:

@@ -21,6 +21,7 @@ from dacite import Config, from_dict
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
+import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 from fiftyone.core.odm import SavedViewDocument
 from fiftyone.core.state import SampleField, serialize_fields
@@ -40,7 +41,6 @@ from fiftyone.server.samples import (
     paginate_samples,
 )
 from fiftyone.server.scalars import BSONArray, JSON
-import fiftyone.server.utils as fosu
 
 
 ID = gql.scalar(
@@ -394,7 +394,7 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
-        ds = fosu.load_dataset(dataset_name)
+        ds = fod.load_dataset(dataset_name)
         return [
             SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
         ]
@@ -427,7 +427,7 @@ async def serialize_dataset(
     saved_view_slug: t.Optional[str],
 ) -> Dataset:
     def run():
-        dataset = fosu.load_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name)
         dataset.reload()
         view_name = None
         try:
