@@ -366,8 +366,8 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
             self.fields, self.media_field, self.export_media
         )
 
-        etau.ensure_basedir(self.labels_path)
-        f = open(self.labels_path, "w")
+        fos.ensure_basedir(self.labels_path)
+        f = fos.open_file(self.labels_path, "w")
 
         # QUOTE_MINIMAL ensures that list fields are handled properly
         csv_writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
