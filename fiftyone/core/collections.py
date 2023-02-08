@@ -2703,9 +2703,8 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Polyline`, or
                 :class:`fiftyone.core.labels.Polylines`. When computing video
                 frame embeddings, the "frames." prefix is optional
-            embeddings_field (None): the name of a field in which to store the
-                embeddings. When computing video frame embeddings, the
-                "frames." prefix is optional
+            embeddings_field (None): the name of a label attribute in which to
+                store the embeddings
             force_square (False): whether to minimally manipulate the patch
                 bounding boxes into squares prior to extraction
             alpha (None): an optional expansion/contraction to apply to the
@@ -7247,6 +7246,7 @@ class SampleCollection(object):
         _allow_missing=False,
         _big_result=True,
         _raw=False,
+        _field=None,
     ):
         """Extracts the values of a field from all samples in the collection.
 
@@ -7362,6 +7362,7 @@ class SampleCollection(object):
             _allow_missing=_allow_missing,
             _big_result=_big_result,
             _raw=_raw,
+            _field=_field,
         )
         return self._make_and_aggregate(make, field_or_expr)
 

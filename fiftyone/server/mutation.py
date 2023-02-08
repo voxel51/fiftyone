@@ -31,16 +31,20 @@ from fiftyone.server.view import get_view, extend_view
 def _build_result_view(result_view, form):
     if form.slice:
         result_view = result_view.select_group_slices([form.slice])
+
     if form.sample_ids:
         result_view = fov.make_optimized_select_view(
             result_view, form.sample_ids
         )
+
+    if form.extended:
+        result_view = extend_view(result_view, form.extended, True)
+
     if form.add_stages:
         for d in form.add_stages:
             stage = fos.ViewStage._from_dict(d)
             result_view = result_view.add_stage(stage)
-    if form.extended:
-        result_view = extend_view(result_view, form.extended, True)
+
     return result_view
 
 
