@@ -5,7 +5,7 @@ FiftyOne Server utils.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import cachetools.func
+import cachetools
 
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
@@ -14,14 +14,20 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 
 
-@cachetools.func.ttl_cache(maxsize=10, ttl=900)  # ttl in seconds
+_cache = cachetools.TTLCache(maxsize=10, ttl=900)  # ttl in seconds
+
+
 def load_dataset(name):
     """Loads the dataset with the given name.
 
-    Dataset objects are singletons and may have objects (eg brain results) that
-    are expensive to load cached on them, so we use a TTL + LRU cache here to
-    ensure that references to recently used datasets exist in memory so that
-    dataset objects aren't garbage collected between async calls.
+    This method is a wrapper around :func:`fiftyone.core.dataset.load_dataset`
+    that stores a reference to every dataset it loads in a TTL cache to ensure
+    that references to recently used datasets exist in memory so that dataset
+    objects aren't garbage collected between async calls.
+
+    It is desirable to avoid dataset objects being garbage collected because
+    datasets are singletons and may have objects (eg brain results) that are
+    expensive to load cached on them.
 
     Args:
         name: the dataset name
@@ -29,7 +35,14 @@ def load_dataset(name):
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
-    return fod.load_dataset(name)
+    dataset = fod.load_dataset(name)
+
+    # Store reference in TTL cache to defer garbage collection
+    # IMPORTANT: we don't return already cached objects here because a dataset
+    # can be deleted and another created with the same name
+    _cache[name] = dataset
+
+    return dataset
 
 
 def change_sample_tags(sample_collection, changes):
