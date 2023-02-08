@@ -342,6 +342,7 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
 
         self._media_exporter = None
         self._f = None
+        self._local_file = None
         self._csv_writer = None
         self._paths = None
         self._media_idx = None
@@ -366,14 +367,18 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
             self.fields, self.media_field, self.export_media
         )
 
-        fos.ensure_basedir(self.labels_path)
-        f = fos.open_file(self.labels_path, "w")
+        local_file = fos.LocalFile(self.labels_path, "w")
+        local_path = local_file.__enter__()
+
+        etau.ensure_basedir(local_path)
+        f = open(local_path, "w", newline="")
 
         # QUOTE_MINIMAL ensures that list fields are handled properly
         csv_writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
         csv_writer.writerow(header)
 
         self._f = f
+        self._local_file = local_file
         self._csv_writer = csv_writer
         self._paths = paths
         self._media_idx = media_idx
@@ -403,6 +408,7 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
 
     def close(self, *args):
         self._f.close()
+        self._local_file.__exit__()
 
 
 def _parse_export_fields(fields, media_field, export_media):
