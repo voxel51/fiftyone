@@ -403,30 +403,30 @@ const SortBySimilarity = React.memo(
             </ButtonGroup>
           </div>
         )}
-        {!state.brainKey ||
-          (!isImageSearch && hasKeyButNotSupportTextPrompts && (
-            <>
-              {hasKeyButNotSupportTextPrompts && (
-                <PopoutSectionTitle style={{ fontSize: 12 }}>
-                  Brain methods do not support text prompts.
-                </PopoutSectionTitle>
-              )}
-              <PopoutSectionTitle>
-                <ActionOption
-                  href={SORT_BY_SIMILARITY}
-                  text={"Sort by similarity"}
-                  title={"About sorting by similarity"}
-                  style={{
-                    background: "unset",
-                    color: theme.text.primary,
-                    paddingTop: 0,
-                    paddingBottom: 0,
-                  }}
-                  svgStyles={{ height: "1rem", marginTop: 7.5 }}
-                />
+        {(!state.brainKey ||
+          (!isImageSearch && hasKeyButNotSupportTextPrompts)) && (
+          <>
+            {hasKeyButNotSupportTextPrompts && (
+              <PopoutSectionTitle style={{ fontSize: 12 }}>
+                Brain methods do not support text prompts.
               </PopoutSectionTitle>
-            </>
-          ))}
+            )}
+            <PopoutSectionTitle>
+              <ActionOption
+                href={SORT_BY_SIMILARITY}
+                text={"Sort by similarity"}
+                title={"About sorting by similarity"}
+                style={{
+                  background: "unset",
+                  color: theme.text.primary,
+                  paddingTop: 0,
+                  paddingBottom: 0,
+                }}
+                svgStyles={{ height: "1rem", marginTop: 7.5 }}
+              />
+            </PopoutSectionTitle>
+          </>
+        )}
         {open && hasValidKeys && (
           <div>
             <PopoutSectionTitle style={{ fontSize: 14 }}>
