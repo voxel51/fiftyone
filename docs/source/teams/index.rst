@@ -3,8 +3,6 @@
 FiftyOne Teams
 ==============
 
-Welcome to the FiftyOne Teams Docs!
-
 `FiftyOne Teams <https://voxel51.com/fiftyone-teams/>`_ enables multiple users
 to securely collaborate on the same datasets and models, either on-premises or
 in the cloud, all built on top of the open source FiftyOne workflows that
@@ -14,17 +12,16 @@ FiftyOne Teams is fully backwards-compatible with the
 `open source project <https://github.com/voxel51/fiftyone>`_, so all other
 pages on this site apply to Teams deployments as well.
 
+.. note::
+
+    Look interesting?
+    `Schedule a demo <https://voxel51.com/get-fiftyone-teams>`_ to get started!
+
 |br|
 
 .. image:: /images/teams/hero.png
    :alt: teams-hero
    :align: center
-
-.. note::
-
-    `Click here <https://voxel51.com/fiftyone-teams/>`_ to learn more about
-    FiftyOne Teams, then
-    `schedule a demo <https://voxel51.com/get-fiftyone-teams>`_ to get started!
 
 .. Callout items --------------------------------------------------------------
 
