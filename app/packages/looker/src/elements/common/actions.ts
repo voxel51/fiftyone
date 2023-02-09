@@ -21,7 +21,7 @@ const readActions = <State extends BaseState>(
   return Object.fromEntries(
     Object.entries(actions).reduce((acc, [_, v]) => {
       if (Array.isArray(v.eventKeys)) {
-        return [...acc, [v.eventKeys[0], v]];
+        return [...acc, ...v.eventKeys.map((key) => [key, v])];
       }
 
       return [...acc, [v.eventKeys || v.shortcut, v]];

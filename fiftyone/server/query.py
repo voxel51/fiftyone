@@ -1,5 +1,5 @@
 """
-FiftyOne Server queries
+FiftyOne Server queries.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -21,6 +21,7 @@ from dacite import Config, from_dict
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
+import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 from fiftyone.core.odm import SavedViewDocument
 from fiftyone.core.state import SampleField, serialize_fields
@@ -39,8 +40,8 @@ from fiftyone.server.samples import (
     SampleItem,
     paginate_samples,
 )
-
 from fiftyone.server.scalars import BSONArray, JSON
+
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -394,7 +395,7 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
-        ds = fo.load_dataset(dataset_name)
+        ds = fod.load_dataset(dataset_name)
         return [
             SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
         ]
@@ -424,10 +425,10 @@ def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
 async def serialize_dataset(
     dataset_name: str,
     serialized_view: BSONArray,
-    saved_view_slug: t.Optional[str],
+    saved_view_slug: t.Optional[str] = None,
 ) -> Dataset:
     def run():
-        dataset = fo.load_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name)
         dataset.reload()
         view_name = None
         try:

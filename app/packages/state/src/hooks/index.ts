@@ -30,6 +30,7 @@ export { default as useSetExtendedSelection } from "./useSetExtendedSelection";
 export { default as useSetSelectedLabels } from "./useSetSelectedLabels";
 export { default as useSetView, stateProxy } from "./useSetView";
 export { default as useStateUpdate } from "./useStateUpdate";
+export * from "./useStateUpdate";
 export { default as useTooltip } from "./useTooltip";
 export * from "./useOnSelectLabel";
 export * from "./useStateUpdate";
