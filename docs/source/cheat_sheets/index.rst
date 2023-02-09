@@ -1,7 +1,5 @@
 FiftyOne Cheat Sheets
-======================
-
-Welcome to FiftyOne Cheat Sheets!
+=====================
 
 Check out the links below for topic-focused, informationally dense documents
 that will help you get right down to business using FiftyOne.
