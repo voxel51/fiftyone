@@ -37,7 +37,7 @@ class Sort(HTTPEndpoint):
             _dataset = await serialize_dataset(
                 dataset_name=dataset_name,
                 serialized_view=view._serialize(),
-                saved_view_slug=fou.to_slug(view.name) if view.name else None,
+                saved_view_slug=None,
             )
         else:
             _dataset = None
