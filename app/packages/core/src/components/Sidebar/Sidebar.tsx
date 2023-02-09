@@ -1,10 +1,4 @@
-import React, {
-  Suspense,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { Suspense, useCallback, useRef, useState } from "react";
 import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
 
@@ -19,8 +13,6 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
-import { DatasetSavedViewsQuery } from "../../Root/Root";
-import { useQueryLoader } from "react-relay";
 import { resizeHandle } from "./Sidebar.module.css";
 
 const MARGIN = 3;
@@ -381,8 +373,8 @@ enum Direction {
 const SidebarColumn = styled.div`
   position: relative;
   max-height: 100%;
-  height: 92%;
   width: 100%;
+  flex: 1;
 
   overflow-y: scroll;
   overflow-x: hidden;
@@ -720,6 +712,8 @@ const InteractiveSidebar = ({
           ? `1px solid ${theme.primary.plainBorder}`
           : undefined,
         borderTopRightRadius: 8,
+        display: "flex",
+        flexDirection: "column",
       }}
       handleClasses={{
         left: modal ? resizeHandle : "",
