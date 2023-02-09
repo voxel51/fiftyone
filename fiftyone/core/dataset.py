@@ -273,7 +273,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         self._doc = doc
-
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
 
@@ -6197,6 +6196,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if self._group_slice is None:
             self._group_slice = doc.default_group_slice
+
+        self._deleted = False
 
         self._update_last_loaded_at()
 
