@@ -1,5 +1,5 @@
 """
-FiftyOne Server view
+FiftyOne Server view.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -9,7 +9,6 @@ import asyncio
 import strawberry as gql
 from typing import List, Optional
 
-import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
@@ -19,9 +18,11 @@ import fiftyone.core.media as fom
 import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+
 from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
-from fiftyone.server.utils import iter_label_fields
+import fiftyone.server.utils as fosu
+
 
 _LABEL_TAGS = "_label_tags"
 
@@ -41,7 +42,7 @@ async def load_view(
     view_name: Optional[str] = None,
 ) -> foc.SampleCollection:
     def run() -> foc.SampleCollection:
-        dataset = fo.load_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name)
         dataset.reload()
         if view_name:
             return dataset.load_saved_view(view_name)
@@ -218,7 +219,7 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
     """
     view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
 
-    for path, field in iter_label_fields(view):
+    for path, field in fosu.iter_label_fields(view):
         if not issubclass(
             field.document_type, (fol._HasID, fol._HasLabelList)
         ):
@@ -405,7 +406,7 @@ def _make_filter_stages(
                 stages.append(fosg.Match(expr))
 
     if label_tags is not None and hide_result:
-        for path, _ in iter_label_fields(view):
+        for path, _ in fosu.iter_label_fields(view):
             if hide_result:
                 new_field = _get_filtered_path(
                     view, path, filtered_labels, label_tags
@@ -426,7 +427,7 @@ def _make_filter_stages(
                 cleanup.add(new_field)
 
         match_exprs = []
-        for path, _ in iter_label_fields(view):
+        for path, _ in fosu.iter_label_fields(view):
             match_exprs.append(
                 fosg._get_label_field_only_matches_expr(
                     view,
