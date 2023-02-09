@@ -13,7 +13,7 @@ import { move } from "@fiftyone/utilities";
 import { useEventHandler } from "@fiftyone/state";
 import { scrollbarStyles } from "../utils";
 import { Resizable } from "re-resizable";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
@@ -21,6 +21,8 @@ import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
 import { DatasetSavedViewsQuery } from "../../Root/Root";
 import { useQueryLoader } from "react-relay";
+import { resizeHandle } from "./Sidebar.module.css";
+
 const MARGIN = 3;
 
 const fn = (
@@ -434,6 +436,7 @@ const InteractiveSidebar = ({
   const scroll = useRef<number>(0);
   const maxScrollHeight = useRef<number>();
   const [width, setWidth] = useRecoilState(fos.sidebarWidth(modal));
+  const resetWidth = useResetRecoilState(fos.sidebarWidth(modal));
   const shown = useRecoilValue(fos.sidebarVisible(modal));
   const [entries, setEntries] = fos.useEntries(modal);
   const disabled = useRecoilValue(fos.disabledPaths);
@@ -706,6 +709,8 @@ const InteractiveSidebar = ({
       }}
       onResizeStop={(e, direction, ref, { width: delta }) => {
         setWidth(width + delta);
+        // reset sidebar to default width on double click
+        if (e.detail === 2) resetWidth();
       }}
       style={{
         borderLeft: modal
@@ -715,6 +720,10 @@ const InteractiveSidebar = ({
           ? `1px solid ${theme.primary.plainBorder}`
           : undefined,
         borderTopRightRadius: 8,
+      }}
+      handleClasses={{
+        left: modal ? resizeHandle : "",
+        right: !modal ? resizeHandle : "",
       }}
     >
       {!modal && (
