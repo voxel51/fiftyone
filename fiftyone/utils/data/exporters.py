@@ -964,6 +964,12 @@ def _write_unlabeled_dataset(
             if sample_collection is not None:
                 dataset_exporter.log_collection(sample_collection)
 
+            if (
+                isinstance(samples, foc.SampleCollection)
+                and samples.media_type == fomm.GROUP
+            ):
+                samples = samples.select_group_slices(_allow_mixed=True)
+
             for sample in pb(samples):
                 sample_parser.with_sample(sample)
 
