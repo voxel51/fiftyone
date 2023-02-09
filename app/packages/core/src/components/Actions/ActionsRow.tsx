@@ -312,18 +312,22 @@ const SaveFilters = () => {
         }
 
         set(fos.savingFilters, true);
-        setView(
-          (v) => [
-            ...v,
-            {
-              _cls: "fiftyone.core.stages.Select",
-              kwargs: [["sample_ids", [...selected]]],
-            },
-          ],
-          undefined,
-          undefined,
-          true
-        );
+        if (selected.size > 0) {
+          setView(
+            (v) => [
+              ...v,
+              {
+                _cls: "fiftyone.core.stages.Select",
+                kwargs: [["sample_ids", [...selected]]],
+              },
+            ],
+            undefined,
+            undefined,
+            true
+          );
+        } else {
+          setView((v) => v);
+        }
       },
     []
   );

@@ -114,8 +114,8 @@ class ListenPayload:
     def from_dict(cls, d: dict) -> "ListenPayload":
         init = d["initializer"]
 
-        if isinstance(init, dict) and "_cls" in init:
-            d["initializer"] = fos.StateDescription.from_dict(d["initializer"])
+        if isinstance(init, dict) and "_CLS" in init:
+            d["initializer"] = fos.StateDescription.from_dict(init)
 
         return from_dict(cls, d)
 
