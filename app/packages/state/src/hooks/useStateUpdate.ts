@@ -31,7 +31,7 @@ import { useColorScheme } from "@mui/material";
 import * as viewAtoms from "../recoil/view";
 import { collapseFields, viewsAreEqual } from "../utils";
 
-interface StateUpdate {
+export interface StateUpdate {
   colorscale?: RGB[];
   config?: State.Config;
   dataset?: State.Dataset;
