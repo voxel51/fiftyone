@@ -195,7 +195,7 @@ export const activeModalSample = selector<
   key: "activeModalSample",
   get: ({ get }) => {
     if (get(sidebarOverride)) {
-      return get(pinnedSliceSample);
+      return get(pinnedSliceSample).sample;
     }
 
     return get(modal)?.sample;
