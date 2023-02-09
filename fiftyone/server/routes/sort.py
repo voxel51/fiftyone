@@ -1,15 +1,14 @@
 """
-FiftyOne Server ``/sort`` route.
+FiftyOne Server /sort route
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from dataclasses import asdict
+
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
-
-import fiftyone.core.fields as fof
-import fiftyone.core.utils as fou
 
 from fiftyone.server.decorators import route
 import fiftyone.server.events as fose
@@ -23,23 +22,25 @@ class Sort(HTTPEndpoint):
         dataset_name = data.get("dataset", None)
         filters = data.get("filters", {})
         stages = data.get("view", None)
-        dist_field = data.get("dist_field", None)
+        subscription = data.get("subscription", None)
+        fosv.get_view(
+            dataset_name,
+            stages=stages,
+            filters=filters,
+            extended_stages={
+                "fiftyone.core.stages.SortBySimilarity": data["extended"]
+            },
+        )
+        state = fose.get_state()
+        state.selected = []
 
-        view = fosv.get_view(dataset_name, stages=stages, filters=filters)
-        dataset = view._dataset
-
-        state = fose.get_state().copy()
-        state.dataset = dataset
-        state.view = view
-
-        if dist_field and not dataset.has_field(dist_field):
-            dataset.add_sample_field(dist_field, fof.FloatField)
-            _dataset = await serialize_dataset(
-                dataset_name=dataset_name,
-                serialized_view=view._serialize(),
-                saved_view_slug=None,
-            )
-        else:
-            _dataset = None
-
-        return {"dataset": _dataset, "state": state.serialize()}
+        await fose.dispatch_event(subscription, fose.StateUpdate(state))
+        return {
+            "dataset": asdict(
+                await serialize_dataset(
+                    dataset_name=dataset_name,
+                    serialized_view=stages,
+                )
+            ),
+            "state": state,
+        }

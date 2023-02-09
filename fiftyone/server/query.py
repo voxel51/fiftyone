@@ -424,7 +424,7 @@ def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
 async def serialize_dataset(
     dataset_name: str,
     serialized_view: BSONArray,
-    saved_view_slug: t.Optional[str],
+    saved_view_slug: t.Optional[str] = None,
 ) -> Dataset:
     def run():
         dataset = fod.load_dataset(dataset_name)
