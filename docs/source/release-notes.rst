@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne 0.19.0
 ---------------
-*Released February 1, 2023*
+*Released February 9, 2023*
 
 News
 
@@ -38,6 +38,8 @@ App
   `#2368 <https://github.com/voxel51/fiftyone/pull/2368>`_
 - Optimized sample tagging on video datasets
   `#2440 <https://github.com/voxel51/fiftyone/pull/2440>`_
+- Don't refresh the background grid when applying tags in the modal
+  `#2594 <https://github.com/voxel51/fiftyone/pull/2594>`_
 - Only show supported keys in the evaluations dropdown
   `#2427 <https://github.com/voxel51/fiftyone/pull/2427>`_
 - Fixed handling of None values when filtering numeric/list fields
@@ -48,6 +50,9 @@ App
   `#2408 <https://github.com/voxel51/fiftyone/pull/2408>`_
 - Ensure that the bookmark icon displays when extended selections exist
   `#2366 <https://github.com/voxel51/fiftyone/pull/2366>`_
+- Automatically clear sample selection after
+  :ref:`sorting by similarity <app-similarity>`
+  `#2595 <https://github.com/voxel51/fiftyone/pull/2595>`_
 - Use consistent loading dots throughout the App
   `#2321 <https://github.com/voxel51/fiftyone/pull/2321>`_
 - Fixed a bug when filtering by custom embedded list fields
@@ -79,14 +84,24 @@ Core
 - Added a new
   :func:`transform_segmentations() <fiftyone.utils.labels.transform_segmentations>`
   utility `#2483 <https://github.com/voxel51/fiftyone/pull/2483>`_
-
 - Added support for declaring dynamic fields on generated views via
   :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
   `#2513 <https://github.com/voxel51/fiftyone/pull/2513>`_
+- Added support for datasets in :ref:`CSV format <CSVDataset-import>`
+  `#2616 <https://github.com/voxel51/fiftyone/pull/2616>`_
 - Added a dedicated
   :meth:`clear_cache() <fiftyone.core.dataset.Dataset.clear_cache>` method for
   clearing a dataset's run cache
   `#2471 <https://github.com/voxel51/fiftyone/pull/2471>`_
+- Updated all plotting methods, eg
+  :meth:`scatterplot() <fiftyone.core.plots.base.scatterplot>` to always rely
+  on sample/label IDs when pulling data for plots
+  `#2614 <https://github.com/voxel51/fiftyone/pull/2614>`_
+- Updated
+  :meth:`compute_patch_embeddings() <fiftyone.core.collections.SampleCollection.compute_patch_embeddings>`
+  to store patch embeddings directly on |Label| objects when the
+  ``embeddings_field`` argument is provided
+  `#2626 <https://github.com/voxel51/fiftyone/pull/2626>`_
 - Added support for passing frame-level fields directly to
   :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
   `#2418 <https://github.com/voxel51/fiftyone/pull/2418>`_
@@ -102,6 +117,9 @@ Core
   `#2372 <https://github.com/voxel51/fiftyone/pull/2372>`_
 - Added support for exporting in :ref:`CSV format <CSVDataset-export>`
   `#2450 <https://github.com/voxel51/fiftyone/pull/2450>`_
+- Added support for :ref:`importing <MediaDirectory-import>` and
+  :ref:`exporting <MediaDirectory-export>` directories of arbitrary media files
+  `#2605 <https://github.com/voxel51/fiftyone/pull/2605>`_
 - Always update dataset's `last_loaded_at` property when they are loaded
   `#2375 <https://github.com/voxel51/fiftyone/pull/2375>`_
 - Migrated runs to a separate database collection, for efficiency
@@ -134,6 +152,15 @@ Core
   `#2332 <https://github.com/voxel51/fiftyone/pull/2332>`_
 - Added support for deleting grouped fields when the dataset contains only one
   media type `#2332 <https://github.com/voxel51/fiftyone/pull/2332>`_
+- Updated :meth:`Dataset.stats() <fiftyone.core.dataset.Dataset.stats>` to
+  include media from all slices of grouped datasets
+  `#2635 <https://github.com/voxel51/fiftyone/pull/2635>`_
+- Fixed some bugs when passing multiple aggregations with the same field name
+  and type to
+  :meth:`aggregate() <fiftyone.core.collections.SampleCollection.aggregate>`
+  `#2617 <https://github.com/voxel51/fiftyone/pull/2617>`_
+- Fixed a bug when manually unwinding list fields in aggregations
+  `#2608 <https://github.com/voxel51/fiftyone/pull/2608>`_
 - Fixed a bug when loading datasets with CVAT attributes stored in
   :ref:`VOC format <VOCDetectionDataset-import>`
   `#2359 <https://github.com/voxel51/fiftyone/pull/2359>`_
