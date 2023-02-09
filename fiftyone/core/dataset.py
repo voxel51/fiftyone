@@ -6339,6 +6339,7 @@ def _create_indexes(sample_collection_name, frame_collection_name):
 
     collection = conn[sample_collection_name]
     collection.create_index("filepath")
+    collection.create_index("tags")
 
     if frame_collection_name is not None:
         frame_collection = conn[frame_collection_name]
