@@ -17,6 +17,7 @@ import random
 import string
 
 from bson import json_util, ObjectId
+import cachetools
 from deprecated import deprecated
 import mongoengine.errors as moe
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
@@ -272,15 +273,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         self._doc = doc
-
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
 
         self._group_slice = doc.default_group_slice
 
-        self._annotation_cache = {}
-        self._brain_cache = {}
-        self._evaluation_cache = {}
+        self._annotation_cache = cachetools.LRUCache(5)
+        self._brain_cache = cachetools.LRUCache(5)
+        self._evaluation_cache = cachetools.LRUCache(5)
 
         self._deleted = False
 
@@ -1065,8 +1065,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             total_bytes += frames_bytes
 
         if include_media:
-            self.compute_metadata()
-            media_bytes = self.sum("metadata.size_bytes")
+            if self.media_type == fom.GROUP:
+                samples = self.select_group_slices(_allow_mixed=True)
+            else:
+                samples = self
+
+            samples.compute_metadata()
+            media_bytes = samples.sum("metadata.size_bytes")
             stats["media_bytes"] = media_bytes
             stats["media_size"] = etau.to_human_bytes_str(media_bytes)
             total_bytes += media_bytes
@@ -6208,6 +6213,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if self._group_slice is None:
             self._group_slice = doc.default_group_slice
+
+        self._deleted = False
 
         self._update_last_loaded_at()
 

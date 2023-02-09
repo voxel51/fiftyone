@@ -10,15 +10,21 @@ import itertools
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
-import fiftyone as fo
+import fiftyone.core.fields as fof
+import fiftyone.core.stages as fos
+
 from fiftyone.server.decorators import route
+import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
 
 
 MAX_CATEGORIES = 100
-COLOR_BY_TYPES = (fo.StringField, fo.BooleanField, fo.IntField, fo.FloatField)
-
-dataset_cache = {}
+COLOR_BY_TYPES = (
+    fof.StringField,
+    fof.BooleanField,
+    fof.IntField,
+    fof.FloatField,
+)
 
 
 class OnPlotLoad(HTTPEndpoint):
@@ -30,7 +36,7 @@ class OnPlotLoad(HTTPEndpoint):
         stages = data["view"]
         label_field = data["labelField"]
 
-        dataset = _load_dataset(dataset_name)
+        dataset = fosu.load_and_cache_dataset(dataset_name)
         results = dataset.load_brain_results(brain_key)
 
         view = fosv.get_view(dataset_name, stages=stages)
@@ -77,7 +83,7 @@ class OnPlotLoad(HTTPEndpoint):
             )
 
             field = view.get_field(label_field)
-            if isinstance(field, fo.FloatField):
+            if isinstance(field, fof.FloatField):
                 style = "continuous"
             else:
                 if len(set(labels)) <= MAX_CATEGORIES:
@@ -120,7 +126,7 @@ class EmbeddingsSelection(HTTPEndpoint):
         if not filters and not extended_stages and not extended_selection:
             return {"selected": None}
 
-        dataset = _load_dataset(dataset_name)
+        dataset = fosu.load_and_cache_dataset(dataset_name)
         results = dataset.load_brain_results(brain_key)
 
         view = fosv.get_view(dataset_name, stages=stages)
@@ -185,18 +191,18 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
 
         if not is_patches_view and not is_patches_plot:
             # Samples plot and samples view
-            stage = fo.Select(selected_ids)
+            stage = fos.Select(selected_ids)
         elif is_patches_view and is_patches_plot:
             # Patches plot and patches view
             # Here we take advantage of the fact that sample IDs are equal to
             # patch IDs
-            stage = fo.Select(selected_ids)
+            stage = fos.Select(selected_ids)
         elif is_patches_plot and not is_patches_view:
             # Patches plot and samples view
-            stage = fo.MatchLabels(fields=[patches_field], ids=selected_ids)
+            stage = fos.MatchLabels(fields=[patches_field], ids=selected_ids)
         else:
             # Samples plot and patches view
-            stage = fo.SelectBy("sample_id", selected_ids)
+            stage = fos.SelectBy("sample_id", selected_ids)
 
         d = stage._serialize(include_uuid=False)
         return {"_cls": d["_cls"], "kwargs": dict(d["kwargs"])}
@@ -209,7 +215,7 @@ class ColorByChoices(HTTPEndpoint):
         dataset_name = data["datasetName"]
         brain_key = data["brainKey"]
 
-        dataset = _load_dataset(dataset_name)
+        dataset = fosu.load_and_cache_dataset(dataset_name)
         info = dataset.get_brain_info(brain_key)
 
         patches_field = info.config.patches_field
@@ -223,7 +229,7 @@ class ColorByChoices(HTTPEndpoint):
             schema = {k: v for k, v in schema.items() if k.startswith(root)}
 
         nested_fields = set(
-            k for k, v in schema.items() if isinstance(v, fo.ListField)
+            k for k, v in schema.items() if isinstance(v, fof.ListField)
         )
 
         fields = [
@@ -250,12 +256,6 @@ EmbeddingsRoutes = [
     ("/embeddings/extended-stage", EmbeddingsExtendedStage),
     ("/embeddings/color-by-choices", ColorByChoices),
 ]
-
-
-def _load_dataset(dataset_name):
-    dataset = fo.load_dataset(dataset_name)
-    dataset_cache[dataset_name] = dataset
-    return dataset
 
 
 def _add_to_trace(traces, style, points, id, sample_id, label, selected):

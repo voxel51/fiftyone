@@ -37,6 +37,9 @@ class Plugins(HTTPEndpoint):
         for filepath in pkgs:
             pkg = etas.read_json(filepath)
 
+            if "fiftyone" not in pkg:
+                continue
+
             plugin_definition = {
                 "name": pkg["name"],
                 "version": pkg["version"],
