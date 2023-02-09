@@ -33,7 +33,8 @@ INSTALL_REQUIRES = [
     "aiofiles",
     "argcomplete",
     "boto3",
-    "dacite>=1.6.0,<2",
+    "cachetools",
+    "dacite>=1.6.0,<1.8.0",
     "Deprecated",
     "eventlet",
     "future",
@@ -76,9 +77,9 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.9.2,<0.10",
+    "fiftyone-brain>=0.10,<0.11",
     "fiftyone-db>=0.4,<0.5",
-    "voxel51-eta>=0.8.1,<0.9",
+    "voxel51-eta>=0.8.2,<0.9",
 ]
 
 

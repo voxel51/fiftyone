@@ -1716,10 +1716,10 @@ uploading annotation runs for large sample collections.
 
 .. note::
 
-    The CVAT maintainers are working on
+    The CVAT maintainers made
     `an update <https://github.com/opencv/cvat/pull/3692>`_
-    to resolve this issue natively. In the meantime, the following workflow is
-    our recommended approach to circumvent this issue.
+    to resolve this issue natively, but if you still encounter issues, try
+    the following workflow to circumvent the issue.
 
 You can use the `task_size` parameter to break image annotation runs into
 multiple CVAT tasks, each with a specified maximum number of images. Note that
@@ -2368,8 +2368,9 @@ Using the CVAT API
 
 You can use the
 :func:`connect_to_api() <fiftyone.utils.annotations.connect_to_api>`
-to retrive a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
-instance, which is a wrapper around the
+to retrieve a
+:class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>` instance,
+which is a wrapper around the
 `CVAT REST API <https://opencv.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
 that provides convenient methods for performing common actions on your CVAT
 tasks:

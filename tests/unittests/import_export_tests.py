@@ -2008,7 +2008,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
         # On-disk segmentations
 
         export_dir = self._new_dir()
-        field_dir = os.path.join(export_dir, "fields", "segmentations")
+        field_dir = fos.join(export_dir, "fields", "segmentations")
 
         dataset.export(
             export_dir=export_dir,
@@ -2125,17 +2125,19 @@ class CSVDatasetTests(ImageDatasetTests):
     def test_csv_dataset(self):
         dataset = self._make_dataset()
 
-        # @todo uncomment once CSVDatasetImporter is implemented
-        """
-        field_parsers = {
-            "weather": lambda value: (
-                fo.Classification(label=value) if value is not None else None
-            ),
-            "filepath": None,  # default parser
-            "tags": lambda value: value.strip("").split(","),
-            "float_field": lambda value: float(value),
+        export_fields = {
+            "filepath": "filepath",
+            "tags": "tags",
+            "float_field": "float_field",
+            "weather.label": "weather",
         }
-        """
+
+        import_fields = {
+            "filepath": None,  # load as strings
+            "tags": lambda v: v.strip("").split(","),
+            "float_field": lambda v: float(v),
+            "weather": lambda v: fo.Classification(label=v) if v else None,
+        }
 
         # Standard format
 
@@ -2144,19 +2146,19 @@ class CSVDatasetTests(ImageDatasetTests):
         dataset.export(
             export_dir=export_dir,
             dataset_type=fo.types.CSVDataset,
-            fields=["filepath", "tags", "float_field", "weather.label"],
+            fields=export_fields,
         )
 
-        """
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.CSVDataset,
-            fields=field_parsers,
+            fields=import_fields,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertSetEqual(
-            set(dataset.values("filepath")), set(dataset2.values("filepath"))
+            set(os.path.basename(f) for f in dataset.values("filepath")),
+            set(os.path.basename(f) for f in dataset2.values("filepath")),
         )
         self.assertSetEqual(
             set(dataset.values("tags", unwind=True)),
@@ -2166,36 +2168,35 @@ class CSVDatasetTests(ImageDatasetTests):
             np.isclose(
                 dataset.bounds("float_field"),
                 dataset2.bounds("float_field"),
-            )
+            ).all()
         )
         self.assertSetEqual(
             set(dataset.values("weather.label")),
             set(dataset2.values("weather.label")),
         )
-        """
 
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.csv")
+        labels_path = fos.join(self._new_dir(), "labels.csv")
 
         dataset.export(
             labels_path=labels_path,
             dataset_type=fo.types.CSVDataset,
-            fields=["filepath", "tags", "float_field", "weather.label"],
+            fields=export_fields,
         )
 
-        """
         dataset2 = fo.Dataset.from_dir(
             data_path=data_path,
             labels_path=labels_path,
             dataset_type=fo.types.CSVDataset,
-            fields=field_parsers,
+            fields=import_fields,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertSetEqual(
-            set(dataset.values("filepath")), set(dataset2.values("filepath"))
+            set(os.path.basename(f) for f in dataset.values("filepath")),
+            set(os.path.basename(f) for f in dataset2.values("filepath")),
         )
         self.assertSetEqual(
             set(dataset.values("tags", unwind=True)),
@@ -2205,30 +2206,28 @@ class CSVDatasetTests(ImageDatasetTests):
             np.isclose(
                 dataset.bounds("float_field"),
                 dataset2.bounds("float_field"),
-            )
+            ).all()
         )
         self.assertSetEqual(
             set(dataset.values("weather.label")),
             set(dataset2.values("weather.label")),
         )
-        """
 
         # Labels-only (absolute paths)
 
-        labels_path = os.path.join(self._new_dir(), "labels.csv")
+        labels_path = fos.join(self._new_dir(), "labels.csv")
 
         dataset.export(
             labels_path=labels_path,
             dataset_type=fo.types.CSVDataset,
-            fields=["filepath", "tags", "float_field", "weather.label"],
+            fields=export_fields,
             abs_paths=True,
         )
 
-        """
         dataset2 = fo.Dataset.from_dir(
             labels_path=labels_path,
             dataset_type=fo.types.CSVDataset,
-            fields=field_parsers,
+            fields=import_fields,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
@@ -2243,13 +2242,12 @@ class CSVDatasetTests(ImageDatasetTests):
             np.isclose(
                 dataset.bounds("float_field"),
                 dataset2.bounds("float_field"),
-            )
+            ).all()
         )
         self.assertSetEqual(
             set(dataset.values("weather.label")),
             set(dataset2.values("weather.label")),
         )
-        """
 
         # Standard format (with rel dir)
 
@@ -2260,19 +2258,19 @@ class CSVDatasetTests(ImageDatasetTests):
             export_dir=export_dir,
             dataset_type=fo.types.CSVDataset,
             rel_dir=rel_dir,
-            fields=["filepath", "tags", "float_field", "weather.label"],
+            fields=export_fields,
         )
 
-        """
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.CSVDataset,
-            fields=field_parsers,
+            fields=import_fields,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertSetEqual(
-            set(dataset.values("filepath")), set(dataset2.values("filepath"))
+            set(os.path.basename(f) for f in dataset.values("filepath")),
+            set(os.path.basename(f) for f in dataset2.values("filepath")),
         )
         self.assertSetEqual(
             set(dataset.values("tags", unwind=True)),
@@ -2282,7 +2280,7 @@ class CSVDatasetTests(ImageDatasetTests):
             np.isclose(
                 dataset.bounds("float_field"),
                 dataset2.bounds("float_field"),
-            )
+            ).all()
         )
         self.assertSetEqual(
             set(dataset.values("weather.label")),
@@ -2292,8 +2290,7 @@ class CSVDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
-        """
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
 
 class GeoLocationDatasetTests(ImageDatasetTests):
@@ -3020,7 +3017,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         # Alternate media
 
         export_dir = self._new_dir()
-        field_dir = os.path.join(export_dir, "fields", "filepath2")
+        field_dir = fos.join(export_dir, "fields", "filepath2")
 
         dataset.clone_sample_field("filepath", "filepath2")
         dataset.app_config.media_fields.append("filepath2")
@@ -3233,7 +3230,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         # Alternate media
 
         export_dir = self._new_dir()
-        field_dir = os.path.join(export_dir, "fields", "filepath2")
+        field_dir = fos.join(export_dir, "fields", "filepath2")
 
         dataset.clone_sample_field("filepath", "filepath2")
         dataset.app_config.media_fields.append("filepath2")
@@ -4289,9 +4286,68 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
         self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
 
+class UnlabeledMediaDatasetTests(ImageDatasetTests):
+    def _make_dataset(self):
+        samples = [fo.Sample(filepath=self._new_image()) for _ in range(5)]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        return dataset
+
+    @drop_datasets
+    def test_media_directory(self):
+        dataset = self._make_dataset()
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.MediaDirectory,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.MediaDirectory,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        # Standard format (with rel dir)
+
+        export_dir = self._new_dir()
+        rel_dir = self.root_dir
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.MediaDirectory,
+            rel_dir=rel_dir,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.MediaDirectory,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        relpath = _relpath(dataset2.first().filepath, export_dir)
+
+        # _images/<filename>
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 2)
+
+
 def _relpath(path, start):
     # Avoids errors related to symlinks in `/tmp` directories
-    return os.path.relpath(os.path.realpath(path), os.path.realpath(start))
+    if fos.is_local(path):
+        path = os.path.realpath(path)
+
+    if fos.is_local(start):
+        start = os.path.realpath(start)
+
+    return os.path.relpath(path, start)
 
 
 if __name__ == "__main__":

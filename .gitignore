@@ -29,3 +29,5 @@ coverage.xml
 .coverage.*
 pyvenv.cfg
 .python-version
+
+*.whl

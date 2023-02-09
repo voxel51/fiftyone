@@ -20,9 +20,6 @@ import typing as t
 
 from fiftyone.server.data import Info
 import fiftyone.core.dataset as fod
-import fiftyone.core.stages as fos
-import fiftyone.core.uid as fou
-import fiftyone.core.view as fov
 
 import fiftyone.server.mutation as fosm
 from fiftyone.server.query import Dataset
@@ -78,69 +75,37 @@ class Mutation(fosm.Mutation):
     ) -> fosm.ViewResponse:
 
         result_view = None
-        ds = fod.load_dataset(dataset_name)
-        view_name = None
         if saved_view_slug is not None:
             try:
+                # Load a DatasetView using a slug
+                ds = fod.load_dataset(dataset_name)
                 doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
-                view_name = doc.name
+                result_view = ds._load_saved_view_from_doc(doc)
+                loaded_at = datetime.datetime.utcnow()
+                res = await _update_view_activity(
+                    result_view.name, ds, loaded_at, info
+                )
             except:
                 pass
 
-        if view_name is not None:
-            ds = fod.load_dataset(dataset_name)
-            if ds.has_saved_view(view_name):
-                # Load a saved dataset view by name
-                result_view = ds.load_saved_view(view_name)
-                loaded_at = datetime.datetime.utcnow()
-                res = await _update_view_activity(
-                    view_name, ds, loaded_at, info
-                )
-                view = result_view._serialize()  # serialized view stages
-
-        elif form:
-            # convert serialized view_stages to DatasetView
-            view = fosm.get_view(
+        if result_view is None:
+            # Update current view with form parameters
+            result_view = fosm.get_view(
                 dataset_name,
-                stages=view,
-                filters=form.filters,
+                stages=view if view else None,
+                filters=form.filters if form else None,
             )
 
-            if form.slice:
-                view = view.select_group_slices([form.slice])
-
-            if form.sample_ids:
-                view = fov.make_optimized_select_view(view, form.sample_ids)
-
-            if form.add_stages:
-                for d in form.add_stages:
-                    stage = fos.ViewStage._from_dict(d)
-                    view = view.add_stage(stage)
-
-            if form.extended:
-                view = fosm.extend_view(view, form.extended, True)
-
-            result_view = view  # DatasetView
-            view = view._serialize()  # serialized view stages
-
-        else:
-            # convert serialized view_stages to DatasetView
-            view = fosm.get_view(
-                dataset_name,
-                stages=view,
-                filters=form.filters,
-            )
-
-            result_view = view
-            view = view._serialize()
+        result_view = fosm._build_result_view(result_view, form)
+        serialized_view = result_view._serialize()
 
         dataset = await Dataset.resolver(
             name=dataset_name,
-            view=view,
-            info=info,
+            view=serialized_view,
             saved_view_slug=saved_view_slug,
+            info=info,
         )
-        return fosm.ViewResponse(view=view, dataset=dataset)
+        return fosm.ViewResponse(dataset=dataset, view=serialized_view)
 
 
 async def _update_view_activity(

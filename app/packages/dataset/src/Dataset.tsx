@@ -17,14 +17,16 @@ import {
 } from "@fiftyone/core";
 import { usePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import React, { Suspense } from "react";
+import React, { Suspense, useContext, useEffect, useState } from "react";
 import { PreloadedQuery, useQueryLoader, usePreloadedQuery } from "react-relay";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
+import { RecoilRelayEnvironmentProvider } from "recoil-relay";
 import styled from "styled-components";
 
 // built-in plugins
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
+import "@fiftyone/embeddings";
 
 const Container = styled.div`
   width: 100%;
@@ -56,7 +58,6 @@ export interface DatasetProps {
   theme?: "dark" | "light";
   toggleHeaders?: () => void;
   canEditSavedViews?: boolean;
-  savedViewSlug?: string;
 }
 
 export const Dataset: React.FC<DatasetProps> = ({
@@ -67,7 +68,6 @@ export const Dataset: React.FC<DatasetProps> = ({
   theme = "dark",
   toggleHeaders,
   canEditSavedViews = true,
-  savedViewSlug,
 }) => {
   const [queryRef, loadQuery] = useQueryLoader<DatasetQuery>(DatasetNodeQuery);
   const setTheme = useSetRecoilState(fos.theme);
@@ -78,18 +78,24 @@ export const Dataset: React.FC<DatasetProps> = ({
   React.useLayoutEffect(() => {
     setCompactLayout(compactLayout);
   }, [compactLayout]);
-  React.useEffect(() => {
-    loadQuery({ name: dataset, savedViewSlug });
-  }, [dataset, savedViewSlug]);
-  React.useEffect(() => {
-    setCanChangeSavedViews(canEditSavedViews);
-  }, [canEditSavedViews]);
   React.useLayoutEffect(() => {
     setReadOnly(readOnly);
   }, [readOnly]);
   React.useLayoutEffect(() => {
     setTheme(theme);
   }, [theme]);
+
+  const context = useContext(fos.RouterContext);
+  const savedViewSlug = React.useMemo(
+    () => fos.getSavedViewName(context),
+    [context]
+  );
+  React.useEffect(() => {
+    loadQuery({ name: dataset, savedViewSlug: savedViewSlug });
+  }, [dataset, savedViewSlug]);
+  React.useEffect(() => {
+    setCanChangeSavedViews(canEditSavedViews);
+  }, [canEditSavedViews]);
 
   const plugins = usePlugins();
   const loadingElement = <Loading>Pixelating...</Loading>;
@@ -110,9 +116,11 @@ export const Dataset: React.FC<DatasetProps> = ({
               />
             )}
           </ViewBarWrapper>
-          <CoreDatasetContainer>
-            <CoreDataset />
-          </CoreDatasetContainer>
+          <Suspense fallback={loadingElement}>
+            <CoreDatasetContainer>
+              <CoreDataset />
+            </CoreDatasetContainer>
+          </Suspense>
         </DatasetLoader>
       </Suspense>
       <div id="modal" />

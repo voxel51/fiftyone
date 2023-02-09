@@ -45,9 +45,11 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
     const hasFiltersValue = get(fos.hasFilters(false));
     const extendedSelectionList = get(fos.extendedSelection);
     const selectedSampleSet = get(fos.selectedSamples);
+    const isSimilarityOn = get(fos.similarityParameters);
 
     const isExtendedSelectionOn =
-      extendedSelectionList && extendedSelectionList.length > 0;
+      (extendedSelectionList && extendedSelectionList.length > 0) ||
+      isSimilarityOn;
 
     return (
       isExtendedSelectionOn || hasFiltersValue || selectedSampleSet.size > 0
@@ -305,11 +307,29 @@ const SaveFilters = () => {
     ({ snapshot, set }) =>
       async () => {
         const loading = await snapshot.getPromise(fos.savingFilters);
+        const selected = await snapshot.getPromise(fos.selectedSamples);
+
         if (loading) {
           return;
         }
+
         set(fos.savingFilters, true);
-        setView((v) => v);
+        if (selected.size > 0) {
+          setView(
+            (v) => [
+              ...v,
+              {
+                _cls: "fiftyone.core.stages.Select",
+                kwargs: [["sample_ids", [...selected]]],
+              },
+            ],
+            undefined,
+            undefined,
+            true
+          );
+        } else {
+          setView((v) => v);
+        }
       },
     []
   );
@@ -405,7 +425,6 @@ export const GridActionsRow = () => {
       <Patches />
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
-      <Export />
       <Selected modal={false} />
     </ActionsRowDiv>
   );

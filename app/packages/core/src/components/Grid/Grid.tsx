@@ -32,6 +32,8 @@ const Grid: React.FC<{}> = () => {
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
 
+  const isModalOpen = Boolean(useRecoilValue(fos.modal));
+
   const [flashlight] = useState(() => {
     const flashlight = new Flashlight<number>({
       horizontal: false,
@@ -87,7 +89,7 @@ const Grid: React.FC<{}> = () => {
 
   useEffect(
     deferred(() => {
-      if (isTagging || !flashlight.isAttached()) {
+      if (isModalOpen || isTagging || !flashlight.isAttached()) {
         return;
       }
 

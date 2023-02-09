@@ -117,7 +117,7 @@ async def paginate_samples(
 
     metadata_cache = {}
     url_cache = {}
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(trust_env=True) as session:
         nodes = await asyncio.gather(
             *[
                 _create_sample_item(

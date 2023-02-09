@@ -1,5 +1,5 @@
 """
-FiftyOne Server queries
+FiftyOne Server queries.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -21,6 +21,7 @@ from dacite import Config, from_dict
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
+import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 from fiftyone.core.odm import SavedViewDocument
 from fiftyone.core.state import SampleField, serialize_fields
@@ -39,8 +40,8 @@ from fiftyone.server.samples import (
     SampleItem,
     paginate_samples,
 )
-
 from fiftyone.server.scalars import BSONArray, JSON
+
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -109,8 +110,8 @@ class EvaluationRun(Run):
 
 @gql.type
 class SavedView:
-    id: t.Optional[str]
-    dataset_id: t.Optional[str]
+    _id: gql.Private[t.Optional[ObjectId]]
+    _dataset_id: gql.Private[t.Optional[ObjectId]]
     name: t.Optional[str]
     description: t.Optional[str]
     color: t.Optional[str]
@@ -119,6 +120,18 @@ class SavedView:
     created_at: t.Optional[datetime]
     last_modified_at: t.Optional[datetime]
     last_loaded_at: t.Optional[datetime]
+
+    @gql.field
+    def id(self) -> t.Optional[str]:
+        if isinstance(self, ObjectId):
+            return str(self)
+        return str(self._id)
+
+    @gql.field
+    def dataset_id(self) -> t.Optional[str]:
+        if isinstance(self, ObjectId):
+            return None
+        return str(self._dataset_id)
 
     @gql.field
     def view_name(self) -> t.Optional[str]:
@@ -192,6 +205,7 @@ class Dataset:
     frame_fields: t.Optional[t.List[SampleField]]
     brain_methods: t.Optional[t.List[BrainRun]]
     evaluations: t.Optional[t.List[EvaluationRun]]
+    saved_view_slug: t.Optional[str]
     saved_views: t.Optional[t.List[SavedView]]
     saved_view_ids: gql.Private[t.Optional[t.List[gql.ID]]]
     version: t.Optional[str]
@@ -383,7 +397,7 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
-        ds = fo.load_dataset(dataset_name)
+        ds = fod.load_dataset(dataset_name)
         return [
             SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
         ]
@@ -413,10 +427,10 @@ def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
 async def serialize_dataset(
     dataset_name: str,
     serialized_view: BSONArray,
-    saved_view_slug: t.Optional[str],
+    saved_view_slug: t.Optional[str] = None,
 ) -> Dataset:
     def run():
-        dataset = fo.load_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name)
         dataset.reload()
         view_name = None
         try:

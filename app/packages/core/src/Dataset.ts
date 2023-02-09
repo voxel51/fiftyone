@@ -49,12 +49,14 @@ export const DatasetNodeQuery = graphql`
       appConfig {
         gridMediaField
         mediaFields
+        modalMediaField
         plugins
         sidebarGroups {
           expanded
           paths
           name
         }
+        sidebarMode
       }
       sampleFields {
         ftype
@@ -131,17 +133,7 @@ export const DatasetNodeQuery = graphql`
       version
       viewCls
       viewName
-      appConfig {
-        gridMediaField
-        mediaFields
-        modalMediaField
-        plugins
-        sidebarGroups {
-          name
-          paths
-        }
-        sidebarMode
-      }
+      savedViewSlug
       info
     }
   }
@@ -168,8 +160,7 @@ export const usePreLoadedDataset = (
     let { viewName, stages: view, ...rest } = dataset;
 
     const params = new URLSearchParams(router.history.location.search);
-
-    if (!viewName && params.has("view")) {
+    if (!viewName && !view && params.has("view")) {
       params.delete("view");
       const search = params.toString();
       router.history.replace(
@@ -177,9 +168,19 @@ export const usePreLoadedDataset = (
       );
     }
 
-    if (stateProxyValue) {
-      view = stateProxyValue.view;
-      viewName = stateProxyValue.viewName;
+    if (
+      !router.state &&
+      typeof window !== "undefined" &&
+      window.history.state?.view
+    ) {
+      view = window.history.state.view;
+    }
+    if (
+      !router.state &&
+      typeof window !== "undefined" &&
+      window.history.state?.view
+    ) {
+      view = window.history.state.view;
     }
 
     const { colorscale, config, state } = router?.state || {};
@@ -191,8 +192,10 @@ export const usePreLoadedDataset = (
           config: config
             ? (toCamelCase(config) as fos.State.Config)
             : undefined,
-          dataset: fos.transformDataset(rest),
-          state: { view, viewName, ...state },
+          dataset: fos.transformDataset(
+            stateProxyValue?.dataset ? stateProxyValue.dataset : rest
+          ),
+          state: { view, viewName, ...state, ...(stateProxyValue || {}) },
         };
       });
       setReady(true);
