@@ -1065,8 +1065,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             total_bytes += frames_bytes
 
         if include_media:
-            self.compute_metadata()
-            media_bytes = self.sum("metadata.size_bytes")
+            if self.media_type == fom.GROUP:
+                samples = self.select_group_slices(_allow_mixed=True)
+            else:
+                samples = self
+
+            samples.compute_metadata()
+            media_bytes = samples.sum("metadata.size_bytes")
             stats["media_bytes"] = media_bytes
             stats["media_size"] = etau.to_human_bytes_str(media_bytes)
             total_bytes += media_bytes
