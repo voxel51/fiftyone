@@ -87,8 +87,13 @@ Core
 - Added support for declaring dynamic fields on generated views via
   :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
   `#2513 <https://github.com/voxel51/fiftyone/pull/2513>`_
-- Added support for datasets in :ref:`CSV format <CSVDataset-import>`
-  `#2616 <https://github.com/voxel51/fiftyone/pull/2616>`_
+- Added support for :ref:`importing <CSVDataset-import>` and
+  :ref:`exporting <CSVDataset-export>` datasets in CSV format
+  `#2616 <https://github.com/voxel51/fiftyone/pull/2616>`_,
+  `#2450 <https://github.com/voxel51/fiftyone/pull/2450>`_
+- Added support for :ref:`importing <MediaDirectory-import>` and
+  :ref:`exporting <MediaDirectory-export>` directories of arbitrary media files
+  `#2605 <https://github.com/voxel51/fiftyone/pull/2605>`_
 - Added a dedicated
   :meth:`clear_cache() <fiftyone.core.dataset.Dataset.clear_cache>` method for
   clearing a dataset's run cache
@@ -115,19 +120,10 @@ Core
   :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
   utility for setting attributes on |Label| instances by their IDs
   `#2372 <https://github.com/voxel51/fiftyone/pull/2372>`_
-- Added support for exporting in :ref:`CSV format <CSVDataset-export>`
-  `#2450 <https://github.com/voxel51/fiftyone/pull/2450>`_
-- Added support for :ref:`importing <MediaDirectory-import>` and
-  :ref:`exporting <MediaDirectory-export>` directories of arbitrary media files
-  `#2605 <https://github.com/voxel51/fiftyone/pull/2605>`_
 - Always update dataset's `last_loaded_at` property when they are loaded
   `#2375 <https://github.com/voxel51/fiftyone/pull/2375>`_
 - Migrated runs to a separate database collection, for efficiency
   `#2189 <https://github.com/voxel51/fiftyone/pull/2189>`_
-- Fixed a bug when calling
-  :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>` on
-  a view that filters the frames of the input dataset
-  `#2361 <https://github.com/voxel51/fiftyone/pull/2361>`_
 - Added an :func:`exact_frame_count() <fiftyone.utils.video.exact_frame_count>`
   utility for computing extact video frame counts
   `#2373 <https://github.com/voxel51/fiftyone/pull/2373>`_
@@ -155,6 +151,10 @@ Core
 - Updated :meth:`Dataset.stats() <fiftyone.core.dataset.Dataset.stats>` to
   include media from all slices of grouped datasets
   `#2635 <https://github.com/voxel51/fiftyone/pull/2635>`_
+- Fixed a bug when calling
+  :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>` on
+  a view that filters the frames of the input dataset
+  `#2361 <https://github.com/voxel51/fiftyone/pull/2361>`_
 - Fixed some bugs when passing multiple aggregations with the same field name
   and type to
   :meth:`aggregate() <fiftyone.core.collections.SampleCollection.aggregate>`
