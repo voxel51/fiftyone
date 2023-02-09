@@ -441,7 +441,7 @@ class DatasetTests(unittest.TestCase):
         info = dataset.get_index_information()
         indexes = dataset.list_indexes()
 
-        default_indexes = {"id", "filepath"}
+        default_indexes = {"id", "filepath", "tags"}
         self.assertSetEqual(set(info.keys()), default_indexes)
         self.assertSetEqual(set(indexes), default_indexes)
 
@@ -451,13 +451,21 @@ class DatasetTests(unittest.TestCase):
             dataset.drop_index("id")  # can't drop default
 
         dataset.create_index("filepath")  # already exists
+        dataset.create_index("tags")  # already exists
 
         with self.assertRaises(ValueError):
             # can't upgrade default index to unique
             dataset.create_index("filepath", unique=True)
 
         with self.assertRaises(ValueError):
+            # can't upgrade default index to unique
+            dataset.create_index("tags", unique=True)
+
+        with self.assertRaises(ValueError):
             dataset.drop_index("filepath")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            dataset.drop_index("tags")  # can't drop default index
 
         name = dataset.create_index("field")
         self.assertEqual(name, "field")

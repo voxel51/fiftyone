@@ -110,6 +110,7 @@ class VideoTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
+            "tags",
             "frames.id",
             "frames._sample_id_1_frame_number_1",
         }

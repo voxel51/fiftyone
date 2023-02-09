@@ -8162,7 +8162,7 @@ class SampleCollection(object):
             return []
 
         if self._is_patches:
-            names = ["id", "filepath", "sample_id"]
+            names = ["id", "filepath", "tags", "sample_id"]
             if self._is_frames:
                 names.extend(["frame_id", "_sample_id_1_frame_number_1"])
 
@@ -8172,14 +8172,15 @@ class SampleCollection(object):
             return [
                 "id",
                 "filepath",
+                "tags",
                 "sample_id",
                 "_sample_id_1_frame_number_1",
             ]
 
         if self._is_clips:
-            return ["id", "filepath", "sample_id"]
+            return ["id", "filepath", "tags", "sample_id"]
 
-        return ["id", "filepath"]
+        return ["id", "filepath", "tags"]
 
     def reload(self):
         """Reloads the collection from the database."""
