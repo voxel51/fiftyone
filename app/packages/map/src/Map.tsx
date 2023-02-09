@@ -176,7 +176,7 @@ const Plot: React.FC<{}> = () => {
         No Mapbox token provided.&nbsp;
         <ExternalLink
           style={{ color: theme.text.primary }}
-          href={"https://voxel51.com/docs/fiftyone/user_guide/app.html#map-tab"}
+          href={"https://docs.voxel51.com/user_guide/app.html#map-panel"}
         >
           Learn more
         </ExternalLink>
@@ -198,7 +198,7 @@ const Plot: React.FC<{}> = () => {
           <ExternalLink
             style={{ color: theme.text.primary }}
             href={
-              "https://voxel51.com/docs/fiftyone/user_guide/app.html#map-tab"
+              "https://docs.voxel51.com/user_guide/app.html#map-panel"
             }
           >
             Mapbox token
