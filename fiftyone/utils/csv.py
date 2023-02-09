@@ -409,6 +409,7 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
     def close(self, *args):
         self._f.close()
         self._local_file.__exit__()
+        self._media_exporter.close()
 
 
 def _parse_export_fields(fields, media_field, export_media):
@@ -417,6 +418,8 @@ def _parse_export_fields(fields, media_field, export_media):
 
     if isinstance(fields, dict):
         paths, header = zip(*fields.items())
+        paths = list(paths)
+        header = list(header)
     elif etau.is_str(fields):
         paths = [fields]
         header = [fields]
