@@ -278,9 +278,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._group_slice = doc.default_group_slice
 
-        self._annotation_cache = cachetools.LRUCache(10)
-        self._brain_cache = cachetools.LRUCache(10)
-        self._evaluation_cache = cachetools.LRUCache(10)
+        self._annotation_cache = cachetools.LRUCache(5)
+        self._brain_cache = cachetools.LRUCache(5)
+        self._evaluation_cache = cachetools.LRUCache(5)
 
         self._deleted = False
 
