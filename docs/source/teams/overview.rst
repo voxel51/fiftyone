@@ -8,6 +8,11 @@ FiftyOne Teams Overview
 FiftyOne Teams is purpose-built to integrate into your existing ML workflows,
 including annotation, evaluation, model training, and deployment.
 
+.. note::
+
+    `Learn more <https://voxel51.com/fiftyone-teams>`_ about FiftyOne Teams and
+    `contact us <https://voxel51.com/get-fiftyone-teams>`_ to try it!
+
 .. _fiftyone-vs-fiftyone-teams:
 
 FiftyOne vs FiftyOne Teams
