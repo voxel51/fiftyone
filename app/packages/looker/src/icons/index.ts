@@ -1,7 +1,9 @@
-const domParser = new DOMParser();
+import xml from "@xmldom/xmldom";
+const domParser: DOMParser =
+  typeof window !== "undefined" ? new DOMParser() : new xml.DOMParser();
 
 function HTMLToDom(html: string) {
-  const [node] = domParser.parseFromString(html, "text/xml").childNodes;
+  const node = domParser.parseFromString(html, "text/xml").childNodes[0];
   return node;
 }
 

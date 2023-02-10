@@ -12,6 +12,16 @@ currently contains the public-facing documentation for Teams.
 Release notes for Teams releases are documented
 [in this doc](https://docs.google.com/document/d/1SvoJRXiajm14jXaenD9GottSEoQlOVCNcyMEV8qrF-g).
 
+## Developing with the embedded server
+
+When developing and integrating features for the new
+[Teams](https://github.com/voxel51/fiftyone) embedded dataset page, you will
+have to run the embedded `fiftyone.teams.app` for the stateless version of
+legacy API calls (i.e. the embedded OSS GraphQL API and deprecated rest
+routes). Please refer to the subpackage
+[README](https://github.com/voxel51/fiftyone-teams/tree/develop/package/teams)
+for installation and development instructions.
+
 ## Installing Teams releases
 
 FiftyOne Teams releases are installed via a private FiftyOne PyPI server that
@@ -76,26 +86,29 @@ To merge the latest [FiftyOne](https://github.com/voxel51/fiftyone) into this
 repository, the basic workflow is to update `public` and then open a pull
 request into `develop`. See below for details.
 
-### Setup
+### One-time setup
 
 You must add [FiftyOne](https://github.com/voxel51/fiftyone) as a remote
-repository for the `public` branch:
+repository:
 
 ```shell
 git remote add public git@github.com:voxel51/fiftyone.git
 ```
 
-Note that the `public` branch is protected, so, if you are not an admin, you
-must replace `public` in the instructions below with another branch and then
-make a pull request into `public` rather than directly pushing to it.
+Here we choose the name `public` because we plan to use this remote only to
+update the `public` branch of Teams.
 
 ### Updating `public`
 
 Follow the instructions below to update the `public` branch to match
-[FiftyOne](https://github.com/voxel51/fiftyone)'s `develop` branch:
+[FiftyOne](https://github.com/voxel51/fiftyone)'s `develop` branch.
+
+Note that the `public` branch is protected, so, if you are not an admin, you
+must replace `public` in the instructions below with another branch and then
+make a pull request into `public` rather than directly pushing to it.
 
 ```shell
-# Pull open source changes
+# Pull latest state of OSS `develop` branch
 git checkout public
 git pull public develop
 

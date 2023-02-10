@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d613429b44e62c16a1ea7e28c7bf9679>>
+ * @generated SignedSource<<4cf9fa421526aa6eca4987b327b6c657>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,7 +16,7 @@ export type RootQuery$variables = {
   search?: string | null;
 };
 export type RootQuery$data = {
-  readonly " $fragmentSpreads": FragmentRefs<"RootConfig_query" | "RootDatasets_query" | "RootGA_query" | "RootNav_query">;
+  readonly " $fragmentSpreads": FragmentRefs<"RootDatasets_query" | "RootGA_query" | "RootNav_query">;
 };
 export type RootQuery = {
   response: RootQuery$data;
@@ -39,14 +39,7 @@ v2 = {
   "kind": "LocalArgument",
   "name": "search"
 },
-v3 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "colorscale",
-  "storageKey": null
-},
-v4 = [
+v3 = [
   {
     "kind": "Variable",
     "name": "after",
@@ -74,11 +67,6 @@ return {
     "metadata": null,
     "name": "RootQuery",
     "selections": [
-      {
-        "args": null,
-        "kind": "FragmentSpread",
-        "name": "RootConfig_query"
-      },
       {
         "args": null,
         "kind": "FragmentSpread",
@@ -110,125 +98,7 @@ return {
     "selections": [
       {
         "alias": null,
-        "args": null,
-        "concreteType": "AppConfig",
-        "kind": "LinkedField",
-        "name": "config",
-        "plural": false,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "colorBy",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "colorPool",
-            "storageKey": null
-          },
-          (v3/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "gridZoom",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "loopVideos",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "notebookHeight",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "plugins",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "showConfidence",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "showIndex",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "showLabel",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "showSkeletons",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "showTooltip",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "sidebarMode",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "theme",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "timezone",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "useFrameNumber",
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
-      },
-      (v3/*: any*/),
-      {
-        "alias": null,
-        "args": (v4/*: any*/),
+        "args": (v3/*: any*/),
         "concreteType": "DatasetStrConnection",
         "kind": "LinkedField",
         "name": "datasets",
@@ -321,7 +191,7 @@ return {
       },
       {
         "alias": null,
-        "args": (v4/*: any*/),
+        "args": (v3/*: any*/),
         "filters": [
           "search"
         ],
@@ -375,16 +245,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "749b010841357428b02cccf7386217c1",
+    "cacheID": "fdc459a58a769462216652fec0f50846",
     "id": null,
     "metadata": {},
     "name": "RootQuery",
     "operationKind": "query",
-    "text": "query RootQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n) {\n  ...RootConfig_query\n  ...RootDatasets_query\n  ...RootGA_query\n  ...RootNav_query\n}\n\nfragment RootConfig_query on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment RootGA_query on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment RootNav_query on Query {\n  teamsSubmission\n}\n"
+    "text": "query RootQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n) {\n  ...RootDatasets_query\n  ...RootGA_query\n  ...RootNav_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment RootGA_query on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment RootNav_query on Query {\n  teamsSubmission\n}\n"
   }
 };
 })();
 
-(node as any).hash = "ad38dfd0504d23894ee801a4ba0ba91e";
+(node as any).hash = "1d7f694b7f4950c7d7917f3b274f084d";
 
 export default node;

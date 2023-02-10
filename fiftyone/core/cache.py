@@ -1,7 +1,7 @@
 """
 Remote media caching.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -156,8 +156,7 @@ class MediaCache(object):
         Returns:
             a file metdata dict or ``None``
         """
-        fs = fos.get_file_system(filepath)
-        client = fos.get_client(fs)
+        client = fos.get_client(path=filepath)
 
         task = (client, filepath, skip_failures)
         _, metadata = _do_get_file_metadata(task)
@@ -328,12 +327,13 @@ class MediaCache(object):
             hours (1): a TTL for signed URLs
         """
         fs = fos.get_file_system(remote_path)
+
         if fs == fos.FileSystem.LOCAL:
             raise ValueError(
                 "Cannot get URL for local file '%s'" % remote_path
             )
 
-        client = fos.get_client(fs)
+        client = fos.get_client(path=remote_path)
         return _get_url(client, remote_path, method=method, hours=hours)
 
     def update(self, filepaths=None, skip_failures=True):
@@ -440,7 +440,7 @@ class MediaCache(object):
         if fs == fos.FileSystem.LOCAL:
             return fs, filepath, True, None
 
-        client = fos.get_client(fs)
+        client = fos.get_client(path=filepath)
         relpath = client.get_local_path(filepath)
         local_path = os.path.join(self.media_dir, fs, relpath)
 
@@ -484,7 +484,13 @@ def _get_cache_result(local_path):
 
 def _read_cache_result(cache_path):
     with open(cache_path, "r") as f:
-        filepath, success_str, checksum = f.read().split(",")
+        chunks = f.read().split(",")
+        if len(chunks) > 3:
+            filepath = ",".join(chunks[:-2])
+            success_str, checksum = chunks[-2:]
+        else:
+            filepath, success_str, checksum = chunks
+
         success = success_str == "1"
         return filepath, success, checksum
 

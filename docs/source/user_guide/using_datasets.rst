@@ -513,8 +513,9 @@ properties that you can use to store label strings for the pixel values of
 
 The :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` property
 is a dictionary mapping field names to target dicts, each of which is a
-dictionary defining the mapping between pixel values and label strings for the
-|Segmentation| masks in the specified field of the dataset.
+dictionary defining the mapping between pixel values (2D masks) or RGB hex
+strings (3D masks) and label strings for the |Segmentation| masks in the
+specified field of the dataset.
 
 If all |Segmentation| fields in your dataset have the same semantics, you can
 store a single target dictionary in the
@@ -529,6 +530,8 @@ Mask targets are also automatically used, if available, by methods such as
 :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
 and :meth:`export() <fiftyone.core.collections.SampleCollection.export>` that
 require knowledge of the mask targets for a dataset or field(s).
+
+If you are working with 2D segmentation masks, specify target keys as integers:
 
 .. code-block:: python
     :linenos:
@@ -552,6 +555,35 @@ require knowledge of the mask targets for a dataset or field(s).
 
     # Edit an existing mask target
     dataset.mask_targets["ground_truth"][255] = "other"
+    dataset.save()  # must save after edits
+
+If you are working with RGB segmentation masks, specify target keys as RGB hex
+strings:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Set default mask targets
+    dataset.default_mask_targets = {"#499CEF": "cat", "#6D04FF": "dog"}
+
+    # Edit the default mask targets
+    dataset.default_mask_targets["#FF6D04"] = "person"
+    dataset.save()  # must save after edits
+
+    # Set mask targets for the `ground_truth` and `predictions` fields
+    dataset.mask_targets = {
+        "ground_truth": {"#499CEF": "cat", "#6D04FF": "dog"},
+        "predictions": {
+            "#499CEF": "cat", "#6D04FF": "dog", "#FF6D04": "person"
+        },
+    }
+
+    # Edit an existing mask target
+    dataset.mask_targets["ground_truth"]["#FF6D04"] = "person"
     dataset.save()  # must save after edits
 
 .. note::
@@ -2204,28 +2236,44 @@ attributes and rendered as such in the App:
 Semantic segmentation
 ---------------------
 
-The |Segmentation| class represents a semantic segmentation mask for an image.
-The mask itself is stored in the
-:attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute of the
-|Segmentation| object.
+The |Segmentation| class represents a semantic segmentation mask for an image
+with integer values encoding the semantic labels for each pixel in the image.
 
-The mask should be a 2D numpy array with integer values encoding the semantic
-labels for each pixel in the image. The array can be of any size; it is
-stretched as necessary to fit the image's extent when visualizing in the App.
+The mask can either be stored on disk and referenced via the
+:attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>` attribute or
+stored directly in the database via the
+:attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute.
+
+.. note::
+
+    It is recommended to store segmentations on disk and reference them via the
+    :attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>` attribute,
+    for efficiency.
+
+Segmentation masks can be stored in either of these formats:
+
+-   2D 8-bit or 16-bit images or numpy arrays
+-   3D 8-bit RGB images or numpy arrays
+
+Segmentation masks can have any size; they are stretched as necessary to fit
+the image's extent when visualizing in the App.
 
 .. code-block:: python
     :linenos:
 
+    import cv2
     import numpy as np
 
     import fiftyone as fo
 
     # Example segmentation mask
-    mask = np.random.randint(10, size=(128, 128))
+    mask_path = "/tmp/segmentation.png"
+    mask = np.random.randint(10, size=(128, 128), dtype=np.uint8)
+    cv2.imwrite(mask_path, mask)
 
     sample = fo.Sample(filepath="/path/to/image.png")
-
-    sample["segmentation"] = fo.Segmentation(mask=mask)
+    sample["segmentation1"] = fo.Segmentation(mask_path=mask_path)
+    sample["segmentation2"] = fo.Segmentation(mask=mask)
 
     print(sample)
 
@@ -2237,24 +2285,30 @@ stretched as necessary to fit the image's extent when visualizing in the App.
         'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
-        'segmentation': <Segmentation: {
-            'mask': array([[3, 1, 0, ..., 1, 1, 9],
-                   [5, 5, 4, ..., 1, 8, 7],
-                   [7, 7, 7, ..., 2, 2, 4],
+        'segmentation1': <Segmentation: {
+            'id': '6371d72425de9907b93b2a6b',
+            'tags': [],
+            'mask': None,
+            'mask_path': '/tmp/segmentation.png',
+        }>,
+        'segmentation2': <Segmentation: {
+            'id': '6371d72425de9907b93b2a6c',
+            'tags': [],
+            'mask': array([[8, 5, 5, ..., 9, 8, 5],
+                   [0, 7, 8, ..., 3, 4, 4],
+                   [5, 0, 2, ..., 0, 3, 4],
                    ...,
-                   [1, 0, 4, ..., 8, 8, 5],
-                   [4, 3, 8, ..., 1, 9, 8],
-                   [0, 2, 5, ..., 5, 3, 2]]),
+                   [4, 4, 4, ..., 3, 6, 6],
+                   [0, 9, 8, ..., 8, 0, 8],
+                   [0, 6, 8, ..., 2, 9, 1]], dtype=uint8),
+            'mask_path': None,
         }>,
     }>
 
-When you load datasets with |Segmentation| fields in the App, each pixel value
-is rendered as a different color (if possible) from the App's color pool.
-
-.. note::
-
-    The mask value `0` is a reserved "background" class that is rendered as
-    invisible in the App.
+When you load datasets with |Segmentation| fields containing 2D masks in the
+App, each pixel value is rendered as a different color (if possible) from the
+App's color pool. When you view RGB segmentation masks in the App, the mask
+colors are always used.
 
 .. note::
 
@@ -2263,36 +2317,59 @@ is rendered as a different color (if possible) from the App's color pool.
     dataset in the App, label strings will appear in the App's tooltip when you
     hover over pixels.
 
+.. note::
+
+    The pixel value `0` and RGB value `#000000` are reserved "background"
+    classes that are always rendered as invisible in the App.
+
+    If :ref:`mask targets <storing-mask-targets>` are provided, all observed
+    values not present in the targets are also rendered as invisible in the
+    App.
+
 .. _heatmaps:
 
 Heatmaps
 --------
 
-The |Heatmap| class represents a heatmap for an image. The map itself is stored
-in the :attr:`map <fiftyone.core.labels.Heatmap.map>` attribute of the
-|Heatmap| object.
+The |Heatmap| class represents a continuous-valued heatmap for an image.
 
-Maps should be 2D numpy arrays. By default, the map values are assumed to be in
-`[0, 1]` for floating point arrays and `[0, 255]` for integer-valued arrays,
-but you can specify a custom `[min, max]` range for a map by setting its
-optional :attr:`range <fiftyone.core.labels.Heatmap.range>` attribute.
+The map can either be stored on disk and referenced via the
+:attr:`map_path <fiftyone.core.labels.Heatmap.map_path>` attribute or stored
+directly in the database via the :attr:`map <fiftyone.core.labels.Heatmap.map>`
+attribute. When using the
+:attr:`map_path <fiftyone.core.labels.Heatmap.map_path>` attribute, heatmaps
+may be 8-bit or 16-bit grayscale images. When using the
+:attr:`map <fiftyone.core.labels.Heatmap.map>` attribute, heatmaps should be 2D
+numpy arrays. By default, the map values are assumed to be in `[0, 1]` for
+floating point arrays and `[0, 255]` for integer-valued arrays, but you can
+specify a custom `[min, max]` range for a map by setting its optional
+:attr:`range <fiftyone.core.labels.Heatmap.range>` attribute.
 
-The array can be of any size; it is stretched as necessary to fit the image's
-extent when visualizing in the App.
+Heatmaps can have any size; they are stretched as necessary to fit the
+image's extent when visualizing in the App.
+
+.. note::
+
+    It is recommended to store heatmaps on disk and reference them via the
+    :attr:`map_path <fiftyone.core.labels.Heatmap.map_path>` attribute, for
+    efficiency.
 
 .. code-block:: python
     :linenos:
 
+    import cv2
     import numpy as np
 
     import fiftyone as fo
 
     # Example heatmap
-    heatmap = np.random.randint(256, size=(128, 128), dtype=np.uint8)
+    map_path = "/tmp/heatmap.png"
+    map = np.random.randint(256, size=(128, 128), dtype=np.uint8)
+    cv2.imwrite(map_path, map)
 
     sample = fo.Sample(filepath="/path/to/image.png")
-
-    sample["heatmap"] = fo.Heatmap(map=heatmap)
+    sample["heatmap1"] = fo.Heatmap(map_path=map_path)
+    sample["heatmap2"] = fo.Heatmap(map=map)
 
     print(sample)
 
@@ -2304,16 +2381,25 @@ extent when visualizing in the App.
         'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
-        'heatmap': <Heatmap: {
-            'id': '6129495c9e526ca632663cca',
+        'heatmap1': <Heatmap: {
+            'id': '6371d9e425de9907b93b2a6f',
             'tags': [],
-            'map': array([[  9,  65,  55, ...,  75, 203,  49],
-                          [151,  50,   3, ..., 136, 145, 144],
-                          [242, 110, 150, ...,  90, 214, 151],
-                          ...,
-                          [197, 195, 140, ..., 245, 128, 153],
-                          [145, 124,   9, ..., 205, 254,  68],
-                          [107, 123,  29, ..., 247,  74,   2]], dtype=uint8),
+            'map': None,
+            'map_path': '/tmp/heatmap.png',
+            'range': None,
+        }>,
+        'heatmap2': <Heatmap: {
+            'id': '6371d9e425de9907b93b2a70',
+            'tags': [],
+            'map': array([[179, 249, 119, ...,  94, 213,  68],
+                   [190, 202, 209, ..., 162,  16,  39],
+                   [252, 251, 181, ..., 221, 118, 231],
+                   ...,
+                   [ 12,  91, 201, ...,  14,  95,  88],
+                   [164, 118, 171, ...,  21, 170,   5],
+                   [232, 156, 218, ..., 224,  97,  65]], dtype=uint8),
+            'map_path': None,
+            'range': None,
         }>,
     }>
 
@@ -2353,6 +2439,7 @@ dataset and configuring the App's colorscale in various ways on-the-fly:
 .. code-block:: python
     :linenos:
 
+    import os
     import numpy as np
     import fiftyone as fo
     import fiftyone.zoo as foz
@@ -2370,7 +2457,13 @@ dataset and configuring the App's colorscale in various ways on-the-fly:
     dataset.compute_metadata()
 
     for sample in dataset:
-        sample["heatmap"] = random_kernel(sample.metadata)
+        heatmap = random_kernel(sample.metadata)
+
+        # Convert to on-disk
+        map_path = os.path.join("/tmp/heatmaps", os.path.basename(sample.filepath))
+        heatmap.export_map(map_path, update=True)
+
+        sample["heatmap"] = heatmap
         sample.save()
 
     session = fo.launch_app(dataset)
@@ -2876,6 +2969,142 @@ schema of the attributes that you're storing.
 
     Did you know? You can view attribute values in the
     :ref:`App tooltip <app-sample-view>` by hovering over the objects.
+
+.. _label-conversions:
+
+Converting label types
+----------------------
+
+FiftyOne provides a number of utility methods to convert between different
+representations of certain label types, such as converting between
+:ref:`instance segmentations <instance-segmentation>`,
+:ref:`semantic segmentations <semantic-segmentation>`,
+and :ref:`polylines <polylines>`.
+
+Let's load some instance segmentations from the COCO dataset to see this in
+action:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        label_types=["segmentations"],
+        classes=["cat", "dog"],
+        label_field="instances",
+        max_samples=25,
+        only_matching=True,
+    )
+
+    sample = dataset.first()
+    detections = sample["instances"]
+
+For example, you can use
+:meth:`Detections.to_polylines() <fiftyone.core.labels.Detections.to_polylines>`
+to convert instance segmentations to polylines:
+
+.. code-block:: python
+    :linenos:
+
+    # Convert `Detections` to `Polylines`
+    polylines = detections.to_polylines(tolerance=2)
+    print(polylines)
+
+Or you can use
+:meth:`Detections.to_segmentation() <fiftyone.core.labels.Detections.to_segmentation>`
+to convert instance segmentations to semantic segmentation masks:
+
+.. code-block:: python
+    :linenos:
+
+    metadata = fo.ImageMetadata.build_for(sample.filepath)
+
+    # Convert `Detections` to `Segmentation`
+    segmentation = detections.to_segmentation(
+        frame_size=(metadata.width, metadata.height),
+        mask_targets={1: "cat", 2: "dog"},
+    )
+
+    # Export the segmentation to disk
+    segmentation.export_mask("/tmp/mask.png", update=True)
+
+    print(segmentation)
+
+Methods such as
+:meth:`Segmentation.to_detections() <fiftyone.core.labels.Segmentation.to_detections>`
+and :meth:`Segmentation.to_polylines() <fiftyone.core.labels.Segmentation.to_polylines>`
+also exist to transform semantic segmentations back into individual shapes.
+
+In addition, the :mod:`fiftyone.utils.labels` module contains a variety of
+utility methods for converting entire collections' labels between common
+formats:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.labels as foul
+
+    # Convert instance segmentations to semantic segmentations stored on disk
+    foul.objects_to_segmentations(
+        dataset,
+        "instances",
+        "segmentations",
+        output_dir="/tmp/segmentations",
+        mask_targets={1: "cat", 2: "dog"},
+    )
+
+    # Convert instance segmentations to polylines format
+    foul.instances_to_polylines(dataset, "instances", "polylines", tolerance=2)
+
+    # Convert semantic segmentations to instance segmentations
+    foul.segmentations_to_detections(
+        dataset,
+        "segmentations",
+        "instances2",
+        mask_targets={1: "cat", 2: "dog"},
+        mask_types="thing",  # give each connected region a separate instance
+    )
+
+    print(dataset)
+
+.. code-block:: shell
+
+    Name:        coco-2017-validation-25
+    Media type:  image
+    Num samples: 25
+    Persistent:  False
+    Tags:        []
+    Sample fields:
+        id:            fiftyone.core.fields.ObjectIdField
+        filepath:      fiftyone.core.fields.StringField
+        tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        instances:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        segmentations: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Segmentation)
+        polylines:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Polylines)
+        instances2:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+
+Note that, if your goal is to export the labels to disk, FiftyOne can
+:ref:`automatically coerce <export-label-coercion>` the labels into the correct
+format based on the type of the `label_field` and the `dataset_type` that you
+specify for the export without explicitly storing the transformed labels as a
+new field on your dataset:
+
+.. code-block:: python
+    :linenos:
+
+    # Export the instance segmentations in the `instances` field as semantic
+    # segmentation images on disk
+    dataset.export(
+        label_field="instances",
+        dataset_type=fo.types.ImageSegmentationDirectory,
+        labels_path="/tmp/masks",
+        mask_targets={1: "cat", 2: "dog"},
+    )
 
 .. _dynamic-attributes:
 
@@ -3879,3 +4108,28 @@ save the updated data in a single batch operation:
 
     print(dataset.count_label_tags())
     # {'low_confidence': 447}
+
+.. _set-label-values:
+
+Setting label values
+--------------------
+
+Often when working with |Label| fields, the edits you want to make may be
+naturally represented as a mapping between label IDs and corresponding
+attribute values to set on each |Label| instance. In such cases, you can use
+:meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
+to conveniently perform the updates:
+
+.. code-block:: python
+    :linenos:
+
+    # Grab some random label IDs
+    view = dataset.take(5, seed=51)
+    label_ids = view.values("predictions.detections.id", unwind=True)
+
+    # Populate a `random` attribute on all labels
+    values = {_id: True for _id in label_ids}
+    dataset.set_label_values("predictions.detections.random", values)
+
+    print(dataset.count_values("predictions.detections.random"))
+    # {True: 111, None: 5509}

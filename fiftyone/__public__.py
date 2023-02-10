@@ -1,7 +1,7 @@
 """
 FiftyOne's public interface.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,6 +16,8 @@ media_cache_config = _foc.load_media_cache_config()
 
 _foo.establish_db_conn(config)
 _foca.init_media_cache(media_cache_config)
+
+media_cache = _foca.media_cache
 
 from .core.aggregations import (
     Aggregation,
@@ -32,7 +34,7 @@ from .core.aggregations import (
     Sum,
     Values,
 )
-from .core.collections import SaveContext
+from .core.collections import DownloadContext, SaveContext
 from .core.config import AppConfig
 from .core.dataset import (
     Dataset,
@@ -56,6 +58,7 @@ from .core.fields import (
     ArrayField,
     BooleanField,
     ClassesField,
+    ColorField,
     DateField,
     DateTimeField,
     DictField,
@@ -72,13 +75,13 @@ from .core.fields import (
     GeoMultiLineStringField,
     GeoMultiPolygonField,
     IntField,
-    IntDictField,
     KeypointsField,
     ListField,
     ObjectIdField,
     PolylinePointsField,
+    ReferenceField,
     StringField,
-    TargetsField,
+    MaskTargetsField,
     VectorField,
 )
 from .core.frame import Frame
@@ -130,6 +133,7 @@ from .core.models import (
 from .core.odm import (
     DatasetAppConfig,
     KeypointSkeleton,
+    SidebarGroupDocument,
 )
 from .core.plots import (
     plot_confusion_matrix,
@@ -148,12 +152,17 @@ from .core.plots import (
     NumericalHistogram,
 )
 from .core.sample import Sample
+from .core.spaces import (
+    Space,
+    Panel,
+)
 from .core.stages import (
     Concat,
     Exclude,
     ExcludeBy,
     ExcludeFields,
     ExcludeFrames,
+    ExcludeGroups,
     ExcludeLabels,
     Exists,
     FilterField,

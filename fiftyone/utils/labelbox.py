@@ -2,7 +2,7 @@
 Utilities for working with annotations in
 `Labelbox format <https://labelbox.com/docs/exporting-data/export-format-detail>`_.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1630,6 +1630,15 @@ def export_to_labelbox(
                 "for video datasets"
             )
 
+    sample_collection.compute_metadata()
+
+    if label_fields:
+        media_fields = sample_collection._get_media_fields(
+            whitelist=label_fields
+        )
+        if media_fields:
+            sample_collection.download_media(media_fields=media_fields)
+
     # Export the labels
     annos = []
     with fou.ProgressBar() as pb:
@@ -1642,16 +1651,6 @@ def export_to_labelbox(
                     labelbox_id_field,
                 )
                 continue
-
-            # Compute metadata if necessary
-            if sample.metadata is None:
-                if is_video:
-                    metadata = fom.VideoMetadata.build_for(sample.filepath)
-                else:
-                    metadata = fom.ImageMetadata.build_for(sample.filepath)
-
-                sample.metadata = metadata
-                sample.save()
 
             # Get frame size
             if is_video:
@@ -1971,7 +1970,7 @@ def _get_nested_classifications(label):
 
 # https://labelbox.com/docs/automation/model-assisted-labeling#mask_annotations
 def _to_mask(name, label, data_row_id):
-    mask = np.asarray(label.mask)
+    mask = np.asarray(label.get_mask())
     if mask.ndim < 3 or mask.dtype != np.uint8:
         raise ValueError(
             "Segmentation masks must be stored as RGB color uint8 images"

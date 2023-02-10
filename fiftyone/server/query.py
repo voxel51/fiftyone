@@ -1,7 +1,7 @@
 """
-FiftyOne Server queries
+FiftyOne Server queries.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,14 +15,15 @@ import asyncio
 import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
-from bson import ObjectId
+from bson import ObjectId, json_util
 from dacite import Config, from_dict
-
 
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
+import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
+from fiftyone.core.odm import SavedViewDocument
 from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
@@ -59,7 +60,7 @@ class Group:
 
 @gql.type
 class Target:
-    target: int
+    target: str
     value: str
 
 
@@ -108,10 +109,53 @@ class EvaluationRun(Run):
 
 
 @gql.type
+class SavedView:
+    _id: gql.Private[t.Optional[ObjectId]]
+    _dataset_id: gql.Private[t.Optional[ObjectId]]
+    name: t.Optional[str]
+    description: t.Optional[str]
+    color: t.Optional[str]
+    slug: t.Optional[str]
+    view_stages: t.Optional[t.List[str]]
+    created_at: t.Optional[datetime]
+    last_modified_at: t.Optional[datetime]
+    last_loaded_at: t.Optional[datetime]
+
+    @gql.field
+    def id(self) -> t.Optional[str]:
+        if isinstance(self, ObjectId):
+            return str(self)
+        return str(self._id)
+
+    @gql.field
+    def dataset_id(self) -> t.Optional[str]:
+        if isinstance(self, ObjectId):
+            return None
+        return str(self._dataset_id)
+
+    @gql.field
+    def view_name(self) -> t.Optional[str]:
+        if isinstance(self, ObjectId):
+            return None
+        return self.name
+
+    @gql.field
+    def stage_dicts(self) -> t.Optional[BSONArray]:
+        return [json_util.loads(x) for x in self.view_stages]
+
+    @classmethod
+    def from_doc(cls, doc: SavedViewDocument):
+        stage_dicts = [json_util.loads(x) for x in doc.view_stages]
+        saved_view = from_dict(data_class=cls, data=doc.to_dict())
+        saved_view.stage_dicts = stage_dicts
+        return saved_view
+
+
+@gql.type
 class SidebarGroup:
     name: str
     paths: t.Optional[t.List[str]]
-    expanded: t.Optional[bool] = True
+    expanded: t.Optional[bool] = None
 
 
 @gql.type
@@ -134,12 +178,13 @@ class SidebarMode(Enum):
 
 @gql.type
 class DatasetAppConfig:
-    media_fields: t.List[str]
+    media_fields: t.Optional[t.List[str]]
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
     sidebar_mode: t.Optional[SidebarMode]
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
+    spaces: t.Optional[JSON]
 
 
 @gql.type
@@ -158,14 +203,29 @@ class Dataset:
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]
     frame_fields: t.Optional[t.List[SampleField]]
-    brain_methods: t.List[BrainRun]
-    evaluations: t.List[EvaluationRun]
+    brain_methods: t.Optional[t.List[BrainRun]]
+    evaluations: t.Optional[t.List[EvaluationRun]]
+    saved_view_slug: t.Optional[str]
+    saved_views: t.Optional[t.List[SavedView]]
+    saved_view_ids: gql.Private[t.Optional[t.List[gql.ID]]]
     version: t.Optional[str]
     view_cls: t.Optional[str]
+    view_name: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
+
+    @gql.field
+    def stages(self, slug: t.Optional[str] = None) -> t.Optional[BSONArray]:
+        if not slug:
+            return None
+
+        for view in self.saved_views:
+            if view.slug == slug:
+                return view.stage_dicts()
+
+        return None
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -177,10 +237,13 @@ class Dataset:
             NamedTargets(name=name, targets=_convert_targets(targets))
             for name, targets in doc.get("mask_targets", {}).items()
         ]
-        doc["sample_fields"] = _flatten_fields([], doc["sample_fields"])
+        doc["sample_fields"] = _flatten_fields(
+            [], doc.get("sample_fields", [])
+        )
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
+        doc["saved_views"] = doc.get("saved_views", [])
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -194,9 +257,17 @@ class Dataset:
 
     @classmethod
     async def resolver(
-        cls, name: str, view: t.Optional[BSONArray], info: Info
+        cls,
+        name: str,
+        view: t.Optional[BSONArray],
+        info: Info,
+        saved_view_slug: t.Optional[str] = gql.UNSET,
     ) -> t.Optional["Dataset"]:
-        return await serialize_dataset(name, view)
+        return await serialize_dataset(
+            dataset_name=name,
+            serialized_view=view,
+            saved_view_slug=saved_view_slug,
+        )
 
 
 dataset_dataloader = get_dataloader_resolver(
@@ -236,6 +307,7 @@ class AppConfig:
     theme: Theme
     timezone: t.Optional[str]
     use_frame_number: bool
+    spaces: t.Optional[JSON]
 
 
 @gql.type
@@ -269,7 +341,7 @@ class Query(fosa.AggregateQuery):
     def do_not_track(self) -> bool:
         return fo.config.do_not_track
 
-    dataset = gql.field(resolver=Dataset.resolver)
+    dataset: Dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset, str] = gql.field(
         resolver=get_paginator_resolver(
             Dataset, "created_at", DATASET_FILTER_STAGE, "datasets"
@@ -302,7 +374,9 @@ class Query(fosa.AggregateQuery):
         return None
 
     @gql.field
-    def teams_submission(self) -> bool:
+    def teams_submission(
+        self,
+    ) -> bool:  # TODO: check what this method should be
         return True
         isfile = os.path.isfile(foc.TEAMS_PATH)
         if isfile:
@@ -320,6 +394,13 @@ class Query(fosa.AggregateQuery):
     @gql.field
     def version(self) -> str:
         return foc.VERSION
+
+    @gql.field
+    def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
+        ds = fod.load_dataset(dataset_name)
+        return [
+            SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
+        ]
 
 
 def _flatten_fields(
@@ -339,20 +420,31 @@ def _flatten_fields(
     return result
 
 
-def _convert_targets(targets: t.Dict[str, str]) -> Target:
-    return [Target(target=int(k), value=v) for k, v in targets.items()]
+def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
+    return [Target(target=k, value=v) for k, v in targets.items()]
 
 
-async def serialize_dataset(name: str, serialized_view: BSONArray) -> Dataset:
+async def serialize_dataset(
+    dataset_name: str,
+    serialized_view: BSONArray,
+    saved_view_slug: t.Optional[str] = None,
+) -> Dataset:
     def run():
-        dataset = fo.load_dataset(name)
+        dataset = fod.load_dataset(dataset_name)
         dataset.reload()
-        view = fov.DatasetView._build(dataset, serialized_view or [])
+        view_name = None
+        try:
+            doc = dataset._get_saved_view_doc(saved_view_slug, slug=True)
+            view = dataset.load_saved_view(doc.name)
+            view_name = view.name
+        except:
+            view = fov.DatasetView._build(dataset, serialized_view or [])
 
-        doc = dataset._doc.to_dict()
+        doc = dataset._doc.to_dict(no_dereference=True)
         Dataset.modifier(doc)
         data = from_dict(Dataset, doc, config=Config(check_types=False))
         data.view_cls = None
+        data.view_name = view_name
 
         collection = dataset.view()
         if view is not None:

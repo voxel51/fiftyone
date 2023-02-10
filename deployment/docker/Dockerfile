@@ -1,28 +1,24 @@
 # Dockerfile for building an image with a FiftyOne Team App release atop a
 # Debian-based Linux distribution.
 #
-# REQUIRED BUILD ARGs::
-#
-#   TOKEN: Your Teams client install token
-#
 # OPTIONAL BUILD ARGs::
 #
-#   BASE_IMAGE (ubuntu:20.04): The Debian-based image to build from
-#   PYTHON_VERSION (3.9): The Python version to install. Must be >= 3.9
-#   ROOT_DIR (/fiftyone): The name of the directory within the container that
-#       should be mounted when running
+#   PYTHON_VERSION (3.10): The Python version to install. Must be >= 3.9
 #
 # REQUIRED RUNTIME ENV VARS::
 #
 #   FIFTYONE_DATABASE_URI: your MongoDB database URI
 #   FIFTYONE_TEAMS_CLIENT_ID: your application client ID
 #   FIFTYONE_TEAMS_ORGANIZATION: your organization's authentication ID
+#
+# OPTIONAL RUNTIME ENV VARS::
+#
 #   (your cloud storage credentials)
 #
 # Example usage::
 #
 #   # Build
-#   docker build \
+#   DOCKER_BUILDKIT=1 docker build \
 #       --build-arg TOKEN=${TOKEN} \
 #       -t voxel51/fiftyone-teams-app .
 #
@@ -33,7 +29,7 @@
 #       -e FIFTYONE_TEAMS_CLIENT_ID=... \
 #       -e FIFTYONE_TEAMS_ORGANIZATION=... \
 #       -e AWS_CONFIG_FILE=/fiftyone/aws-credentials.ini \
-#       -v ${SHARED_DIR}:/fiftyone \
+#       -v /path/to/aws-credentials.ini:/fiftyone/aws-credentials.ini \
 #       -p 5151:5151 \
 #       -it voxel51/fiftyone-teams-app
 #
@@ -41,95 +37,46 @@
 # voxel51.com
 #
 
-# The base image to build from; must be Debian-based (eg Ubuntu)
-ARG BASE_IMAGE=ubuntu:20.04
-FROM $BASE_IMAGE
+ARG PYTHON_VERSION=3.10
 
-# The Python version to install. Must be >= 3.9
-ARG PYTHON_VERSION=3.9
+FROM python:${PYTHON_VERSION}-buster as builder
 
-#
-# Install system packages
-#
+COPY ./*.whl .
 
-RUN apt -y update \
-    && apt -y --no-install-recommends install software-properties-common \
-    && add-apt-repository -y ppa:deadsnakes/ppa \
-    && apt -y update \
-    && apt -y upgrade \
-    && apt -y --no-install-recommends install tzdata \
-    && TZ=Etc/UTC \
-    && apt -y --no-install-recommends install \
-        build-essential \
-        ca-certificates \
-        cmake \
-        cmake-data \
-        pkg-config \
-        libcurl4 \
-        libsm6 \
-        libxext6 \
-        libssl-dev \
-        libffi-dev \
-        libxml2-dev \
-        libxslt1-dev \
-        zlib1g-dev \
-        unzip \
-        curl \
-        wget \
-        python${PYTHON_VERSION} \
-        python${PYTHON_VERSION}-dev \
-        python${PYTHON_VERSION}-distutils \
-        ffmpeg \
-    && ln -s /usr/bin/python${PYTHON_VERSION} /usr/local/bin/python \
-    && ln -s /usr/local/lib/python${PYTHON_VERSION} /usr/local/lib/python \
-    && curl https://bootstrap.pypa.io/get-pip.py | python \
-    && rm -rf /var/lib/apt/lists/*
+RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython \
+    && pip wheel --wheel-dir=/tmp/wheels ./*.whl
 
-#
-# Install Python dependencies
-#
-# Other packages you might want:
-#   torch torchvision: Torch model training/zoo datasets
-#   tensorflow tensorflow-datasets: TF model training/zoo datasets
-#   pycocotools: COCO-style evaluation
-#   notebook>=5.3 ipywidgets>=7.5: Jupyter notebooks
-#   flash>=0.4: Lightning Flash integration
-#   apache_beam: Apache Beam integration
-#   labelbox: Labelbox integration
-#   shapely: Polyline evaluation
-#   rasterio: GeoTIFF images
-#   pydicom: DICOM images
-#
 
-RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython
+FROM python:${PYTHON_VERSION}-slim-buster as release
 
-#
-# Install FiftyOne Teams
-#
+WORKDIR /opt
 
-# Your install token
-ARG TOKEN
-
-# The Teams App version to install, or "latest"
-ARG TEAMS_APP_VERSION=0.1.7
-
-RUN if [ "${TEAMS_APP_VERSION}" = "latest" ]; then \
-        pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai fiftyone-teams-app; \
-    else \
-        pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai fiftyone-teams-app==${TEAMS_APP_VERSION}; \
-    fi
-
-#
-# Configure shared storage
-#
-
-ENV FIFTYONE_MEDIA_CACHE_SIZE_BYTES=-1 \
+ENV FIFTYONE_DATABASE_ADMIN=false \
+    FIFTYONE_DATABASE_NAME=fiftyone \
     FIFTYONE_MEDIA_CACHE_APP_IMAGES=false \
-    FIFTYONE_DATABASE_ADMIN=true \
-    FIFTYONE_DATABASE_NAME=fiftyone
+    FIFTYONE_MEDIA_CACHE_SIZE_BYTES=-1 \
+    TZ=Etc/UTC \
+    VIRTUAL_ENV=/opt/fiftyone-teams-app
+
+# Update the base image, install ffmpeg, create the voxel51 user
+RUN apt -y update && apt -y upgrade \
+    && apt install -y --no-install-recommends ffmpeg \
+    && apt clean && rm -rf /var/lib/apt/lists/* \
+    && useradd -l -U -d /opt voxel51 \
+    && python3 -m venv "${VIRTUAL_ENV}"
+
+# Activate the virtual env
+ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+
+# Install fiftyone-teams-app and chown everything to voxel51
+RUN --mount=type=cache,from=builder,target=/builder,ro \
+    pip --no-cache-dir install --pre --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app \
+    && chown --changes --silent --no-dereference --recursive voxel51:voxel51 /opt
+
+# run as the voxel51 user
+USER voxel51
 
 #
 # Serve the app
 #
-
-CMD hypercorn fiftyone.teams.app:app --bind 0.0.0.0:"${FIFTYONE_DEFAULT_APP_PORT:-5151}"
+CMD hypercorn fiftyone.teams.app:app --bind "${FIFTYONE_DEFAULT_APP_ADDRESS:-0.0.0.0}":"${FIFTYONE_DEFAULT_APP_PORT:-5151}"

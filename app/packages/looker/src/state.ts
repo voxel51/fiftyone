@@ -1,17 +1,17 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { Overlay } from "./overlays/base";
 
-import { Schema, Stage } from "@fiftyone/utilities";
+import { AppError, Schema, Stage } from "@fiftyone/utilities";
 
 // vite won't import these from fou
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 export interface Coloring {
   by: "field" | "instance" | "label";
-  pool: string[];
+  pool: readonly string[];
   scale: RGB[];
   seed: number;
   defaultMaskTargets?: MaskTargets;
@@ -26,12 +26,13 @@ export interface Sample {
   metadata: {
     width: number;
     height: number;
+    mime_type?: string;
   };
   id: string;
-  media_type: "image" | "image";
   filepath: string;
   tags: string[];
   _label_tags: string[];
+  _media_type: "image" | "video" | "point-cloud";
 }
 
 export interface LabelData {
@@ -42,9 +43,20 @@ export interface LabelData {
   index?: number;
 }
 
-export interface MaskTargets {
-  [key: number]: string;
-}
+type MaskLabel = string;
+export type IntMaskTargets = {
+  [intKey: string]: MaskLabel;
+};
+
+type HexColor = string;
+
+export type RgbMaskTargets = {
+  [hexKey: HexColor]: {
+    label: MaskLabel;
+    intTarget: number;
+  };
+};
+export type MaskTargets = IntMaskTargets | RgbMaskTargets;
 
 export type BufferRange = [number, number];
 export type Buffers = BufferRange[];
@@ -208,7 +220,7 @@ export interface BaseState {
   setZoom: boolean;
   hasDefaultZoom: boolean;
   SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
-  error: boolean | number;
+  error: boolean | number | AppError;
   destroyed: boolean;
   reloading: boolean;
 }

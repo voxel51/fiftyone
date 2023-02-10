@@ -1,5 +1,3 @@
-import { InfoIcon, useTheme } from "@fiftyone/components";
-import { useEventHandler } from "@fiftyone/state";
 import React, {
   MutableRefObject,
   useEffect,
@@ -10,6 +8,8 @@ import React, {
 import { atom, useRecoilState } from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
+import { InfoIcon, useTheme } from "@fiftyone/components";
+import { Field } from "@fiftyone/utilities";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -90,18 +90,26 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
 }
 
 function toLabel(path, nested) {
-  let label = !nested ? path : path.split(".").pop();
-  return label.replaceAll("_", " ");
+  return !nested ? path : path.split(".").pop();
 }
 
 const FieldInfoIcon = (props) => <InfoIcon {...props} style={{ opacity: 1 }} />;
-export default function FieldLabelAndInfo({
+
+type FieldLabelAndInfo = {
+  nested?: boolean 
+  field: Field
+  color: string
+  expandedPath?: string 
+  template: (unknown) => JSX.Element
+}
+
+const FieldLabelAndInfo = ({
   nested,
   field,
   color,
   expandedPath,
   template,
-}) {
+}: FieldLabelAndInfo) => {
   const fieldInfo = useFieldInfo(field, nested, { expandedPath, color });
   return (
     <>
@@ -110,6 +118,8 @@ export default function FieldLabelAndInfo({
     </>
   );
 }
+
+export default FieldLabelAndInfo
 
 const FieldInfoExpandedContainer = styled.div`
   background: ${({ theme }) => {
@@ -521,7 +531,7 @@ function convertTypeToDocLink(type) {
   }
   const fullPath = [...modulePath, className].join(".");
 
-  const BASE = "https://voxel51.com/docs/fiftyone/api/";
+  const BASE = "https://docs.voxel51.com/api/";
 
   if (className) {
     return {

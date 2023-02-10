@@ -9,18 +9,18 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useErrorHandler } from "react-error-boundary";
 import { usePaginationFragment } from "react-relay";
 import {
   useRecoilCallback,
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
-import { useErrorHandler } from "react-error-boundary";
 import { v4 as uuid } from "uuid";
 
 import { freeVideos, zoomAspectRatio } from "@fiftyone/looker";
-import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
 import { groupPaginationFragment } from "@fiftyone/state";
 
 const process = (

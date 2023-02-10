@@ -1,5 +1,6 @@
 
 **/*.DS_store
+.vscode
 
 __pycache__
 *.py[cod]
@@ -24,4 +25,9 @@ dist/
 /docker/README.pdf
 /bin
 /lib
+coverage.xml
+.coverage.*
 pyvenv.cfg
+.python-version
+
+*.whl

@@ -1,12 +1,13 @@
 """
 Definition of the `fiftyone` command-line interface (CLI).
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import argparse
 from collections import defaultdict
+from cryptography.fernet import Fernet
 from datetime import datetime
 import json
 import os
@@ -2773,10 +2774,31 @@ class UtilsCommand(Command):
         _register_command(
             subparsers, "transform-videos", TransformVideosCommand
         )
+        _register_command(
+            subparsers, "generate-encryption-key", GenerateEncryptionKey
+        )
 
     @staticmethod
     def execute(parser, args):
         parser.print_help()
+
+
+class GenerateEncryptionKey(Command):
+    """Generates a Fernet encryption key and prints it to stdout.
+
+    Examples::
+
+        # Generates an encryption key and prints it to stdout
+        fiftyone utils generate-encryption-key
+    """
+
+    @staticmethod
+    def setup(parser):
+        pass
+
+    @staticmethod
+    def execute(parser, args):
+        print(Fernet.generate_key().decode())
 
 
 class ComputeMetadataCommand(Command):

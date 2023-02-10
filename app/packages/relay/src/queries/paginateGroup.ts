@@ -1,20 +1,20 @@
 import { graphql } from "react-relay";
 
-export default graphql`
+import r from "../resolve";
+
+export default r(graphql`
   query paginateGroupQuery(
     $count: Int = 20
     $cursor: String = null
     $dataset: String!
     $view: BSONArray!
     $filter: SampleFilter!
-    $pinnedSampleFilter: SampleFilter!
   ) {
     ...paginateGroup_query
-    ...paginateGroupPinnedSample_query
   }
-`;
+`);
 
-export const paginateGroupPaginationFragment = graphql`
+export const paginateGroupPaginationFragment = r(graphql`
   fragment paginateGroup_query on Query
   @refetchable(queryName: "paginateGroupPageQuery") {
     samples(
@@ -60,39 +60,4 @@ export const paginateGroupPaginationFragment = graphql`
       }
     }
   }
-`;
-
-export const paginateGroupPinnedSampleFragment = graphql`
-  fragment paginateGroupPinnedSample_query on Query @inline {
-    sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {
-      __typename
-      ... on ImageSample {
-        id
-        aspectRatio
-        sample
-        urls {
-          field
-          url
-        }
-      }
-      ... on PointCloudSample {
-        id
-        sample
-        urls {
-          field
-          url
-        }
-      }
-      ... on VideoSample {
-        id
-        aspectRatio
-        frameRate
-        sample
-        urls {
-          field
-          url
-        }
-      }
-    }
-  }
-`;
+`);

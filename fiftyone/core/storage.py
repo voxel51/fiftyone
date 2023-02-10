@@ -1,7 +1,7 @@
 """
 File storage utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -31,6 +31,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
+import fiftyone.internal.credentials as foc
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,10 @@ s3_client = None
 gcs_client = None
 minio_client = None
 http_client = None
+bucket_regions = {}
+region_clients = {}
 client_lock = threading.Lock()
+creds_manager = None
 
 minio_alias_prefix = None
 minio_endpoint_prefix = None
@@ -54,9 +58,15 @@ def init_storage():
     """Initializes storage client use."""
     global minio_alias_prefix
     global minio_endpoint_prefix
+    global creds_manager
 
     minio_alias_prefix = None
     minio_endpoint_prefix = None
+
+    if foc.has_encryption_key():
+        creds_manager = foc.CloudCredentialsManager()
+    else:
+        creds_manager = None
 
     credentials = _load_minio_credentials()
     if not credentials:
@@ -77,6 +87,11 @@ class FileSystem(object):
     MINIO = "minio"
     HTTP = "http"
     LOCAL = "local"
+
+
+_FILE_SYSTEMS_WITH_BUCKETS = {FileSystem.S3, FileSystem.GCS, FileSystem.MINIO}
+_FILE_SYSTEMS_WITH_REGIONAL_CLIENTS = {FileSystem.S3, FileSystem.MINIO}
+_UNKNOWN_REGION = "unknown"
 
 
 class S3StorageClient(etast.S3StorageClient):
@@ -209,11 +224,11 @@ def get_bucket_name(path):
         the bucket name string
     """
     fs = get_file_system(path)
-    if fs not in [FileSystem.S3, FileSystem.GCS, FileSystem.MINIO]:
+    if fs not in _FILE_SYSTEMS_WITH_BUCKETS:
         return ""
 
     path = split_prefix(path)[1]
-    return path.split(sep(path))[0]
+    return path.split("/")[0]
 
 
 def is_local(path):
@@ -264,55 +279,26 @@ def normalize_path(path):
     return path.rstrip("/")
 
 
-def get_client(fs):
-    """Returns the storage client for the given file system.
+def get_client(fs=None, path=None):
+    """Returns the storage client for the given file system or path.
+
+    If a ``path`` is provided, a region-specific client is returned, if
+    applicable. Otherwise, the client for the given file system is returned.
 
     Args:
-        fs: a :class:`FileSystem` enum
+        fs (None): a :class:`FileSystem` value
+        path (None): a path
 
     Returns:
         a :class:`eta.core.storage.StorageClient`
+
+    Raises:
+        ValueError: if no suitable client could be constructed
     """
     # Client creation may not be thread-safe, so we lock for safety
     # https://stackoverflow.com/a/61943955/16823653
     with client_lock:
-        return _get_client(fs)
-
-
-def _get_client(fs):
-    if fs == FileSystem.S3:
-        global s3_client
-
-        if s3_client is None:
-            s3_client = _make_client(fs)
-
-        return s3_client
-
-    if fs == FileSystem.GCS:
-        global gcs_client
-
-        if gcs_client is None:
-            gcs_client = _make_client(fs)
-
-        return gcs_client
-
-    if fs == FileSystem.MINIO:
-        global minio_client
-
-        if minio_client is None:
-            minio_client = _make_client(fs)
-
-        return minio_client
-
-    if fs == FileSystem.HTTP:
-        global http_client
-
-        if http_client is None:
-            http_client = _make_client(fs)
-
-        return http_client
-
-    raise ValueError("Unsupported file system '%s'" % fs)
+        return _get_client(fs=fs, path=path)
 
 
 def get_url(path, **kwargs):
@@ -334,7 +320,7 @@ def get_url(path, **kwargs):
     if fs == FileSystem.HTTP:
         return path
 
-    client = get_client(fs)
+    client = get_client(path=path)
 
     if not hasattr(client, "generate_signed_url"):
         raise ValueError(
@@ -660,14 +646,14 @@ class LocalFiles(object):
                 with open(local_path, "w") as f:
                     f.write("Hello, world!")
 
-        with fos.LocalFile(remote_paths, "r") as local_path:
+        with fos.LocalFiles(remote_paths, "r") as local_paths:
             for local_path in local_paths:
                 with open(local_path, "r") as f:
                     print(r.read())
 
     Args:
         paths: a list of filepaths, or a dict mapping keys to filepaths
-        mode ("r"): the mode. Supported values are ``("r", "w")``
+        mode ("r"): the mode. Supported values are ``("r", "w", "rw")``
         basedir (None): an optional directory in which to create temporary
             local files
         skip_failures (False): whether to gracefully continue without raising
@@ -688,7 +674,7 @@ class LocalFiles(object):
         type_str="files",
         quiet=None,
     ):
-        if mode not in ("r", "w"):
+        if not set(mode).issubset("rw"):
             raise ValueError("Unsupported mode '%s'" % mode)
 
         if basedir is not None and not is_local(basedir):
@@ -747,7 +733,7 @@ class LocalFiles(object):
         self._local_paths = local_paths
         self._remote_paths = remote_paths
 
-        if self._mode == "r" and self._remote_paths:
+        if "r" in self._mode and self._remote_paths:
             progress = not self.quiet
 
             if progress and self._type_str:
@@ -767,7 +753,7 @@ class LocalFiles(object):
             return
 
         try:
-            if self._mode == "w" and self._local_paths:
+            if "w" in self._mode and self._local_paths:
                 progress = not self.quiet
 
                 if progress and self._type_str:
@@ -781,6 +767,78 @@ class LocalFiles(object):
                 )
         finally:
             etau.delete_dir(self._tmpdir)
+
+
+class DeleteFiles(object):
+    """Context manager for efficiently deleting local or remote files.
+
+    When local filepaths are provided to this context manager, they are
+    immediately deleted.
+
+    When remote filepaths are provided, they are efficiently deleted in a batch
+    when the context exits.
+
+    Example usage::
+
+        import fiftyone.core.storage as fos
+
+        remote_paths = [
+            "s3://bucket/file1.txt",
+            "s3://bucket/file2.txt",
+        ]
+
+        with fos.DeleteFiles() as df:
+            for remote_path in remote_paths:
+                df.delete(remote_path)
+
+    Args:
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote deletion fails
+        type_str ("files"): the type of file being deleted. Used only for log
+            messages. If None/empty, nothing will be logged
+        quiet (None): whether to display (False) or not display (True) a
+            progress bar tracking the status of any uploads. By default,
+            ``fiftyone.config.show_progress_bars`` is used to set this
+    """
+
+    def __init__(self, skip_failures=False, type_str="files", quiet=None):
+        self._skip_failures = skip_failures
+        self._type_str = type_str
+        self._quiet = quiet
+        self._delpaths = None
+
+    @property
+    def quiet(self):
+        """Whether this instance will log the status of any deletions."""
+        return _parse_quiet(self._quiet)
+
+    def delete(self, path):
+        """Deletes the given file.
+
+        Args:
+            path: the filepath
+        """
+        if is_local(path):
+            etau.delete_file(path)
+        else:
+            self._delpaths.append(path)
+
+    def __enter__(self):
+        self._delpaths = []
+        return self
+
+    def __exit__(self, *args):
+        if self._delpaths:
+            progress = not self.quiet
+
+            if progress and self._type_str:
+                logger.info("Uploading %s...", self._type_str)
+
+            delete_files(
+                self._delpaths,
+                skip_failures=self._skip_failures,
+                progress=progress,
+            )
 
 
 class FileWriter(object):
@@ -907,6 +965,39 @@ class FileWriter(object):
         """
         return [self.get_local_path(p) for p in filepaths]
 
+    def register_local_path(self, filepath, local_path):
+        """Registers the local path for the given filepath.
+
+        If the provided ``filepath`` is remote, it will be populated from the
+        ``local_path`` you provide in the exit context's upload.
+
+        If the provided ``filepath`` is local, this method has no effect.
+
+        Args:
+            filepath: a filepath
+            local_path: a corresponding local path
+        """
+        if is_local(filepath):
+            return
+
+        self._inpaths.append(local_path)
+        self._outpaths.append(filepath)
+
+    def register_local_paths(self, filepaths, local_paths):
+        """Registers the local paths for the given filepaths.
+
+        Any remote paths in ``filepaths`` will be populated from the
+        corresponding ``local_paths`` in the exit context's upload.
+
+        Any local filepaths in ``filepaths`` are skipped.
+
+        Args:
+            filepaths: a list of filepaths
+            local_paths: a list of corresponding local paths
+        """
+        for filepath, local_path in zip(filepaths, local_paths):
+            self.register_local_path(filepath, local_path)
+
 
 @contextmanager
 def open_file(path, mode="r"):
@@ -945,7 +1036,7 @@ def open_file(path, mode="r"):
 
         return
 
-    client = get_client(fs)
+    client = get_client(path=path)
     is_writing = mode in ("w", "wb")
 
     if mode == "r":
@@ -1108,7 +1199,7 @@ def exists(path):
     if fs == FileSystem.LOCAL:
         return os.path.exists(path)
 
-    client = get_client(fs)
+    client = get_client(path=path)
 
     if os.path.splitext(path)[1]:
         return client.is_file(path)
@@ -1130,7 +1221,7 @@ def isfile(path):
     if fs == FileSystem.LOCAL:
         return os.path.isfile(path)
 
-    client = get_client(fs)
+    client = get_client(path=path)
     return client.is_file(path)
 
 
@@ -1150,7 +1241,7 @@ def isdir(dirpath):
     if fs == FileSystem.LOCAL:
         return os.path.isdir(dirpath)
 
-    client = get_client(fs)
+    client = get_client(path=dirpath)
     return client.is_folder(dirpath)
 
 
@@ -1218,7 +1309,7 @@ def ensure_empty_dir(dirpath, cleanup=False):
         etau.ensure_empty_dir(dirpath, cleanup=cleanup)
         return
 
-    client = get_client(fs)
+    client = get_client(path=dirpath)
 
     if cleanup:
         client.delete_folder(dirpath)
@@ -1379,7 +1470,7 @@ def list_files(
             sort=sort,
         )
 
-    client = get_client(fs)
+    client = get_client(path=dirpath)
 
     filepaths = client.list_files_in_folder(dirpath, recursive=recursive)
 
@@ -1444,12 +1535,12 @@ def get_glob_matches(glob_patt):
     if fs == FileSystem.LOCAL:
         return etau.get_glob_matches(glob_patt)
 
-    client = get_client(fs)
-
     root, found_special = get_glob_root(glob_patt)
 
     if not found_special:
         return [glob_patt]
+
+    client = get_client(path=root)
 
     filepaths = client.list_files_in_folder(root, recursive=True)
     return sorted(
@@ -1647,7 +1738,7 @@ def delete_dir(dirpath):
         etau.delete_dir(dirpath)
         return
 
-    client = get_client(fs)
+    client = get_client(path=dirpath)
     client.delete_folder(dirpath)
 
 
@@ -1709,8 +1800,7 @@ def upload_media(
     remote_paths = [paths_map[f] for f in filepaths]
 
     if not overwrite:
-        fs = get_file_system(remote_dir)
-        client = get_client(fs)
+        client = get_client(path=remote_dir)
         existing = set(client.list_files_in_folder(remote_dir, recursive=True))
         paths_map = {f: r for f, r in paths_map.items() if r not in existing}
 
@@ -1761,6 +1851,105 @@ def run(fcn, tasks, num_workers=None, progress=False):
     return results
 
 
+def clear_clients():
+    global s3_client
+    global gcs_client
+    global minio_client
+    global bucket_regions
+    global region_clients
+    s3_client = None
+    gcs_client = None
+    minio_client = None
+    bucket_regions.clear()
+    region_clients.clear()
+
+
+def _get_client(fs=None, path=None):
+    _check_managed_credentials()
+
+    if path is not None:
+        fs = get_file_system(path)
+    elif fs is None:
+        raise ValueError("You must provide either a file system or a path")
+
+    if path is not None and fs in _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS:
+        bucket = get_bucket_name(path)
+        return _get_regional_client(fs, bucket)
+
+    return _get_default_client(fs)
+
+
+def _get_regional_client(fs, bucket):
+    global bucket_regions
+    global region_clients
+
+    if fs not in bucket_regions:
+        bucket_regions[fs] = {}
+
+    if fs not in region_clients:
+        region_clients[fs] = {}
+
+    region = bucket_regions[fs].get(bucket, None)
+    if region is None:
+        region = _get_region(fs, bucket)
+        bucket_regions[fs][bucket] = region
+
+    client = region_clients[fs].get(region, None)
+
+    if client is None:
+        if region == _UNKNOWN_REGION:
+            client = _get_default_client(fs)
+        else:
+            client = _make_regional_client(fs, region)
+
+        region_clients[fs][region] = client
+
+    return client
+
+
+def _get_default_client(fs):
+    if fs == FileSystem.S3:
+        global s3_client
+        if s3_client is None:
+            s3_client = _make_client(fs)
+
+        return s3_client
+
+    if fs == FileSystem.GCS:
+        global gcs_client
+        if gcs_client is None:
+            gcs_client = _make_client(fs)
+
+        return gcs_client
+
+    if fs == FileSystem.MINIO:
+        global minio_client
+        if minio_client is None:
+            minio_client = _make_client(fs)
+
+        return minio_client
+
+    if fs == FileSystem.HTTP:
+        global http_client
+
+        if http_client is None:
+            http_client = _make_client(fs)
+
+        return http_client
+
+    raise ValueError("Unsupported file system '%s'" % fs)
+
+
+def _get_region(fs, bucket):
+    client = _get_default_client(fs)
+
+    try:
+        resp = client._client.get_bucket_location(Bucket=bucket)
+        return resp["LocationConstraint"] or "us-east-1"
+    except:
+        return _UNKNOWN_REGION
+
+
 def _make_client(fs, num_workers=None):
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
@@ -1788,26 +1977,83 @@ def _make_client(fs, num_workers=None):
     raise ValueError("Unsupported file system '%s'" % fs)
 
 
+def _make_regional_client(fs, region, num_workers=None):
+    if num_workers is None:
+        num_workers = fo.media_cache_config.num_workers
+
+    kwargs = {}
+
+    if num_workers is not None and num_workers > 10:
+        kwargs["max_pool_connections"] = num_workers
+
+    if fs == FileSystem.S3:
+        credentials = _load_s3_credentials() or {}
+        credentials["region"] = region
+        return S3StorageClient(credentials=credentials, **kwargs)
+
+    if fs == FileSystem.MINIO:
+        credentials = _load_minio_credentials() or {}
+        credentials["region"] = region
+        return MinIOStorageClient(credentials=credentials, **kwargs)
+
+    raise ValueError("Unsupported file system '%s'" % fs)
+
+
+def _check_managed_credentials():
+    if creds_manager is None:
+        return
+
+    if creds_manager.is_expired:
+        clear_clients()
+
+
+def _get_managed_credentials(provider):
+    if creds_manager is None:
+        return None
+
+    return creds_manager.get_stored_credentials(provider)
+
+
 def _load_s3_credentials():
+    credentials_path = _get_managed_credentials("AWS")
+    profile = None
+
+    if not credentials_path:
+        credentials_path = fo.media_cache_config.aws_config_file
+        profile = fo.media_cache_config.aws_profile
+
     credentials, _ = S3StorageClient.load_credentials(
-        credentials_path=fo.media_cache_config.aws_config_file,
-        profile=fo.media_cache_config.aws_profile,
+        credentials_path=credentials_path, profile=profile
     )
+
     return credentials
 
 
 def _load_gcs_credentials():
+    credentials_path = _get_managed_credentials("GCP")
+
+    if not credentials_path:
+        credentials_path = fo.media_cache_config.google_application_credentials
+
     credentials, _ = GoogleCloudStorageClient.load_credentials(
-        credentials_path=fo.media_cache_config.google_application_credentials
+        credentials_path=credentials_path
     )
+
     return credentials
 
 
 def _load_minio_credentials():
+    credentials_path = _get_managed_credentials("MINIO")
+    profile = None
+
+    if not credentials_path:
+        credentials_path = fo.media_cache_config.minio_config_file
+        profile = fo.media_cache_config.minio_profile
+
     credentials, _ = MinIOStorageClient.load_credentials(
-        credentials_path=fo.media_cache_config.minio_config_file,
-        profile=fo.media_cache_config.minio_profile,
+        credentials_path=credentials_path, profile=profile
     )
+
     return credentials
 
 
@@ -1886,21 +2132,21 @@ def _copy_file(inpath, outpath, cleanup=False):
                 shutil.copy(inpath, outpath)
         else:
             # Local -> remote
-            client = get_client(fso)
+            client = get_client(path=outpath)
             client.upload(inpath, outpath)
             if cleanup:
                 os.remove(inpath)
     elif fso == FileSystem.LOCAL:
         # Remote -> local
-        client = get_client(fsi)
+        client = get_client(path=inpath)
         client.download(inpath, outpath)
         if cleanup:
             client.delete(inpath)
     else:
         # Remote -> remote
-        clienti = get_client(fsi)
+        clienti = get_client(path=inpath)
         b = clienti.download_bytes(inpath)
-        cliento = get_client(fso)
+        cliento = get_client(path=outpath)
         cliento.upload_bytes(b, outpath)
         if cleanup:
             clienti.delete(inpath)
@@ -1913,7 +2159,7 @@ def _delete_file(filepath):
         etau.delete_file(filepath)
         return
 
-    client = get_client(fs)
+    client = get_client(path=filepath)
     client.delete(filepath)
 
 

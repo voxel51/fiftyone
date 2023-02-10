@@ -1,7 +1,7 @@
 """
 FiftyOne Server tags and tagging
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -31,8 +31,8 @@ def get_tag_view(
 ) -> foc.SampleCollection:
     view = fosv.get_view(
         dataset,
-        stages,
-        filters,
+        stages=stages,
+        filters=filters,
         extended_stages=extended_stages,
         sample_filter=sample_filter,
     )

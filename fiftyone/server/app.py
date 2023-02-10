@@ -1,13 +1,15 @@
 """
 FiftyOne Server app.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from datetime import date, datetime
 import os
+import pathlib
 
+import eta.core.utils as etau
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.base import (
@@ -32,13 +34,21 @@ from fiftyone.server.routes import routes
 from fiftyone.server.scalars import Date, DateTime
 
 
+etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
+
+
 class Static(StaticFiles):
     async def get_response(self, path: str, scope: Scope) -> Response:
         response = await super().get_response(path, scope)
 
         if response.status_code == 404:
-            full_path, stat_result = self.lookup_path("index.html")
-            return self.file_response(full_path, stat_result, scope)
+            path = pathlib.Path(
+                *pathlib.Path(path).parts[2:]
+            )  # strip dataset/{name}
+            response = await super().get_response(path, scope)
+            if response.status_code == 404:
+                full_path, stat_result = self.lookup_path("index.html")
+                return self.file_response(full_path, stat_result, scope)
 
         return response
 

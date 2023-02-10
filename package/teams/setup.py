@@ -2,7 +2,7 @@
 """
 Installs FiftyOne Teams App
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -12,12 +12,12 @@ import re
 from setuptools import setup
 
 
-VERSION = "0.3.0"
+VERSION = "1.1.0"
 
 
 INSTALL_REQUIRES = [
     "python-jose>=3.3.0,<4",
-    "fiftyone>=0.10.0,<0.11",
+    "fiftyone>0.10.100,<0.12",
 ]
 
 

@@ -2,7 +2,7 @@
 """
 Installs FiftyOne Teams.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.10.0"
+VERSION = "0.11.0"
 
 
 def get_version():
@@ -33,16 +33,17 @@ INSTALL_REQUIRES = [
     "aiofiles",
     "argcomplete",
     "boto3",
-    "dacite>=1.6.0,<2",
+    "cachetools",
+    "dacite>=1.6.0,<1.8.0",
     "Deprecated",
     "eventlet",
     "future",
-    "hypercorn>=0.13.2<14",
+    "hypercorn>=0.13.2,<14",
     "Jinja2>=3",
     "kaleido",
     "matplotlib",
     "mongoengine==0.24.2",
-    "motor>=2.3",
+    "motor>=2.5",
     "ndjson",
     "numpy",
     "packaging",
@@ -51,7 +52,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
-    "pymongo>=3.11",
+    "pymongo>=3.12",
     "pytz",
     "PyYAML",
     "retrying",
@@ -76,9 +77,9 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.9.2,<0.10",
+    "fiftyone-brain>=0.10,<0.11",
     "fiftyone-db>=0.4,<0.5",
-    "voxel51-eta>=0.8.1,<0.9",
+    "voxel51-eta>=0.8.2,<0.9",
 ]
 
 
@@ -115,7 +116,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.15.0,<0.16"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.16.0,<0.17"]}
 
 
 with open("README.md", "r") as fh:

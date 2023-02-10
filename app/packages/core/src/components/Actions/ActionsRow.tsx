@@ -1,10 +1,3 @@
-import React, {
-  MutableRefObject,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
-import { CircularProgress } from "@mui/material";
 import {
   ArrowDownward,
   Bookmark,
@@ -17,8 +10,15 @@ import {
   VisibilityOff,
   Wallpaper,
 } from "@mui/icons-material";
+import React, {
+  MutableRefObject,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import useMeasure from "react-use-measure";
 import {
+  selector,
   selectorFamily,
   useRecoilCallback,
   useRecoilState,
@@ -26,26 +26,40 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
+import { useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-
+import * as fos from "@fiftyone/state";
+import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
+import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import { PillButton } from "../utils";
 import OptionsActions from "./Options";
 import ExportAction from "./Export";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
-import Tagger from "./Tagger";
-import { PillButton } from "../utils";
-import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import Similar from "./Similar";
-import { useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
+import Tagger from "./Tagger";
+
+export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
+  key: "shouldToggleBookMarkIconOn",
+  get: ({ get }) => {
+    const hasFiltersValue = get(fos.hasFilters(false));
+    const extendedSelectionList = get(fos.extendedSelection);
+    const selectedSampleSet = get(fos.selectedSamples);
+    const isSimilarityOn = get(fos.similarityParameters);
+
+    const isExtendedSelectionOn =
+      (extendedSelectionList && extendedSelectionList.length > 0) ||
+      isSimilarityOn;
+
+    return (
+      isExtendedSelectionOn || hasFiltersValue || selectedSampleSet.size > 0
+    );
+  },
+});
 
 const Loading = () => {
   const theme = useTheme();
-  return (
-    <CircularProgress
-      style={{ padding: 2, height: 22, width: 22, color: theme.text.primary }}
-    />
-  );
+  return <LoadingDots text="" color={theme.text.primary} />;
 };
 
 const ActionDiv = styled.div`
@@ -281,8 +295,6 @@ const Hidden = () => {
 };
 
 const SaveFilters = () => {
-  const hasFiltersValue = useRecoilValue(fos.hasFilters(false));
-  const extended = Object.keys(useRecoilValue(fos.extendedStages)).length > 0;
   const loading = useRecoilValue(fos.savingFilters);
   const onComplete = useRecoilCallback(({ set, reset }) => () => {
     set(fos.savingFilters, false);
@@ -295,16 +307,38 @@ const SaveFilters = () => {
     ({ snapshot, set }) =>
       async () => {
         const loading = await snapshot.getPromise(fos.savingFilters);
+        const selected = await snapshot.getPromise(fos.selectedSamples);
+
         if (loading) {
           return;
         }
+
         set(fos.savingFilters, true);
-        setView((v) => v);
+        if (selected.size > 0) {
+          setView(
+            (v) => [
+              ...v,
+              {
+                _cls: "fiftyone.core.stages.Select",
+                kwargs: [["sample_ids", [...selected]]],
+              },
+            ],
+            undefined,
+            undefined,
+            true
+          );
+        } else {
+          setView((v) => v);
+        }
       },
     []
   );
 
-  return hasFiltersValue || extended ? (
+  const shouldToggleBookMarkIconOn = useRecoilValue(
+    shouldToggleBookMarkIconOnSelector
+  );
+
+  return shouldToggleBookMarkIconOn ? (
     <ActionDiv>
       <PillButton
         open={false}
@@ -391,7 +425,6 @@ export const GridActionsRow = () => {
       <Patches />
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
-      <Export />
       <Selected modal={false} />
     </ActionsRowDiv>
   );
@@ -403,6 +436,7 @@ export const ModalActionsRow = ({
   lookerRef?: MutableRefObject<VideoLooker | undefined>;
 }) => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
+  const hideTagging = useRecoilValue(fos.readOnly);
 
   return (
     <ActionsRowDiv
@@ -414,7 +448,7 @@ export const ModalActionsRow = ({
       <Hidden />
       <Selected modal={true} lookerRef={lookerRef} />
       {!isVideo && <Similarity modal={true} />}
-      <Tag modal={true} lookerRef={lookerRef} />
+      {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>

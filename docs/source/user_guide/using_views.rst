@@ -8,7 +8,16 @@ Dataset Views
 FiftyOne provides methods that allow you to sort, slice, and search your
 |Dataset| using any information that you have added to the |Dataset|.
 Performing these actions returns a |DatasetView| into your |Dataset| that will
-that will show only the samples and labels therein that match your criteria.
+show only the samples and labels therein that match your criteria.
+
+.. note::
+
+    |DatasetView| does not hold its contents in-memory. Views simply store the
+    rule(s) that are applied to extract the content of interest from the
+    underlying |Dataset| when the view is iterated/aggregated on.
+
+    This means, for example, that the contents of a |DatasetView| may change
+    as the underlying |Dataset| is modified.
 
 Overview
 ________
@@ -57,12 +66,6 @@ You can access specific information about a view in the natural ways:
     view.media_type
     # "image"
 
-.. note::
-
-    |DatasetView| does not hold its contents in-memory; it contains a pipeline
-    of operations that define what samples will be loaded when the contents of
-    the view are accessed.
-
 Like datasets, you access the samples in a view by iterating over it:
 
 .. code-block:: python
@@ -94,6 +97,96 @@ Or, you can access individual samples in a view by their ID or filepath:
     |SampleView| provides some extra features. See
     :ref:`filtering sample contents <filtering-sample-contents>` for more
     details.
+
+.. _saving-views:
+
+Saving views
+____________
+
+If you find yourself frequently using/recreating certain views, you can use
+:meth:`save_view() <fiftyone.core.dataset.Dataset.save_view>` to save them on
+your dataset under a name of your choice:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.persistent = True
+
+    # Create a view
+    cats_view = (
+        dataset
+        .select_fields("ground_truth")
+        .filter_labels("ground_truth", F("label") == "cat")
+        .sort_by(F("ground_truth.detections").length(), reverse=True)
+    )
+
+    # Save the view
+    dataset.save_view("cats-view", cats_view)
+
+Then you can conveniently use
+:meth:`load_saved_view() <fiftyone.core.dataset.Dataset.load_saved_view>`
+to load the view in a future session:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("quickstart")
+
+    # Retrieve a saved view
+    cats_view = dataset.load_saved_view("cats-view")
+    print(cats_view)
+
+.. note::
+
+    Did you know? You can also save, load, and edit saved views directly
+    :ref:`from the App <app-saving-views>`!
+
+Saved views have certain editable metadata such as a description that you can
+view via
+:meth:`get_saved_view_info() <fiftyone.core.dataset.Dataset.get_saved_view_info>`
+and update via
+:meth:`update_saved_view_info() <fiftyone.core.dataset.Dataset.get_saved_view_info>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Get a saved view's editable info
+    print(dataset.get_saved_view_info("cats-view"))
+
+    # Update the saved view's name and add a description
+    info = dict(
+        name="still-cats-view",
+        description="a view that only contains cats",
+    )
+    dataset.update_saved_view_info("cats-view", info)
+
+    # Verify that the info has been updated
+    print(dataset.get_saved_view_info("still-cats-view"))
+
+You can also use
+:meth:`list_saved_views() <fiftyone.core.dataset.Dataset.list_saved_views>`,
+:meth:`has_saved_view() <fiftyone.core.dataset.Dataset.has_saved_view>`,
+and
+:meth:`delete_saved_view() <fiftyone.core.dataset.Dataset.delete_saved_view>`
+to manage your saved views.
+
+.. note::
+
+    Saved views only store the rule(s) used to extract content from the
+    underlying dataset, not the actual content itself. Saving views is cheap.
+    Don't worry about storage space!
+
+    Keep in mind, though, that the contents of a saved view may change as the
+    underlying dataset is modified. For example, if a save view contains
+    samples with a certain tag, the view's contents will change as you
+    add/remove this tag from samples.
 
 .. _view-stages:
 
@@ -905,6 +998,8 @@ in the sense that:
 -   Any modifications to the patch labels that you make by iterating over the
     contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    or
+    :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
     will be reflected on the source dataset
 -   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save>`,
     :meth:`keep() <fiftyone.core.patches.PatchesView.keep>`, or
@@ -1018,6 +1113,8 @@ Evaluation patches views are just like any other
     patches view that you make by iterating over the contents of the view or
     calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    or
+    :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
     will be reflected on the source dataset
 -   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save>`,
     :meth:`keep() <fiftyone.core.patches.EvaluationPatchesView.keep>`, or
@@ -1313,6 +1410,8 @@ sense that:
 -   Any modifications to the frame-level labels in a clips view that you make
     by iterating over the contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    or
+    :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
     will be reflected on the source dataset
 -   Calling :meth:`save() <fiftyone.core.clips.ClipsView.save>`,
     :meth:`keep() <fiftyone.core.clips.ClipsView.keep>`, or
@@ -1472,6 +1571,8 @@ Frame views are just like any other image collection view in the sense that:
     of the samples in a frames view that you make by iterating over the
     contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    or
+    :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
     will be reflected on the source dataset
 -   Calling :meth:`save() <fiftyone.core.video.FramesView.save>`,
     :meth:`keep() <fiftyone.core.video.FramesView.keep>`, or
@@ -1945,6 +2046,26 @@ save the updated data in a single batch operation:
 
     print(dataset.count_label_tags())
     # {'low_confidence': 447}
+
+In the particular case of updating the attributes of a |Label| field of your
+dataset, the edits may be most naturally represented as a mapping between label
+IDs and corresponding attribute values to set on each label. In such cases, you
+can use
+:meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
+to conveniently perform the updates:
+
+.. code-block:: python
+    :linenos:
+
+    # Grab the IDs of all labels in `view`
+    label_ids = view.values("predictions.detections.id", unwind=True)
+
+    # Populate an `is_low_conf` attribute on all of the labels
+    values = {_id: True for _id in label_ids}
+    dataset.set_label_values("predictions.detections.is_low_conf", values)
+
+    print(dataset.count_values("predictions.detections.is_low_conf"))
+    # {True: 447, None: 5173}
 
 .. _transforming-view-fields:
 

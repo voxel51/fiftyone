@@ -4,7 +4,7 @@ Sphinx configuration file.
 For a full list of available options, see:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -65,6 +65,7 @@ extensions = [
     "sphinx_tabs.tabs",
     "sphinx_copybutton",
     "autodocsumm",
+    "myst_parser",
 ]
 
 # Types of class members to generate documentation for.
@@ -161,6 +162,8 @@ html_theme_options = {
     "pytorch_project": "docs",
 }
 
+html_favicon = "favicon.ico"
+
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
@@ -180,13 +183,13 @@ html_context = {
     "phone_main": "+1 734-489-1134",
     "email_info": "info@voxel51.com",
     # Links - copied from website config
-    "link_blog": "https://blog.voxel51.com/",
+    "link_blog": "https://voxel51.com/blog/",
     "link_contactus": "mailto:solutions@voxel51.com?subject=[Voxel51]%20Contact%20us",
-    "link_docs_fiftyone": "https://voxel51.com/docs/fiftyone/",
+    "link_docs_fiftyone": "https://docs.voxel51.com/",
     "link_fiftyone": "https://voxel51.com/fiftyone/",
     "link_fiftyone_teams": "https://voxel51.com/fiftyone-teams/",
     "link_usecases": "https://voxel51.com/computer-vision-use-cases/",
-    "link_fiftyone_tutorials": "https://voxel51.com/docs/fiftyone/tutorials/index.html",
+    "link_fiftyone_tutorials": "https://docs.voxel51.com/tutorials/index.html",
     "link_fiftyone_examples": "https://github.com/voxel51/fiftyone-examples",
     "link_fiftyone_quickstart": "https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb",
     "link_home": "https://voxel51.com/",
@@ -200,8 +203,8 @@ html_context = {
     "link_voxel51_linkedin": "https://www.linkedin.com/company/voxel51/",
     "link_voxel51_slack": "https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
-    "link_voxel51_medium": "https://medium.com/voxel51/",
-    "banner_link": "https://voxel51.com/docs/fiftyone/integrations/coco.html",
+    "link_voxel51_blog": "https://voxel51.com/blog/",
+    "banner_link": "https://docs.voxel51.com/integrations/coco.html",
 }
 
 # -- Custom app setup --------------------------------------------------------

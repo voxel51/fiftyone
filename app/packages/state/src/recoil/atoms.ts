@@ -3,6 +3,7 @@ import { atom, atomFamily, useRecoilCallback } from "recoil";
 import { Sample, RGB } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
+import { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -100,16 +101,17 @@ export const imageFilters = atomFamily<
   default: ({ filter }) => IMAGE_FILTERS[filter].default,
 });
 
-export const activePlot = atom({
+export const activePlot = atom<string>({
   key: "activePlot",
   default: "Labels",
 });
 
-export const loading = atom({
+export const loading = atom<boolean>({
   key: "loading",
   default: false,
 });
 
+// labels: whether label tag or sample tag
 export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   {
     key: "tagging",
@@ -117,11 +119,22 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   }
 );
 
+/**
+ * The state of the current dataset. Contains informations about the dataset, and the samples contained in it.
+ *
+ * See :py:class:\`fiftyone.core.dataset.Dataset\` for python documentation.
+ */
 export const dataset = atom<State.Dataset>({
   key: "dataset",
   default: null,
 });
 
+export const selectedViewName = atom<string>({
+  key: "selectedViewName",
+  default: null,
+});
+
+// only used in extended view, for tagging purpose
 export const selectedLabels = atom<State.SelectedLabelMap>({
   key: "selectedLabels",
   default: {},
@@ -132,6 +145,12 @@ export const selectedSamples = atom<Set<string>>({
   default: new Set(),
 });
 
+export const selectedSampleObjects = atom<Map<String, Sample>>({
+  key: "selectedSampleObjects",
+  default: new Map(),
+});
+
+// only used in extended view, for tagging purpose
 export const hiddenLabels = atom<State.SelectedLabelMap>({
   key: "hiddenLabels",
   default: {},
@@ -154,11 +173,6 @@ export const alpha = atomFamily<number, boolean>({
   default: DEFAULT_ALPHA,
 });
 
-export const colorPool = atom<string[]>({
-  key: "colorPool",
-  default: [],
-});
-
 export const colorSeed = atomFamily<number, boolean>({
   key: "colorSeed",
   default: 1,
@@ -172,16 +186,6 @@ export const appTeamsIsOpen = atom({
 export const savedLookerOptions = atom({
   key: "savedLookerOptions",
   default: {},
-});
-
-export const appConfig = atom<State.Config>({
-  key: "appConfig",
-  default: null,
-});
-
-export const colorscale = atom<RGB[]>({
-  key: "colorscale",
-  default: null,
 });
 
 export const patching = atom<boolean>({
@@ -206,6 +210,10 @@ export const sidebarOverride = atom<string>({
 
 export const extendedSelection = atom<string[]>({
   key: "extendedSelection",
+  default: null,
+});
+export const extendedSelectionOverrideStage = atom<any>({
+  key: "extendedSelectionOverrideStage",
   default: null,
 });
 
@@ -250,6 +258,11 @@ export const theme = atom<"dark" | "light">({
   ],
 });
 
+export const canEditSavedViews = atom({
+  key: "canEditSavedViews",
+  default: true,
+});
+
 export const compactLayout = atom({
   key: "compactLayout",
   default: false,
@@ -258,4 +271,21 @@ export const compactLayout = atom({
 export const readOnly = atom({
   key: "readOnly",
   default: false,
+});
+
+export const sessionSpaces = atom<SpaceNodeJSON>({
+  key: "sessionSpaces",
+  default: {
+    id: "root",
+    children: [
+      {
+        id: "default-samples-node",
+        children: [],
+        type: "Samples",
+        pinned: true,
+      },
+    ],
+    type: "panel-container",
+    activeChild: "default-samples-node",
+  },
 });

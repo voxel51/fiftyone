@@ -1,9 +1,11 @@
-import React from "react";
 import { Launch } from "@mui/icons-material";
+import React from "react";
 
-import { useHighlightHover } from "./utils";
-import { ItemAction } from "./ItemAction";
+import { useTheme } from "@fiftyone/components";
+import ExternalLink from "@fiftyone/components/src/components/ExternalLink";
 import { useExternalLink } from "@fiftyone/utilities";
+import { ItemAction } from "./ItemAction";
+import { useHighlightHover } from "./utils";
 
 type ActionOptionProps = {
   onClick?: (event?: Event) => void;
@@ -25,9 +27,10 @@ export const ActionOption = React.memo(
     disabled = false,
     hidden = false,
     style,
-    svgStyles = { height: "1rem", marginTop: 4.5 },
+    svgStyles = { height: "1rem", marginTop: 4.5, marginLeft: 1 },
   }: ActionOptionProps) => {
     const { style: animationStyles, ...rest } = useHighlightHover(disabled);
+    const theme = useTheme();
     onClick = href ? useExternalLink(href) : onClick;
     if (hidden) {
       return null;
@@ -38,12 +41,16 @@ export const ActionOption = React.memo(
         onClick={disabled ? null : onClick}
         {...rest}
         style={style ?? animationStyles}
-        href={href}
-        target={href ? "_blank" : null}
       >
         <span style={href ? { textDecoration: "underline" } : {}}>
-          {text}
-          {href && <Launch style={svgStyles} />}
+          {href ? (
+            <ExternalLink style={{ color: theme.text.primary }} href={href}>
+              {text}
+              <Launch style={svgStyles} />
+            </ExternalLink>
+          ) : (
+            `${text}`
+          )}
         </span>
       </ItemAction>
     );

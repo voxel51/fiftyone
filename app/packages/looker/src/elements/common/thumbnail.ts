@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { SELECTION_TEXT } from "../../constants";
@@ -70,7 +70,7 @@ export class ThumbnailSelectorElement<
       this.shown = shown;
     }
 
-    if (this.selected !== selected) {
+    if (this.selected !== selected && this.checkbox) {
       this.selected = selected;
       this.checkbox.checked = selected;
     }

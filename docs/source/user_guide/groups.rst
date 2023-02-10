@@ -486,6 +486,9 @@ ________________
 The :ref:`FiftyOne Dataset Zoo <dataset-zoo>` contains grouped datasets that
 you can use out-of-the-box to test drive FiftyOne's group-related features.
 
+Quickstart groups
+-----------------
+
 The fastest way to get started is by loading the
 :ref:`quickstart-groups <dataset-zoo-quickstart-groups>` dataset, which
 consists of 200 scenes from the train split of the KITTI dataset, each
@@ -521,6 +524,9 @@ data:
         group:        fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
 
+KITTI multiview
+---------------
+
 You can also load the full :ref:`kitti-multiview <dataset-zoo-kitti-multiview>`
 dataset:
 
@@ -534,6 +540,71 @@ dataset:
 
 .. image:: /images/dataset_zoo/kitti-multiview-train.png
    :alt: kitti-multiview-train
+   :align: center
+
+Toy dataset
+-----------
+
+The snippet below generates a toy dataset containing 3D cuboids filled with
+points that demonstrates how
+:ref:`3D detections are represented <3d-detections>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import numpy as np
+    import open3d as o3d
+
+    detections = []
+    point_cloud = []
+
+    for _ in range(10):
+        dimensions = np.random.uniform([1, 1, 1], [3, 3, 3])
+        location = np.random.uniform([-10, -10, 0], [10, 10, 10])
+        rotation = np.random.uniform(-np.pi, np.pi, size=3)
+
+        detection = fo.Detection(
+            dimensions=list(dimensions),
+            location=list(location),
+            rotation=list(rotation),
+        )
+        detections.append(detection)
+
+        R = o3d.geometry.get_rotation_matrix_from_xyz(rotation)
+        points = np.random.uniform(-dimensions / 2, dimensions / 2, size=(1000, 3))
+        points = points @ R.T + location[np.newaxis, :]
+        point_cloud.extend(points)
+
+    pc = o3d.geometry.PointCloud()
+    pc.points = o3d.utility.Vector3dVector(np.array(point_cloud))
+    o3d.io.write_point_cloud("/tmp/toy.pcd", pc)
+
+    group = fo.Group()
+    samples = [
+        fo.Sample(
+            filepath="/tmp/toy.png",  # non-existent
+            group=group.element("image"),
+        ),
+        fo.Sample(
+            filepath="/tmp/toy.pcd",
+            group=group.element("pcd"),
+            detections=fo.Detections(detections=detections),
+        )
+    ]
+
+    dataset = fo.Dataset()
+    dataset.add_samples(samples)
+
+    dataset.app_config.plugins["3d"] = {
+        "defaultCameraPosition": {"x": 0, "y": 0, "z": 20}
+    }
+    dataset.save()
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/groups/toy-point-cloud.png
+   :alt: toy-point-cloud
    :align: center
 
 .. _groups-point-clouds:
@@ -595,6 +666,9 @@ Here's how a typical PCD file is structured:
     encoded in the `r` channel of the `rgb` field of the
     `PCD files <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_.
 
+    When coloring by intensity in the App, the intensity values are
+    automatically scaled to use the full dynamic range of the colorscale.
+
 As usual, point cloud samples may contain any type and number of custom fields,
 including certain visualizable |Label| types as described below.
 
@@ -615,13 +689,13 @@ detections represented as |Detection| instances with their `label`, `location`,
     # Object label
     label = "vehicle"
 
-    # Object center location ``(x, y, z)`` in camera coordinates
+    # Object center `[x, y, z]` in scene coordinates
     location = [0.47, 1.49, 69.44]
 
-    # Object dimensions ``[height, width, length]`` in object coordinates
+    # Object dimensions `[x, y, z]` in scene units
     dimensions = [2.85, 2.63, 12.34]
 
-    # Object rotation around ``[x, y, z]`` camera axes, in ``[-pi, pi]``
+    # Object rotation `[x, y, z]` around its center, in `[-pi, pi]`
     rotation = [0, -1.56, 0]
 
     # A 3D object detection
@@ -638,8 +712,8 @@ detections represented as |Detection| instances with their `label`, `location`,
 ------------
 
 The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D polylines
-represented as |Polyline| instances with their `label`, `points3d`, `closed`,
-and `filled` attributes populated as shown below:
+represented as |Polyline| instances with their `label` and `points3d`
+attributes populated as shown below:
 
 .. code-block:: python
     :linenos:
@@ -649,25 +723,12 @@ and `filled` attributes populated as shown below:
     # Object label
     label = "lane"
 
-    # A list of lists of ``(x, y, z)`` points in camera coordinates describing
+    # A list of lists of `[x, y, z]` points in scene coordinates describing
     # the vertices of each shape in the polyline
     points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
 
-    # Whether the shapes are closed, i.e., and edge should be drawn from the
-    # last vertex to the first vertex of each shape
-    closed = False
-
-    # Whether the polyline represents polygons, i.e., shapes that should be
-    # filled when rendering them
-    filled = False
-
-    # A set of semantically related 3D polylines or polygons.
-    polyline = fo.Polyline(
-        label=label,
-        points3d=points3d,
-        closed=closed,
-        filled=filled,
-    )
+    # A set of semantically related 3D polylines
+    polyline = fo.Polyline(label=label, points3d=points3d)
 
 .. _groups-views:
 
@@ -755,14 +816,14 @@ of grouped datasets:
     import fiftyone.zoo as foz
     from fiftyone import ViewField as F
 
-    _dataset = foz.load_zoo_dataset("quickstart-groups")
+    dataset = foz.load_zoo_dataset("quickstart-groups")
 
     print(dataset.group_slice)
     # left
 
     # Filters based on the content in the 'left' slice
     view = (
-        _dataset
+        dataset
         .match_tags("train")
         .filter_labels("ground_truth", F("label") == "Pedestrian")
     )
@@ -814,6 +875,25 @@ to create a view that contains certain group(s) of interest by their IDs:
     # Select the same groups (ordered)
     same_order = dataset.select_groups(group_ids, ordered=True)
     assert view.values("id") == same_order.values("id")
+
+.. _groups-excluding-groups:
+
+Excluding groups
+----------------
+
+You can use
+:meth:`exclude_groups() <fiftyone.core.collections.SampleCollection.exclude_groups>`
+to create a view that excludes certain group(s) of interest by their IDs:
+
+.. code-block:: python
+    :linenos:
+
+    # Exclude two groups at random
+    view = dataset.take(2)
+
+    group_ids = view.values("group.id")
+    other_groups = dataset.exclude_groups(group_ids)
+    assert len(set(group_ids) & set(other_groups.values("group.id"))) == 0
 
 .. _groups-selecting-slices:
 
@@ -1097,35 +1177,19 @@ shown below under the `plugins.3d` key of your
                 // Whether to show the 3D visualizer
                 "enabled": true,
 
-                // The initial camera position in 3D space
+                // The initial camera position in the 3D scene
                 "defaultCameraPosition": {"x": 0, "y": 0, "z": 0},
 
-                // Transformation from PCD -> reference coordinates
-                "pointCloud": {
-                    // A rotation to apply to the PCD's coordinate system
-                    "rotation": [0, 0, 0],
+                // The default up direction for the scene
+                "defaultUp": [0, 0, 1],
 
+                "pointCloud": {
                     // Don't render points below this z value
                     "minZ": null
-                },
-
-                // Transformation from Label -> reference coorindates
-                "overlay": {
-                    // A rotation to apply to the Label's coordinate system
-                    "rotation": [0, 0, 0],
-
-                    // A rotation to apply to each object's local coordinates
-                    "itemRotation": [0, 0, 0]
                 }
             }
         }
     }
-
-.. note::
-
-    All `rotations <https://threejs.org/docs/#api/en/core/Object3D.rotation>`_
-    above are expressed using
-    `Euler angles <https://en.wikipedia.org/wiki/Euler_angles>`_, in degrees.
 
 You can also store dataset-specific plugin settings by storing any subset of
 the above values on a :ref:`dataset's App config <custom-app-config>`:
@@ -1136,14 +1200,6 @@ the above values on a :ref:`dataset's App config <custom-app-config>`:
     # Configure the 3D visualuzer for a dataset's PCD/Label data
     dataset.app_config.plugins["3d"] = {
         "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
-        "pointCloud": {
-            "rotation": [0, 0, 90],
-            "minZ": -2.1
-        },
-        "overlay": {
-            "rotation": [-90, 0, 0],
-            "itemRotation": [0, 90, 0]
-        }
     }
     dataset.save()
 

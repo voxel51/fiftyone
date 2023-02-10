@@ -1,7 +1,7 @@
 """
 Dataset samples.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -133,8 +133,15 @@ class _SampleMixin(object):
         Returns:
             the local filepath
         """
+        value = self[media_field]
+
+        if hasattr(value, "get_local_path"):
+            return value.get_local_path(
+                download=download, skip_failures=skip_failures
+            )
+
         return foc.media_cache.get_local_path(
-            self[media_field], download=download, skip_failures=skip_failures
+            value, download=download, skip_failures=skip_failures
         )
 
     def get_field(self, field_name):
@@ -330,9 +337,6 @@ class _SampleMixin(object):
                 validate=validate,
                 dynamic=dynamic,
             )
-
-        if self._in_db:
-            self.save()
 
     def merge(
         self,

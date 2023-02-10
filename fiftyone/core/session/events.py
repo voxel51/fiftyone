@@ -1,10 +1,11 @@
 """
 Session events.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import base64
 from dataclasses import dataclass
 import re
 import typing as t
@@ -22,7 +23,6 @@ EventType = t.Union[
     "CloseSession",
     "DeactivateNotebookCell",
     "ReactivateNotebookCell",
-    "RefreshApp",
     "StateUpdate",
 ]
 
@@ -96,10 +96,16 @@ class Ping(Event):
 
 
 @dataclass
+class AppInitializer:
+    dataset: t.Optional[str] = None
+    view: t.Optional[str] = None
+
+
+@dataclass
 class ListenPayload:
     """A an initialization payload for an event listener request"""
 
-    initializer: t.Union[str, None, fos.StateDescription]
+    initializer: t.Union[AppInitializer, None, fos.StateDescription]
     events: t.List[str]
     subscription: str
     polling: t.Optional[bool] = False
@@ -108,8 +114,8 @@ class ListenPayload:
     def from_dict(cls, d: dict) -> "ListenPayload":
         init = d["initializer"]
 
-        if isinstance(init, dict):
-            d["initializer"] = fos.StateDescription.from_dict(d["initializer"])
+        if isinstance(init, dict) and "_CLS" in init:
+            d["initializer"] = fos.StateDescription.from_dict(init)
 
         return from_dict(cls, d)
 
@@ -118,4 +124,26 @@ def dict_factory(data: t.List[t.Tuple[str, t.Any]]) -> t.Dict[str, t.Any]:
     return dict(
         (k, v.serialize() if isinstance(v, fos.StateDescription) else v)
         for k, v in data
+    )
+
+
+@dataclass
+class Screenshot:
+    bytes: bytes
+    max_width: int
+
+
+_SCREENSHOTS: t.Dict[str, Screenshot] = {}
+
+
+def add_screenshot(event: CaptureNotebookCell) -> None:
+    data = event.src.split(",")[1].encode()
+    _SCREENSHOTS[event.subscription] = Screenshot(
+        base64.decodebytes(data), event.width
+    )
+
+
+def get_screenshot(subscription: str, pop=False) -> Screenshot:
+    return (
+        _SCREENSHOTS.pop(subscription) if pop else _SCREENSHOTS[subscription]
     )

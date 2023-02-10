@@ -2,7 +2,7 @@
 Utilities for working with annotations in
 `Scale AI format <https://docs.scale.com/reference#annotation>`_.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -424,6 +424,13 @@ def export_to_scale(
 
     # Compute metadata if necessary
     sample_collection.compute_metadata()
+
+    if label_fields:
+        media_fields = sample_collection._get_media_fields(
+            whitelist=label_fields
+        )
+        if media_fields:
+            sample_collection.download_media(media_fields=media_fields)
 
     # Export the labels
     labels = {}

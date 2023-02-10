@@ -1,7 +1,7 @@
 """
 FiftyOne Server /values route
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -29,7 +29,7 @@ class Values(HTTPEndpoint):
         stages = data.get("view", [])
         extended = data.get("extended", None)
 
-        view = fosv.get_view(dataset, stages, extended_stages=extended)
+        view = fosv.get_view(dataset, stages=stages, extended_stages=extended)
 
         if sample_id is not None:
             view = view.select(sample_id)

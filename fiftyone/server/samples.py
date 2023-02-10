@@ -1,7 +1,7 @@
 """
 FiftyOne Server samples pagination
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -81,14 +81,10 @@ async def paginate_samples(
         count_label_tags=True,
         extended_stages=extended_stages,
         sort=True,
-        only_matches=True,
         sample_filter=sample_filter,
     )
 
-    root_view = fosv.get_view(
-        dataset,
-        stages=stages,
-    )
+    root_view = fosv.get_view(dataset, stages=stages)
 
     media = view.media_type
     if media == fom.MIXED:
@@ -121,7 +117,7 @@ async def paginate_samples(
 
     metadata_cache = {}
     url_cache = {}
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(trust_env=True) as session:
         nodes = await asyncio.gather(
             *[
                 _create_sample_item(

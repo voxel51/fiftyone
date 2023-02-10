@@ -1,7 +1,7 @@
 """
 FiftyOne Server JIT metadata utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -483,6 +483,7 @@ async def _create_media_urls(
         if collection.app_config
         else ["filepath"]
     )
+
     media_urls = []
 
     for field in media_fields:

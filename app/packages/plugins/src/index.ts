@@ -1,10 +1,9 @@
+import * as fos from "@fiftyone/state";
+import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
+import * as _ from "lodash";
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
-import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
 import * as recoil from "recoil";
-import * as fos from "@fiftyone/state";
-import * as _ from "lodash";
-import { State } from "@fiftyone/state";
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
@@ -15,11 +14,13 @@ declare global {
   }
 }
 
-// required for plugins to use the same instance of React
-window.React = React;
-window.ReactDOM = ReactDOM;
-window.recoil = recoil;
-window.__fos__ = fos;
+if (typeof window !== "undefined") {
+  // required for plugins to use the same instance of React
+  window.React = React;
+  window.ReactDOM = ReactDOM;
+  window.recoil = recoil;
+  window.__fos__ = fos;
+}
 
 function usingRegistry() {
   if (!window.__fo_plugin_registry__) {
@@ -28,6 +29,10 @@ function usingRegistry() {
   return window.__fo_plugin_registry__;
 }
 
+/**
+ * Adds a plugin to the registry. This is called by the plugin itself.
+ * @param registration The plugin registration
+ */
 export function registerComponent<T>(
   registration: PluginComponentRegistration<T>
 ) {
@@ -36,9 +41,20 @@ export function registerComponent<T>(
   }
   usingRegistry().register(registration);
 }
+
+/**
+ * Remove a plugin from the registry.
+ * @param name The name of the plugin
+ */
 export function unregisterComponent(name: string) {
   usingRegistry().unregister(name);
 }
+
+/**
+ * Get a list of plugins match the given `type`.
+ * @param type The type of plugin to list
+ * @returns A list of plugins
+ */
 export function getByType(type: PluginComponentType) {
   return usingRegistry().getByType(type);
 }
@@ -94,6 +110,9 @@ async function loadScript(name, url) {
   });
 }
 
+/**
+ * A react hook for loading the plugin system.
+ */
 export function usePlugins() {
   const [state, setState] = useState("loading");
   useEffect(() => {
@@ -119,6 +138,13 @@ export function usePlugin(
   return usingRegistry().getByType(type);
 }
 
+/**
+ * A react hook that returns a list of active plugins.
+ *
+ * @param type The type of plugin to list
+ * @param ctx Argument passed to the plugin's activator function
+ * @returns A list of active plugins
+ */
 export function useActivePlugins(type: PluginComponentType, ctx: any) {
   return useMemo(
     () =>
@@ -132,18 +158,53 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
   );
 }
 
+/**
+ * The type of plugin component.
+ *
+ * - `Panel` - A panel that can be added to `@fiftyone/spaces`
+ * - `Plot` - **deprecated** - A plot that can be added as a panel
+ * - `Visualizer` - Visualizes sample data
+ */
 export enum PluginComponentType {
   Visualizer,
   Plot,
+  Panel,
 }
 
 type PluginActivator = (props: any) => boolean;
-interface PluginComponentRegistration<T extends {} = {}> {
+
+type PanelOptions = {
+  allowDuplicates?: boolean;
+};
+
+type PluginComponentProps<T> = T & {
+  panelNode?: unknown;
+};
+
+/**
+ * A plugin registration.
+ */
+export interface PluginComponentRegistration<T extends {} = {}> {
+  /**
+   * The name of the plugin
+   */
   name: string;
-  label?: string;
-  component: FunctionComponent<T>;
+  /**
+   * The optional label of the plugin to display to the user
+   */
+  label: string;
+  Icon?: React.ComponentType;
+  /**
+   * The React component to render
+   */
+  component: FunctionComponent<PluginComponentProps<T>>;
+  /** The plugin type */
   type: PluginComponentType;
+  /**
+   * A function that returns true if the plugin should be active
+   */
   activator: PluginActivator;
+  panelOptions?: PanelOptions;
 }
 
 const DEFAULT_ACTIVATOR = () => true;
@@ -176,6 +237,10 @@ class PluginComponentRegistry {
       !this.data.has(name),
       `${name} is already a registered Plugin Component`
     );
+    warn(
+      registration.type === PluginComponentType.Plot,
+      `${name} is a Plot Plugin Component. This is deprecated. Please use "Panel" instead.`
+    );
     this.data.set(name, registration);
   }
   unregister(name: string): boolean {
@@ -201,15 +266,18 @@ export function usePluginSettings<T>(
   defaults?: Partial<T>
 ): T {
   const dataset = recoil.useRecoilValue(fos.dataset);
-  const appConfig = recoil.useRecoilValue(fos.appConfig);
-  const datasetPlugins = _.get(dataset, "appConfig.plugins", {});
-  const appConfigPlugins = _.get(appConfig, "plugins", {});
+  const appConfig = recoil.useRecoilValue(fos.config);
 
-  const settings = _.merge<T | {}, Partial<T>, Partial<T>>(
-    { ...defaults },
-    _.get(appConfigPlugins, pluginName, {}),
-    _.get(datasetPlugins, pluginName, {})
-  );
+  const settings = useMemo(() => {
+    const datasetPlugins = _.get(dataset, "appConfig.plugins", {});
+    const appConfigPlugins = _.get(appConfig, "plugins", {});
+
+    return _.merge<T | {}, Partial<T>, Partial<T>>(
+      { ...defaults },
+      _.get(appConfigPlugins, pluginName, {}),
+      _.get(datasetPlugins, pluginName, {})
+    );
+  }, [dataset, appConfig, pluginName, defaults]);
 
   return settings as T;
 }
