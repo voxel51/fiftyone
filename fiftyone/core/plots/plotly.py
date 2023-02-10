@@ -1570,7 +1570,7 @@ class PlotlyWidgetMixin(object):
                 "data will not trigger callbacks, and (ii) you must manually "
                 "call `plot.show()` to launch a new plot that reflects the "
                 "current state of an attached session.\n\n"
-                "See https://voxel51.com/docs/fiftyone/user_guide/plots.html#working-in-notebooks"
+                "See https://docs.voxel51.com/user_guide/plots.html#working-in-notebooks"
                 " for more information."
             )
             warnings.warn(msg)

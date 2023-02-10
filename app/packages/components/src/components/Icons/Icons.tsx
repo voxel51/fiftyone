@@ -49,7 +49,7 @@ export const DocsLink = () => {
     <ExternalLink
       className={iconLink}
       title="Documentation"
-      href="https://voxel51.com/docs/fiftyone/user_guide/app.html"
+      href="https://docs.voxel51.com/user_guide/app.html"
     >
       <SvgIcon
         sx={{
