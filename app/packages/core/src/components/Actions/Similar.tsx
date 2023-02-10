@@ -19,9 +19,7 @@ import {
 } from "recoil";
 
 import { SORT_BY_SIMILARITY } from "../../utils/links";
-import { useClearModal,
-  useUnprocessedStateUpdate,
-} from "@fiftyone/state";
+import { useClearModal, useUnprocessedStateUpdate } from "@fiftyone/state";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
@@ -88,9 +86,11 @@ const useSortBySimilarity = (close) => {
       async (parameters: fos.State.SortBySimilarityParameters) => {
         set(fos.similaritySorting, true);
 
-        const queryIds = parameters.query ? null : await getQueryIds(snapshot, parameters.brainKey)
+        const queryIds = parameters.query
+          ? null
+          : await getQueryIds(snapshot, parameters.brainKey);
         const view = await snapshot.getPromise(fos.view);
-        const subscription = await snapshot.getPromise(fos.stateSubscription)
+        const subscription = await snapshot.getPromise(fos.stateSubscription);
 
         const { query, ...commonParams } = parameters;
 
@@ -101,29 +101,33 @@ const useSortBySimilarity = (close) => {
         combinedParameters["query"] = query ?? queryIds;
 
         try {
-          const data: fos.StateUpdate = await getFetchFunction()("POST", "/sort", {
-            dataset: await snapshot.getPromise(fos.datasetName),
-            view,
-            subscription,
-            filters: await snapshot.getPromise(fos.filters),
-            extended: toSnakeCase(combinedParameters),
-          });
+          const data: fos.StateUpdate = await getFetchFunction()(
+            "POST",
+            "/sort",
+            {
+              dataset: await snapshot.getPromise(fos.datasetName),
+              view,
+              subscription,
+              filters: await snapshot.getPromise(fos.filters),
+              extended: toSnakeCase(combinedParameters),
+            }
+          );
 
           // update selectedSamples atom to new set.
           // modifying data, otherwise useStateUpdate will set the selectedSamples again
           data.state.selected = [];
 
-        update(({ set }) => {
-          set(fos.similarityParameters, combinedParameters);
-          set(fos.modal, null);
-          set(fos.similaritySorting, false);
-          set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
-          set(fos.selectedLabels, {});
-          set(fos.hiddenLabels, {});
-          set(fos.modal, null);
-          close();
+          update(({ set }) => {
+            set(fos.similarityParameters, combinedParameters);
+            set(fos.modal, null);
+            set(fos.similaritySorting, false);
+            set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
+            set(fos.selectedLabels, {});
+            set(fos.hiddenLabels, {});
+            set(fos.modal, null);
+            close();
 
-          return data;
+            return data;
           });
         } catch (error) {
           handleError(error);
@@ -230,6 +234,8 @@ const ButtonGroup = styled.div`
   margin: auto 0;
 `;
 
+const defaultK = 25;
+
 interface SortBySimilarityProps {
   modal: boolean;
   close: () => void;
@@ -249,7 +255,7 @@ const SortBySimilarity = React.memo(
       () =>
         current
           ? current
-          : { brainKey: null, distField: null, reverse: false, k: 10 }
+          : { brainKey: null, distField: null, reverse: false, k: defaultK }
     );
     const hasNoSelectedSamples = [...selectedSamples].length == 0;
     const setParameter = useCallback(
@@ -294,7 +300,7 @@ const SortBySimilarity = React.memo(
     const popoutStyle = { minWidth: 280 };
 
     const onInfoLink = () => {
-      window.open(SORT_BY_SIMILARITY, "_system", "location=yes");
+      window.open(SORT_BY_SIMILARITY, "_blank");
     };
 
     const brainKeySupportsPromps = dataset.brainMethods.some(
@@ -317,7 +323,7 @@ const SortBySimilarity = React.memo(
           >
             {!isImageSearch && !hasSorting && (
               <Input
-                placeholder={"Search by text"}
+                placeholder={"Type anything!"}
                 validator={(value) => true}
                 value={state.query || ""}
                 setter={(value) => {
@@ -329,8 +335,8 @@ const SortBySimilarity = React.memo(
             )}
             {isImageSearch && !hasSorting && (
               <Button
-                text={"Apply Sort"}
-                title={`Sort by similarity to the selected ${type}`}
+                text={"Show similar samples"}
+                title={`Search by image similarity to the selected ${type}`}
                 onClick={() => {
                   sortBySimilarity(state);
                 }}
@@ -363,7 +369,7 @@ const SortBySimilarity = React.memo(
             <ButtonGroup>
               {!isImageSearch && !hasSorting && (
                 <Tooltip
-                  text={`Sort by similarity to the selected ${type}`}
+                  text={`Search by text similarity to the selected ${type}`}
                   placement={"top-center"}
                 >
                   <div ref={refApply} onClick={() => sortBySimilarity(state)}>
@@ -393,7 +399,7 @@ const SortBySimilarity = React.memo(
                   </IconButton>
                 </div>
               </Tooltip>
-              <Tooltip text="Advanced Settings" placement={"top-center"}>
+              <Tooltip text="Advanced settings" placement={"top-center"}>
                 <div ref={refSetting} onClick={() => setOpen((o) => !o)}>
                   <IconButton aria-label="Advanced Setting" size="small">
                     <SettingsIcon />
@@ -414,7 +420,7 @@ const SortBySimilarity = React.memo(
             <PopoutSectionTitle>
               <ActionOption
                 href={SORT_BY_SIMILARITY}
-                text={"Sort by similarity"}
+                text={"Search by text Similarity"}
                 title={"About sorting by similarity"}
                 style={{
                   background: "unset",
@@ -446,21 +452,32 @@ const SortBySimilarity = React.memo(
                   }}
                 />
               </div>{" "}
-              most similar samples,{" "}
-              <Checkbox
-                name={"in reverse order"}
-                value={Boolean(state.reverse)}
-                setValue={(v) => setParameter("reverse", v)}
-              />
-              with this brain key:
+              {"   "}
+              <div style={{ width: "50px", display: "inline-block" }}>
+                <Button
+                  text={state.reverse ? "least" : "most"}
+                  title={`select most or least`}
+                  onClick={() => {
+                    setParameter("reverse", !state.reverse);
+                  }}
+                  style={{
+                    margin: "auto 0",
+                    height: "2rem",
+                    borderRadius: 2,
+                    textAlign: "center",
+                    width: "50px",
+                  }}
+                ></Button>
+              </div>
+              {"  "} similar samples, using this brain key
               <RadioGroup
                 choices={choices.choices}
                 value={state.brainKey}
                 setValue={(v) => setParameter("brainKey", v)}
               />
             </div>
-            Save the float field that stores the distance of each example to the
-            speicified query as:
+            Optional: store the distance between each sample and the query in
+            this field:
             <div style={{ width: "60%" }}>
               <Input
                 placeholder={"dist_field (default = None)"}
