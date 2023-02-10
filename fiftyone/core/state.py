@@ -61,7 +61,7 @@ class StateDescription(etas.Serializable):
         self.saved_view_slug = saved_view_slug
         self.spaces = spaces
 
-    def serialize(self, reflective=False):
+    def serialize(self, reflective=True):
         with fou.disable_progress_bars():
             d = super().serialize(reflective=reflective)
 

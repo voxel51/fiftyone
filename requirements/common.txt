@@ -3,6 +3,7 @@ aiohttp==3.8.0
 argcomplete==1.11.0
 backoff==1.11.1
 boto3==1.17.36
+cachetools==5.2.0
 dacite==1.6.0
 Deprecated==1.2.11
 eventlet==0.31.0

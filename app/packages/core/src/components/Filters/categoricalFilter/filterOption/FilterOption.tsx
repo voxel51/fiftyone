@@ -54,7 +54,9 @@ const generateOptions = (
       icon: "FilterAltIcon",
       key: "filter",
       value: `Select ${nestedField} with ${valueName}`,
-      tooltip: "dataset.filter_labels(field, expr, only_matches=True)",
+      tooltip: isKeyPointLabel
+        ? "dataset.filter_keypoints(field, expr, only_matches=True)"
+        : "dataset.filter_labels(field, expr, only_matches=True)",
     });
   }
   if (nestedField && !shouldNotShowExclude) {
@@ -62,7 +64,9 @@ const generateOptions = (
       icon: "FilterAltOffIcon",
       key: "negativeFilter",
       value: `Exclude ${nestedField} with ${valueName}`,
-      tooltip: "dataset.filter_labels(field, ~expr, only_matches=False)",
+      tooltip: isKeyPointLabel
+        ? "dataset.filter_keypoints(field, ~expr, only_matches=False)"
+        : "dataset.filter_labels(field, ~expr, only_matches=False)",
     });
   }
   if (!modal && !isKeyPointLabel) {

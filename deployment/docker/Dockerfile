@@ -1,15 +1,9 @@
 # Dockerfile for building an image with a FiftyOne Team App release atop a
 # Debian-based Linux distribution.
 #
-# REQUIRED BUILD ARGs::
-#
-#   TOKEN: Your Teams client install token
-#
 # OPTIONAL BUILD ARGs::
 #
 #   PYTHON_VERSION (3.10): The Python version to install. Must be >= 3.9
-#   TEAMS_APP_VERSION (0.3.0): The version of fiftyone-teams-app to install.
-#   INDEX_URL (https://${TOKEN}@pypi.fiftyone.ai): The URL to install fiftyone-teams-app from
 #
 # REQUIRED RUNTIME ENV VARS::
 #
@@ -47,12 +41,10 @@ ARG PYTHON_VERSION=3.10
 
 FROM python:${PYTHON_VERSION}-buster as builder
 
-ARG TEAMS_APP_VERSION=0.3.0
-ARG TOKEN
-ARG INDEX_URL=https://${TOKEN}@pypi.fiftyone.ai
+COPY ./*.whl .
 
 RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython \
-    && pip wheel --wheel-dir=/tmp/wheels --index-url ${INDEX_URL} fiftyone-teams-app==${TEAMS_APP_VERSION}
+    && pip wheel --wheel-dir=/tmp/wheels ./*.whl
 
 
 FROM python:${PYTHON_VERSION}-slim-buster as release
@@ -78,7 +70,7 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 # Install fiftyone-teams-app and chown everything to voxel51
 RUN --mount=type=cache,from=builder,target=/builder,ro \
-    pip --no-cache-dir install --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app \
+    pip --no-cache-dir install --pre --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app \
     && chown --changes --silent --no-dereference --recursive voxel51:voxel51 /opt
 
 # run as the voxel51 user

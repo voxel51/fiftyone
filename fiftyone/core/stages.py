@@ -7416,7 +7416,12 @@ def _get_default_similarity_run(sample_collection):
                 % (sample_collection.dataset_name, gt_field, pred_field)
             )
     else:
+        # Try sample indexes first
         brain_keys = sample_collection._get_similarity_keys(patches_field=None)
+
+        # It's allowable to use a patches index too
+        if not brain_keys:
+            brain_keys = sample_collection._get_similarity_keys()
 
         if not brain_keys:
             raise ValueError(
