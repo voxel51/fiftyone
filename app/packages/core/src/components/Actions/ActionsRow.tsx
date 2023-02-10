@@ -105,6 +105,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   const hasSelectedSamples =
     [...useRecoilValue(fos.selectedSamples)].length > 0;
   const isImageSearch = useRecoilValue(isImageSimilaritySearch);
+  const hasSorting = Boolean(useRecoilValue(fos.similarityParameters));
   const [mRef, bounds] = useMeasure();
   const close = false;
 
@@ -112,7 +113,8 @@ const Similarity = ({ modal }: { modal: boolean }) => {
     close && setOpen(false);
   }, [close]);
 
-  const showImageSimilarityIcon = hasSelectedSamples || isImageSearch;
+  const showImageSimilarityIcon =
+    hasSelectedSamples || (isImageSearch && hasSorting);
 
   return (
     <ActionDiv ref={ref}>
