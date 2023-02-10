@@ -336,7 +336,7 @@ const SortBySimilarity = React.memo(
             {isImageSearch && !hasSorting && (
               <Button
                 text={"Show similar samples"}
-                title={`Search by image similarity to the selected ${type}`}
+                title={`Search by similarity to the selected ${type}`}
                 onClick={() => {
                   sortBySimilarity(state);
                 }}
@@ -369,7 +369,7 @@ const SortBySimilarity = React.memo(
             <ButtonGroup>
               {!isImageSearch && !hasSorting && (
                 <Tooltip
-                  text={`Search by text similarity to the selected ${type}`}
+                  text={"Search by similarity to the provided text"}
                   placement={"top-center"}
                 >
                   <div ref={refApply} onClick={() => sortBySimilarity(state)}>
@@ -401,7 +401,7 @@ const SortBySimilarity = React.memo(
               </Tooltip>
               <Tooltip text="Advanced settings" placement={"top-center"}>
                 <div ref={refSetting} onClick={() => setOpen((o) => !o)}>
-                  <IconButton aria-label="Advanced Setting" size="small">
+                  <IconButton aria-label="settings" size="small">
                     <SettingsIcon />
                   </IconButton>
                 </div>
@@ -414,13 +414,13 @@ const SortBySimilarity = React.memo(
           <>
             {hasKeyButNotSupportTextPrompts && (
               <PopoutSectionTitle style={{ fontSize: 12 }}>
-                Brain methods do not support text prompts.
+                No brain keys support text prompts
               </PopoutSectionTitle>
             )}
             <PopoutSectionTitle>
               <ActionOption
                 href={SORT_BY_SIMILARITY}
-                text={"Search by text Similarity"}
+                text={"Search by text similarity"}
                 title={"About sorting by similarity"}
                 style={{
                   background: "unset",
@@ -435,9 +435,6 @@ const SortBySimilarity = React.memo(
         )}
         {open && hasValidKeys && (
           <div>
-            <PopoutSectionTitle style={{ fontSize: 14 }}>
-              Advanced Settings:
-            </PopoutSectionTitle>
             <div>
               Find the{" "}
               <div style={{ width: "30px", display: "inline-block" }}>
@@ -469,7 +466,7 @@ const SortBySimilarity = React.memo(
                   }}
                 ></Button>
               </div>
-              {"  "} similar samples, using this brain key
+              {"  "} similar samples using this brain key
               <RadioGroup
                 choices={choices.choices}
                 value={state.brainKey}
@@ -477,7 +474,7 @@ const SortBySimilarity = React.memo(
               />
             </div>
             Optional: store the distance between each sample and the query in
-            this field:
+            this field
             <div style={{ width: "60%" }}>
               <Input
                 placeholder={"dist_field (default = None)"}
