@@ -3,6 +3,25 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.19.1:
+
+FiftyOne 0.19.1
+---------------
+*Released February 11, 2023*
+
+App
+
+- Fixed a bug when launching the App in Python 3.8 or earlier
+  `#2647 <https://github.com/voxel51/fiftyone/pull/2647>`_
+- Fixed a bug that prevented launching the App in Databricks notebooks
+  `#2647 <https://github.com/voxel51/fiftyone/pull/2647>`_
+
+Core
+
+- Fixed a bug in certain environments that prevented progress bars from
+  rendering correctly
+  `#2647 <https://github.com/voxel51/fiftyone/pull/2647>`_
+
 .. _release-notes-v0.19.0:
 
 FiftyOne 0.19.0
