@@ -41,7 +41,7 @@ export function useViewChangeEffect() {
       .then((res) => {
         if (!res || !res.index_size) {
           warnings.add(
-            `The current view does not have any corresponding embeddings.`
+            `Error fetching embeddings corresponding to the current view.`
           );
           return;
         }
