@@ -19,9 +19,8 @@ import {
 } from "recoil";
 
 import { SORT_BY_SIMILARITY } from "../../utils/links";
-import { useClearModal, useUnprocessedStateUpdate } from "@fiftyone/state";
+import { Method, useUnprocessedStateUpdate } from "@fiftyone/state";
 
-import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import RadioGroup from "../Common/RadioGroup";
 
@@ -38,15 +37,16 @@ import * as fos from "@fiftyone/state";
 import { Button } from "../utils";
 import styled from "styled-components";
 import { ActionOption } from "./Common";
+import { useExternalLink } from "@fiftyone/components/src/components/ExternalLink/ExternalLink";
 
 const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
   const selectedLabelIds = await snapshot.getPromise(fos.selectedLabelIds);
   const selectedLabels = await snapshot.getPromise(fos.selectedLabels);
-  const keys = await snapshot.getPromise(fos.similarityKeys);
+  const methods = await snapshot.getPromise(fos.similarityMethods);
 
-  const labels_field = keys.patches
-    .filter(([k, v]) => k === brainKey)
-    .map(([k, v]) => v)[0];
+  const labels_field = methods.patches
+    .filter(([m, v]) => m.key === brainKey)
+    .map(([m, v]) => v)[0];
   if (selectedLabelIds.size) {
     return [...selectedLabelIds].filter(
       (id) => selectedLabels[id].field === labels_field
@@ -80,6 +80,7 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
 
 const useSortBySimilarity = (close) => {
   const update = useUnprocessedStateUpdate();
+  const handleError = useErrorHandler();
 
   return useRecoilCallback(
     ({ snapshot, set }) =>
@@ -113,10 +114,6 @@ const useSortBySimilarity = (close) => {
             }
           );
 
-          // update selectedSamples atom to new set.
-          // modifying data, otherwise useStateUpdate will set the selectedSamples again
-          data.state.selected = [];
-
           update(({ set }) => {
             set(fos.similarityParameters, combinedParameters);
             set(fos.modal, null);
@@ -147,13 +144,32 @@ export const isImageSimilaritySearch = atom<boolean>({
   default: false,
 });
 
-const availableSimilarityKeys = selectorFamily<string[], boolean>({
+const availableSimilarityKeys = selectorFamily<
+  string[],
+  { modal: boolean; isImageSearch: boolean }
+>({
   key: "availableSimilarityKeys",
   get:
-    (modal) =>
+    ({ modal, isImageSearch }) =>
     ({ get }) => {
       const isPatches = get(fos.isPatchesView);
-      const keys = get(fos.similarityKeys);
+      let m = get(fos.similarityMethods);
+      const keys: { patches: [string, string][]; samples: string[] } = {
+        patches: [],
+        samples: [],
+      };
+      if (!isImageSearch) {
+        keys.patches = m.patches
+          .filter(([m, f]) => m.supportsPrompts === true)
+          .map(([m, f]) => [m.key, f]);
+        keys.samples = m.samples
+          .filter((m) => m.supportsPrompts === true)
+          .map((m) => m.key);
+      } else {
+        keys.patches = m.patches.map(([m, f]) => [m.key, f]);
+        keys.samples = m.samples.map((m) => m.key);
+      }
+
       if (!isPatches && !modal) {
         return keys.samples;
       } else if (!modal) {
@@ -251,25 +267,26 @@ const SortBySimilarity = React.memo(
     const [isImageSearch, setIsImageSearch] = useRecoilState(
       isImageSimilaritySearch
     );
+
     const [state, setState] = useState<fos.State.SortBySimilarityParameters>(
       () =>
         current
           ? current
           : { brainKey: null, distField: null, reverse: false, k: defaultK }
     );
-    const hasNoSelectedSamples = [...selectedSamples].length == 0;
+
     const setParameter = useCallback(
       (name: string, value) =>
         setState((state) => ({ ...state, [name]: value })),
       []
     );
-
+    const hasNoSelectedSamples = [...selectedSamples].length == 0;
     const hasSorting = Boolean(current);
     const hasSimilarityKeys =
-      useRecoilValue(availableSimilarityKeys(modal)).length > 0;
+      useRecoilValue(availableSimilarityKeys({ modal, isImageSearch })).length >
+      0;
     const choices = useRecoilValue(currentSimilarityKeys(modal));
     const sortBySimilarity = useSortBySimilarity(close);
-    const hasSelectedSamples = [...selectedSamples].length > 0;
     const type = useRecoilValue(sortType(modal));
 
     const reset = useRecoilCallback(({ reset }) => () => {
@@ -295,12 +312,15 @@ const SortBySimilarity = React.memo(
       if (!hasNoSelectedSamples) {
         setIsImageSearch(true);
       }
-    }, [hasNoSelectedSamples]);
+      if (!hasSorting && hasNoSelectedSamples) {
+        setIsImageSearch(false);
+      }
+    }, [hasNoSelectedSamples, hasSorting]);
 
     const popoutStyle = { minWidth: 280 };
 
     const onInfoLink = () => {
-      window.open(SORT_BY_SIMILARITY, "_blank");
+      useExternalLink(SORT_BY_SIMILARITY);
     };
 
     const brainKeySupportsPromps = dataset.brainMethods.some(
@@ -448,8 +468,7 @@ const SortBySimilarity = React.memo(
                     setParameter("k", value === "" ? null : Number(value));
                   }}
                 />
-              </div>{" "}
-              {"   "}
+              </div>
               <div style={{ width: "50px", display: "inline-block" }}>
                 <Button
                   text={state.reverse ? "least" : "most"}
@@ -466,7 +485,7 @@ const SortBySimilarity = React.memo(
                   }}
                 ></Button>
               </div>
-              {"  "} similar samples using this brain key
+              similar samples using this brain key
               <RadioGroup
                 choices={choices.choices}
                 value={state.brainKey}

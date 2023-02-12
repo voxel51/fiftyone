@@ -318,30 +318,38 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
   },
 });
 
-export const similarityKeys = selector<{
-  patches: [string, string][];
-  samples: string[];
+export type Method = {
+  key: string;
+  supportsPrompts: boolean;
+};
+
+export const similarityMethods = selector<{
+  patches: [Method, string][];
+  samples: Method[];
 }>({
-  key: "similarityKeys",
+  key: "similarityMethods",
   get: ({ get }) => {
     const methods = get(atoms.dataset).brainMethods;
-    return methods
+
+    const r = methods
       .filter(({ config: { method } }) => method === "similarity")
       .reduce(
         (
           { patches, samples },
 
-          { config: { patchesField }, key }
+          { config: { patchesField, supportsPrompts }, key }
         ) => {
           if (patchesField) {
-            patches.push([key, patchesField]);
+            patches.push([{ key, supportsPrompts }, patchesField]);
           } else {
-            samples.push(key);
+            samples.push({ key, supportsPrompts });
           }
           return { patches, samples };
         },
         { patches: [], samples: [] }
       );
+    console.info(r);
+    return r;
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
