@@ -87,24 +87,11 @@ const Patches = () => {
   );
 };
 
-const hasSimilarityKeys = selectorFamily<boolean, boolean>({
-  key: "hasSimilarityKeys",
-  get:
-    (modal) =>
-    ({ get }) => {
-      if (modal) {
-        return true;
-      }
-      return Boolean(get(fos.selectedSamples).size);
-    },
-});
-
 const Similarity = ({ modal }: { modal: boolean }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
-  const hasSelectedSamples =
-    [...useRecoilValue(fos.selectedSamples)].length > 0;
+  const hasSelectedSamples = useRecoilValue(fos.hasSelectedSamples);
   const isImageSearch = useRecoilValue(isImageSimilaritySearch);
   const hasSorting = Boolean(useRecoilValue(fos.similarityParameters));
   const [mRef, bounds] = useMeasure();

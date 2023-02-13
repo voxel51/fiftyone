@@ -1,6 +1,6 @@
 import { animated, useSpring } from "@react-spring/web";
 import { useState } from "react";
-import { atom, selectorFamily, Snapshot, useRecoilCallback } from "recoil";
+import { selectorFamily, Snapshot, useRecoilCallback } from "recoil";
 import styled from "styled-components";
 
 import { useTheme } from "@fiftyone/components";
