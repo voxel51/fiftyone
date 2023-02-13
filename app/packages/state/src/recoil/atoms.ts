@@ -256,7 +256,7 @@ export const extendedSelectionOverrideStage = atom<any>({
 });
 
 export const similarityParameters = atom<
-  State.SortBySimilarityParameters & { queryIds: string[] }
+  State.SortBySimilarityParameters & { queryIds?: string[] }
 >({
   key: "similarityParameters",
   default: null,
