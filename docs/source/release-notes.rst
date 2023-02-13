@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne 0.19.1
 ---------------
-*Released February 12, 2023*
+*Released February 13, 2023*
 
 App
 
