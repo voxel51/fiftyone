@@ -1,9 +1,11 @@
 .resizeHandle:hover,
-.resizeHandle:active {
+.resizeHandle:active,
+.resizeHandle:focus {
   background: #007fd4;
-  width: 4px !important;
   z-index: 1;
-  right: 0px !important;
-  transition: background-color 0.25s ease;
   transition-delay: 0.25s;
+}
+
+.resizeHandle {
+  transition: background-color 0.1s ease;
 }
