@@ -1,6 +1,11 @@
 import { IconButton } from "@fiftyone/components";
 import { Close } from "@mui/icons-material";
-import { usePanel, usePanelTitle, useSpaces } from "../hooks";
+import {
+  usePanel,
+  usePanelCloseEffect,
+  usePanelTitle,
+  useSpaces,
+} from "../hooks";
 import { PanelTabProps } from "../types";
 import { warnPanelNotFound } from "../utils";
 import PanelIcon from "./PanelIcon";
@@ -9,8 +14,10 @@ import { StyledTab } from "./StyledElements";
 export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
   const { spaces } = useSpaces(spaceId);
   const panelName = node.type;
+  const panelId = node.id;
   const panel = usePanel(panelName);
-  const [title] = usePanelTitle(node.id);
+  const [title] = usePanelTitle(panelId);
+  const closeEffect = usePanelCloseEffect(panelId);
 
   if (!panel) return warnPanelNotFound(panelName);
 
@@ -28,6 +35,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            closeEffect();
             spaces.removeNode(node);
           }}
           sx={{ pb: 0, mr: "-8px" }}
