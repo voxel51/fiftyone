@@ -500,3 +500,11 @@ function getLabelIdsFromSample(sample, path, matchesFilter) {
 
   return labelIds;
 }
+
+export const hasSelectedSamples = selector<boolean>({
+  key: "hasSelectedSamples",
+  get: ({ get }) => {
+    const selectedSamples = get(atoms.selectedSamples);
+    return selectedSamples.size > 0;
+  },
+});
