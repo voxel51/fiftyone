@@ -1,0 +1,21 @@
+.MuiSlider-thumb {
+  box-shadow: none !important;
+}
+
+.point-size-text-field {
+  color: #fff;
+}
+
+.point-size-slider {
+  align-self: center;
+  margin-right: 30px;
+}
+
+.MuiFilledInput-input,
+.MuiInput-underline {
+  color: #fff !important;
+}
+
+.MuiInput-root:after {
+  border-bottom: none !important;
+}
