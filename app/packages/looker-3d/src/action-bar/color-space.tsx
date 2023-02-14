@@ -40,7 +40,7 @@ const ColorSpaceChoices = () => {
 
   return (
     <ActionPopOver>
-      <PopoutSectionTitle>Color by</PopoutSectionTitle>
+      <PopoutSectionTitle>Shade by</PopoutSectionTitle>
 
       <TabOption
         active={current}

@@ -39,7 +39,7 @@ export const COLOR_BY_CHOICES: { label: string; value: ColorBy }[] = [
 
 export const colorByAtom = atom<ColorBy>({
   key: "colorBy",
-  default: COLOR_BY_NONE,
+  default: COLOR_BY_INTENSITY,
 });
 
 export const currentActionAtom = atom<Actions>({
@@ -49,7 +49,7 @@ export const currentActionAtom = atom<Actions>({
 
 export const currentPointSizeAtom = atom<number>({
   key: "pointSize",
-  default: 0.1,
+  default: 1,
   effects: [
     ({ setSelf, onSet }) => {
       const pointSizeKey = "pointSize";
