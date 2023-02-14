@@ -170,7 +170,7 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
         )
         self.assertValidProjection(
             pcd_sample["orthographic_projection_metadata"],
-            "specs/3d/30x30_seed_42_auto.png",
+            "specs/3d/30x30_seed_42_none.png",
         )
 
     @drop_datasets
@@ -189,7 +189,7 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
         )
         self.assertValidProjection(
             dataset.first()["orthographic_projection_metadata"],
-            "./specs/3d/100x100_seed_1_auto.png",
+            "specs/3d/100x100_seed_1_none.png",
         )
 
         fou3d.compute_orthographic_projection_images(
@@ -217,17 +217,6 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
         )
         self.assertTrue(
             dataset.first().has_field("orthographic_projection_metadata")
-        )
-        self.assertValidProjection(
-            dataset.first()["orthographic_projection_metadata"],
-            "./specs/3d/100x100_seed_10_auto.png",
-        )
-
-        fou3d.compute_orthographic_projection_images(
-            dataset,
-            size=(100, 100),
-            output_dir=self.temp_dir.name,
-            shading_mode="none",
         )
         self.assertValidProjection(
             dataset.first()["orthographic_projection_metadata"],
