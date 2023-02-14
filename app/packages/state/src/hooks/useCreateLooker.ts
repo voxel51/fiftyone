@@ -1,4 +1,9 @@
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import {
+  FrameLooker,
+  ImageLooker,
+  PcdLooker,
+  VideoLooker,
+} from "@fiftyone/looker";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   getMimeType,
@@ -11,7 +16,7 @@ import { mainGroupSample, selectedMediaField } from "../recoil";
 
 import { SampleData, selectedSamples } from "../recoil/atoms";
 import * as schemaAtoms from "../recoil/schema";
-import { datasetName } from "../recoil/selectors";
+import { datasetName, mediaTypeSelector } from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
@@ -32,6 +37,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(datasetName);
   const mediaField = useRecoilValue(selectedMediaField(isModal));
+  const mediaType = useRecoilValue(mediaTypeSelector);
 
   const fieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
@@ -45,6 +51,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
       let constructor:
         | typeof FrameLooker
         | typeof ImageLooker
+        | typeof PcdLooker
         | typeof VideoLooker = ImageLooker;
 
       const mimeType = getMimeType(sample);
@@ -59,10 +66,19 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
         if (isVideo) {
           constructor = VideoLooker;
         }
+
+        if (mediaType === "point_cloud") {
+          constructor = PcdLooker;
+        }
       } else {
-        // todo: check media type; constructor = PcdLooker if media_type is point-cloud
         constructor = ImageLooker;
       }
+
+      const sampleMediaFilePath =
+        constructor === PcdLooker &&
+        "orthographic_projection_metadata" in sample
+          ? (sample["orthographic_projection_metadata"]["filepath"] as string)
+          : urls[mediaField];
 
       const config: ReturnType<T["getInitialState"]>["config"] = {
         fieldSchema: {
@@ -79,7 +95,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
         frameNumber: constructor === FrameLooker ? frameNumber : undefined,
         frameRate,
         sampleId: sample._id,
-        src: getSampleSrc(urls[mediaField]),
+        src: getSampleSrc(sampleMediaFilePath),
         support: isClip ? sample.support : undefined,
         thumbnail,
         dataset,
@@ -113,6 +129,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
       highlight,
       selected,
       view,
+      mediaType,
     ]
   );
   const createLookerRef = useRef<(data: SampleData) => T>(create);

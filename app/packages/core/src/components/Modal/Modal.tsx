@@ -186,7 +186,7 @@ const SampleModal = () => {
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isGroup = useRecoilValue(fos.isGroup);
-  const isPcd = useRecoilValue(fos.isPcdOnlyDataset);
+  const isPcd = useRecoilValue(fos.isPointcloudDataset);
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
 
