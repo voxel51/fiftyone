@@ -51,8 +51,8 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument):
     """
 
     filepath = fof.StringField()
-    min_bound = fof.VectorField()
-    max_bound = fof.VectorField()
+    min_bound = fof.ListField(fof.FloatField())
+    max_bound = fof.ListField(fof.FloatField())
     width = fof.IntField()
     height = fof.IntField()
 
@@ -61,9 +61,7 @@ def compute_orthographic_projection_images(
     samples: foc.SampleCollection,
     size: Vec2Tuple,
     output_dir: str,
-    shading_mode: Literal[
-        "auto", "intensity", "rgb", "height", "none"
-    ] = "auto",
+    shading_mode: Literal["intensity", "rgb", "height", "none"] = "none",
     rel_dir: str = None,
     projection_normal: Vec3Tuple = None,
     in_group_slice: str = None,
@@ -101,7 +99,7 @@ def compute_orthographic_projection_images(
         output_dir: an output directory in which to store the images/maps
         shading_mode: an optional field to specify how to shade the points.
             "intensity" and "rgb" are only valid if the header contains
-            "rgb" flag, or else it'll default to "auto" mode. In "none" mode,
+            "rgb" flag, or else it'll default to "none" mode. In "none" mode,
             all points are shaded white.
         rel_dir (None): an optional relative directory to strip from each input
             filepath to generate a unique identifier that is joined with
@@ -200,9 +198,7 @@ def compute_orthographic_projection_images(
 def compute_orthographic_projection_image(
     filepath: str,
     size: Vec2Tuple,
-    shading_mode: Literal[
-        "auto", "intensity", "rgb", "height", "none"
-    ] = "auto",
+    shading_mode: Literal["intensity", "rgb", "height", "none"] = "none",
     projection_normal: Vec3Tuple = None,
     bounds: Tuple[Vec3Tuple, Vec3Tuple] = None,
 ):
@@ -219,7 +215,7 @@ def compute_orthographic_projection_image(
             aspect-preserving value is used
         shading_mode: an optional field to specify how to shade the points.
         "intensity" and "rgb" are only valid if the header contains
-        "rgb" flag, or else it'll default to "auto" mode. In "none" mode,
+        "rgb" flag, or else it'll default to "none" mode. In "none" mode,
         all points are shaded white.
         projection_normal (None): **(experimental)** the normal vector of the
         plane onto which to perform the projection. By default, ``(0, 0, 1)``
@@ -305,9 +301,7 @@ def compute_orthographic_projection_image(
             )
             rgbs = np.array([shading_gradient_map[v] for v in rgb_refs])
             image_map[np.int_(points[:, 0]), np.int_(points[:, 1]), :] = rgbs
-    elif shading_mode == "none":
-        image_map[np.int_(points[:, 0]), np.int_(points[:, 1]), :] = 255.0
-    else:
+    elif shading_mode == "height":
         # color by height (z)
         max_z = np.max(points[:, 2])
         min_z = np.min(points[:, 2])
@@ -318,6 +312,8 @@ def compute_orthographic_projection_image(
         )
         rgbs = np.array([shading_gradient_map[v] for v in rgb_refs])
         image_map[np.int_(points[:, 0]), np.int_(points[:, 1]), :] = rgbs
+    else:
+        image_map[np.int_(points[:, 0]), np.int_(points[:, 1]), :] = 255.0
 
     # change axis orientation such that y is up
     image_map = np.rot90(image_map, k=1, axes=(0, 1))
