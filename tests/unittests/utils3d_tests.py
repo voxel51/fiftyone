@@ -250,7 +250,7 @@ class DataModelTests(unittest.TestCase):
     @drop_datasets
     def test_orthographic_projection_metadata_field(self):
         metadata = fou3d.OrthographicProjectionMetadata()
-        metadata.img_path = "test_path"
+        metadata.filepath = "test_path"
         metadata.min_bound = (1, 2, 3)
         metadata.max_bound = (4, 5, 6)
         metadata.width = 100
@@ -265,7 +265,7 @@ class DataModelTests(unittest.TestCase):
 
         field = dataset.first()["orthographic_projection_metadata"]
         self.assertEqual(
-            field["img_path"],
+            field["filepath"],
             "test_path",
         )
 
