@@ -142,7 +142,7 @@ function setStages(ctx, stageInfo) {
               stageInfoResult.params[j].type,
               "castFrom",
               p[1],
-              false,
+              typeof p[1] === "string",
               ctx.fieldNames
             ),
             true,
