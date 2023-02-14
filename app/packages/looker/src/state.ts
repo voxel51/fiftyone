@@ -33,6 +33,17 @@ export interface Sample {
   tags: string[];
   _label_tags: string[];
   _media_type: "image" | "video" | "point-cloud";
+  /**
+   * orthographic projection metadata for pointcloud datasets
+   */
+  orthographic_projection_metadata?: {
+    _cls: "OrthographicProjectionMetadata";
+    filepath: string;
+    height: number;
+    width: number;
+    min_bound: [number, number];
+    max_bound: [number, number];
+  };
 }
 
 export interface LabelData {
@@ -123,6 +134,7 @@ interface BaseOptions {
   defaultSkeleton?: KeypointSkeleton;
   skeletons: { [key: string]: KeypointSkeleton };
   showSkeletons: boolean;
+  isPointcloudDataset: boolean;
   pointFilter: (path: string, point: Point) => boolean;
   thumbnailTitle?: (sample: any) => string;
 }
@@ -154,6 +166,8 @@ export interface VideoConfig extends BaseConfig {
   support?: [number, number];
 }
 
+export interface PcdConfig extends BaseConfig {}
+
 export interface FrameOptions extends BaseOptions {
   useFrameNumber: boolean;
   zoom: boolean;
@@ -170,6 +184,8 @@ export interface VideoOptions extends BaseOptions {
   useFrameNumber: boolean;
   volume: number;
 }
+
+export interface PcdOptions extends BaseOptions {}
 
 export interface TooltipOverlay {
   color: string;
@@ -255,6 +271,12 @@ export interface VideoState extends BaseState {
   lockedToSupport: boolean;
 }
 
+export interface PcdState extends BaseState {
+  config: PcdConfig;
+  options: PcdOptions;
+  SHORTCUTS: Readonly<ControlMap<PcdState>>;
+}
+
 export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
 };
@@ -335,6 +357,10 @@ export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   playbackRate: 1,
   useFrameNumber: false,
   volume: 0,
+};
+
+export const DEFAULT_PCD_OPTIONS: PcdOptions = {
+  ...DEFAULT_BASE_OPTIONS,
 };
 
 export interface FrameSample {
