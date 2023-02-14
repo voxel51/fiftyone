@@ -207,7 +207,6 @@ class Dataset:
     evaluations: t.Optional[t.List[EvaluationRun]]
     saved_view_slug: t.Optional[str]
     saved_views: t.Optional[t.List[SavedView]]
-    saved_view_ids: gql.Private[t.Optional[t.List[gql.ID]]]
     version: t.Optional[str]
     view_cls: t.Optional[str]
     view_name: t.Optional[str]

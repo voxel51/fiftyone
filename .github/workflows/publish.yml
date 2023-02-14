@@ -18,14 +18,11 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/teams-v')
     needs: [build, test]
     steps:
-      - name: Download artifact
-        id: download-artifact
-        uses: dawidd6/action-download-artifact@v2
+      - name: Download dist
+        uses: actions/download-artifact@v3
         with:
-          workflow_conclusion: success
-          run_id: ${{github.run_id}}
           name: dist
-          path: dist
+          path: dist/
       - name: Install dependencies
         run: |
           pip3 install twine
