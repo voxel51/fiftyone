@@ -3,7 +3,6 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Option, Select } from "@mui/joy";
 import styled from "styled-components";
 
-export { IconButton } from "@mui/material";
 import { useOutsideClick } from "@fiftyone/state";
 import SelectionOption from "./Option";
 import { IconButton, useTheme } from "@fiftyone/components";
