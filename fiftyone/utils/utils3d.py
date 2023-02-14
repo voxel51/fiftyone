@@ -7,8 +7,8 @@
 """
 import itertools
 import logging
-from typing import Literal
 from typing import Tuple
+from typing_extensions import Literal
 
 import eta.core.image as etai
 import numpy as np

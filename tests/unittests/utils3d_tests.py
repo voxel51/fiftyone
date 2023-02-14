@@ -8,11 +8,11 @@ FiftyOne utilities unit tests.
 import os
 import tempfile
 import unittest
-from typing import Literal
 
 import numpy as np
 import open3d as o3d
 from PIL import Image
+from typing_extensions import Literal
 
 import fiftyone as fo
 import fiftyone.utils.utils3d as fou3d
