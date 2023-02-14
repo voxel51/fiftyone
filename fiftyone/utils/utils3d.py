@@ -50,7 +50,7 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument):
     Metadata class to store orthographic projection results
     """
 
-    img_path = fof.StringField()
+    filepath = fof.StringField()
     min_bound = fof.VectorField()
     max_bound = fof.VectorField()
     width = fof.IntField()
@@ -157,7 +157,7 @@ def compute_orthographic_projection_images(
                 filepath, output_ext=".png"
             )
 
-            img, bounds = compute_orthographic_projection_image(
+            img, processed_bounds = compute_orthographic_projection_image(
                 filepath,
                 size,
                 shading_mode=shading_mode,
@@ -169,8 +169,14 @@ def compute_orthographic_projection_images(
 
             metadata = OrthographicProjectionMetadata(
                 filepath=image_path,
-                min_bound=(bounds[0], bounds[2]),  # xmin, ymin
-                max_bound=(bounds[1], bounds[3]),  # ymin, ymax
+                min_bound=(
+                    processed_bounds[0],
+                    processed_bounds[2],
+                ),  # xmin, ymin
+                max_bound=(
+                    processed_bounds[1],
+                    processed_bounds[3],
+                ),  # ymin, ymax
                 width=img.shape[0],
                 height=img.shape[1],
             )
