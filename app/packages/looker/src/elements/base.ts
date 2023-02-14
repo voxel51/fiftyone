@@ -57,7 +57,6 @@ export abstract class BaseElement<
 
   render(state: Readonly<State>, sample: Readonly<Sample>): Element | null {
     const self = this.renderSelf(state, sample);
-
     this.children.forEach((child) => {
       if (!child.isShown(state.config)) {
         return;
