@@ -18,14 +18,10 @@ jobs:
     if: github.ref != 'refs/tags/docker-build'
     needs: [build, test]
     steps:
-      - name: Download artifact
-        id: download-artifact
-        uses: dawidd6/action-download-artifact@v2
+      - name: Download dist
+        uses: actions/download-artifact@v3
         with:
-          workflow: build.yml
-          run_id: ${{github.run_id}}
           name: dist
-          path: dist
       - name: Install dependencies
         run: |
           pip3 install twine
