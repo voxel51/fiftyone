@@ -320,7 +320,7 @@ def compute_orthographic_projection_image(
         image_map[np.int_(points[:, 0]), np.int_(points[:, 1]), :] = rgbs
 
     # change axis orientation such that y is up
-    image_map = np.einsum("ijk -> jik", image_map)
+    image_map = np.rot90(image_map, k=1, axes=(0, 1))
     bounds = [min_bound[0], max_bound[0], min_bound[1], max_bound[1]]
     return image_map, bounds
 
