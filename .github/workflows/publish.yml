@@ -22,6 +22,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: dist
+          path: dist/
       - name: Install dependencies
         run: |
           pip3 install twine
