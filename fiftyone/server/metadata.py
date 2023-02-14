@@ -53,9 +53,20 @@ async def get_metadata(
         metadata dict
     """
     filepath = sample["filepath"]
-    is_video = media_type == fom.VIDEO
     metadata = sample.get("metadata", None)
     urls = _create_media_urls(collection, sample, url_cache)
+
+    has_orthographic_projection_metadata = (
+        media_type == fom.POINT_CLOUD
+        and "orthographic_projection_metadata" in sample
+    )
+
+    if has_orthographic_projection_metadata:
+        orthographic_projection_image_path = sample[
+            "orthographic_projection_metadata"
+        ]["filepath"]
+
+    is_video = media_type == fom.VIDEO
 
     # If sufficient pre-existing metadata exists, use it
     if filepath not in metadata_cache and metadata:
@@ -65,11 +76,14 @@ async def get_metadata(
             frame_rate = metadata.get("frame_rate", None)
 
             if width and height and frame_rate:
-                metadata_cache[sample["filepath"]] = dict(
+                metadata_cache[filepath] = dict(
                     aspect_ratio=width / height,
                     frame_rate=frame_rate,
                 )
-
+        elif has_orthographic_projection_metadata:
+            metadata_cache[filepath] = await read_metadata(
+                orthographic_projection_image_path, False
+            )
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
