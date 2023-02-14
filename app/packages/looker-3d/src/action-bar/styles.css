@@ -19,3 +19,10 @@
 .MuiInput-root:after {
   border-bottom: none !important;
 }
+
+.point-size-container {
+  margin: 1em;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+}
