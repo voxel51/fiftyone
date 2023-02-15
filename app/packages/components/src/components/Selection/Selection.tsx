@@ -3,7 +3,7 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Option, Select } from "@mui/joy";
 import styled from "styled-components";
 
-import { useOutsideClick } from "@fiftyone/state";
+import { useOutsideClick, DEFAULT_SELECTED } from "@fiftyone/state";
 import SelectionOption from "./Option";
 import { IconButton, useTheme } from "@fiftyone/components";
 import { DatasetViewOption } from "./Option";
@@ -173,7 +173,7 @@ export default function Selection(props: SelectionProps) {
         startDecorator={
           <ColoredDot color={selectedColor || DEFAULT_COLOR_OPTION.color} />
         }
-        {...(selectedId !== "1" &&
+        {...(selectedId !== DEFAULT_SELECTED.id &&
           onClear && {
             endDecorator: (
               <IconButton
