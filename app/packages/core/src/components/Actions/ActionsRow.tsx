@@ -34,8 +34,8 @@ import LoadingDots from "../../../../components/src/components/Loading/LoadingDo
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
-import Similar, { isImageSimilaritySearch } from "./Similar";
 import Tagger from "./Tagger";
+import Similar, { isImageSimilaritySearch } from "./similar/Similar";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
