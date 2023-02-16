@@ -3226,7 +3226,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             overwrite (False): whether to overwrite an existing saved view with
                 the same name
         """
-        if view._root_dataset.slug != self.slug:
+        if view._root_dataset._doc.id != self._doc.id:
             raise ValueError("Cannot save view into a different dataset")
 
         view._set_name(name)
