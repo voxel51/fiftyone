@@ -34,21 +34,21 @@ class Sample:
     id: gql.ID
     sample: JSON
     urls: t.List[MediaURL]
+    aspect_ratio: float
 
 
 @gql.type
 class ImageSample(Sample):
-    aspect_ratio: float
+    pass
 
 
 @gql.type
 class PointCloudSample(Sample):
-    aspect_ratio: float
+    pass
 
 
 @gql.type
 class VideoSample(Sample):
-    aspect_ratio: float
     frame_rate: float
 
 
