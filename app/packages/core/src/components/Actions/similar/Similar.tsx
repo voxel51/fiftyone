@@ -15,18 +15,19 @@ import * as fos from "@fiftyone/state";
 
 import { useExternalLink } from "@fiftyone/components/src/components/ExternalLink/ExternalLink";
 import { SORT_BY_SIMILARITY } from "../../../utils/links";
-import {
-  availableSimilarityKeys,
-  currentSimilarityKeys,
-  useSortBySimilarity,
-  sortType,
-} from "../utils";
+
 import { Button } from "../../utils";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
 import Popout from "../Popout";
 import Warning from "./Warning";
 import GroupButton, { ButtonDetail } from "./GroupButton";
+import {
+  availableSimilarityKeys,
+  currentSimilarityKeys,
+  sortType,
+  useSortBySimilarity,
+} from "./utils";
 
 const longButtonStyle = {
   margin: "0.25rem",
@@ -99,15 +100,6 @@ const SortBySimilarity = React.memo(
     useLayoutEffect(() => {
       current && setState(current);
     }, [current]);
-
-    useEffect(() => {
-      if (!hasNoSelectedSamples) {
-        setIsImageSearch(true);
-      }
-      if (!hasSorting && hasNoSelectedSamples) {
-        setIsImageSearch(false);
-      }
-    }, [hasNoSelectedSamples, hasSorting]);
 
     let groupButtons: ButtonDetail[] = [
       {
