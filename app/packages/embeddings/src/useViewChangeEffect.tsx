@@ -40,9 +40,7 @@ export function useViewChangeEffect() {
       .catch((err) => setLoadingPlotError(err))
       .then((res) => {
         if (!res || !res.index_size) {
-          warnings.add(
-            `Error fetching embeddings corresponding to the current view.`
-          );
+          warnings.add(`Failed to fetch embeddings for the current view.`);
           return;
         }
         const notUsed = res.index_size - res.available_count;
