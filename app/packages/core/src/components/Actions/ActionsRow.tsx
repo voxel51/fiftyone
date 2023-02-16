@@ -89,13 +89,15 @@ const Patches = () => {
 
 const Similarity = ({ modal }: { modal: boolean }) => {
   const [open, setOpen] = useState(false);
-  const ref = useRef();
-  useOutsideClick(ref, () => open && setOpen(false));
+  const [isImageSearch, setIsImageSearch] = useRecoilState(
+    isImageSimilaritySearch
+  );
   const hasSelectedSamples = useRecoilValue(fos.hasSelectedSamples);
-  const isImageSearch = useRecoilValue(isImageSimilaritySearch);
   const hasSorting = Boolean(useRecoilValue(fos.similarityParameters));
   const [mRef, bounds] = useMeasure();
   const close = false;
+  const ref = useRef();
+  useOutsideClick(ref, () => open && setOpen(false));
 
   useLayoutEffect(() => {
     close && setOpen(false);
@@ -110,7 +112,10 @@ const Similarity = ({ modal }: { modal: boolean }) => {
         <PillButton
           icon={<Wallpaper />}
           open={open}
-          onClick={() => setOpen(!open)}
+          onClick={() => {
+            setOpen(!open);
+            setIsImageSearch(true);
+          }}
           highlight={true}
           ref={mRef}
           title={"Sort by image similarity"}
