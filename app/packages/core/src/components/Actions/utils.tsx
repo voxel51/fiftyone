@@ -15,7 +15,7 @@ import {
 } from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useErrorHandler } from "react-error-boundary";
-import { searchBrainKeyValue } from "./Similar";
+import { searchBrainKeyValue } from "./similar/Similar";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background.body};
