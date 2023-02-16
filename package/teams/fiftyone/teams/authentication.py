@@ -181,7 +181,7 @@ class Authentication(AuthenticationBackend):
         else:
             # Can't throw an error here because token may not be present upon
             # first load, and we don't want to get stuck here.
-            logging.warning("No authentication header or cookie provided.")
+            pass
         if token:
             try:
                 authenticated = await authenticate_header(token, _jwks)
