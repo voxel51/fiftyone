@@ -933,6 +933,7 @@ class Session(object):
         """
         if not focx.is_notebook_context() or self.desktop:
             return
+
         self.freeze()
         if self.dataset is not None:
             self.dataset._reload()
