@@ -1,3 +1,4 @@
+import { Layout } from "../enums";
 import { useSpaces } from "../hooks";
 import SpaceNode from "../SpaceNode";
 import { AddPanelItemProps } from "../types";
@@ -14,10 +15,15 @@ export default function AddPanelItem({
   const { spaces } = useSpaces(spaceId);
   return (
     <StyledPanelItem
-      onClick={() => {
+      onClick={(e) => {
         const newNode = new SpaceNode();
         newNode.type = name;
         spaces.addNodeAfter(node, newNode);
+        if (e.altKey) {
+          spaces.splitLayout(node, Layout.Horizontal);
+        } else if (e.shiftKey) {
+          spaces.splitLayout(node, Layout.Vertical);
+        }
         if (onClick) onClick();
       }}
     >

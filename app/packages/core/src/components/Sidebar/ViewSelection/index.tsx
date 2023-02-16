@@ -214,6 +214,10 @@ export default function ViewSelection() {
             setSelected(item);
             setView(item.viewStages, [], item.slug);
           }}
+          onClear={() => {
+            setSelected(fos.DEFAULT_SELECTED);
+            setView([], []);
+          }}
           items={searchData}
           onEdit={(item) => {
             setEditView({
