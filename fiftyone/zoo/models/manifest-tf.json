@@ -1134,7 +1134,7 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
