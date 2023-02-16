@@ -371,6 +371,7 @@ export const sidebarGroups = selectorFamily<
       const groupNames = groups.map(({ name }) => name);
       // TODO: may need to rename all tags after it's done. Need to use it now to differient between tags (which is sample tags)
       const newTagGroupIndex = groupNames.indexOf("all tags");
+      console.info(newTagGroupIndex);
       const tagsIndex = groupNames.indexOf("tags");
       const labelTagsIndex = groupNames.indexOf("label tags");
 
@@ -428,13 +429,13 @@ export const sidebarGroups = selectorFamily<
         if (NONE.includes(groups[newTagGroupIndex].expanded)) {
           groups[newTagGroupIndex].expanded = false;
         }
-        // TODO: need to delete the following two once all done;
-        if (NONE.includes(groups[tagsIndex].expanded)) {
-          groups[tagsIndex].expanded = false;
-        }
-        if (NONE.includes(groups[labelTagsIndex].expanded)) {
-          groups[labelTagsIndex].expanded = false;
-        }
+        // // TODO: need to delete the following two once all done;
+        // if (NONE.includes(groups[tagsIndex].expanded)) {
+        //   groups[tagsIndex].expanded = false;
+        // }
+        // if (NONE.includes(groups[labelTagsIndex].expanded)) {
+        //   groups[labelTagsIndex].expanded = false;
+        // }
 
         if (
           video &&

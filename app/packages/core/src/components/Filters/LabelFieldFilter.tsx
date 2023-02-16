@@ -22,7 +22,6 @@ const LabelTagFieldFilter = ({
   onBlur?: () => void;
   title: string;
 }) => {
-  // tags have their own count
   return (
     <CategoricalFilter<{ value: string | null; count: number }>
       selectedValuesAtom={stringSelectedValuesAtom({ modal, path })}

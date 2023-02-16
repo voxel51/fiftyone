@@ -221,7 +221,6 @@ const FilterableEntry = React.memo(
     entryKey,
     modal,
     path,
-    childPaths,
     onFocus,
     onBlur,
     disabled = false,
@@ -259,12 +258,6 @@ const FilterableEntry = React.memo(
       })
     );
 
-    const tagFields = useRecoilValue(
-      fos.fields({
-        path: expandedPath,
-      })
-    );
-
     const field = useRecoilValue(fos.field(path));
     const isLabelTag = path.startsWith("_label_tag");
     const isSampleTag = path.startsWith("tags.");
@@ -274,16 +267,14 @@ const FilterableEntry = React.memo(
       // create pseudo field for tags
       pseudoField = {
         name: path.split(".").slice(1).join("."),
-        ftype: isLabelTag ? "label_tags" : "sample_tags",
+        ftype: "",
         subfield: null,
-        description: isLabelTag ? "label tags" : "sample tags",
+        description: "",
         info: null,
         fields: {},
         dbField: null,
         path: path,
-        embeddedDocType: isLabelTag
-          ? "fiftyone.core.labels.labelTag"
-          : "fiftyone.core.labels.sampleTag",
+        embeddedDocType: null,
       };
     }
 
@@ -302,16 +293,6 @@ const FilterableEntry = React.memo(
       fos.activeField({ modal, path })
     );
     const hidden = modal ? useHidden(path) : null;
-    const renderTagFilter = () => {
-      return React.createElement(FILTERS["TAG_FIELD"], {
-        key: path,
-        onFocus,
-        onBlur,
-        title: `${LIST_FIELD}(${STRING_FIELD})`,
-        path: path,
-        modal: modal,
-      });
-    };
 
     return (
       <RegularEntry
@@ -335,7 +316,7 @@ const FilterableEntry = React.memo(
                   padding: 0,
                 }}
                 key="checkbox"
-                onClick={!disabled ? () => setActive(!active) : undefined}
+                onClick={!disabled ? () => setActive(!active) : undefined} // update the select tags actions
               />
             )}
             {
@@ -386,6 +367,7 @@ const FilterableEntry = React.memo(
         {expanded &&
           !isLabelTag &&
           !isSampleTag &&
+          data &&
           data.map(({ ftype, listField, ...props }) => {
             return React.createElement(FILTERS[ftype], {
               key: props.path,
@@ -395,7 +377,16 @@ const FilterableEntry = React.memo(
               ...props,
             });
           })}
-        {expanded && (isLabelTag || isSampleTag) && renderTagFilter()}
+        {expanded &&
+          (isLabelTag || isSampleTag) &&
+          React.createElement(FILTERS["TAG_FIELD"], {
+            key: path,
+            onFocus,
+            onBlur,
+            title: `${LIST_FIELD}(${STRING_FIELD})`,
+            path: path,
+            modal: modal,
+          })}
       </RegularEntry>
     );
   }

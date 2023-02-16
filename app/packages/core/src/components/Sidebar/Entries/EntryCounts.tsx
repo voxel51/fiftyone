@@ -47,21 +47,6 @@ export const PathEntryCounts = ({
         modal,
         path,
       });
-
-      const split = path.split(".");
-      if (path.includes("_label_tags")) {
-        return fos.cumulativeCounts({
-          extended,
-          modal,
-          ...fos.MATCH_LABEL_TAGS,
-        })[split.slice(1).join(".")];
-      } else {
-        return fos.count({
-          extended,
-          modal,
-          path,
-        });
-      }
     },
     [modal, path]
   );
