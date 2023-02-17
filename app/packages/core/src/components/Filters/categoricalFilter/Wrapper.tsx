@@ -149,6 +149,7 @@ const Wrapper = ({
               valueName={name}
               color={color}
               modal={modal}
+              path={path}
               isKeyPointLabel={isKeyPoints}
             />
           }

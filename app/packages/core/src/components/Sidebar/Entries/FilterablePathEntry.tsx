@@ -261,6 +261,7 @@ const FilterableEntry = React.memo(
     const field = useRecoilValue(fos.field(path));
     const isLabelTag = path.startsWith("_label_tag");
     const isSampleTag = path.startsWith("tags.");
+
     let pseudoField: Field = {};
     // if it is labelTag
     if (!field) {
@@ -328,7 +329,11 @@ const FilterableEntry = React.memo(
                   <NameAndCountContainer ref={container}>
                     <span key="path">
                       <span ref={hoverTarget} {...hoverHanlders}>
-                        {isLabelTag ? "label tags" : path}
+                        {isLabelTag
+                          ? "label tags"
+                          : path.startsWith("tags")
+                          ? "sample tags"
+                          : path}
                       </span>
                     </span>
                     {hidden}

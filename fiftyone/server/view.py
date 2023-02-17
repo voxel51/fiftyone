@@ -159,14 +159,44 @@ def get_extended_view(
     if filters:
         if "tags" in filters:
             tags = filters.get("tags")
-            if "label" in tags:
-                label_tags = tags["label"]
+            exclude = tags["exclude"]
+            tags = tags["values"]
+            if tags and not exclude:
+                view = view.match_tags(tags)
+            if tags and exclude:
+                view = view.match_tags(tags, bool=False)
 
-            if not count_label_tags and label_tags:
-                view = view.select_labels(tags=label_tags)
+        if "_label_tags" in filters:
+            label_tags = filters.get("_label_tags")
 
-            if "sample" in tags:
-                view = view.match_tags(tags=tags["sample"])
+            if (
+                not count_label_tags
+                and label_tags
+                and not label_tags["exclude"]
+                and not label_tags["isMatching"]
+            ):
+                view = view.select_labels(tags=label_tags["values"])
+            if (
+                not count_label_tags
+                and label_tags
+                and label_tags["exclude"]
+                and not label_tags["isMatching"]
+            ):
+                view = view.exclude_labels(tags=label_tags["values"])
+            if (
+                not count_label_tags
+                and label_tags
+                and not label_tags["exclude"]
+                and label_tags["isMatching"]
+            ):
+                view = view.match_labels(tags=label_tags["values"])
+            if (
+                not count_label_tags
+                and label_tags
+                and label_tags["exclude"]
+                and label_tags["isMatching"]
+            ):
+                view = view.match_labels(tags=label_tags["values"], bool=False)
 
         stages, cleanup_fields, filtered_labels = _make_filter_stages(
             view,
@@ -306,9 +336,17 @@ def _make_filter_stages(
     else:
         frame_field_schema = None
 
-    tag_expr = (F("tags") != None).if_else(
-        F("tags").contains(label_tags), None
+    label_tags_values = (
+        label_tags["values"] if label_tags is not None else None
     )
+    label_tags_exclude = (
+        label_tags["exclude"] if label_tags is not None else None
+    )
+
+    tag_expr = (F("tags") != None).if_else(
+        F("tags").contains(label_tags_values), None
+    )
+    tag_expr = ~tag_expr if label_tags_exclude else tag_expr
     cache = {}
     stages = []
     cleanup = set()
@@ -615,7 +653,13 @@ def _apply_none(expr, f, none):
 
 
 def _get_filtered_path(view, path, filtered_fields, label_tags):
-    if path not in filtered_fields and not label_tags:
+    if label_tags is not None:
+        excludes = label_tags.get("exclude", None)
+        label_tags = label_tags.get("values", None)
+    else:
+        excludes = None
+
+    if path not in filtered_fields and not label_tags and not excludes:
         return path
 
     if path.startswith(view._FRAMES_PREFIX):
