@@ -849,7 +849,7 @@ ________________
 When you load a dataset in the App that contains an
 :ref:`embeddings visualization <brain-embeddings-visualization>`, you can open
 the Embeddings panel to visualize and interactively explore a scatterplot of
-the embedddings in the App:
+the embeddings in the App:
 
 .. code-block:: python
     :linenos:
@@ -872,10 +872,10 @@ the embedddings in the App:
 
 Use the two menus in the upper-left corner of the Panel to configure your plot:
 
--   **Brain Result**: the brain key associated with the
+-   **Brain key**: the brain key associated with the
     :func:`compute_visualization() <fiftyone.brain.compute_visualization>` run
     to display
--   **Color By**: an optional sample field (or label attribute, for patches
+-   **Color by**: an optional sample field (or label attribute, for patches
     embeddings) to color the points by
 
 From there you can lasso points in the plot to show only the corresponding
@@ -895,7 +895,7 @@ The embeddings UI also provides a number of additional controls:
 -   Press the `x` icon (or double click anywhere in the plot) to clear the
     current selection
 
-When coloring points by categorial fields (strings and integers) with fewer
+When coloring points by categorical fields (strings and integers) with fewer
 than 100 unique classes, you can also use the legend to toggle the visibility
 of each class of points:
 
