@@ -1587,11 +1587,6 @@ def make_optimized_select_view(
             sample_ids, ordered=ordered
         )
     else:
-        if view.media_type == fom.GROUP and not select_groups:
-            optimized_view = optimized_view.select_group_slices(
-                _allow_mixed=True
-            )
-
         optimized_view = optimized_view.select(sample_ids, ordered=ordered)
         if view.media_type == fom.GROUP and select_groups:
             optimized_view = optimized_view.select_group_slices(
