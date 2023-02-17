@@ -1,5 +1,4 @@
 import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
-// import { Slider } from "@fiftyone/core/src/components/Common/RangeSlider";
 import PointSizeIcon from "@mui/icons-material/ScatterPlot";
 import Input from "@mui/material/Input";
 import Slider from "@mui/material/Slider";
@@ -12,63 +11,90 @@ import {
   currentPointSizeAtom,
 } from "../state";
 import { ActionPopOver } from "./shared";
-import "./styles.css";
+import style from "./style.module.css";
+
+const VALID_FLOAT_REGEX = new RegExp("^([0-9]+([.][0-9]*)?|[.][0-9]+)$");
 
 export const PointSizeSlider = () => {
   const theme = useTheme();
   const [pointSize, setPointSize] = recoil.useRecoilState(currentPointSizeAtom);
-  const [minBound, setMinBound] = useState(pointSize / 10);
-  const [maxBound, setMaxBound] = useState(pointSize * 2);
 
-  const step = useMemo(() => pointSize / 10, [minBound]);
+  const pointSizeNum = useMemo(() => Number(pointSize), [pointSize]);
+
+  const [minBound, setMinBound] = useState(pointSizeNum / 10);
+  const [maxBound, setMaxBound] = useState(() =>
+    pointSizeNum === 0 ? 2 : pointSizeNum * 2
+  );
+  const [isTextBoxEmpty, setIsTextBoxEmpty] = useState(false);
+
+  const step = useMemo(
+    () => (pointSizeNum === 0 ? 0.01 : pointSizeNum / 10),
+    [minBound, maxBound]
+  );
 
   const handleSliderChange = useCallback(
     (event: Event, newValue: number | number[]) => {
-      if (typeof newValue === "number") {
-        setPointSize(newValue);
-      }
+      setPointSize(String(newValue));
+      setIsTextBoxEmpty(false);
     },
     [setPointSize]
   );
 
   const handleTextBoxChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = Number(e.target.value);
+      if (!VALID_FLOAT_REGEX.test(e.target.value)) {
+        setIsTextBoxEmpty(true);
+        return;
+      }
+
+      setIsTextBoxEmpty(false);
+
+      const newValue = e.target.value;
       setPointSize(newValue);
-      setMinBound(newValue / 10);
-      setMaxBound(newValue * 2);
+
+      setMinBound(Number(newValue) / 10);
+
+      if (parseInt(newValue) === 0) {
+        setMaxBound(2);
+      } else {
+        setMaxBound(Number(newValue) * 2);
+      }
     },
-    [setPointSize]
+    [setPointSize, setIsTextBoxEmpty]
   );
 
   return (
     <ActionPopOver>
       <PopoutSectionTitle>Set point size</PopoutSectionTitle>
-      <div className="point-size-container">
+      <div className={style.pointSizeContainer}>
         <Slider
-          className="point-size-slider"
+          className={style.pointSizeSlider}
           sx={{
             color: theme.primary.main,
-            thumb: {
-              "&:focused, &:activated, &:jumped, &:hover": {
-                boxShadow: "none",
-              },
-            },
           }}
-          value={pointSize}
+          classes={{
+            thumb: style.pointSizeSliderThumb,
+            dragging: style.pointSizeSliderThumb,
+          }}
+          value={pointSizeNum}
           min={minBound}
           step={step}
           max={maxBound}
           onChange={handleSliderChange}
           valueLabelDisplay="auto"
+          valueLabelFormat={(value) => `${value.toFixed(2)}`}
         />
         <Input
-          className="point-size-text-field"
+          className={style.pointSizeTextField}
           sx={{
             color: theme.primary.main,
           }}
+          classes={{
+            root: style.pointSizeTextField,
+          }}
+          disableUnderline
           id="outlined-basic"
-          value={pointSize}
+          value={isTextBoxEmpty ? "" : pointSize}
           onChange={handleTextBoxChange}
           size="small"
           margin="none"
