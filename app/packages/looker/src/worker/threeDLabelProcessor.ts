@@ -1,3 +1,4 @@
+import { DETECTIONS } from "@fiftyone/utilities";
 import { DetectionLabel } from "../overlays/detection";
 import { Sample } from "../state";
 import { mapId } from "./shared";
@@ -50,6 +51,69 @@ const getScalingFactorForLabel = (
   return scalingFactorCache[labelId].scalingFactor;
 };
 
+// cache between sample id and inferred projection params
+const inferredParamsCache: Record<
+  Sample["id"],
+  Sample["orthographic_projection_metadata"]
+> = {};
+
+/**
+ * Use label attributes to infer width, height, and bounds.
+ */
+const getInferredParamsForUndefinedProjection = (sample: Readonly<Sample>) => {
+  if (inferredParamsCache[sample.id]) {
+    return inferredParamsCache[sample.id];
+  }
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const [_, label] of Object.entries(sample)) {
+    if (typeof label !== "object" || !("_cls" in label)) {
+      continue; // skip non-labels like "filepath", "id"
+    }
+
+    if (label._cls === DETECTIONS) {
+      for (const detection of label.detections as DetectionLabel[]) {
+        const [x, y] = detection.location;
+        const [lx, ly] = detection.dimensions;
+
+        minX = Math.min(minX, x - lx / 2);
+        maxX = Math.max(maxX, x + lx / 2);
+        minY = Math.min(minY, y - ly / 2);
+        maxY = Math.max(maxY, y + ly / 2);
+      }
+    } else if (label._cls === "Detection") {
+      const [x, y] = label.location as DetectionLabel["location"];
+      const [lx, ly] = label.dimensions as DetectionLabel["dimensions"];
+
+      minX = Math.min(minX, x - lx / 2);
+      maxX = Math.max(maxX, x + lx / 2);
+      minY = Math.min(minY, y - ly / 2);
+      maxY = Math.max(maxY, y + ly / 2);
+    }
+  }
+
+  const padding = 100;
+
+  inferredParamsCache[sample.id] = {
+    width: minX === Infinity ? 512 : maxX - minX + padding,
+    height: minY === Infinity ? 512 : maxY - minY + padding,
+    min_bound: [
+      minX === Infinity ? -100 : minX - padding,
+      minY === Infinity ? -100 : minY - padding,
+    ],
+    max_bound: [
+      maxX === Infinity ? 100 : maxX + padding,
+      maxY === Infinity ? 100 : maxY + padding,
+    ],
+  } as Sample["orthographic_projection_metadata"];
+
+  return inferredParamsCache[sample.id];
+};
+
 const PainterFactory3D = (
   orthographicProjectionParams: Sample["orthographic_projection_metadata"]
 ) => ({
@@ -71,6 +135,7 @@ const PainterFactory3D = (
       min_bound,
       max_bound,
     } = orthographicProjectionParams;
+
     const [xmin, ymin] = min_bound;
     const [xmax, ymax] = max_bound;
 
@@ -100,13 +165,10 @@ const PainterFactory3D = (
 const VALID_THREE_D_LABELS = new Set(["Detections", "Detection"]);
 
 export const process3DLabels = async (sample: Sample) => {
-  if (!sample.orthographic_projection_metadata) {
-    // todo
-    return;
-  }
-
   const painterFactory = PainterFactory3D(
     sample.orthographic_projection_metadata
+      ? sample.orthographic_projection_metadata
+      : getInferredParamsForUndefinedProjection(sample)
   );
 
   const paintJobPromises = [];
