@@ -6,49 +6,51 @@ import {
   selectedMediaField,
   useOnSelectLabel,
 } from "@fiftyone/state";
-import React, { Suspense } from "react";
+import React, { Suspense, useMemo } from "react";
 
 import { Loading } from "@fiftyone/components";
 import { useRecoilValue } from "recoil";
 
-const MyPluggableSample = () => {
+const PluggableSample = () => {
   const data = useRecoilValue(modal);
 
   if (!data) {
     throw new Error("no data");
   }
-  const { sample, urls } = data;
-  const mediaField = useRecoilValue(selectedMediaField(true));
 
+  const { sample, urls } = data;
+
+  const mediaField = useRecoilValue(selectedMediaField(true));
   const [plugin] = usePlugin(PluginComponentType.Visualizer);
   const onSelectLabel = useOnSelectLabel();
+  const dataset = useRecoilValue(fos.dataset);
 
-  const pluginAPI = {
-    dataset: useRecoilValue(fos.dataset),
-    sample: sample,
-    onSelectLabel,
-    useState: useRecoilValue,
-    state: fos,
-    mediaFieldValue: urls[mediaField],
-    mediaField,
-    src: getSampleSrc(urls[mediaField]),
-  };
-
-  const pluginIsActive = plugin && plugin.activator(pluginAPI);
-  const PluginComponent = pluginIsActive && plugin.component;
-
-  return pluginIsActive ? (
-    <PluginComponent key={sample._id} api={pluginAPI} />
-  ) : (
-    <Component {...props} />
+  const pluginAPI = useMemo(
+    () => ({
+      dataset,
+      mediaField,
+      onSelectLabel,
+      sample,
+      mediaFieldValue: urls[mediaField],
+      src: getSampleSrc(urls[mediaField]),
+      state: fos,
+      useState: useRecoilValue,
+    }),
+    [dataset, sample, mediaField, onSelectLabel, urls]
   );
+
+  const isPluginActive = plugin && plugin.activator(pluginAPI);
+
+  return isPluginActive ? (
+    <plugin.component key={sample._id} api={pluginAPI} />
+  ) : null;
 };
 
 const Sample3d: React.FC = () => {
   return (
     <>
       <Suspense fallback={<Loading>Pixelating...</Loading>}>
-        <MyPluggableSample />
+        <PluggableSample />
       </Suspense>
     </>
   );
