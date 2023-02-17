@@ -1204,7 +1204,8 @@ class MediaExporter(object):
                 uuid = self._get_uuid(outpath)
 
             if self.export_mode == True:
-                etau.copy_file(media_path, outpath)
+                if not os.path.exists(outpath):
+                    etau.copy_file(media_path, outpath)
             elif self.export_mode == "move":
                 etau.move_file(media_path, outpath)
             elif self.export_mode == "symlink":
