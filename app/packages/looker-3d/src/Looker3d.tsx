@@ -41,7 +41,7 @@ import {
   PolyLineProps,
 } from "./overlays";
 import { PointCloudMesh } from "./renderables";
-import { colorByAtom, currentActionAtom, currentPointSizeAtom } from "./state";
+import { currentActionAtom, currentPointSizeAtom, shadeByAtom } from "./state";
 
 type View = "pov" | "top";
 
@@ -89,6 +89,11 @@ const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
     fos.lookerOptions({ withFilter: true, modal })
   );
 
+  const isRgbPresent = useMemo(
+    () => Boolean(points.geometry.attributes?.color),
+    [points]
+  );
+
   useEffect(() => {
     THREE.Object3D.DefaultUp = new THREE.Vector3(...settings.defaultUp);
   }, [settings]);
@@ -129,7 +134,7 @@ const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
     [onSelectLabel, sample]
   );
 
-  const colorBy = recoil.useRecoilValue(colorByAtom);
+  const colorBy = recoil.useRecoilValue(shadeByAtom);
   const pointSize = recoil.useRecoilValue(currentPointSizeAtom);
 
   const onChangeView = useCallback(
@@ -302,7 +307,7 @@ const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
           ))}
         <PointCloudMesh
           minZ={minZ}
-          colorBy={colorBy}
+          shadeBy={colorBy}
           pointSize={pointSize}
           points={points}
           rotation={pcRotation}
@@ -319,7 +324,7 @@ const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
         >
           <ActionsBar>
             <SetPointSizeButton />
-            <ChooseColorSpace />
+            <ChooseColorSpace isRgbPresent={isRgbPresent} />
             <SetViewButton
               onChangeView={onChangeView}
               view={"top"}

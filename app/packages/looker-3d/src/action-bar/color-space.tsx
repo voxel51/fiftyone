@@ -1,16 +1,23 @@
 import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
 import ColorLensIcon from "@mui/icons-material/ColorLens";
+import { useMemo } from "react";
 import * as recoil from "recoil";
 import { ActionItem } from "../containers";
 import {
-  ACTION_COLOR_BY,
-  colorByAtom,
-  COLOR_BY_CHOICES,
+  ACTION_SHADE_BY,
   currentActionAtom,
+  shadeByAtom,
+  SHADE_BY_CHOICES,
+  SHADE_BY_INTENSITY,
+  SHADE_BY_RGB,
 } from "../state";
 import { ActionPopOver } from "./shared";
 
-export const ChooseColorSpace = () => {
+export const ChooseColorSpace = ({
+  isRgbPresent,
+}: {
+  isRgbPresent: boolean;
+}) => {
   const [currentAction, setAction] = recoil.useRecoilState(currentActionAtom);
 
   return (
@@ -20,7 +27,7 @@ export const ChooseColorSpace = () => {
           sx={{ fontSize: 24 }}
           color="inherit"
           onClick={(e) => {
-            const targetAction = ACTION_COLOR_BY;
+            const targetAction = ACTION_SHADE_BY;
             const nextAction =
               currentAction === targetAction ? null : targetAction;
             setAction(nextAction);
@@ -30,13 +37,26 @@ export const ChooseColorSpace = () => {
           }}
         />
       </ActionItem>
-      {currentAction === ACTION_COLOR_BY && <ColorSpaceChoices />}
+      {currentAction === ACTION_SHADE_BY && (
+        <ColorSpaceChoices isRgbPresent={isRgbPresent} />
+      )}
     </>
   );
 };
 
-const ColorSpaceChoices = () => {
-  const [current, setCurrent] = recoil.useRecoilState(colorByAtom);
+const ColorSpaceChoices = ({ isRgbPresent }: { isRgbPresent: boolean }) => {
+  const [current, setCurrent] = recoil.useRecoilState(shadeByAtom);
+
+  const choices = useMemo(() => {
+    if (!isRgbPresent) {
+      return SHADE_BY_CHOICES.filter(
+        (choice) =>
+          choice.value !== SHADE_BY_INTENSITY && choice.value !== SHADE_BY_RGB
+      );
+    }
+
+    return SHADE_BY_CHOICES;
+  }, [isRgbPresent]);
 
   return (
     <ActionPopOver>
@@ -44,7 +64,7 @@ const ColorSpaceChoices = () => {
 
       <TabOption
         active={current}
-        options={COLOR_BY_CHOICES.map(({ label, value }) => {
+        options={choices.map(({ label, value }) => {
           return {
             text: value,
             title: `Shade by ${label}`,
