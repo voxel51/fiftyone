@@ -22,7 +22,7 @@ export interface Coloring {
   targets: string[];
 }
 
-export interface Sample {
+export type Sample = {
   metadata: {
     width: number;
     height: number;
@@ -44,7 +44,12 @@ export interface Sample {
     min_bound: [number, number];
     max_bound: [number, number];
   };
-}
+} & {
+  [labelKey: string]: {
+    _cls: string;
+    [field: string]: unknown;
+  };
+};
 
 export interface LabelData {
   labelId: string;

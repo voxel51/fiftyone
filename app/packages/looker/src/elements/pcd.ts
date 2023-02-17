@@ -34,6 +34,15 @@ export class PcdElement extends BaseElement<PcdState, HTMLImageElement> {
 
   renderSelf({ config: { src } }: Readonly<PcdState>) {
     if (this.src !== src) {
+      if (src.endsWith(".pcd")) {
+        // this means orthographic projections have not been computed, replace with a 1x1 base64 blank image
+        const base64Blank =
+          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWNgYGD4DwABDQF/w6a5YwAAAABJRU5ErkJggg==";
+        this.src = base64Blank;
+        this.element.setAttribute("src", base64Blank);
+        return;
+      }
+
       this.src = src;
 
       this.element.setAttribute("src", src);
