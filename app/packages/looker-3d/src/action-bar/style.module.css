@@ -1,0 +1,24 @@
+.pointSizeSliderThumb {
+  box-shadow: none !important;
+}
+
+.pointSizeSliderThumb:hover {
+  box-shadow: none !important;
+}
+
+.pointSizeTextField {
+  /* color: #fff; */
+  border-bottom: 1px solid;
+}
+
+.pointSizeSlider {
+  align-self: center;
+  margin-right: 30px;
+}
+
+.pointSizeContainer {
+  margin: 1em;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+}

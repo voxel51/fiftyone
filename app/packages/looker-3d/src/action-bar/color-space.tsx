@@ -47,7 +47,7 @@ const ColorSpaceChoices = () => {
         options={COLOR_BY_CHOICES.map(({ label, value }) => {
           return {
             text: value,
-            title: `Color by ${label}`,
+            title: `Shade by ${label}`,
             onClick: () => current !== value && setCurrent(value),
           };
         })}

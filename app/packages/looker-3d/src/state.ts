@@ -47,17 +47,17 @@ export const currentActionAtom = atom<Actions>({
   default: null,
 });
 
-export const currentPointSizeAtom = atom<number>({
+export const currentPointSizeAtom = atom<string>({
   key: "pointSize",
-  default: 1,
+  default: "1",
   effects: [
     ({ setSelf, onSet }) => {
       const pointSizeKey = "pointSize";
       const pointSize = localStorage.getItem(pointSizeKey);
-      if (pointSize != null) setSelf(Number(pointSize));
+      if (pointSize != null) setSelf(pointSize);
       onSet((newValue, _oldValue, isReset) => {
         if (isReset) localStorage.removeItem(pointSizeKey);
-        else localStorage.setItem(pointSizeKey, String(newValue));
+        else localStorage.setItem(pointSizeKey, newValue);
       });
     },
   ],
