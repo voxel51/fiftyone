@@ -683,6 +683,7 @@ const InteractiveSidebar = ({
     () => new ResizeObserver(placeItems)
   );
   const theme = useTheme();
+  const resizableSide = modal ? "left" : "right";
 
   return shown ? (
     <Resizable
@@ -715,9 +716,11 @@ const InteractiveSidebar = ({
         display: "flex",
         flexDirection: "column",
       }}
+      handleStyles={{
+        [resizableSide]: { right: 0, width: 4 },
+      }}
       handleClasses={{
-        left: modal ? resizeHandle : "",
-        right: !modal ? resizeHandle : "",
+        [resizableSide]: resizeHandle,
       }}
     >
       {!modal && (
