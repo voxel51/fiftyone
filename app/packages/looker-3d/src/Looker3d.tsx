@@ -273,8 +273,11 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
     [dataset]
   );
 
+<<<<<<< HEAD
   const theme = useTheme();
 
+=======
+>>>>>>> f89e69589 (add selector for pointcloud slices in grouped datasets)
   return (
     <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
       <Canvas onClick={() => setAction(null)}>
