@@ -5893,7 +5893,9 @@ class SampleCollection(object):
 
             k (None): the number of matches to return. By default, the entire
                 collection is sorted
-            reverse (False): whether to sort by least similarity
+            reverse (False): whether to sort by least similarity (True) or
+                greatest similarity (False). Some backends may not support
+                least similarity
             dist_field (None): the name of a float field in which to store the
                 distance of each example to the specified query. The field is
                 created if necessary
