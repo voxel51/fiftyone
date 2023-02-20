@@ -25,6 +25,7 @@ class SavedViewDocument(Document):
 
     _EDITABLE_FIELDS = ("name", "color", "description")
 
+    id = ObjectIdField(db_field="_id", primary_key=True)
     dataset_id = ObjectIdField(db_field="_dataset_id")
     name = StringField()
     description = StringField()
