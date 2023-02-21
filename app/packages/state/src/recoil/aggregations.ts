@@ -303,15 +303,16 @@ export const count = selectorFamily({
           ];
         }
 
-        if (split[0] === "_label_tags" && split.length == 1) {
+        if (split[0] === "_label_tags" && !value) {
           const r = get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }));
           return Object.values(r).reduce((a, b) => a + b, 0);
         }
 
-        if (split[0] === "_label_tags" && split.length > 1) {
-          return get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }))[
-            split.slice(1).join(".")
+        if (split[0] === "_label_tags" && value) {
+          const r = get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }))[
+            value
           ];
+          return r;
         }
 
         if (split.length < 2) {
