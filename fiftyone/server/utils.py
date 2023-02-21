@@ -6,8 +6,8 @@ FiftyOne Server utils.
 |
 """
 import typing as t
-import cachetools
 
+import cachetools
 from dacite import Config, from_dict as _from_dict
 from dacite.core import T
 from dacite.data import Data
@@ -95,9 +95,8 @@ def change_label_tags(sample_collection, changes, label_fields=None):
 
 
 def from_dict(data_class: t.Type[T], data: Data) -> T:
-    """
-    Wrapping function for :func:`dacite.from_dict` to ensure a common configuration
-    is used
+    """Wrapping function for ``dacite.from_dict`` that ensures a common
+    configuration is used.
 
     Args:
         data_class: a dataclass
