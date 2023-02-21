@@ -106,11 +106,11 @@ export const noneCount = selectorFamily<
     ({ get }) => {
       const data = get(aggregation(params));
       const parent = params.path.split(".").slice(0, -1).join(".");
-
+      const isLabelTag = params.path.startsWith("_label_tags");
       // for ListField, set noneCount to zero (so that it is the none option is omitted in display)
       const schema = get(field(params.path));
-      const isListField = schema.ftype.includes("ListField");
-      return isListField
+      const isListField = schema?.ftype?.includes("ListField");
+      return isListField || isLabelTag
         ? 0
         : (get(count({ ...params, path: parent })) as number) - data.count;
     },

@@ -21,6 +21,7 @@ import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import ResultComponent from "./ResultComponent";
 import Wrapper from "./Wrapper";
+import { labelTagsCount } from "../../Sidebar/Entries/EntryCounts";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -70,17 +71,23 @@ const categoricalSearchResults = selectorFamily<
       }
 
       const noneCount = get(fos.noneCount({ path, modal, extended: false }));
-
-      const data = await getFetchFunction()("POST", "/values", {
-        dataset: get(fos.dataset).name,
-        view: get(fos.view),
-        path,
-        search,
-        selected,
-        sample_id: sampleId,
-        ...sorting,
-      });
-
+      const isLabelTag = path.startsWith("_label_tags");
+      const labels = useRecoilValue(labelTagsCount({ modal, extended: false }));
+      let data = {
+        count: labels.count,
+        values: labels.results.map(([value, count]) => ({ value, count })),
+      };
+      data = !isLabelTag
+        ? await getFetchFunction()("POST", "/values", {
+            dataset: get(fos.dataset).name,
+            view: get(fos.view),
+            path,
+            search,
+            selected,
+            sample_id: sampleId,
+            ...sorting,
+          })
+        : data;
       let { values, count } = data as { values: V[]; count: number };
 
       if (noneCount > 0 && "None".includes(search)) {
@@ -185,7 +192,12 @@ const CategoricalFilter = <T extends V = V>({
   modal,
   named = true,
 }: Props<T>) => {
-  const name = path.split(".").slice(-1)[0];
+  let name = path.split(".").slice(-1)[0];
+  name = path.startsWith("tags")
+    ? "sample tag"
+    : path.startsWith("_label_tags")
+    ? "label tag"
+    : name;
   const color = useRecoilValue(fos.pathColor({ modal, path }));
   const selectedCounts = useRef(new Map<V["value"], number>());
   const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
@@ -196,7 +208,7 @@ const CategoricalFilter = <T extends V = V>({
   const countsLoadable = useRecoilValueLoadable(countsAtom);
 
   // id fields should always use filter mode
-  const neverShowExpansion = field?.ftype.includes("ObjectIdField");
+  const neverShowExpansion = field?.ftype?.includes("ObjectIdField");
 
   if (countsLoadable.state !== "hasValue") return null;
   const { count, results } = countsLoadable.contents;
