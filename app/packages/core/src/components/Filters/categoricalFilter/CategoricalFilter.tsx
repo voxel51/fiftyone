@@ -197,7 +197,6 @@ const CategoricalFilter = <T extends V = V>({
 
   // id fields should always use filter mode
   const neverShowExpansion = field?.ftype.includes("ObjectIdField");
-  console.info(path, named, countsLoadable);
 
   if (countsLoadable.state !== "hasValue") return null;
   const { count, results } = countsLoadable.contents;

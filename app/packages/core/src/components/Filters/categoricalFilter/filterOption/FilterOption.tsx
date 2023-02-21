@@ -70,7 +70,7 @@ const generateOptions = (
       key: "negativeFilter",
       value: `Exclude ${nestedField ?? "labels"} with ${valueName}`,
       tooltip: isLabelTag
-        ? "dataset.exclude_labels(tags=expr)"
+        ? "dataset.exclude_labels(tags=expr, omit_empty=False)"
         : isKeyPointLabel
         ? "dataset.filter_keypoints(field, ~expr, only_matches=False)"
         : "dataset.filter_labels(field, ~expr, only_matches=False)",

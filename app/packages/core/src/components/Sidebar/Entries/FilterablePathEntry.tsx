@@ -1,16 +1,17 @@
+import React, { useMemo } from "react";
 import {
   KeyboardArrowDown,
   KeyboardArrowUp,
   VisibilityOff,
 } from "@mui/icons-material";
 import { Checkbox } from "@mui/material";
-import React, { useMemo } from "react";
 import {
   DefaultValue,
   selectorFamily,
   useRecoilState,
   useRecoilValue,
 } from "recoil";
+import Color from "color";
 
 import {
   BOOLEAN_FIELD,
@@ -44,13 +45,15 @@ import {
 import { useTheme, PillButton } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
-import Color from "color";
+
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { NameAndCountContainer } from "../../utils";
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
-import { pathIsExpanded } from "./utils";
+import { makePseudoField, pathIsExpanded } from "./utils";
 import LabelFieldFilter from "../../Filters/LabelFieldFilter";
+
+import { labelTagCounts, sampleTagCounts } from "@fiftyone/state";
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
@@ -233,7 +236,6 @@ const FilterableEntry = React.memo(
     path: string;
     onFocus?: () => void;
     onBlur?: () => void;
-    childPaths: string[];
     trigger: (
       event: React.MouseEvent<HTMLDivElement>,
       key: string,
@@ -241,7 +243,6 @@ const FilterableEntry = React.memo(
     ) => void;
   }) => {
     const theme = useTheme();
-
     const skeleton = useRecoilValue(fos.getSkeleton);
     const expandedPath = useRecoilValue(fos.expandPath(path));
     const [expanded, setExpanded] = useRecoilState(
@@ -259,41 +260,60 @@ const FilterableEntry = React.memo(
     );
 
     const field = useRecoilValue(fos.field(path));
+    const pseudoField = makePseudoField(path);
     const isLabelTag = path.startsWith("_label_tag");
-    const isSampleTag = path.startsWith("tags.");
-
-    let pseudoField: Field = {};
-    // if it is labelTag
-    if (!field) {
-      // create pseudo field for tags
-      pseudoField = {
-        name: path.split(".").slice(1).join("."),
-        ftype: "",
-        subfield: null,
-        description: "",
-        info: null,
-        fields: {},
-        dbField: null,
-        path: path,
-        embeddedDocType: null,
-      };
-    }
+    const isSampleTag = path.startsWith("tags");
 
     const data = useMemo(() => {
       if (field) {
         return getFilterData(expandedPath, modal, field, fields, skeleton);
-      } else {
-        return;
       }
     }, [field, fields, expandedPath, modal, skeleton]);
 
     const fieldIsFiltered = useRecoilValue(
       fos.fieldIsFiltered({ path, modal })
     );
-    const [active, setActive] = useRecoilState(
+
+    const [activeField, setActiveField] = useRecoilState(
       fos.activeField({ modal, path })
     );
+
+    const [activeTags, setActiveTags] = useRecoilState(fos.activeTags(modal));
+
+    const [activeLabelTags, setActiveLabelTags] = useRecoilState(
+      fos.activeLabelTags(modal)
+    );
+    const labelTagsResult = useRecoilValue(
+      labelTagCounts({ modal, extended: false })
+    );
+    const sampleTagsResult = useRecoilValue(
+      sampleTagCounts({ modal, extended: false })
+    );
+    const allLabelTags = Object.keys(labelTagsResult);
+    const allTags = Object.keys(sampleTagsResult);
+
     const hidden = modal ? useHidden(path) : null;
+    const onClickShow = (e) => {
+      const checked = e.target.checked;
+      if (disabled) return;
+      if (isLabelTag) {
+        setActiveLabelTags(checked ? allLabelTags : []);
+      } else if (isSampleTag) {
+        setActiveTags(checked ? allTags : []);
+      } else {
+        setActiveField(!activeField);
+      }
+    };
+
+    const active = () => {
+      if (path.startsWith("tag")) {
+        return activeTags.length > 0;
+      } else if (path.startsWith("_label_tag")) {
+        return activeLabelTags.length > 0;
+      } else {
+        return activeField;
+      }
+    };
 
     return (
       <RegularEntry
@@ -309,20 +329,20 @@ const FilterableEntry = React.memo(
             {!disabled && (
               <Checkbox
                 disableRipple={true}
-                checked={active}
+                checked={active()}
                 title={`Show ${path}`}
                 style={{
-                  color: active ? color : theme.text.secondary,
+                  color: active() ? color : theme.text.secondary,
                   marginLeft: 2,
                   padding: 0,
                 }}
                 key="checkbox"
-                onClick={!disabled ? () => setActive(!active) : undefined} // update the select tags actions
+                onClick={(e) => onClickShow(e)} // update the select tags actions
               />
             )}
             {
               <FieldLabelAndInfo
-                field={field ?? (pseudoField as Field)}
+                field={field ?? pseudoField}
                 color={color}
                 expandedPath={expandedPath}
                 template={({ hoverHanlders, hoverTarget, container }) => (

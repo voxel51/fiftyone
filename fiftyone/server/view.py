@@ -182,7 +182,9 @@ def get_extended_view(
                 and label_tags["exclude"]
                 and not label_tags["isMatching"]
             ):
-                view = view.exclude_labels(tags=label_tags["values"])
+                view = view.exclude_labels(
+                    tags=label_tags["values"], omit_empty=False
+                )
             if (
                 not count_label_tags
                 and label_tags

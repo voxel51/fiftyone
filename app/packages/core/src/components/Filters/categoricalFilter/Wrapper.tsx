@@ -49,7 +49,7 @@ const Wrapper = ({
     ? useSetRecoilState(isMatchingAtom)
     : null;
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
-  console.info(path, name, results);
+
   const counts = Object.fromEntries(results);
   let allValues: V[] = selected.map<V>((value) => ({
     value,
