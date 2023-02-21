@@ -7,16 +7,17 @@
 """
 import itertools
 import logging
+import os
 from typing import Tuple
 from typing_extensions import Literal
 
 import eta.core.image as etai
 import numpy as np
 
-import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
+import fiftyone.core.config as foc
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 from fiftyone.core.odm import DynamicEmbeddedDocument
@@ -25,12 +26,9 @@ o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
 
 logger = logging.getLogger(__name__)
 
-Vec2Tuple = Tuple[int, int]
-Vec3Tuple = Tuple[int, int, int]
-
-shading_gradient_map = {
+DEFAULT_SHADING_GRADIENT_MAP = {
     # lowest value is red
-    0.0: (165, 0, 38),
+    0.000: (165, 0, 38),
     0.111: (215, 48, 39),
     0.222: (244, 109, 67),
     0.333: (253, 174, 97),
@@ -41,8 +39,19 @@ shading_gradient_map = {
     0.777: (116, 173, 209),
     0.888: (69, 117, 180),
     # highest value is blue
-    1.0: (49, 54, 149),
+    1.000: (49, 54, 149),
 }
+
+if "FIFTYONE_APP_COLORSCALE" in os.environ:
+    shading_map_colors = foc.load_app_config().get_colormap(n=10)
+    shading_gradient_map = {
+        discrete_value: rgb_color
+        for (discrete_value, rgb_color) in zip(
+            DEFAULT_SHADING_GRADIENT_MAP, shading_map_colors
+        )
+    }
+else:
+    shading_gradient_map = DEFAULT_SHADING_GRADIENT_MAP
 
 
 class OrthographicProjectionMetadata(DynamicEmbeddedDocument):
@@ -58,15 +67,16 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument):
 
 
 def compute_orthographic_projection_images(
-    samples: foc.SampleCollection,
-    size: Vec2Tuple,
-    output_dir: str,
-    shading_mode: Literal["intensity", "rgb", "height", "none"] = "none",
-    rel_dir: str = None,
-    projection_normal: Vec3Tuple = None,
-    in_group_slice: str = None,
-    out_group_slice: str = None,
-    bounds: Tuple[Vec3Tuple, Vec3Tuple] = None,
+    samples,
+    size,
+    output_dir,
+    shading_mode=None,
+    rel_dir=None,
+    projection_normal=None,
+    in_group_slice=None,
+    out_group_slice=None,
+    subsampling_rate=None,
+    bounds=None,
 ):
     """Computes orthographic projection images for the point clouds in the given
     collection.
@@ -97,9 +107,10 @@ def compute_orthographic_projection_images(
             dimension can be None or negative, in which case the appropriate
             aspect-preserving value is used
         output_dir: an output directory in which to store the images/maps
-        shading_mode: an optional field to specify how to shade the points.
-            "intensity" and "rgb" are only valid if the header contains
-            "rgb" flag, or else it'll default to "none" mode. In "none" mode,
+        shading_mode: one of "intensity", "rgb", or "height" to specify
+            the shading algorithm for points. "intensity" and "rgb" are
+            only valid if the header contains "rgb" flag, or else
+            it'll default to ``None``. If it's ``None``,
             all points are shaded white.
         rel_dir (None): an optional relative directory to strip from each input
             filepath to generate a unique identifier that is joined with
@@ -114,6 +125,9 @@ def compute_orthographic_projection_images(
             parameter is not provided, the first point cloud slice will be used
         out_group_slice (None): the name of a group slice to which to add
             samples containing the feature images/maps
+        subsampling_rate (None): an unsigned ``int`` that, if defined,
+            defines a uniform subsampling rate. The selected point indices are
+            [0, k, 2k, ...], where ``k = subsampling_rate``.
         bounds (None): an optional ``((xmin, ymin, zmin), (xmax, ymax, zmax))``
             tuple defining the field of view in the projected plane for which
             to generate each map. Either element of the tuple or any/all of its
@@ -160,6 +174,7 @@ def compute_orthographic_projection_images(
                 size,
                 shading_mode=shading_mode,
                 projection_normal=projection_normal,
+                subsampling_rate=subsampling_rate,
                 bounds=bounds,
             )
 
@@ -196,11 +211,12 @@ def compute_orthographic_projection_images(
 
 
 def compute_orthographic_projection_image(
-    filepath: str,
-    size: Vec2Tuple,
-    shading_mode: Literal["intensity", "rgb", "height", "none"] = "none",
-    projection_normal: Vec3Tuple = None,
-    bounds: Tuple[Vec3Tuple, Vec3Tuple] = None,
+    filepath,
+    size,
+    shading_mode=None,
+    projection_normal=None,
+    subsampling_rate=None,
+    bounds=None,
 ):
     """Generates an orthographic projection map for the given PCD file onto the
     specified plane (default xy plane).
@@ -213,13 +229,17 @@ def compute_orthographic_projection_image(
         size: the desired ``(width, height)`` for the generated maps. Either
             dimension can be None or negative, in which case the appropriate
             aspect-preserving value is used
-        shading_mode: an optional field to specify how to shade the points.
-        "intensity" and "rgb" are only valid if the header contains
-        "rgb" flag, or else it'll default to "none" mode. In "none" mode,
-        all points are shaded white.
+        shading_mode: one of "intensity", "rgb", or "height" to specify
+            the shading algorithm for points. "intensity" and "rgb" are
+            only valid if the header contains "rgb" flag, or else
+            it'll default to ``None``. If it's ``None``,
+            all points are shaded white.
         projection_normal (None): **(experimental)** the normal vector of the
-        plane onto which to perform the projection. By default, ``(0, 0, 1)``
-        is used
+            plane onto which to perform the projection.
+            By default, ``(0, 0, 1)`` is used
+        subsampling_rate (None): an unsigned ``int`` that, if defined,
+            defines a uniform subsampling rate. The selected point indices are
+            [0, k, 2k, ...], where ``k = subsampling_rate``.
         bounds (None): an optional ``((xmin, ymin, zmin), (xmax, ymax, zmax))``
             tuple defining the field of view for which to generate each map in
             the projected plane. Either element of the tuple or any/all of its
@@ -229,7 +249,7 @@ def compute_orthographic_projection_image(
     Returns:
         a tuple of
 
-        -   the feature map
+        -   the orthographic projection image
         -   the ``(xmin, xmax, ymin, ymax)`` bounds in the projected plane
     """
     pc = o3d.io.read_point_cloud(filepath)
@@ -264,11 +284,8 @@ def compute_orthographic_projection_image(
     # crop bounds and translate so that min bound is at the origin
     pc = pc.crop(bbox).translate((-min_bound[0], -min_bound[1], -min_bound[2]))
 
-    # this strategy is arbitrarily chosen and might need to be tuned more
-    # we might also want to expose this as a parameter, since there are
-    # multiple subsampling strategies possible (voxel-based, uniform)
-    if len(np.asarray(pc.points)) > 1e6:
-        pc = pc.voxel_down_sample(voxel_size=0.1)
+    if subsampling_rate is not None and subsampling_rate > 0:
+        pc = pc.uniform_down_sample(subsampling_rate)
 
     points = np.asarray(pc.points)
     colors = np.asarray(pc.colors)
@@ -277,15 +294,15 @@ def compute_orthographic_projection_image(
     points[:, 0] *= (width - 1) / (max_bound[0] - min_bound[0])
     points[:, 1] *= (height - 1) / (max_bound[1] - min_bound[1])
 
-    image_map = np.zeros((width, height, 3))
+    image = np.zeros((width, height, 3), dtype=np.uint8)
 
     if (
         len(colors) == len(points)
-        and shading_mode != "none"
+        and shading_mode is not None
         and shading_mode != "height"
     ):
         if shading_mode == "rgb":
-            image_map[np.int_(points[:, 0]), np.int_(points[:, 1]), :] = (
+            image[np.int_(points[:, 0]), np.int_(points[:, 1]), :] = (
                 colors * 255.0
             )
         else:
@@ -300,7 +317,7 @@ def compute_orthographic_projection_image(
                 intensities_normalized_t, list(shading_gradient_map.keys())
             )
             rgbs = np.array([shading_gradient_map[v] for v in rgb_refs])
-            image_map[np.int_(points[:, 0]), np.int_(points[:, 1]), :] = rgbs
+            image[np.int_(points[:, 0]), np.int_(points[:, 1]), :] = rgbs
     elif shading_mode == "height":
         # color by height (z)
         max_z = np.max(points[:, 2])
@@ -311,14 +328,14 @@ def compute_orthographic_projection_image(
             z_normalized, list(shading_gradient_map.keys())
         )
         rgbs = np.array([shading_gradient_map[v] for v in rgb_refs])
-        image_map[np.int_(points[:, 0]), np.int_(points[:, 1]), :] = rgbs
+        image[np.int_(points[:, 0]), np.int_(points[:, 1]), :] = rgbs
     else:
-        image_map[np.int_(points[:, 0]), np.int_(points[:, 1]), :] = 255.0
+        image[np.int_(points[:, 0]), np.int_(points[:, 1]), :] = 255.0
 
     # change axis orientation such that y is up
-    image_map = np.rot90(image_map, k=1, axes=(0, 1))
+    image = np.rot90(image, k=1, axes=(0, 1))
     bounds = [min_bound[0], max_bound[0], min_bound[1], max_bound[1]]
-    return image_map, bounds
+    return image, bounds
 
 
 def _get_point_cloud_slice(samples):
