@@ -6,7 +6,6 @@ FiftyOne Server queries.
 |
 """
 import typing as t
-from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import os
@@ -16,7 +15,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
 from bson import ObjectId, json_util
-from dacite import Config, from_dict
+from dacite import Config, Data, from_dict
 
 import fiftyone as fo
 import fiftyone.constants as foc
@@ -146,7 +145,7 @@ class SavedView:
     @classmethod
     def from_doc(cls, doc: SavedViewDocument):
         stage_dicts = [json_util.loads(x) for x in doc.view_stages]
-        saved_view = from_dict(data_class=cls, data=doc.to_dict())
+        saved_view = _from_dict(data_class=cls, data=doc.to_dict())
         saved_view.stage_dicts = stage_dicts
         return saved_view
 
@@ -326,7 +325,7 @@ class Query(fosa.AggregateQuery):
         config = fose.get_state().config
         d = config.serialize()
         d["timezone"] = fo.config.timezone
-        return from_dict(AppConfig, d, config=Config(check_types=False))
+        return _from_dict(AppConfig, d)
 
     @gql.field
     def context(self) -> str:
@@ -438,7 +437,7 @@ async def serialize_dataset(
 
         doc = dataset._doc.to_dict(no_dereference=True)
         Dataset.modifier(doc)
-        data = from_dict(Dataset, doc, config=Config(check_types=False))
+        data = _from_dict(Dataset, doc)
         data.view_cls = None
         data.view_name = view_name
 
@@ -473,3 +472,11 @@ async def serialize_dataset(
     loop = asyncio.get_running_loop()
 
     return await loop.run_in_executor(None, run)
+
+
+T = t.TypeVar("T")
+_DACITE_CONFIG = Config(check_types=False)
+
+
+def _from_dict(data_class: t.Type[T], data: Data) -> T:
+    return from_dict(data_class, data, config=_DACITE_CONFIG)
