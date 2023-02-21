@@ -326,11 +326,10 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
         />
         <axesHelper />
       </Canvas>
-      {/* {(hoveringRef.current || hovering) && ( */}
-      {true && (
+      {(hoveringRef.current || hovering) && (
         <ActionBarContainer
           onMouseEnter={() => (hoveringRef.current = true)}
-          // onMouseLeave={() => (hoveringRef.current = false)}
+          onMouseLeave={() => (hoveringRef.current = false)}
         >
           {hasMultiplePcdSlices && <SliceSelector dataset={dataset} />}
           <ActionsBar>
