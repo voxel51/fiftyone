@@ -2,6 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
+  Field,
   formatDate,
   formatDateTime,
   FRAME_SUPPORT_FIELD,
@@ -23,6 +24,7 @@ import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
+import { makePseudoField } from "./utils";
 
 const ScalarDiv = styled.div`
   & > div {
@@ -81,7 +83,7 @@ const ScalarValueEntry = ({
   const color = useRecoilValue(fos.pathColor({ path, modal: true }));
 
   const field = useRecoilValue(fos.field(path));
-  const { ftype, subfield, embeddedDocType } = field;
+  const pseudoField = makePseudoField(path);
 
   return (
     <RegularEntry
@@ -96,7 +98,7 @@ const ScalarValueEntry = ({
           <Loadable path={path} />
         </Suspense>
         <FieldLabelAndInfo
-          field={field}
+          field={field ?? pseudoField}
           color={color}
           template={({ label, hoverTarget }) => (
             <div
@@ -144,9 +146,8 @@ const ListValueEntry = ({
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
   });
-  const field = useRecoilValue(fos.field(path));
-  console.info(field);
-  const { ftype, subfield, embeddedDocType } = useRecoilValue(fos.field(path));
+  const { ftype, subfield, embeddedDocType } =
+    useRecoilValue(fos.field(path)) ?? makePseudoField(path);
 
   return (
     <RegularEntry
@@ -202,7 +203,8 @@ const LengthLoadable = ({ path }: { path: string }) => {
 const ListLoadable = ({ path }: { path: string }) => {
   const data = useData<any[]>(path);
   const values = useMemo(() => {
-    return data ? data.map((value) => prettify(value as string)) : [];
+    let d = Array.from(data);
+    return data ? d.map((value) => prettify(value as string)) : [];
   }, [data]);
 
   return (
@@ -217,7 +219,7 @@ const ListLoadable = ({ path }: { path: string }) => {
 const Loadable = ({ path }: { path: string }) => {
   const value = useData<string | number | null>(path);
   const none = value === null || value === undefined;
-  const { ftype } = useRecoilValue(fos.field(path));
+  const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
   const color = useRecoilValue(fos.pathColor({ path, modal: true }));
   const timeZone = useRecoilValue(fos.timeZone);
   const formatted = format({ ftype, value, timeZone });
@@ -262,9 +264,7 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const field = useRecoilValue(fos.field(path));
-  // for label tags, do not mess the field, get it else where and create a new entry if necessary
-  console.info(field);
-  return field.ftype !== LIST_FIELD ? (
+  return field && field.ftype !== LIST_FIELD ? (
     <ScalarValueEntry entryKey={entryKey} path={path} trigger={trigger} />
   ) : (
     <ListValueEntry entryKey={entryKey} path={path} trigger={trigger} />

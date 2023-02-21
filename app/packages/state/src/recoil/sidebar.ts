@@ -196,8 +196,6 @@ const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 
 const DEFAULT_IMAGE_GROUPS = [
   { name: "all tags", paths: [] },
-  { name: "tags", paths: [] },
-  { name: "label tags", paths: [] },
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
   { name: "primitives", paths: [] },
@@ -205,8 +203,6 @@ const DEFAULT_IMAGE_GROUPS = [
 ];
 
 const DEFAULT_VIDEO_GROUPS = [
-  { name: "tags", paths: [] },
-  { name: "label tags", paths: [] },
   { name: "all tags", paths: [] },
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
@@ -372,8 +368,8 @@ export const sidebarGroups = selectorFamily<
       // TODO: may need to rename all tags after it's done. Need to use it now to differient between tags (which is sample tags)
       const newTagGroupIndex = groupNames.indexOf("all tags");
       console.info(newTagGroupIndex);
-      const tagsIndex = groupNames.indexOf("tags");
-      const labelTagsIndex = groupNames.indexOf("label tags");
+      // const tagsIndex = groupNames.indexOf("tags");
+      // const labelTagsIndex = groupNames.indexOf("label tags");
 
       const framesIndex = groupNames.indexOf("frame labels");
       const video = get(isVideoDataset);
@@ -394,34 +390,34 @@ export const sidebarGroups = selectorFamily<
         }
         // later will need to figure out whether how to determine mode of this new group based on the mode;
 
-        if (NONE.includes(groups[tagsIndex].expanded)) {
-          groups[tagsIndex].expanded =
-            get(resolvedSidebarMode(false)) === "all";
-        }
-        if (NONE.includes(groups[labelTagsIndex].expanded)) {
-          groups[labelTagsIndex].expanded =
-            get(resolvedSidebarMode(false)) === "all" ? !largeVideo : false;
-        }
+        // if (NONE.includes(groups[tagsIndex].expanded)) {
+        //   groups[tagsIndex].expanded =
+        //     get(resolvedSidebarMode(false)) === "all";
+        // }
+        // if (NONE.includes(groups[labelTagsIndex].expanded)) {
+        //   groups[labelTagsIndex].expanded =
+        //     get(resolvedSidebarMode(false)) === "all" ? !largeVideo : false;
+        // }
 
-        groups[tagsIndex].expanded &&
-          (groups[tagsIndex].paths = get(
-            aggregationAtoms.values({ extended: false, modal, path: "tags" })
-          )
-            .filter((tag) => !filtered || tag.includes(f))
-            .map((tag) => `tags.${tag}`));
+        // groups[tagsIndex].expanded &&
+        //   (groups[tagsIndex].paths = get(
+        //     aggregationAtoms.values({ extended: false, modal, path: "tags" })
+        //   )
+        //     .filter((tag) => !filtered || tag.includes(f))
+        //     .map((tag) => `tags.${tag}`));
 
-        groups[labelTagsIndex].expanded &&
-          (groups[labelTagsIndex].paths = get(
-            aggregationAtoms.cumulativeValues({
-              extended: false,
-              modal: false,
-              path: "tags",
-              ftype: EMBEDDED_DOCUMENT_FIELD,
-              embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
-            })
-          )
-            .filter((tag) => !filtered || tag.includes(f))
-            .map((tag) => `_label_tags.${tag}`));
+        // groups[labelTagsIndex].expanded &&
+        //   (groups[labelTagsIndex].paths = get(
+        //     aggregationAtoms.cumulativeValues({
+        //       extended: false,
+        //       modal: false,
+        //       path: "tags",
+        //       ftype: EMBEDDED_DOCUMENT_FIELD,
+        //       embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
+        //     })
+        //   )
+        //     .filter((tag) => !filtered || tag.includes(f))
+        //     .map((tag) => `_label_tags.${tag}`));
 
         groups[newTagGroupIndex].expanded &&
           (groups[newTagGroupIndex].paths = ["_label_tags", "tags"]);

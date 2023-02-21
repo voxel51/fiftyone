@@ -104,37 +104,17 @@ const SampleModal = () => {
       ) => void
     ) => {
       switch (entry.kind) {
-        case fos.EntryKind.PATH: {
-          const isTag = entry.path.startsWith("tags.");
-          const isLabelTag = entry.path.startsWith("_label_tags.");
+        case fos.EntryKind.PATH:
+          const isTag = entry.path.startsWith("tags");
+          const isLabelTag = entry.path.startsWith("_label_tags");
           const isLabel = labelPaths.includes(entry.path);
           const isOther = disabled.has(entry.path);
-          const isFieldPrimitive =
-            !isTag && !isLabelTag && !isLabel && !isOther;
+          const isFieldPrimitive = !isLabelTag && !isLabel && !isOther;
 
           return {
             children: (
               <>
-                {isLabelTag && (
-                  <Entries.FilterableTag
-                    key={key}
-                    modal={true}
-                    tag={entry.path.split(".").slice(1).join(".")}
-                    tagKey={
-                      isLabelTag
-                        ? fos.State.TagKey.LABEL
-                        : fos.State.TagKey.SAMPLE
-                    }
-                  />
-                )}
-                {isTag && (
-                  <Entries.TagValue
-                    key={key}
-                    path={entry.path}
-                    tag={entry.path.slice("tags.".length)}
-                  />
-                )}
-                {(isLabel || isOther) && (
+                {(isLabel || isOther || isLabelTag) && (
                   <Entries.FilterablePath
                     entryKey={key}
                     modal={true}
@@ -165,32 +145,16 @@ const SampleModal = () => {
           };
         }
         case fos.EntryKind.GROUP: {
-          const isTags = entry.name === "tags";
-          const isLabelTags = entry.name === "label tags";
-
           return {
-            children:
-              isTags || isLabelTags ? (
-                <Entries.TagGroup
-                  entryKey={key}
-                  tagKey={
-                    isLabelTags
-                      ? fos.State.TagKey.LABEL
-                      : fos.State.TagKey.SAMPLE
-                  }
-                  modal={true}
-                  key={key}
-                  trigger={trigger}
-                />
-              ) : (
-                <Entries.PathGroup
-                  entryKey={key}
-                  name={entry.name}
-                  modal={true}
-                  key={key}
-                  trigger={trigger}
-                />
-              ),
+            children: (
+              <Entries.PathGroup
+                entryKey={key}
+                name={entry.name}
+                modal={true}
+                key={key}
+                trigger={trigger}
+              />
+            ),
             disabled: false,
           };
         }
@@ -199,7 +163,7 @@ const SampleModal = () => {
             children: (
               <Entries.Empty
                 useText={
-                  group === "tags"
+                  group === "all tags"
                     ? () => fos.useTagText(true)
                     : group === "label tags"
                     ? () => fos.useLabelTagText(true)

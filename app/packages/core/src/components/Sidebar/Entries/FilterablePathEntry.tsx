@@ -391,7 +391,6 @@ const FilterableEntry = React.memo(
       >
         {expanded &&
           !isLabelTag &&
-          !isSampleTag &&
           data &&
           data.map(({ ftype, listField, ...props }) => {
             return React.createElement(FILTERS[ftype], {
@@ -403,7 +402,7 @@ const FilterableEntry = React.memo(
             });
           })}
         {expanded &&
-          (isLabelTag || isSampleTag) &&
+          isLabelTag &&
           React.createElement(FILTERS["TAG_FIELD"], {
             key: path,
             onFocus,

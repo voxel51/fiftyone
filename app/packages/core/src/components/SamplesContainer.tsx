@@ -30,76 +30,43 @@ function SamplesContainer() {
         cb: () => void
       ) => void
     ) => {
-      // console.info(entry.kind, group, key)
       switch (entry.kind) {
         case fos.EntryKind.PATH: // e.g. metadata
-          const isTag = entry.path.startsWith("tags.");
-          const isLabelTag = entry.path.startsWith("_label_tags.");
           const isDisabled = disabled.has(entry.path);
-          // const isTag = false;
-          // const isLabelTag = false;
-          // console.info(entry.path, key, group);
+
           return {
-            children:
-              isTag || isLabelTag ? (
-                <Entries.FilterableTag
-                  modal={false}
-                  key={key}
-                  tag={entry.path.split(".").slice(1).join(".")}
-                  tagKey={
-                    isLabelTag
-                      ? fos.State.TagKey.LABEL
-                      : fos.State.TagKey.SAMPLE
-                  }
-                />
-              ) : (
-                <Entries.FilterablePath
-                  entryKey={key}
-                  disabled={isDisabled}
-                  group={group}
-                  key={key}
-                  modal={false}
-                  path={entry.path}
-                  childPaths={entry.childPaths}
-                  onBlur={() => {
-                    controller.set({ zIndex: "0", overflow: "hidden" });
-                  }}
-                  onFocus={() => {
-                    controller.set({ zIndex: "1", overflow: "visible" });
-                  }}
-                  trigger={isDisabled ? null : trigger}
-                />
-              ),
+            children: (
+              <Entries.FilterablePath
+                entryKey={key}
+                disabled={isDisabled}
+                group={group}
+                key={key}
+                modal={false}
+                path={entry.path}
+                childPaths={entry.childPaths}
+                onBlur={() => {
+                  controller.set({ zIndex: "0", overflow: "hidden" });
+                }}
+                onFocus={() => {
+                  controller.set({ zIndex: "1", overflow: "visible" });
+                }}
+                trigger={isDisabled ? null : trigger}
+              />
+            ),
             disabled: disabled.has(entry.path),
           };
         case fos.EntryKind.GROUP:
-          const isTags = entry.name === "tags";
-          const isLabelTags = entry.name === "label tags";
-          // TODO: clean up
           return {
-            children:
-              isTags || isLabelTags ? (
-                <Entries.TagGroup
-                  entryKey={key}
-                  key={key}
-                  modal={false}
-                  tagKey={
-                    isLabelTags
-                      ? fos.State.TagKey.LABEL
-                      : fos.State.TagKey.SAMPLE
-                  }
-                  trigger={trigger}
-                />
-              ) : (
-                <Entries.PathGroup
-                  entryKey={key}
-                  key={key}
-                  name={entry.name}
-                  modal={false}
-                  mutable={!["other", "all tags"].includes(entry.name)}
-                  trigger={trigger}
-                />
-              ),
+            children: (
+              <Entries.PathGroup
+                entryKey={key}
+                key={key}
+                name={entry.name}
+                modal={false}
+                mutable={!["other", "all tags"].includes(entry.name)}
+                trigger={trigger}
+              />
+            ),
             disabled: false,
           };
         case fos.EntryKind.INPUT:

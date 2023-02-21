@@ -98,8 +98,6 @@ export const labelTagsCount = selectorFamily<
           ...props,
         })
       );
-      console.info("props,", props);
-      console.info("match,", fos.MATCH_LABEL_TAGS);
       if (!r1) return { count: 0, results: [] };
       const r2 = Object.entries(r1);
       const count = r2.reduce((acc, [key, value]) => acc + value, 0);
