@@ -163,6 +163,7 @@ export namespace State {
     k?: number;
     reverse?: boolean;
     query?: string | string[];
+    queryIds?: string[];
   }
 
   export interface Filters {

@@ -14,16 +14,12 @@ import * as fos from "@fiftyone/state";
 import { State } from "@fiftyone/state";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
-import { isImageSimilaritySearch } from "./similar/Similar";
 
 const useClearSampleSelection = (close) => {
   return useRecoilTransaction_UNSTABLE(
     ({ set }) =>
-      async () => {
+      () => {
         set(fos.selectedSamples, new Set());
-        if (!fos.similarityParameters) {
-          set(isImageSimilaritySearch, false);
-        }
         close();
       },
     [close]

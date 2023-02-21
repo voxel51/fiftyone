@@ -12,6 +12,7 @@ import {
 } from "@mui/icons-material";
 import React, {
   MutableRefObject,
+  useCallback,
   useLayoutEffect,
   useRef,
   useState,
@@ -19,7 +20,6 @@ import React, {
 import useMeasure from "react-use-measure";
 import {
   selector,
-  selectorFamily,
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
@@ -36,7 +36,7 @@ import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
-import Similar, { isImageSimilaritySearch } from "./similar/Similar";
+import Similar, { isImageSimilaritySearch } from "./Similar/Similar";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -49,7 +49,7 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
     const isExtendedSelectionOn =
       (selection && selection.length > 0) || isSimilarityOn;
 
-    return (
+    return Boolean(
       isExtendedSelectionOn || hasFiltersValue || selectedSampleSet.size > 0
     );
   },
@@ -89,52 +89,41 @@ const Patches = () => {
 
 const Similarity = ({ modal }: { modal: boolean }) => {
   const [open, setOpen] = useState(false);
-  const [isImageSearch, setIsImageSearch] = useRecoilState(
-    isImageSimilaritySearch
-  );
+  const [isImageSearch, setIsImageSearch] = useState(false);
   const hasSelectedSamples = useRecoilValue(fos.hasSelectedSamples);
   const hasSorting = Boolean(useRecoilValue(fos.similarityParameters));
   const [mRef, bounds] = useMeasure();
-  const close = false;
-  const ref = useRef();
+  const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
-
-  useLayoutEffect(() => {
-    close && setOpen(false);
-  }, [close]);
 
   const showImageSimilarityIcon =
     hasSelectedSamples || (isImageSearch && hasSorting);
 
+  const toggleSimilarity = useCallback(() => {
+    setOpen((open) => !open);
+    setIsImageSearch(showImageSimilarityIcon);
+  }, [showImageSimilarityIcon]);
+
   return (
     <ActionDiv ref={ref}>
-      {showImageSimilarityIcon && (
-        <PillButton
-          icon={<Wallpaper />}
-          open={open}
-          onClick={() => {
-            setOpen(!open);
-            setIsImageSearch(true);
-          }}
-          highlight={true}
-          ref={mRef}
-          title={"Sort by image similarity"}
-          style={{ cursor: "pointer" }}
-        />
-      )}
-      {!showImageSimilarityIcon && (
-        <PillButton
-          icon={<Search />}
-          open={open}
-          onClick={() => setOpen(!open)}
-          highlight={true}
-          ref={mRef}
-          title={"Sort by text similarity"}
-          style={{ cursor: "pointer" }}
-        />
-      )}
+      <PillButton
+        key={"button"}
+        icon={showImageSimilarityIcon ? <Search /> : <Wallpaper />}
+        open={open}
+        onClick={toggleSimilarity}
+        highlight={true}
+        ref={mRef}
+        title={"Sort by text similarity"}
+        style={{ cursor: "pointer" }}
+      />
       {open && (
-        <Similar modal={modal} close={() => setOpen(false)} bounds={bounds} />
+        <Similar
+          key={`similary-${isImageSearch}`}
+          modal={modal}
+          close={() => setOpen(false)}
+          bounds={bounds}
+          isImageSearch={isImageSearch}
+        />
       )}
     </ActionDiv>
   );

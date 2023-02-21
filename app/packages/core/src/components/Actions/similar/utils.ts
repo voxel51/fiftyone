@@ -1,23 +1,32 @@
-import { useUnprocessedStateUpdate } from "@fiftyone/state";
+import {
+  ModalSample,
+  selectedLabels,
+  useUnprocessedStateUpdate,
+} from "@fiftyone/state";
 import { useErrorHandler } from "react-error-boundary";
 import { selectorFamily, Snapshot, useRecoilCallback } from "recoil";
 import { searchBrainKeyValue } from "./Similar";
 import * as fos from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 
-export const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
+export const getQueryIds = async (
+  snapshot: Snapshot,
+  brainKey?: string
+): Promise<string[] | string | undefined> => {
   const selectedLabelIds = await snapshot.getPromise(fos.selectedLabelIds);
   const selectedLabels = await snapshot.getPromise(fos.selectedLabels);
   const methods = await snapshot.getPromise(fos.similarityMethods);
 
-  const labels_field = methods.patches
-    .filter(([m, v]) => m.key === brainKey)
-    .map(([m, v]) => v)[0];
   if (selectedLabelIds.size) {
     return [...selectedLabelIds].filter(
       (id) => selectedLabels[id].field === labels_field
     );
   }
+
+  const labels_field = methods.patches
+    .filter(([method]) => method.key === brainKey)
+    .map(([_, value]) => value)[0];
+
   const selectedSamples = await snapshot.getPromise(fos.selectedSamples);
   const isPatches = await snapshot.getPromise(fos.isPatchesView);
   const modal = await snapshot.getPromise(fos.modal);
@@ -34,14 +43,14 @@ export const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
       });
     }
 
-    return modal.sample[labels_field]._id;
+    return modal?.sample[labels_field]._id;
   }
 
   if (selectedSamples.size) {
     return [...selectedSamples];
   }
 
-  return modal.sample._id;
+  return modal?.sample._id;
 };
 
 export const useSortBySimilarity = (close) => {
@@ -106,62 +115,64 @@ export const availableSimilarityKeys = selectorFamily<
 >({
   key: "availableSimilarityKeys",
   get:
-    ({ modal, isImageSearch }) =>
+    (params) =>
     ({ get }) => {
-      const isPatches = get(fos.isPatchesView);
-      let m = get(fos.similarityMethods);
-      const keys: { patches: [string, string][]; samples: string[] } = {
-        patches: [],
-        samples: [],
-      };
-      if (!isImageSearch) {
-        keys.patches = m.patches
-          .filter(([m, f]) => m.supportsPrompts === true)
-          .map(([m, f]) => [m.key, f]);
-        keys.samples = m.samples
-          .filter((m) => m.supportsPrompts === true)
-          .map((m) => m.key);
-      } else {
-        keys.patches = m.patches.map(([m, f]) => [m.key, f]);
-        keys.samples = m.samples.map((m) => m.key);
+      if (
+        get(fos.isPatchesView) ||
+        (params.modal && get(fos.hasSelectedLabels))
+      ) {
+        return get(availablePatchesSimilarityKeys(params));
       }
 
-      if (!isPatches && !modal) {
-        return keys.samples;
-      } else if (!modal) {
-        return keys.patches.reduce((acc, [key, field]) => {
-          if (get(fos.labelPaths({})).includes(field)) {
-            acc = [...acc, key];
-          }
-          return acc;
-        }, []);
-      } else if (modal) {
-        const selectedLabels = get(fos.selectedLabels);
+      const { samples: methods } = get(fos.similarityMethods);
 
-        if (Object.keys(selectedLabels).length) {
+      if (params.isImageSearch) {
+        return methods.map(({ key }) => key);
+      }
+
+      return methods
+        .filter((method) => method.supportsPrompts === true)
+        .map(({ key }) => key);
+    },
+});
+
+const availablePatchesSimilarityKeys = selectorFamily<
+  string[],
+  {
+    modal: boolean;
+    isImageSearch: boolean;
+  }
+>({
+  key: "availablePatchesSimilarityKeys",
+  get:
+    (params) =>
+    ({ get }) => {
+      let patches: [string, string][] = [];
+      let { patches: methods } = get(fos.similarityMethods);
+      if (!params.isImageSearch) {
+        methods = methods.filter(([method]) => method.supportsPrompts === true);
+      }
+      patches = methods.map(([{ key }, field]) => [key, field]);
+
+      if (params.modal) {
+        if (get(fos.hasSelectedLabels)) {
           const fields = new Set(
-            Object.values(selectedLabels).map(({ field }) => field)
+            Object.values(get(selectedLabels)).map(({ field }) => field)
           );
 
-          const patches = keys.patches
-            .filter(([k, v]) => fields.has(v))
-            .reduce((acc, [k]) => {
-              return [...acc, k];
-            }, []);
-          return patches;
-        } else if (isPatches) {
-          const { sample } = get(fos.modal);
+          return patches
+            .filter(([_, field]) => fields.has(field))
+            .map(([key]) => key);
+        } else {
+          const { sample } = get(fos.modal) as ModalSample;
 
-          return keys.patches
-            .filter(([k, v]) => sample[v])
-            .reduce((acc, [k]) => {
-              return [...acc, k];
-            }, []);
+          return patches.filter(([_, v]) => sample[v]).map(([key]) => key);
         }
-
-        return keys.samples;
       }
-      return [];
+
+      return patches
+        .filter(([_, field]) => get(fos.labelPaths({})).includes(field))
+        .map(([key]) => key);
     },
 });
 
@@ -190,12 +201,15 @@ export const sortType = selectorFamily<string, boolean>({
     (modal) =>
     ({ get }) => {
       const isRoot = get(fos.isRootView);
+
       if (modal) {
         return "labels";
-      } else if (isRoot) {
-        return "images";
-      } else {
-        return "patches";
       }
+
+      if (isRoot) {
+        return "images";
+      }
+
+      return "patches";
     },
 });

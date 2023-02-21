@@ -339,7 +339,7 @@ export const similarityMethods = selector<{
   get: ({ get }) => {
     const methods = get(atoms.dataset).brainMethods;
 
-    const r = methods
+    return methods
       .filter(({ config: { method } }) => method === "similarity")
       .reduce(
         (
@@ -356,8 +356,6 @@ export const similarityMethods = selector<{
         },
         { patches: [], samples: [] }
       );
-    console.info(r);
-    return r;
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -509,10 +507,18 @@ function getLabelIdsFromSample(sample, path, matchesFilter) {
   return labelIds;
 }
 
+export const hasSelectedLabels = selector<boolean>({
+  key: "hasSelectedLabels",
+  get: ({ get }) => {
+    const selected = get(selectedLabelIds);
+    return selected.size > 0;
+  },
+});
+
 export const hasSelectedSamples = selector<boolean>({
   key: "hasSelectedSamples",
   get: ({ get }) => {
-    const selectedSamples = get(atoms.selectedSamples);
-    return selectedSamples.size > 0;
+    const selected = get(atoms.selectedSamples);
+    return selected.size > 0;
   },
 });

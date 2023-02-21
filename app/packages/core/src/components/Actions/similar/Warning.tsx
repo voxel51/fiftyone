@@ -3,12 +3,12 @@ import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import { SORT_BY_SIMILARITY } from "../../../utils/links";
 import { ActionOption } from "../Common";
 
-type Prop = {
+interface Props {
   hasSimilarityKeys: boolean;
   isImageSearch: boolean;
-};
+}
 
-const Warning: React.FunctionComponent<Prop> = ({ ...props }) => {
+const Warning: React.FunctionComponent<Props> = (props) => {
   const theme = useTheme();
 
   return (
