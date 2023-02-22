@@ -6,7 +6,12 @@ import {
   useRecoilTransaction_UNSTABLE,
 } from "recoil";
 import { useState, useEffect, useCallback } from "react";
-import { getLocalOrRemoteOperator, useOperatorExecutor } from "./operators";
+import {
+  getLocalOrRemoteOperator,
+  listLocalAndRemoteOperators,
+  executeOperator,
+} from "./operators";
+import * as fos from "@fiftyone/state";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -22,10 +27,8 @@ export const operatorPromptState = selector({
     }
     const { operatorName, params } = promptingOperator;
     const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
-    if (!operator.needsUserInput()) {
-      return {};
-    }
-    const fields = operator.definition.inputs.map((input) => {
+
+    const inputFields = operator.definition.inputs.map((input) => {
       return {
         name: input.name,
         label: input.label || input.name,
@@ -33,7 +36,15 @@ export const operatorPromptState = selector({
         default: input.default,
       };
     });
-    return { fields, operator };
+    const outputFields = operator.definition.outputs.map((output) => {
+      return {
+        name: output.name,
+        label: output.label || output.name,
+        type: output.type,
+        default: output.default,
+      };
+    });
+    return { inputFields, outputFields, operator };
   },
 });
 
@@ -54,7 +65,8 @@ export const useOperatorPrompt = () => {
   const [promptingOperator, setPromptingOperator] = useRecoilState(
     promptingOperatorState
   );
-  const { fields, operator } = useRecoilValue(operatorPromptState);
+  const { inputFields, outputFields, operator } =
+    useRecoilValue(operatorPromptState);
   const setFieldValue = useRecoilTransaction_UNSTABLE(
     ({ get, set }) =>
       (fieldName, value) => {
@@ -83,9 +95,11 @@ export const useOperatorPrompt = () => {
       if (!promptingOperator) return;
       switch (e.key) {
         case "Enter":
+          e.preventDefault();
           execute();
           break;
         case "Escape":
+          e.preventDefault();
           close();
           break;
       }
@@ -100,18 +114,27 @@ export const useOperatorPrompt = () => {
     };
   }, [onKeyDown]);
 
+  useEffect(() => {
+    console.log(operator);
+    if (operator && !operator.needsUserInput()) {
+      execute();
+    }
+  }, [operator]);
+
   if (!promptingOperator) return null;
 
-  const isExecuting = operator && operator.isExecuting;
-  const hasResultOrError = operator && (operator.result || operator.error);
-  const showPrompt = fields && !isExecuting && !hasResultOrError;
+  const isExecuting = executor && executor.isExecuting;
+  const hasResultOrError = executor && (executor.result || executor.error);
+  const showPrompt = inputFields && !isExecuting && !hasResultOrError;
 
   return {
-    fields,
+    inputFields,
+    outputFields,
     setFieldValue,
     operator,
     execute,
-    showPrompt: showPrompt,
+    executor,
+    showPrompt,
     isExecuting,
     hasResultOrError,
     close,
@@ -129,32 +152,50 @@ export function filterChoicesByQuery(query, all) {
   });
 }
 
-export function useOperatorBrowser() {
-  const [isVisible, setIsVisible] = useState(false);
-  const [query, setQuery] = useState(null);
-  const [choices, setChoices] = useState([]);
-  const promptForInput = usePromptOperatorInput();
+export const availableOperators = selector({
+  key: "availableOperators",
+  get: ({ get }) => {
+    return listLocalAndRemoteOperators();
+  },
+});
 
-  const allChoices = [
-    {
-      label: "Hello World",
-      value: "hello-world",
-      description: "A simple operator that says hello",
-    },
-    {
-      label: "Compute Similarity",
-      value: "compute-sim",
-      description: "Compute similarity!",
-    },
-  ];
-
-  useEffect(() => {
+export const operatorBrowserVisibleState = atom({
+  key: "operatorBrowserVisibleState",
+  default: false,
+});
+export const operatorBrowserQueryState = atom({
+  key: "operatorBrowserQueryState",
+  default: null,
+});
+export const operatorBrowserChoices = selector({
+  key: "operatorBrowserChoices",
+  get: ({ get }) => {
+    const allChoices = get(availableOperators).allOperators.map((operator) => {
+      return {
+        label: operator.label || operator.name,
+        value: operator.name,
+        description: operator.definition.description,
+      };
+    });
+    const query = get(operatorBrowserQueryState);
     if (query && query.length > 0) {
-      setChoices(filterChoicesByQuery(query, allChoices));
+      return filterChoicesByQuery(query, allChoices);
     } else {
-      setChoices(allChoices);
+      return allChoices;
     }
-  }, [query]);
+  },
+});
+export const operatorChoiceState = atom({
+  key: "operatorChoiceState",
+  default: null,
+});
+
+export function useOperatorBrowser() {
+  const [isVisible, setIsVisible] = useRecoilState(operatorBrowserVisibleState);
+  const [query, setQuery] = useRecoilState(operatorBrowserQueryState);
+  const [selectedValue, setSelected] = useRecoilState(operatorChoiceState);
+  const choices = useRecoilValue(operatorBrowserChoices);
+  const promptForInput = usePromptOperatorInput();
 
   const onChangeQuery = (query) => {
     console.log("query", query);
@@ -162,47 +203,40 @@ export function useOperatorBrowser() {
   };
 
   const onSubmit = () => {
-    const selected = choices.find((choice) => choice.selected) || choices[0];
-    console.log("onSubmit", selected);
-    if (selected) {
-      promptForInput(selected.value);
+    console.log("onSubmit", selectedValue);
+    setIsVisible(false);
+    if (selectedValue) {
+      promptForInput(selectedValue);
     }
   };
 
+  const getSelectedPrevAndNext = useCallback(() => {
+    const selected = choices.find((choice) => choice.value === selectedValue);
+    const selectedIndex = choices.indexOf(selected);
+    const lastChoice = choices[choices.length - 1];
+    const firstChoice = choices[0];
+    if (selectedIndex === -1)
+      return {
+        selected: null,
+        selectedPrev: lastChoice?.value || null,
+        selectedNext: firstChoice?.value || null,
+      };
+
+    const selectedPrev = (
+      choices[selectedIndex - 1] || choices[choices.length - 1]
+    ).value;
+    const selectedNext = (choices[selectedIndex + 1] || choices[0]).value;
+    return { selected, selectedPrev, selectedNext };
+  }, [choices, selectedValue]);
+
   const selectNext = useCallback(() => {
     console.log("select next");
-    for (let i = 0; i < choices.length; i++) {
-      if (choices[i].selected) {
-        choices[i].selected = false;
-        if (choices[i + 1]) {
-          choices[i + 1].selected = true;
-        } else {
-          choices[0].selected = true;
-        }
-        setChoices([...choices]);
-        return;
-      }
-      choices[0].selected = true;
-      setChoices([...choices]);
-    }
+    setSelected(getSelectedPrevAndNext().selectedNext);
   }, [choices]);
 
   const selectPrevious = useCallback(() => {
     console.log("select prev");
-    for (let i = 0; i < choices.length; i++) {
-      if (choices[i].selected) {
-        choices[i].selected = false;
-        if (choices[i - 1]) {
-          choices[i - 1].selected = true;
-        } else {
-          choices[choices.length - 1].selected = true;
-        }
-        setChoices([...choices]);
-        return;
-      }
-    }
-    choices[choices.length - 1].selected = true;
-    setChoices([...choices]);
+    setSelected(getSelectedPrevAndNext().selectedPrev);
   }, [choices]);
 
   const onKeyDown = useCallback(
@@ -220,7 +254,6 @@ export function useOperatorBrowser() {
           setIsVisible(!isVisible);
           break;
         case "Enter":
-          setIsVisible(false);
           onSubmit();
           break;
       }
@@ -235,12 +268,75 @@ export function useOperatorBrowser() {
     };
   }, [onKeyDown]);
 
+  const setSelectedAndSubmit = useCallback(
+    (value) => {
+      setIsVisible(false);
+      promptForInput(value);
+    },
+    [setSelected, setIsVisible, onSubmit]
+  );
+
   return {
+    selectedValue,
     isVisible,
     choices,
     onChangeQuery,
     onSubmit,
     selectNext,
     selectPrevious,
+    setSelectedAndSubmit,
+  };
+}
+
+const operatorIsExecutingState = atom({
+  key: "operatorIsExecutingState",
+  default: false,
+});
+const operatorExecutionErrorState = atom({
+  key: "operatorExecutionErrorState",
+  default: null,
+});
+const operatorExecutionResultState = atom({
+  key: "operatorExecutionResultState",
+  default: null,
+});
+
+export function useOperatorExecutor(name) {
+  const [isExecuting, setIsExecuting] = useRecoilState(
+    operatorIsExecutingState
+  );
+  const [error, setError] = useRecoilState(operatorExecutionErrorState);
+  const [result, setResult] = useRecoilState(operatorExecutionResultState);
+  const datasetName = useRecoilValue(fos.datasetName);
+  const view = useRecoilValue(fos.view);
+  const extended = useRecoilValue(fos.extendedStages);
+  const filters = useRecoilValue(fos.filters);
+
+  const clear = () => {
+    setError(null);
+    setResult(null);
+    setIsExecuting(false);
+  };
+  return {
+    isExecuting,
+    error,
+    result,
+    async execute(params) {
+      setIsExecuting(true);
+      try {
+        const result = await executeOperator(name, params, {
+          datasetName,
+          view,
+          extended,
+          filters,
+        });
+        console.log("setting result", result);
+        setResult(result);
+      } catch (e) {
+        setError(e);
+      }
+      setIsExecuting(false);
+    },
+    clear,
   };
 }
