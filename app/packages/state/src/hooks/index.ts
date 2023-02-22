@@ -30,7 +30,6 @@ export { default as useSetDataset } from "./useSetDataset";
 export { default as useSetExpandedSample } from "./useSetExpandedSample";
 export { default as useSetGroupSlice } from "./useSetGroupSlice";
 export { default as useSetSelected } from "./useSetSelected";
-export { default as useSetExtendedSelection } from "./useSetExtendedSelection";
 export { default as useSetSelectedLabels } from "./useSetSelectedLabels";
 export { default as useSetView, stateProxy } from "./useSetView";
 export { default as useStateUpdate } from "./useStateUpdate";
