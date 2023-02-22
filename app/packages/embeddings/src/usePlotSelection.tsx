@@ -3,14 +3,13 @@ import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useBrainResultInfo } from "./useBrainResultInfo";
 import { SELECTION_SCOPE } from "./constants";
+import { useResetExtendedSelection } from "@fiftyone/state";
 
 export function usePlotSelection() {
   const brainResultInfo = useBrainResultInfo();
   const patchesField = brainResultInfo?.config?.patchesField;
   const setFilters = useSetRecoilState(fos.filters);
-  const setOverrideStage = useSetRecoilState(
-    fos.extendedSelectionOverrideStage
-  );
+  const resetExtendedSelection = useResetExtendedSelection();
   const [{ selection, scope }, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
@@ -36,9 +35,8 @@ export function usePlotSelection() {
   }
 
   function clearSelection() {
-    setExtendedSelection({ selection: null });
+    resetExtendedSelection();
     setPlotSelection(null);
-    setOverrideStage(null);
     setSelectedSamples(new Set());
     setFilters({});
   }
