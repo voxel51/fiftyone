@@ -72,7 +72,7 @@ const categoricalSearchResults = selectorFamily<
 
       const noneCount = get(fos.noneCount({ path, modal, extended: false }));
       const isLabelTag = path.startsWith("_label_tags");
-      const labels = useRecoilValue(labelTagsCount({ modal, extended: false }));
+      const labels = get(labelTagsCount({ modal, extended: false }));
       let data = {
         count: labels.count,
         values: labels.results.map(([value, count]) => ({ value, count })),

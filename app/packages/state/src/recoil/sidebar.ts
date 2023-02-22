@@ -726,7 +726,7 @@ export const groupShown = selectorFamily<
       const data = get(sidebarGroupMapping({ modal, loading }))[group];
 
       if ([null, undefined].includes(data.expanded)) {
-        if (["tags", "label tags"].includes(group)) {
+        if (["all tags"].includes(group)) {
           return null;
         }
         return (
