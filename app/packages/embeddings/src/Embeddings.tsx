@@ -80,7 +80,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
                 containerStyle={selectorStyle}
               />
             )}
-            {plotSelection.hasSelection && (
+            {!plotSelection.selectionIsExternal && (
               <PlotOption
                 to={plotSelection.clearSelection}
                 title={"Clear selection (Esc)"}

@@ -175,6 +175,7 @@ type PluginActivator = (props: any) => boolean;
 
 type PanelOptions = {
   allowDuplicates?: boolean;
+  TabIndicator?: React.ComponentType;
 };
 
 type PluginComponentProps<T> = T & {

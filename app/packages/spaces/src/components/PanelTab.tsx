@@ -9,7 +9,7 @@ import {
 import { PanelTabProps } from "../types";
 import { warnPanelNotFound } from "../utils";
 import PanelIcon from "./PanelIcon";
-import { StyledTab } from "./StyledElements";
+import { StyledTab, TabIndicatorContainer } from "./StyledElements";
 
 export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
   const { spaces } = useSpaces(spaceId);
@@ -21,6 +21,8 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
 
   if (!panel) return warnPanelNotFound(panelName);
 
+  const TabIndicator = panel?.panelOptions?.TabIndicator;
+
   return (
     <StyledTab
       onClick={() => {
@@ -30,6 +32,11 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
     >
       <PanelIcon name={panelName as string} />
       {title || panel.label || panel.name}
+      {TabIndicator && (
+        <TabIndicatorContainer>
+          <TabIndicator />
+        </TabIndicatorContainer>
+      )}
       {!node.pinned && (
         <IconButton
           onClick={(e) => {
