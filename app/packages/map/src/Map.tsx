@@ -27,6 +27,7 @@ import {
 } from "./state";
 import Options from "./Options";
 import { useBeforeScreenshot } from "@fiftyone/state";
+import { SELECTION_SCOPE } from "./constants";
 
 const fitBoundsOptions = { animate: false, padding: 30 };
 
@@ -78,7 +79,9 @@ const Plot: React.FC<{}> = () => {
   );
 
   const style = useRecoilValue(mapStyle);
-  const [selection, setSelection] = useRecoilState(fos.extendedSelection);
+  const [{ selection }, setExtendedSelection] = useRecoilState(
+    fos.extendedSelection
+  );
 
   const mapRef = React.useRef<MapRef>(null);
   const onResize = React.useMemo(
@@ -197,9 +200,7 @@ const Plot: React.FC<{}> = () => {
           Something went wrong... is your&nbsp;
           <ExternalLink
             style={{ color: theme.text.primary }}
-            href={
-              "https://docs.voxel51.com/user_guide/app.html#map-panel"
-            }
+            href={"https://docs.voxel51.com/user_guide/app.html#map-panel"}
           >
             Mapbox token
           </ExternalLink>
@@ -302,7 +303,10 @@ const Plot: React.FC<{}> = () => {
                 return;
               }
 
-              setSelection([...selected]);
+              setExtendedSelection({
+                selection: Array.from(selected),
+                scope: SELECTION_SCOPE,
+              });
             }}
           />
         </Map>
@@ -313,7 +317,7 @@ const Plot: React.FC<{}> = () => {
         fitSelectionData={() =>
           mapRef.current && fitBounds(mapRef.current, data)
         }
-        clearSelectionData={() => setSelection(null)}
+        clearSelectionData={() => setExtendedSelection({ selection: null })}
       />
     </div>
   );
