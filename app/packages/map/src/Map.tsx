@@ -31,6 +31,7 @@ import {
   useResetExtendedSelection,
 } from "@fiftyone/state";
 import { SELECTION_SCOPE } from "./constants";
+import { useSetPanelCloseEffect } from "@fiftyone/spaces";
 
 const fitBoundsOptions = { animate: false, padding: 30 };
 
@@ -176,6 +177,11 @@ const Plot: React.FC<{}> = () => {
       mapRef.current.setBearing(mapRef.current.getBearing());
     });
   });
+
+  const setPanelCloseEffect = useSetPanelCloseEffect();
+  React.useEffect(() => {
+    setPanelCloseEffect(resetExtendedSelection);
+  }, []);
 
   if (!settings.mapboxAccessToken) {
     return (
