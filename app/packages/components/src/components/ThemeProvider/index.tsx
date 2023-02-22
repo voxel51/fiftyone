@@ -85,6 +85,7 @@ let theme = extendJoyTheme({
           tooltip: "hsl(200, 0%, 5%)",
           viewBarButtons: "hsl(200, 0%, 15%)",
           inactiveTab: "hsl(200, 0%, 18%)",
+          paper: "hsl(200, 0%, 10%)",
         },
         divider: "hsl(200, 0%, 20%)",
         danger: {
@@ -132,6 +133,9 @@ let theme = extendJoyTheme({
   },
   fontFamily: {
     body: "Palanquin, sans-serif",
+  },
+  opacity: {
+    inputPlaceholder: 0.5,
   },
 });
 

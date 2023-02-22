@@ -36,19 +36,25 @@ class ExecutionContext:
 
     @property
     def view(self):
-        stages = self.request_params.get("stages", None)
-        extended = self.request_params.get("extended_stages", None)
+        stages = self.request_params.get("view", None)
+        extended = self.request_params.get("extended", None)
         dataset_name = self.request_params.get("dataset_name", None)
+        filters = self.request_params.get("filters", None)
         return fosv.get_view(
             dataset_name,
             stages=stages,
             extended_stages=extended,
+            filters=filters,
         )
 
     @property
     def dataset(self):
         dataset_name = self.request_params.get("dataset_name", None)
         return fo.load_dataset(dataset_name)
+
+    @property
+    def dataset_name(self):
+        return self.request_params.get("dataset_name", None)
 
 
 class ExecutionResult:
