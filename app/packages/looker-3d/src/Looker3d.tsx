@@ -1,4 +1,4 @@
-import { Loading } from "@fiftyone/components";
+import { Loading, useTheme } from "@fiftyone/components";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { AppSample as Sample } from "@fiftyone/state";
@@ -273,6 +273,8 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
     [dataset]
   );
 
+  const theme = useTheme();
+
   return (
     <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
       <Canvas onClick={() => setAction(null)}>
@@ -323,6 +325,7 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
           onLoad={(boundingBox) => {
             setPointCloudBounds(boundingBox);
           }}
+          defaultShadingColor={theme.text.primary}
         />
         <axesHelper />
       </Canvas>
