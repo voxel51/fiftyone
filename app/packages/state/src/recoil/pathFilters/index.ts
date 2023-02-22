@@ -11,11 +11,11 @@ import {
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
 import { selectorFamily } from "recoil";
-import { matchedTags } from "../filters";
+
+import { filters, modalFilters } from "../filters";
 
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
-import { State } from "../types";
 import { boolean } from "./boolean";
 import { numeric } from "./numeric";
 import { string, listString } from "./string";
@@ -71,11 +71,11 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
     ({ get }) => {
       const paths = get(schemaAtoms.activeFields({ modal }));
       const hidden = get(selectors.hiddenLabelIds);
-      const matchedLabelTags = get(
-        matchedTags({ key: State.TagKey.LABEL, modal })
-      );
 
-      const filters = paths.reduce((f, path) => {
+      const f = modal ? get(modalFilters) : get(filters);
+      const matchedLabelTags = f._label_tags;
+
+      const newFilters = paths.reduce((f, path) => {
         if (path.startsWith("_")) return f;
 
         const field = get(schemaAtoms.field(path));
@@ -107,13 +107,26 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
             }
 
             let matched = true;
-            if (matchedLabelTags.size) {
+            if (matchedLabelTags && matchedLabelTags?.values.length > 0) {
+              const { isMatching, values, exclude } = matchedLabelTags;
               matched =
                 value.tags &&
-                value.tags.some((tag) => matchedLabelTags.has(tag));
+                ((!exclude &&
+                  !isMatching &&
+                  value.tags.some(
+                    (tag) => !isMatching && values.includes(tag)
+                  )) ||
+                  (exclude &&
+                    !isMatching &&
+                    !value.tags.some((tag) => values.includes(tag))) ||
+                  isMatching);
             }
-
-            return matched && fs.every((filter) => filter(value));
+            return (
+              matched &&
+              fs.every((filter) => {
+                return filter(value);
+              })
+            );
           };
         } else if (field) {
           f[path] = get(primitiveFilter({ modal, path }));
@@ -123,11 +136,11 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
       }, {});
 
       return (path, value) => {
-        if (!filters[path]) {
+        if (!newFilters[path]) {
           return false;
         }
 
-        return filters[path](value);
+        return newFilters[path](value);
       };
     },
   cachePolicy_UNSTABLE: {

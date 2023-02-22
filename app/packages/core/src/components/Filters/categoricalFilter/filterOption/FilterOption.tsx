@@ -56,7 +56,9 @@ const generateOptions = (
     options.push({
       icon: "FilterAltIcon",
       key: "filter",
-      value: `Select ${nestedField ?? "labels"} with ${valueName}`,
+      value: `Select ${nestedField ?? "labels"} with ${
+        isLabelTag ? "label tag" : valueName
+      }`,
       tooltip: isLabelTag
         ? "dataset.select_labels(tags=expr)"
         : isKeyPointLabel
@@ -68,7 +70,9 @@ const generateOptions = (
     options.push({
       icon: "FilterAltOffIcon",
       key: "negativeFilter",
-      value: `Exclude ${nestedField ?? "labels"} with ${valueName}`,
+      value: `Exclude ${nestedField ?? "labels"} with ${
+        isLabelTag ? "label tag" : valueName
+      }`,
       tooltip: isLabelTag
         ? "dataset.exclude_labels(tags=expr, omit_empty=False)"
         : isKeyPointLabel
@@ -80,7 +84,7 @@ const generateOptions = (
     options.push({
       icon: "ImageIcon",
       key: "match",
-      value: `Show samples with ${valueName}`,
+      value: `Show samples with ${isLabelTag ? "label tag" : valueName}`,
       tooltip: isLabelTag
         ? "dataset.match_labels(tags=expr)"
         : isSampleTag
@@ -94,7 +98,7 @@ const generateOptions = (
     options.push({
       icon: "HideImageIcon",
       key: "negativeMatch",
-      value: `Omit samples with ${valueName}`,
+      value: `Omit samples with ${isLabelTag ? "label tag" : valueName}`,
       tooltip: isLabelTag
         ? "dataset.match_labels(tags=expr, bool=False)"
         : isSampleTag
