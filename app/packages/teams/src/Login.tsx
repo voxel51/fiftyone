@@ -10,7 +10,6 @@ import { useMutation } from "react-relay";
 import { RouterContext } from "@fiftyone/state";
 import { usePlugins } from "@fiftyone/plugins";
 
-const plugins = usePlugins();
 
 const LoginMutation = graphql`
   mutation LoginMutation($user: UserInput!) {
@@ -26,6 +25,8 @@ const Login = () => {
   const [logIn, pending] = useMutation(LoginMutation);
   const { user } = useAuth0();
   const { history } = useContext(RouterContext);
+  const plugins = usePlugins();
+
 
   useEffect(() => {
     if (!user || loggedIn || pending) {
