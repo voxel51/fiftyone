@@ -4347,6 +4347,7 @@ __metadata:
     "@fiftyone/flashlight": "*"
     "@fiftyone/looker": "*"
     "@fiftyone/map": "*"
+    "@fiftyone/operators": "*"
     "@fiftyone/state": "*"
     "@fiftyone/utilities": "*"
     "@monaco-editor/react": ^4.5.0
@@ -4563,7 +4564,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/operators@workspace:packages/operators":
+"@fiftyone/operators@*, @fiftyone/operators@workspace:packages/operators":
   version: 0.0.0-use.local
   resolution: "@fiftyone/operators@workspace:packages/operators"
   dependencies:

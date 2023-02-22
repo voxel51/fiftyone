@@ -3,8 +3,19 @@ import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
 import { Button } from "@fiftyone/components";
 import { useOperatorPrompt } from "./state";
+import * as types from "./types";
+import {
+  FormControl,
+  FormControlLabel,
+  FormLabel,
+  InputLabel,
+  MenuItem,
+  Radio,
+  RadioGroup,
+  Select,
+} from "@mui/material";
 
-const PromptContainer = styled.form`
+const PromptContainer = styled.div`
   position: absolute;
   top: 5rem;
   left: 0;
@@ -56,8 +67,9 @@ function Prompting({ operatorPrompt }) {
   return (
     <>
       <Form>
-        {operatorPrompt.fields.map((field) => (
+        {operatorPrompt.inputFields.map((field) => (
           <Field
+            key={field.name}
             field={field}
             onChange={(e) =>
               operatorPrompt.setFieldValue(field.name, e.target.value)
@@ -66,23 +78,39 @@ function Prompting({ operatorPrompt }) {
         ))}
       </Form>
       <ButtonsContainer>
-        <Button onClick={() => operatorPrompt.cancel()}>Cancel</Button>
-        <Button onClick={() => operatorPrompt.execute()}>Execute</Button>
+        <Button
+          onClick={(e) => {
+            operatorPrompt.cancel();
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={() => {
+            operatorPrompt.execute();
+          }}
+        >
+          Execute
+        </Button>
       </ButtonsContainer>
     </>
   );
 }
 
 function Results({ operatorPrompt }) {
+  console.log(operatorPrompt);
   return (
     <>
       <h3>Result</h3>
-      {operatorPrompt.executor.result &&
-        Object.entries(operatorPrompt.executor.result.result).map(
-          ([key, value]) => (
-            <Field field={{ label: key, default: value, type: typeof value }} />
-          )
-        )}
+      {operatorPrompt?.executor?.result &&
+        operatorPrompt.outputFields.map((field) => (
+          <Field
+            key={field.name}
+            field={field}
+            readOnly={true}
+            defaultValue={operatorPrompt.executor.result.result[field.name]}
+          />
+        ))}
       <ButtonsContainer>
         <Button onClick={() => operatorPrompt.close()}>Close</Button>
       </ButtonsContainer>
@@ -90,15 +118,41 @@ function Results({ operatorPrompt }) {
   );
 }
 
-function Field({ field, onChange }) {
+function Field({ field, defaultValue, readOnly, onChange }) {
   return (
     <FieldContainer>
-      <Label>{field.label}</Label>
-      {field.type === "string" && (
-        <TextInput field={field} onChange={onChange} />
-      )}
+      <GenericFieldValue {...{ defaultValue, field, readOnly, onChange }} />
     </FieldContainer>
   );
+}
+
+function getComponentForType(type: types.ANY_TYPE) {
+  const TYPE = types.TYPES.find((t) => type instanceof t);
+  switch (TYPE) {
+    case types.String:
+      return TextInput;
+    case types.Number:
+      return NumberInput;
+    case types.Boolean:
+      return Checkbox;
+    case types.Enum:
+      return Emum;
+    default:
+      null;
+  }
+}
+
+function GenericFieldValue(props) {
+  const { field } = props;
+  const Component = getComponentForType(field.type);
+  if (!Component)
+    return (
+      <h4>
+        No component for {field.name} ({field.type.name})
+      </h4>
+    );
+
+  return <Component {...props} />;
 }
 
 const Label = styled.label`
@@ -124,14 +178,101 @@ const StyledInput = styled.input<{ error?: string }>`
   }
 `;
 
-function TextInput({ field, onChange }) {
+function TextInput({ field, defaultValue, readOnly, onChange }) {
   return (
-    <StyledInput
-      autoFocus
-      error={field.error}
-      type="text"
-      defaultValue={field.default}
-      onChange={onChange}
-    />
+    <>
+      <Label>{field.label}</Label>
+      <StyledInput
+        autoFocus
+        error={field.error}
+        type="text"
+        defaultValue={defaultValue || field.default}
+        readOnly={readOnly}
+        onChange={onChange}
+      />
+    </>
   );
+}
+
+function NumberInput({ field, onChange, defaultValue, readOnly }) {
+  return (
+    <>
+      <Label>{field.label}</Label>
+      <StyledInput
+        autoFocus
+        error={field.error}
+        type="number"
+        defaultValue={defaultValue || field.default}
+        readOnly={readOnly}
+        onChange={onChange}
+      />
+    </>
+  );
+}
+
+const CheckboxContainer = styled.div`
+  display: flex;
+  input {
+    width: auto;
+    position: relative;
+    top: 6px;
+  }
+`;
+
+function Checkbox({ field, onChange, defaultValue, readOnly }) {
+  return (
+    <CheckboxContainer>
+      <StyledInput
+        autoFocus
+        error={field.error}
+        type="checkbox"
+        defaultValue={defaultValue || field.default}
+        readOnly={readOnly}
+        onChange={onChange}
+      />
+      <Label>{field.label}</Label>
+    </CheckboxContainer>
+  );
+}
+
+function Emum({ field, onChange, defaultValue, readOnly }) {
+  const [value, setValue] = React.useState(defaultValue || field.default);
+
+  useEffect(() => {
+    if (onChange) onChange({ target: { value } });
+  }, [value]);
+  if (field.type.values.length < 6) {
+    return (
+      <FormControl component="fieldset" style={{ marginBottom: "1rem" }}>
+        <FormLabel component="legend">{field.label}</FormLabel>
+        <RadioGroup
+          aria-label="gender"
+          name={field.name}
+          value={value}
+          onChange={(e, newValue) => setValue(newValue)}
+        >
+          {field.type.values.map((v) => (
+            <FormControlLabel value={v} control={<Radio />} label={v} />
+          ))}
+        </RadioGroup>
+      </FormControl>
+    );
+  } else {
+    console.log(field);
+    return (
+      <FormControl fullWidth style={{ marginBottom: "1rem" }}>
+        <InputLabel>{field.label}</InputLabel>
+        <Select
+          labelId={field.name}
+          value={value}
+          label={field.label}
+          onChange={(e) => setValue(e.target.value)}
+        >
+          {field.type.values.map((v) => (
+            <MenuItem value={v}>{v}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    );
+  }
 }
