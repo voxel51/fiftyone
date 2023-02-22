@@ -94,7 +94,8 @@ async def paginate_samples(
     if after is None:
         after = "-1"
 
-    view = view.skip(int(after) + 1)
+    if int(after) > -1:
+        view = view.skip(int(after) + 1)
 
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
