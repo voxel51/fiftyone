@@ -104,7 +104,6 @@ async def paginate_samples(
             manual_group_select=sample_filter
             and sample_filter.group
             and (sample_filter.group.id and not sample_filter.group.slice),
-            support=[1, 1],
         ),
     ).to_list(first + 1)
 
