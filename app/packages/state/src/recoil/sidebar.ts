@@ -361,6 +361,7 @@ export const sidebarGroups = selectorFamily<
 
       const groupNames = groups.map(({ name }) => name);
       const tagGroupIndex = groupNames.indexOf("all tags");
+      groups[tagGroupIndex].paths = ["_label_tags", "tags"];
 
       const framesIndex = groupNames.indexOf("frame labels");
       const video = get(isVideoDataset);
@@ -378,9 +379,6 @@ export const sidebarGroups = selectorFamily<
         if (NONE.includes(groups[tagGroupIndex].expanded)) {
           groups[tagGroupIndex].expanded = true;
         }
-
-        groups[tagGroupIndex].expanded &&
-          (groups[tagGroupIndex].paths = ["_label_tags", "tags"]);
       } else {
         if (NONE.includes(groups[tagGroupIndex].expanded)) {
           groups[tagGroupIndex].expanded = true;
