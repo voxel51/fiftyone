@@ -11,20 +11,20 @@ export default function useExtendedStageEffect() {
   const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage
   );
-  const extendedSelection = useRecoilValue(fos.extendedSelection);
+  const { selection } = useRecoilValue(fos.extendedSelection);
 
   useEffect(() => {
-    if (loadedPlot && Array.isArray(extendedSelection)) {
+    if (loadedPlot && Array.isArray(selection)) {
       fetchExtendedStage({
         datasetName,
         view,
         patchesField: loadedPlot.patches_field,
-        selection: extendedSelection,
+        selection,
       }).then((res) => {
         setOverrideStage({
           [res._cls]: res.kwargs,
         });
       });
     }
-  }, [datasetName, loadedPlot?.patches_field, view, extendedSelection]);
+  }, [datasetName, loadedPlot?.patches_field, view, selection]);
 }

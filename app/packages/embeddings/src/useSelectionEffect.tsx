@@ -15,19 +15,19 @@ export function useSelectionEffect() {
   const [loadedPlot] = usePanelStatePartial("loadedPlot", null, true);
   const filters = useRecoilValue(fos.filters);
   const extended = useRecoilValue(fos.extendedStagesUnsorted);
-  const extendedSelection = useRecoilValue(fos.extendedSelection);
+  const { selection } = useRecoilValue(fos.extendedSelection);
 
   // updated the selection when the extended view updates
   useEffect(() => {
     if (loadedPlot) {
-      const resolvedExtended = extendedSelection ? extended : null;
+      const resolvedExtended = selection ? extended : null;
       fetchUpdatedSelection({
         datasetName,
         brainKey,
         view,
         filters,
         extended: resolvedExtended,
-        extendedSelection,
+        extendedSelection: selection,
       }).then((res) => {
         let resolved = null;
         if (res.selected) {
@@ -38,12 +38,5 @@ export function useSelectionEffect() {
         setPlotSelection(resolved);
       });
     }
-  }, [
-    datasetName,
-    brainKey,
-    view,
-    filters,
-    extendedSelection,
-    selectedSamples,
-  ]);
+  }, [datasetName, brainKey, view, filters, selection, selectedSamples]);
 }
