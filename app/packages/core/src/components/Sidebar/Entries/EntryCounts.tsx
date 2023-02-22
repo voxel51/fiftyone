@@ -105,31 +105,6 @@ export const labelTagsCount = selectorFamily<
     },
 });
 
-export const tagIsMatched = selectorFamily<
-  boolean,
-  { key: fos.State.TagKey; tag: string; modal: boolean }
->({
-  key: "tagIsActive",
-  get:
-    ({ key, tag, modal }) =>
-    ({ get }) => {
-      return get(fos.matchedTags({ key, modal })).has(tag);
-    },
-  set:
-    ({ key, tag, modal }) =>
-    ({ get, set }, toggle) => {
-      const atom = fos.matchedTags({ key, modal });
-      const current = get(atom);
-
-      set(
-        atom,
-        toggle
-          ? new Set([tag, ...current])
-          : new Set([...current].filter((t) => t !== tag))
-      );
-    },
-});
-
 export const LabelTagCounts = ({
   modal,
   tag,

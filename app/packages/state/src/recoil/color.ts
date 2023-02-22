@@ -70,11 +70,11 @@ export const colorMapRGB = selectorFamily<(val) => RGB, boolean>({
 
 export const pathColor = selectorFamily<
   string,
-  { path: string; modal: boolean; tag?: State.TagKey }
+  { path: string; modal: boolean }
 >({
   key: "pathColor",
   get:
-    ({ modal, path, tag }) =>
+    ({ modal, path }) =>
     ({ get }) => {
       const map = get(colorMap(modal));
       const video = get(selectors.mediaTypeSelector) !== "image";
@@ -83,12 +83,6 @@ export const pathColor = selectorFamily<
         video && path.startsWith("frames.")
           ? path.split(".").slice(0, 2).join(".")
           : path.split(".")[0];
-
-      if (tag) {
-        return map(
-          tag === State.TagKey.SAMPLE ? `tags.${path}` : `_label_tags.${path}`
-        );
-      }
 
       if (get(schemaAtoms.labelFields({})).includes(parentPath)) {
         return map(parentPath);

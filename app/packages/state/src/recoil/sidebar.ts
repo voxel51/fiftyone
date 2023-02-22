@@ -219,9 +219,6 @@ export const resolveGroups = (
 ): State.SidebarGroup[] => {
   const sidebarGroups = dataset?.appConfig?.sidebarGroups;
 
-  // TODO: hard code side bar to combine tags and label tags into one group
-  console.info("appconfig", sidebarGroups);
-  console.info("current", current);
   let groups = sidebarGroups
     ? JSON.parse(JSON.stringify(sidebarGroups))
     : undefined;
@@ -232,6 +229,7 @@ export const resolveGroups = (
         return map;
       }, {})
     : {};
+
   if (!groups) {
     groups = JSON.parse(
       JSON.stringify(
@@ -239,7 +237,6 @@ export const resolveGroups = (
       )
     );
   }
-  console.info(groups);
 
   groups = groups.map((group) => {
     return expanded[group.name] !== undefined
@@ -270,8 +267,6 @@ export const resolveGroups = (
   const fields = Object.fromEntries(
     dataset.sampleFields.map(({ name, ...rest }) => [name, rest])
   );
-
-  console.info("sampleFields", fields);
 
   let other = dataset.sampleFields.reduce(
     fieldsReducer([DICT_FIELD, null, undefined]),
@@ -365,11 +360,7 @@ export const sidebarGroups = selectorFamily<
       if (!groups.length) return [];
 
       const groupNames = groups.map(({ name }) => name);
-      // TODO: may need to rename all tags after it's done. Need to use it now to differient between tags (which is sample tags)
-      const newTagGroupIndex = groupNames.indexOf("all tags");
-      console.info(newTagGroupIndex);
-      // const tagsIndex = groupNames.indexOf("tags");
-      // const labelTagsIndex = groupNames.indexOf("label tags");
+      const tagGroupIndex = groupNames.indexOf("all tags");
 
       const framesIndex = groupNames.indexOf("frame labels");
       const video = get(isVideoDataset);
@@ -383,55 +374,17 @@ export const sidebarGroups = selectorFamily<
         ) {
           groups[framesIndex].expanded = !largeVideo;
         }
-        // add same logic for new tag group
-        if (NONE.includes(groups[newTagGroupIndex].expanded)) {
-          groups[newTagGroupIndex].expanded =
-            get(resolvedSidebarMode(false)) === "all";
+
+        if (NONE.includes(groups[tagGroupIndex].expanded)) {
+          groups[tagGroupIndex].expanded = true;
         }
-        // later will need to figure out whether how to determine mode of this new group based on the mode;
 
-        // if (NONE.includes(groups[tagsIndex].expanded)) {
-        //   groups[tagsIndex].expanded =
-        //     get(resolvedSidebarMode(false)) === "all";
-        // }
-        // if (NONE.includes(groups[labelTagsIndex].expanded)) {
-        //   groups[labelTagsIndex].expanded =
-        //     get(resolvedSidebarMode(false)) === "all" ? !largeVideo : false;
-        // }
-
-        // groups[tagsIndex].expanded &&
-        //   (groups[tagsIndex].paths = get(
-        //     aggregationAtoms.values({ extended: false, modal, path: "tags" })
-        //   )
-        //     .filter((tag) => !filtered || tag.includes(f))
-        //     .map((tag) => `tags.${tag}`));
-
-        // groups[labelTagsIndex].expanded &&
-        //   (groups[labelTagsIndex].paths = get(
-        //     aggregationAtoms.cumulativeValues({
-        //       extended: false,
-        //       modal: false,
-        //       path: "tags",
-        //       ftype: EMBEDDED_DOCUMENT_FIELD,
-        //       embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
-        //     })
-        //   )
-        //     .filter((tag) => !filtered || tag.includes(f))
-        //     .map((tag) => `_label_tags.${tag}`));
-
-        groups[newTagGroupIndex].expanded &&
-          (groups[newTagGroupIndex].paths = ["_label_tags", "tags"]);
+        groups[tagGroupIndex].expanded &&
+          (groups[tagGroupIndex].paths = ["_label_tags", "tags"]);
       } else {
-        if (NONE.includes(groups[newTagGroupIndex].expanded)) {
-          groups[newTagGroupIndex].expanded = false;
+        if (NONE.includes(groups[tagGroupIndex].expanded)) {
+          groups[tagGroupIndex].expanded = true;
         }
-        // // TODO: need to delete the following two once all done;
-        // if (NONE.includes(groups[tagsIndex].expanded)) {
-        //   groups[tagsIndex].expanded = false;
-        // }
-        // if (NONE.includes(groups[labelTagsIndex].expanded)) {
-        //   groups[labelTagsIndex].expanded = false;
-        // }
 
         if (
           video &&
@@ -452,7 +405,7 @@ export const sidebarGroups = selectorFamily<
       const allPaths = new Set(groups.map(({ paths }) => paths).flat());
 
       groups = groups.map(({ name, paths, expanded }) => {
-        if (["tags", "label tags", "all tags"].includes(name)) {
+        if (["all tags"].includes(name)) {
           return { name, paths: [], expanded };
         }
 
@@ -788,19 +741,11 @@ export const groupShown = selectorFamily<
     ({ modal, group }) =>
     ({ get, set }, expanded) => {
       const current = get(sidebarGroups({ modal, loading: false }));
-
-      const def = get(sidebarGroupsDefinition(modal));
-      const tags = def.filter((e) => e.name === "tags")[0];
-      const labelTags = def.filter((e) => e.name === "label tags")[0];
       set(
         sidebarGroups({ modal, loading: true, persist: false }),
         current.map(({ name, ...data }) =>
           name === group
             ? { name, ...data, expanded: Boolean(expanded) }
-            : name === "tags"
-            ? { name, ...data, expanded: tags.expanded }
-            : name === "label tags"
-            ? { name, ...data, expanded: labelTags.expanded }
             : { name, ...data }
         )
       );

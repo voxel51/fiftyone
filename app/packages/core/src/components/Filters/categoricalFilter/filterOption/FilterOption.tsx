@@ -15,6 +15,7 @@ import Tooltip from "@fiftyone/components/src/components/Tooltip";
 
 import { PopoutDiv } from "../../../utils";
 import Item from "./FilterItem";
+import { Popout } from "@fiftyone/components";
 
 interface Props {
   nestedField: string | undefined; // nested ListFields only ("detections")
@@ -302,35 +303,3 @@ const FilterOption: React.FC<Props> = ({
 };
 
 export default FilterOption;
-
-// TODO: once feat-space-embeddings branch is merged, the bottom should be removed. It's a duplciate
-export type PopoutProps = PropsWithChildren<{
-  style?: any;
-  modal?: boolean;
-}>;
-
-function Popout({ children, style = {}, modal }: PopoutProps) {
-  const show = useSpring({
-    opacity: 1,
-    from: {
-      opacity: 0,
-    },
-    config: {
-      duration: 100,
-    },
-  });
-
-  return (
-    <PopoutDiv
-      style={{
-        ...show,
-        ...style,
-        zIndex: "200000",
-        right: modal ? 0 : "unset",
-        margin: "0 -0.5rem 0 -0.5rem",
-      }}
-    >
-      {children}
-    </PopoutDiv>
-  );
-}
