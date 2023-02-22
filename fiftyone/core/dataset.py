@@ -5028,7 +5028,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
                 -   an absolute directory path in which the media lies. In this
-                    case, the ``export_dir`` has no effect on the location of
+                    case, the ``dataset_dir`` has no effect on the location of
                     the data
                 -   a filename like ``"data.json"`` specifying the filename of
                     a JSON manifest file in ``dataset_dir`` that maps UUIDs to
