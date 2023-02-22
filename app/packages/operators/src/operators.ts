@@ -1,8 +1,12 @@
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useState } from "react";
+import * as types from "./types";
 
 class ExecutionContext {
-  constructor(public params: Map<string, any> = new Map()) {}
+  constructor(
+    public params: Map<string, any> = new Map(),
+    private _currentContext: any
+  ) {}
 }
 
 class OperatorResult {
@@ -37,13 +41,17 @@ class OperatorDefinition {
     return def;
   }
 }
+
 class OperatorProperty {
   public description: string;
   public required: boolean;
   public default: any;
-  constructor(public name: string, public type: string) {}
+  constructor(public name: string, public type: types.ANY_TYPE) {}
   static fromJSON(json: any) {
-    const property = new OperatorProperty(json.name, json.type);
+    const property = new OperatorProperty(
+      json.name,
+      types.typeFromJSON(json.type)
+    );
     property.description = json.description;
     property.required = json.required;
     property.default = json.default;
@@ -110,33 +118,6 @@ export function useRemoteOperators() {}
 
 export function useOperators() {}
 
-export function useOperatorExecutor(name) {
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [error, setError] = useState(null);
-  const [result, setResult] = useState(null);
-  const clear = () => {
-    setError(null);
-    setResult(null);
-    setIsExecuting(false);
-  };
-  return {
-    isExecuting,
-    error,
-    result,
-    async execute(params) {
-      setIsExecuting(true);
-      try {
-        const result = await executeOperator(name, params);
-        setResult(result);
-      } catch (e) {
-        setError(e);
-      }
-      setIsExecuting(false);
-    },
-    clear,
-  };
-}
-
 export function getLocalOrRemoteOperator(operatorName) {
   let operator;
   let isRemote = false;
@@ -151,15 +132,29 @@ export function getLocalOrRemoteOperator(operatorName) {
   return { operator, isRemote };
 }
 
-async function executeOperator(operatorName, params) {
+export function listLocalAndRemoteOperators() {
+  const localOperators = Array.from(localRegistry.operators.values());
+  const remoteOperators = Array.from(remoteRegistry.operators.values());
+  return {
+    localOperators,
+    remoteOperators,
+    allOperators: [...localOperators, ...remoteOperators],
+  };
+}
+
+export async function executeOperator(operatorName, params, currentContext) {
   const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
 
-  const ctx = new ExecutionContext(params);
+  const ctx = new ExecutionContext(params, currentContext);
   let rawResult;
   if (isRemote) {
     rawResult = await getFetchFunction()("POST", "/operators/execute", {
       operator_name: operatorName,
       params: params,
+      dataset_name: currentContext.datasetName,
+      extended: currentContext.extended,
+      view: currentContext.view,
+      filters: currentContext.filters,
     });
   } else {
     rawResult = await operator.execute(ctx);
