@@ -26,7 +26,10 @@ import {
   Settings,
 } from "./state";
 import Options from "./Options";
-import { useBeforeScreenshot } from "@fiftyone/state";
+import {
+  useBeforeScreenshot,
+  useResetExtendedSelection,
+} from "@fiftyone/state";
 import { SELECTION_SCOPE } from "./constants";
 
 const fitBoundsOptions = { animate: false, padding: 30 };
@@ -82,6 +85,7 @@ const Plot: React.FC<{}> = () => {
   const [{ selection }, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
+  const resetExtendedSelection = useResetExtendedSelection();
 
   const mapRef = React.useRef<MapRef>(null);
   const onResize = React.useMemo(
@@ -317,7 +321,7 @@ const Plot: React.FC<{}> = () => {
         fitSelectionData={() =>
           mapRef.current && fitBounds(mapRef.current, data)
         }
-        clearSelectionData={() => setExtendedSelection({ selection: null })}
+        clearSelectionData={resetExtendedSelection}
       />
     </div>
   );

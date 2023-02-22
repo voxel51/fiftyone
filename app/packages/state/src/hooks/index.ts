@@ -44,3 +44,4 @@ export { default as useToPatches } from "./useToPatches";
 export { default as useUpdateSample } from "./useUpdateSample";
 export { default as useSetSpaces } from "./useSetSpaces";
 export { default as useSessionSpaces } from "./useSessionSpaces";
+export { default as useResetExtendedSelection } from "./useResetExtendedSelection";
