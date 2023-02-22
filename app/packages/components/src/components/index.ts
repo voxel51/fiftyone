@@ -18,3 +18,4 @@ export { default as ThemeProvider, useTheme } from "./ThemeProvider";
 export { default as Selection } from "./Selection";
 export { default as Tooltip } from "./Tooltip";
 export { default as PillButton } from "./PillButton";
+export { default as FilterAndSelectionIndicator } from "./FilterAndSelectionIndicator";

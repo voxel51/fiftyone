@@ -11,7 +11,7 @@ export function usePlotSelection() {
   const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage
   );
-  const [{ selection }, setExtendedSelection] = useRecoilState(
+  const [{ selection, scope }, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
   const [selectedSamples, setSelectedSamples] = useRecoilState(
@@ -77,5 +77,6 @@ export function usePlotSelection() {
     resolvedSelection,
     hasSelection,
     selectionStyle,
+    selectionIsExternal: scope !== SELECTION_SCOPE,
   };
 }

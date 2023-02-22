@@ -47,8 +47,8 @@ const PillButton = React.forwardRef<HTMLButtonElement, PillButtonProps>(
 
 type PillButtonProps = {
   onClick: (event: Event) => void;
-  open: boolean;
-  highlight: boolean;
+  open?: boolean;
+  highlight?: boolean;
   text?: string;
   icon?: JSX.Element;
   arrow?: boolean;
