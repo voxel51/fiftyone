@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useBrainResultInfo } from "./useBrainResultInfo";
@@ -7,8 +6,8 @@ import { useBrainResultInfo } from "./useBrainResultInfo";
 export function usePlotSelection() {
   const brainResultInfo = useBrainResultInfo();
   const patchesField = brainResultInfo?.config?.patchesField;
-  const [filters, setFilters] = useRecoilState(fos.filters);
-  const [overrideStage, setOverrideStage] = useRecoilState(
+  const setFilters = useSetRecoilState(fos.filters);
+  const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage
   );
   const [extendedSelection, setExtendedSelection] = useRecoilState(
@@ -17,8 +16,6 @@ export function usePlotSelection() {
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     fos.selectedSamples
   );
-  const hasExtendedSelection =
-    extendedSelection && extendedSelection.length > 0;
   const [plotSelection, setPlotSelection] = usePanelStatePartial(
     "plotSelection",
     [],
