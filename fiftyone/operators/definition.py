@@ -55,7 +55,7 @@ class OperatorProperty:
     def to_json(self):
         return {
             "name": self.name,
-            "type": self.type,
+            "type": self.type.to_json(),
             "default": self.default,
             "required": self.required,
             "choices": self.choices,

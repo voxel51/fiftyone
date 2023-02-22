@@ -4344,6 +4344,7 @@ __metadata:
     "@fiftyone/flashlight": "*"
     "@fiftyone/looker": "*"
     "@fiftyone/map": "*"
+    "@fiftyone/operators": "*"
     "@fiftyone/state": "*"
     "@fiftyone/utilities": "*"
     "@mui/icons-material": ^5.10.2
@@ -4556,7 +4557,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/operators@workspace:packages/operators":
+"@fiftyone/operators@*, @fiftyone/operators@workspace:packages/operators":
   version: 0.0.0-use.local
   resolution: "@fiftyone/operators@workspace:packages/operators"
   dependencies:

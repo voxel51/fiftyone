@@ -50,11 +50,13 @@ const ChoiceLabel = styled.div`
   margin-left: auto;
 `;
 
-const Choice = ({ choice }) => {
+const Choice = ({ onClick, choice, selected }) => {
   return (
-    <ChoiceContainer selected={choice.selected}>
-      <ChoiceDescription>{choice.description}</ChoiceDescription>
-      <ChoiceLabel>{choice.label}</ChoiceLabel>
+    <ChoiceContainer onClick={onClick} selected={selected}>
+      <ChoiceDescription>
+        {choice.description || choice.label}
+      </ChoiceDescription>
+      {choice.description && <ChoiceLabel>{choice.label}</ChoiceLabel>}
     </ChoiceContainer>
   );
 };
@@ -76,7 +78,12 @@ export default function OperatorBrowser() {
         />
         <ResultsContainer>
           {browser.choices.map((choice) => (
-            <Choice key={choice.value} choice={choice} />
+            <Choice
+              onClick={() => browser.setSelectedAndSubmit(choice.value)}
+              key={choice.value}
+              choice={choice}
+              selected={choice.value === browser.selectedValue}
+            />
           ))}
         </ResultsContainer>
       </BrowserModal>

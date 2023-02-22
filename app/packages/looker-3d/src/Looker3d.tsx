@@ -75,6 +75,8 @@ const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
     defaultPluginSettings
   );
 
+  console.log(settings);
+
   const modal = true;
   const points = useLoader(PCDLoader, src);
   const selectedLabels = recoil.useRecoilValue(fos.selectedLabels);
