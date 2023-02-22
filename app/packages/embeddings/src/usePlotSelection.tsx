@@ -2,6 +2,7 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useBrainResultInfo } from "./useBrainResultInfo";
+import { SELECTION_SCOPE } from "./constants";
 
 export function usePlotSelection() {
   const brainResultInfo = useBrainResultInfo();
@@ -10,7 +11,7 @@ export function usePlotSelection() {
   const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage
   );
-  const [extendedSelection, setExtendedSelection] = useRecoilState(
+  const [{ selection }, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
   const [selectedSamples, setSelectedSamples] = useRecoilState(
@@ -25,14 +26,17 @@ export function usePlotSelection() {
   const selectedPatchSampleIds = useRecoilValue(fos.selectedPatchSamples);
   function handleSelected(selectedResults) {
     setSelectedSamples(new Set());
-    setExtendedSelection(selectedResults);
+    setExtendedSelection({
+      selection: selectedResults,
+      scope: SELECTION_SCOPE,
+    });
     if (selectedResults === null) {
       clearSelection();
     }
   }
 
   function clearSelection() {
-    setExtendedSelection(null);
+    setExtendedSelection({ selection: null });
     setPlotSelection(null);
     setOverrideStage(null);
     setSelectedSamples(new Set());
@@ -60,8 +64,8 @@ export function usePlotSelection() {
   } else if (plotSelection && plotSelection.length) {
     resolvedSelection = plotSelection;
     selectionStyle = "plot";
-  } else if (extendedSelection && extendedSelection.length) {
-    resolvedSelection = extendedSelection;
+  } else if (selection && selection.length) {
+    resolvedSelection = selection;
     selectionStyle = "extended";
   }
 

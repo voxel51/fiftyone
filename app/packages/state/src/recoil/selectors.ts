@@ -351,7 +351,7 @@ export const similarityKeys = selector<{
 export const extendedStagesUnsorted = selector({
   key: "extendedStagesUnsorted",
   get: ({ get }) => {
-    const sampleIds = get(atoms.extendedSelection);
+    const sampleIds = get(atoms.extendedSelection)?.selection;
     const extendedSelectionOverrideStage = get(
       atoms.extendedSelectionOverrideStage
     );
