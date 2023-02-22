@@ -15,6 +15,7 @@ import { graphQLSelector } from "recoil-relay";
 import {
   AppSample,
   dataset,
+  getBrowserStorageEffectForKey,
   modal,
   modal as modalAtom,
   sidebarOverride,
@@ -88,6 +89,7 @@ export const defaultPinnedSlice = selector<string | null>({
 export const pinnedSlice = atom<string | null>({
   key: "pinnedSlice",
   default: defaultPinnedSlice,
+  effects: [getBrowserStorageEffectForKey("pinnedSlice")],
 });
 
 export const currentSlice = selectorFamily<string | null, boolean>({
