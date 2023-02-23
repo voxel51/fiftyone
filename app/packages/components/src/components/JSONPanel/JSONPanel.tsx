@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Copy as CopyIcon, Close as CloseIcon } from "@fiftyone/components";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import {
-  lookerPanelV2,
+  lookerPanel,
   lookerPanelContainer,
   lookerPanelVerticalContainer,
   searchContainer,
@@ -34,7 +34,7 @@ export default function JSONPanel({ containerRef, onClose, onCopy, json }) {
       onClick={(e) => e.stopPropagation()}
     >
       <div className={lookerPanelVerticalContainer}>
-        <div className={lookerPanelV2}>
+        <div className={lookerPanel}>
           {parsed && (
             <div style={{ position: "relative" }}>
               <div className={searchContainer}>
@@ -64,7 +64,13 @@ export default function JSONPanel({ containerRef, onClose, onCopy, json }) {
                 }}
                 iconStyle="square"
                 indentWidth={2}
-                customCopyIcon={<CopyIcon className={copyBtnClass} />}
+                customCopyIcon={<CopyIcon style={{ fontSize: "11px" }} />}
+                customCopiedIcon={
+                  <CopyIcon
+                    className={copyBtnClass}
+                    style={{ fontSize: "11px" }}
+                  />
+                }
               />
             </div>
           )}

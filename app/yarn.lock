@@ -4517,7 +4517,6 @@ __metadata:
     copy-to-clipboard: ^3.3.1
     fast-png: ^6.1.0
     immutable: ^4.0.0-rc.12
-    json-format-highlight: ^1.0.4
     lru-cache: ^6.0.0
     mime: ^2.5.2
     prettier: ^2.7.1
@@ -18640,13 +18639,6 @@ __metadata:
   version: 3.0.0
   resolution: "json-buffer@npm:3.0.0"
   checksum: 0cecacb8025370686a916069a2ff81f7d55167421b6aa7270ee74e244012650dd6bce22b0852202ea7ff8624fce50ff0ec1bdf95914ccb4553426e290d5a63fa
-  languageName: node
-  linkType: hard
-
-"json-format-highlight@npm:^1.0.4":
-  version: 1.0.4
-  resolution: "json-format-highlight@npm:1.0.4"
-  checksum: 51c9d6b79abd4be9e0cf1253fc17630aed6a881b4f3eb1781292506d4e3faedb229ac0ef76d9d5f999401d3f457757986c37029f7ace1e25932a0761100aec27
   languageName: node
   linkType: hard
 
