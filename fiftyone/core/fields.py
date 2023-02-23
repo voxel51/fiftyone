@@ -199,7 +199,7 @@ def flatten_schema(
     include_private=False,
 ):
     """Returns a flattened copy of the given schema where all embedded document
-    fields are included as top-level keys of the
+    fields are included as top-level keys of the dictionary
 
     Args:
         schema: a dict mapping keys to :class:`Field` instances
