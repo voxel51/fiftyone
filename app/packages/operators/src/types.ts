@@ -39,6 +39,7 @@ export class Enum extends BaseType {
   }
 }
 
+// NOTE: this should always match fiftyone/operators/types.py
 export const TYPES = [String, Boolean, Number, List, Enum];
 
 export function typeFromJSON({ name, ...rest }): ANY_TYPE {
