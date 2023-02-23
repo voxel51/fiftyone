@@ -6,7 +6,6 @@ FiftyOne Server queries.
 |
 """
 import typing as t
-from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import os
@@ -16,7 +15,6 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
 from bson import ObjectId, json_util
-from dacite import Config, from_dict
 
 import fiftyone as fo
 import fiftyone.constants as foc
@@ -41,6 +39,7 @@ from fiftyone.server.samples import (
     paginate_samples,
 )
 from fiftyone.server.scalars import BSONArray, JSON
+from fiftyone.server.utils import from_dict
 
 
 ID = gql.scalar(
@@ -326,7 +325,7 @@ class Query(fosa.AggregateQuery):
         config = fose.get_state().config
         d = config.serialize()
         d["timezone"] = fo.config.timezone
-        return from_dict(AppConfig, d, config=Config(check_types=False))
+        return from_dict(AppConfig, d)
 
     @gql.field
     def context(self) -> str:
@@ -441,7 +440,7 @@ async def serialize_dataset(
 
         doc = dataset._doc.to_dict(no_dereference=True)
         Dataset.modifier(doc)
-        data = from_dict(Dataset, doc, config=Config(check_types=False))
+        data = from_dict(Dataset, doc)
         data.view_cls = None
         data.view_name = view_name
 

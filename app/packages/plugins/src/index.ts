@@ -4,6 +4,8 @@ import * as _ from "lodash";
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
 import * as recoil from "recoil";
+import * as foc from "@fiftyone/components";
+import * as fou from "@fiftyone/utilities";
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
@@ -11,6 +13,8 @@ declare global {
     ReactDOM: any;
     recoil: any;
     __fos__: any;
+    __foc__: any;
+    __fou__: any;
   }
 }
 
@@ -20,6 +24,8 @@ if (typeof window !== "undefined") {
   window.ReactDOM = ReactDOM;
   window.recoil = recoil;
   window.__fos__ = fos;
+  window.__foc__ = foc;
+  window.__fou__ = fou;
 }
 
 function usingRegistry() {
