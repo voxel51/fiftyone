@@ -45,3 +45,17 @@ class Enum(BaseType):
 class Plot(BaseType):
     def __init__(self):
         pass
+
+class Trigger(BaseType):
+    def __init__(self, operator_name):
+        self.operator_name = operator_name
+
+    def to_json(self):
+        return {
+            "name": self.__class__.__name__,
+            "operator_name": self.operator_name,
+        }
+        
+class SelectSamples(Trigger):
+    def __init__(self):
+        super().__init__("select_samples")

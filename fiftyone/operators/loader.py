@@ -12,6 +12,48 @@ import os
 import yaml  # BEFORE PR: add to requirements.txt
 import importlib
 
+REGISTERED_MODULES = {}
+FAILED_MODULES = {}
+
+def register_module(filepath, mod):
+    """Registers all operators in the given module."""
+    if filepath in REGISTERED_MODULES:
+        unregister_module(filepath)
+    try:
+        mod.register()
+        REGISTERED_MODULES.set(filepath, mod)
+        if filepath in FAILED_MODULES:
+            FAILED_MODULES.delete(filepath)
+    except Exception as e:
+        errors = [e]
+        try:
+            mod.unregister()
+        except Exception as ue:
+            errors.append(ue)
+            pass
+        FAILED_MODULES.set(filepath, errors)
+
+
+def unregister_module(filepath):
+    """Registers all operators in the given module."""
+    try:
+        mod.register()
+        REGISTERED_MODULES.append(mod)
+    except:
+        try:
+            mod.unregister()
+        except:
+            pass
+
+def unregister_all():
+    """Unregisters all operators."""
+    for mod in REGISTERED_MODULES:
+        mod.unregister()
+    REGISTERED_MODULES = []
+
+def list_module_errors():
+    """Lists the errors that occurred when loading modules."""
+    return FAILED_MODULES
 
 def load_from_dir():
     """Loads all operators from the default operator directory."""
@@ -29,7 +71,7 @@ def load_from_dir():
 
         module_dir = os.path.dirname(yaml_path)
         mod = exec_module_from_dir(module_dir)
-        mod.register()
+        register_module(mod)
 
 
 def exec_module_from_dir(module_dir):
