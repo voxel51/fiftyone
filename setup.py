@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.19.0"
+VERSION = "0.19.1"
 
 
 def get_version():
@@ -34,7 +34,6 @@ INSTALL_REQUIRES = [
     "argcomplete",
     "boto3",
     "cachetools",
-    "dacite>=1.6.0",
     "dacite>=1.6.0,<1.8.0",
     "Deprecated",
     "eventlet",
@@ -70,7 +69,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.10,<0.11",
     "fiftyone-db>=0.4,<0.5",
-    "voxel51-eta>=0.8.2,<0.9",
+    "voxel51-eta>=0.8.3,<0.9",
 ]
 
 

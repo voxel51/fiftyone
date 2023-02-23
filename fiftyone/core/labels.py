@@ -1538,7 +1538,7 @@ def _segmentation_to_detections(segmentation, mask_targets, mask_types):
 
     if is_rgb:
         array_targets = np.unique(mask.reshape(-1, mask.shape[2]), axis=0)
-        targets = [_rgb_to_hex(t) for t in targets]
+        targets = [_rgb_to_hex(t) for t in array_targets]
     else:
         targets = np.unique(mask)
         array_targets = itertools.repeat(None)

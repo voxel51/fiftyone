@@ -8,13 +8,11 @@ FiftyOne Server dataloader
 from dataclasses import dataclass
 import typing as t
 
-from dacite import Config, from_dict
 import motor.motor_asyncio as mtr
 from strawberry.dataloader import DataLoader
 
 from fiftyone.server.data import Info, T
-
-# from fiftyone.server.query import SavedView
+from fiftyone.server.utils import from_dict
 
 
 @dataclass
@@ -54,7 +52,7 @@ def get_dataloader(
                 return None
 
             doc = cls.modifier(doc)
-            return from_dict(cls, doc, config=Config(check_types=False))
+            return from_dict(cls, doc)
 
         return [build(results.get(k, None)) for k in keys]
 

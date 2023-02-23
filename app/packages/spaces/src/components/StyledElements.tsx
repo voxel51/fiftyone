@@ -21,6 +21,7 @@ export const StyledPanel = styled.div`
   width: 100%;
   height: calc(100% - 28px);
   overflow: auto;
+  background: var(--joy-palette-background-mediaSpace);
 `;
 
 export const AddPanelButtonContainer = styled.div`
