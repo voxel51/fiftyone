@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8056ddd88bdae447e2f328e3d8e50522>>
+ * @generated SignedSource<<eb4f9728a33eec82b4012efab8d0311a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,7 +11,7 @@
 import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type setSpacesMutation$variables = {
   session?: string | null;
-  spaces: object;
+  spaces: any;
   subscription: string;
 };
 export type setSpacesMutation$data = {

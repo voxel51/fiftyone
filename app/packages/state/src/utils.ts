@@ -1,8 +1,21 @@
-import { clone, Field, Schema, StrictField } from "@fiftyone/utilities";
+import {
+  clone,
+  Field,
+  getFetchFunction,
+  GQLError,
+  GraphQLError,
+  Schema,
+  StrictField,
+} from "@fiftyone/utilities";
 import { MutableRefObject } from "react";
+import {
+  Environment,
+  GraphQLResponse,
+  Network,
+  RecordSource,
+  Store,
+} from "relay-runtime";
 import { State } from "./recoil";
-
-import { matchPath, RoutingContext } from "./routing";
 
 export const deferrer =
   (initialized: MutableRefObject<boolean>) =>
@@ -106,37 +119,47 @@ export const transformDataset = (dataset: any): Readonly<State.Dataset> => {
   };
 };
 
-export const getDatasetName = (context: RoutingContext<any>): string => {
-  const result = matchPath(
-    context.pathname,
-    {
-      path: "/datasets/:name",
-      exact: true,
-    },
-    {},
-    ""
-  );
-
-  if (result) {
-    return decodeURIComponent(result.variables.name);
-  }
-
-  return null;
-};
-
 export type ResponseFrom<TQuery extends { response: unknown }> =
   TQuery["response"];
 
-export const getSavedViewName = (context: RoutingContext<any>): string => {
-  const datasetName = getDatasetName(context);
-  const queryString = datasetName
-    ? context.history.location.search
-    : window.location.search;
-  const params = new URLSearchParams(queryString);
-  const viewName = params.get("view");
-  if (viewName) {
-    return decodeURIComponent(viewName);
-  }
-
-  return null;
+export const getCurrentEnvironment = () => {
+  return currentEnvironment;
 };
+
+export const setCurrentEnvironment = (environment: Environment) => {
+  currentEnvironment = environment;
+};
+
+async function fetchGraphQL(
+  text: string | null | undefined,
+  variables: object
+): Promise<GraphQLResponse> {
+  const data = await getFetchFunction()<unknown, GraphQLResponse>(
+    "POST",
+    "/graphql",
+    {
+      query: text,
+      variables,
+    }
+  );
+
+  if ("errors" in data && data.errors) {
+    throw new GraphQLError({
+      errors: data.errors as GQLError[],
+      variables,
+    });
+  }
+  return data;
+}
+
+const fetchRelay = async (params, variables) => {
+  return fetchGraphQL(params.text, variables);
+};
+
+export const getEnvironment = () =>
+  new Environment({
+    network: Network.create(fetchRelay),
+    store: new Store(new RecordSource()),
+  });
+
+let currentEnvironment: Environment = getEnvironment();

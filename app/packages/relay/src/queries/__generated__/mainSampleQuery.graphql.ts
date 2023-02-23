@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5dd66d8bb092f30a878ecc8d1737dd8d>>
+ * @generated SignedSource<<43a866741ad81e6e2e1bd5d105fc7dbe>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,13 +20,13 @@ export type GroupElementFilter = {
 export type mainSampleQuery$variables = {
   dataset: string;
   filter: SampleFilter;
-  view: Array;
+  view: any;
 };
 export type mainSampleQuery$data = {
   readonly sample: {
     readonly frameRate?: number;
     readonly id?: string;
-    readonly sample?: object;
+    readonly sample?: any;
     readonly urls?: ReadonlyArray<{
       readonly field: string;
       readonly url: string | null;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d65841e678cc9636391bee909d50f98c>>
+ * @generated SignedSource<<f5e5e930e330756eafc88dcf71c1407f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,7 +13,7 @@ export type setGroupSliceMutation$variables = {
   session?: string | null;
   slice: string;
   subscription: string;
-  view: Array;
+  view: any;
   viewName?: string | null;
 };
 export type setGroupSliceMutation$data = {

@@ -1,10 +1,29 @@
 import { atom, selector } from "recoil";
+import { syncEffect } from "recoil-sync";
+import * as rfn from "@recoiljs/refine";
 
 import { State } from "./types";
 
 export const view = atom<State.Stage[]>({
   key: "view",
   default: [],
+  effects: [
+    syncEffect({
+      storeKey: "router",
+      refine: rfn.writableArray(
+        rfn.writableObject({
+          _cls: rfn.string(),
+          kwargs: rfn.writableArray(
+            rfn.tuple(
+              rfn.string(),
+              rfn.custom<unknown>((v) => v)
+            ) as rfn.Checker<[string, unknown]>
+          ),
+          _uuid: rfn.optional(rfn.string()),
+        })
+      ),
+    }),
+  ],
 });
 
 export const viewCls = atom<string>({

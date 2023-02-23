@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<624cf89385c34d41457ec082069c942a>>
+ * @generated SignedSource<<8eb43a8ed200d29d82d2f6d164f21e4c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,9 +12,9 @@ import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type MediaType = "group" | "image" | "point_cloud" | "video" | "%future added value";
 export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 export type StateForm = {
-  addStages?: Array | null;
-  extended?: object | null;
-  filters?: object | null;
+  addStages?: any | null;
+  extended?: any | null;
+  filters?: any | null;
   labels?: ReadonlyArray<SelectedLabel> | null;
   sampleIds?: ReadonlyArray<string> | null;
   slice?: string | null;
@@ -31,7 +31,7 @@ export type setViewMutation$variables = {
   savedViewSlug?: string | null;
   session?: string | null;
   subscription: string;
-  view: Array;
+  view: any;
 };
 export type setViewMutation$data = {
   readonly setView: {
@@ -40,7 +40,7 @@ export type setViewMutation$data = {
         readonly gridMediaField: string | null;
         readonly mediaFields: ReadonlyArray<string> | null;
         readonly modalMediaField: string | null;
-        readonly plugins: object | null;
+        readonly plugins: any | null;
         readonly sidebarGroups: ReadonlyArray<{
           readonly expanded: boolean | null;
           readonly name: string;
@@ -86,7 +86,7 @@ export type setViewMutation$data = {
         readonly description: string | null;
         readonly embeddedDocType: string | null;
         readonly ftype: string;
-        readonly info: object | null;
+        readonly info: any | null;
         readonly path: string;
         readonly subfield: string | null;
       }> | null;
@@ -112,7 +112,7 @@ export type setViewMutation$data = {
         readonly description: string | null;
         readonly embeddedDocType: string | null;
         readonly ftype: string;
-        readonly info: object | null;
+        readonly info: any | null;
         readonly path: string;
         readonly subfield: string | null;
       }>;
@@ -132,12 +132,12 @@ export type setViewMutation$data = {
         readonly labels: ReadonlyArray<string> | null;
         readonly name: string;
       }>;
-      readonly stages: Array | null;
+      readonly stages: any | null;
       readonly version: string | null;
       readonly viewCls: string | null;
       readonly viewName: string | null;
     };
-    readonly view: Array;
+    readonly view: any;
   };
 };
 export type setViewMutation = {

@@ -1,9 +1,10 @@
+import * as rfn from "@recoiljs/refine";
 import { atom, atomFamily, useRecoilCallback } from "recoil";
-
-import { Sample, RGB } from "@fiftyone/looker/src/state";
+import { Sample } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
+import { syncEffect } from "recoil-sync";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -86,21 +87,6 @@ export const teams = atom({
   },
 });
 
-export const IMAGE_FILTERS = {
-  brightness: {
-    default: 100,
-    bounds: [0, 200],
-  },
-};
-
-export const imageFilters = atomFamily<
-  number,
-  { modal: boolean; filter: string }
->({
-  key: "imageFilters",
-  default: ({ filter }) => IMAGE_FILTERS[filter].default,
-});
-
 export const activePlot = atom<string>({
   key: "activePlot",
   default: "Labels",
@@ -124,9 +110,29 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
  *
  * See :py:class:\`fiftyone.core.dataset.Dataset\` for python documentation.
  */
-export const dataset = atom<State.Dataset>({
+export const dataset = atom({
   key: "dataset",
   default: null,
+  effects: [
+    syncEffect({
+      refine: rfn.nullable(
+        rfn.object({
+          appConfig: rfn.custom((v) => v),
+          id: rfn.string(),
+          name: rfn.string(),
+          info: rfn.custom((v) => v),
+          createdAt: rfn.nullable(rfn.number()),
+          lastLoadedAt: rfn.nullable(rfn.number()),
+          mediaType: rfn.string(),
+          sampleFields: rfn.custom((v) => v),
+          frameFields: rfn.custom((v) => v),
+          viewName: rfn.nullable(rfn.string()),
+          skeletons: rfn.custom((v) => v),
+        })
+      ),
+      storeKey: "router",
+    }),
+  ],
 });
 
 export const selectedViewName = atom<string>({
@@ -145,7 +151,7 @@ export const selectedSamples = atom<Set<string>>({
   default: new Set(),
 });
 
-export const selectedSampleObjects = atom<Map<String, Sample>>({
+export const selectedSampleObjects = atom<Map<string, Sample>>({
   key: "selectedSampleObjects",
   default: new Map(),
 });

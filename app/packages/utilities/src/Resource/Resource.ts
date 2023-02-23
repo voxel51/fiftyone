@@ -43,14 +43,14 @@ class Resource<T = unknown> {
   }
 }
 
-export const createResourceGroup = () => {
+export const createResourceGroup = <T>() => {
   const resources = new Map<string, Resource>();
 
-  return <T>(id: string, loader: () => Promise<T>): Resource<T> => {
-    let resource = resources.get(id);
+  return (key: string, loader: () => Promise<T>): Resource<T> => {
+    let resource = resources.get(key);
     if (resource === undefined) {
-      resource = new Resource<T>(loader);
-      resources.set(id, resource);
+      resource = new Resource<T>(() => loader());
+      resources.set(key, resource);
     }
 
     return resource as Resource<T>;

@@ -18,27 +18,20 @@ export { default as usePanel } from "./usePanel";
 export { default as useReset } from "./useReset";
 export { default as useSavedViews } from "./useSavedViews";
 export { default as useScreenshot } from "./useScreenshot";
-export {
-  default as useRouter,
-  getCurrentEnvironment,
-  setCurrentEnvironment,
-} from "./useRouter";
 export { default as useSelectFlashlightSample } from "./useSelectFlashlightSample";
 export { default as useSelectSample } from "./useSelectSample";
 export { default as useSendEvent } from "./useSendEvent";
-export { default as useSetDataset } from "./useSetDataset";
 export { default as useSetExpandedSample } from "./useSetExpandedSample";
 export { default as useSetGroupSlice } from "./useSetGroupSlice";
 export { default as useSetSelected } from "./useSetSelected";
 export { default as useSetExtendedSelection } from "./useSetExtendedSelection";
 export { default as useSetSelectedLabels } from "./useSetSelectedLabels";
-export { default as useSetView, stateProxy } from "./useSetView";
+export { default as useSetView } from "./useSetView";
 export { default as useStateUpdate } from "./useStateUpdate";
 export * from "./useStateUpdate";
 export { default as useTooltip } from "./useTooltip";
 export * from "./useOnSelectLabel";
 export * from "./useStateUpdate";
-export { default as useTo } from "./useTo";
 export { default as useToClips } from "./useToClips";
 export { default as useToEvaluationPatches } from "./useToEvaluationPatches";
 export { default as useToPatches } from "./useToPatches";

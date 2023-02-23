@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b42852c8bf7979bf954d5bfef201053c>>
+ * @generated SignedSource<<7c7f4c5e6bb3da323f67b961292e337b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,9 +10,9 @@
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type StateForm = {
-  addStages?: Array | null;
-  extended?: object | null;
-  filters?: object | null;
+  addStages?: any | null;
+  extended?: any | null;
+  filters?: any | null;
   labels?: ReadonlyArray<SelectedLabel> | null;
   sampleIds?: ReadonlyArray<string> | null;
   slice?: string | null;
@@ -31,7 +31,7 @@ export type createSavedViewMutation$variables = {
   session?: string | null;
   subscription: string;
   viewName: string;
-  viewStages?: Array | null;
+  viewStages?: any | null;
 };
 export type createSavedViewMutation$data = {
   readonly createSavedView: {

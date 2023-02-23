@@ -17,7 +17,7 @@ import _ from "lodash";
 import { isPatchesView } from "./view";
 import { pathFilter } from "./pathFilters";
 
-export const datasetName = selector<string>({
+export const datasetName = selector<string | undefined>({
   key: "datasetName",
   get: ({ get }) => {
     return get(atoms.dataset)?.name;

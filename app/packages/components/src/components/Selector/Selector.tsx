@@ -16,9 +16,9 @@ import Results from "../Results/Results";
 
 import style from "./Selector.module.css";
 
-interface UseSearch<T extends unknown> {
+export type UseSearch<T> = {
   (search: string): { values: T[]; total?: number };
-}
+};
 
 const SelectorResults = <T extends unknown>({
   active,
@@ -94,6 +94,10 @@ const Selector = <T extends unknown>({
     };
   }, [onSelect]);
 
+  useEffect(() => {
+    setSearch(value || "");
+  }, [value]);
+
   const ref = useRef<HTMLInputElement | null>();
   const hovering = useRef(false);
 
@@ -106,7 +110,7 @@ const Selector = <T extends unknown>({
     }
   }, [editing]);
 
-  const onResults = useCallback((results) => {
+  const onResults = useCallback((results: T[]) => {
     valuesRef.current = results;
     setActive(results.length ? 0 : undefined);
   }, []);

@@ -10,7 +10,6 @@
     },
     "main": "./src/index.ts",
     "scripts": {
-        "compile": "relay-compiler",
         "dev": "vite"
     },
     "private": true,

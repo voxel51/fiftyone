@@ -82,17 +82,6 @@ const useStateUpdate = () => {
           )
         );
 
-      if (config && config.theme !== "browser") {
-        set(theme, config.theme);
-        setMode(config.theme);
-      }
-
-      if (state?.spaces) {
-        set(sessionSpaces, state.spaces);
-      } else {
-        reset(sessionSpaces);
-      }
-
       if (dataset) {
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
         dataset.evaluations = Object.values(dataset.evaluations || {});

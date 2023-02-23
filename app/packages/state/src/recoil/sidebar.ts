@@ -19,6 +19,7 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
+import { syncEffect } from "recoil-sync";
 
 import * as aggregationAtoms from "./aggregations";
 import {
@@ -36,7 +37,8 @@ import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
 import { isLargeVideo, resolvedSidebarMode } from "./options";
 import { commitMutation, VariablesOf } from "react-relay";
 import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
-import { getCurrentEnvironment } from "../hooks/useRouter";
+import { custom } from "@recoiljs/refine";
+import { read } from "fs";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -335,6 +337,15 @@ export const sidebarGroupsDefinition = atomFamily<
 >({
   key: "sidebarGroupsDefinition",
   default: [],
+  effects: (modal) =>
+    modal
+      ? []
+      : [
+          syncEffect({
+            refine: custom((v) => v),
+            storeKey: "router",
+          }),
+        ],
 });
 
 export const sidebarGroups = selectorFamily<

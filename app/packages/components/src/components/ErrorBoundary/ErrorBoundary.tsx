@@ -1,4 +1,4 @@
-import { useClearModal, useTo } from "@fiftyone/state";
+import { useClearModal } from "@fiftyone/state";
 import {
   GraphQLError,
   NetworkError,
@@ -26,7 +26,6 @@ interface Props<T extends AppError> extends FallbackProps {
 const Errors =
   (onReset?: () => void) =>
   <T extends AppError>({ error, resetErrorBoundary }: Props<T>) => {
-    const { to } = useTo({ state: {} });
     const clearModal = useClearModal();
     useLayoutEffect(() => {
       clearModal();
@@ -69,7 +68,7 @@ const Errors =
               <span
                 title={"Reset"}
                 onClick={() => {
-                  onReset ? onReset : to("/");
+                  onReset && onReset();
                   resetErrorBoundary();
                 }}
               >

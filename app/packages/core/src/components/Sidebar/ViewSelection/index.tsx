@@ -8,12 +8,18 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import { DatasetSavedViewsFragmentQuery } from "../../../__generated__/DatasetSavedViewsFragmentQuery.graphql";
-import { DatasetSavedViewsFragment$key } from "../../../__generated__/DatasetSavedViewsFragment.graphql";
-import { DatasetQueryRef, DatasetSavedViewsFragment } from "../../../Dataset";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
+import {
+  savedViewsFragment,
+  savedViewsFragment$key,
+  savedViewsFragmentQuery,
+} from "@fiftyone/relay";
+
+export const datasetQueryContext = React.createContext<
+  savedViewsFragment$key | undefined
+>(undefined);
 
 export const viewSearchTerm = atom<string>({
   key: "viewSearchTerm",
@@ -48,14 +54,14 @@ export default function ViewSelection() {
 
   const { savedViews: savedViewsV2 = [] } = fos.useSavedViews();
 
-  const fragmentRef = useContext(DatasetQueryRef);
+  const fragmentRef = useContext(datasetQueryContext);
 
   if (!fragmentRef) throw new Error("ref not defined");
 
   const [data, refetch] = useRefetchableFragment<
-    DatasetSavedViewsFragmentQuery,
-    DatasetSavedViewsFragment$key
-  >(DatasetSavedViewsFragment, fragmentRef);
+    savedViewsFragmentQuery,
+    savedViewsFragment$key
+  >(savedViewsFragment, fragmentRef);
 
   const items = useMemo(() => data.savedViews || [], [data]);
 

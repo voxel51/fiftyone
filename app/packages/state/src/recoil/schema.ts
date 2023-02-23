@@ -268,6 +268,7 @@ export const field = selectorFamily<Field | null, string>({
 
       let field: Field = null;
       let schema = get(fieldSchema({ space: State.SPACE.SAMPLE }));
+
       for (const name of path.split(".")) {
         if (schema[name]) {
           field = schema[name];

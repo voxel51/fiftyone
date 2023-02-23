@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7fd07b612892b8e535bbd2676cfa6afc>>
+ * @generated SignedSource<<7d1e872397e457746a8fbfbcb37a5274>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,8 +11,8 @@
 import { ConcreteRequest, Query } from 'relay-runtime';
 export type AggregationForm = {
   dataset: string;
-  extendedStages: Array;
-  filters?: object | null;
+  extendedStages: any;
+  filters?: any | null;
   groupId?: string | null;
   hiddenLabels: ReadonlyArray<SelectedLabel>;
   index?: number | null;
@@ -20,7 +20,7 @@ export type AggregationForm = {
   paths: ReadonlyArray<string>;
   sampleIds: ReadonlyArray<string>;
   slice?: string | null;
-  view: Array;
+  view: any;
   viewName?: string | null;
 };
 export type SelectedLabel = {

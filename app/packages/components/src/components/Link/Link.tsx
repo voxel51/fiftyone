@@ -1,4 +1,3 @@
-import { RouterContext } from "@fiftyone/state";
 import React, {
   MouseEventHandler,
   useCallback,
@@ -16,7 +15,6 @@ const Link: React.FC<
     target?: React.HTMLAttributeAnchorTarget;
   }>
 > = ({ children, className, href, style, target, title, to }) => {
-  const router = useContext(RouterContext);
   const [pending, startTransition] = useTransition();
 
   return (
