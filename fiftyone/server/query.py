@@ -257,9 +257,9 @@ class Dataset:
     async def resolver(
         cls,
         name: str,
-        view: t.Optional[BSONArray],
-        info: Info,
+        info: Info = None,
         saved_view_slug: t.Optional[str] = gql.UNSET,
+        view: t.Optional[BSONArray] = None,
     ) -> t.Optional["Dataset"]:
         return await serialize_dataset(
             dataset_name=name,
