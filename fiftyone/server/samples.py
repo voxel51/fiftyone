@@ -96,6 +96,7 @@ async def paginate_samples(
 
     if int(after) > -1:
         view = view.skip(int(after) + 1)
+
     pipeline = view._pipeline(
         attach_frames=True,
         detach_frames=False,
@@ -103,9 +104,10 @@ async def paginate_samples(
         and sample_filter.group
         and (sample_filter.group.id and not sample_filter.group.slice),
     )
-    # Only return the first frame of each video sample
+    # Only return the first frame of each video sample for the samples grid
     if media == fom.VIDEO:
         pipeline.append({"$set": {"frames": {"$slice": ["$frames", 1]}}})
+
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         pipeline,
