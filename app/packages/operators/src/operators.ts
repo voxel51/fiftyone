@@ -1,5 +1,4 @@
 import { getFetchFunction } from "@fiftyone/utilities";
-import { useState } from "react";
 import * as types from "./types";
 
 class ExecutionContext {
@@ -29,9 +28,6 @@ class OperatorDefinition {
   }
   addOutputProperty(property: OperatorProperty) {
     this.outputs.push(property);
-  }
-  setTrigger(trigger: OperatorTrigger) {
-    this.trigger = trigger;
   }
   static fromJSON(json: any) {
     const def = new OperatorDefinition(json.description);
@@ -105,7 +101,8 @@ export function registerOperator(operator: Operator) {
 }
 
 export async function loadOperatorsFromServer() {
-  const { operators } = await getFetchFunction()("GET", "/operators");
+  const { operators, loading_errors } = await getFetchFunction()("GET", "/operators");
+  console.log({loading_errors})
   const operatorInstances = operators.map((d: any) => Operator.fromJSON(d));
   for (const operator of operatorInstances) {
     remoteRegistry.register(operator);
