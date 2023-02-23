@@ -1,0 +1,94 @@
+import { PopoutSectionTitle } from "@fiftyone/components";
+import ViewComfyIcon from "@mui/icons-material/ViewComfy";
+import React, { useRef, useState } from "react";
+import useMeasure from "react-use-measure";
+
+import {
+  groupMediaIs3DVisible,
+  groupMediaIsCarouselVisible,
+  groupMediaIsImageVisible,
+  useOutsideClick,
+} from "@fiftyone/state";
+import { useRecoilState } from "recoil";
+import styled from "styled-components";
+import Checkbox from "../Common/Checkbox";
+import style from "../Modal/Group.module.css";
+import { PillButton } from "../utils";
+import Popout from "./Popout";
+
+interface GroupMediaVisibilityProps {
+  modal: boolean;
+}
+
+const TITLE = "Show/Hide Medias";
+
+const Container = styled.div`
+  position: relative;
+`;
+
+const GroupMediaVisibilityPopout = ({
+  modal,
+  bounds,
+}: {
+  modal: boolean;
+  bounds: ReturnType<typeof useMeasure>[1];
+}) => {
+  const [is3DVisible, setIs3DVisible] = useRecoilState(groupMediaIs3DVisible);
+  const [isCarouselVisible, setIsCarouselVisible] = useRecoilState(
+    groupMediaIsCarouselVisible
+  );
+  const [isImageVisible, setIsImageVisible] = useRecoilState(
+    groupMediaIsImageVisible
+  );
+
+  return (
+    <Popout modal={modal} bounds={bounds}>
+      <PopoutSectionTitle>{TITLE}</PopoutSectionTitle>
+      <Checkbox
+        name={"3D Viewer"}
+        value={is3DVisible}
+        muted={!isImageVisible && !isCarouselVisible}
+        setValue={(value) => setIs3DVisible(value)}
+      />
+      <Checkbox
+        name={"Carousel"}
+        value={isCarouselVisible}
+        muted={!is3DVisible && !isImageVisible}
+        setValue={(value) => setIsCarouselVisible(value)}
+      />
+      <Checkbox
+        name={"Image"}
+        value={isImageVisible}
+        muted={!is3DVisible && !isCarouselVisible}
+        setValue={(value) => setIsImageVisible(value)}
+      />
+    </Popout>
+  );
+};
+
+export const GroupMediaVisibilityContainer = ({
+  modal,
+}: GroupMediaVisibilityProps) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useOutsideClick(ref, () => open && setOpen(false));
+  const [mRef, bounds] = useMeasure();
+
+  return (
+    <Container ref={ref}>
+      <PillButton
+        icon={
+          <ViewComfyIcon classes={{ root: style.groupMediaVisibilityIcon }} />
+        }
+        open={open}
+        onClick={() => {
+          setOpen((current) => !current);
+        }}
+        title={TITLE}
+        highlight={open}
+        ref={mRef}
+      />
+      {open && <GroupMediaVisibilityPopout modal={modal} bounds={bounds} />}
+    </Container>
+  );
+};

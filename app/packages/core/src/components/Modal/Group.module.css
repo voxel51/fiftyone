@@ -43,3 +43,7 @@
   position: relative;
   z-index: 10001;
 }
+
+.groupMediaVisibilityIcon {
+  transform: rotate(90deg);
+}
