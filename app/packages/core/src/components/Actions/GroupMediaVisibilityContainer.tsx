@@ -20,7 +20,7 @@ interface GroupMediaVisibilityProps {
   modal: boolean;
 }
 
-const TITLE = "Show/Hide Medias";
+const TITLE = "Toggle Media";
 
 const Container = styled.div`
   position: relative;
