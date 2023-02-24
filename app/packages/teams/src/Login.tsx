@@ -8,6 +8,8 @@ import { NetworkRenderer } from "@fiftyone/app/src/Network";
 import { makeRoutes } from "@fiftyone/core";
 import { useMutation } from "react-relay";
 import { RouterContext } from "@fiftyone/state";
+import { usePlugins } from "@fiftyone/plugins";
+
 
 const LoginMutation = graphql`
   mutation LoginMutation($user: UserInput!) {
@@ -23,6 +25,8 @@ const Login = () => {
   const [logIn, pending] = useMutation(LoginMutation);
   const { user } = useAuth0();
   const { history } = useContext(RouterContext);
+  const plugins = usePlugins();
+
 
   useEffect(() => {
     if (!user || loggedIn || pending) {
@@ -67,6 +71,9 @@ const Login = () => {
   if (!loggedIn) {
     return <Loading>Pixelating...</Loading>;
   }
+
+  if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
+  if (plugins.error) return <Loading>Plugin error...</Loading>;
 
   return (
     <Suspense fallback={<Loading>Pixelating...</Loading>}>

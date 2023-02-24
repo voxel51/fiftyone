@@ -21,6 +21,7 @@
         "@fiftyone/app": "*",
         "@fiftyone/components": "*",
         "@fiftyone/core": "*",
+        "@fiftyone/plugins": "*",
         "@fiftyone/utilities": "*"
     },
     "devDependencies": {
