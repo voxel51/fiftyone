@@ -1,6 +1,12 @@
 import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
-import React, { Fragment, useCallback, useRef } from "react";
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import ReactDOM from "react-dom";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -239,6 +245,8 @@ const SampleModal = () => {
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
 
+  const [isNavigationHidden, setIsNavigationHidden] = useState(false);
+
   const navigateNext = useCallback(() => {
     jsonPanel.close();
     helpPanel.close();
@@ -254,6 +262,28 @@ const SampleModal = () => {
     }
   }, [navigation, jsonPanel, helpPanel]);
 
+  const keyboardHandler = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        navigatePrevious();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        navigateNext();
+      } else if (e.key === "c") {
+        e.preventDefault();
+        setIsNavigationHidden((prev) => !prev);
+      }
+      // note: don't stop event propagation here
+    },
+    [navigateNext, navigatePrevious]
+  );
+
+  useEffect(() => {
+    document.addEventListener("keydown", keyboardHandler);
+    return () => document.removeEventListener("keydown", keyboardHandler);
+  }, [keyboardHandler]);
+
   return ReactDOM.createPortal(
     <Fragment>
       <ModalWrapper
@@ -262,13 +292,10 @@ const SampleModal = () => {
       >
         <Container style={{ ...screen, zIndex: 10001 }}>
           <ContentColumn>
-            <>
-              {}
-              {navigation.index > 0 && (
-                <PreviousArrow onClick={navigatePrevious} />
-              )}
-              <NextArrow onClick={navigateNext} />
-            </>
+            {!isNavigationHidden && navigation.index > 0 && (
+              <PreviousArrow onClick={navigatePrevious} />
+            )}
+            {!isNavigationHidden && <NextArrow onClick={navigateNext} />}
             <ErrorBoundary onReset={() => {}}>
               {isGroup ? <Group /> : isPcd ? <Sample3d /> : <Sample />}
               {jsonPanel.isOpen && (
