@@ -303,7 +303,7 @@ export const resolveGroups = (
     "other",
     other.filter((path) => !present.has(path))
   );
-  console.info("resolve groups", groups);
+
   return groups;
 };
 
