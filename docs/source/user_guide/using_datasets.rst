@@ -3474,7 +3474,7 @@ during creation.
     In order to work with datasets containing custom embedded documents defined
     using this approach, you must configure your `module_path` in
     *all environments* where you intend to work with the datasets that use
-    these classes, not just the environment where you create the dataset!
+    these classes, not just the environment where you create the dataset.
 
     To avoid this requirement, consider defining custom documents
     :ref:`on-the-fly <defining-custom-documents-on-the-fly>` instead.
