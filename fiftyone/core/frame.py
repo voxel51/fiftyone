@@ -643,6 +643,7 @@ class Frames(object):
         d = {k: v for k, v in d.items() if v is not None}
 
         d["_sample_id"] = self._sample_id
+        d["_dataset_id"] = self._dataset._doc.id
 
         return d
 

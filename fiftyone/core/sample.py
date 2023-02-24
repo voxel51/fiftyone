@@ -594,6 +594,8 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         Returns:
             a :class:`Sample`
         """
+        d.pop("_dataset_id", None)
+
         media_type = d.pop("_media_type", None)
         if media_type is None:
             media_type = fomm.get_media_type(d.get("filepath", ""))
