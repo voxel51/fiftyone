@@ -119,6 +119,7 @@ export const PillButton = React.memo(
       ref
     ) => {
       const theme = useTheme();
+      theme.primary.plainColor = "#1890ff";
       const props = useSpring({
         backgroundColor: !highlight
           ? theme.background.button

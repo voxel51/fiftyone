@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import logo from "../../images/logo.png";
 
 import style from "./Header.module.css";
+import "./Header.css";
 
 const Header: React.FC<
   React.PropsWithChildren<{
@@ -28,7 +29,7 @@ const Header: React.FC<
           }}
         >
           <animated.img className={style.logo} style={logoProps} src={logo} />
-          <div className={style.fiftyone}>{title}</div>
+          {/* <div className={style.fiftyone}>{title}</div> */}
         </div>
         {navChildren}
       </div>

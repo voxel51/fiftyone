@@ -203,7 +203,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
               Have a Team?
             </Button>
           )}
-          <IconButton
+          {/* <IconButton
             title={mode === "dark" ? "Light mode" : "Dark mode"}
             disableRipple
             onClick={() => {
@@ -217,10 +217,10 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
             }}
           >
             {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
-          </IconButton>
-          <SlackLink />
+          </IconButton> */}
+          {/* <SlackLink />
           <GitHubLink />
-          <DocsLink />
+          <DocsLink /> */}
         </div>
       </Header>
       {ReactDOM.createPortal(
