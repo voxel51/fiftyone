@@ -334,7 +334,7 @@ Using a different MongoDB version
 
 FiftyOne is designed for **MongoDB v4.4 or later**.
 
-If you wish to connect FiftyOne to a MongoDB database whose version is no
+If you wish to connect FiftyOne to a MongoDB database whose version is not
 explicitly supported, you will also need to set the `database_validation`
 property of your FiftyOne config to `False` to suppress a runtime error that
 will otherwise occur.

@@ -7,12 +7,10 @@ FiftyOne Server samples pagination
 """
 import aiohttp
 import asyncio
-from dacite import Config, from_dict
 import strawberry as gql
 import typing as t
 
 
-import fiftyone.core.clips as focl
 from fiftyone.core.collections import SampleCollection
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
@@ -21,8 +19,9 @@ from fiftyone.server.filters import SampleFilter
 
 import fiftyone.server.metadata as fosm
 from fiftyone.server.paginator import Connection, Edge, PageInfo
-import fiftyone.server.view as fosv
 from fiftyone.server.scalars import BSON, JSON, BSONArray
+from fiftyone.server.utils import from_dict
+import fiftyone.server.view as fosv
 
 
 @gql.type
@@ -169,8 +168,4 @@ async def _create_sample_item(
         dataset, sample, media_type, metadata_cache, url_cache, session
     )
 
-    return from_dict(
-        cls,
-        {"id": sample["_id"], "sample": sample, **metadata},
-        Config(check_types=False),
-    )
+    return from_dict(cls, {"id": sample["_id"], "sample": sample, **metadata})

@@ -28,14 +28,6 @@ if (typeof window !== "undefined") {
   window.__fou__ = fou;
 }
 
-if (typeof window !== "undefined") {
-  // required for plugins to use the same instance of React
-  window.React = React;
-  window.ReactDOM = ReactDOM;
-  window.recoil = recoil;
-  window.__fos__ = fos;
-}
-
 function usingRegistry() {
   if (!window.__fo_plugin_registry__) {
     window.__fo_plugin_registry__ = new PluginComponentRegistry();
