@@ -17,6 +17,7 @@ import {
   pinnedSliceSample,
   selectedMediaField,
   sidebarOverride,
+  useBrowserStorage,
   useClearModal,
   useOnSelectLabel,
 } from "@fiftyone/state";
@@ -40,6 +41,14 @@ import GroupList from "../Group";
 import { GroupBar, GroupSampleBar } from "./Bars";
 import Looker from "./Looker";
 import Sample from "./Sample";
+
+const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "600";
+
+const PixelatingSuspense = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <Suspense fallback={<Loading>Pixelating...</Loading>}>{children}</Suspense>
+  );
+};
 
 const GroupSample: React.FC<
   React.PropsWithChildren<{
@@ -207,20 +216,21 @@ const DualView: React.FC = () => {
   const is3DVisible = useRecoilValue(fos.groupMediaIs3DVisible);
   const isImageVisible = useRecoilValue(fos.groupMediaIsImageVisible);
 
-  const [width, setWidth] = React.useState(is3DVisible ? "70%" : "100%");
-
   const shouldSplitVertically = useMemo(
     () => is3DVisible && isImageVisible,
     [is3DVisible, isImageVisible]
   );
 
+  const [width, setWidth] = useBrowserStorage(
+    "group-modal-split-view-width",
+    shouldSplitVertically ? DEFAULT_SPLIT_VIEW_LEFT_WIDTH : "100%"
+  );
+
   useEffect(() => {
-    if (shouldSplitVertically) {
-      setWidth("70%");
-    } else {
+    if (!shouldSplitVertically) {
       setWidth("100%");
     }
-  }, [shouldSplitVertically]);
+  }, [shouldSplitVertically, setWidth]);
 
   return (
     <div className={groupContainer}>
@@ -233,7 +243,7 @@ const DualView: React.FC = () => {
             maxWidth={shouldSplitVertically ? "90%" : "100%"}
             enable={{
               top: false,
-              right: is3DVisible ? true : false,
+              right: shouldSplitVertically ? true : false,
               bottom: false,
               left: false,
               topRight: false,
@@ -242,7 +252,11 @@ const DualView: React.FC = () => {
               topLeft: false,
             }}
             onResizeStop={(e, direction, ref, { width: delta }) => {
-              setWidth(width + delta);
+              if (width === "100%") {
+                setWidth(DEFAULT_SPLIT_VIEW_LEFT_WIDTH);
+              } else {
+                setWidth(String(Number(width) + delta));
+              }
             }}
             style={{
               position: "relative",
@@ -261,27 +275,27 @@ const DualView: React.FC = () => {
             )}
 
             {isImageVisible ? (
-              <Suspense fallback={<Loading>Pixelating...</Loading>}>
+              <PixelatingSuspense>
                 <MainSample lookerRef={lookerRef} />
-              </Suspense>
+              </PixelatingSuspense>
             ) : is3DVisible ? (
-              <Suspense fallback={<Loading>Pixelating...</Loading>}>
+              <PixelatingSuspense>
                 <PinnedSample />
-              </Suspense>
+              </PixelatingSuspense>
             ) : null}
           </Resizable>
         )}
 
         {shouldSplitVertically && (
-          <Suspense fallback={<Loading>Pixelating...</Loading>}>
+          <PixelatingSuspense>
             <PinnedSample />
-          </Suspense>
+          </PixelatingSuspense>
         )}
 
         {!shouldSplitVertically && is3DVisible && (
-          <Suspense fallback={<Loading>Pixelating...</Loading>}>
+          <PixelatingSuspense>
             <PinnedSample />
-          </Suspense>
+          </PixelatingSuspense>
         )}
       </div>
     </div>

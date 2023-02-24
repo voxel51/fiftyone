@@ -236,7 +236,7 @@ const Column: React.FC = () => {
   );
 };
 
-const Group: React.FC = ({ fullHeight }: { fullHeight?: boolean }) => {
+const Group: React.FC<{ fullHeight?: boolean }> = ({ fullHeight }) => {
   const [height, setHeight] = useBrowserStorage(
     "carousel-height",
     fullHeight ? 500 : 150

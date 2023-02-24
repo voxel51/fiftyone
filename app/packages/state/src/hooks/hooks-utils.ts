@@ -30,11 +30,23 @@ export const useBrowserStorage = <T = string>(
   });
 
   // Return a wrapped version of useState's setter function that persists the new value to browser storage
-  const setValue = (value: T | ((v: T) => T)) => {
-    const valueToStore = value instanceof Function ? value(storedValue) : value;
-    setStoredValue(valueToStore);
-    storage.setItem(key, JSON.stringify(valueToStore));
-  };
+  const setValue = useCallback(
+    (value: T | ((v: T) => T)) => {
+      let valueToStore;
+
+      if (value instanceof Function) {
+        setStoredValue((oldValue) => {
+          valueToStore = value(oldValue);
+          return valueToStore;
+        });
+      } else {
+        valueToStore = value;
+        setStoredValue(value);
+      }
+      storage.setItem(key, JSON.stringify(valueToStore));
+    },
+    [key, storage]
+  );
 
   return [storedValue, setValue] as const;
 };
