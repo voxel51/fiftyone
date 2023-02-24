@@ -20,7 +20,7 @@ import { Coloring, FrameChunk, FrameSample, Sample } from "../state";
 import { DeserializerFactory } from "./deserializer";
 import { PainterFactory } from "./painter";
 import { mapId } from "./shared";
-import { process3DLabels } from "./threeDLabelProcessor";
+import { process3DLabels } from "./threed-label-processor";
 
 interface ResolveColor {
   key: string | number;
