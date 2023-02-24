@@ -114,28 +114,28 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
     onClose();
   });
 
-  useEventHandler(
-    looker,
-    "next",
-    onNext
-      ? (e) => {
-          jsonPanel.close();
-          helpPanel.close();
-          return onNext(e);
-        }
-      : null
-  );
-  useEventHandler(
-    looker,
-    "previous",
-    onPrevious
-      ? (e) => {
-          jsonPanel.close();
-          helpPanel.close();
-          return onPrevious(e);
-        }
-      : null
-  );
+  // useEventHandler(
+  //   looker,
+  //   "next",
+  //   onNext
+  //     ? (e) => {
+  //         jsonPanel.close();
+  //         helpPanel.close();
+  //         return onNext(e);
+  //       }
+  //     : null
+  // );
+  // useEventHandler(
+  //   looker,
+  //   "previous",
+  //   onPrevious
+  //     ? (e) => {
+  //         jsonPanel.close();
+  //         helpPanel.close();
+  //         return onPrevious(e);
+  //       }
+  //     : null
+  // );
   useEventHandler(looker, "select", useOnSelectLabel());
   useEventHandler(looker, "error", (event) => handleError(event.detail));
   const jsonPanel = fos.useJSONPanel();

@@ -1,16 +1,17 @@
 import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
-import _ from "lodash";
 import React, { Fragment, useCallback, useRef } from "react";
 import ReactDOM from "react-dom";
-import styled from "styled-components";
 import { useRecoilValue } from "recoil";
+import styled from "styled-components";
 
+import { ErrorBoundary, HelpPanel, JSONPanel } from "@fiftyone/components";
+import { arrowLeft, arrowRight } from "@fiftyone/looker/src/icons";
+import { modalNavigation } from "@fiftyone/state";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
 import Sample3d from "./Sample3d";
-import { ErrorBoundary, HelpPanel, JSONPanel } from "@fiftyone/components";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -44,11 +45,59 @@ const ContentColumn = styled.div`
   flex-direction: column;
 `;
 
+const Arrow = styled.span<{ isRight?: boolean }>`
+  cursor: pointer;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  right: ${(props) => (props.isRight ? "0.75rem" : "initial")};
+  left: ${(props) => (props.isRight ? "initial" : "0.75rem")};
+  z-index: 99999;
+  padding: 0.75rem;
+  bottom: 33vh;
+  width: 3rem;
+  height: 3rem;
+  background-color: var(--joy-palette-background-button);
+  box-shadow: 0 1px 3px var(--joy-palette-custom-shadowDark);
+  border-radius: 3px;
+  opacity: 0.6;
+  transition: opacity 0.15s ease-in-out;
+  transition: box-shadow 0.15s ease-in-out;
+  &:hover {
+    opacity: 1;
+    box-shadow: inherit;
+    transition: box-shadow 0.15s ease-in-out;
+    transition: opacity 0.15s ease-in-out;
+  }
+`;
+
+const NextArrow = ({ onClick }: { onClick: () => void }) => {
+  return (
+    <Arrow
+      isRight
+      onClick={onClick}
+      dangerouslySetInnerHTML={{ __html: arrowRight.outerHTML }}
+    />
+  );
+};
+
+const PreviousArrow = ({ onClick }: { onClick: () => void }) => {
+  return (
+    <Arrow
+      onClick={onClick}
+      dangerouslySetInnerHTML={{ __html: arrowLeft.outerHTML }}
+    />
+  );
+};
+
 const SampleModal = () => {
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
   const clearModal = fos.useClearModal();
   const override = useRecoilValue(fos.sidebarOverride);
   const disabled = useRecoilValue(fos.disabledPaths);
+
+  const navigation = useRecoilValue(modalNavigation);
 
   const renderEntry = useCallback(
     (
@@ -190,6 +239,21 @@ const SampleModal = () => {
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
 
+  const navigateNext = useCallback(() => {
+    jsonPanel.close();
+    helpPanel.close();
+    navigation.setIndex(navigation.index + 1);
+  }, [navigation, jsonPanel, helpPanel]);
+
+  const navigatePrevious = useCallback(() => {
+    jsonPanel.close();
+    helpPanel.close();
+
+    if (navigation.index > 0) {
+      navigation.setIndex(navigation.index - 1);
+    }
+  }, [navigation, jsonPanel, helpPanel]);
+
   return ReactDOM.createPortal(
     <Fragment>
       <ModalWrapper
@@ -198,6 +262,13 @@ const SampleModal = () => {
       >
         <Container style={{ ...screen, zIndex: 10001 }}>
           <ContentColumn>
+            <>
+              {}
+              {navigation.index > 0 && (
+                <PreviousArrow onClick={navigatePrevious} />
+              )}
+              <NextArrow onClick={navigateNext} />
+            </>
             <ErrorBoundary onReset={() => {}}>
               {isGroup ? <Group /> : isPcd ? <Sample3d /> : <Sample />}
               {jsonPanel.isOpen && (

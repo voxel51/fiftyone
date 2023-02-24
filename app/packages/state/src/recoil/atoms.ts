@@ -22,7 +22,7 @@ export interface SampleData {
 
 export interface ModalNavigation {
   index: number;
-  getIndex: (index: number) => void;
+  setIndex: (index: number) => void;
 }
 
 interface ModalSample extends SampleData {

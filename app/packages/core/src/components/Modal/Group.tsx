@@ -13,7 +13,6 @@ import {
   groupId,
   hasPinnedSlice,
   mainGroupSample,
-  modalNavigation,
   pinnedSlice,
   pinnedSliceSample,
   selectedMediaField,
@@ -116,7 +115,6 @@ const MainSample: React.FC<{
   lookerRef: MutableRefObject<VideoLooker | undefined>;
 }> = ({ lookerRef }) => {
   const sample = useRecoilValue(mainGroupSample);
-  const navigation = useRecoilValue(modalNavigation);
 
   const clearModal = useClearModal();
   const pinned = !useRecoilValue(sidebarOverride);
@@ -133,17 +131,7 @@ const MainSample: React.FC<{
       onClick={reset}
       {...hover.handlers}
     >
-      <Looker
-        key={sample._id}
-        lookerRef={lookerRef}
-        onNext={() => navigation.getIndex(navigation.index + 1)}
-        onClose={clearModal}
-        onPrevious={
-          navigation.index > 0
-            ? () => navigation.getIndex(navigation.index - 1)
-            : undefined
-        }
-      />
+      <Looker key={sample._id} lookerRef={lookerRef} onClose={clearModal} />
     </GroupSample>
   );
 };
@@ -262,9 +250,15 @@ const DualView: React.FC = () => {
               overflow: "hidden",
               display: "flex",
               flexDirection: "column",
+              justifyContent: "center",
             }}
           >
-            {isCarouselVisible && <GroupList key={`${key}-${mediaField}`} />}
+            {isCarouselVisible && (
+              <GroupList
+                key={`${key}-${mediaField}`}
+                fullHeight={!is3DVisible && !isImageVisible}
+              />
+            )}
 
             {isImageVisible ? (
               <Suspense fallback={<Loading>Pixelating...</Loading>}>

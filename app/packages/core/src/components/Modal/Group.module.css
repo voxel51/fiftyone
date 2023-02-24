@@ -17,6 +17,7 @@
 .group {
   position: relative;
   flex-direction: column;
+  justify-content: center;
   flex-grow: 1;
   display: flex;
   width: 100%;
