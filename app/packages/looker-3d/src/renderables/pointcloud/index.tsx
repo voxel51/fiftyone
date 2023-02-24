@@ -11,7 +11,7 @@ import {
 
 type PointCloudMeshArgs = {
   shadeBy: ShadeBy;
-  pointSize: number;
+  pointSize: string;
   points: THREE.Points;
   rotation: [number, number, number];
   minZ: number | null | undefined;

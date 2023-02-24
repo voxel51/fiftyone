@@ -22,6 +22,7 @@ import {
   Screenshot,
   SetPointSizeButton,
   SetViewButton,
+  SliceSelector,
   ViewHelp,
   ViewJSON,
 } from "./action-bar";
@@ -47,6 +48,7 @@ type View = "pov" | "top";
 
 export type Looker3dProps = {
   api: {
+    dataset: fos.State.Dataset;
     mediaField: string;
     mediaFieldValue: string;
     src: string;
@@ -69,7 +71,7 @@ export const Looker3d = (props: Looker3dProps) => {
   );
 };
 
-const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
+const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
   const settings = fop.usePluginSettings<Looker3dPluginSettings>(
     "3d",
     defaultPluginSettings
@@ -264,6 +266,13 @@ const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
     onChangeView("top");
   }, [onChangeView, cameraRef, controlsRef]);
 
+  const hasMultiplePcdSlices = useMemo(
+    () =>
+      dataset.groupMediaTypes.filter((g) => g.mediaType === "point_cloud")
+        .length > 1,
+    [dataset]
+  );
+
   return (
     <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
       <Canvas onClick={() => setAction(null)}>
@@ -317,11 +326,13 @@ const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
         />
         <axesHelper />
       </Canvas>
-      {(hoveringRef.current || hovering) && (
+      {/* {(hoveringRef.current || hovering) && ( */}
+      {true && (
         <ActionBarContainer
           onMouseEnter={() => (hoveringRef.current = true)}
-          onMouseLeave={() => (hoveringRef.current = false)}
+          // onMouseLeave={() => (hoveringRef.current = false)}
         >
+          {hasMultiplePcdSlices && <SliceSelector dataset={dataset} />}
           <ActionsBar>
             <SetPointSizeButton />
             <ChooseColorSpace isRgbPresent={isRgbPresent} />

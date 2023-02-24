@@ -26,21 +26,21 @@ import React, {
   MutableRefObject,
   Suspense,
   useCallback,
-  useRef,
-  useState,
   useEffect,
   useMemo,
+  useRef,
+  useState,
 } from "react";
 
+import { Loading, useTheme } from "@fiftyone/components";
+import { VideoLooker } from "@fiftyone/looker";
+import classNames from "classnames";
+import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import GroupList from "../Group";
-import Sample from "./Sample";
-import classNames from "classnames";
 import { GroupBar, GroupSampleBar } from "./Bars";
-import { VideoLooker } from "@fiftyone/looker";
 import Looker from "./Looker";
-import { Resizable } from "re-resizable";
-import { Loading, useTheme } from "@fiftyone/components";
+import Sample from "./Sample";
 
 const GroupSample: React.FC<
   React.PropsWithChildren<{
@@ -149,7 +149,7 @@ const MainSample: React.FC<{
 };
 
 const withVisualizerPlugin = <T extends {}>(Component: React.FC<T>) => {
-  return (props: T) => {
+  const PluginComponentWrapper = (props: T) => {
     const { sample, urls } = useRecoilValue(pinnedSliceSample);
     const [plugin] = usePlugin(PluginComponentType.Visualizer);
     const mediaField = useRecoilValue(selectedMediaField(true));
@@ -179,6 +179,8 @@ const withVisualizerPlugin = <T extends {}>(Component: React.FC<T>) => {
       <Component {...props} />
     );
   };
+
+  return PluginComponentWrapper;
 };
 
 const PluggableSample: React.FC<{}> = withVisualizerPlugin(() => {
