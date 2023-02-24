@@ -63,7 +63,7 @@ function SamplesContainer() {
                 key={key}
                 name={entry.name}
                 modal={false}
-                mutable={!["other", "all tags"].includes(entry.name)}
+                mutable={!["other", "tags"].includes(entry.name)}
                 trigger={trigger}
               />
             ),

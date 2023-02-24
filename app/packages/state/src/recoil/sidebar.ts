@@ -195,7 +195,7 @@ const fieldsReducer =
 const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 
 const DEFAULT_IMAGE_GROUPS = [
-  { name: "all tags", paths: [] },
+  { name: "tags", paths: [] },
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
   { name: "primitives", paths: [] },
@@ -203,7 +203,7 @@ const DEFAULT_IMAGE_GROUPS = [
 ];
 
 const DEFAULT_VIDEO_GROUPS = [
-  { name: "all tags", paths: [] },
+  { name: "tags", paths: [] },
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
   { name: "frame labels", paths: [] },
@@ -360,7 +360,7 @@ export const sidebarGroups = selectorFamily<
       if (!groups.length) return [];
 
       const groupNames = groups.map(({ name }) => name);
-      const tagGroupIndex = groupNames.indexOf("all tags");
+      const tagGroupIndex = groupNames.indexOf("tags");
       groups[tagGroupIndex].paths = ["_label_tags", "tags"];
 
       const framesIndex = groupNames.indexOf("frame labels");
@@ -403,7 +403,7 @@ export const sidebarGroups = selectorFamily<
       const allPaths = new Set(groups.map(({ paths }) => paths).flat());
 
       groups = groups.map(({ name, paths, expanded }) => {
-        if (["all tags"].includes(name)) {
+        if (["tags"].includes(name)) {
           return { name, paths: [], expanded };
         }
 
@@ -724,7 +724,7 @@ export const groupShown = selectorFamily<
       const data = get(sidebarGroupMapping({ modal, loading }))[group];
 
       if ([null, undefined].includes(data.expanded)) {
-        if (["all tags"].includes(group)) {
+        if (["tags"].includes(group)) {
           return null;
         }
         return (

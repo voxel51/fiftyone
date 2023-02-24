@@ -212,7 +212,7 @@ describe("ResolveGroups works", () => {
     const test = sidebar.resolveGroups(mockDataset, undefined);
 
     expect(test.length).toBe(5);
-    expect(test[0].name).toBe("all tags");
+    expect(test[0].name).toBe("tags");
     expect(test[0].paths.length).toBe(0);
     expect(test[1].name).toBe("metadata");
     expect(test[1].paths.length).toBe(5);
@@ -226,7 +226,7 @@ describe("ResolveGroups works", () => {
 
   it("when dataset appconfig does not have sidebarGroups settings, use default settings", () => {
     const mockSidebarGroups = [
-      { name: "all tags", paths: [], expanded: true },
+      { name: "tags", paths: [], expanded: true },
       {
         name: "metadata",
         paths: [

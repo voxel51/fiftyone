@@ -474,7 +474,7 @@ export const PathGroupEntry = React.memo(
     return (
       <GroupEntry
         entryKey={entryKey}
-        title={name == "all tags" ? "TAGS" : name.toUpperCase()}
+        title={name.toUpperCase()}
         expanded={expanded}
         onClick={() => setExpanded(!expanded)}
         setValue={modal || !mutable ? null : (value) => renameGroup(value)}
