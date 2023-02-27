@@ -41,7 +41,7 @@ import { dispatchTooltipEvent } from "./common/util";
 import { volume as volumeIcon, volumeMuted, playbackRate } from "../icons";
 
 export class LoaderBar extends BaseElement<VideoState> {
-  private buffering: boolean = false;
+  private buffering = false;
 
   isShown({ thumbnail }: Readonly<VideoState["config"]>) {
     return thumbnail;
@@ -401,17 +401,17 @@ export class TimeElement extends BaseElement<VideoState> {
 export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private canvas: HTMLCanvasElement;
   private frameNumber: number;
-  private loop: boolean = false;
-  private playbackRate: number = 1;
+  private loop = false;
+  private playbackRate = 1;
   private posterFrame: number;
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
   private src: string;
   private update: StateUpdate<VideoState>;
   private volume: number;
-  private waitingToPause: boolean = false;
-  private waitingToPlay: boolean = false;
-  private waitingToRelease: boolean = false;
+  private waitingToPause = false;
+  private waitingToPlay = false;
+  private waitingToRelease = false;
 
   imageSource: HTMLCanvasElement | HTMLVideoElement;
 
@@ -595,9 +595,14 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     });
 
     this.requestCallback = (callback: (time: number) => void) => {
-      requestAnimationFrame(() => {
-        this.element && callback(this.element.currentTime);
-      });
+      const run = (time) => this.element && callback(time);
+      if ("requestVideoFrameCallback" in HTMLVideoElement.prototype) {
+        this.element.requestVideoFrameCallback((_, metadata) =>
+          run(metadata.mediaTime)
+        );
+      } else {
+        requestAnimationFrame(() => run(this.element?.currentTime));
+      }
     };
 
     return this.element;
@@ -762,7 +767,7 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
         update(({ config: { thumbnail, support } }) => {
           if (thumbnail) {
             return {
-              frameNumber: Boolean(support) ? support[0] : 1,
+              frameNumber: support ? support[0] : 1,
               playing: false,
             };
           }
