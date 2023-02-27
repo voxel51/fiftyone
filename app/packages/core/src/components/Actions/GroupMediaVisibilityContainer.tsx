@@ -26,13 +26,7 @@ const Container = styled.div`
   position: relative;
 `;
 
-const GroupMediaVisibilityPopout = ({
-  modal,
-  bounds,
-}: {
-  modal: boolean;
-  bounds: ReturnType<typeof useMeasure>[1];
-}) => {
+const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
   const [is3DVisible, setIs3DVisible] = useRecoilState(groupMediaIs3DVisible);
   const [isCarouselVisible, setIsCarouselVisible] = useRecoilState(
     groupMediaIsCarouselVisible
@@ -42,7 +36,7 @@ const GroupMediaVisibilityPopout = ({
   );
 
   return (
-    <Popout modal={modal} bounds={bounds}>
+    <Popout modal={modal}>
       <PopoutSectionTitle>{TITLE}</PopoutSectionTitle>
       <Checkbox
         name={"3D Viewer"}
@@ -72,7 +66,7 @@ export const GroupMediaVisibilityContainer = ({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
-  const [mRef, bounds] = useMeasure();
+  const [mRef] = useMeasure();
 
   return (
     <Container ref={ref}>
@@ -88,7 +82,7 @@ export const GroupMediaVisibilityContainer = ({
         highlight={open}
         ref={mRef}
       />
-      {open && <GroupMediaVisibilityPopout modal={modal} bounds={bounds} />}
+      {open && <GroupMediaVisibilityPopout modal={modal} />}
     </Container>
   );
 };

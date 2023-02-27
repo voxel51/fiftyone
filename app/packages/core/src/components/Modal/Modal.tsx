@@ -11,8 +11,13 @@ import ReactDOM from "react-dom";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
-import { ErrorBoundary, HelpPanel, JSONPanel } from "@fiftyone/components";
-import { arrowLeft, arrowRight } from "@fiftyone/looker/src/icons";
+import {
+  ErrorBoundary,
+  HelpPanel,
+  JSONPanel,
+  LookerArrowLeftIcon,
+  LookerArrowRightIcon,
+} from "@fiftyone/components";
 import { modalNavigation } from "@fiftyone/state";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
@@ -77,25 +82,6 @@ const Arrow = styled.span<{ isRight?: boolean }>`
     transition: opacity 0.15s ease-in-out;
   }
 `;
-
-const NextArrow = ({ onClick }: { onClick: () => void }) => {
-  return (
-    <Arrow
-      isRight
-      onClick={onClick}
-      dangerouslySetInnerHTML={{ __html: arrowRight.outerHTML }}
-    />
-  );
-};
-
-const PreviousArrow = ({ onClick }: { onClick: () => void }) => {
-  return (
-    <Arrow
-      onClick={onClick}
-      dangerouslySetInnerHTML={{ __html: arrowLeft.outerHTML }}
-    />
-  );
-};
 
 const SampleModal = () => {
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
@@ -293,9 +279,15 @@ const SampleModal = () => {
         <Container style={{ ...screen, zIndex: 10001 }}>
           <ContentColumn>
             {!isNavigationHidden && navigation.index > 0 && (
-              <PreviousArrow onClick={navigatePrevious} />
+              <Arrow>
+                <LookerArrowLeftIcon onClick={navigatePrevious} />
+              </Arrow>
             )}
-            {!isNavigationHidden && <NextArrow onClick={navigateNext} />}
+            {!isNavigationHidden && (
+              <Arrow isRight>
+                <LookerArrowRightIcon onClick={navigateNext} />
+              </Arrow>
+            )}
             <ErrorBoundary onReset={() => {}}>
               {isGroup ? <Group /> : isPcd ? <Sample3d /> : <Sample />}
               {jsonPanel.isOpen && (

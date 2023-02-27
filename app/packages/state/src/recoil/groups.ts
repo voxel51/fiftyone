@@ -89,10 +89,7 @@ export const defaultPinnedSlice = selector<string | null>({
 export const pinnedSlice = atom<string | null>({
   key: "pinnedSlice",
   default: defaultPinnedSlice,
-<<<<<<< HEAD
   effects: [getBrowserStorageEffectForKey("pinnedSlice")],
-=======
->>>>>>> f89e69589 (add selector for pointcloud slices in grouped datasets)
 });
 
 export const currentSlice = selectorFamily<string | null, boolean>({
