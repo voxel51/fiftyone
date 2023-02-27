@@ -97,6 +97,22 @@ async def paginate_samples(
     if int(after) > -1:
         view = view.skip(int(after) + 1)
 
+    # TODO: Remove this once we have a better way to handle large videos. This
+    # is a temporary fix to reduce the $lookup overhead for sample frames on full datasets.
+    support = (
+        [1, 1] if ((media == fom.VIDEO) and ~(len(view._stages) > 1)) else None
+    )
+    pipeline = view._pipeline(
+        attach_frames=True,
+        detach_frames=False,
+        manual_group_select=sample_filter
+        and sample_filter.group
+        and (sample_filter.group.id and not sample_filter.group.slice),
+        support=support,
+    )
+    # Only return the first frame of each video sample for the grid thumbnail
+    if media == fom.VIDEO and not support:
+        pipeline.append({"$set": {"frames": {"$slice": ["$frames", 1]}}})
     pipeline = view._pipeline(
         attach_frames=True,
         detach_frames=False,
