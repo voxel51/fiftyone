@@ -110,16 +110,7 @@ async def paginate_samples(
         and (sample_filter.group.id and not sample_filter.group.slice),
         support=support,
     )
-    # Only return the first frame of each video sample for the grid thumbnail
-    if media == fom.VIDEO and not support:
-        pipeline.append({"$set": {"frames": {"$slice": ["$frames", 1]}}})
-    pipeline = view._pipeline(
-        attach_frames=True,
-        detach_frames=False,
-        manual_group_select=sample_filter
-        and sample_filter.group
-        and (sample_filter.group.id and not sample_filter.group.slice),
-    )
+
     # Only return the first frame of each video sample for the grid thumbnail
     if media == fom.VIDEO:
         pipeline.append({"$set": {"frames": {"$slice": ["$frames", 1]}}})
