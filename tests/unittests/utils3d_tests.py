@@ -1,5 +1,5 @@
 """
-FiftyOne utilities unit tests.
+FiftyOne 3D utilities unit tests.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
