@@ -1552,7 +1552,11 @@ def _add_field_doc(field_docs, field_or_doc):
             field_docs[i] = new_field_doc
             return
 
-    field_docs.append(new_field_doc)
+    try:
+        field_docs.append(new_field_doc)
+    except ReferenceError:
+        # mongoengine seems to lose references to things... it's okay
+        pass
 
 
 def _update_field_doc(field_docs, field_name, field):
