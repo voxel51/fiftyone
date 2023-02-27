@@ -199,9 +199,9 @@ const SampleModal = () => {
               {jsonPanel.isOpen && (
                 <JSONPanel
                   containerRef={jsonPanel.containerRef}
-                  jsonHTML={jsonPanel.jsonHTML}
                   onClose={() => jsonPanel.close()}
                   onCopy={() => jsonPanel.copy()}
+                  json={jsonPanel.json}
                 />
               )}
               {helpPanel.isOpen && (

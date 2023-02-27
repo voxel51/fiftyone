@@ -115,7 +115,7 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     default_destination = destination is None
 
     if default_destination:
-        if not fo.config.database_admin and _is_compatible_version(head):
+        if _can_skip_migration(head):
             return
 
         destination = foc.VERSION
@@ -180,7 +180,7 @@ def needs_migration(name=None, head=None, destination=None):
         head = "0.0"
 
     if destination is None:
-        if not fo.config.database_admin and _is_compatible_version(head):
+        if _can_skip_migration(head):
             return False
 
         destination = get_database_revision()
@@ -235,7 +235,7 @@ def _migrate_dataset_if_necessary(name, destination, verbose):
     default_destination = destination is None
 
     if default_destination:
-        if not fo.config.database_admin and _is_compatible_version(head):
+        if _can_skip_migration(head):
             return
 
         destination = db_version
@@ -396,6 +396,25 @@ def _is_compatible_version(version):
     specifier = foc.COMPATIBLE_VERSIONS or ("==%s" % foc.VERSION)
     req = Requirement("fiftyone" + specifier)
     return req.specifier.contains(version)
+
+
+def _can_skip_migration(head):
+    # Version is not compatible, we can't skip
+    if not _is_compatible_version(head):
+        return False
+
+    # A non-admin is accessing data with a compatible version; we don't need to
+    # run a migration
+    if not fo.config.database_admin:
+        return True
+
+    # An admin is accessing data from a *future* version, so we cannot migrate.
+    # However, the future version is compatible, so we'll skip the migration
+    # attempt, which would raise an error
+    if Version(head) > Version(foc.VERSION):
+        return True
+
+    return False
 
 
 def _get_revisions_to_run(head, dest, revisions):
