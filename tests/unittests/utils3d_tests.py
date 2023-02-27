@@ -12,10 +12,10 @@ import unittest
 import numpy as np
 import open3d as o3d
 from PIL import Image
-from typing_extensions import Literal
 
 import fiftyone as fo
 import fiftyone.utils.utils3d as fou3d
+
 from decorators import drop_datasets
 
 
@@ -40,13 +40,9 @@ class BaseOrthographicProjectionTests(unittest.TestCase):
                 )
             )
 
-    def write_test_pcd(
-        self,
-        num_points: int = 10,
-        pcd_type: Literal["rgb", "intensity", "mono"] = "rgb",
-        seed=42,
-    ):
+    def write_test_pcd(self, num_points=10, pcd_type="rgb", seed=42):
         np.random.seed(seed)
+
         # lx, ly, lz
         dimensions = np.random.uniform(1, 3, size=3)
         # centroid: x, y, z
@@ -95,7 +91,8 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
 
         dataset.add_samples(non_group_samples)
 
-        # if media type is not group, usage of group params should throw an error
+        # if media type is not group, usage of group params should throw an
+        # error
         with self.assertRaisesRegex(ValueError, ".*media type.*"):
             fou3d.compute_orthographic_projection_images(
                 dataset,
@@ -103,6 +100,7 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
                 in_group_slice="nonexistent_slice",
                 output_dir=self.temp_dir.name,
             )
+
         with self.assertRaisesRegex(ValueError, ".*media type.*"):
             fou3d.compute_orthographic_projection_images(
                 dataset,
@@ -111,7 +109,8 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
                 output_dir=self.temp_dir.name,
             )
 
-        # if media type is group, in_group_slice should be valid, or omitted to be implicitly derived
+        # if media type is group, in_group_slice should be valid, or omitted to
+        # be implicitly derived
         dataset.clear()
         dataset.add_samples(group_samples)
 
