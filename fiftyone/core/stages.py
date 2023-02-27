@@ -6350,9 +6350,7 @@ class SortBySimilarity(ViewStage):
 
     @property
     def brain_key(self):
-        """The brain key of the
-        :class:`fiftyone.brain.similiarity.SimilarityResults` to use.
-        """
+        """The brain key of the similarity index to use."""
         return self._brain_key
 
     def to_mongo(self, _):

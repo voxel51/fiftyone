@@ -12,7 +12,7 @@ import re
 from setuptools import setup
 
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 
 
 INSTALL_REQUIRES = [

@@ -9,7 +9,6 @@ import { scrollbarStyles } from "../components/utils";
 
 const DistributionsContainer = styled.div`
   height: 100%;
-  background: ${({ theme }) => theme.background.mediaSpace};
   overflow: hidden;
   ${scrollbarStyles}
 `;

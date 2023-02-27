@@ -18,7 +18,11 @@ export { default as usePanel } from "./usePanel";
 export { default as useReset } from "./useReset";
 export { default as useSavedViews } from "./useSavedViews";
 export { default as useScreenshot } from "./useScreenshot";
-export { default as useRouter, setCurrentEnvironment } from "./useRouter";
+export {
+  default as useRouter,
+  getCurrentEnvironment,
+  setCurrentEnvironment,
+} from "./useRouter";
 export { default as useSelectFlashlightSample } from "./useSelectFlashlightSample";
 export { default as useSelectSample } from "./useSelectSample";
 export { default as useSendEvent } from "./useSendEvent";

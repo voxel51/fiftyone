@@ -17,6 +17,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.types import Scope
 
 import fiftyone.constants as foc
+import fiftyone as fo
 from fiftyone.server.routes import routes
 
 from fiftyone.teams.authentication import (
@@ -67,6 +68,14 @@ app = stra.Starlette(
     routes=routes
     + [
         Route("/graphql", GraphQL(schema, graphiql=foc.DEV_INSTALL)),
+        Mount(
+            "/plugins",
+            app=Static(
+                directory=fo.config.plugins_dir,
+                html=True,
+            ),
+            name="plugins",
+        ),
         Mount(
             "/",
             app=Static(
