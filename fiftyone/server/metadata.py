@@ -19,6 +19,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 from fiftyone.core.collections import SampleCollection
+from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 
 import fiftyone.core.media as fom
 
@@ -56,14 +57,20 @@ async def get_metadata(
     metadata = sample.get("metadata", None)
     urls = _create_media_urls(collection, sample, url_cache)
 
-    has_orthographic_projection_metadata = (
-        media_type == fom.POINT_CLOUD
-        and "orthographic_projection_metadata" in sample
+    has_orthographic_projection_metadata = False
+    orthographic_projection_field = collection.get_field_schema(
+        embedded_doc_type=OrthographicProjectionMetadata
     )
 
-    if has_orthographic_projection_metadata:
+    if len(orthographic_projection_field) > 0 and (
+        media_type == fom.POINT_CLOUD or media_type == fom.GROUP
+    ):
+        has_orthographic_projection_metadata = True
+        orthographic_projection_metadata_field_name = next(
+            iter(orthographic_projection_field)
+        )
         orthographic_projection_image_path = sample[
-            "orthographic_projection_metadata"
+            orthographic_projection_metadata_field_name
         ]["filepath"]
 
     is_video = media_type == fom.VIDEO
