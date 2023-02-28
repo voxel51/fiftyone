@@ -249,6 +249,8 @@ class SimpleEvaluation(ClassificationEvaluation):
             confs = list(itertools.chain.from_iterable(confs))
 
         results = ClassificationResults(
+            samples,
+            self.config,
             ytrue,
             ypred,
             confs=confs,
@@ -259,7 +261,6 @@ class SimpleEvaluation(ClassificationEvaluation):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
-            samples=samples,
         )
 
         if eval_key is None:
@@ -388,6 +389,8 @@ class TopKEvaluation(ClassificationEvaluation):
             )
 
         results = ClassificationResults(
+            samples,
+            self.config,
             ytrue,
             ypred,
             confs=confs,
@@ -398,7 +401,6 @@ class TopKEvaluation(ClassificationEvaluation):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
-            samples=samples,
         )
 
         if eval_key is None:
@@ -575,6 +577,8 @@ class BinaryEvaluation(ClassificationEvaluation):
             confs = list(itertools.chain.from_iterable(confs))
 
         results = BinaryClassificationResults(
+            samples,
+            self.config,
             ytrue,
             ypred,
             confs,
@@ -584,7 +588,6 @@ class BinaryEvaluation(ClassificationEvaluation):
             pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
-            samples=samples,
         )
 
         if eval_key is None:
@@ -639,6 +642,8 @@ class ClassificationResults(BaseEvaluationResults):
     """Class that stores the results of a classification evaluation.
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`ClassificationEvaluationConfig` used
         ytrue: a list of ground truth labels
         ypred: a list of predicted labels
         confs (None): an optional list of confidences for the predictions
@@ -652,8 +657,7 @@ class ClassificationResults(BaseEvaluationResults):
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any None-valued labels are
             given this label for evaluation purposes
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        backend (None): a :class:`ClassificationEvaluation` backend
     """
 
     pass
@@ -666,6 +670,8 @@ class BinaryClassificationResults(ClassificationResults):
     the negative class (with zero confidence, for predictions).
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`ClassificationEvaluationConfig` used
         ytrue: a list of ground truth labels
         ypred: a list of predicted labels
         confs: a list of confidences for the predictions
@@ -676,12 +682,13 @@ class BinaryClassificationResults(ClassificationResults):
         pred_field (None): the name of the predictions field
         ytrue_ids (None): a list of IDs for the ground truth labels
         ypred_ids (None): a list of IDs for the predicted labels
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        backend (None): a :class:`ClassificationEvaluation` backend
     """
 
     def __init__(
         self,
+        samples,
+        config,
         ytrue,
         ypred,
         confs,
@@ -692,9 +699,11 @@ class BinaryClassificationResults(ClassificationResults):
         pred_field=None,
         ytrue_ids=None,
         ypred_ids=None,
-        samples=None,
+        backend=None,
     ):
         super().__init__(
+            samples,
+            config,
             ytrue,
             ypred,
             confs=confs,
@@ -706,7 +715,7 @@ class BinaryClassificationResults(ClassificationResults):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=classes[0],
-            samples=samples,
+            backend=backend,
         )
 
         self._pos_label = classes[1]
@@ -829,6 +838,8 @@ class BinaryClassificationResults(ClassificationResults):
         ytrue_ids = d.get("ytrue_ids", None)
         ypred_ids = d.get("ypred_ids", None)
         return cls(
+            samples,
+            config,
             ytrue,
             ypred,
             confs,
@@ -839,7 +850,6 @@ class BinaryClassificationResults(ClassificationResults):
             pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
-            samples=samples,
             **kwargs,
         )
 

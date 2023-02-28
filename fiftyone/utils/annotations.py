@@ -2107,8 +2107,10 @@ class AnnotationResults(foa.AnnotationResults):
             backend.ensure_requirements()
 
         self._samples = samples
-        self.id_map = id_map
+        self._config = config
         self._backend = backend
+
+        self.id_map = id_map
 
     def __enter__(self):
         self._backend.__enter__()
@@ -2120,7 +2122,7 @@ class AnnotationResults(foa.AnnotationResults):
     @property
     def config(self):
         """The :class:`AnnotationBackendConfig` for these results."""
-        return self._backend.config
+        return self._config
 
     @property
     def backend(self):

@@ -439,6 +439,9 @@ class Run(Configurable):
             results_bytes = json_util.dumps(run_results.serialize()).encode()
             run_doc.results.put(results_bytes, content_type="application/json")
 
+            # @todo formalize this
+            setattr(run_results, "_run_key", key)
+
         # Cache the results for future use in this session
         if cache:
             results_cache = getattr(dataset, cls._results_cache_field())
@@ -488,7 +491,7 @@ class Run(Configurable):
         d = json_util.loads(run_doc.results.read().decode())
 
         try:
-            run_results = RunResults.from_dict(d, run_samples, config)
+            run_results = RunResults.from_dict(d, run_samples, config, key)
         except Exception as e:
             if run_doc.version == foc.VERSION:
                 raise e
@@ -512,6 +515,22 @@ class Run(Configurable):
             results_cache[key] = run_results
 
         return run_results
+
+    @classmethod
+    def has_cached_run_results(cls, samples, key):
+        """Determines whether :class:`RunResults` for the given key are cached
+        on the collection.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            key: a run key
+
+        Returns:
+            True/False
+        """
+        dataset = samples._root_dataset
+        results_cache = getattr(dataset, cls._results_cache_field())
+        return key in results_cache
 
     @classmethod
     def load_run_view(cls, samples, key, select_fields=False):
@@ -638,6 +657,17 @@ class RunResults(etas.Serializable):
         """The fully-qualified name of this :class:`RunResults` class."""
         return etau.get_class_name(self)
 
+    def save(self):
+        """Saves the results to the database."""
+
+        # @todo these must always exist
+        run = self._backend  # pylint: disable=no-member
+        samples = self._samples  # pylint: disable=no-member
+        key = self._run_key  # pylint: disable=no-member
+
+        cache = run.has_cached_run_results(samples, key)
+        run.save_run_results(samples, key, self, overwrite=True, cache=cache)
+
     def attributes(self):
         """Returns the list of class attributes that will be serialized by
         :meth:`serialize`.
@@ -648,7 +678,7 @@ class RunResults(etas.Serializable):
         return ["cls"] + super().attributes()
 
     @classmethod
-    def from_dict(cls, d, samples, config):
+    def from_dict(cls, d, samples, config, key):
         """Builds a :class:`RunResults` from a JSON dict representation of it.
 
         Args:
@@ -656,6 +686,7 @@ class RunResults(etas.Serializable):
             samples: the :class:`fiftyone.core.collections.SampleCollection`
                 for the run
             config: the :class:`RunConfig` for the run
+            key: the key for the run
 
         Returns:
             a :class:`RunResults`
@@ -664,7 +695,12 @@ class RunResults(etas.Serializable):
             return None
 
         run_results_cls = etau.get_class(d["cls"])
-        return run_results_cls._from_dict(d, samples, config)
+        run_results = run_results_cls._from_dict(d, samples, config)
+
+        # @todo formalize this
+        setattr(run_results, "_run_key", key)
+
+        return run_results
 
     @classmethod
     def _from_dict(cls, d, samples, config):

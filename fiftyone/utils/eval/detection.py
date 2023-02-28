@@ -366,13 +366,14 @@ class DetectionEvaluation(foe.EvaluationMethod):
             a :class:`DetectionResults`
         """
         return DetectionResults(
+            samples,
+            self.config,
             matches,
             eval_key=eval_key,
             gt_field=self.config.gt_field,
             pred_field=self.config.pred_field,
             classes=classes,
             missing=missing,
-            samples=samples,
         )
 
     def get_fields(self, samples, eval_key):
@@ -459,6 +460,8 @@ class DetectionResults(BaseEvaluationResults):
     """Class that stores the results of a detection evaluation.
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`DetectionEvaluationConfig` used
         matches: a list of
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
@@ -470,19 +473,20 @@ class DetectionResults(BaseEvaluationResults):
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any unmatched objects are given
             this label for evaluation purposes
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        backend (None): a :class:`DetectionEvaluation` backend
     """
 
     def __init__(
         self,
+        samples,
+        config,
         matches,
         eval_key=None,
         gt_field=None,
         pred_field=None,
         classes=None,
         missing=None,
-        samples=None,
+        backend=None,
     ):
         if matches:
             ytrue, ypred, ious, confs, ytrue_ids, ypred_ids = zip(*matches)
@@ -497,6 +501,8 @@ class DetectionResults(BaseEvaluationResults):
             )
 
         super().__init__(
+            samples,
+            config,
             ytrue,
             ypred,
             confs=confs,
@@ -507,7 +513,7 @@ class DetectionResults(BaseEvaluationResults):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
-            samples=samples,
+            backend=backend,
         )
         self.ious = np.array(ious)
 
@@ -538,13 +544,14 @@ class DetectionResults(BaseEvaluationResults):
         matches = list(zip(ytrue, ypred, ious, confs, ytrue_ids, ypred_ids))
 
         return cls(
+            samples,
+            config,
             matches,
             eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
             classes=classes,
             missing=missing,
-            samples=samples,
             **kwargs,
         )
 

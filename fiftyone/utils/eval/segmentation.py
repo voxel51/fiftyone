@@ -339,13 +339,14 @@ class SimpleEvaluation(SegmentationEvaluation):
             missing = None
 
         return SegmentationResults(
+            samples,
+            self.config,
             confusion_matrix,
             classes,
             eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
             missing=missing,
-            samples=samples,
         )
 
 
@@ -353,25 +354,28 @@ class SegmentationResults(BaseEvaluationResults):
     """Class that stores the results of a segmentation evaluation.
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`SegmentationEvaluationConfig` used
         pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
         eval_key (None): the evaluation key for the evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         missing (None): a missing (background) class
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        backend (None): a :class:`SegmentationEvaluation` backend
     """
 
     def __init__(
         self,
+        samples,
+        config,
         pixel_confusion_matrix,
         classes,
         eval_key=None,
         gt_field=None,
         pred_field=None,
         missing=None,
-        samples=None,
+        backend=None,
     ):
         pixel_confusion_matrix = np.asarray(pixel_confusion_matrix)
         ytrue, ypred, weights = self._parse_confusion_matrix(
@@ -379,6 +383,8 @@ class SegmentationResults(BaseEvaluationResults):
         )
 
         super().__init__(
+            samples,
+            config,
             ytrue,
             ypred,
             weights=weights,
@@ -387,7 +393,7 @@ class SegmentationResults(BaseEvaluationResults):
             pred_field=pred_field,
             classes=classes,
             missing=missing,
-            samples=samples,
+            backend=backend,
         )
 
         self.pixel_confusion_matrix = pixel_confusion_matrix
@@ -406,13 +412,14 @@ class SegmentationResults(BaseEvaluationResults):
     @classmethod
     def _from_dict(cls, d, samples, config, **kwargs):
         return cls(
+            samples,
+            config,
             d["pixel_confusion_matrix"],
             d["classes"],
             eval_key=d.get("eval_key", None),
             gt_field=d.get("gt_field", None),
             pred_field=d.get("pred_field", None),
             missing=d.get("missing", None),
-            samples=samples,
             **kwargs,
         )
 
@@ -484,7 +491,9 @@ def _extract_contour_band_values(pred_mask, gt_mask, bandwidth):
 
 def _compute_accuracy_precision_recall(confusion_matrix, values, average):
     missing = 0 if values[0] == 0 else None
-    results = SegmentationResults(confusion_matrix, values, missing=missing)
+    results = SegmentationResults(
+        None, None, confusion_matrix, values, missing=missing, backend=-1
+    )
     metrics = results.metrics(average=average)
     if metrics["support"] == 0:
         return None, None, None

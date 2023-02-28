@@ -18,6 +18,9 @@ class BaseEvaluationResults(foe.EvaluationResults):
     """Base class for evaluation results.
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`fiftyone.core.evaluation.EvaluationMethodConfig`
+            used
         ytrue: a list of ground truth labels
         ypred: a list of predicted labels
         confs (None): an optional list of confidences for the predictions
@@ -33,10 +36,14 @@ class BaseEvaluationResults(foe.EvaluationResults):
             given this label for evaluation purposes
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             for which the results were computed
+        backend (None): a :class:`fiftyone.core.evaluation.EvaluationMethod`
+            backend
     """
 
     def __init__(
         self,
+        samples,
+        config,
         ytrue,
         ypred,
         confs=None,
@@ -48,8 +55,12 @@ class BaseEvaluationResults(foe.EvaluationResults):
         ypred_ids=None,
         classes=None,
         missing=None,
-        samples=None,
+        backend=None,
     ):
+        if backend is None:
+            backend = config.build()
+            backend.ensure_requirements()
+
         if missing is None:
             missing = "(none)"
 
@@ -72,6 +83,8 @@ class BaseEvaluationResults(foe.EvaluationResults):
         self.missing = missing
 
         self._samples = samples
+        self._config = config
+        self._backend = backend
 
     def report(self, classes=None):
         """Generates a classification report for the results via
@@ -376,6 +389,8 @@ class BaseEvaluationResults(foe.EvaluationResults):
         classes = d.get("classes", None)
         missing = d.get("missing", None)
         return cls(
+            samples,
+            config,
             ytrue,
             ypred,
             confs=confs,
@@ -387,7 +402,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
-            samples=samples,
             **kwargs,
         )
 
