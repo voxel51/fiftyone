@@ -1,63 +1,66 @@
-import { getFetchFunction } from "@fiftyone/utilities";
+import { getFetchFunction, ServerError } from "@fiftyone/utilities";
 import * as types from "./types";
+import { CallbackInterface } from "recoil";
+import * as fos from "@fiftyone/state";
+import { useState } from "react";
 
-class ExecutionContext {
+export class ExecutionContext {
+  public state: CallbackInterface;
   constructor(
     public params: Map<string, any> = new Map(),
-    private _currentContext: any
-  ) {}
+    _currentContext: any,
+    public hooks: { [key: string]: any } = {}
+  ) {
+    this.state = _currentContext.state;
+  }
+}
+
+function isObjWithContent(obj: any) {
+  return typeof obj === "object" && Object.keys(obj).length > 0;
 }
 
 class OperatorResult {
-  constructor(public result: any) {}
+  constructor(
+    public operator: Operator,
+    public result: any = {},
+    public error: any
+  ) {}
+  hasOutputContent() {
+    return isObjWithContent(this.result) || isObjWithContent(this.error);
+  }
+  getTriggers() {
+    if (isObjWithContent(this.result)) {
+      const triggerProps = this.operator.definition.outputs.filter(
+        (p) => p.type === types.Trigger
+      );
+    }
+  }
   toJSON() {
-    return this.result;
+    return {
+      result: this.result,
+      error: this.error,
+    };
   }
 }
 
 class OperatorDefinition {
-  constructor(description: string) {
-    this.inputs = [];
-    this.outputs = [];
+  constructor(public description: string) {
+    this.inputs = new types.ObjectType();
+    this.outputs = new types.ObjectType();
   }
-  public inputs: OperatorProperty[];
-  public outputs: OperatorProperty[];
-  public trigger: OperatorTrigger;
-  addInputProperty(property: OperatorProperty) {
-    this.inputs.push(property);
+  public inputs: types.ObjectType;
+  public outputs: types.ObjectType;
+  addInputProperty(property: types.Property) {
+    this.inputs.addProperty(property);
   }
-  addOutputProperty(property: OperatorProperty) {
-    this.outputs.push(property);
+  addOutputProperty(property: types.Property) {
+    this.outputs.addProperty(property);
   }
   static fromJSON(json: any) {
     const def = new OperatorDefinition(json.description);
-    def.inputs = json.inputs.map((p: any) => OperatorProperty.fromJSON(p));
-    def.outputs = json.outputs.map((p: any) => OperatorProperty.fromJSON(p));
-    def.trigger = OperatorTrigger.fromJSON(json.trigger);
+    def.inputs = types.ObjectType.fromJSON(json.inputs);
+    def.outputs = types.ObjectType.fromJSON(json.outputs);
     return def;
-  }
-}
-
-class OperatorProperty {
-  public description: string;
-  public required: boolean;
-  public default: any;
-  constructor(public name: string, public type: types.ANY_TYPE) {}
-  static fromJSON(json: any) {
-    const property = new OperatorProperty(
-      json.name,
-      types.typeFromJSON(json.type)
-    );
-    property.description = json.description;
-    property.required = json.required;
-    property.default = json.default;
-    return property;
-  }
-}
-class OperatorTrigger {
-  static fromJSON(json: any) {
-    const trigger = new OperatorTrigger();
-    return trigger;
   }
 }
 
@@ -68,7 +71,23 @@ export class Operator {
     this.definition = new OperatorDefinition(description);
   }
   needsUserInput() {
-    return this.definition.inputs.length > 0;
+    return this.definition.inputs.properties.length > 0;
+  }
+  needsOutput(result: OperatorResult) {
+    if (
+      this.definition.outputs.properties.length > 0 &&
+      result.hasOutputContent()
+    ) {
+      return true;
+    }
+    if (result.error) {
+      return true;
+    }
+    return false;
+  }
+  useHooks() {
+    // This can be overriden to use hooks in the execute function
+    return {};
   }
   async execute(ctx: ExecutionContext) {
     throw new Error(`Operator ${this.name} does not implement execute`);
@@ -85,7 +104,7 @@ class OperatorRegistry {
   register(operator: Operator) {
     this.operators.set(operator.name, operator);
   }
-  getOperator(name: string) {
+  getOperator(name: string): Operator {
     return this.operators.get(name);
   }
   operatorExists(name: string) {
@@ -101,11 +120,35 @@ export function registerOperator(operator: Operator) {
 }
 
 export async function loadOperatorsFromServer() {
-  const { operators, loading_errors } = await getFetchFunction()("GET", "/operators");
-  console.log({loading_errors})
-  const operatorInstances = operators.map((d: any) => Operator.fromJSON(d));
-  for (const operator of operatorInstances) {
-    remoteRegistry.register(operator);
+  try {
+    const { operators, errors } = await getFetchFunction()("GET", "/operators");
+    const operatorInstances = operators.map((d: any) => Operator.fromJSON(d));
+    for (const operator of operatorInstances) {
+      remoteRegistry.register(operator);
+    }
+    const errorFiles = (errors && Object.keys(errors)) || [];
+    if (errorFiles.length > 0) {
+      for (const file of errorFiles) {
+        const fileErrors = errors[file];
+        console.error(`Error loading operators from ${file}:`);
+        for (const error of fileErrors) {
+          console.error(error);
+        }
+      }
+    }
+  } catch (e) {
+    if (e instanceof ServerError) {
+      const errorBody = e.bodyResponse;
+      if (errorBody && errorBody.kind === "Server Error") {
+        console.error("Error loading operators from server:");
+        console.error(errorBody.stack);
+      } else {
+        console.error("Unknown error loading operators from server", errorBody);
+      }
+    } else {
+      console.error(e);
+      throw e;
+    }
   }
 }
 
@@ -139,22 +182,77 @@ export function listLocalAndRemoteOperators() {
   };
 }
 
-export async function executeOperator(operatorName, params, currentContext) {
+export async function executeOperator(
+  operatorName,
+  params,
+  currentContext,
+  hooks
+) {
   const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
 
-  const ctx = new ExecutionContext(params, currentContext);
-  let rawResult;
+  const ctx = new ExecutionContext(params, currentContext, hooks);
+  let result;
+  let error;
   if (isRemote) {
-    rawResult = await getFetchFunction()("POST", "/operators/execute", {
-      operator_name: operatorName,
-      params: params,
-      dataset_name: currentContext.datasetName,
-      extended: currentContext.extended,
-      view: currentContext.view,
-      filters: currentContext.filters,
-    });
+    const serverResult = await getFetchFunction()(
+      "POST",
+      "/operators/execute",
+      {
+        operator_name: operatorName,
+        params: params,
+        dataset_name: currentContext.datasetName,
+        extended: currentContext.extended,
+        view: currentContext.view,
+        filters: currentContext.filters,
+      }
+    );
+    result = serverResult.result;
+    error = serverResult.error;
   } else {
-    rawResult = await operator.execute(ctx);
+    try {
+      result = await operator.execute(ctx);
+    } catch (e) {
+      error = e;
+    }
   }
-  return new OperatorResult(rawResult);
+  return new OperatorResult(operator, result, error);
+}
+
+//
+// BUILD-IN OPERATORS
+//
+class ReloadSamples extends Operator {
+  constructor() {
+    super("reload_samples", "Reload samples from the dataset");
+  }
+  async execute({ state }: ExecutionContext) {
+    const refresherTick = await state.snapshot.getPromise(fos.refresher);
+    state.set(fos.refresher, refresherTick + 1);
+  }
+}
+
+class ClearSelectedSamples extends Operator {
+  constructor() {
+    super("clear_selected_samples", "Clear selected samples");
+  }
+  useHooks(): {} {
+    return {
+      state: useState(123),
+    };
+  }
+  async execute({ state, hooks }: ExecutionContext) {
+    // needs to mutate the server / session
+    state.reset(fos.selectedSamples);
+    console.log("hooks", hooks);
+  }
+}
+
+export function registerBuiltInOperators() {
+  registerOperator(new ReloadSamples());
+  registerOperator(new ClearSelectedSamples());
+}
+
+export async function loadOperators() {
+  registerBuiltInOperators();
+  await loadOperatorsFromServer();
 }
