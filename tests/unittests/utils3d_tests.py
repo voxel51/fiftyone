@@ -19,6 +19,10 @@ import fiftyone.utils.utils3d as fou3d
 from decorators import drop_datasets
 
 
+def get_abs_path(relative_path):
+    return os.path.join(os.path.dirname(__file__), relative_path)
+
+
 class BaseOrthographicProjectionTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -169,7 +173,7 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
         )
         self.assertValidProjection(
             pcd_sample["orthographic_projection_metadata"],
-            "specs/3d/30x30_seed_42_none.png",
+            get_abs_path("specs/3d/30x30_seed_42_none.png"),
         )
 
     @drop_datasets
@@ -188,7 +192,7 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
         )
         self.assertValidProjection(
             dataset.first()["orthographic_projection_metadata"],
-            "specs/3d/100x100_seed_1_none.png",
+            get_abs_path("specs/3d/100x100_seed_1_none.png"),
         )
 
         fou3d.compute_orthographic_projection_images(
@@ -199,7 +203,7 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
         )
         self.assertValidProjection(
             dataset.first()["orthographic_projection_metadata"],
-            "./specs/3d/50x50_seed_1_rgb.png",
+            get_abs_path("specs/3d/50x50_seed_1_rgb.png"),
         )
 
     @drop_datasets
@@ -219,7 +223,7 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
         )
         self.assertValidProjection(
             dataset.first()["orthographic_projection_metadata"],
-            "./specs/3d/100x100_seed_10_none.png",
+            get_abs_path("specs/3d/100x100_seed_10_none.png"),
         )
 
         fou3d.compute_orthographic_projection_images(
@@ -230,7 +234,7 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
         )
         self.assertValidProjection(
             dataset.first()["orthographic_projection_metadata"],
-            "./specs/3d/100x100_seed_10_height.png",
+            get_abs_path("specs/3d/100x100_seed_10_height.png"),
         )
 
 
