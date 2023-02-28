@@ -261,6 +261,7 @@ class SimpleEvaluation(ClassificationEvaluation):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
+            backend=self,
         )
 
         if eval_key is None:
@@ -401,6 +402,7 @@ class TopKEvaluation(ClassificationEvaluation):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
+            backend=self,
         )
 
         if eval_key is None:
@@ -588,6 +590,7 @@ class BinaryEvaluation(ClassificationEvaluation):
             pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
+            backend=self,
         )
 
         if eval_key is None:

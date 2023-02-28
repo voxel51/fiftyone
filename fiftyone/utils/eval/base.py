@@ -57,9 +57,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         missing=None,
         backend=None,
     ):
-        if backend is None:
-            backend = config.build()
-            backend.ensure_requirements()
+        super().__init__(samples, config, backend=backend)
 
         if missing is None:
             missing = "(none)"
@@ -81,10 +79,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
         )
         self.classes = np.asarray(classes)
         self.missing = missing
-
-        self._samples = samples
-        self._config = config
-        self._backend = backend
 
     def report(self, classes=None):
         """Generates a classification report for the results via

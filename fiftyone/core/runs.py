@@ -438,9 +438,7 @@ class Run(Configurable):
             # We use `json_util.dumps` so that run results may contain BSON
             results_bytes = json_util.dumps(run_results.serialize()).encode()
             run_doc.results.put(results_bytes, content_type="application/json")
-
-            # @todo formalize this
-            setattr(run_results, "_run_key", key)
+            run_results._set_key(key)
 
         # Cache the results for future use in this session
         if cache:
@@ -652,18 +650,31 @@ class Run(Configurable):
 class RunResults(etas.Serializable):
     """Base class for storing the results of a run."""
 
+    def __init__(self, samples, config, backend=None):
+        if backend is None:
+            backend = config.build()
+
+            # @todo distinguish between build and query-time requirements
+            backend.ensure_requirements()
+
+        self._samples = samples
+        self._config = config
+        self._backend = backend
+        self._key = None
+
     @property
     def cls(self):
         """The fully-qualified name of this :class:`RunResults` class."""
         return etau.get_class_name(self)
 
+    def _set_key(self, key):
+        self._key = key
+
     def save(self):
         """Saves the results to the database."""
-
-        # @todo these must always exist
-        run = self._backend  # pylint: disable=no-member
-        samples = self._samples  # pylint: disable=no-member
-        key = self._run_key  # pylint: disable=no-member
+        run = self._backend
+        samples = self._samples
+        key = self._key
 
         cache = run.has_cached_run_results(samples, key)
         run.save_run_results(samples, key, self, overwrite=True, cache=cache)
@@ -696,10 +707,7 @@ class RunResults(etas.Serializable):
 
         run_results_cls = etau.get_class(d["cls"])
         run_results = run_results_cls._from_dict(d, samples, config)
-
-        # @todo formalize this
-        setattr(run_results, "_run_key", key)
-
+        run_results._set_key(key)
         return run_results
 
     @classmethod

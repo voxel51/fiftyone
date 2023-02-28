@@ -374,6 +374,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
             pred_field=self.config.pred_field,
             classes=classes,
             missing=missing,
+            backend=self,
         )
 
     def get_fields(self, samples, eval_key):
@@ -515,6 +516,7 @@ class DetectionResults(BaseEvaluationResults):
             missing=missing,
             backend=backend,
         )
+
         self.ious = np.array(ious)
 
     @classmethod
