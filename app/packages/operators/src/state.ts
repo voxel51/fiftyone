@@ -3,6 +3,7 @@ import {
   selector,
   useRecoilValue,
   useRecoilState,
+  useRecoilCallback,
   useRecoilTransaction_UNSTABLE,
 } from "recoil";
 import { useState, useEffect, useCallback } from "react";
@@ -28,7 +29,7 @@ export const operatorPromptState = selector({
     const { operatorName, params } = promptingOperator;
     const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
 
-    const inputFields = operator.definition.inputs.map((input) => {
+    const inputFields = operator.definition.inputs.properties.map((input) => {
       return {
         name: input.name,
         label: input.label || input.name,
@@ -36,15 +37,24 @@ export const operatorPromptState = selector({
         default: input.default,
       };
     });
-    const outputFields = operator.definition.outputs.map((output) => {
-      return {
-        name: output.name,
-        label: output.label || output.name,
-        type: output.type,
-        default: output.default,
-      };
-    });
+    const outputFields = operator.definition.outputs.properties.map(
+      (output) => {
+        return {
+          name: output.name,
+          label: output.label || output.name,
+          type: output.type,
+          default: output.default,
+        };
+      }
+    );
     return { inputFields, outputFields, operator };
+  },
+});
+
+export const showOperatorPromptSelector = selector({
+  key: "showOperatorPrompt",
+  get: ({ get }) => {
+    return !!get(promptingOperatorState);
   },
 });
 
@@ -81,7 +91,7 @@ export const useOperatorPrompt = () => {
       }
   );
 
-  const executor = useOperatorExecutor(promptingOperator?.operatorName);
+  const executor = useOperatorExecutor(promptingOperator.operatorName);
   const execute = useCallback(() => {
     executor.execute(promptingOperator.params);
   }, [operator, promptingOperator]);
@@ -115,17 +125,22 @@ export const useOperatorPrompt = () => {
   }, [onKeyDown]);
 
   useEffect(() => {
-    console.log(operator);
     if (operator && !operator.needsUserInput()) {
       execute();
     }
   }, [operator]);
 
-  if (!promptingOperator) return null;
-
   const isExecuting = executor && executor.isExecuting;
   const hasResultOrError = executor && (executor.result || executor.error);
   const showPrompt = inputFields && !isExecuting && !hasResultOrError;
+
+  useEffect(() => {
+    if (hasResultOrError && !executor.needsOutput) {
+      close();
+    }
+  }, [executor.result, executor.error, executor.needsOutput]);
+
+  if (!promptingOperator) return null;
 
   return {
     inputFields,
@@ -300,6 +315,10 @@ const operatorExecutionResultState = atom({
   key: "operatorExecutionResultState",
   default: null,
 });
+const operatorExecutionNeedsOutputState = atom({
+  key: "operatorExecutionNeedsOutputState",
+  default: null,
+});
 
 export function useOperatorExecutor(name) {
   const [isExecuting, setIsExecuting] = useRecoilState(
@@ -311,32 +330,56 @@ export function useOperatorExecutor(name) {
   const view = useRecoilValue(fos.view);
   const extended = useRecoilValue(fos.extendedStages);
   const filters = useRecoilValue(fos.filters);
+  const [needsOutput, setNeedsOutput] = useRecoilState(
+    operatorExecutionNeedsOutputState
+  );
+  const { operator } = getLocalOrRemoteOperator(name);
+  const hooks = operator.useHooks();
 
   const clear = () => {
     setError(null);
     setResult(null);
     setIsExecuting(false);
   };
-  return {
-    isExecuting,
-    error,
-    result,
-    async execute(params) {
-      setIsExecuting(true);
-      try {
-        const result = await executeOperator(name, params, {
+
+  // useEffect(() => {
+  //   return () => {
+  //     clear()
+  //   }
+  // }, [])
+
+  const execute = useRecoilCallback((state) => async (params) => {
+    setIsExecuting(true);
+    try {
+      const result = await executeOperator(
+        name,
+        params,
+        {
           datasetName,
           view,
           extended,
           filters,
-        });
-        console.log("setting result", result);
-        setResult(result);
-      } catch (e) {
-        setError(e);
-      }
-      setIsExecuting(false);
-    },
+          state,
+        },
+        hooks
+      );
+      setResult(result.result);
+      setError(result.error);
+      setNeedsOutput(result.hasOutputContent());
+    } catch (e) {
+      console.error("Error executing operator");
+      console.error(e);
+      setError(e);
+      setResult(null);
+    }
+    setIsExecuting(false);
+  });
+  return {
+    isExecuting,
+    execute,
+    needsOutput,
+    error,
+    result,
     clear,
   };
 }

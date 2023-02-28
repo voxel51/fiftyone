@@ -29,7 +29,7 @@ def execute_operator(operator_name, request_params):
         raw_result = operator.execute(ctx)
     except Exception as e:
         return ExecutionResult(ctx, None, str(e))
-    return ExecutionResult(ctx, raw_result)
+    return ExecutionResult(ctx, raw_result, None)
 
 
 class ExecutionContext:

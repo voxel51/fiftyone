@@ -11,9 +11,12 @@ import glob
 import os
 import yaml  # BEFORE PR: add to requirements.txt
 import importlib
+import sys
+import traceback
 
 REGISTERED_MODULES = {}
 FAILED_MODULES = {}
+
 
 def register_module(filepath, mod):
     """Registers all operators in the given module."""
@@ -21,17 +24,17 @@ def register_module(filepath, mod):
         unregister_module(filepath)
     try:
         mod.register()
-        REGISTERED_MODULES.set(filepath, mod)
+        REGISTERED_MODULES[filepath] = mod
         if filepath in FAILED_MODULES:
             FAILED_MODULES.delete(filepath)
     except Exception as e:
-        errors = [e]
+        errors = [traceback.format_exc()]
         try:
             mod.unregister()
         except Exception as ue:
-            errors.append(ue)
+            errors.append(traceback.format_exc())
             pass
-        FAILED_MODULES.set(filepath, errors)
+        FAILED_MODULES[filepath] = errors
 
 
 def unregister_module(filepath):
@@ -45,15 +48,18 @@ def unregister_module(filepath):
         except:
             pass
 
+
 def unregister_all():
     """Unregisters all operators."""
     for mod in REGISTERED_MODULES:
         mod.unregister()
     REGISTERED_MODULES = []
 
+
 def list_module_errors():
     """Lists the errors that occurred when loading modules."""
     return FAILED_MODULES
+
 
 def load_from_dir():
     """Loads all operators from the default operator directory."""
@@ -71,18 +77,16 @@ def load_from_dir():
 
         module_dir = os.path.dirname(yaml_path)
         mod = exec_module_from_dir(module_dir)
-        register_module(mod)
 
 
 def exec_module_from_dir(module_dir):
-    spec = importlib.util.spec_from_file_location(
-        os.path.dirname(module_dir), os.path.join(module_dir, "__init__.py")
-    )
-
+    mod_dir = os.path.dirname(module_dir)
+    mod_filepath = os.path.join(module_dir, "__init__.py")
+    spec = importlib.util.spec_from_file_location(mod_dir, mod_filepath)
     mod = importlib.util.module_from_spec(spec)
-
+    sys.modules[mod.__name__] = mod
     spec.loader.exec_module(mod)
-
+    register_module(mod_filepath, mod)
     return mod
 
 

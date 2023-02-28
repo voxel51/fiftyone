@@ -137,24 +137,28 @@ export const setFetchFunction = (
           },
           error.message
         );
-      } catch {
-        let bodyResponse = "";
+      } catch (e) {
+        if (e instanceof ServerError) {
+          throw e;
+        } else {
+          let bodyResponse = "";
 
-        try {
-          bodyResponse = await response.text();
-        } catch {}
-        throw new NetworkError(
-          {
-            code: response.status,
-            statusText: response.statusText,
-            bodyResponse,
-            route: response.url,
-            payload: body as object,
-            requestHeaders: headers,
-            responseHeaders: response.headers,
-          },
-          response.statusText
-        );
+          try {
+            bodyResponse = await response.text();
+          } catch {}
+          throw new NetworkError(
+            {
+              code: response.status,
+              statusText: response.statusText,
+              bodyResponse,
+              route: response.url,
+              payload: body as object,
+              requestHeaders: headers,
+              responseHeaders: response.headers,
+            },
+            response.statusText
+          );
+        }
       }
     }
 

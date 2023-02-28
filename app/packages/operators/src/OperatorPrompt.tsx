@@ -2,7 +2,7 @@ import { createPortal } from "react-dom";
 import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
 import { Button } from "@fiftyone/components";
-import { useOperatorPrompt } from "./state";
+import { showOperatorPromptSelector, useOperatorPrompt } from "./state";
 import * as types from "./types";
 import {
   FormControl,
@@ -14,6 +14,7 @@ import {
   RadioGroup,
   Select,
 } from "@mui/material";
+import { useRecoilValue } from "recoil";
 
 const PromptContainer = styled.div`
   position: absolute;
@@ -43,9 +44,16 @@ const ButtonsContainer = styled.div`
 `;
 
 export default function OperatorPrompt() {
-  const operatorPrompt = useOperatorPrompt();
+  const show = useRecoilValue(showOperatorPromptSelector);
+  if (show) {
+    return <ActualOperatorPrompt />;
+  } else {
+    return null;
+  }
+}
 
-  if (!operatorPrompt) return null;
+function ActualOperatorPrompt() {
+  const operatorPrompt = useOperatorPrompt();
 
   return createPortal(
     <PromptContainer>
@@ -64,8 +72,10 @@ export default function OperatorPrompt() {
 }
 
 function Prompting({ operatorPrompt }) {
+  console.log(operatorPrompt.inputFields);
   return (
     <>
+      <h3>Input</h3>
       <Form>
         {operatorPrompt.inputFields.map((field) => (
           <Field
@@ -98,7 +108,6 @@ function Prompting({ operatorPrompt }) {
 }
 
 function Results({ operatorPrompt }) {
-  console.log(operatorPrompt);
   return (
     <>
       <h3>Result</h3>
@@ -108,7 +117,7 @@ function Results({ operatorPrompt }) {
             key={field.name}
             field={field}
             readOnly={true}
-            defaultValue={operatorPrompt.executor.result.result[field.name]}
+            defaultValue={operatorPrompt.executor.result[field.name]}
           />
         ))}
       <ButtonsContainer>
@@ -137,6 +146,8 @@ function getComponentForType(type: types.ANY_TYPE) {
       return Checkbox;
     case types.Enum:
       return Emum;
+    case types.List:
+      return List;
     default:
       null;
   }
@@ -275,4 +286,31 @@ function Emum({ field, onChange, defaultValue, readOnly }) {
       </FormControl>
     );
   }
+}
+
+function List({ field, onChange, defaultValue, readOnly }) {
+  const [value, setValue] = React.useState(field.default || []);
+
+  function setByIndex(index, newValue) {
+    setValue((oldValue) => {
+      const newValue = [...oldValue];
+      newValue[index] = newValue;
+      return newValue;
+    });
+  }
+
+  useEffect(() => {
+    if (onChange) onChange({ target: { value } });
+  }, [value]);
+
+  console.log(field.type.elementType);
+  return (
+    <FormControl component="fieldset" style={{ marginBottom: "1rem" }}>
+      <FormLabel component="legend">{field.label}</FormLabel>
+      <GenericFieldValue
+        field={{ ...field, type: field.type.elementType }}
+        onChange={(e) => setByIndex(0, e.target.value)}
+      />
+    </FormControl>
+  );
 }
