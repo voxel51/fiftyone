@@ -90,7 +90,7 @@ async function fetchPluginsMetadata(): Promise<PluginFetchResult> {
 
 let _settings = null;
 export async function loadPlugins() {
-  await foo.loadOperatorsFromServer();
+  await foo.loadOperators();
   const { plugins, settings } = await fetchPluginsMetadata();
   window.__fo_plugin_settings__ = settings;
   for (const { scriptPath, name } of plugins) {
