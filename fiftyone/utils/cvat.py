@@ -3082,6 +3082,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         username=None,
         password=None,
         headers=None,
+        organization=None,
         task_size=None,
         segment_size=None,
         image_quality=75,
@@ -3116,6 +3117,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.occluded_attr = occluded_attr
         self.group_id_attr = group_id_attr
         self.issue_tracker = issue_tracker
+        self.organization = organization
 
         # store privately so these aren't serialized
         self._username = username
@@ -3498,6 +3500,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._password = password
         self._headers = headers
 
+        self._orginization = None
         self._server_version = None
         self._session = None
         self._user_id_map = {}
@@ -3658,9 +3661,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         self._add_referer()
 
+        if self._orginization:
+            self._add_organization()
+
     def _add_referer(self):
         if "Referer" not in self._session.headers:
             self._session.headers["Referer"] = self.login_url
+
+    def _add_orginization(self):
+        if "X-Organization" not in self._session.headers:
+            self._session.headers["X-Organization"] = self._orginization
 
     def close(self):
         self._session.close()
