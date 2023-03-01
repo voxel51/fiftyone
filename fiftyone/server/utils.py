@@ -5,7 +5,12 @@ FiftyOne Server utils.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import typing as t
+
 import cachetools
+from dacite import Config, from_dict as _from_dict
+from dacite.core import T
+from dacite.data import Data
 
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
@@ -15,6 +20,7 @@ import fiftyone.core.media as fom
 
 
 _cache = cachetools.TTLCache(maxsize=10, ttl=900)  # ttl in seconds
+_dacite_config = Config(check_types=False)
 
 
 def load_and_cache_dataset(name):
@@ -86,6 +92,20 @@ def change_label_tags(sample_collection, changes, label_fields=None):
 
     if del_tags:
         sample_collection.untag_labels(del_tags, label_fields=label_fields)
+
+
+def from_dict(data_class: t.Type[T], data: Data) -> T:
+    """Wrapping function for ``dacite.from_dict`` that ensures a common
+    configuration is used.
+
+    Args:
+        data_class: a dataclass
+        data: the data with which to instantiate the dataclass instance
+
+    Returns:
+        a dataclass instance
+    """
+    return _from_dict(data_class, data, config=_dacite_config)
 
 
 def iter_label_fields(view: foc.SampleCollection):

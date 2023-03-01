@@ -1,6 +1,6 @@
 import { atom, atomFamily, useRecoilCallback } from "recoil";
 
-import { Sample, RGB } from "@fiftyone/looker/src/state";
+import { Sample } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
@@ -208,9 +208,9 @@ export const sidebarOverride = atom<string>({
   default: null,
 });
 
-export const extendedSelection = atom<string[]>({
+export const extendedSelection = atom<{ selection: string[]; scope?: string }>({
   key: "extendedSelection",
-  default: null,
+  default: { selection: null },
 });
 export const extendedSelectionOverrideStage = atom<any>({
   key: "extendedSelectionOverrideStage",
