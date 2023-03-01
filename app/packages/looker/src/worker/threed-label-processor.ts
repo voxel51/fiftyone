@@ -172,14 +172,13 @@ const PainterFactory3D = (
 const VALID_THREE_D_LABELS = new Set(["Detections", "Detection"]);
 
 export const process3DLabels = async (sample: Sample) => {
-  debugger;
   const orthographicProjectionField = Object.entries(sample)
     .find((el) => el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata")
-    ?.at(0) as string;
+    ?.at(0) as string | undefined;
 
   const painterFactory = PainterFactory3D(
     orthographicProjectionField
-      ? sample[orthographicProjectionField]
+      ? (sample[orthographicProjectionField] as OrthogrpahicProjectionMetadata)
       : getInferredParamsForUndefinedProjection(sample)
   );
 

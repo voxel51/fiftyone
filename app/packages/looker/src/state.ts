@@ -31,6 +31,16 @@ export type OrthogrpahicProjectionMetadata = {
   max_bound: [number, number];
 };
 
+export type GenericLabel = {
+  [labelKey: string]:
+    | {
+        _cls: string;
+        [field: string]: unknown;
+      }
+    | OrthogrpahicProjectionMetadata;
+  // todo: add other label types
+};
+
 export type Sample = {
   metadata: {
     width: number;
@@ -42,14 +52,7 @@ export type Sample = {
   tags: string[];
   _label_tags: string[];
   _media_type: "image" | "video" | "point-cloud";
-} & {
-  [labelKey: string]: {
-    _cls: string;
-    [field: string]: unknown;
-  };
-} & {
-  [labelKey: string]: OrthogrpahicProjectionMetadata;
-};
+} & GenericLabel;
 
 export interface LabelData {
   labelId: string;
