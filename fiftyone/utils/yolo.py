@@ -1,7 +1,7 @@
 """
 Utilities for working with datasets in YOLO format.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -14,13 +14,20 @@ import yaml
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
 logger = logging.getLogger(__name__)
 
 
-def add_yolo_labels(sample_collection, label_field, labels_path, classes=None):
+def add_yolo_labels(
+    sample_collection,
+    label_field,
+    labels_path,
+    classes,
+    include_missing=False,
+):
     """Adds the given YOLO-formatted labels to the collection.
 
     Each YOLO txt file should be a space-delimited file whose rows define
@@ -48,18 +55,12 @@ def add_yolo_labels(sample_collection, label_field, labels_path, classes=None):
             -   a directory containing YOLO TXT files whose filenames (less
                 extension) correspond to image filenames in
                 ``sample_collection``, in any order
-        classes (None): the list of class label strings. If not provided, these
-            must be available from
-            :meth:`fiftyone.core.collections.SampleCollection.get_classes`
+        classes: the list of class label strings
+        include_missing (False): whether to insert empty
+            :class:`Detections <fiftyone.core.labels.Detections>` instances for
+            any samples in the input collection whose ``label_field`` is
+            ``None`` after import
     """
-    if classes is None:
-        classes = sample_collection.get_classes(label_field)
-
-    if not classes:
-        raise ValueError(
-            "You must provide `classes` in order to load YOLO labels"
-        )
-
     if isinstance(labels_path, (list, tuple)):
         # Explicit list of labels files
         labels = [load_yolo_annotations(p, classes) for p in labels_path]
@@ -128,6 +129,12 @@ def add_yolo_labels(sample_collection, label_field, labels_path, classes=None):
     view = sample_collection.select(matched_ids, ordered=True)
     labels = [load_yolo_annotations(p, classes) for p in matched_paths]
     view.set_values(label_field, labels)
+
+    if include_missing:
+        missing_labels = sample_collection.exists(label_field, False)
+        missing_labels.set_values(
+            label_field, [fol.Detections()] * len(missing_labels)
+        )
 
 
 class YOLOv4DatasetImporter(
@@ -248,8 +255,8 @@ class YOLOv4DatasetImporter(
 
         self._info = None
         self._classes = None
-        self._filepaths = None
         self._labels_paths_map = None
+        self._filepaths = None
         self._iter_filepaths = None
         self._num_samples = None
 
@@ -286,7 +293,7 @@ class YOLOv4DatasetImporter(
         return fol.Detections
 
     def setup(self):
-        if self.images_path is not None and os.path.exists(self.images_path):
+        if self.images_path is not None and os.path.isfile(self.images_path):
             root_dir = os.path.dirname(self.images_path)
 
             image_paths = []
@@ -294,17 +301,18 @@ class YOLOv4DatasetImporter(
                 if not os.path.isabs(path):
                     path = os.path.join(root_dir, path)
 
-                image_paths.append(path)
+                image_paths.append(fou.normpath(path))
         else:
-            logger.warning(
-                "Images file '%s' not found. Listing data directory '%s' "
-                "instead",
-                self.images_path,
-                self.data_path,
-            )
+            if self.images_path is not None:
+                logger.warning(
+                    "Images file '%s' not found. Listing data directory '%s' "
+                    "instead",
+                    self.images_path,
+                    self.data_path,
+                )
 
             image_paths = [
-                p
+                fou.normpath(p)
                 for p in etau.list_files(
                     self.data_path, abs_paths=True, recursive=True
                 )
@@ -321,12 +329,21 @@ class YOLOv4DatasetImporter(
                 # Labels are in same directory as images
                 labels_path = os.path.splitext(image_path)[0] + ".txt"
 
-            if os.path.exists(labels_path):
+            labels_path = fou.normpath(labels_path)
+
+            if os.path.isfile(labels_path):
                 labels_paths_map[image_path] = labels_path
+
+        filepaths = set(labels_paths_map.keys())
+
+        if self.include_all_data:
+            filepaths.update(image_paths)
+
+        filepaths = self._preprocess_list(sorted(filepaths))
 
         if self.classes is not None:
             classes = self.classes
-        elif self.objects_path is not None and os.path.exists(
+        elif self.objects_path is not None and os.path.isfile(
             self.objects_path
         ):
             classes = _read_file_lines(self.objects_path)
@@ -337,14 +354,11 @@ class YOLOv4DatasetImporter(
         if classes is not None:
             info["classes"] = classes
 
-        if not self.include_all_data:
-            image_paths = labels_paths_map.keys()
-
         self._info = info
         self._classes = classes
-        self._filepaths = self._preprocess_list(sorted(image_paths))
         self._labels_paths_map = labels_paths_map
-        self._num_samples = len(self._filepaths)
+        self._filepaths = filepaths
+        self._num_samples = len(filepaths)
 
     def get_dataset_info(self):
         return self._info
@@ -372,6 +386,9 @@ class YOLOv5DatasetImporter(
             If None, the parameter will default to ``dataset.yaml``
         split ("val"): the split to load. Typical values are
             ``("train", "val")``
+        include_all_data (False): whether to generate samples for all images in
+            the data directory (True) rather than only creating samples for
+            images with labels (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -384,6 +401,7 @@ class YOLOv5DatasetImporter(
         dataset_dir=None,
         yaml_path=None,
         split="val",
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -408,11 +426,12 @@ class YOLOv5DatasetImporter(
 
         self.yaml_path = yaml_path
         self.split = split
+        self.include_all_data = include_all_data
 
         self._info = None
         self._classes = None
-        self._filepaths = None
         self._labels_paths_map = None
+        self._filepaths = None
         self._iter_filepaths = None
         self._num_samples = None
 
@@ -457,12 +476,16 @@ class YOLOv5DatasetImporter(
                 % (self.yaml_path, self.split)
             )
 
-        data = d[self.split]
+        dataset_path = d.get("path", "")
+        data = os.path.normpath(os.path.join(dataset_path, d[self.split]))
         classes = d.get("names", None)
 
         if etau.is_str(data) and data.endswith(".txt"):
-            txt_path = _parse_yolo_v5_data_path(data, self.yaml_path)
-            image_paths = _read_file_lines(txt_path)
+            txt_path = _parse_yolo_v5_path(data, self.yaml_path)
+            image_paths = [
+                _parse_yolo_v5_path(fou.normpath(p), txt_path)
+                for p in _read_file_lines(txt_path)
+            ]
         else:
             if etau.is_str(data):
                 data_dirs = [data]
@@ -471,7 +494,9 @@ class YOLOv5DatasetImporter(
 
             image_paths = []
             for data_dir in data_dirs:
-                data_dir = _parse_yolo_v5_data_path(data_dir, self.yaml_path)
+                data_dir = fou.normpath(
+                    _parse_yolo_v5_path(data_dir, self.yaml_path)
+                )
                 image_paths.extend(
                     etau.list_files(data_dir, abs_paths=True, recursive=True)
                 )
@@ -479,8 +504,15 @@ class YOLOv5DatasetImporter(
         labels_paths_map = {}
         for image_path in image_paths:
             labels_path = _get_yolo_v5_labels_path(image_path)
-            if os.path.exists(labels_path):
+            if os.path.isfile(labels_path):
                 labels_paths_map[image_path] = labels_path
+
+        filepaths = set(labels_paths_map.keys())
+
+        if self.include_all_data:
+            filepaths.update(image_paths)
+
+        filepaths = self._preprocess_list(sorted(filepaths))
 
         info = {}
         if classes is not None:
@@ -489,8 +521,8 @@ class YOLOv5DatasetImporter(
         self._info = info
         self._classes = classes
         self._labels_paths_map = labels_paths_map
-        self._filepaths = self._preprocess_list(sorted(image_paths))
-        self._num_samples = len(self._filepaths)
+        self._filepaths = filepaths
+        self._num_samples = len(filepaths)
 
     def get_dataset_info(self):
         return self._info
@@ -569,9 +601,17 @@ class YOLOv4DatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
-        classes (None): the list of possible class labels. If not provided,
-            this list will be extracted when :meth:`log_collection` is called,
-            if possible
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` and
+            ``labels_path`` to generate output paths for each exported image
+            and labels file. This argument allows for populating nested
+            subdirectories that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
+        classes (None): the list of possible class labels
+        include_confidence (False): whether to include detection confidences in
+            the export, if they exist
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -585,7 +625,9 @@ class YOLOv4DatasetExporter(
         objects_path=None,
         images_path=None,
         export_media=None,
+        rel_dir=None,
         classes=None,
+        include_confidence=False,
         image_format=None,
     ):
         data_path, export_media = self._parse_data_path(
@@ -618,7 +660,9 @@ class YOLOv4DatasetExporter(
         self.objects_path = objects_path
         self.images_path = images_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
         self.classes = classes
+        self.include_confidence = include_confidence
         self.image_format = image_format
 
         self._classes = None
@@ -638,15 +682,9 @@ class YOLOv4DatasetExporter(
         return fol.Detections
 
     def setup(self):
-        if self.export_dir is None:
-            rel_dir = self.data_path
-        else:
-            rel_dir = self.export_dir
-
-        self._rel_dir = rel_dir
-
         self._classes = {}
         self._labels_map_rev = {}
+        self._rel_dir = os.path.dirname(self.images_path)
         self._images = []
         self._writer = YOLOAnnotationWriter()
 
@@ -656,26 +694,12 @@ class YOLOv4DatasetExporter(
         self._media_exporter = foud.ImageExporter(
             self.export_media,
             export_path=export_path,
+            rel_dir=self.rel_dir,
             supported_modes=(True, False, "move", "symlink"),
             default_ext=self.image_format,
             ignore_exts=True,
         )
         self._media_exporter.setup()
-
-    def log_collection(self, sample_collection):
-        if self.classes is None:
-            if sample_collection.default_classes:
-                self.classes = sample_collection.default_classes
-                self._parse_classes()
-                self._dynamic_classes = False
-            elif sample_collection.classes:
-                self.classes = next(iter(sample_collection.classes.values()))
-                self._parse_classes()
-                self._dynamic_classes = False
-            elif "classes" in sample_collection.info:
-                self.classes = sample_collection.info["classes"]
-                self._parse_classes()
-                self._dynamic_classes = False
 
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path, uuid = self._media_exporter.export(image_or_path)
@@ -693,6 +717,7 @@ class YOLOv4DatasetExporter(
             out_labels_path,
             self._labels_map_rev,
             dynamic_classes=self._dynamic_classes,
+            include_confidence=self.include_confidence,
         )
 
     def close(self, *args):
@@ -775,12 +800,22 @@ class YOLOv5DatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
-        classes (None): the list of possible class labels. If not provided,
-            this list will be extracted when :meth:`log_collection` is called,
-            if possible
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` and
+            ``labels_path`` to generate output paths for each exported image
+            and labels file. This argument allows for populating nested
+            subdirectories that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
+        classes (None): the list of possible class labels
+        include_confidence (False): whether to include detection confidences in
+            the export, if they exist
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        include_path (True): whether to include the directory name containing
+            the YAML file in the ``path`` key of the exported YAML
     """
 
     def __init__(
@@ -791,8 +826,11 @@ class YOLOv5DatasetExporter(
         labels_path=None,
         yaml_path=None,
         export_media=None,
+        rel_dir=None,
         classes=None,
+        include_confidence=False,
         image_format=None,
+        include_path=True,
     ):
         data_path, export_media = self._parse_data_path(
             export_dir=export_dir,
@@ -820,8 +858,11 @@ class YOLOv5DatasetExporter(
         self.labels_path = labels_path
         self.yaml_path = yaml_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
         self.classes = classes
+        self.include_confidence = include_confidence
         self.image_format = image_format
+        self.include_path = include_path
 
         self._classes = None
         self._dynamic_classes = classes is None
@@ -850,26 +891,12 @@ class YOLOv5DatasetExporter(
         self._media_exporter = foud.ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             supported_modes=(True, False, "move", "symlink"),
             default_ext=self.image_format,
             ignore_exts=True,
         )
         self._media_exporter.setup()
-
-    def log_collection(self, sample_collection):
-        if self.classes is None:
-            if sample_collection.default_classes:
-                self.classes = sample_collection.default_classes
-                self._parse_classes()
-                self._dynamic_classes = False
-            elif sample_collection.classes:
-                self.classes = next(iter(sample_collection.classes.values()))
-                self._parse_classes()
-                self._dynamic_classes = False
-            elif "classes" in sample_collection.info:
-                self.classes = sample_collection.info["classes"]
-                self._parse_classes()
-                self._dynamic_classes = False
 
     def export_sample(self, image_or_path, detections, metadata=None):
         _, uuid = self._media_exporter.export(image_or_path)
@@ -884,6 +911,7 @@ class YOLOv5DatasetExporter(
             out_labels_path,
             self._labels_map_rev,
             dynamic_classes=self._dynamic_classes,
+            include_confidence=self.include_confidence,
         )
 
     def close(self, *args):
@@ -900,13 +928,25 @@ class YOLOv5DatasetExporter(
         if self._dynamic_classes:
             classes = _to_classes(self._labels_map_rev)
         else:
-            classes = self.classes
+            classes = list(self.classes)
 
-        d[self.split] = _make_yolo_v5_data_path(self.data_path, self.yaml_path)
+        if "names" in d and classes != d["names"]:
+            raise ValueError(
+                "Aborting export of YOLOv5 split '%s' because its class list "
+                "does not match the existing class list in '%s'.\nIf you are "
+                "exporting multiple splits, you must provide a common class "
+                "list via the `classes` argument"
+                % (self.split, self.yaml_path)
+            )
+
+        if self.include_path:
+            d["path"] = os.path.dirname(self.yaml_path)
+
+        d[self.split] = _make_yolo_v5_path(self.data_path, self.yaml_path)
         d["nc"] = len(classes)
-        d["names"] = list(classes)
+        d["names"] = classes
 
-        _write_yaml_file(d, self.yaml_path)
+        _write_yaml_file(d, self.yaml_path, default_flow_style=False)
 
     def _parse_classes(self):
         if self.classes is not None:
@@ -917,7 +957,12 @@ class YOLOAnnotationWriter(object):
     """Class for writing annotations in YOLO-style TXT format."""
 
     def write(
-        self, detections, txt_path, labels_map_rev, dynamic_classes=False
+        self,
+        detections,
+        txt_path,
+        labels_map_rev,
+        dynamic_classes=False,
+        include_confidence=False,
     ):
         """Writes the detections to disk.
 
@@ -928,6 +973,8 @@ class YOLOAnnotationWriter(object):
                 integers
             dynamic_classes (False): whether to dynamically add new labels to
                 ``labels_map_rev``
+            include_confidence (False): whether to include confidences in the
+                export, if they exist
         """
         rows = []
         for detection in detections.detections:
@@ -946,7 +993,14 @@ class YOLOAnnotationWriter(object):
             else:
                 target = labels_map_rev[label]
 
-            row = _make_yolo_row(detection.bounding_box, target)
+            if include_confidence:
+                confidence = detection.confidence
+            else:
+                confidence = None
+
+            row = _make_yolo_row(
+                detection.bounding_box, target, confidence=confidence
+            )
             rows.append(row)
 
         _write_file_lines(rows, txt_path)
@@ -956,9 +1010,10 @@ def load_yolo_annotations(txt_path, classes):
     """Loads the YOLO-style annotations from the given TXT file.
 
     The txt file should be a space-delimited file where each row corresponds
-    to an object in the following format::
+    to an object in one the following formats::
 
         <target> <x-center> <y-center> <width> <height>
+        <target> <x-center> <y-center> <width> <height> <confidence>
 
     where ``target`` is the zero-based integer index of the object class label
     from ``classes`` and the bounding box coordinates are expressed as relative
@@ -979,23 +1034,23 @@ def load_yolo_annotations(txt_path, classes):
     return fol.Detections(detections=detections)
 
 
-def _parse_yolo_v5_data_path(data_path, yaml_path):
-    if os.path.isabs(data_path):
-        return data_path
+def _parse_yolo_v5_path(filepath, yaml_path):
+    if os.path.isabs(filepath):
+        return filepath
 
     # Interpret relative to YAML file
     root_dir = os.path.dirname(yaml_path)
-    return os.path.normpath(os.path.join(root_dir, data_path))
+    return os.path.normpath(os.path.join(root_dir, filepath))
 
 
-def _make_yolo_v5_data_path(data_path, yaml_path):
+def _make_yolo_v5_path(filepath, yaml_path):
     # Save path relative to YAML file
     root_dir = os.path.dirname(yaml_path)
-    data_path = os.path.relpath(data_path, root_dir) + os.path.sep
-    if not data_path.startswith("."):
-        data_path = "." + os.path.sep + data_path
+    filepath = os.path.relpath(filepath, root_dir) + os.path.sep
+    if not filepath.startswith("."):
+        filepath = "." + os.path.sep + filepath
 
-    return data_path
+    return filepath
 
 
 def _get_yolo_v5_labels_path(image_path):
@@ -1003,18 +1058,29 @@ def _get_yolo_v5_labels_path(image_path):
     new = os.path.sep + "labels" + os.path.sep
 
     chunks = image_path.rsplit(old, 1)
-    if len(chunks) == 1:
+
+    if len(chunks) > 1:
+        labels_path = new.join(chunks)
+    elif image_path.startswith("images" + os.path.sep):
+        labels_path = "labels" + image_path[len("images") :]
+    else:
         raise ValueError(
             "Invalid image path '%s'. YOLOv5 image paths must contain '%s', "
-            "which is replaced with '%s' to locate the labels TXT file"
+            "which is replaced with '%s' to locate the corresponding labels"
             % (image_path, old, new)
         )
 
-    return os.path.splitext(new.join(chunks))[0] + ".txt"
+    root, ext = os.path.splitext(labels_path)
+
+    if ext:
+        ext = ".txt"
+
+    return root + ext
 
 
 def _parse_yolo_row(row, classes):
-    target, xc, yc, w, h = row.split()
+    row_vals = row.split()
+    target, xc, yc, w, h = row_vals[:5]
 
     try:
         label = classes[int(target)]
@@ -1028,14 +1094,26 @@ def _parse_yolo_row(row, classes):
         float(h),
     ]
 
-    return fol.Detection(label=label, bounding_box=bounding_box)
+    if len(row_vals) > 5:
+        confidence = float(row_vals[5])
+    else:
+        confidence = None
+
+    return fol.Detection(
+        label=label, bounding_box=bounding_box, confidence=confidence
+    )
 
 
-def _make_yolo_row(bounding_box, target):
+def _make_yolo_row(bounding_box, target, confidence=None):
     xtl, ytl, w, h = bounding_box
     xc = xtl + 0.5 * w
     yc = ytl + 0.5 * h
-    return "%d %f %f %f %f" % (target, xc, yc, w, h)
+    row = "%d %f %f %f %f" % (target, xc, yc, w, h)
+
+    if confidence is not None:
+        row += " %f" % confidence
+
+    return row
 
 
 def _read_yaml_file(path):
@@ -1043,8 +1121,8 @@ def _read_yaml_file(path):
         return yaml.safe_load(f)
 
 
-def _write_yaml_file(d, path):
-    s = yaml.dump(d, default_flow_style=False)
+def _write_yaml_file(d, path, **kwargs):
+    s = yaml.dump(d, **kwargs)
     etau.write_file(s, path)
 
 
@@ -1066,7 +1144,7 @@ def _to_classes(labels_map_rev):
     targets_to_labels = {v: k for k, v in labels_map_rev.items()}
 
     classes = []
-    for target in range(max(targets_to_labels.keys()) + 1):
+    for target in range(max(targets_to_labels.keys(), default=-1) + 1):
         if target in targets_to_labels:
             classes.append(targets_to_labels[target])
         else:

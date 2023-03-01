@@ -17,8 +17,14 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | Config field                  | Environment variable                | Default value                 | Description                                                                            |
 +===============================+=====================================+===============================+========================================================================================+
+| `database_admin`              | `FIFTYONE_DATABASE_ADMIN`           | `True`                        | Whether the client is allowed to trigger database migrations. See                      |
+|                               |                                     |                               | :ref:`this section <database-migrations>` for more information.                        |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_dir`                | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
 |                               |                                     |                               | `database_uri` is not defined.                                                         |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_name`               | `FIFTYONE_DATABASE_NAME`            | `fiftyone`                    | A name to use for FiftyOne's backing database in your MongoDB instance. The database   |
+|                               |                                     |                               | is automatically created if necessary.                                                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_uri`                | `FIFTYONE_DATABASE_URI`             | `None`                        | A `MongoDB URI <https://docs.mongodb.com/manual/reference/connection-string/>`_ to     |
 |                               |                                     |                               | specifying a custom MongoDB database to which to connect. See                          |
@@ -58,11 +64,11 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_app_port`            | `FIFTYONE_DEFAULT_APP_PORT`         | `5151`                        | The default port to use to serve the :ref:`FiftyOne App <fiftyone-app>`.               |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `default_app_address`         | `FIFTYONE_DEFAULT_APP_ADDRESS`      | `None`                        | The default address to use to serve the :ref:`FiftyOne App <fiftyone-app>`. This may   |
+| `default_app_address`         | `FIFTYONE_DEFAULT_APP_ADDRESS`      | `localhost`                   | The default address to use to serve the :ref:`FiftyOne App <fiftyone-app>`. This may   |
 |                               |                                     |                               | be either an IP address or hostname. If it's a hostname, the App will listen to all    |
-|                               |                                     |                               | IP addresses associated with the name. The default is `None`, which means the App will |
-|                               |                                     |                               | listen on all available interfaces. See :ref:`this page <restricting-app-address>` for |
-|                               |                                     |                               | more information.                                                                      |
+|                               |                                     |                               | IP addresses associated with the name. The default is `localhost`, which means the App |
+|                               |                                     |                               | will only listen on the local interface. See :ref:`this page <restricting-app-address>`|
+|                               |                                     |                               | for more information.                                                                  |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `desktop_app`                 | `FIFTYONE_DESKTOP_APP`              | `False`                       | Whether to launch the FiftyOne App in the browser (False) or as a desktop App (True)   |
 |                               |                                     |                               | by default. If True, the :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>`     |
@@ -70,11 +76,20 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `do_not_track`                | `FIFTYONE_DO_NOT_TRACK`             | `False`                       | Controls whether UUID based import and App usage events are tracked.                   |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `logging_level`               | `FIFTYONE_LOGGING_LEVEL`            | `INFO`                        | Controls FiftyOne's package-wide logging level. Can be any valid ``logging`` level as  |
+|                               |                                     |                               | a string: ``DEBUG, INFO, WARNING, ERROR, CRITICAL``.                                   |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `model_zoo_dir`               | `FIFTYONE_MODEL_ZOO_DIR`            | `~/fiftyone/__models__`       | The default directory in which to store models that are downloaded from the            |
 |                               |                                     |                               | :ref:`FiftyOne Model Zoo <model-zoo>`.                                                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `model_zoo_manifest_paths`    | `FIFTYONE_MODEL_ZOO_MANIFEST_PATHS` | `None`                        | A list of manifest JSON files specifying additional zoo models. See                    |
 |                               |                                     |                               | :ref:`adding models to the zoo <model-zoo-add>` for more information.                  |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `module_path`                 | `FIFTYONE_MODULE_PATH`              | `None`                        | A list of modules that should be automatically imported whenever FiftyOne is imported. |
+|                               |                                     |                               | See :ref:`this page <custom-embedded-documents>` for an example usage.                 |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `plugins_dir`                 | `FIFTYONE_PLUGINS_DIR`              | `None`                        | A directory containing custom App plugins. See :ref:`this page <app-plugins>` for more |
+|                               |                                     |                               | information.                                                                           |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `requirement_error_level`     | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                           | A default error level to use when ensuring/installing requirements such as third-party |
 |                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
@@ -111,7 +126,9 @@ and the CLI:
     .. code-block:: text
 
         {
+            "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
+            "database_name": "fiftyone",
             "database_uri": null,
             "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
@@ -127,8 +144,11 @@ and the CLI:
             "default_video_ext": ".mp4",
             "desktop_app": false,
             "do_not_track": false,
+            "logging_level": "INFO",
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
+            "module_path": null,
+            "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
@@ -149,7 +169,9 @@ and the CLI:
     .. code-block:: text
 
         {
+            "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
+            "database_name": "fiftyone",
             "database_uri": null,
             "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
@@ -165,8 +187,11 @@ and the CLI:
             "default_video_ext": ".mp4",
             "desktop_app": false,
             "do_not_track": false,
+            "logging_level": "INFO",
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
+            "module_path": null,
+            "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
@@ -285,35 +310,29 @@ or you can set the following environment variable:
 
     export FIFTYONE_DATABASE_URI=mongodb://[username:password@]host[:port]
 
-.. note::
+If you are running MongoDB with authentication enabled (the `--auth` flag),
+FiftyOne must connect as a root user.
 
-    **Apple Silicon users**: MongoDB does not yet provide a native build for
-    Apple Silicon, so you currently must use `dataset_uri` with a MongoDB
-    distribution that you have installed yourself.
-
-    Users have reported success
-    `installing MongoDB v4.4 on Apple Silicon <https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x>`_
-    as follows:
-
-    .. code-block:: shell
-
-        brew tap mongodb/brew
-        brew install mongodb-community@4.4
-
-Using a different MongoDB version
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-FiftyOne is designed for and distributed with **MongoDB v4.4**.
-
-Users have reported success connecting to MongoDB v5 databases, but if you wish
-to do this, you should
-`set the feature compatibility version <https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion>`_
-to 4.4 to ensure proper function:
+You can create a root user with the Mongo shell as follows:
 
 .. code-block:: shell
 
     mongo --shell
-    > db.adminCommand({setFeatureCompatibilityVersion: "4.4"})
+    > use admin
+    > db.createUser({user: "username", pwd: passwordPrompt(), roles: ["root"]})
+
+You must also add `?authSource=admin` to your database URI:
+
+.. code-block:: text
+
+    mongodb://[username:password@]host[:port]/?authSource=admin
+
+.. _using-a-different-mongodb-version:
+
+Using a different MongoDB version
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+FiftyOne is designed for **MongoDB v4.4 or later**.
 
 If you wish to connect FiftyOne to a MongoDB database whose version is not
 explicitly supported, you will also need to set the `database_validation`
@@ -334,6 +353,13 @@ or you can set the following environment variable:
 .. code-block:: shell
 
     export FIFTYONE_DATABASE_VALIDATION=false
+
+Controlling database migrations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are working with a shared MongoDB database, you can use
+:ref:`database admin privileges <database-migrations>` to control which clients
+are allowed to migrate the shared database.
 
 Example custom database usage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -363,6 +389,153 @@ Then, in another shell, configure the database URI and launch FiftyOne:
 
     dataset = foz.load_zoo_dataset("quickstart")
     session = fo.launch_app(dataset)
+
+.. _database-migrations:
+
+Database migrations
+-------------------
+
+New FiftyOne versions occasionally introduce data model changes that require
+database migrations when you :ref:`upgrade <upgrading-fiftyone>` or
+:ref:`downgrade <downgrading-fiftyone>`.
+
+By default, database upgrades happen automatically in two steps:
+
+-   **Database**: when you import FiftyOne for the first time using a newer
+    version of the Python package, the database's version is automatically
+    updated to match your client version
+-   **Datasets** are lazily migrated to the current database version on a
+    per-dataset basis whenever you load the dataset for the first time using a
+    newer version of the FiftyOne package
+
+Database downgrades must be manually performed. See
+:ref:`this page <downgrading-fiftyone>` for instructions.
+
+You can use the :ref:`fiftyone migrate <cli-fiftyone-migrate>` command to view
+the current versions of your client, database, and datasets:
+
+.. code-block:: shell
+
+    # View your client, database, and dataset versions
+    fiftyone migrate --info
+
+.. code-block:: text
+
+    Client version: 0.16.6
+    Compatible versions: >=0.16.3,<0.17
+
+    Database version: 0.16.6
+
+    dataset                      version
+    ---------------------------  ---------
+    bdd100k-validation           0.16.5
+    quickstart                   0.16.5
+    ...
+
+Restricting migrations
+~~~~~~~~~~~~~~~~~~~~~~
+
+You can use the `database_admin` config setting to control whether a client is
+allowed to upgrade/downgrade your FiftyOne database. The default is `True`,
+which means that upgrades are automatically peformed when you connect to your
+database with newer Python client versions.
+
+If you set `database_admin` to `False`, your client will **never** cause the
+database to be migrated to a new version. Instead, you'll see the following
+behavior:
+
+-   If your client is compatible with the current database version, you will be
+    allowed to connect to the database and use FiftyOne
+-   If your client is not compatible with the current database version, you
+    will see an informative error message when you import the library
+
+You can restrict migrations by adding the following entry to your
+`~/.fiftyone/config.json` file:
+
+.. code-block:: json
+
+    {
+        "database_admin": false
+    }
+
+or by setting the following environment variable:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATABASE_ADMIN=false
+
+.. note::
+
+    A common pattern when working with
+    :ref:`custom/shared MongoDB databases <configuring-mongodb-connection>` is
+    to adopt a convention that all non-administrators set their
+    `database_admin` config setting to `False` to ensure that they cannot
+    trigger automatic database upgrades by connecting to the database with
+    newer Python client versions.
+
+Coordinating a migration
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are working in an environment where multiple services are connecting to
+your MongoDB database at any given time, use this strategy to upgrade your
+deployment:
+
+1.  Ensure that all clients are running without database admin privileges,
+    e.g., by adding this to their `~/.fiftyone/config.json`:
+
+.. code-block:: json
+
+    {
+        "database_admin": false
+    }
+
+2.  Perform a test upgrade of one client and ensure that it is compatible with
+    your current database version:
+
+.. code-block:: shell
+
+    # In a test environment
+    pip install --upgrade fiftyone
+
+    # View client's compatibility info
+    fiftyone migrate --info
+
+.. code-block:: python
+
+    import fiftyone as fo
+
+    # Convince yourself that the new client can load a dataset
+    dataset = fo.load_dataset(...)
+
+3.  Now upgrade the client version used by all services:
+
+.. code-block:: shell
+
+    # In all client environments
+    pip install --upgrade fiftyone
+
+4.  Once all services are running the new client version, upgrade the database
+    with admin privileges:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATABASE_ADMIN=true
+
+    pip install --upgrade fiftyone
+    fiftyone migrate --all
+
+.. note::
+
+    Newly created datasets will always bear the
+    :meth:`version <fiftyone.core.dataset.Dataset.version>` of the Python
+    client that created them, which may differ from your database's version
+    if you are undergoing a migration.
+
+    If the new client's version is not in the compatibility range for the old
+    clients that are still in use, the old clients will not be able to load
+    the new datasets.
+
+    Therefore, it is recommended to upgrade all clients as soon as possible!
 
 .. _configuring-timezone:
 
@@ -426,42 +599,70 @@ created when you launch the App. A session's config can be inspected and
 modified via the :meth:`session.config <fiftyone.core.session.Session.config>`
 property.
 
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    print(fo.app_config)
+
+    session = fo.launch_app(dataset)
+    print(session.config)
+
 .. note::
 
-    For changes to a session's config to take effect in the App, you must call
-    :meth:`session.refresh() <fiftyone.core.session.Session.refresh>` or
+    For changes to a live session's config to take effect in the App, you must
+    call :meth:`session.refresh() <fiftyone.core.session.Session.refresh>` or
     invoke another state-updating action such as ``session.view = my_view``.
 
 The FiftyOne App can be configured in the ways described below:
 
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| Config field              | Environment variable                   | Default value               | Description                                                                              |
-+===========================+========================================+=============================+==========================================================================================+
-| `color_pool`              | `FIFTYONE_APP_COLOR_POOL`              | See below                   | A list of browser supported color strings from which the App should draw from when       |
-|                           |                                        |                             | drawing labels (e.g., object bounding boxes).                                            |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `colorscale`              | `FIFTYONE_APP_COLORSCALE`              | `"viridis"`                 | The colorscale to use when rendering heatmaps in the App. See                            |
-|                           |                                        |                             | :ref:`this section <heatmaps>` for more details.                                         |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `grid_zoom`               | `FIFTYONE_APP_GRID_ZOOM`               | `5`                         | The zoom level of the App's sample grid. Larger values result in larger samples (and )   |
-|                           |                                        |                             | (thus fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `loop_videos`             | `FIFTYONE_APP_LOOP_VIDEOS`             | `False`                     | Whether to loop videos by default in the expanded sample view.                           |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `notebook_height`         | `FIFTYONE_APP_NOTEBOOK_HEIGHT`         | `800`                       | The height of App instances displayed in notebook cells.                                 |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_confidence`         | `FIFTYONE_APP_SHOW_CONFIDENCE`         | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.     |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_index`              | `FIFTYONE_APP_SHOW_INDEX`              | `True`                      | Whether to show indexes when rendering labels in the App's expanded sample view.         |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_label`              | `FIFTYONE_APP_SHOW_LABEL`              | `True`                      | Whether to show the label value when rendering detection labels in the App's expanded    |
-|                           |                                        |                             | sample view.                                                                             |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only |
-|                           |                                        |                             | applicable to video samples.                                                             |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| Config field              | Environment variable                   | Default value               | Description                                                                               |
++===========================+========================================+=============================+===========================================================================================+
+| `color_by`                | `FIFTYONE_APP_COLOR_BY`                | `"field"`                   | Whether to color labels by their field name (`"field"`), `label` value (`"label"`), or    |
+|                           |                                        |                             | render each instance ID/trajectory index (`"instance"`).                                  |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `color_pool`              | `FIFTYONE_APP_COLOR_POOL`              | See below                   | A list of browser supported color strings from which the App should draw from when        |
+|                           |                                        |                             | drawing labels (e.g., object bounding boxes).                                             |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `colorscale`              | `FIFTYONE_APP_COLORSCALE`              | `"viridis"`                 | The colorscale to use when rendering heatmaps in the App. See                             |
+|                           |                                        |                             | :ref:`this section <heatmaps>` for more details.                                          |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `grid_zoom`               | `FIFTYONE_APP_GRID_ZOOM`               | `5`                         | The zoom level of the App's sample grid. Larger values result in larger samples (and thus |
+|                           |                                        |                             | fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                       |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `loop_videos`             | `FIFTYONE_APP_LOOP_VIDEOS`             | `False`                     | Whether to loop videos by default in the expanded sample view.                            |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `multicolor_keypoints`    | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`    | `False`                     | Whether to independently coloy keypoint points by their index                             |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `notebook_height`         | `FIFTYONE_APP_NOTEBOOK_HEIGHT`         | `800`                       | The height of App instances displayed in notebook cells.                                  |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `show_confidence`         | `FIFTYONE_APP_SHOW_CONFIDENCE`         | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.      |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `show_index`              | `FIFTYONE_APP_SHOW_INDEX`              | `True`                      | Whether to show indexes when rendering labels in the App's expanded sample view.          |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `show_label`              | `FIFTYONE_APP_SHOW_LABEL`              | `True`                      | Whether to show the label value when rendering detection labels in the App's expanded     |
+|                           |                                        |                             | sample view.                                                                              |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `show_skeletons`          | `FIFTYONE_APP_SHOW_SKELETONS`          | `True`                      | Whether to show keypoint skeletons, if available.                                         |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view.  |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `sidebar_mode`            | `FIFTYONE_APP_SIDEBAR_MODE`            | `best`                      | The default loading behavior of the App's sidebar. Supported values are                   |
+|                           |                                        |                             | `{"all", "best", "fast"}`. See :ref:`this section <app-sidebar-mode>` for more details.   |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `theme`                   | `FIFTYONE_APP_THEME`                   | `"browser"`                 | The default theme to use in the App. Supported values are `{"browser", "dark", "light"}`. |
+|                           |                                        |                             | If `"browser"`, your current theme will be persisted in your browser's storage.           |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only  |
+|                           |                                        |                             | applicable to video samples.                                                              |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for        |
+|                           |                                        |                             | details.                                                                                  |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 
 Viewing your App config
 -----------------------
@@ -485,26 +686,36 @@ You can print your App config at any time via the Python library and the CLI:
     .. code-block:: text
 
         {
+            "color_by": "field",
             "color_pool": [
                 "#ee0000",
+                "#ee6600",
+                "#993300",
+                "#996633",
                 "#999900",
                 "#009900",
                 "#003300",
                 "#009999",
                 "#000099",
-                "#6600ff",
-                "#ee6600",
-                "#993300",
-                "#996633",
                 "#0066ff",
+                "#6600ff",
                 "#cc33cc",
                 "#777799"
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "loop_videos": false,
+            "multicolor_keypoints": false,
             "notebook_height": 800,
             "show_confidence": true,
-            "show_attributes": true
+            "show_index": true,
+            "show_label": true,
+            "show_skeletons": true,
+            "show_tooltip": true,
+            "sidebar_mode": "best",
+            "theme": "browser",
+            "use_frame_number": false,
+            "plugins": {}
         }
 
         True
@@ -522,26 +733,36 @@ You can print your App config at any time via the Python library and the CLI:
     .. code-block:: text
 
         {
+            "color_by": "field",
             "color_pool": [
                 "#ee0000",
+                "#ee6600",
+                "#993300",
+                "#996633",
                 "#999900",
                 "#009900",
                 "#003300",
                 "#009999",
                 "#000099",
-                "#6600ff",
-                "#ee6600",
-                "#993300",
-                "#996633",
                 "#0066ff",
+                "#6600ff",
                 "#cc33cc",
                 "#777799"
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "loop_videos": false,
+            "multicolor_keypoints": false,
             "notebook_height": 800,
             "show_confidence": true,
-            "show_attributes": true
+            "show_index": true,
+            "show_label": true,
+            "show_skeletons": true,
+            "show_tooltip": true,
+            "sidebar_mode": "best",
+            "theme": "browser",
+            "use_frame_number": false,
+            "plugins": {}
         }
 
         True
@@ -557,6 +778,12 @@ Modifying your App config
 
 You can modify your App config in a variety of ways. The following sections
 describe these options in detail.
+
+.. note::
+
+    Did you know? You can also configure the behavior of the App on a
+    per-dataset basis by customizing your
+    :ref:`dataset's App config <custom-app-config>`.
 
 Order of precedence
 ~~~~~~~~~~~~~~~~~~~
@@ -587,7 +814,7 @@ via the following pattern:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Create a custom App config
-    app_config = fo.AppConfig()
+    app_config = fo.app_config.copy()
     app_config.show_confidence = False
     app_config.show_attributes = False
 
@@ -601,12 +828,10 @@ apply the changes:
 .. code-block:: python
     :linenos:
 
-    # Customize the config of a live Session
+    # Customize the config of a live session
     session.config.show_confidence = True
     session.config.show_attributes = True
-
-    # Refresh the session to apply the changes
-    session.refresh()
+    session.refresh()  # must refresh after edits
 
 Editing your JSON App config
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -666,3 +891,36 @@ current session.
 
     fo.app_config.show_confidence = False
     fo.app_config.show_attributes = False
+
+.. _configuring-plugins:
+
+Configuring plugins
+-------------------
+
+You can store system-wide plugin configurations under the `plugins` key of your
+App config.
+
+Plugins that you can configure include:
+
+-   The builtin :ref:`Map panel <app-map-panel>`
+-   The builtin :ref:`3D visualizer <3d-visualizer-config>`
+-   Any :ref:`custom plugins <app-plugins>` that you've registered
+
+For example, you may add the following to your JSON App config
+(`~/.fiftyone/app_config.json`) to register a Mapbox token globally on your
+system:
+
+.. code-block:: text
+
+    {
+        "plugins": {
+            "map": {
+                "mapboxAccessToken": "XXXXXXXX"
+            }
+        }
+    }
+
+.. note::
+
+    You can also store dataset-specific plugin settings by storing any subset
+    of the above values on a :ref:`dataset's App config <custom-app-config>`.

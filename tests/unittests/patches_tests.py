@@ -1,10 +1,12 @@
 """
 FiftyOne patches-related unit tests.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
+
 from bson import ObjectId
 import unittest
 
@@ -71,6 +73,11 @@ class PatchesTests(unittest.TestCase):
                 "sample_id",
                 "ground_truth",
             },
+        )
+
+        self.assertEqual(
+            view.get_field("metadata").document_type,
+            fo.ImageMetadata,
         )
 
         self.assertSetEqual(
@@ -179,6 +186,33 @@ class PatchesTests(unittest.TestCase):
             dataset.count_values("ground_truth.detections.label_upper")["CAT"],
             1,
         )
+        self.assertIsNone(view.get_field("ground_truth.label_upper"))
+        self.assertIsNone(
+            dataset.get_field("ground_truth.detections.label_upper")
+        )
+
+        view2.set_values("ground_truth.label_dynamic", values, dynamic=True)
+        self.assertIsNotNone(view.get_field("ground_truth.label_dynamic"))
+        self.assertIsNotNone(
+            dataset.get_field("ground_truth.detections.label_dynamic")
+        )
+
+        values = {
+            _id: v
+            for _id, v in zip(
+                *view2.values(["ground_truth.id", "ground_truth.label"])
+            )
+        }
+        view.set_label_values("ground_truth.also_label", values)
+
+        self.assertEqual(view.count("ground_truth.also_label"), 2)
+        self.assertEqual(
+            dataset.count("ground_truth.detections.also_label"), 2
+        )
+        self.assertDictEqual(
+            view.count_values("ground_truth.also_label"),
+            dataset.count_values("ground_truth.detections.also_label"),
+        )
 
         view3 = view.skip(4).set_field(
             "ground_truth.label", F("label").upper()
@@ -199,20 +233,25 @@ class PatchesTests(unittest.TestCase):
 
         view3.save()
 
+        self.assertEqual(view.count(), 6)
+        self.assertEqual(dataset.count("ground_truth.detections"), 6)
+        self.assertIn("CAT", view.count_values("ground_truth.label"))
+        self.assertIn(
+            "CAT", dataset.count_values("ground_truth.detections.label")
+        )
+
+        view3.keep()
+
         self.assertEqual(view.count(), 2)
         self.assertEqual(dataset.count("ground_truth.detections"), 2)
         self.assertNotIn("cat", view.count_values("ground_truth.label"))
-        self.assertEqual(view.count_values("ground_truth.label")["CAT"], 1)
         self.assertNotIn(
             "cat", dataset.count_values("ground_truth.detections.label")
-        )
-        self.assertEqual(
-            dataset.count_values("ground_truth.detections.label")["CAT"], 1
         )
 
         sample = view.first()
 
-        sample.ground_truth.hello = "world"
+        sample.ground_truth["hello"] = "world"
         sample.save()
 
         self.assertEqual(view.count_values("ground_truth.hello")["world"], 1)
@@ -241,6 +280,38 @@ class PatchesTests(unittest.TestCase):
         self.assertDictEqual(
             dataset.count_values("ground_truth.detections.tags"), {}
         )
+
+        view.select_fields().keep_fields()
+
+        self.assertNotIn("ground_truth", view.get_field_schema())
+        self.assertNotIn("ground_truth", dataset.get_field_schema())
+
+        sample_view = view.first()
+        with self.assertRaises(KeyError):
+            sample_view["ground_truth"]
+
+        sample = dataset.first()
+        with self.assertRaises(KeyError):
+            sample["ground_truth"]
+
+        # Test saving a patches view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
 
     @drop_datasets
     def test_to_evaluation_patches(self):
@@ -284,7 +355,9 @@ class PatchesTests(unittest.TestCase):
 
         dataset.add_sample(sample)
 
-        dataset.evaluate_detections("predictions", eval_key="eval")
+        dataset.evaluate_detections(
+            "predictions", gt_field="ground_truth", eval_key="eval"
+        )
 
         view = dataset.to_evaluation_patches("eval")
 
@@ -419,6 +492,41 @@ class PatchesTests(unittest.TestCase):
             dataset.count_values("predictions.detections.label_upper")["CAT"],
             2,
         )
+        self.assertIsNone(view.get_field("predictions.detections.label_upper"))
+        self.assertIsNone(
+            dataset.get_field("predictions.detections.label_upper")
+        )
+
+        view2.set_values(
+            "predictions.detections.label_dynamic", values, dynamic=True
+        )
+        self.assertIsNotNone(
+            view.get_field("predictions.detections.label_dynamic")
+        )
+        self.assertIsNotNone(
+            dataset.get_field("predictions.detections.label_dynamic")
+        )
+
+        values = {
+            _id: v
+            for _id, v in zip(
+                *view2.values(
+                    [
+                        "predictions.detections.id",
+                        "predictions.detections.label",
+                    ],
+                    unwind=True,
+                )
+            )
+        }
+        view.set_label_values("predictions.detections.also_label", values)
+
+        self.assertEqual(view.count("predictions.detections.also_label"), 3)
+        self.assertEqual(dataset.count("predictions.detections.also_label"), 3)
+        self.assertDictEqual(
+            view.count_values("predictions.detections.also_label"),
+            dataset.count_values("predictions.detections.also_label"),
+        )
 
         view3 = view.match(F("crowd") == True).set_field(
             "ground_truth.detections.label", F("label").upper()
@@ -441,6 +549,17 @@ class PatchesTests(unittest.TestCase):
         )
 
         view3.save()
+
+        self.assertEqual(view.count(), 4)
+        self.assertEqual(dataset.count("ground_truth.detections"), 3)
+        self.assertIn(
+            "CAT", view.count_values("ground_truth.detections.label")
+        )
+        self.assertIn(
+            "CAT", dataset.count_values("ground_truth.detections.label")
+        )
+
+        view3.keep()
 
         self.assertEqual(view.count(), 1)
         self.assertEqual(dataset.count("ground_truth.detections"), 1)
@@ -491,6 +610,48 @@ class PatchesTests(unittest.TestCase):
         self.assertDictEqual(
             dataset.count_values("ground_truth.detections.tags"), {}
         )
+
+        view.select_fields().keep_fields()
+
+        self.assertNotIn("ground_truth", view.get_field_schema())
+        self.assertNotIn("predictions", view.get_field_schema())
+        self.assertNotIn("ground_truth", dataset.get_field_schema())
+        self.assertNotIn("predictions", dataset.get_field_schema())
+
+        sample_view = view.first()
+
+        with self.assertRaises(KeyError):
+            sample_view["ground_truth"]
+
+        with self.assertRaises(KeyError):
+            sample_view["predictions"]
+
+        sample = dataset.first()
+
+        with self.assertRaises(KeyError):
+            sample["ground_truth"]
+
+        with self.assertRaises(KeyError):
+            sample["predictions"]
+
+        # Test saving an evaluation patches view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
 
 
 if __name__ == "__main__":

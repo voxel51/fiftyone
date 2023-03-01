@@ -1,13 +1,15 @@
 """
 Video frames.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import itertools
 
-from pymongo import ReplaceOne, UpdateOne, DeleteOne
+from bson import ObjectId
+from pymongo import ReplaceOne, UpdateOne, DeleteOne, DeleteMany
+
 
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame_utils as fofu
@@ -133,7 +135,7 @@ class Frames(object):
     @property
     def _sample_id(self):
         if self._dataset._is_clips:
-            return self._sample._doc.sample_id
+            return ObjectId(self._sample._doc.sample_id)
 
         return self._sample._id
 
@@ -255,7 +257,14 @@ class Frames(object):
         for frame in self._iter_frames():
             yield frame
 
-    def add_frame(self, frame_number, frame, expand_schema=True):
+    def add_frame(
+        self,
+        frame_number,
+        frame,
+        expand_schema=True,
+        validate=True,
+        dynamic=False,
+    ):
         """Adds the frame to this instance.
 
         If an existing frame with the same frame number exists, it is
@@ -271,6 +280,9 @@ class Frames(object):
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
                 if the frame's schema is not a subset of the dataset schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
         """
         fofu.validate_frame_number(frame_number)
 
@@ -289,7 +301,13 @@ class Frames(object):
             doc = self._dataset._frame_dict_to_doc(d)
 
             for field, value in _frame.iter_fields():
-                doc.set_field(field, value, create=expand_schema)
+                doc.set_field(
+                    field,
+                    value,
+                    create=expand_schema,
+                    validate=validate,
+                    dynamic=dynamic,
+                )
 
             doc.set_field("frame_number", frame_number)
             frame._set_backing_doc(doc, dataset=self._dataset)
@@ -301,7 +319,14 @@ class Frames(object):
 
         self._set_replacement(frame)
 
-    def update(self, frames, overwrite=True, expand_schema=True):
+    def update(
+        self,
+        frames,
+        overwrite=True,
+        expand_schema=True,
+        validate=True,
+        dynamic=False,
+    ):
         """Adds the frame labels to this instance.
 
         Args:
@@ -318,6 +343,9 @@ class Frames(object):
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
                 if the frame's schema is not a subset of the dataset schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
         """
         for frame_number, frame in frames.items():
             if overwrite or frame_number not in self:
@@ -325,7 +353,11 @@ class Frames(object):
                     frame = Frame(frame_number=frame_number, **frame)
 
                 self.add_frame(
-                    frame_number, frame, expand_schema=expand_schema
+                    frame_number,
+                    frame,
+                    expand_schema=expand_schema,
+                    validate=validate,
+                    dynamic=dynamic,
                 )
 
     def merge(
@@ -336,6 +368,8 @@ class Frames(object):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
+        validate=True,
+        dynamic=False,
     ):
         """Merges the given frames into this instance.
 
@@ -390,6 +424,9 @@ class Frames(object):
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
                 if the frame's schema is not a subset of the dataset schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
         """
         for frame_number, frame in frames.items():
             if isinstance(frame, dict):
@@ -403,13 +440,19 @@ class Frames(object):
                     merge_lists=merge_lists,
                     overwrite=overwrite,
                     expand_schema=expand_schema,
+                    validate=validate,
+                    dynamic=dynamic,
                 )
             else:
                 if fields is not None or omit_fields is not None:
                     frame = frame.copy(fields=fields, omit_fields=omit_fields)
 
                 self.add_frame(
-                    frame_number, frame, expand_schema=expand_schema
+                    frame_number,
+                    frame,
+                    expand_schema=expand_schema,
+                    validate=validate,
+                    dynamic=dynamic,
                 )
 
     def clear(self):
@@ -424,14 +467,18 @@ class Frames(object):
 
     def save(self):
         """Saves all frames for the sample to the database."""
+        self._save()
+
+    def _save(self, deferred=False):
         if not self._in_db:
             raise ValueError(
                 "Cannot save frames of a sample that has not been added to "
                 "a dataset"
             )
 
-        self._save_deletions()
-        self._save_replacements()
+        delete_ops = self._save_deletions(deferred=deferred)
+        replace_ops = self._save_replacements(deferred=deferred)
+        return delete_ops + replace_ops
 
     def reload(self, hard=False):
         """Reloads all frames for the sample from the database.
@@ -448,7 +495,7 @@ class Frames(object):
         Frame._sync_docs_for_sample(
             self._frame_collection_name,
             self._sample.id,
-            self._get_frame_numbers(),
+            self._get_frame_numbers,  # pass fcn so it can be lazily called
             hard=hard,
         )
 
@@ -599,12 +646,22 @@ class Frames(object):
 
         return d
 
-    def _to_frames_dict(self):
-        return {str(fn): frame.to_dict() for fn, frame in self.items()}
+    def _to_frames_dict(self, include_private=False):
+        return {
+            str(fn): frame.to_dict(include_private=include_private)
+            for fn, frame in self.items()
+        }
 
-    def _save_deletions(self):
+    def _save_deletions(self, deferred=False):
+        ops = []
+
         if self._delete_all:
-            self._frame_collection.delete_many({"_sample_id": self._sample_id})
+            if deferred:
+                ops.append(DeleteMany({"_sample_id": self._sample_id}))
+            else:
+                self._frame_collection.delete_many(
+                    {"_sample_id": self._sample_id}
+                )
 
             Frame._reset_docs(
                 self._frame_collection_name, sample_ids=[self._sample.id]
@@ -623,7 +680,9 @@ class Frames(object):
                 )
                 for frame_number in self._delete_frames
             ]
-            self._frame_collection.bulk_write(ops, ordered=False)
+
+            if not deferred:
+                self._frame_collection.bulk_write(ops, ordered=False)
 
             Frame._reset_docs_for_sample(
                 self._frame_collection_name,
@@ -633,7 +692,11 @@ class Frames(object):
 
             self._delete_frames.clear()
 
-    def _save_replacements(self, include_singletons=True):
+        return ops
+
+    def _save_replacements(
+        self, include_singletons=True, validate=True, deferred=False
+    ):
         if include_singletons:
             #
             # Since frames are singletons, the user will expect changes to any
@@ -655,11 +718,14 @@ class Frames(object):
             replacements = self._replacements
 
         if not replacements:
-            return
+            return []
 
-        new_dicts = {}
+        if validate:
+            self._validate_frames(replacements)
+
         ops = []
-        for idx, (frame_number, frame) in enumerate(replacements.items()):
+        new_dicts = {}
+        for frame_number, frame in replacements.items():
             d = self._make_dict(frame)
             if not frame._in_db:
                 new_dicts[frame_number] = d
@@ -671,7 +737,8 @@ class Frames(object):
             )
             ops.append(op)
 
-        self._frame_collection.bulk_write(ops, ordered=False)
+        if not deferred:
+            self._frame_collection.bulk_write(ops, ordered=False)
 
         if new_dicts:
             ids_map = self._get_ids_map()
@@ -684,6 +751,39 @@ class Frames(object):
                 frame._doc.id = ids_map[frame_number]
 
         self._replacements.clear()
+
+        return ops
+
+    def _validate_frames(self, frames):
+        schema = self._dataset.get_frame_field_schema(include_private=True)
+
+        for frame_number, frame in frames.items():
+            non_existent_fields = None
+
+            for field_name, value in frame.iter_fields():
+                field = schema.get(field_name, None)
+                if field is None:
+                    if value is not None:
+                        if non_existent_fields is None:
+                            non_existent_fields = {field_name}
+                        else:
+                            non_existent_fields.add(field_name)
+                else:
+                    if value is not None or not field.null:
+                        try:
+                            field.validate(value)
+                        except Exception as e:
+                            raise ValueError(
+                                "Invalid value for field '%s' of frame %d. "
+                                "Reason: %s"
+                                % (field_name, frame_number, str(e))
+                            )
+
+            if non_existent_fields:
+                raise ValueError(
+                    "Frame fields %s do not exist on dataset '%s'"
+                    % (non_existent_fields, self._dataset.name)
+                )
 
 
 class FramesView(Frames):
@@ -709,7 +809,9 @@ class FramesView(Frames):
 
         view = sample_view._view
 
-        sf, ef = view._get_selected_excluded_fields(frames=True)
+        sf, ef = view._get_selected_excluded_fields(
+            frames=True, roots_only=True
+        )
         ff = view._get_filtered_fields(frames=True)
 
         needs_frames = view._needs_frames()
@@ -730,7 +832,14 @@ class FramesView(Frames):
     def field_names(self):
         return list(self._view.get_frame_field_schema().keys())
 
-    def add_frame(self, frame_number, frame, expand_schema=True):
+    def add_frame(
+        self,
+        frame_number,
+        frame,
+        expand_schema=True,
+        validate=True,
+        dynamic=False,
+    ):
         """Adds the frame to this instance.
 
         If an existing frame with the same frame number exists, it is
@@ -746,6 +855,9 @@ class FramesView(Frames):
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
                 if the frame's schema is not a subset of the dataset schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
         """
         fofu.validate_frame_number(frame_number)
 
@@ -758,7 +870,13 @@ class FramesView(Frames):
         frame_view = self._make_frame({"_sample_id": self._sample_id})
 
         for field, value in frame.iter_fields():
-            frame_view.set_field(field, value, create=expand_schema)
+            frame_view.set_field(
+                field,
+                value,
+                create=expand_schema,
+                validate=validate,
+                dynamic=dynamic,
+            )
 
         frame_view.set_field("frame_number", frame_number)
         self._set_replacement(frame_view)
@@ -805,7 +923,7 @@ class FramesView(Frames):
         ]
 
         try:
-            d = next(self._dataset._aggregate(pipeline))
+            d = next(foo.aggregate(self._sample_collection, pipeline))
             return set(d["frame_numbers"])
         except StopIteration:
             return set()
@@ -814,18 +932,19 @@ class FramesView(Frames):
         if not self._needs_frames:
             return super()._get_frame_db(frame_number)
 
-        pipeline = self._view._pipeline(frames_only=True)
-        pipeline.append(
-            {
-                "$match": {
-                    "_sample_id": self._sample_id,
-                    "frame_number": frame_number,
-                }
-            }
-        )
-
         try:
-            return next(self._dataset._aggregate(pipeline))
+            result = self._view._aggregate(
+                frames_only=True,
+                post_pipeline=[
+                    {
+                        "$match": {
+                            "_sample_id": self._sample_id,
+                            "frame_number": frame_number,
+                        }
+                    }
+                ],
+            )
+            return next(result)
         except StopIteration:
             return None
 
@@ -845,32 +964,39 @@ class FramesView(Frames):
             filtered_fields=self._filtered_fields,
         )
 
-    def _save_replacements(self):
+    def _save_replacements(self, validate=True, deferred=False):
         if not self._replacements:
-            return
+            return []
 
         if self._contains_all_fields:
-            super()._save_replacements(include_singletons=False)
-            return
+            return super()._save_replacements(
+                include_singletons=False,
+                validate=validate,
+                deferred=deferred,
+            )
+
+        if validate:
+            self._validate_frames(self._replacements)
 
         ops = []
         for frame_number, frame in self._replacements.items():
             doc = self._make_dict(frame)
 
             # Update elements of filtered array fields separately
-            for field in self._filtered_fields:
-                root, leaf = field.split(".", 1)
-                for element in doc.pop(root, {}).get(leaf, []):
-                    ops.append(
-                        UpdateOne(
-                            {
-                                "frame_number": frame_number,
-                                "_sample_id": self._sample_id,
-                                field + "._id": element["_id"],
-                            },
-                            {"$set": {field + ".$": element}},
+            if self._filtered_fields is not None:
+                for field in self._filtered_fields:
+                    root, leaf = field.split(".", 1)
+                    for element in doc.pop(root, {}).get(leaf, []):
+                        ops.append(
+                            UpdateOne(
+                                {
+                                    "frame_number": frame_number,
+                                    "_sample_id": self._sample_id,
+                                    field + "._id": element["_id"],
+                                },
+                                {"$set": {field + ".$": element}},
+                            )
                         )
-                    )
 
             # Update non-filtered fields
             ops.append(
@@ -884,8 +1010,23 @@ class FramesView(Frames):
                 )
             )
 
-        self._frame_collection.bulk_write(ops, ordered=False)
+        if not deferred:
+            self._frame_collection.bulk_write(ops, ordered=False)
+
         self._replacements.clear()
+
+        return ops
+
+    def save(self):
+        super().save()
+        self._reload_parents()
+
+    def _reload_parents(self):
+        Frame._sync_docs_for_sample(
+            self._frame_collection_name,
+            self._sample.id,
+            self._get_frame_numbers,  # pass fcn so it can be lazily called
+        )
 
 
 class Frame(Document, metaclass=FrameSingleton):
@@ -909,8 +1050,13 @@ class Frame(Document, metaclass=FrameSingleton):
     _NO_DATASET_DOC_CLS = foo.NoDatasetFrameDocument
 
     @property
-    def _sample_id(self):
+    def sample_id(self):
         return self._doc._sample_id
+
+    @property
+    def _sample_id(self):
+        _id = self._doc._sample_id
+        return ObjectId(_id) if _id is not None else None
 
     def save(self):
         """Saves the frame to the database."""
@@ -969,3 +1115,12 @@ class FrameView(DocumentView):
     """
 
     _DOCUMENT_CLS = Frame
+
+    @property
+    def sample_id(self):
+        return self._doc._sample_id
+
+    @property
+    def _sample_id(self):
+        _id = self._doc._sample_id
+        return ObjectId(_id) if _id is not None else None

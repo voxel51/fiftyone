@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 @keyframes animatedBackground {
@@ -46,18 +46,16 @@
   position: relative;
   width: 100%;
   height: 100%;
-  overflow-y: scroll;
-  overflow-x: hidden;
+  overflow: auto;
 
-  --light-color: hsl(230, 3%, 60%);
-  --dark-color: hsl(214, 7%, 19%);
+  --light-color: var(--joy-palette-text-tertiary);
+  --dark-color: var(--joy-palette-background-level2);
 
   scrollbar-color: var(--light-color) var(--dark-color);
 }
 
 .flashlight::-webkit-scrollbar {
   width: 16px;
-  margin-left: -16px;
 }
 
 .flashlight::-webkit-scrollbar-track {
@@ -82,7 +80,7 @@
 
   background-repeat: repeat-y;
   background-size: 100% auto;
-  min-height: 100%;
+  height: 100%;
 
   animation: animatedBackground 60s linear infinite;
   -moz-animation: animatedBackground 60s linear infinite;
@@ -109,7 +107,7 @@
 .flashlightSection > div {
   position: absolute;
   contain: size layout paint;
-  background-color: hsl(210, 11%, 15%);
+  background-color: var(--joy-palette-background-level1);
   overflow: hidden;
 }
 

@@ -39,7 +39,7 @@ The Dataset Zoo can be accessed via Python library and the CLI. Consult the
 API reference below to see how to download, load, and manage zoo datasets.
 
 .. custombutton::
-    :button_text: Check out the API refernece
+    :button_text: Check out the API reference
     :button_link: api.html
 
 .. _dataset-zoo-basic-recipe:

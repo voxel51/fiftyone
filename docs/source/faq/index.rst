@@ -21,6 +21,20 @@ You can also run FiftyOne
 Check out the :ref:`enviornments guide <environments>` to see how to use
 FiftyOne in all common local, remote, cloud, and notebook environments.
 
+.. _faq-supported-browsers:
+
+Which web browsers does the FiftyOne App support?
+-------------------------------------------------
+
+The :ref:`FiftyOne App <fiftyone-app>` fully supports Chrome, Firefox, and
+Safari.
+
+You may find success using browsers like Edge, Opera, or Chromium, but your
+mileage will vary. Internet Explorer is explicitly unsupported at this time.
+
+If using a supported browser is not an option, you can also run FiftyOne
+:ref:`as a desktop application <faq-desktop-app-support>`.
+
 .. _faq-desktop-app-support:
 
 Can I run the FiftyOne App as a desktop application?
@@ -66,6 +80,29 @@ If you launch the App in a script without including
 connection will close when the script exits, and you will see a message like
 "It looks like you are not connected to a session" in the browser tab that was
 opened.
+
+.. _faq-app-script-windows:
+
+Why can't I open the App from a script on Windows?
+--------------------------------------------------
+
+If you are a Windows user launching the :ref:`FiftyOne App <fiftyone-app>` from
+a script, you should use the pattern below to avoid
+`multiprocessing issues <https://stackoverflow.com/q/20360686>`_, since the App
+is served via a separate process:
+
+.. code-block:: python
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset(...)
+
+    if __name__ == "__main__":
+        # Ensures that the App processes are safely launched on Windows
+        session = fo.launch_app(dataset)
+        session.wait()
+
+See :ref:`this section <creating-an-app-session>` for more details.
 
 .. _faq-notebook-support:
 
@@ -120,11 +157,6 @@ including the following commands in your notebook before creating any plots:
     # Ensure that plotly.js is downloaded
     import plotly.offline as po
     po.init_notebook_mode(connected=True)
-
-Note that FiftyOne currently requires `plotly>=4.14,<5`, which should have been
-automatically installed when you installed FiftyOne. If your Plotly package was
-upgraded after installing FiftyOne, some interactive plotting features may
-not work as expected.
 
 .. _faq-remote-server-data:
 

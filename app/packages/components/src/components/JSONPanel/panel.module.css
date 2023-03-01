@@ -1,0 +1,85 @@
+/**
+ * Copyright 2017-2022, Voxel51, Inc.
+ */
+
+.lookerPanel {
+  line-height: 1;
+  font-weight: bold;
+  color: var(--joy-palette-text-secondary);
+  background-color: var(--joy-palette-background-level2);
+  border: 1px solid var(--joy-palette-primary-plainBorder);
+  box-shadow: 0 8px 15px 0 var(--joy-palette-neutral-softBg);
+  border-radius: 3px;
+  overflow: auto;
+  scrollbar-width: none;
+  position: relative;
+  pointer-events: all;
+}
+
+.searchContainer {
+  position: relative;
+  display: flex;
+  padding: 1rem;
+  align-items: center;
+  background-color: var(--joy-palette-background-level2);
+  width: 60%;
+}
+
+.searchInput {
+  padding: 0.25rem 0.5rem;
+  width: 100%;
+  border-radius: 4px;
+  color: var(--joy-palette-text-secondary);
+  border: 1px solid var(--joy-palette-primary-plainBorder);
+  background-color: var(--joy-palette-background-level1);
+}
+
+.searchInput:focus {
+  border: 1px solid var(--joy-palette-primary-softBorder);
+  outline: none;
+}
+
+.searchCloseIcon {
+  position: absolute;
+  right: 1.5rem;
+  cursor: pointer;
+}
+
+.copyBtnClass {
+  color: var(--joy-palette-primary-plainColor);
+}
+
+.copyBtnClass:hover {
+  color: var(--joy-palette-primary-plainColor);
+}
+
+.lookerPanel::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+  display: none;
+}
+.lookerPanel::-webkit-scrollbar-thumb {
+  width: 0px;
+  display: none;
+}
+
+.lookerPanelContainer {
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  position: absolute;
+  overflow: hidden;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.lookerPanelVerticalContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  margin: 3.5rem;
+}

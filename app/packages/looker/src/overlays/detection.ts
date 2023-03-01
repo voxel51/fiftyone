@@ -1,8 +1,10 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
-import { INFO_COLOR, NONFINITES } from "../constants";
-import { NumpyResult } from "../numpy";
+import { NONFINITES } from "@fiftyone/utilities";
+
+import { INFO_COLOR } from "../constants";
+import { OverlayMask } from "../numpy";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
@@ -10,7 +12,7 @@ import { t } from "./util";
 
 interface DetectionLabel extends RegularLabel {
   mask?: {
-    data: NumpyResult;
+    data: OverlayMask;
     image: ArrayBuffer;
   };
   bounding_box: BoundingBox;
@@ -187,7 +189,7 @@ export default class DetectionOverlay<
       return false;
     }
 
-    const [w, h] = state.config.dimensions;
+    const [w, h] = state.dimensions;
     const [px, py] = state.pixelCoordinates;
     let [bx, by, bw, bh] = this.labelBoundingBox;
     [bx, by, bw, bh] = [bx * w, by * h, bw * w, bh * h];
@@ -215,7 +217,7 @@ export default class DetectionOverlay<
   }
 
   private getDrawnBBox(state: Readonly<State>): BoundingBox {
-    const [w, h] = state.config.dimensions;
+    const [w, h] = state.dimensions;
     let [bx, by, bw, bh] = this.label.bounding_box;
 
     const ow = state.strokeWidth / state.canvasBBox[2];

@@ -1,41 +1,43 @@
 """
 FiftyOne datasets.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from collections import defaultdict
-from copy import deepcopy
+import contextlib
 from datetime import datetime
 import fnmatch
+import itertools
 import logging
 import numbers
 import os
 import random
 import string
 
-from bson import ObjectId
+from bson import json_util, ObjectId
+import cachetools
 from deprecated import deprecated
 import mongoengine.errors as moe
-import numpy as np
-from pymongo import InsertOne, ReplaceOne, UpdateMany, UpdateOne
+from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import CursorNotFound, BulkWriteError
 
 import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.aggregations as foa
-import fiftyone.core.annotation as foan
-import fiftyone.core.brain as fob
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
-import fiftyone.core.evaluation as foe
+import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
+import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.metadata as fome
+from fiftyone.core.odm.dataset import SampleFieldDocument
+from fiftyone.core.odm.dataset import DatasetAppConfig
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -77,6 +79,32 @@ def dataset_exists(name):
     """
     conn = foo.get_db_conn()
     return bool(list(conn.datasets.find({"name": name}, {"_id": 1}).limit(1)))
+
+
+def _validate_dataset_name(name, skip=None):
+    """Validates that the given dataset name is available.
+
+    Args:
+        name: a dataset name
+        skip (None): an optional :class:`Dataset` to ignore
+
+    Returns:
+        the slug
+
+    Raises:
+        ValueError: if the name is not available
+    """
+    slug = fou.to_slug(name)
+
+    query = {"$or": [{"name": name}, {"slug": slug}]}
+    if skip is not None:
+        query = {"$and": [query, {"_id": {"$ne": skip._doc.id}}]}
+
+    conn = foo.get_db_conn()
+    if bool(list(conn.datasets.find(query, {"_id": 1}).limit(1))):
+        raise ValueError("Dataset name '%s' is not available" % name)
+
+    return slug
 
 
 def load_dataset(name):
@@ -122,6 +150,9 @@ def make_unique_dataset_name(root):
     Returns:
         the dataset name
     """
+    if not root:
+        return get_default_dataset_name()
+
     name = root
     dataset_names = _list_datasets(include_private=True)
 
@@ -178,7 +209,9 @@ def delete_non_persistent_datasets(verbose=False):
     Args:
         verbose (False): whether to log the names of deleted datasets
     """
-    for name in _list_datasets(include_private=True):
+    conn = foo.get_db_conn()
+
+    for name in conn.datasets.find({"persistent": False}).distinct("name"):
         try:
             dataset = Dataset(name, _create=False, _virtual=True)
         except:
@@ -232,22 +265,36 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if _create:
             doc, sample_doc_cls, frame_doc_cls = _create_dataset(
-                name, persistent=persistent, **kwargs
+                self, name, persistent=persistent, **kwargs
             )
         else:
             doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-                name, virtual=_virtual
+                self, name, virtual=_virtual
             )
 
         self._doc = doc
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
 
-        self._annotation_cache = {}
-        self._brain_cache = {}
-        self._evaluation_cache = {}
+        self._group_slice = doc.default_group_slice
+
+        self._annotation_cache = cachetools.LRUCache(5)
+        self._brain_cache = cachetools.LRUCache(5)
+        self._evaluation_cache = cachetools.LRUCache(5)
 
         self._deleted = False
+
+        if not _virtual:
+            self._update_last_loaded_at()
+
+    def __eq__(self, other):
+        return type(other) == type(self) and self.name == other.name
+
+    def __copy__(self):
+        return self  # datasets are singletons
+
+    def __deepcopy__(self, memo):
+        return self  # datasets are singletons
 
     def __len__(self):
         return self.count()
@@ -256,10 +303,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if isinstance(id_filepath_slice, numbers.Integral):
             raise ValueError(
                 "Accessing dataset samples by numeric index is not supported. "
-                "Use sample IDs, filepaths, or slices instead"
+                "Use sample IDs, filepaths, slices, boolean arrays, or a "
+                "boolean ViewExpression instead"
             )
 
         if isinstance(id_filepath_slice, slice):
+            return self.view()[id_filepath_slice]
+
+        if isinstance(id_filepath_slice, foe.ViewExpression):
+            return self.view()[id_filepath_slice]
+
+        if etau.is_container(id_filepath_slice):
             return self.view()[id_filepath_slice]
 
         try:
@@ -311,12 +365,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self
 
     @property
+    def _is_generated(self):
+        return self._is_patches or self._is_frames or self._is_clips
+
+    @property
     def _is_patches(self):
         return self._sample_collection_name.startswith("patches.")
 
     @property
     def _is_frames(self):
-        return self._sample_collection_name.startswith("frames.")
+        return self._sample_collection_name.startswith(
+            ("frames.", "patches.frames")
+        )
 
     @property
     def _is_clips(self):
@@ -329,25 +389,200 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @media_type.setter
     def media_type(self, media_type):
-        if self:
-            raise ValueError("Cannot set media type of a non-empty dataset")
+        if media_type == self._doc.media_type:
+            return
 
-        if media_type not in fom.MEDIA_TYPES:
+        if media_type not in fom.MEDIA_TYPES and media_type != fom.GROUP:
             raise ValueError(
                 "Invalid media_type '%s'. Supported values are %s"
                 % (media_type, fom.MEDIA_TYPES)
             )
 
+        if len(self) > 0:
+            raise ValueError("Cannot set media type of a non-empty dataset")
+
+        self._set_media_type(media_type)
+
+    def _set_media_type(self, media_type):
         self._doc.media_type = media_type
 
         if media_type == fom.VIDEO:
-            # pylint: disable=no-member
-            self._doc.frame_fields = [
-                foo.SampleFieldDocument.from_field(field)
-                for field in self._frame_doc_cls._fields.values()
-            ]
+            self._declare_frame_fields()
 
+        if media_type != fom.GROUP:
+            self._update_metadata_field(media_type)
+
+            self._doc.save()
+            self.reload()
+        else:
+            # The `metadata` field of group datasets always stays as the
+            # generic `Metadata` type because slices may have different types
+            self._doc.save()
+
+    def _update_metadata_field(self, media_type):
+        idx = None
+        for i, field in enumerate(self._doc.sample_fields):
+            if field.name == "metadata":
+                idx = i
+
+        if idx is not None:
+            if media_type == fom.IMAGE:
+                doc_type = fome.ImageMetadata
+            elif media_type == fom.VIDEO:
+                doc_type = fome.VideoMetadata
+            else:
+                doc_type = fome.Metadata
+
+            field = foo.create_field(
+                "metadata",
+                fof.EmbeddedDocumentField,
+                embedded_doc_type=doc_type,
+            )
+            field_doc = foo.SampleFieldDocument.from_field(field)
+            self._doc.sample_fields[idx] = field_doc
+
+    def _declare_frame_fields(self):
+        # pylint: disable=no-member
+        self._doc.frame_fields = [
+            foo.SampleFieldDocument.from_field(field)
+            for field in self._frame_doc_cls._fields.values()
+        ]
+
+    @property
+    def group_field(self):
+        """The group field of the dataset, or None if the dataset is not
+        grouped.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            print(dataset.group_field)
+            # group
+        """
+        return self._doc.group_field
+
+    @property
+    def group_slice(self):
+        """The current group slice of the dataset, or None if the dataset is
+        not grouped.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            print(dataset.group_slices)
+            # ['left', 'right', 'pcd']
+
+            print(dataset.group_slice)
+            # left
+
+            # Change the current group slice
+            dataset.group_slice = "right"
+
+            print(dataset.group_slice)
+            # right
+        """
+        return self._group_slice
+
+    @group_slice.setter
+    def group_slice(self, slice_name):
+        if self.media_type != fom.GROUP:
+            raise ValueError("Dataset has no groups")
+
+        if slice_name is None:
+            slice_name = self._doc.default_group_slice
+
+        if slice_name not in self._doc.group_media_types:
+            raise ValueError("Dataset has no group slice '%s'" % slice_name)
+
+        self._group_slice = slice_name
+
+    @property
+    def group_slices(self):
+        """The list of group slices of the dataset, or None if the dataset is
+        not grouped.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            print(dataset.group_slices)
+            # ['left', 'right', 'pcd']
+        """
+        if self.media_type != fom.GROUP:
+            return None
+
+        return list(self._doc.group_media_types.keys())
+
+    @property
+    def group_media_types(self):
+        """A dict mapping group slices to media types, or None if the dataset
+        is not grouped.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            print(dataset.group_media_types)
+            # {'left': 'image', 'right': 'image', 'pcd': 'point-cloud'}
+        """
+        if self.media_type != fom.GROUP:
+            return None
+
+        return self._doc.group_media_types
+
+    @property
+    def default_group_slice(self):
+        """The default group slice of the dataset, or None if the dataset is
+        not grouped.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            print(dataset.default_group_slice)
+            # left
+
+            # Change the default group slice
+            dataset.default_group_slice = "right"
+
+            print(dataset.default_group_slice)
+            # right
+        """
+        if self.media_type != fom.GROUP:
+            return None
+
+        return self._doc.default_group_slice
+
+    @default_group_slice.setter
+    def default_group_slice(self, slice_name):
+        if self.media_type != fom.GROUP:
+            raise ValueError("Dataset has no groups")
+
+        if slice_name not in self._doc.group_media_types:
+            raise ValueError("Dataset has no group slice '%s'" % slice_name)
+
+        self._doc.default_group_slice = slice_name
         self._doc.save()
+
+        if self._group_slice is None:
+            self._group_slice = slice_name
 
     @property
     def version(self):
@@ -368,15 +603,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if name == _name:
             return
 
-        if name in list_datasets():
-            raise ValueError("A dataset with name '%s' already exists" % name)
+        slug = _validate_dataset_name(name, skip=self)
 
-        try:
-            self._doc.name = name
-            self._doc.save()
-        except:
-            self._doc.name = _name
-            raise
+        self._doc.name = name
+        self._doc.slug = slug
+        self._doc.save(safe=True)
+
+        # Update singleton
+        self._instances.pop(_name, None)
+        self._instances[name] = self
+
+    @property
+    def slug(self):
+        """The slug of the dataset."""
+        return self._doc.slug
 
     @property
     def created_at(self):
@@ -397,13 +637,53 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @persistent.setter
     def persistent(self, value):
-        _value = self._doc.persistent
-        try:
-            self._doc.persistent = value
-            self._doc.save()
-        except:
-            self._doc.persistent = _value
-            raise
+        self._doc.persistent = value
+        self._doc.save(safe=True)
+
+    @property
+    def tags(self):
+        """A list of tags on the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Add some tags
+            dataset.tags = ["test", "projectA"]
+
+            # Edit the tags
+            dataset.tags.pop()
+            dataset.tags.append("projectB")
+            dataset.save()  # must save after edits
+        """
+        return self._doc.tags
+
+    @tags.setter
+    def tags(self, value):
+        self._doc.tags = value
+        self._doc.save(safe=True)
+
+    @property
+    def description(self):
+        """A string description on the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Store a description on the dataset
+            dataset.description = "Your description here"
+        """
+        return self._doc.description
+
+    @description.setter
+    def description(self, description):
+        self._doc.description = description
+        self._doc.save()
 
     @property
     def info(self):
@@ -427,7 +707,49 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @info.setter
     def info(self, info):
         self._doc.info = info
-        self._doc.save()
+        self._doc.save(safe=True)
+
+    @property
+    def app_config(self):
+        """A :class:`fiftyone.core.odm.dataset.DatasetAppConfig` that
+        customizes how this dataset is visualized in the
+        :ref:`FiftyOne App <fiftyone-app>`.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.utils.image as foui
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # View the dataset's current App config
+            print(dataset.app_config)
+
+            # Generate some thumbnail images
+            foui.transform_images(
+                dataset,
+                size=(-1, 32),
+                output_field="thumbnail_path",
+                output_dir="/tmp/thumbnails",
+            )
+
+            # Modify the dataset's App config
+            dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+            dataset.app_config.grid_media_field = "thumbnail_path"
+            dataset.save()  # must save after edits
+
+            session = fo.launch_app(dataset)
+        """
+        return self._doc.app_config
+
+    @app_config.setter
+    def app_config(self, config):
+        if config is None:
+            config = DatasetAppConfig()
+
+        self._doc.app_config = config
+        self._doc.save(safe=True)
 
     @property
     def classes(self):
@@ -455,7 +777,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @classes.setter
     def classes(self, classes):
         self._doc.classes = classes
-        self.save()
+        self._doc.save(safe=True)
 
     @property
     def default_classes(self):
@@ -481,22 +803,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_classes.setter
     def default_classes(self, classes):
         self._doc.default_classes = classes
-        self.save()
+        self._doc.save(safe=True)
 
     @property
     def mask_targets(self):
         """A dict mapping field names to mask target dicts, each of which
-        defines a mapping between pixel values and label strings for the
-        segmentation masks in the corresponding field of the dataset.
-
-        .. note::
-
-            The pixel value `0` is a reserved "background" class that is
-            rendered as invisible in the App.
+        defines a mapping between pixel values (2D masks) or RGB hex strings
+        (3D masks) and label strings for the segmentation masks in the
+        corresponding field of the dataset.
 
         Examples::
 
             import fiftyone as fo
+
+            #
+            # 2D masks
+            #
 
             dataset = fo.Dataset()
 
@@ -506,8 +828,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "predictions": {1: "cat", 2: "dog", 255: "other"},
             }
 
+            # Or, for RGB mask targets
+            dataset.mask_targets = {
+                "segmentations": {"#3f0a44": "road", "#eeffee": "building", "#ffffff": "other"}
+            }
+
             # Edit an existing mask target
             dataset.mask_targets["ground_truth"][255] = "other"
+            dataset.save()  # must save after edits
+
+            #
+            # 3D masks
+            #
+
+            dataset = fo.Dataset()
+
+            # Set mask targets for the `ground_truth` and `predictions` fields
+            dataset.mask_targets = {
+                "ground_truth": {"#499CEF": "cat", "#6D04FF": "dog"},
+                "predictions": {
+                    "#499CEF": "cat", "#6D04FF": "dog", "#FF6D04": "person"
+                },
+            }
+
+            # Edit an existing mask target
+            dataset.mask_targets["ground_truth"]["#FF6D04"] = "person"
             dataset.save()  # must save after edits
         """
         return self._doc.mask_targets
@@ -515,31 +860,47 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @mask_targets.setter
     def mask_targets(self, targets):
         self._doc.mask_targets = targets
-        self.save()
+        self._doc.save(safe=True)
 
     @property
     def default_mask_targets(self):
-        """A dict defining a default mapping between pixel values and label
-        strings for the segmentation masks of all
-        :class:`fiftyone.core.labels.Segmentation` fields of this dataset that
-        do not have customized mask targets defined in :meth:`mask_targets`.
-
-        .. note::
-
-            The pixel value `0` is a reserved "background" class that is
-            rendered as invisible in the App.
+        """A dict defining a default mapping between pixel values (2D masks) or
+        RGB hex strings (3D masks) and label strings for the segmentation masks
+        of all :class:`fiftyone.core.labels.Segmentation` fields of this
+        dataset that do not have customized mask targets defined in
+        :meth:`mask_targets`.
 
         Examples::
 
             import fiftyone as fo
+
+            #
+            # 2D masks
+            #
 
             dataset = fo.Dataset()
 
             # Set default mask targets
             dataset.default_mask_targets = {1: "cat", 2: "dog"}
 
+            # Or, for RGB mask targets
+            dataset.default_mask_targets = {"#3f0a44": "road", "#eeffee": "building", "#ffffff": "other"}
+
             # Edit the default mask targets
             dataset.default_mask_targets[255] = "other"
+            dataset.save()  # must save after edits
+
+            #
+            # 3D masks
+            #
+
+            dataset = fo.Dataset()
+
+            # Set default mask targets
+            dataset.default_mask_targets = {"#499CEF": "cat", "#6D04FF": "dog"}
+
+            # Edit the default mask targets
+            dataset.default_mask_targets["#FF6D04"] = "person"
             dataset.save()  # must save after edits
         """
         return self._doc.default_mask_targets
@@ -547,7 +908,76 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_mask_targets.setter
     def default_mask_targets(self, targets):
         self._doc.default_mask_targets = targets
-        self.save()
+        self._doc.save(safe=True)
+
+    @property
+    def skeletons(self):
+        """A dict mapping field names to
+        :class:`fiftyone.core.odm.dataset.KeypointSkeleton` instances, each of
+        which defines the semantic labels and point connectivity for the
+        :class:`fiftyone.core.labels.Keypoint` instances in the corresponding
+        field of the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set keypoint skeleton for the `ground_truth` field
+            dataset.skeletons = {
+                "ground_truth": fo.KeypointSkeleton(
+                    labels=[
+                        "left hand" "left shoulder", "right shoulder", "right hand",
+                        "left eye", "right eye", "mouth",
+                    ],
+                    edges=[[0, 1, 2, 3], [4, 5, 6]],
+                )
+            }
+
+            # Edit an existing skeleton
+            dataset.skeletons["ground_truth"].labels[-1] = "lips"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.skeletons
+
+    @skeletons.setter
+    def skeletons(self, skeletons):
+        self._doc.skeletons = skeletons
+        self._doc.save(safe=True)
+
+    @property
+    def default_skeleton(self):
+        """A default :class:`fiftyone.core.odm.dataset.KeypointSkeleton`
+        defining the semantic labels and point connectivity for all
+        :class:`fiftyone.core.labels.Keypoint` fields of this dataset that do
+        not have customized skeletons defined in :meth:`skeleton`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set default keypoint skeleton
+            dataset.default_skeleton = fo.KeypointSkeleton(
+                labels=[
+                    "left hand" "left shoulder", "right shoulder", "right hand",
+                    "left eye", "right eye", "mouth",
+                ],
+                edges=[[0, 1, 2, 3], [4, 5, 6]],
+            )
+
+            # Edit the default skeleton
+            dataset.default_skeleton.labels[-1] = "lips"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.default_skeleton
+
+    @default_skeleton.setter
+    def default_skeleton(self, skeleton):
+        self._doc.default_skeleton = skeleton
+        self._doc.save(safe=True)
 
     @property
     def deleted(self):
@@ -560,14 +990,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
-        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
         elements = [
             ("Name:", self.name),
             ("Media type:", self.media_type),
-            ("Num samples:", aggs[0]),
+            ("Num %s:" % self._elements_str, self.count()),
             ("Persistent:", self.persistent),
-            ("Tags:", aggs[1]),
+            ("Tags:", self.tags),
         ]
+
+        if self.media_type == fom.GROUP:
+            elements.insert(2, ("Group slice:", self.group_slice))
 
         elements = fou.justify_headings(elements)
         lines = ["%s %s" % tuple(e) for e in elements]
@@ -576,7 +1008,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ["Sample fields:", self._to_fields_str(self.get_field_schema())]
         )
 
-        if self.media_type == fom.VIDEO:
+        if self._has_frame_fields():
             lines.extend(
                 [
                     "Frame fields:",
@@ -589,25 +1021,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def stats(self, include_media=False, compressed=False):
         """Returns stats about the dataset on disk.
 
-        The ``samples`` keys refer to the sample-level labels for the dataset
-        as they are stored in the database.
+        The ``samples`` keys refer to the sample documents stored in the
+        database.
 
         The ``media`` keys refer to the raw media associated with each sample
-        in the dataset on disk (only included if ``include_media`` is True).
+        on disk.
 
-        The ``frames`` keys refer to the frame labels for the dataset as they
-        are stored in the database (video datasets only).
+        For video datasets, the ``frames`` keys refer to the frame documents
+        stored in the database.
+
+        Note that dataset-level metadata such as annotation runs are not
+        included in this computation.
 
         Args:
             include_media (False): whether to include stats about the size of
                 the raw media in the dataset
             compressed (False): whether to return the sizes of collections in
                 their compressed form on disk (True) or the logical
-                uncompressed size of  the collections (False)
+                uncompressed size of the collections (False)
 
         Returns:
             a stats dict
         """
+        contains_videos = self._contains_videos(any_slice=True)
+
         stats = {}
 
         conn = foo.get_db_conn()
@@ -619,7 +1056,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         stats["samples_size"] = etau.to_human_bytes_str(samples_bytes)
         total_bytes = samples_bytes
 
-        if self.media_type == fom.VIDEO:
+        if contains_videos:
             cs = conn.command("collstats", self._frame_collection_name)
             frames_bytes = cs["storageSize"] if compressed else cs["size"]
             stats["frames_count"] = cs["count"]
@@ -628,8 +1065,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             total_bytes += frames_bytes
 
         if include_media:
-            self.compute_metadata()
-            media_bytes = self.sum("metadata.size_bytes")
+            if self.media_type == fom.GROUP:
+                samples = self.select_group_slices(_allow_mixed=True)
+            else:
+                samples = self
+
+            samples.compute_metadata()
+            media_bytes = samples.sum("metadata.size_bytes")
             stats["media_bytes"] = media_bytes
             stats["media_size"] = etau.to_human_bytes_str(media_bytes)
             total_bytes += media_bytes
@@ -704,60 +1146,94 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return fov.DatasetView(self)
 
     def get_field_schema(
-        self, ftype=None, embedded_doc_type=None, include_private=False
+        self,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        flat=False,
     ):
         """Returns a schema dictionary describing the fields of the samples in
         the dataset.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
 
         Returns:
-             an ``OrderedDict`` mapping field names to field types
+             a dictionary mapping field names to field types
         """
-        return self._sample_doc_cls.get_field_schema(
+        schema = self._sample_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
 
+        if flat:
+            schema = fof.flatten_schema(
+                schema,
+                ftype=ftype,
+                embedded_doc_type=embedded_doc_type,
+                include_private=include_private,
+            )
+
+        return schema
+
     def get_frame_field_schema(
-        self, ftype=None, embedded_doc_type=None, include_private=False
+        self,
+        ftype=None,
+        embedded_doc_type=None,
+        include_private=False,
+        flat=False,
     ):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the dataset.
 
-        Only applicable for video datasets.
+        Only applicable for datasets that contain videos.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
 
         Returns:
-            a dictionary mapping field names to field types, or ``None`` if
-            the dataset is not a video dataset
+            a dictionary mapping field names to field types, or ``None`` if the
+            dataset does not contain videos
         """
-        if self.media_type != fom.VIDEO:
+        if not self._has_frame_fields():
             return None
 
-        return self._frame_doc_cls.get_field_schema(
+        schema = self._frame_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
+
+        if flat:
+            schema = fof.flatten_schema(
+                schema,
+                ftype=ftype,
+                embedded_doc_type=embedded_doc_type,
+                include_private=include_private,
+            )
+
+        return schema
 
     def add_sample_field(
         self,
@@ -765,12 +1241,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ftype,
         embedded_doc_type=None,
         subfield=None,
+        fields=None,
+        description=None,
+        info=None,
         **kwargs,
     ):
-        """Adds a new sample field to the dataset.
+        """Adds a new sample field or embedded field to the dataset, if
+        necessary.
 
         Args:
-            field_name: the field name
+            field_name: the field name or ``embedded.field.name``
             ftype: the field type to create. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): the
@@ -781,42 +1261,98 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
+            fields (None): a list of :class:`fiftyone.core.fields.Field`
+                instances defining embedded document attributes. Only
+                applicable when ``ftype`` is
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            description (None): an optional description
+            info (None): an optional info dict
+
+        Raises:
+            ValueError: if a field of the same name already exists and it is
+                not compliant with the specified values
         """
-        self._sample_doc_cls.add_field(
-            field_name,
-            ftype,
-            embedded_doc_type=embedded_doc_type,
-            subfield=subfield,
-            **kwargs,
-        )
-        self._reload()
-
-    def _add_sample_field_if_necessary(
-        self,
-        field_name,
-        ftype,
-        embedded_doc_type=None,
-        subfield=None,
-        **kwargs,
-    ):
-        field_kwargs = dict(
-            ftype=ftype,
-            embedded_doc_type=embedded_doc_type,
-            subfield=subfield,
-            **kwargs,
-        )
-
-        schema = self.get_field_schema()
-        if field_name in schema:
-            foo.validate_fields_match(
-                field_name, field_kwargs, schema[field_name]
+        if embedded_doc_type is not None and issubclass(
+            embedded_doc_type, fog.Group
+        ):
+            expanded = self._add_group_field(
+                field_name, description=description, info=info
             )
         else:
-            self.add_sample_field(field_name, **field_kwargs)
+            expanded = self._sample_doc_cls.add_field(
+                field_name,
+                ftype,
+                embedded_doc_type=embedded_doc_type,
+                subfield=subfield,
+                fields=fields,
+                description=description,
+                info=info,
+                **kwargs,
+            )
 
-    def _add_implied_sample_field(self, field_name, value):
-        self._sample_doc_cls.add_implied_field(field_name, value)
-        self._reload()
+        if expanded:
+            self._reload()
+
+    def _add_implied_sample_field(
+        self, field_name, value, dynamic=False, validate=True
+    ):
+        if isinstance(value, fog.Group):
+            expanded = self._add_group_field(field_name, default=value.name)
+        else:
+            expanded = self._sample_doc_cls.add_implied_field(
+                field_name, value, dynamic=dynamic, validate=validate
+            )
+
+        if expanded:
+            self._reload()
+
+    def _merge_sample_field_schema(
+        self,
+        schema,
+        expand_schema=True,
+        recursive=True,
+        validate=True,
+    ):
+        expanded = self._sample_doc_cls.merge_field_schema(
+            schema,
+            expand_schema=expand_schema,
+            recursive=recursive,
+            validate=validate,
+        )
+
+        if expanded:
+            self._reload()
+
+    def add_dynamic_sample_fields(self, fields=None, add_mixed=False):
+        """Adds all dynamic sample fields to the dataset's schema.
+
+        Dynamic fields are embedded document fields with at least one non-None
+        value that have not been declared on the dataset's schema.
+
+        Args:
+            fields (None): an optional field or iterable of fields for which to
+                add dynamic fields. By default, all fields are considered
+            add_mixed (False): whether to declare fields that contain values
+                of mixed types as generic :class:`fiftyone.core.fields.Field`
+                instances (True) or to skip such fields (False)
+        """
+        dynamic_schema = self.get_dynamic_field_schema(fields=fields)
+
+        schema = {}
+        for path, field in dynamic_schema.items():
+            if etau.is_container(field):
+                if add_mixed:
+                    schema[path] = fof.Field()
+                else:
+                    logger.warning(
+                        "Skipping dynamic field '%s' with mixed types %s",
+                        path,
+                        field,
+                    )
+            elif field is not None:
+                schema[path] = field
+
+        self._merge_sample_field_schema(schema)
 
     def add_frame_field(
         self,
@@ -824,14 +1360,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ftype,
         embedded_doc_type=None,
         subfield=None,
+        fields=None,
+        description=None,
+        info=None,
         **kwargs,
     ):
-        """Adds a new frame-level field to the dataset.
+        """Adds a new frame-level field or embedded field to the dataset, if
+        necessary.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
-            field_name: the field name
+            field_name: the field name or ``embedded.field.name``
             ftype: the field type to create. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): the
@@ -842,48 +1382,153 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
-        """
-        if self.media_type != fom.VIDEO:
-            raise ValueError("Only video datasets have frame fields")
+            fields (None): a list of :class:`fiftyone.core.fields.Field`
+                instances defining embedded document attributes. Only
+                applicable when ``ftype`` is
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            description (None): an optional description
+            info (None): an optional info dict
 
-        self._frame_doc_cls.add_field(
+        Raises:
+            ValueError: if a field of the same name already exists and it is
+                not compliant with the specified values
+        """
+        if not self._has_frame_fields():
+            raise ValueError(
+                "Only datasets that contain videos may have frame fields"
+            )
+
+        expanded = self._frame_doc_cls.add_field(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            fields=fields,
+            description=description,
+            info=info,
             **kwargs,
         )
-        self._reload()
 
-    def _add_frame_field_if_necessary(
-        self,
-        field_name,
-        ftype,
-        embedded_doc_type=None,
-        subfield=None,
-        **kwargs,
+        if expanded:
+            self._reload()
+
+    def _add_implied_frame_field(
+        self, field_name, value, dynamic=False, validate=True
     ):
-        field_kwargs = dict(
-            ftype=ftype,
-            embedded_doc_type=embedded_doc_type,
-            subfield=subfield,
+        if not self._has_frame_fields():
+            raise ValueError(
+                "Only datasets that contain videos may have frame fields"
+            )
+
+        expanded = self._frame_doc_cls.add_implied_field(
+            field_name, value, dynamic=dynamic, validate=validate
+        )
+
+        if expanded:
+            self._reload()
+
+    def _merge_frame_field_schema(
+        self,
+        schema,
+        expand_schema=True,
+        recursive=True,
+        validate=True,
+    ):
+        expanded = self._frame_doc_cls.merge_field_schema(
+            schema,
+            expand_schema=expand_schema,
+            recursive=recursive,
+            validate=validate,
+        )
+
+        if expanded:
+            self._reload()
+
+    def add_dynamic_frame_fields(self, fields=None, add_mixed=False):
+        """Adds all dynamic frame fields to the dataset's schema.
+
+        Dynamic fields are embedded document fields with at least one non-None
+        value that have not been declared on the dataset's schema.
+
+        Args:
+            fields (None): an optional field or iterable of fields for which to
+                add dynamic fields. By default, all fields are considered
+            add_mixed (False): whether to declare fields that contain values
+                of mixed types as generic :class:`fiftyone.core.fields.Field`
+                instances (True) or to skip such fields (False)
+        """
+        if not self._has_frame_fields():
+            raise ValueError(
+                "Only datasets that contain videos may have frame fields"
+            )
+
+        dynamic_schema = self.get_dynamic_frame_field_schema(fields=fields)
+
+        schema = {}
+        for path, field in dynamic_schema.items():
+            if etau.is_container(field):
+                if add_mixed:
+                    schema[path] = fof.Field()
+                else:
+                    logger.warning(
+                        "Skipping dynamic frame field '%s' with mixed types %s",
+                        path,
+                        field,
+                    )
+            elif field is not None:
+                schema[path] = field
+
+        self._merge_frame_field_schema(schema)
+
+    def add_group_field(
+        self, field_name, default=None, description=None, info=None
+    ):
+        """Adds a group field to the dataset, if necessary.
+
+        Args:
+            field_name: the field name
+            default (None): a default group slice for the field
+            description (None): an optional description
+            info (None): an optional info dict
+
+        Raises:
+            ValueError: if a group field with another name already exists
+        """
+        expanded = self._add_group_field(
+            field_name, default=default, description=description, info=info
+        )
+
+        if expanded:
+            self._reload()
+
+    def _add_group_field(self, field_name, default=None, **kwargs):
+        expanded = self._sample_doc_cls.add_field(
+            field_name,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fog.Group,
             **kwargs,
         )
 
-        schema = self.get_frame_field_schema()
-        if field_name in schema:
-            foo.validate_fields_match(
-                field_name, field_kwargs, schema[field_name]
-            )
-        else:
-            self.add_frame_field(field_name, **field_kwargs)
+        if not expanded:
+            return False
 
-    def _add_implied_frame_field(self, field_name, value):
-        if self.media_type != fom.VIDEO:
-            raise ValueError("Only video datasets have frame fields")
+        self._doc.media_type = fom.GROUP
 
-        self._frame_doc_cls.add_implied_field(field_name, value)
-        self._reload()
+        if self._doc.group_media_types is None:
+            self._doc.group_media_types = {}
+
+        if self._doc.default_group_slice is None:
+            self._doc.default_group_slice = default
+
+        self._doc.group_field = field_name
+        self._doc.save()
+
+        self._group_slice = self._doc.default_group_slice
+
+        self.create_index(field_name + "._id")
+        self.create_index(field_name + ".name")
+
+        return True
 
     def rename_sample_field(self, field_name, new_field_name):
         """Renames the sample field to the given new name.
@@ -914,7 +1559,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to rename embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -934,52 +1579,37 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._rename_frame_fields(field_mapping)
 
     def _rename_sample_fields(self, field_mapping, view=None):
-        (
-            fields,
-            new_fields,
-            embedded_fields,
-            embedded_new_fields,
-        ) = _parse_field_mapping(field_mapping)
+        sample_collection = self if view is None else view
+
+        paths, new_paths = zip(*field_mapping.items())
+        self._sample_doc_cls._rename_fields(
+            sample_collection, paths, new_paths
+        )
+
+        fields, _, _, _ = _parse_field_mapping(field_mapping)
 
         if fields:
-            self._sample_doc_cls._rename_fields(fields, new_fields)
-            fos.Sample._rename_fields(
-                self._sample_collection_name, fields, new_fields
-            )
+            fos.Sample._purge_fields(self._sample_collection_name, fields)
 
-        if embedded_fields:
-            sample_collection = self if view is None else view
-            self._sample_doc_cls._rename_embedded_fields(
-                embedded_fields, embedded_new_fields, sample_collection
-            )
-            fos.Sample._reload_docs(self._sample_collection_name)
-
+        fos.Sample._reload_docs(self._sample_collection_name)
         self._reload()
 
     def _rename_frame_fields(self, field_mapping, view=None):
-        if self.media_type != fom.VIDEO:
-            raise ValueError("Only video datasets have frame fields")
+        sample_collection = self if view is None else view
+        if not sample_collection._has_frame_fields():
+            raise ValueError(
+                "%s has no frame fields" % type(sample_collection)
+            )
 
-        (
-            fields,
-            new_fields,
-            embedded_fields,
-            embedded_new_fields,
-        ) = _parse_field_mapping(field_mapping)
+        paths, new_paths = zip(*field_mapping.items())
+        self._frame_doc_cls._rename_fields(sample_collection, paths, new_paths)
+
+        fields, _, _, _ = _parse_field_mapping(field_mapping)
 
         if fields:
-            self._frame_doc_cls._rename_fields(fields, new_fields)
-            fofr.Frame._rename_fields(
-                self._frame_collection_name, fields, new_fields
-            )
+            fofr.Frame._purge_fields(self._frame_collection_name, fields)
 
-        if embedded_fields:
-            sample_collection = self if view is None else view
-            self._frame_doc_cls._rename_embedded_fields(
-                embedded_fields, embedded_new_fields, sample_collection
-            )
-            fofr.Frame._reload_docs(self._frame_collection_name)
-
+        fofr.Frame._reload_docs(self._frame_collection_name)
         self._reload()
 
     def clone_sample_field(self, field_name, new_field_name):
@@ -1012,7 +1642,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1026,7 +1656,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_mapping: a dict mapping field names to new field names into
@@ -1035,44 +1665,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._clone_frame_fields(field_mapping)
 
     def _clone_sample_fields(self, field_mapping, view=None):
-        (
-            fields,
-            new_fields,
-            embedded_fields,
-            embedded_new_fields,
-        ) = _parse_field_mapping(field_mapping)
+        sample_collection = self if view is None else view
 
-        if fields:
-            self._sample_doc_cls._clone_fields(fields, new_fields, view)
-
-        if embedded_fields:
-            sample_collection = self if view is None else view
-            self._sample_doc_cls._clone_embedded_fields(
-                embedded_fields, embedded_new_fields, sample_collection
-            )
+        paths, new_paths = zip(*field_mapping.items())
+        self._sample_doc_cls._clone_fields(sample_collection, paths, new_paths)
 
         fos.Sample._reload_docs(self._sample_collection_name)
         self._reload()
 
     def _clone_frame_fields(self, field_mapping, view=None):
-        if self.media_type != fom.VIDEO:
-            raise ValueError("Only video datasets have frame fields")
-
-        (
-            fields,
-            new_fields,
-            embedded_fields,
-            embedded_new_fields,
-        ) = _parse_field_mapping(field_mapping)
-
-        if fields:
-            self._frame_doc_cls._clone_fields(fields, new_fields, view)
-
-        if embedded_fields:
-            sample_collection = self if view is None else view
-            self._frame_doc_cls._clone_embedded_fields(
-                embedded_fields, embedded_new_fields, sample_collection
+        sample_collection = self if view is None else view
+        if not sample_collection._has_frame_fields():
+            raise ValueError(
+                "%s has no frame fields" % type(sample_collection)
             )
+
+        paths, new_paths = zip(*field_mapping.items())
+        self._frame_doc_cls._clone_fields(sample_collection, paths, new_paths)
 
         fofr.Frame._reload_docs(self._frame_collection_name)
         self._reload()
@@ -1115,7 +1724,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1132,7 +1741,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_names: the field name or iterable of field names
@@ -1140,33 +1749,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._clear_frame_fields(field_names)
 
     def _clear_sample_fields(self, field_names, view=None):
-        fields, embedded_fields = _parse_fields(field_names)
+        sample_collection = self if view is None else view
 
-        if fields:
-            self._sample_doc_cls._clear_fields(fields, view)
-
-        if embedded_fields:
-            sample_collection = self if view is None else view
-            self._sample_doc_cls._clear_embedded_fields(
-                embedded_fields, sample_collection
-            )
+        field_names = _to_list(field_names)
+        self._sample_doc_cls._clear_fields(sample_collection, field_names)
 
         fos.Sample._reload_docs(self._sample_collection_name)
 
     def _clear_frame_fields(self, field_names, view=None):
-        if self.media_type != fom.VIDEO:
-            raise ValueError("Only video datasets have frame fields")
-
-        fields, embedded_fields = _parse_fields(field_names)
-
-        if fields:
-            self._frame_doc_cls._clear_fields(fields, view)
-
-        if embedded_fields:
-            sample_collection = self if view is None else view
-            self._frame_doc_cls._clear_embedded_fields(
-                embedded_fields, sample_collection
+        sample_collection = self if view is None else view
+        if not sample_collection._has_frame_fields():
+            raise ValueError(
+                "%s has no frame fields" % type(sample_collection)
             )
+
+        field_names = _to_list(field_names)
+        self._frame_doc_cls._clear_fields(sample_collection, field_names)
 
         fofr.Frame._reload_docs(self._frame_collection_name)
 
@@ -1202,13 +1800,44 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_sample_fields(field_names, error_level)
 
+    def remove_dynamic_sample_field(self, field_name, error_level=0):
+        """Removes the dynamic embedded sample field from the dataset's schema.
+
+        The underlying data is **not** deleted from the samples.
+
+        Args:
+            field_name: the ``embedded.field.name``
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a top-level field cannot be removed
+            -   1: log warning if a top-level field cannot be removed
+            -   2: ignore top-level fields that cannot be removed
+        """
+        self._remove_dynamic_sample_fields(field_name, error_level)
+
+    def remove_dynamic_sample_fields(self, field_names, error_level=0):
+        """Removes the dynamic embedded sample fields from the dataset's
+        schema.
+
+        The underlying data is **not** deleted from the samples.
+
+        Args:
+            field_names: the ``embedded.field.name`` or iterable of field names
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a top-level field cannot be removed
+            -   1: log warning if a top-level field cannot be removed
+            -   2: ignore top-level fields that cannot be removed
+        """
+        self._remove_dynamic_sample_fields(field_names, error_level)
+
     def delete_frame_field(self, field_name, error_level=0):
         """Deletes the frame-level field from all samples in the dataset.
 
         You can use dot notation (``embedded.field.name``) to delete embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1226,7 +1855,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to delete embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_names: a field name or iterable of field names
@@ -1238,76 +1867,422 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_frame_fields(field_names, error_level)
 
+    def remove_dynamic_frame_field(self, field_name, error_level=0):
+        """Removes the dynamic embedded frame field from the dataset's schema.
+
+        The underlying data is **not** deleted from the frames.
+
+        Args:
+            field_name: the ``embedded.field.name``
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a top-level field cannot be removed
+            -   1: log warning if a top-level field cannot be removed
+            -   2: ignore top-level fields that cannot be removed
+        """
+        self._remove_dynamic_frame_fields(field_name, error_level)
+
+    def remove_dynamic_frame_fields(self, field_names, error_level=0):
+        """Removes the dynamic embedded frame fields from the dataset's schema.
+
+        The underlying data is **not** deleted from the frames.
+
+        Args:
+            field_names: the ``embedded.field.name`` or iterable of field names
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a top-level field cannot be removed
+            -   1: log warning if a top-level field cannot be removed
+            -   2: ignore top-level fields that cannot be removed
+        """
+        self._remove_dynamic_frame_fields(field_names, error_level)
+
     def _delete_sample_fields(self, field_names, error_level):
+        field_names = _to_list(field_names)
+        self._sample_doc_cls._delete_fields(
+            field_names, error_level=error_level
+        )
+
         fields, embedded_fields = _parse_fields(field_names)
 
         if fields:
-            self._sample_doc_cls._delete_fields(
-                fields, error_level=error_level
-            )
             fos.Sample._purge_fields(self._sample_collection_name, fields)
 
         if embedded_fields:
-            self._sample_doc_cls._delete_embedded_fields(embedded_fields)
             fos.Sample._reload_docs(self._sample_collection_name)
 
         self._reload()
 
+    def _remove_dynamic_sample_fields(self, field_names, error_level):
+        field_names = _to_list(field_names)
+        self._sample_doc_cls._remove_dynamic_fields(
+            field_names, error_level=error_level
+        )
+
+        self._reload()
+
     def _delete_frame_fields(self, field_names, error_level):
-        if self.media_type != fom.VIDEO:
-            raise ValueError("Only video datasets have frame fields")
+        if not self._has_frame_fields():
+            fou.handle_error(
+                ValueError(
+                    "Only datasets that contain videos have frame fields"
+                ),
+                error_level,
+            )
+            return
+
+        field_names = _to_list(field_names)
+        self._frame_doc_cls._delete_fields(
+            field_names, error_level=error_level
+        )
 
         fields, embedded_fields = _parse_fields(field_names)
 
         if fields:
-            self._frame_doc_cls._delete_fields(fields, error_level=error_level)
             fofr.Frame._purge_fields(self._frame_collection_name, fields)
 
         if embedded_fields:
-            self._frame_doc_cls._delete_embedded_fields(embedded_fields)
             fofr.Frame._reload_docs(self._frame_collection_name)
 
         self._reload()
 
-    def iter_samples(self, progress=False):
+    def _remove_dynamic_frame_fields(self, field_names, error_level):
+        if not self._has_frame_fields():
+            fou.handle_error(
+                ValueError(
+                    "Only datasets that contain videos have frame fields"
+                ),
+                error_level,
+            )
+            return
+
+        field_names = _to_list(field_names)
+        self._frame_doc_cls._remove_dynamic_fields(
+            field_names, error_level=error_level
+        )
+
+        self._reload()
+
+    def rename_group_slice(self, name, new_name):
+        """Renames the group slice with the given name.
+
+        Args:
+            name: the group slice name
+            new_name: the new group slice name
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("Dataset has no groups")
+
+        if name not in self._doc.group_media_types:
+            raise ValueError("Dataset has no group slice '%s'" % name)
+
+        group_path = self.group_field + ".name"
+        self.select_group_slices(name).set_field(group_path, new_name).save()
+
+        new_media_type = self._doc.group_media_types.pop(name)
+        self._doc.group_media_types[new_name] = new_media_type
+
+        if self._doc.default_group_slice == name:
+            self._doc.default_group_slice = new_name
+
+        if self.group_slice == name:
+            self.group_slice = new_name
+
+        self._doc.save()
+
+    def delete_group_slice(self, name):
+        """Deletes all samples in the given group slice from the dataset.
+
+        Args:
+            name: a group slice name
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("Dataset has no groups")
+
+        if name not in self._doc.group_media_types:
+            raise ValueError("Dataset has no group slice '%s'" % name)
+
+        self.delete_samples(self.select_group_slices(name))
+
+        self._doc.group_media_types.pop(name)
+
+        new_default = next(iter(self._doc.group_media_types.keys()), None)
+
+        if self._doc.default_group_slice == name:
+            self._doc.default_group_slice = new_default
+
+        if self._group_slice == name:
+            self._group_slice = new_default
+
+        self._doc.save()
+
+    def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the dataset.
+
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for sample in dataset.iter_samples(progress=True):
+                sample.ground_truth.label = make_label()
+                sample.save()
+
+            # Save in batches of 10
+            for sample in dataset.iter_samples(
+                progress=True, autosave=True, batch_size=10
+            ):
+                sample.ground_truth.label = make_label()
+
+            # Save every 0.5 seconds
+            for sample in dataset.iter_samples(
+                progress=True, autosave=True, batch_size=0.5
+            ):
+                sample.ground_truth.label = make_label()
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        pipeline = self._pipeline(detach_frames=True)
+        with contextlib.ExitStack() as exit_context:
+            samples = self._iter_samples()
 
-        if progress:
-            with fou.ProgressBar(total=len(self)) as pb:
-                for sample in pb(self._iter_samples(pipeline)):
-                    yield sample
-        else:
-            for sample in self._iter_samples(pipeline):
+            if progress:
+                pb = fou.ProgressBar(total=len(self))
+                exit_context.enter_context(pb)
+                samples = pb(samples)
+
+            if autosave:
+                save_context = foc.SaveContext(self, batch_size=batch_size)
+                exit_context.enter_context(save_context)
+
+            for sample in samples:
                 yield sample
 
-    def _iter_samples(self, pipeline):
+                if autosave:
+                    save_context.save(sample)
+
+    def _iter_samples(self, pipeline=None):
+        make_sample = self._make_sample_fcn()
         index = 0
 
         try:
-            for d in foo.aggregate(self._sample_collection, pipeline):
-                doc = self._sample_dict_to_doc(d)
-                sample = fos.Sample.from_doc(doc, dataset=self)
+            for d in self._aggregate(
+                pipeline=pipeline,
+                detach_frames=True,
+                detach_groups=True,
+            ):
+                sample = make_sample(d)
                 index += 1
                 yield sample
 
         except CursorNotFound:
             # The cursor has timed out so we yield from a new one after
             # skipping to the last offset
-
-            pipeline.append({"$skip": index})
-            for sample in self._iter_samples(pipeline):
+            pipeline = [{"$skip": index}] + (pipeline or [])
+            for sample in self._iter_samples(pipeline=pipeline):
                 yield sample
 
-    def add_sample(self, sample, expand_schema=True, validate=True):
+    def _make_sample_fcn(self):
+        def make_sample(d):
+            doc = self._sample_dict_to_doc(d)
+            return fos.Sample.from_doc(doc, dataset=self)
+
+        return make_sample
+
+    def iter_groups(
+        self,
+        group_slices=None,
+        progress=False,
+        autosave=False,
+        batch_size=None,
+    ):
+        """Returns an iterator over the groups in the dataset.
+
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for group in dataset.iter_groups(progress=True):
+                for sample in group.values():
+                    sample["test"] = make_label()
+                    sample.save()
+
+            # Save in batches of 10
+            for group in dataset.iter_groups(
+                progress=True, autosave=True, batch_size=10
+            ):
+                for sample in group.values():
+                    sample["test"] = make_label()
+
+            # Save every 0.5 seconds
+            for group in dataset.iter_groups(
+                progress=True, autosave=True, batch_size=0.5
+            ):
+                for sample in group.values():
+                    sample["test"] = make_label()
+
+        Args:
+            group_slices (None): an optional subset of group slices to load
+            progress (False): whether to render a progress bar tracking the
+                iterator's progress
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
+
+        Returns:
+            an iterator that emits dicts mapping group slice names to
+            :class:`fiftyone.core.sample.Sample` instances, one per group
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("%s does not contain groups" % type(self))
+
+        with contextlib.ExitStack() as exit_context:
+            groups = self._iter_groups(group_slices=group_slices)
+
+            if progress:
+                pb = fou.ProgressBar(total=len(self))
+                exit_context.enter_context(pb)
+                groups = pb(groups)
+
+            if autosave:
+                save_context = foc.SaveContext(self, batch_size=batch_size)
+                exit_context.enter_context(save_context)
+
+            for group in groups:
+                yield group
+
+                if autosave:
+                    for sample in group.values():
+                        save_context.save(sample)
+
+    def _iter_groups(self, group_slices=None, pipeline=None):
+        make_sample = self._make_sample_fcn()
+        index = 0
+
+        group_field = self.group_field
+        curr_id = None
+        group = {}
+
+        try:
+            for d in self._aggregate(
+                detach_frames=True,
+                pipeline=pipeline,
+                group_slices=group_slices,
+                groups_only=True,
+            ):
+                sample = make_sample(d)
+
+                group_id = sample[group_field].id
+                if curr_id is None:
+                    # First overall element
+                    curr_id = group_id
+                    group[sample[group_field].name] = sample
+                elif group_id == curr_id:
+                    # Add element to group
+                    group[sample[group_field].name] = sample
+                else:
+                    # Flush last group
+                    index += 1
+                    yield group
+
+                    # First element of new group
+                    curr_id = group_id
+                    group = {}
+                    group[sample[group_field].name] = sample
+
+            if group:
+                yield group
+        except CursorNotFound:
+            # The cursor has timed out so we yield from a new one after
+            # skipping to the last offset
+            pipeline = [{"$skip": index}] + (pipeline or [])
+            for group in self._iter_groups(
+                group_slices=group_slices, pipeline=pipeline
+            ):
+                yield group
+
+    def get_group(self, group_id, group_slices=None):
+        """Returns a dict containing the samples for the given group ID.
+
+        Args:
+            group_id: a group ID
+            group_slices (None): an optional subset of group slices to load
+
+        Returns:
+            a dict mapping group names to :class:`fiftyone.core.sample.Sample`
+            instances
+
+        Raises:
+            KeyError: if the group ID is not found
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("%s does not contain groups" % type(self))
+
+        if self.group_field is None:
+            raise ValueError("%s has no group field" % type(self))
+
+        group_field = self.group_field
+        id_field = group_field + "._id"
+
+        pipeline = [
+            {
+                "$match": {
+                    "$expr": {"$eq": ["$" + id_field, ObjectId(group_id)]}
+                }
+            }
+        ]
+
+        try:
+            return next(
+                iter(
+                    self._iter_groups(
+                        group_slices=group_slices, pipeline=pipeline
+                    )
+                )
+            )
+        except StopIteration:
+            raise KeyError(
+                "No group found with ID '%s' in field '%s'"
+                % (group_id, group_field)
+            )
+
+    def add_sample(
+        self,
+        sample,
+        expand_schema=True,
+        dynamic=False,
+        validate=True,
+    ):
         """Adds the given sample to the dataset.
 
         If the sample instance does not belong to a dataset, it is updated
@@ -1319,16 +2294,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if the sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             validate (True): whether to validate that the fields of the sample
                 are compliant with the dataset schema before adding it
 
         Returns:
             the ID of the sample in the dataset
         """
-        return self._add_samples_batch([sample], expand_schema, validate)[0]
+        ids = self._add_samples_batch(
+            [sample], expand_schema, dynamic, validate
+        )
+        return ids[0]
 
     def add_samples(
-        self, samples, expand_schema=True, validate=True, num_samples=None
+        self,
+        samples,
+        expand_schema=True,
+        dynamic=False,
+        validate=True,
+        num_samples=None,
     ):
         """Adds the given samples to the dataset.
 
@@ -1343,6 +2328,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             validate (True): whether to validate that the fields of each sample
                 are compliant with the dataset schema before adding it
             num_samples (None): the number of samples in ``samples``. If not
@@ -1360,23 +2347,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
-        target_latency = 0.2  # in seconds
         batcher = fou.DynamicBatcher(
-            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+            samples,
+            target_latency=0.2,
+            init_batch_size=1,
+            max_batch_beta=2.0,
+            progress=True,
+            total=num_samples,
         )
 
         sample_ids = []
-        with fou.ProgressBar(total=num_samples) as pb:
+        with batcher:
             for batch in batcher:
-                sample_ids.extend(
-                    self._add_samples_batch(batch, expand_schema, validate)
+                _ids = self._add_samples_batch(
+                    batch, expand_schema, dynamic, validate
                 )
-                pb.update(count=len(batch))
+                sample_ids.extend(_ids)
 
         return sample_ids
 
     def add_collection(
-        self, sample_collection, include_info=True, overwrite_info=False
+        self,
+        sample_collection,
+        include_info=True,
+        overwrite_info=False,
+        new_ids=False,
     ):
         """Adds the contents of the given collection to the dataset.
 
@@ -1393,10 +2388,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 such as ``info`` and ``classes``
             overwrite_info (False): whether to overwrite existing dataset-level
                 information. Only applicable when ``include_info`` is True
+            new_ids (False): whether to generate new sample/frame IDs. By
+                default, the IDs of the input collection are retained
 
         Returns:
             a list of IDs of the samples that were added to this dataset
         """
+        if new_ids:
+            return _add_collection_with_new_ids(
+                self,
+                sample_collection,
+                include_info=include_info,
+                overwrite_info=overwrite_info,
+            )
+
         num_samples = len(self)
         self.merge_samples(
             sample_collection,
@@ -1408,14 +2413,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         return self.skip(num_samples).values("id")
 
-    def _add_samples_batch(self, samples, expand_schema, validate):
+    def _add_samples_batch(self, samples, expand_schema, dynamic, validate):
         samples = [s.copy() if s._in_db else s for s in samples]
 
         if self.media_type is None and samples:
-            self.media_type = samples[0].media_type
+            self.media_type = _get_media_type(samples[0])
 
         if expand_schema:
-            self._expand_schema(samples)
+            self._expand_schema(samples, dynamic)
 
         if validate:
             self._validate_samples(samples)
@@ -1432,14 +2437,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for sample, d in zip(samples, dicts):
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
-
-            if self.media_type == fom.VIDEO:
+            if sample.media_type == fom.VIDEO:
                 sample.frames.save()
 
         return [str(d["_id"]) for d in dicts]
 
     def _upsert_samples(
-        self, samples, expand_schema=True, validate=True, num_samples=None
+        self,
+        samples,
+        expand_schema=True,
+        dynamic=False,
+        validate=True,
+        num_samples=None,
     ):
         if num_samples is None:
             try:
@@ -1449,22 +2458,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
-        target_latency = 0.2  # in seconds
         batcher = fou.DynamicBatcher(
-            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+            samples,
+            target_latency=0.2,
+            init_batch_size=1,
+            max_batch_beta=2.0,
+            progress=True,
         )
 
-        with fou.ProgressBar(total=num_samples) as pb:
+        with batcher:
             for batch in batcher:
-                self._upsert_samples_batch(batch, expand_schema, validate)
-                pb.update(count=len(batch))
+                self._upsert_samples_batch(
+                    batch, expand_schema, dynamic, validate
+                )
 
-    def _upsert_samples_batch(self, samples, expand_schema, validate):
+    def _upsert_samples_batch(self, samples, expand_schema, dynamic, validate):
         if self.media_type is None and samples:
-            self.media_type = samples[0].media_type
+            self.media_type = _get_media_type(samples[0])
 
         if expand_schema:
-            self._expand_schema(samples)
+            self._expand_schema(samples, dynamic)
 
         if validate:
             self._validate_samples(samples)
@@ -1487,7 +2500,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
 
-            if self.media_type == fom.VIDEO:
+            if sample.media_type == fom.VIDEO:
                 sample.frames.save()
 
     def _make_dict(self, sample, include_id=False):
@@ -1554,6 +2567,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
+        dynamic=False,
         include_info=True,
         overwrite_info=False,
         num_samples=None,
@@ -1628,6 +2642,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered. Only applicable when
+                ``samples`` is not a
+                :class:`fiftyone.core.collections.SampleCollection`
             include_info (True): whether to merge dataset-level information
                 such as ``info`` and ``classes``. Only applicable when
                 ``samples`` is a
@@ -1689,21 +2707,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if key_fcn is None:
             tmp = Dataset()
-            tmp.add_samples(samples, num_samples=num_samples)
 
-            self.merge_samples(
-                tmp,
-                key_field=key_field,
-                skip_existing=skip_existing,
-                insert_new=insert_new,
-                fields=fields,
-                omit_fields=omit_fields,
-                merge_lists=merge_lists,
-                overwrite=overwrite,
-                expand_schema=expand_schema,
-                include_info=False,
-            )
-            tmp.delete()
+            try:
+                tmp.add_samples(
+                    samples, dynamic=dynamic, num_samples=num_samples
+                )
+
+                self.merge_samples(
+                    tmp,
+                    key_field=key_field,
+                    skip_existing=skip_existing,
+                    insert_new=insert_new,
+                    fields=fields,
+                    omit_fields=omit_fields,
+                    merge_lists=merge_lists,
+                    overwrite=overwrite,
+                    expand_schema=expand_schema,
+                    include_info=False,
+                )
+            finally:
+                tmp.delete()
 
             return
 
@@ -1719,6 +2742,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             merge_lists=merge_lists,
             overwrite=overwrite,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             num_samples=num_samples,
         )
 
@@ -1736,13 +2760,64 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 -   an iterable of sample IDs
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.collections.SampleCollection`
                 -   an iterable of :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`
         """
         sample_ids = _get_sample_ids(samples_or_ids)
         self._clear(sample_ids=sample_ids)
+
+    def delete_frames(self, frames_or_ids):
+        """Deletes the given frames(s) from the dataset.
+
+        If reference to a frame exists in memory, the frame will be updated
+        such that ``frame.in_dataset`` is False.
+
+        Args:
+            frames_or_ids: the frame(s) to delete. Can be any of the following:
+
+                -   a frame ID
+                -   an iterable of frame IDs
+                -   a :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView`
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` whose frames to
+                    delete
+                -   an iterable of :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView` instances
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances whose
+                    frames to delete
+                -   a :class:`fiftyone.core.collections.SampleCollection` whose
+                    frames to delete
+        """
+        frame_ids = _get_frame_ids(frames_or_ids)
+        self._clear_frames(frame_ids=frame_ids)
+
+    def delete_groups(self, groups_or_ids):
+        """Deletes the given groups(s) from the dataset.
+
+        If reference to a sample exists in memory, the sample will be updated
+        such that ``sample.in_dataset`` is False.
+
+        Args:
+            groups_or_ids: the group(s) to delete. Can be any of the
+                following:
+
+                -   a group ID
+                -   an iterable of group IDs
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView`
+                -   a group dict returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances
+                -   an iterable of group dicts returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+        """
+        group_ids = _get_group_ids(groups_or_ids)
+        self._clear_groups(group_ids=group_ids)
 
     def delete_labels(
         self, labels=None, ids=None, tags=None, view=None, fields=None
@@ -2054,10 +3129,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 -   an iterable of sample IDs
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.collections.SampleCollection`
                 -   an iterable of :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`
         """
         self.delete_samples(samples_or_ids)
 
@@ -2071,24 +3145,299 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _save(self, view=None, fields=None):
         if view is not None:
-            _save_view(view, fields)
+            _save_view(view, fields=fields)
 
         self._doc.save()
 
-    def clone(self, name=None):
-        """Creates a clone of the dataset containing deep copies of all samples
-        and dataset-level information in this dataset.
+    def _save_field(self, field):
+        if self._is_generated:
+            raise ValueError(
+                "Cannot save fields on generated views. Use the dataset's "
+                "fields instead"
+            )
+
+        path, is_frame_field = self._handle_frame_field(field.path)
+        if is_frame_field:
+            field_doc = self._frame_doc_cls._get_field_doc(path)
+        else:
+            field_doc = self._sample_doc_cls._get_field_doc(path)
+
+        field_doc.description = field.description
+        field_doc.info = field.info
+
+        try:
+            self._doc.save(safe=True)
+        except:
+            self._reload(hard=True)
+            raise
+
+    @property
+    def has_saved_views(self):
+        """Whether this dataset has any saved views."""
+        return bool(self.list_saved_views())
+
+    def has_saved_view(self, name):
+        """Whether this dataset has a saved view with the given name.
+
+        Args:
+            name: a saved view name
+
+        Returns:
+            True/False
+        """
+        return name in self.list_saved_views()
+
+    def list_saved_views(self):
+        """Returns the names of saved views on this dataset.
+
+        Returns:
+            a list of saved view names
+        """
+        return [view_doc.name for view_doc in self._doc.saved_views]
+
+    def save_view(
+        self,
+        name=name,
+        view=view,
+        description=None,
+        color=None,
+        overwrite=False,
+    ):
+        """Saves the given view into this dataset under the given name so it
+        can be loaded later via :meth:`load_saved_view`.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            view = dataset.filter_labels("ground_truth", F("label") == "cat")
+
+            dataset.save_view("cats", view)
+
+            also_view = dataset.load_saved_view("cats")
+            assert view == also_view
+
+        Args:
+            name: a name for the saved view
+            view: a :class:`fiftyone.core.view.DatasetView`
+            overwrite (False): whether to overwrite an existing saved view with
+                the same name
+        """
+        if view._root_dataset._doc.id != self._doc.id:
+            raise ValueError("Cannot save view into a different dataset")
+
+        view._set_name(name)
+        slug = self._validate_saved_view_name(name, overwrite=overwrite)
+
+        now = datetime.utcnow()
+
+        view_doc = foo.SavedViewDocument(
+            dataset_id=self._doc.id,
+            name=name,
+            slug=slug,
+            description=description,
+            color=color,
+            view_stages=[
+                json_util.dumps(s)
+                for s in view._serialize(include_uuids=False)
+            ],
+            created_at=now,
+            last_modified_at=now,
+        )
+        view_doc.save()
+
+        self._doc.saved_views.append(view_doc)
+        self._doc.save()
+
+    def get_saved_view_info(self, name):
+        """Loads the editable information about the saved view with the given
+        name.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            view = dataset.limit(10)
+            dataset.save_view("test", view)
+
+            print(dataset.get_saved_view_info("test"))
+
+        Args:
+            name: the name of a saved view
+
+        Returns:
+            a dict of editable info
+        """
+        view_doc = self._get_saved_view_doc(name)
+        return {f: view_doc[f] for f in view_doc._EDITABLE_FIELDS}
+
+    def update_saved_view_info(self, name, info):
+        """Updates the editable information for the saved view with the given
+        name.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            view = dataset.limit(10)
+            dataset.save_view("test", view)
+
+            # Update the saved view's name and add a description
+            info = dict(
+                name="a new name",
+                description="a description",
+            )
+            dataset.update_saved_view_info("test", info)
+
+        Args:
+            name: the name of a saved view
+            info: a dict whose keys are a subset of the keys returned by
+                :meth:`get_saved_view_info`
+        """
+        view_doc = self._get_saved_view_doc(name)
+
+        invalid_fields = set(info.keys()) - set(view_doc._EDITABLE_FIELDS)
+        if invalid_fields:
+            raise ValueError("Cannot edit fields %s" % invalid_fields)
+
+        edited = False
+        for key, value in info.items():
+            if value != view_doc[key]:
+                if key == "name":
+                    slug = self._validate_saved_view_name(value, skip=view_doc)
+                    view_doc.slug = slug
+
+                view_doc[key] = value
+                edited = True
+
+        if edited:
+            view_doc.last_modified_at = datetime.utcnow()
+            view_doc.save()
+
+    def load_saved_view(
+        self,
+        name,
+    ):
+        """Loads the saved view with the given name.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            view = dataset.filter_labels("ground_truth", F("label") == "cat")
+
+            dataset.save_view("cats", view)
+
+            also_view = dataset.load_saved_view("cats")
+            assert view == also_view
+
+        Args:
+            name: the name of a saved view
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        view_doc = self._get_saved_view_doc(name)
+        view = self._load_saved_view_from_doc(view_doc)
+
+        view_doc.last_loaded_at = datetime.utcnow()
+        view_doc.save()
+
+        return view
+
+    def delete_saved_view(self, name):
+        """Deletes the saved view with the given name.
+
+        Args:
+            name: the name of a saved view
+        """
+        view_doc = self._get_saved_view_doc(name, pop=True)
+        deleted_id = view_doc.id
+
+        view_doc.delete()
+        self._doc.save()
+        return str(deleted_id)
+
+    def delete_saved_views(self):
+        """Deletes all saved views from this dataset."""
+        for view_doc in self._doc.saved_views:
+            view_doc.delete()
+
+        self._doc.saved_views = []
+        self._doc.save()
+
+    def _get_saved_view_doc(self, name, pop=False, slug=False):
+        idx = None
+        key = "slug" if slug else "name"
+
+        for i, view_doc in enumerate(self._doc.saved_views):
+            if name == getattr(view_doc, key):
+                idx = i
+                break
+
+        if idx is None:
+            raise ValueError("Dataset has no saved view '%s'" % name)
+
+        if pop:
+            return self._doc.saved_views.pop(idx)
+
+        return self._doc.saved_views[idx]
+
+    def _load_saved_view_from_doc(self, view_doc):
+        stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
+        name = getattr(view_doc, "name")
+        view = fov.DatasetView._build(self, stage_dicts)
+        view._set_name(name)
+        return view
+
+    def _validate_saved_view_name(self, name, skip=None, overwrite=False):
+        slug = fou.to_slug(name)
+        for view_doc in self._doc.saved_views:
+            if view_doc is skip:
+                continue
+
+            if name == view_doc.name or slug == view_doc.slug:
+                dup_name = view_doc.name
+
+                if not overwrite:
+                    raise ValueError(
+                        "Saved view with name '%s' already exists" % dup_name
+                    )
+
+                self.delete_saved_view(dup_name)
+
+        return slug
+
+    def clone(self, name=None, persistent=False):
+        """Creates a copy of the dataset.
+
+        Dataset clones contain deep copies of all samples and dataset-level
+        information in the source dataset. The source *media files*, however,
+        are not copied.
 
         Args:
             name (None): a name for the cloned dataset. By default,
                 :func:`get_default_dataset_name` is used
+            persistent (False): whether the cloned dataset should be persistent
 
         Returns:
             the new :class:`Dataset`
         """
-        return self._clone(name=name)
+        return self._clone(name=name, persistent=persistent)
 
-    def _clone(self, name=None, view=None):
+    def _clone(self, name=None, persistent=False, view=None):
         if name is None:
             name = get_default_dataset_name()
 
@@ -2097,7 +3446,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             sample_collection = self
 
-        return _clone_dataset_or_view(sample_collection, name)
+        return _clone_dataset_or_view(sample_collection, name, persistent)
 
     def clear(self):
         """Removes all samples from the dataset.
@@ -2109,12 +3458,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _clear(self, view=None, sample_ids=None):
         if view is not None:
+            contains_videos = view._contains_videos(any_slice=True)
+
+            if view.media_type == fom.GROUP:
+                view = view.select_group_slices(_allow_mixed=True)
+
             sample_ids = view.values("id")
+        else:
+            contains_videos = self._contains_videos(any_slice=True)
 
         if sample_ids is not None:
             d = {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
         else:
-            sample_ids = None
             d = {}
 
         self._sample_collection.delete_many(d)
@@ -2122,26 +3477,100 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_collection_name, sample_ids=sample_ids
         )
 
-        self._clear_frames(sample_ids=sample_ids)
+        if contains_videos:
+            self._clear_frames(sample_ids=sample_ids)
+
+    def _clear_groups(self, view=None, group_ids=None):
+        if self.group_field is None:
+            raise ValueError("%s has no group field" % type(self))
+
+        if view is not None:
+            if view.media_type != fom.GROUP:
+                raise ValueError("DatasetView is not grouped")
+
+            group_ids = set(view.values(view.group_field + ".id"))
+
+        if group_ids is not None:
+            if self.media_type != fom.GROUP:
+                raise ValueError("Dataset is not grouped")
+
+            F = foe.ViewField
+            oids = [ObjectId(_id) for _id in group_ids]
+            view = self.select_group_slices(_allow_mixed=True).match(
+                F(self.group_field + "._id").is_in(oids)
+            )
+            sample_ids = view.values("id")
+        else:
+            sample_ids = None
+
+        self._clear(sample_ids=sample_ids)
+
+    def _keep(self, view=None, sample_ids=None):
+        if self.media_type == fom.GROUP:
+            clear_view = self.select_group_slices(_allow_mixed=True)
+        else:
+            clear_view = self.view()
+
+        if view is not None:
+            if view.media_type == fom.GROUP:
+                view = view.select_group_slices(_allow_mixed=True)
+
+            clear_view = clear_view.exclude(view)
+        elif sample_ids is not None:
+            clear_view = clear_view.exclude(sample_ids)
+        else:
+            clear_view = None
+
+        self._clear(view=clear_view)
+
+    def _keep_fields(self, view=None):
+        if view is None:
+            return
+
+        del_sample_fields = view._get_missing_fields()
+        if del_sample_fields:
+            self.delete_sample_fields(del_sample_fields)
+
+        if self._has_frame_fields():
+            del_frame_fields = view._get_missing_fields(frames=True)
+            if del_frame_fields:
+                self.delete_frame_fields(del_frame_fields)
 
     def clear_frames(self):
-        """Removes all frame labels from the video dataset.
+        """Removes all frame labels from the dataset.
 
         If reference to a frame exists in memory, the frame will be updated
         such that ``frame.in_dataset`` is False.
         """
         self._clear_frames()
 
-    def _clear_frames(self, view=None, sample_ids=None):
-        if self.media_type != fom.VIDEO:
+    def _clear_frames(self, view=None, sample_ids=None, frame_ids=None):
+        sample_collection = view if view is not None else self
+        if not sample_collection._contains_videos(any_slice=True):
             return
 
-        # Clips datasets directly use their source dataset's frame collection,
-        # so don't delete frames
         if self._is_clips:
+            if sample_ids is not None:
+                view = self.select(sample_ids)
+            elif frame_ids is None and view is None:
+                view = self
+
+            if view is not None:
+                frame_ids = view.values("frames.id", unwind=True)
+
+        if frame_ids is not None:
+            self._frame_collection.delete_many(
+                {"_id": {"$in": [ObjectId(_id) for _id in frame_ids]}}
+            )
+            fofr.Frame._reset_docs_by_frame_id(
+                self._frame_collection_name, frame_ids
+            )
             return
 
         if view is not None:
+            if view.media_type == fom.GROUP:
+                view = view.select_group_slices(media_type=fom.VIDEO)
+
             sample_ids = view.values("id")
 
         if sample_ids is not None:
@@ -2154,6 +3583,59 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_collection_name, sample_ids=sample_ids
         )
 
+    def _keep_frames(self, view=None, frame_ids=None):
+        sample_collection = view if view is not None else self
+        if not sample_collection._contains_videos(any_slice=True):
+            return
+
+        if self._is_clips:
+            if frame_ids is None and view is None:
+                view = self
+
+            if view is not None:
+                frame_ids = view.values("frames.id", unwind=True)
+
+        if frame_ids is not None:
+            self._frame_collection.delete_many(
+                {
+                    "_id": {
+                        "$not": {"$in": [ObjectId(_id) for _id in frame_ids]}
+                    }
+                }
+            )
+            fofr.Frame._reset_docs_by_frame_id(
+                self._frame_collection_name, frame_ids, keep=True
+            )
+            return
+
+        if view is None:
+            return
+
+        if view.media_type == fom.GROUP:
+            view = view.select_group_slices(media_type=fom.VIDEO)
+
+        sample_ids, frame_numbers = view.values(["id", "frames.frame_number"])
+
+        ops = []
+        for sample_id, fns in zip(sample_ids, frame_numbers):
+            ops.append(
+                DeleteMany(
+                    {
+                        "_sample_id": ObjectId(sample_id),
+                        "frame_number": {"$not": {"$in": fns}},
+                    }
+                )
+            )
+
+        if not ops:
+            return
+
+        foo.bulk_write(ops, self._frame_collection)
+        for sample_id, fns in zip(sample_ids, frame_numbers):
+            fofr.Frame._reset_docs_for_sample(
+                self._frame_collection_name, sample_id, fns, keep=True
+            )
+
     def ensure_frames(self):
         """Ensures that the video dataset contains frame instances for every
         frame of each sample's source video.
@@ -2164,7 +3646,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._ensure_frames()
 
     def _ensure_frames(self, view=None):
-        if self.media_type != fom.VIDEO:
+        if not self._has_frame_fields():
             return
 
         if view is not None:
@@ -2172,11 +3654,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             sample_collection = self
 
-        sample_collection.compute_metadata()
+        if sample_collection.media_type == fom.GROUP:
+            sample_collection = sample_collection.select_group_slices(
+                media_type=fom.VIDEO
+            )
 
-        pipeline = sample_collection._pipeline()
-        pipeline.extend(
-            [
+        sample_collection.compute_metadata()
+        sample_collection._aggregate(
+            post_pipeline=[
                 {
                     "$project": {
                         "_id": False,
@@ -2201,8 +3686,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ]
         )
 
-        self._aggregate(pipeline=pipeline)
-
     def delete(self):
         """Deletes the dataset.
 
@@ -2212,7 +3695,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
         """
-        self.clear()
+        self._sample_collection.drop()
+        fos.Sample._reset_docs(self._sample_collection_name)
+
+        # Clips datasets directly inherit frames from source dataset
+        if not self._is_clips:
+            self._frame_collection.drop()
+            fofr.Frame._reset_docs(self._frame_collection_name)
+
+        # Update singleton
+        self._instances.pop(self._doc.name, None)
+
         _delete_dataset_doc(self._doc)
         self._deleted = True
 
@@ -2225,6 +3718,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field=None,
         tags=None,
         expand_schema=True,
+        dynamic=False,
         add_info=True,
         **kwargs,
     ):
@@ -2254,17 +3748,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir (None): the dataset directory. This can be omitted for
                 certain dataset formats if you provide arguments such as
                 ``data_path`` and ``labels_path``
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
                 -   an absolute directory path in which the media lies. In this
-                    case, the ``export_dir`` has no effect on the location of
+                    case, the ``dataset_dir`` has no effect on the location of
                     the data
                 -   a filename like ``"data.json"`` specifying the filename of
                     a JSON manifest file in ``dataset_dir`` that maps UUIDs to
@@ -2273,6 +3766,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``dataset_dir`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``dataset_dir`` for the dataset type
@@ -2300,15 +3794,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             add_info (True): whether to add dataset info from the importer (if
                 any) to the dataset's ``info``
             **kwargs: optional keyword arguments to pass to the constructor of
@@ -2332,6 +3829,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             add_info=add_info,
         )
 
@@ -2352,6 +3850,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
+        dynamic=False,
         add_info=True,
         **kwargs,
     ):
@@ -2410,17 +3909,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir (None): the dataset directory. This can be omitted for
                 certain dataset formats if you provide arguments such as
                 ``data_path`` and ``labels_path``
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
                 -   an absolute directory path in which the media lies. In this
-                    case, the ``export_dir`` has no effect on the location of
+                    case, the ``dataset_dir`` has no effect on the location of
                     the data
                 -   a filename like ``"data.json"`` specifying the filename of
                     a JSON manifest file in ``dataset_dir`` that maps UUIDs to
@@ -2429,6 +3927,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``dataset_dir`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``dataset_dir`` for the dataset type
@@ -2456,10 +3955,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             key_field ("filepath"): the sample field to use to decide whether
@@ -2497,6 +3997,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             add_info (True): whether to add dataset info from the importer
                 (if any) to the dataset
             **kwargs: optional keyword arguments to pass to the constructor of
@@ -2525,6 +4027,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             merge_lists=merge_lists,
             overwrite=overwrite,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             add_info=add_info,
         )
 
@@ -2537,6 +4040,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field=None,
         tags=None,
         expand_schema=True,
+        dynamic=False,
         add_info=True,
         cleanup=True,
         **kwargs,
@@ -2562,12 +4066,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``archive_path``
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2581,6 +4084,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``archive_path`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``archive_path`` for the dataset type
@@ -2608,15 +4112,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             add_info (True): whether to add dataset info from the importer (if
                 any) to the dataset's ``info``
             cleanup (True): whether to delete the archive after extracting it
@@ -2636,6 +4143,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             add_info=add_info,
             **kwargs,
         )
@@ -2657,6 +4165,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
+        dynamic=False,
         add_info=True,
         cleanup=True,
         **kwargs,
@@ -2711,12 +4220,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``archive_path``
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2730,6 +4238,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``archive_path`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``archive_path`` for the dataset type
@@ -2757,10 +4266,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             key_field ("filepath"): the sample field to use to decide whether
@@ -2798,6 +4308,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             add_info (True): whether to add dataset info from the importer
                 (if any) to the dataset
             cleanup (True): whether to delete the archive after extracting it
@@ -2822,6 +4334,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             merge_lists=merge_lists,
             overwrite=overwrite,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             add_info=add_info,
             **kwargs,
         )
@@ -2832,6 +4345,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field=None,
         tags=None,
         expand_schema=True,
+        dynamic=False,
         add_info=True,
     ):
         """Adds the samples from the given
@@ -2852,15 +4366,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             add_info (True): whether to add dataset info from the importer (if
                 any) to the dataset's ``info``
 
@@ -2873,6 +4390,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             add_info=add_info,
         )
 
@@ -2890,6 +4408,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
+        dynamic=False,
         add_info=True,
     ):
         """Merges the samples from the given
@@ -2940,10 +4459,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             key_field ("filepath"): the sample field to use to decide whether
@@ -2981,6 +4501,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             add_info (True): whether to add dataset info from the importer
                 (if any) to the dataset
         """
@@ -2998,6 +4520,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             merge_lists=merge_lists,
             overwrite=overwrite,
             expand_schema=expand_schema,
+            dynamic=dynamic,
             add_info=add_info,
         )
 
@@ -3038,6 +4561,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field=None,
         tags=None,
         expand_schema=True,
+        dynamic=False,
     ):
         """Adds the given labeled images to the dataset.
 
@@ -3059,15 +4583,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample, this
                 argument specifies the name of the field to use; the default is
                 ``"ground_truth"``. If the parser produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                labels per sample, this argument can be either a string prefix
+                to prepend to each label key or a dict mapping label keys to
+                field names; the default in this case is to directly use the
+                keys of the imported label dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -3079,14 +4605,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            dynamic=dynamic,
         )
 
     def add_images_dir(self, images_dir, tags=None, recursive=True):
         """Adds the given directory of images to the dataset.
 
-        See :class:`fiftyone.types.dataset_types.ImageDirectory` for format
-        details. In particular, note that files with non-image MIME types are
-        omitted.
+        See :class:`fiftyone.types.ImageDirectory` for format details. In
+        particular, note that files with non-image MIME types are omitted.
 
         This operation does not read the images.
 
@@ -3177,6 +4703,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field=None,
         tags=None,
         expand_schema=True,
+        dynamic=False,
         dataset_dir=None,
         image_format=None,
     ):
@@ -3199,15 +4726,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample, this
                 argument specifies the name of the field to use; the default is
                 ``"ground_truth"``. If the parser produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                labels per sample, this argument can be either a string prefix
+                to prepend to each label key or a dict mapping label keys to
+                field names; the default in this case is to directly use the
+                keys of the imported label dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if the sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             dataset_dir (None): the directory in which the images will be
                 written. By default, :func:`get_default_dataset_dir` is used
             image_format (None): the image format to use to write the images to
@@ -3220,7 +4749,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.LabeledImageDatasetIngestor(
-            dataset_dir, samples, sample_parser, image_format=image_format,
+            dataset_dir,
+            samples,
+            sample_parser,
+            image_format=image_format,
         )
 
         return self.add_importer(
@@ -3228,6 +4760,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            dynamic=dynamic,
         )
 
     def add_videos(self, paths_or_samples, sample_parser=None, tags=None):
@@ -3267,6 +4800,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field=None,
         tags=None,
         expand_schema=True,
+        dynamic=False,
     ):
         """Adds the given labeled videos to the dataset.
 
@@ -3287,10 +4821,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the parser produces a
-                dictionary of labels per sample/frame, this argument specifies
-                a string prefix to prepend to each label key; the default in
-                this case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample/frame, this argument can be
+                either a string prefix to prepend to each label key or a dict
+                mapping label keys to field names; the default in this case is
+                to directly use the keys of the imported label dictionaries as
+                field names
             label_field ("ground_truth"): the name (or root name) of the
                 frame field(s) to use for the labels
             tags (None): an optional tag or iterable of tags to attach to each
@@ -3298,6 +4833,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -3309,14 +4846,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            dynamic=dynamic,
         )
 
     def add_videos_dir(self, videos_dir, tags=None, recursive=True):
         """Adds the given directory of videos to the dataset.
 
-        See :class:`fiftyone.types.dataset_types.VideoDirectory` for format
-        details. In particular, note that files with non-video MIME types are
-        omitted.
+        See :class:`fiftyone.types.VideoDirectory` for format details. In
+        particular, note that files with non-video MIME types are omitted.
 
         This operation does not read/decode the videos.
 
@@ -3352,7 +4889,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self.add_videos(video_paths, sample_parser, tags=tags)
 
     def ingest_videos(
-        self, paths_or_samples, sample_parser=None, tags=None, dataset_dir=None
+        self,
+        paths_or_samples,
+        sample_parser=None,
+        tags=None,
+        dataset_dir=None,
     ):
         """Ingests the given iterable of videos into the dataset.
 
@@ -3396,6 +4937,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_parser,
         tags=None,
         expand_schema=True,
+        dynamic=False,
         dataset_dir=None,
     ):
         """Ingests the given iterable of labeled video samples into the
@@ -3417,6 +4959,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if the sample's schema is not a subset of the dataset schema
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             dataset_dir (None): the directory in which the videos will be
                 written. By default, :func:`get_default_dataset_dir` is used
 
@@ -3431,7 +4975,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         return self.add_importer(
-            dataset_ingestor, tags=tags, expand_schema=expand_schema
+            dataset_ingestor,
+            tags=tags,
+            expand_schema=expand_schema,
+            dynamic=dynamic,
         )
 
     @classmethod
@@ -3444,6 +4991,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name=None,
         label_field=None,
         tags=None,
+        dynamic=False,
         **kwargs,
     ):
         """Creates a :class:`Dataset` from the contents of the given directory.
@@ -3471,17 +5019,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             dataset_dir (None): the dataset directory. This can be omitted if
                 you provide arguments such as ``data_path`` and ``labels_path``
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
                 -   an absolute directory path in which the media lies. In this
-                    case, the ``export_dir`` has no effect on the location of
+                    case, the ``dataset_dir`` has no effect on the location of
                     the data
                 -   a filename like ``"data.json"`` specifying the filename of
                     a JSON manifest file in ``dataset_dir`` that maps UUIDs to
@@ -3490,6 +5037,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``dataset_dir`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``dataset_dir`` for the dataset type
@@ -3519,12 +5067,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type``
@@ -3540,6 +5091,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             labels_path=labels_path,
             label_field=label_field,
             tags=tags,
+            dynamic=dynamic,
             **kwargs,
         )
         return dataset
@@ -3554,6 +5106,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name=None,
         label_field=None,
         tags=None,
+        dynamic=False,
         cleanup=True,
         **kwargs,
     ):
@@ -3578,12 +5131,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type (None): the
-                :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``archive_path``
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
+                the dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -3597,6 +5149,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``archive_path`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``archive_path`` for the dataset type
@@ -3626,12 +5179,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
             cleanup (True): whether to delete the archive after extracting it
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
@@ -3648,6 +5204,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             labels_path=labels_path,
             label_field=label_field,
             tags=tags,
+            dynamic=dynamic,
             cleanup=cleanup,
             **kwargs,
         )
@@ -3655,7 +5212,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @classmethod
     def from_importer(
-        cls, dataset_importer, name=None, label_field=None, tags=None
+        cls,
+        dataset_importer,
+        name=None,
+        label_field=None,
+        tags=None,
+        dynamic=False,
     ):
         """Creates a :class:`Dataset` by importing the samples in the given
         :class:`fiftyone.utils.data.importers.DatasetImporter`.
@@ -3678,19 +5240,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
 
         Returns:
             a :class:`Dataset`
         """
         dataset = cls(name)
         dataset.add_importer(
-            dataset_importer, label_field=label_field, tags=tags
+            dataset_importer,
+            label_field=label_field,
+            tags=tags,
+            dynamic=dynamic,
         )
         return dataset
 
@@ -3731,7 +5299,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @classmethod
     def from_labeled_images(
-        cls, samples, sample_parser, name=None, label_field=None, tags=None,
+        cls,
+        samples,
+        sample_parser,
+        name=None,
+        label_field=None,
+        tags=None,
+        dynamic=False,
     ):
         """Creates a :class:`Dataset` from the given labeled images.
 
@@ -3755,19 +5329,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample, this
                 argument specifies the name of the field to use; the default is
                 ``"ground_truth"``. If the parser produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                labels per sample, this argument can be either a string prefix
+                to prepend to each label key or a dict mapping label keys to
+                field names; the default in this case is to directly use the
+                keys of the imported label dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
 
         Returns:
             a :class:`Dataset`
         """
         dataset = cls(name)
         dataset.add_labeled_images(
-            samples, sample_parser, label_field=label_field, tags=tags,
+            samples,
+            sample_parser,
+            label_field=label_field,
+            tags=tags,
+            dynamic=dynamic,
         )
         return dataset
 
@@ -3850,7 +5430,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @classmethod
     def from_labeled_videos(
-        cls, samples, sample_parser, name=None, label_field=None, tags=None
+        cls,
+        samples,
+        sample_parser,
+        name=None,
+        label_field=None,
+        tags=None,
+        dynamic=False,
     ):
         """Creates a :class:`Dataset` from the given labeled videos.
 
@@ -3874,19 +5460,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the parser produces a
-                dictionary of labels per sample/frame, this argument specifies
-                a string prefix to prepend to each label key; the default in
-                this case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample/frame, this argument can be
+                either a string prefix to prepend to each label key or a dict
+                mapping label keys to field names; the default in this case is
+                to directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            dynamic (False): whether to declare dynamic attributes of embedded
+                document fields that are encountered
 
         Returns:
             a :class:`Dataset`
         """
         dataset = cls(name)
         dataset.add_labeled_videos(
-            samples, sample_parser, label_field=label_field, tags=tags
+            samples,
+            sample_parser,
+            label_field=label_field,
+            tags=tags,
+            dynamic=dynamic,
         )
         return dataset
 
@@ -3935,7 +5528,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @classmethod
     def from_dict(cls, d, name=None, rel_dir=None, frame_labels_dir=None):
         """Loads a :class:`Dataset` from a JSON dictionary generated by
-        :func:`fiftyone.core.collections.SampleCollection.to_dict`.
+        :meth:`fiftyone.core.collections.SampleCollection.to_dict`.
 
         The JSON dictionary can contain an export of any
         :class:`fiftyone.core.collections.SampleCollection`, e.g.,
@@ -3943,26 +5536,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             d: a JSON dictionary
-            name (None): a name for the new dataset. By default, ``d["name"]``
-                is used
+            name (None): a name for the new dataset
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``
+                (if necessary) via :func:`fiftyone.core.utils.normalize_path`
             frame_labels_dir (None): a directory of per-sample JSON files
                 containing the frame labels for video samples. If omitted, it
                 is assumed that the frame labels are included directly in the
-                provided JSON dict. Only applicable to video datasets
+                provided JSON dict. Only applicable to datasets that contain
+                videos
 
         Returns:
             a :class:`Dataset`
         """
         if name is None:
-            name = d["name"]
+            name = d.get("name", None)
+            if name is None:
+                raise ValueError("Attempting to load a Dataset with no name.")
 
         if rel_dir is not None:
-            rel_dir = os.path.abspath(os.path.expanduser(rel_dir))
+            rel_dir = fou.normalize_path(rel_dir)
 
         name = make_unique_dataset_name(name)
         dataset = cls(name)
@@ -3971,27 +5565,53 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if media_type is not None:
             dataset.media_type = media_type
 
-        dataset._apply_field_schema(d["sample_fields"])
-        if media_type == fom.VIDEO:
+        if media_type == fom.GROUP:
+            # group_field and group_slice are inferred when adding samples
+            dataset._doc.group_media_types = d.get("group_media_types", {})
+            dataset._doc.default_group_slice = d.get(
+                "default_group_slice", None
+            )
+            dataset.save()
+
+        dataset._apply_field_schema(d.get("sample_fields", {}))
+
+        if "frame_fields" in d:
+            if media_type == fom.GROUP:
+                dataset._declare_frame_fields()
+
             dataset._apply_frame_field_schema(d["frame_fields"])
 
-        dataset.info = d.get("info", {})
+        dataset._doc.info = d.get("info", {})
 
-        dataset.classes = d.get("classes", {})
-        dataset.default_classes = d.get("default_classes", [])
+        dataset._doc.classes = d.get("classes", {})
+        dataset._doc.default_classes = d.get("default_classes", [])
 
-        dataset.mask_targets = dataset._parse_mask_targets(
+        dataset._doc.mask_targets = dataset._parse_mask_targets(
             d.get("mask_targets", {})
         )
-        dataset.default_mask_targets = dataset._parse_default_mask_targets(
-            d.get("default_mask_targets", {})
+        dataset._doc.default_mask_targets = (
+            dataset._parse_default_mask_targets(
+                d.get("default_mask_targets", {})
+            )
         )
 
+        dataset._doc.skeletons = dataset._parse_skeletons(
+            d.get("skeletons", {})
+        )
+        dataset._doc.default_skeleton = dataset._parse_default_skeleton(
+            d.get("default_skeleton", None)
+        )
+
+        dataset.save()
+
         def parse_sample(sd):
-            if rel_dir and not sd["filepath"].startswith(os.path.sep):
+            if rel_dir and not os.path.isabs(sd["filepath"]):
                 sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
 
-            if media_type == fom.VIDEO:
+            if (media_type == fom.VIDEO) or (
+                media_type == fom.GROUP
+                and fom.get_media_type(sd["filepath"]) == fom.VIDEO
+            ):
                 frames = sd.pop("frames", {})
 
                 if etau.is_str(frames):
@@ -4008,10 +5628,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return sample
 
         samples = d["samples"]
-        num_samples = len(samples)
         _samples = map(parse_sample, samples)
+
         dataset.add_samples(
-            _samples, expand_schema=False, num_samples=num_samples
+            _samples, expand_schema=False, num_samples=len(samples)
         )
 
         return dataset
@@ -4030,13 +5650,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             path_or_str: the path to a JSON file on disk or a JSON string
-            name (None): a name for the new dataset. By default, ``d["name"]``
-                is used
+            name (None): a name for the new dataset
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample, if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``
+                (if necessary) via :func:`fiftyone.core.utils.normalize_path`
 
         Returns:
             a :class:`Dataset`
@@ -4052,25 +5670,62 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _pipeline(
         self,
         pipeline=None,
+        media_type=None,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        support=None,
+        group_slice=None,
+        group_slices=None,
+        detach_groups=False,
+        groups_only=False,
+        manual_group_select=False,
+        post_pipeline=None,
     ):
-        if self.media_type != fom.VIDEO:
+        if media_type is None:
+            media_type = self.media_type
+
+        if group_slice is None:
+            group_slice = self.group_slice
+
+        if media_type == fom.VIDEO:
+            contains_videos = True
+        else:
+            contains_videos = self._contains_videos(any_slice=True)
+
+        if not contains_videos:
             attach_frames = False
             detach_frames = False
             frames_only = False
 
-        if not attach_frames:
+        # We check for exactly False here, because `attach_frames == None` is a
+        # special syntax that means that frames were already attached
+        if attach_frames == False:
+            if frames_only:
+                attach_frames = True
+
             detach_frames = False
 
         if frames_only:
-            attach_frames = True
+            detach_frames = False
+
+        if media_type != fom.GROUP:
+            group_slices = None
+            detach_groups = False
+            groups_only = False
+
+        if groups_only:
+            detach_groups = False
+
+        _pipeline = []
+
+        # If this is a grouped dataset, always start the pipeline by selecting
+        # `group_slice`, unless the caller manually overrides this
+        if self.media_type == fom.GROUP and not manual_group_select:
+            _pipeline.extend(self._group_select_pipeline(group_slice))
 
         if attach_frames:
-            _pipeline = self._frames_lookup_pipeline()
-        else:
-            _pipeline = []
+            _pipeline.extend(self._attach_frames_pipeline(support=support))
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
@@ -4078,74 +5733,58 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if detach_frames:
             _pipeline.append({"$project": {"frames": False}})
         elif frames_only:
+            _pipeline.extend(self._unwind_frames_pipeline())
+
+        if detach_groups:
+            _pipeline.append({"$project": {"groups": False}})
+        elif groups_only:
             _pipeline.extend(
-                [
-                    {"$project": {"frames": True}},
-                    {"$unwind": "$frames"},
-                    {"$replaceRoot": {"newRoot": "$frames"}},
-                ]
+                self._groups_only_pipeline(group_slices=group_slices)
             )
+
+        if post_pipeline is not None:
+            _pipeline.extend(post_pipeline)
 
         return _pipeline
 
-    def _frames_lookup_pipeline(self):
+    def _attach_frames_pipeline(self, support=None):
+        """A pipeline that attaches the frame documents for each document."""
         if self._is_clips:
-            return [
-                {
-                    "$lookup": {
-                        "from": self._frame_collection_name,
-                        "let": {
-                            "sample_id": "$_sample_id",
-                            "first": {"$arrayElemAt": ["$support", 0]},
-                            "last": {"$arrayElemAt": ["$support", 1]},
-                        },
-                        "pipeline": [
-                            {
-                                "$match": {
-                                    "$expr": {
-                                        "$and": [
-                                            {
-                                                "$eq": [
-                                                    "$_sample_id",
-                                                    "$$sample_id",
-                                                ]
-                                            },
-                                            {
-                                                "$gte": [
-                                                    "$frame_number",
-                                                    "$$first",
-                                                ]
-                                            },
-                                            {
-                                                "$lte": [
-                                                    "$frame_number",
-                                                    "$$last",
-                                                ]
-                                            },
-                                        ]
-                                    }
-                                }
-                            },
-                            {"$sort": {"frame_number": 1}},
-                        ],
-                        "as": "frames",
-                    }
-                }
-            ]
+            first = {"$arrayElemAt": ["$support", 0]}
+            last = {"$arrayElemAt": ["$support", 1]}
+
+            if support is not None:
+                first = {"$max": [first, support[0]]}
+                last = {"$min": [last, support[1]]}
+
+            let = {"sample_id": "$_sample_id", "first": first, "last": last}
+            match_expr = {
+                "$and": [
+                    {"$eq": ["$$sample_id", "$_sample_id"]},
+                    {"$gte": ["$frame_number", "$$first"]},
+                    {"$lte": ["$frame_number", "$$last"]},
+                ]
+            }
+        elif support is not None:
+            let = {"sample_id": "$_id"}
+            match_expr = {
+                "$and": [
+                    {"$eq": ["$$sample_id", "$_sample_id"]},
+                    {"$gte": ["$frame_number", support[0]]},
+                    {"$lte": ["$frame_number", support[1]]},
+                ]
+            }
+        else:
+            let = {"sample_id": "$_id"}
+            match_expr = {"$eq": ["$$sample_id", "$_sample_id"]}
 
         return [
             {
                 "$lookup": {
                     "from": self._frame_collection_name,
-                    "let": {"sample_id": "$_id"},
+                    "let": let,
                     "pipeline": [
-                        {
-                            "$match": {
-                                "$expr": {
-                                    "$eq": ["$$sample_id", "$_sample_id"]
-                                }
-                            }
-                        },
+                        {"$match": {"$expr": match_expr}},
                         {"$sort": {"frame_number": 1}},
                     ],
                     "as": "frames",
@@ -4153,18 +5792,141 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             }
         ]
 
+    def _unwind_frames_pipeline(self):
+        """A pipeline that returns (only) the unwound ``frames`` documents."""
+        return [
+            {"$unwind": "$frames"},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+        ]
+
+    def _group_select_pipeline(self, slice_name):
+        """A pipeline that selects only the given slice's documents from the
+        pipeline.
+        """
+        if self.group_field is None:
+            return []
+
+        name_field = self.group_field + ".name"
+        return [{"$match": {"$expr": {"$eq": ["$" + name_field, slice_name]}}}]
+
+    def _attach_groups_pipeline(self, group_slices=None):
+        """A pipeline that attaches the reuested group slice(s) for each
+        document and stores them in under ``groups.<slice>`` keys.
+        """
+        if self.group_field is None:
+            return []
+
+        id_field = self.group_field + "._id"
+        name_field = self.group_field + ".name"
+
+        F = foe.ViewField
+        expr = F(id_field) == "$$group_id"
+        if etau.is_container(group_slices):
+            expr &= F(name_field).is_in(list(group_slices))
+        elif group_slices is not None:
+            expr &= F(name_field) == group_slices
+
+        return [
+            {
+                "$lookup": {
+                    "from": self._sample_collection_name,
+                    "let": {"group_id": "$" + id_field},
+                    "pipeline": [{"$match": {"$expr": expr.to_mongo()}}],
+                    "as": "groups",
+                }
+            },
+            {
+                "$set": {
+                    "groups": {
+                        "$arrayToObject": {
+                            "$map": {
+                                "input": "$groups",
+                                "as": "this",
+                                "in": ["$$this." + name_field, "$$this"],
+                            }
+                        }
+                    }
+                }
+            },
+        ]
+
+    def _groups_only_pipeline(self, group_slices=None):
+        """A pipeline that looks up the requested group slices for each
+        document and returns (only) the unwound group slices.
+        """
+        if self.group_field is None:
+            return []
+
+        id_field = self.group_field + "._id"
+        name_field = self.group_field + ".name"
+
+        F = foe.ViewField
+        expr = F(id_field) == "$$group_id"
+        if etau.is_container(group_slices):
+            expr &= F(name_field).is_in(list(group_slices))
+        elif group_slices is not None:
+            expr &= F(name_field) == group_slices
+
+        return [
+            {"$project": {self.group_field: True}},
+            {
+                "$lookup": {
+                    "from": self._sample_collection_name,
+                    "let": {"group_id": "$" + id_field},
+                    "pipeline": [{"$match": {"$expr": expr.to_mongo()}}],
+                    "as": "groups",
+                }
+            },
+            {"$unwind": "$groups"},
+            {"$replaceRoot": {"newRoot": "$groups"}},
+        ]
+
+    def _unwind_groups_pipeline(self):
+        """A pipeline that returns (only) the unwound ``groups`` documents."""
+        return [
+            {
+                "$set": {
+                    "groups": {
+                        "$map": {
+                            "input": {"$objectToArray": "$groups"},
+                            "as": "this",
+                            "in": "$$this.v",
+                        }
+                    }
+                }
+            },
+            {"$unwind": "$groups"},
+            {"$replaceRoot": {"newRoot": "$groups"}},
+        ]
+
     def _aggregate(
         self,
         pipeline=None,
+        media_type=None,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        support=None,
+        group_slice=None,
+        group_slices=None,
+        detach_groups=False,
+        groups_only=False,
+        manual_group_select=False,
+        post_pipeline=None,
     ):
         _pipeline = self._pipeline(
             pipeline=pipeline,
+            media_type=media_type,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
+            support=support,
+            group_slice=group_slice,
+            group_slices=group_slices,
+            detach_groups=detach_groups,
+            groups_only=groups_only,
+            manual_group_select=manual_group_select,
+            post_pipeline=post_pipeline,
         )
 
         return foo.aggregate(self._sample_collection, _pipeline)
@@ -4191,37 +5953,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return [k["key"][0][0] for k in index_info.values()]
 
     def _apply_field_schema(self, new_fields):
-        curr_fields = self.get_field_schema()
-        add_field_fcn = self.add_sample_field
-        self._apply_schema(curr_fields, new_fields, add_field_fcn)
+        for field_name, field_str in new_fields.items():
+            ftype, embedded_doc_type, subfield = fof.parse_field_str(field_str)
+            self.add_sample_field(
+                field_name,
+                ftype,
+                embedded_doc_type=embedded_doc_type,
+                subfield=subfield,
+            )
 
     def _apply_frame_field_schema(self, new_fields):
-        curr_fields = self.get_frame_field_schema()
-        add_field_fcn = self.add_frame_field
-        self._apply_schema(curr_fields, new_fields, add_field_fcn)
-
-    def _apply_schema(self, curr_fields, new_fields, add_field_fcn):
         for field_name, field_str in new_fields.items():
-            if field_name in curr_fields:
-                # Ensure that existing field matches the requested field
-                _new_field_str = str(field_str)
-                _curr_field_str = str(curr_fields[field_name])
-                if _new_field_str != _curr_field_str:
-                    raise ValueError(
-                        "Existing field %s=%s does not match new field type %s"
-                        % (field_name, _curr_field_str, _new_field_str)
-                    )
-            else:
-                # Add new field
-                ftype, embedded_doc_type, subfield = fof.parse_field_str(
-                    field_str
-                )
-                add_field_fcn(
-                    field_name,
-                    ftype,
-                    embedded_doc_type=embedded_doc_type,
-                    subfield=subfield,
-                )
+            ftype, embedded_doc_type, subfield = fof.parse_field_str(field_str)
+            self.add_frame_field(
+                field_name,
+                ftype,
+                embedded_doc_type=embedded_doc_type,
+                subfield=subfield,
+            )
 
     def _ensure_label_field(self, label_field, label_cls):
         if label_field not in self.get_field_schema():
@@ -4231,60 +5980,97 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 embedded_doc_type=label_cls,
             )
 
-    def _expand_schema(self, samples):
+    def _expand_schema(self, samples, dynamic):
         expanded = False
-        fields = self.get_field_schema(include_private=True)
+
+        if not dynamic:
+            schema = self.get_field_schema(include_private=True)
+
         for sample in samples:
-            self._validate_media_type(sample)
-
-            if self.media_type == fom.VIDEO:
-                expanded |= self._expand_frame_schema(sample.frames)
-
             for field_name in sample._get_field_names(include_private=True):
                 if field_name == "_id":
                     continue
 
-                if field_name in fields:
-                    continue
-
                 value = sample[field_name]
+
                 if value is None:
                     continue
 
-                self._sample_doc_cls.add_implied_field(field_name, value)
-                fields = self.get_field_schema(include_private=True)
-                expanded = True
+                if isinstance(value, fog.Group):
+                    self._expand_group_schema(
+                        field_name, value.name, sample.media_type
+                    )
+
+                if not dynamic and field_name in schema:
+                    continue
+
+                if isinstance(value, fog.Group):
+                    expanded |= self._add_group_field(
+                        field_name, default=value.name
+                    )
+                else:
+                    expanded |= self._sample_doc_cls.add_implied_field(
+                        field_name, value, dynamic=dynamic, validate=False
+                    )
+
+                if not dynamic:
+                    schema = self.get_field_schema(include_private=True)
+
+            if sample.media_type == fom.VIDEO:
+                expanded |= self._expand_frame_schema(sample.frames, dynamic)
 
         if expanded:
             self._reload()
 
-    def _expand_frame_schema(self, frames):
+    def _expand_group_schema(self, field_name, slice_name, media_type):
+        if self.group_field is not None and field_name != self.group_field:
+            raise ValueError("Dataset has no group field '%s'" % field_name)
+
+        if slice_name not in self._doc.group_media_types:
+            # If this is the first video slice, we need to initialize the frame
+            # field schema
+            if media_type == fom.VIDEO and not any(
+                slice_media_type == fom.VIDEO
+                for slice_media_type in self._doc.group_media_types.values()
+            ):
+                self._declare_frame_fields()
+
+            self._doc.group_media_types[slice_name] = media_type
+
+            # If dataset doesn't yet have a default group slice, use the first
+            # observed value
+            if self._doc.default_group_slice is None:
+                self._doc.default_group_slice = slice_name
+                self._group_slice = slice_name
+
+            self._doc.save()
+
+    def _expand_frame_schema(self, frames, dynamic):
+        if not dynamic:
+            schema = self.get_frame_field_schema(include_private=True)
+
         expanded = False
-        fields = self.get_frame_field_schema(include_private=True)
         for frame in frames.values():
             for field_name in frame._get_field_names(include_private=True):
                 if field_name == "_id":
                     continue
 
-                if field_name in fields:
+                if not dynamic and field_name in schema:
                     continue
 
                 value = frame[field_name]
+
                 if value is None:
                     continue
 
-                self._frame_doc_cls.add_implied_field(field_name, value)
-                fields = self.get_frame_field_schema(include_private=True)
-                expanded = True
+                expanded |= self._frame_doc_cls.add_implied_field(
+                    field_name, value, dynamic=dynamic, validate=False
+                )
+
+                if not dynamic:
+                    schema = self.get_frame_field_schema(include_private=True)
 
         return expanded
-
-    def _validate_media_type(self, sample):
-        if self.media_type != sample.media_type:
-            raise fom.MediaTypeError(
-                "Sample media type '%s' does not match dataset media type '%s'"
-                % (sample.media_type, self.media_type)
-            )
 
     def _sample_dict_to_doc(self, d):
         try:
@@ -4307,21 +6093,68 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return self._frame_doc_cls.from_dict(d, extended=False)
 
     def _validate_samples(self, samples):
-        fields = self.get_field_schema(include_private=True)
+        schema = self.get_field_schema(include_private=True)
+
         for sample in samples:
-            non_existent_fields = set()
+            if (
+                self.media_type != fom.GROUP
+                and sample.media_type != self.media_type
+            ):
+                raise fom.MediaTypeError(
+                    "Sample media type '%s' does not match dataset media type "
+                    "'%s'" % (sample.media_type, self.media_type)
+                )
+
+            non_existent_fields = None
+            found_group = False
 
             for field_name, value in sample.iter_fields():
-                field = fields.get(field_name, None)
+                if isinstance(value, fog.Group):
+                    if self.media_type != fom.GROUP:
+                        raise ValueError(
+                            "Only datasets with media type '%s' may contain "
+                            "Group fields" % fom.GROUP
+                        )
+
+                    if field_name != self.group_field:
+                        raise ValueError(
+                            "Dataset has no group field '%s'" % field_name
+                        )
+
+                    slice_media_type = self._doc.group_media_types.get(
+                        value.name,
+                        None,
+                    )
+                    if slice_media_type is None:
+                        raise ValueError(
+                            "Dataset has no group slice '%s'" % value.name
+                        )
+                    elif sample.media_type != slice_media_type:
+                        raise ValueError(
+                            "Sample media type '%s' does not match group "
+                            "slice '%s' media type '%s'"
+                            % (
+                                sample.media_type,
+                                value.name,
+                                slice_media_type,
+                            )
+                        )
+
+                    found_group = True
+
+                field = schema.get(field_name, None)
                 if field is None:
                     if value is not None:
-                        non_existent_fields.add(field_name)
+                        if non_existent_fields is None:
+                            non_existent_fields = {field_name}
+                        else:
+                            non_existent_fields.add(field_name)
                 else:
                     if value is not None or not field.null:
                         try:
                             field.validate(value)
-                        except moe.ValidationError as e:
-                            raise moe.ValidationError(
+                        except Exception as e:
+                            raise ValueError(
                                 "Invalid value for field '%s'. Reason: %s"
                                 % (field_name, str(e))
                             )
@@ -4332,11 +6165,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     % (non_existent_fields, self.name)
                 )
 
+            if self.media_type == fom.GROUP and not found_group:
+                raise ValueError(
+                    "Found sample missing group field '%s'" % self.group_field
+                )
+
     def reload(self):
         """Reloads the dataset and any in-memory samples from the database."""
         self._reload(hard=True)
         self._reload_docs(hard=True)
 
+    def clear_cache(self):
+        """Clears the dataset's in-memory cache."""
         self._annotation_cache.clear()
         self._brain_cache.clear()
         self._evaluation_cache.clear()
@@ -4347,21 +6187,32 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-            self.name, virtual=True
+            self, self.name, virtual=True
         )
 
         self._doc = doc
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
 
+        if self._group_slice is None:
+            self._group_slice = doc.default_group_slice
+
+        self._deleted = False
+
+        self._update_last_loaded_at()
+
     def _reload_docs(self, hard=False):
         fos.Sample._reload_docs(self._sample_collection_name, hard=hard)
 
-        if self.media_type == fom.VIDEO:
+        if self._has_frame_fields():
             fofr.Frame._reload_docs(self._frame_collection_name, hard=hard)
 
     def _serialize(self):
         return self._doc.to_dict(extended=True)
+
+    def _update_last_loaded_at(self):
+        self._doc.last_loaded_at = datetime.utcnow()
+        self._doc.save()
 
 
 def _get_random_characters(n):
@@ -4374,15 +6225,16 @@ def _list_datasets(include_private=False):
     conn = foo.get_db_conn()
 
     if include_private:
-        return sorted(conn.datasets.distinct("name"))
+        query = {}
+    else:
+        # Datasets whose sample collections don't start with `samples.` are
+        # private e.g., patches or frames datasets
+        query = {"sample_collection_name": {"$regex": "^samples\\."}}
 
-    # Datasets whose sample collections don't start with `samples.` are private
-    # e.g., patches or frames datasets
-    return sorted(
-        conn.datasets.find(
-            {"sample_collection_name": {"$regex": "^samples\\."}}
-        ).distinct("name")
-    )
+    # We don't want an error here if `name == None`
+    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
+
+    return _sort(conn.datasets.find(query).distinct("name"))
 
 
 def _list_dataset_info():
@@ -4398,6 +6250,7 @@ def _list_dataset_info():
                 "version": dataset.version,
                 "persistent": dataset.persistent,
                 "media_type": dataset.media_type,
+                "tags": dataset.tags,
                 "num_samples": num_samples,
             }
         except:
@@ -4410,6 +6263,7 @@ def _list_dataset_info():
                 "version": None,
                 "persistent": None,
                 "media_type": None,
+                "tags": None,
                 "num_samples": None,
             }
 
@@ -4419,6 +6273,7 @@ def _list_dataset_info():
 
 
 def _create_dataset(
+    obj,
     name,
     persistent=False,
     _patches=False,
@@ -4426,19 +6281,14 @@ def _create_dataset(
     _clips=False,
     _src_collection=None,
 ):
-    if dataset_exists(name):
-        raise ValueError(
-            (
-                "Dataset '%s' already exists; use `fiftyone.load_dataset()` "
-                "to load an existing dataset"
-            )
-            % name
-        )
+    slug = _validate_dataset_name(name)
+
+    _id = ObjectId()
 
     sample_collection_name = _make_sample_collection_name(
-        patches=_patches, frames=_frames, clips=_clips
+        _id, patches=_patches, frames=_frames, clips=_clips
     )
-    sample_doc_cls = _create_sample_document_cls(sample_collection_name)
+    sample_doc_cls = _create_sample_document_cls(obj, sample_collection_name)
 
     # pylint: disable=no-member
     sample_fields = [
@@ -4449,31 +6299,30 @@ def _create_dataset(
     if _clips:
         # Clips datasets directly inherit frames from source dataset
         src_dataset = _src_collection._dataset
-        media_type = fom.VIDEO
         frame_collection_name = src_dataset._doc.frame_collection_name
         frame_doc_cls = src_dataset._frame_doc_cls
         frame_fields = src_dataset._doc.frame_fields
     else:
         # @todo don't create frame collection until media type is VIDEO?
-        media_type = None
         frame_collection_name = _make_frame_collection_name(
             sample_collection_name
         )
-        frame_doc_cls = _create_frame_document_cls(frame_collection_name)
+        frame_doc_cls = _create_frame_document_cls(obj, frame_collection_name)
         frame_fields = []
 
-    now = datetime.utcnow()
     dataset_doc = foo.DatasetDocument(
+        id=_id,
         name=name,
+        slug=slug,
         version=focn.VERSION,
-        created_at=now,
-        last_loaded_at=now,
-        media_type=media_type,
+        created_at=datetime.utcnow(),
+        media_type=None,  # will be inferred when first sample is added
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
         persistent=persistent,
         sample_fields=sample_fields,
         frame_fields=frame_fields,
+        app_config=DatasetAppConfig(),
     )
     dataset_doc.save()
 
@@ -4498,11 +6347,12 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         )
 
 
-def _make_sample_collection_name(patches=False, frames=False, clips=False):
-    conn = foo.get_db_conn()
-    now = datetime.now()
-
-    if patches:
+def _make_sample_collection_name(
+    dataset_id, patches=False, frames=False, clips=False
+):
+    if patches and frames:
+        prefix = "patches.frames"
+    elif patches:
         prefix = "patches"
     elif frames:
         prefix = "frames"
@@ -4511,50 +6361,46 @@ def _make_sample_collection_name(patches=False, frames=False, clips=False):
     else:
         prefix = "samples"
 
-    create_name = lambda timestamp: ".".join([prefix, timestamp])
-
-    name = create_name(now.strftime("%Y.%m.%d.%H.%M.%S"))
-    if name in conn.list_collection_names():
-        name = create_name(now.strftime("%Y.%m.%d.%H.%M.%S.%f"))
-
-    return name
+    return prefix + "." + str(dataset_id)
 
 
 def _make_frame_collection_name(sample_collection_name):
     return "frames." + sample_collection_name
 
 
-def _create_sample_document_cls(sample_collection_name):
-    return type(sample_collection_name, (foo.DatasetSampleDocument,), {})
+def _create_sample_document_cls(
+    dataset, sample_collection_name, field_docs=None
+):
+    cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
+    cls._dataset = dataset
+
+    _declare_fields(dataset, cls, field_docs=field_docs)
+    return cls
 
 
-def _create_frame_document_cls(frame_collection_name):
-    return type(frame_collection_name, (foo.DatasetFrameDocument,), {})
+def _create_frame_document_cls(
+    dataset, frame_collection_name, field_docs=None
+):
+    cls = type(frame_collection_name, (foo.DatasetFrameDocument,), {})
+    cls._dataset = dataset
+
+    _declare_fields(dataset, cls, field_docs=field_docs)
+    return cls
 
 
-def _get_dataset_doc(collection_name, frames=False):
-    if frames:
-        # Clips datasets share their parent dataset's frame collection, but
-        # only the parent sample collection starts with "samples."
-        query = {
-            "frame_collection_name": collection_name,
-            "sample_collection_name": {"$regex": "^samples\\."},
-        }
-    else:
-        query = {"sample_collection_name": collection_name}
+def _declare_fields(dataset, doc_cls, field_docs=None):
+    for field_name in tuple(doc_cls._fields.keys()):
+        field = doc_cls._fields[field_name]
 
-    conn = foo.get_db_conn()
-    doc = conn.datasets.find_one(query, {"name": 1})
+        if isinstance(field, fof.EmbeddedDocumentField):
+            field = foo.create_field(field_name, **foo.get_field_kwargs(field))
+            doc_cls._declare_field(dataset, field_name, field)
+        else:
+            field._set_dataset(dataset, field_name)
 
-    if doc is None:
-        dtype = "sample" if not frames else "frame"
-        raise ValueError(
-            "No dataset found with %s collection name '%s'"
-            % (dtype, collection_name)
-        )
-
-    dataset = load_dataset(doc["name"])
-    return dataset._doc
+    if field_docs is not None:
+        for field_doc in field_docs:
+            doc_cls._declare_field(dataset, field_doc.name, field_doc)
 
 
 def _load_clips_source_dataset(frame_collection_name):
@@ -4574,10 +6420,29 @@ def _load_clips_source_dataset(frame_collection_name):
     return load_dataset(doc["name"])
 
 
-def _load_dataset(name, virtual=False):
+def _load_dataset(obj, name, virtual=False):
     if not virtual:
         fomi.migrate_dataset_if_necessary(name)
 
+    try:
+        return _do_load_dataset(obj, name)
+    except Exception as e:
+        try:
+            version = fomi.get_dataset_revision(name)
+        except:
+            raise e
+
+        if version != focn.VERSION:
+            raise ValueError(
+                "Failed to load dataset '%s' from v%s using client v%s. "
+                "You may need to upgrade your client"
+                % (name, version, focn.VERSION)
+            ) from e
+
+        raise e
+
+
+def _do_load_dataset(obj, name):
     try:
         # pylint: disable=no-member
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
@@ -4585,20 +6450,11 @@ def _load_dataset(name, virtual=False):
         raise ValueError("Dataset '%s' not found" % name)
 
     sample_collection_name = dataset_doc.sample_collection_name
-    sample_doc_cls = _create_sample_document_cls(sample_collection_name)
-
-    default_sample_fields = fos.get_default_sample_fields(include_private=True)
-    for sample_field in dataset_doc.sample_fields:
-        if sample_field.name in default_sample_fields:
-            continue
-
-        sample_doc_cls._declare_field(sample_field)
-
     frame_collection_name = dataset_doc.frame_collection_name
 
-    if not virtual:
-        dataset_doc.last_loaded_at = datetime.utcnow()
-        dataset_doc.save()
+    sample_doc_cls = _create_sample_document_cls(
+        obj, sample_collection_name, field_docs=dataset_doc.sample_fields
+    )
 
     if sample_collection_name.startswith("clips."):
         # Clips datasets directly inherit frames from source dataset
@@ -4608,47 +6464,43 @@ def _load_dataset(name, virtual=False):
 
     if _src_dataset is not None:
         frame_doc_cls = _src_dataset._frame_doc_cls
-        dataset_doc.frame_fields = _src_dataset._doc.frame_fields
     else:
-        frame_doc_cls = _create_frame_document_cls(frame_collection_name)
-
-        if dataset_doc.media_type == fom.VIDEO:
-            default_frame_fields = fofr.get_default_frame_fields(
-                include_private=True
-            )
-            for frame_field in dataset_doc.frame_fields:
-                if frame_field.name in default_frame_fields:
-                    continue
-
-                frame_doc_cls._declare_field(frame_field)
+        frame_doc_cls = _create_frame_document_cls(
+            obj, frame_collection_name, field_docs=dataset_doc.frame_fields
+        )
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
 def _delete_dataset_doc(dataset_doc):
-    #
-    # Must manually cleanup run results, which are stored using GridFS
-    # https://docs.mongoengine.org/guide/gridfs.html#deletion
-    #
+    for view_doc in dataset_doc.saved_views:
+        view_doc.delete()
 
     for run_doc in dataset_doc.annotation_runs.values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
+        run_doc.delete()
+
     for run_doc in dataset_doc.brain_methods.values():
         if run_doc.results is not None:
             run_doc.results.delete()
+
+        run_doc.delete()
 
     for run_doc in dataset_doc.evaluations.values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
+        run_doc.delete()
+
     dataset_doc.delete()
 
 
-def _clone_dataset_or_view(dataset_or_view, name):
-    if dataset_exists(name):
-        raise ValueError("Dataset '%s' already exists" % name)
+def _clone_dataset_or_view(dataset_or_view, name, persistent):
+    slug = _validate_dataset_name(name)
+
+    contains_videos = dataset_or_view._contains_videos(any_slice=True)
 
     if isinstance(dataset_or_view, fov.DatasetView):
         dataset = dataset_or_view._dataset
@@ -4659,7 +6511,9 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     dataset._reload()
 
-    sample_collection_name = _make_sample_collection_name()
+    _id = ObjectId()
+
+    sample_collection_name = _make_sample_collection_name(_id)
     frame_collection_name = _make_frame_collection_name(sample_collection_name)
 
     #
@@ -4667,14 +6521,24 @@ def _clone_dataset_or_view(dataset_or_view, name):
     #
 
     dataset_doc = dataset._doc.copy()
+
+    dataset_doc.id = _id
     dataset_doc.name = name
+    dataset_doc.slug = slug
     dataset_doc.created_at = datetime.utcnow()
     dataset_doc.last_loaded_at = None
-    dataset_doc.persistent = False
+    dataset_doc.persistent = persistent
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.frame_collection_name = frame_collection_name
 
-    # Run results get special treatment at the end
+    dataset_doc.media_type = dataset_or_view.media_type
+    if dataset_doc.media_type != fom.GROUP:
+        dataset_doc.group_field = None
+        dataset_doc.group_media_types = {}
+        dataset_doc.default_group_slice = None
+
+    # Runs/views get special treatment at the end
+    dataset_doc.saved_views.clear()
     dataset_doc.annotation_runs.clear()
     dataset_doc.brain_methods.clear()
     dataset_doc.evaluations.clear()
@@ -4689,7 +6553,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
         ]
 
         # Respect filtered frame fields, if any
-        if dataset.media_type == fom.VIDEO:
+        if contains_videos:
             frame_schema = view.get_frame_field_schema()
             dataset_doc.frame_fields = [
                 f
@@ -4708,27 +6572,35 @@ def _clone_dataset_or_view(dataset_or_view, name):
     foo.aggregate(coll, pipeline)
 
     # Clone frames
-    if dataset.media_type == fom.VIDEO:
+    if contains_videos:
         coll, pipeline = _get_frames_pipeline(dataset_or_view)
         pipeline.append({"$out": frame_collection_name})
         foo.aggregate(coll, pipeline)
 
     clone_dataset = load_dataset(name)
 
-    # Clone run results
-    if (
-        dataset.has_annotation_runs
+    # Clone extras (full datasets only)
+    if view is None and (
+        dataset.has_saved_views
+        or dataset.has_annotation_runs
         or dataset.has_brain_runs
         or dataset.has_evaluations
     ):
-        _clone_runs(clone_dataset, dataset._doc)
+        _clone_extras(clone_dataset, dataset._doc)
 
     return clone_dataset
 
 
 def _get_samples_pipeline(sample_collection):
+    if sample_collection.media_type == fom.GROUP:
+        sample_collection = sample_collection.select_group_slices(
+            _allow_mixed=True
+        )
+
     coll = sample_collection._dataset._sample_collection
-    pipeline = sample_collection._pipeline(detach_frames=True)
+    pipeline = sample_collection._pipeline(
+        detach_frames=True, detach_groups=True
+    )
     return coll, pipeline
 
 
@@ -4754,6 +6626,10 @@ def _get_frames_pipeline(sample_collection):
     elif view is not None:
         # The view may modify the frames, so we route the frames though
         # the sample collection
+
+        if view.media_type == fom.GROUP:
+            view = view.select_group_slices(media_type=fom.VIDEO)
+
         coll = dataset._sample_collection
         pipeline = view._pipeline(frames_only=True)
     else:
@@ -4764,57 +6640,70 @@ def _get_frames_pipeline(sample_collection):
     return coll, pipeline
 
 
-def _save_view(view, fields):
+def _save_view(view, fields=None):
+    # Note: for grouped views, only the active slice's contents are saved,
+    # since views cannot edit other slices
+
     dataset = view._dataset
 
-    merge = fields is not None
+    contains_videos = view._contains_videos()
+    all_fields = fields is None
+
     if fields is None:
         fields = []
 
-    if dataset.media_type == fom.VIDEO:
-        sample_fields = []
-        frame_fields = []
-        for field in fields:
-            field, is_frame_field = view._handle_frame_field(field)
-            if is_frame_field:
-                frame_fields.append(field)
-            else:
-                sample_fields.append(field)
+    if etau.is_str(fields):
+        fields = [fields]
+
+    if contains_videos:
+        sample_fields, frame_fields = fou.split_frame_fields(fields)
     else:
         sample_fields = fields
         frame_fields = []
+
+    if sample_fields:
+        sample_fields = dataset._handle_db_fields(sample_fields)
+
+    if frame_fields:
+        frame_fields = dataset._handle_db_fields(frame_fields, frames=True)
+
+    save_samples = sample_fields or all_fields
+    save_frames = contains_videos and (frame_fields or all_fields)
+
+    # Must retrieve IDs now in case view changes after saving
+    sample_ids = view.values("id")
 
     #
     # Save samples
     #
 
-    pipeline = view._pipeline(detach_frames=True)
+    pipeline = view._pipeline(detach_frames=True, detach_groups=True)
 
-    if merge:
-        if sample_fields:
-            # @todo if `view` omits samples, shouldn't we set their field
-            # values to None here, for consistency with the fact that $out
-            # will delete samples that don't appear in `view`?
-            pipeline.append({"$project": {f: True for f in sample_fields}})
-            pipeline.append({"$merge": dataset._sample_collection_name})
-            foo.aggregate(dataset._sample_collection, pipeline)
-    else:
-        pipeline.append({"$out": dataset._sample_collection_name})
+    if sample_fields:
+        pipeline.append({"$project": {f: True for f in sample_fields}})
+        pipeline.append({"$merge": dataset._sample_collection_name})
         foo.aggregate(dataset._sample_collection, pipeline)
-
-        for field_name in view._get_missing_fields():
-            dataset._sample_doc_cls._delete_field_schema(field_name)
+    elif save_samples:
+        pipeline.append(
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "whenMatched": "replace",
+                }
+            }
+        )
+        foo.aggregate(dataset._sample_collection, pipeline)
 
     #
     # Save frames
     #
 
-    if dataset.media_type == fom.VIDEO:
+    if save_frames:
         # The view may modify the frames, so we route the frames through the
         # sample collection
         pipeline = view._pipeline(frames_only=True)
 
-        # Clips views may contain overlapping clips, so we must select only
+        # Clips datasets may contain overlapping clips, so we must select only
         # the first occurrance of each frame
         if dataset._is_clips:
             pipeline.extend(
@@ -4824,33 +6713,34 @@ def _save_view(view, fields):
                 ]
             )
 
-        if merge:
-            if frame_fields:
-                # @todo if `view` omits samples, shouldn't we set their field
-                # values to None here, for consistency with the fact that $out
-                # will delete samples that don't appear in `view`?
-                pipeline.append({"$project": {f: True for f in frame_fields}})
-                pipeline.append({"$merge": dataset._frame_collection_name})
-                foo.aggregate(dataset._sample_collection, pipeline)
-        else:
-            pipeline.append({"$out": dataset._frame_collection_name})
+        if frame_fields:
+            pipeline.append({"$project": {f: True for f in frame_fields}})
+            pipeline.append({"$merge": dataset._frame_collection_name})
             foo.aggregate(dataset._sample_collection, pipeline)
-
-            for field_name in view._get_missing_fields(frames=True):
-                dataset._frame_doc_cls._delete_field_schema(field_name)
+        else:
+            pipeline.append(
+                {
+                    "$merge": {
+                        "into": dataset._frame_collection_name,
+                        "whenMatched": "replace",
+                    }
+                }
+            )
+            foo.aggregate(dataset._sample_collection, pipeline)
 
     #
     # Reload in-memory documents
     #
 
-    # The samples now in the collection
-    sample_ids = dataset.values("id")
+    if save_samples:
+        fos.Sample._reload_docs(
+            dataset._sample_collection_name, sample_ids=sample_ids
+        )
 
-    if dataset.media_type == fom.VIDEO:
-        # pylint: disable=unexpected-keyword-arg
-        fofr.Frame._sync_docs(dataset._frame_collection_name, sample_ids)
-
-    fos.Sample._sync_docs(dataset._sample_collection_name, sample_ids)
+    if save_frames:
+        fofr.Frame._reload_docs(
+            dataset._frame_collection_name, sample_ids=sample_ids
+        )
 
 
 def _merge_dataset_doc(
@@ -4863,41 +6753,86 @@ def _merge_dataset_doc(
     overwrite_info=False,
 ):
     #
-    # Merge media type
-    #
-
-    src_media_type = collection_or_doc.media_type
-    if dataset.media_type is None:
-        dataset.media_type = src_media_type
-
-    if src_media_type != dataset.media_type and src_media_type is not None:
-        raise ValueError(
-            "Cannot merge a dataset with media_type='%s' into a dataset "
-            "with media_type='%s'" % (src_media_type, dataset.media_type)
-        )
-
-    #
     # Merge schemas
     #
 
+    src_media_type = collection_or_doc.media_type
+
+    if dataset.media_type is None:
+        if src_media_type == fom.MIXED:
+            dataset.media_type = fom.GROUP
+        elif src_media_type is not None:
+            dataset.media_type = src_media_type
+
     curr_doc = dataset._doc
-    is_video = dataset.media_type == fom.VIDEO
+    has_frame_fields = dataset._has_frame_fields()
 
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
-        doc = collection_or_doc._dataset._doc
+        doc = collection_or_doc._root_dataset._doc
         schema = collection_or_doc.get_field_schema()
-        if is_video:
+        if has_frame_fields:
             frame_schema = collection_or_doc.get_frame_field_schema()
     else:
         doc = collection_or_doc
         schema = {f.name: f.to_field() for f in doc.sample_fields}
-        if is_video:
+        if has_frame_fields:
             frame_schema = {f.name: f.to_field() for f in doc.frame_fields}
+
+    if curr_doc.media_type == fom.GROUP:
+        # Get the group field this way because a view might omit the field
+        src_group_field = _get_group_field(schema)
+
+        if src_group_field is None:
+            raise ValueError(
+                "Cannot merge samples with no group field into a grouped "
+                "dataset"
+            )
+
+        if curr_doc.group_field is None:
+            curr_doc.group_field = doc.group_field
+        elif src_group_field != curr_doc.group_field:
+            raise ValueError(
+                "Cannot merge samples with group field '%s' into a "
+                "dataset with group field '%s'"
+                % (src_group_field, curr_doc.group_field)
+            )
+
+        if src_media_type == fom.GROUP:
+            src_group_media_types = doc.group_media_types
+            src_default_group_slice = doc.default_group_slice
+        else:
+            src_group_media_types = collection_or_doc._get_group_media_types()
+            src_default_group_slice = next(
+                iter(src_group_media_types.keys()), None
+            )
+
+        for name, media_type in src_group_media_types.items():
+            if name not in curr_doc.group_media_types:
+                curr_doc.group_media_types[name] = media_type
+            else:
+                curr_media_type = curr_doc.group_media_types[name]
+                if curr_media_type != media_type:
+                    raise ValueError(
+                        "Cannot merge a collection whose '%s' slice has media "
+                        "type '%s' into a dataset whose '%s' slice has media "
+                        "type '%s'" % (name, media_type, name, curr_media_type)
+                    )
+
+        if curr_doc.default_group_slice is None:
+            curr_doc.default_group_slice = src_default_group_slice
+
+        if dataset._group_slice is None:
+            dataset._group_slice = src_default_group_slice
+    elif src_media_type not in (None, dataset.media_type):
+        raise ValueError(
+            "Cannot merge a collection with media_type='%s' into a dataset "
+            "with media_type='%s'" % (src_media_type, dataset.media_type)
+        )
 
     # Omit fields first in case `fields` is a dict that changes field names
     if omit_fields is not None:
-        if is_video:
+        if has_frame_fields:
             omit_fields, omit_frame_fields = fou.split_frame_fields(
                 omit_fields
             )
@@ -4913,7 +6848,7 @@ def _merge_dataset_doc(
         if not isinstance(fields, dict):
             fields = {f: f for f in fields}
 
-        if is_video:
+        if has_frame_fields:
             fields, frame_fields = fou.split_frame_fields(fields)
 
             frame_schema = {
@@ -4927,7 +6862,8 @@ def _merge_dataset_doc(
     dataset._sample_doc_cls.merge_field_schema(
         schema, expand_schema=expand_schema
     )
-    if is_video and frame_schema is not None:
+
+    if has_frame_fields and frame_schema is not None:
         dataset._frame_doc_cls.merge_field_schema(
             frame_schema, expand_schema=expand_schema
         )
@@ -4944,16 +6880,21 @@ def _merge_dataset_doc(
         curr_doc.info.update(doc.info)
         curr_doc.classes.update(doc.classes)
         curr_doc.mask_targets.update(doc.mask_targets)
+        curr_doc.skeletons.update(doc.skeletons)
 
         if doc.default_classes:
             curr_doc.default_classes = doc.default_classes
 
         if doc.default_mask_targets:
             curr_doc.default_mask_targets = doc.default_mask_targets
+
+        if doc.default_skeleton:
+            curr_doc.default_skeleton = doc.default_skeleton
     else:
         _update_no_overwrite(curr_doc.info, doc.info)
         _update_no_overwrite(curr_doc.classes, doc.classes)
         _update_no_overwrite(curr_doc.mask_targets, doc.mask_targets)
+        _update_no_overwrite(curr_doc.skeletons, doc.skeletons)
 
         if doc.default_classes and not curr_doc.default_classes:
             curr_doc.default_classes = doc.default_classes
@@ -4961,105 +6902,81 @@ def _merge_dataset_doc(
         if doc.default_mask_targets and not curr_doc.default_mask_targets:
             curr_doc.default_mask_targets = doc.default_mask_targets
 
+        if doc.default_skeleton and not curr_doc.default_skeleton:
+            curr_doc.default_skeleton = doc.default_skeleton
+
     curr_doc.save()
-
-    if dataset:
-        if doc.annotation_runs:
-            logger.warning(
-                "Annotation runs cannot be merged into a non-empty dataset"
-            )
-
-        if doc.brain_methods:
-            logger.warning(
-                "Brain runs cannot be merged into a non-empty dataset"
-            )
-
-        if doc.evaluations:
-            logger.warning(
-                "Evaluations cannot be merged into a non-empty dataset"
-            )
-    else:
-        dataset.delete_annotation_runs()
-        dataset.delete_brain_runs()
-        dataset.delete_evaluations()
-
-        _clone_runs(dataset, doc)
 
 
 def _update_no_overwrite(d, dnew):
     d.update({k: v for k, v in dnew.items() if k not in d})
 
 
-def _clone_runs(dst_dataset, src_doc):
+def _clone_extras(dst_dataset, src_doc):
     dst_doc = dst_dataset._doc
 
-    #
-    # Clone annotation runs results
-    #
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
-    #
+    # Clone saved views
+    for _view_doc in src_doc.saved_views:
+        view_doc = _clone_view_doc(_view_doc)
+        view_doc.dataset_id = dst_doc.id
+        view_doc.save()
 
-    for anno_key, run_doc in src_doc.annotation_runs.items():
-        _run_doc = deepcopy(run_doc)
-        dst_doc.annotation_runs[anno_key] = _run_doc
-        results = foan.AnnotationMethod.load_run_results(
-            dst_dataset, anno_key, cache=False
-        )
-        _run_doc.results = None
-        foan.AnnotationMethod.save_run_results(
-            dst_dataset, anno_key, results, cache=False
-        )
+        dst_doc.saved_views.append(view_doc)
 
-    #
-    # Clone brain results
-    #
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
-    #
+    # Clone annotation runs
+    for anno_key, _run_doc in src_doc.annotation_runs.items():
+        run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
+        run_doc.save()
 
-    for brain_key, run_doc in src_doc.brain_methods.items():
-        _run_doc = deepcopy(run_doc)
-        dst_doc.brain_methods[brain_key] = _run_doc
-        results = fob.BrainMethod.load_run_results(
-            dst_dataset, brain_key, cache=False
-        )
-        _run_doc.results = None
-        fob.BrainMethod.save_run_results(
-            dst_dataset, brain_key, results, cache=False
-        )
+        dst_doc.annotation_runs[anno_key] = run_doc
 
-    #
-    # Clone evaluation results
-    #
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
-    #
+    # Clone brain method runs
+    for brain_key, _run_doc in src_doc.brain_methods.items():
+        run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
+        run_doc.save()
 
-    for eval_key, run_doc in src_doc.evaluations.items():
-        _run_doc = deepcopy(run_doc)
-        dst_doc.evaluations[eval_key] = _run_doc
-        results = foe.EvaluationMethod.load_run_results(
-            dst_dataset, eval_key, cache=False
-        )
-        _run_doc.results = None
-        foe.EvaluationMethod.save_run_results(
-            dst_dataset, eval_key, results, cache=False
-        )
+        dst_doc.brain_methods[brain_key] = run_doc
+
+    # Clone evaluation runs
+    for eval_key, _run_doc in src_doc.evaluations.items():
+        run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
+        run_doc.save()
+
+        dst_doc.evaluations[eval_key] = run_doc
 
     dst_doc.save()
 
 
-def _ensure_index(sample_collection, db_field, unique=False):
+def _clone_view_doc(view_doc):
+    _view_doc = view_doc.copy()
+    _view_doc.id = ObjectId()
+    return _view_doc
+
+
+def _clone_run(run_doc):
+    _run_doc = run_doc.copy()
+    _run_doc.id = ObjectId()
+
+    # Unfortunately the only way to copy GridFS files is to read-write them...
+    # https://jira.mongodb.org/browse/TOOLS-2208
+    run_doc.results.seek(0)
+    results_bytes = run_doc.results.read()
+    _run_doc.results = None
+    _run_doc.results.put(results_bytes, content_type="application/json")
+
+    return _run_doc
+
+
+def _ensure_index(dataset, db_field, unique=False):
     # For some reason the ID index is not reported by `index_information()` as
     # being unique like other manually created indexes, but it is
     if db_field == "_id":
         return False, False
 
-    coll = sample_collection._dataset._sample_collection
+    coll = dataset._sample_collection
 
     # db_field -> (name, unique)
     index_map = _get_single_index_map(coll)
@@ -5083,8 +7000,8 @@ def _ensure_index(sample_collection, db_field, unique=False):
     return new, dropped
 
 
-def _cleanup_index(sample_collection, db_field, new_index, dropped_index):
-    coll = sample_collection._dataset._sample_collection
+def _cleanup_index(dataset, db_field, new_index, dropped_index):
+    coll = dataset._sample_collection
 
     if new_index:
         # db_field -> (name, unique)
@@ -5097,6 +7014,13 @@ def _cleanup_index(sample_collection, db_field, new_index, dropped_index):
         coll.create_index(db_field)
 
 
+def _cleanup_frame_index(dataset, index):
+    coll = dataset._frame_collection
+
+    if index:
+        coll.drop_index(index)
+
+
 def _get_single_index_map(coll):
     # db_field -> (name, unique)
     return {
@@ -5104,6 +7028,101 @@ def _get_single_index_map(coll):
         for k, v in coll.index_information().items()
         if len(v["key"]) == 1
     }
+
+
+def _add_collection_with_new_ids(
+    dataset,
+    sample_collection,
+    include_info=True,
+    overwrite_info=False,
+):
+    dataset._merge_doc(
+        sample_collection,
+        merge_info=include_info,
+        overwrite_info=overwrite_info,
+    )
+
+    contains_groups = sample_collection.media_type == fom.GROUP
+    contains_videos = sample_collection._contains_videos(any_slice=True)
+
+    if contains_groups:
+        src_samples = sample_collection.select_group_slices(_allow_mixed=True)
+    else:
+        src_samples = sample_collection
+
+    if not contains_videos:
+        src_samples._aggregate(
+            detach_groups=True,
+            post_pipeline=[
+                {"$unset": "_id"},
+                {
+                    "$merge": {
+                        "into": dataset._sample_collection_name,
+                        "whenMatched": "keepExisting",
+                        "whenNotMatched": "insert",
+                    }
+                },
+            ],
+        )
+
+        return
+
+    #
+    # For video datasets, we must take greater care, because sample IDs are
+    # used as foreign keys in the frame documents
+    #
+
+    if contains_groups:
+        src_videos = sample_collection.select_group_slices(
+            media_type=fom.VIDEO
+        )
+    else:
+        src_videos = sample_collection
+
+    old_ids = src_samples.values("_id")
+
+    src_samples._aggregate(
+        detach_frames=True,
+        detach_groups=True,
+        post_pipeline=[
+            {"$unset": "_id"},
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "whenMatched": "keepExisting",
+                    "whenNotMatched": "insert",
+                }
+            },
+        ],
+    )
+
+    src_videos._aggregate(
+        frames_only=True,
+        post_pipeline=[
+            {"$set": {"_tmp": "$_sample_id", "_sample_id": {"$rand": {}}}},
+            {"$unset": "_id"},
+            {
+                "$merge": {
+                    "into": dataset._frame_collection_name,
+                    "whenMatched": "keepExisting",
+                    "whenNotMatched": "insert",
+                }
+            },
+        ],
+    )
+
+    new_ids = dataset[-len(old_ids) :].values("_id")
+
+    ops = [
+        UpdateMany(
+            {"_tmp": _old},
+            {"$set": {"_sample_id": _new}, "$unset": {"_tmp": ""}},
+        )
+        for _old, _new in zip(old_ids, new_ids)
+    ]
+    dataset._bulk_write(ops, frames=True)
+
+    return [str(_id) for _id in new_ids]
 
 
 def _merge_samples_python(
@@ -5118,8 +7137,18 @@ def _merge_samples_python(
     merge_lists=True,
     overwrite=True,
     expand_schema=True,
+    dynamic=False,
     num_samples=None,
 ):
+    if (
+        isinstance(samples, foc.SampleCollection)
+        and samples.media_type == fom.GROUP
+    ):
+        samples = samples.select_group_slices(_allow_mixed=True)
+        dst = dataset.select_group_slices(_allow_mixed=True)
+    else:
+        dst = dataset
+
     if num_samples is None:
         try:
             num_samples = len(samples)
@@ -5127,13 +7156,13 @@ def _merge_samples_python(
             pass
 
     if key_fcn is None:
-        id_map = {k: v for k, v in zip(*dataset.values([key_field, "id"]))}
+        id_map = {k: v for k, v in zip(*dst.values([key_field, "_id"]))}
         key_fcn = lambda sample: sample[key_field]
     else:
         id_map = {}
         logger.info("Indexing dataset...")
-        for sample in dataset.iter_samples(progress=True):
-            id_map[key_fcn(sample)] = sample.id
+        for sample in dst.iter_samples(progress=True):
+            id_map[key_fcn(sample)] = sample._id
 
     _samples = _make_merge_samples_generator(
         dataset,
@@ -5151,7 +7180,10 @@ def _merge_samples_python(
 
     logger.info("Merging samples...")
     dataset._upsert_samples(
-        _samples, expand_schema=expand_schema, num_samples=num_samples
+        _samples,
+        expand_schema=expand_schema,
+        dynamic=dynamic,
+        num_samples=num_samples,
     )
 
 
@@ -5223,25 +7255,33 @@ def _merge_samples_pipeline(
     merge_lists=True,
     overwrite=True,
 ):
-    #
-    # Prepare for merge
-    #
-
     in_key_field = key_field
     db_fields_map = src_collection._get_db_fields_map()
     key_field = db_fields_map.get(key_field, key_field)
 
-    is_video = dst_dataset.media_type == fom.VIDEO
+    contains_groups = src_collection.media_type == fom.GROUP
+    if contains_groups:
+        src_samples = src_collection.select_group_slices(_allow_mixed=True)
+    else:
+        src_samples = src_collection
+
+    contains_videos = src_collection._contains_videos(any_slice=True)
+    if contains_videos:
+        if contains_groups:
+            src_videos = src_collection.select_group_slices(
+                media_type=fom.VIDEO
+            )
+        else:
+            src_videos = src_collection
+
+        if dst_dataset.media_type == fom.GROUP:
+            dst_videos = dst_dataset.select_group_slices(media_type=fom.VIDEO)
+        else:
+            dst_videos = dst_dataset
+
     src_dataset = src_collection._dataset
 
-    new_src_index, dropped_src_index = _ensure_index(
-        src_dataset, key_field, unique=True
-    )
-    new_dst_index, dropped_dst_index = _ensure_index(
-        dst_dataset, key_field, unique=True
-    )
-
-    if is_video:
+    if contains_videos:
         frame_fields = None
         omit_frame_fields = None
 
@@ -5249,11 +7289,11 @@ def _merge_samples_pipeline(
         if not isinstance(fields, dict):
             fields = {f: f for f in fields}
 
-        if is_video:
+        if contains_videos:
             fields, frame_fields = fou.split_frame_fields(fields)
 
     if omit_fields is not None:
-        if is_video:
+        if contains_videos:
             omit_fields, omit_frame_fields = fou.split_frame_fields(
                 omit_fields
             )
@@ -5262,7 +7302,7 @@ def _merge_samples_pipeline(
             fields = {k: v for k, v in fields.items() if k not in omit_fields}
             omit_fields = None
 
-        if is_video and frame_fields is not None:
+        if contains_videos and frame_fields is not None:
             frame_fields = {
                 k: v
                 for k, v in frame_fields.items()
@@ -5271,43 +7311,7 @@ def _merge_samples_pipeline(
             omit_frame_fields = None
 
     #
-    # The implementation of merging video frames is currently a bit complex.
-    # It may be possible to simplify this...
-    #
-    # The trouble is that the `_sample_id` of the frame documents need to match
-    # the `_id` of the sample documents after merging. There may be a more
-    # clever way to make this happen via `$lookup` than what is implemented
-    # here, but here's the current workflow:
-    #
-    # - Store the `key_field` value on each frame document in both the source
-    #   and destination collections corresopnding to its parent sample in a
-    #   temporary `frame_key_field` field
-    # - Merge the sample documents without frames attached
-    # - Merge the frame documents on `[frame_key_field, frame_number]` with
-    #   their old `_sample_id`s unset
-    # - Generate a `key_field` -> `_id` mapping for the post-merge sample docs,
-    #   then make a pass over the frame documents and set
-    #   their `_sample_id` to the corresponding value from this mapping
-    # - The merge is complete, so delete `frame_key_field` from both frame
-    #   collections
-    #
-
-    if is_video:
-        frame_key_field = "_merge_key"
-        _index_frames(dst_dataset, key_field, frame_key_field)
-        _index_frames(src_collection, key_field, frame_key_field)
-
-        # Must create unique indexes in order to use `$merge`
-        frame_index_spec = [(frame_key_field, 1), ("frame_number", 1)]
-        dst_frame_index = dst_dataset._frame_collection.create_index(
-            frame_index_spec, unique=True
-        )
-        src_frame_index = src_dataset._frame_collection.create_index(
-            frame_index_spec, unique=True
-        )
-
-    #
-    # Merge samples
+    # Prepare samples merge pipeline
     #
 
     default_fields = set(
@@ -5315,10 +7319,11 @@ def _merge_samples_pipeline(
     )
     default_fields.discard("id")
 
-    sample_pipeline = src_collection._pipeline(detach_frames=True)
+    sample_pipeline = []
 
     if fields is not None:
-        project = {}
+        project = {key_field: True}
+
         for k, v in fields.items():
             k = db_fields_map.get(k, k)
             v = db_fields_map.get(v, v)
@@ -5400,27 +7405,42 @@ def _merge_samples_pipeline(
         }
     )
 
-    # Merge samples
-    src_dataset._aggregate(pipeline=sample_pipeline)
-
-    # Cleanup indexes
-    _cleanup_index(src_collection, key_field, new_src_index, dropped_src_index)
-    _cleanup_index(dst_dataset, key_field, new_dst_index, dropped_dst_index)
-
     #
-    # Merge frames
+    # Prepare frames merge pipeline
+    #
+    # The implementation of merging video frames is currently a bit complex.
+    # It may be possible to simplify this...
+    #
+    # The trouble is that the `_sample_id` of the frame documents need to match
+    # the `_id` of the sample documents after merging. There may be a more
+    # clever way to make this happen via `$lookup` than what is implemented
+    # here, but here's the current workflow:
+    #
+    # - Store the `key_field` value on each frame document in both the source
+    #   and destination collections corresopnding to its parent sample in a
+    #   temporary `frame_key_field` field
+    # - Merge the sample documents without frames attached
+    # - Merge the frame documents on `[frame_key_field, frame_number]` with
+    #   their old `_sample_id`s unset
+    # - Generate a `key_field` -> `_id` mapping for the post-merge sample docs,
+    #   then make a pass over the frame documents and set
+    #   their `_sample_id` to the corresponding value from this mapping
+    # - The merge is complete, so delete `frame_key_field` from both frame
+    #   collections
     #
 
-    if is_video:
+    if contains_videos:
+        frame_key_field = "_merge_key"
+
         # @todo this there a cleaner way to avoid this? we have to be sure that
         # `frame_key_field` is not excluded by a user's view here...
-        _src_collection = _always_select_field(
-            src_collection, "frames." + frame_key_field
+        _src_videos = _always_select_field(
+            src_videos, "frames." + frame_key_field
         )
 
         db_fields_map = src_collection._get_db_fields_map(frames=True)
 
-        frame_pipeline = _src_collection._pipeline(frames_only=True)
+        frame_pipeline = []
 
         if frame_fields is not None:
             project = {}
@@ -5471,24 +7491,80 @@ def _merge_samples_pipeline(
             }
         )
 
-        # Merge frames
-        src_dataset._aggregate(pipeline=frame_pipeline)
+    #
+    # Perform the merge(s)
+    #
+    # We wrap this in a try-finally because we need to ensure that temporary
+    # data and collection indexes are deleted if something goes wrong during
+    # the actual merges
+    #
 
-        # Drop indexes
-        dst_dataset._frame_collection.drop_index(dst_frame_index)
-        src_dataset._frame_collection.drop_index(src_frame_index)
+    new_src_index = None
+    dropped_src_index = None
+    new_dst_index = None
+    dropped_dst_index = None
+    dst_frame_index = None
+    src_frame_index = None
 
-        # Finalize IDs
-        _finalize_frames(dst_dataset, key_field, frame_key_field)
+    try:
+        # Create unique index on merge key, if necessary
+        new_src_index, dropped_src_index = _ensure_index(
+            src_dataset, key_field, unique=True
+        )
+        new_dst_index, dropped_dst_index = _ensure_index(
+            dst_dataset, key_field, unique=True
+        )
 
-        # Cleanup merge key
-        cleanup_op = {"$unset": {frame_key_field: ""}}
-        src_dataset._frame_collection.update_many({}, cleanup_op)
-        dst_dataset._frame_collection.update_many({}, cleanup_op)
+        if contains_videos:
+            _index_frames(dst_videos, key_field, frame_key_field)
+            _index_frames(src_videos, key_field, frame_key_field)
+
+            # Create unique index on frame merge key
+            frame_index_spec = [(frame_key_field, 1), ("frame_number", 1)]
+            dst_frame_index = dst_dataset._frame_collection.create_index(
+                frame_index_spec, unique=True
+            )
+            src_frame_index = src_dataset._frame_collection.create_index(
+                frame_index_spec, unique=True
+            )
+
+        # Merge samples
+        src_samples._aggregate(
+            detach_frames=True,
+            detach_groups=True,
+            post_pipeline=sample_pipeline,
+        )
+
+        if contains_videos:
+            # Merge frames
+            _src_videos._aggregate(
+                frames_only=True, post_pipeline=frame_pipeline
+            )
+
+            # Finalize IDs
+            _finalize_frames(dst_videos, key_field, frame_key_field)
+    finally:
+        # Cleanup indexes
+        _cleanup_index(
+            src_dataset, key_field, new_src_index, dropped_src_index
+        )
+        _cleanup_index(
+            dst_dataset, key_field, new_dst_index, dropped_dst_index
+        )
+
+        if contains_videos:
+            # Cleanup indexes
+            _cleanup_frame_index(dst_dataset, dst_frame_index)
+            _cleanup_frame_index(src_dataset, src_frame_index)
+
+            # Cleanup merge key
+            cleanup_op = {"$unset": {frame_key_field: ""}}
+            src_dataset._frame_collection.update_many({}, cleanup_op)
+            dst_dataset._frame_collection.update_many({}, cleanup_op)
 
     # Reload docs
     fos.Sample._reload_docs(dst_dataset._sample_collection_name)
-    if is_video:
+    if contains_videos:
         fofr.Frame._reload_docs(dst_dataset._frame_collection_name)
 
 
@@ -5774,7 +7850,7 @@ def _finalize_frames(sample_collection, key_field, frame_key_field):
     results = sample_collection.values([key_field, "_id"])
     ids_map = {k: v for k, v in zip(*results)}
 
-    frame_coll = sample_collection._frame_collection
+    frame_coll = sample_collection._dataset._frame_collection
 
     ops = [
         UpdateMany(
@@ -5786,32 +7862,128 @@ def _finalize_frames(sample_collection, key_field, frame_key_field):
     foo.bulk_write(ops, frame_coll)
 
 
-def _get_sample_ids(samples_or_ids):
-    if etau.is_str(samples_or_ids):
-        return [samples_or_ids]
+def _get_media_type(sample):
+    for field, value in sample.iter_fields():
+        if isinstance(value, fog.Group):
+            return fom.GROUP
 
-    if isinstance(samples_or_ids, (fos.Sample, fos.SampleView)):
-        return [samples_or_ids.id]
+    return sample.media_type
 
-    if isinstance(samples_or_ids, foc.SampleCollection):
-        return samples_or_ids.values("id")
 
-    if isinstance(samples_or_ids, np.ndarray):
-        return list(samples_or_ids)
+def _get_group_field(schema):
+    for field_name, field in schema.items():
+        if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+            field.document_type, fog.Group
+        ):
+            return field_name
 
-    if not samples_or_ids:
+    return None
+
+
+def _get_sample_ids(arg):
+    if etau.is_str(arg):
+        return [arg]
+
+    if isinstance(arg, (fos.Sample, fos.SampleView)):
+        return [arg.id]
+
+    if isinstance(arg, foc.SampleCollection):
+        return arg.values("id")
+
+    arg = list(arg)
+
+    if not arg:
         return []
 
-    if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
-        return [s.id for s in samples_or_ids]
+    if isinstance(arg[0], (fos.Sample, fos.SampleView)):
+        return [sample.id for sample in arg]
 
-    return list(samples_or_ids)
+    return arg
+
+
+def _get_frame_ids(arg):
+    if etau.is_str(arg):
+        return [arg]
+
+    if isinstance(arg, (fofr.Frame, fofr.FrameView)):
+        return [arg.id]
+
+    if isinstance(arg, (fos.Sample, fos.SampleView)):
+        return _get_frame_ids_for_sample(arg)
+
+    if isinstance(arg, foc.SampleCollection):
+        return arg.values("frames.id", unwind=True)
+
+    arg = list(arg)
+
+    if not arg:
+        return []
+
+    if isinstance(arg[0], (fofr.Frame, fofr.FrameView)):
+        return [frame.id for frame in arg]
+
+    if isinstance(arg[0], (fos.Sample, fos.SampleView)):
+        return itertools.chain.from_iterable(
+            _get_frame_ids_for_sample(a) for a in arg
+        )
+
+    return arg
+
+
+def _get_frame_ids_for_sample(sample):
+    if sample.in_dataset:
+        view = sample._collection.select(sample.id)
+        return view.values("frames.id", unwind=True)
+
+    return [frame.id for frame in sample.frames.values()]
+
+
+def _get_group_ids(arg):
+    if etau.is_str(arg):
+        return [arg]
+
+    if isinstance(arg, (dict, fos.Sample, fos.SampleView)):
+        return [_get_group_id(arg)]
+
+    if isinstance(arg, foc.SampleCollection):
+        if arg.media_type != fom.GROUP:
+            raise ValueError("%s is not a grouped collection" % type(arg))
+
+        return arg.values(arg.group_field + ".id")
+
+    arg = list(arg)
+
+    if not arg:
+        return []
+
+    if isinstance(arg[0], (dict, fos.Sample, fos.SampleView)):
+        return [_get_group_id(a) for a in arg]
+
+    return arg
+
+
+def _get_group_id(sample_or_group):
+    if isinstance(sample_or_group, dict):
+        sample = next(iter(sample_or_group.values()))
+    else:
+        sample = sample_or_group
+
+    for field, value in sample.iter_fields():
+        if isinstance(value, fog.Group):
+            return value.id
+
+    raise ValueError("Sample '%s' has no group" % sample.id)
+
+
+def _to_list(arg):
+    if etau.is_container(arg):
+        return list(arg)
+
+    return [arg]
 
 
 def _parse_fields(field_names):
-    if etau.is_str(field_names):
-        field_names = [field_names]
-
+    field_names = _to_list(field_names)
     fields = [f for f in field_names if "." not in f]
     embedded_fields = [f for f in field_names if "." in f]
     return fields, embedded_fields
@@ -5837,10 +8009,7 @@ def _extract_archive_if_necessary(archive_path, cleanup):
     dataset_dir = etau.split_archive(archive_path)[0]
 
     if not os.path.isdir(dataset_dir):
-        outdir = os.path.dirname(dataset_dir)
-        etau.extract_archive(
-            archive_path, outdir=outdir, delete_archive=cleanup
-        )
+        etau.extract_archive(archive_path, delete_archive=cleanup)
 
         if not os.path.isdir(dataset_dir):
             raise ValueError(

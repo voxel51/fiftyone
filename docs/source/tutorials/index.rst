@@ -5,8 +5,6 @@ FiftyOne Tutorials
 
 .. default-role:: code
 
-Welcome to FiftyOne tutorials!
-
 Each tutorial below is a curated demonstration of how FiftyOne can help refine
 your datasets and turn your good models into *great models*.
 
@@ -36,6 +34,13 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
+    :header: pandas-style queries in FiftyOne
+    :description: Translate your pandas knowledge to FiftyOne. This tutorial gives a side-by-side comparison of performing common opertaions in pandas and FiftyOne.
+    :link: pandas_comparison.html
+    :image: ../_static/images/tutorials/pandas_tutorial.png
+    :tags: Filtering,Dataset-Evaluation
+
+.. customcarditem::
     :header: Evaluating object detections
     :description: Aggregate statistics aren't sufficient for object detection. This tutorial shows how to use FiftyOne to perform powerful evaluation workflows on your detector.
     :link: evaluate_detections.html
@@ -54,7 +59,7 @@ your datasets and turn your good models into *great models*.
     :description: Visualize your data in new ways. This tutorial shows how to use FiftyOne's powerful embeddings visualization capabilities to improve your image datasets.
     :link: image_embeddings.html
     :image: ../_static/images/tutorials/image_embeddings.png
-    :tags: Visualization,Brain
+    :tags: Visualization,Brain,Embeddings
 
 .. customcarditem::
     :header: Annotating with CVAT
@@ -62,6 +67,20 @@ your datasets and turn your good models into *great models*.
     :link: cvat_annotation.html
     :image: ../_static/images/tutorials/cvat_segmentation.png
     :tags: Annotation,Dataset-Evaluation
+
+.. customcarditem::
+    :header: Annotating with Labelbox
+    :description: Unlock the power of the Labelbox platform. See how you can get your FiftyOne datasets annotated with just one line of code.
+    :link: labelbox_annotation.html
+    :image: ../_static/images/tutorials/labelbox_square.png
+    :tags: Annotation,Dataset-Evaluation
+
+.. customcarditem::
+    :header: Training with Detectron2
+    :description: Put your FiftyOne datasets to work and learn how to train and evaluate Detectron2 models directly on your data.
+    :link: detectron2.html
+    :image: ../_static/images/tutorials/detectron2.png
+    :tags: Model-Training,Model-Evaluation
 
 .. customcarditem::
     :header: Downloading and evaluating Open Images
@@ -91,6 +110,13 @@ your datasets and turn your good models into *great models*.
     :image: ../_static/images/tutorials/detection_mistakes.png
     :tags: Dataset-Evaluation,Brain
 
+.. customcarditem::
+    :header: Nearest Neighbor Embeddings Classification with Qdrant
+    :description: Easily pre-annotate your FiftyOne datasets using approximate nearest neighbors search on embeddings with Qdrant.
+    :link: qdrant.html
+    :image: ../_static/images/tutorials/qdrant.png
+    :tags: Dataset-Evaluation,Model-Evaluation,Embeddings
+
 .. End of tutorial cards
 
 .. raw:: html
@@ -115,11 +141,15 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
+   pandas and FiftyOne <pandas_comparison.ipynb>
    Evaluating object detections <evaluate_detections.ipynb>
    Evaluating a classifier <evaluate_classifications.ipynb>
    Using image embeddings <image_embeddings.ipynb>
    Annotating with CVAT <cvat_annotation.ipynb>
+   Annotating with Labelbox <labelbox_annotation.ipynb>
    Working with Open Images <open_images.ipynb>
+   Training with Detectron2 <detectron2.ipynb>
    Exploring image uniqueness <uniqueness.ipynb>
    Finding class mistakes <classification_mistakes.ipynb>
    Finding detection mistakes <detection_mistakes.ipynb>
+   Embeddings with Qdrant <qdrant.ipynb>

@@ -1,7 +1,7 @@
 """
 Image patch utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -80,7 +80,7 @@ class ImagePatchesExtractor(object):
                         alpha=self.alpha,
                     )
                     if self.include_labels:
-                        yield patch, detection.label
+                        yield patch, _to_classification(detection)
                     else:
                         yield patch
 
@@ -154,7 +154,7 @@ def extract_patch(img, detection, force_square=False, alpha=None):
     Returns:
         the image patch
     """
-    dobj = foue.to_detected_object(detection)
+    dobj = foue.to_detected_object(detection, extra_attrs=False)
 
     bbox = dobj.bounding_box
     if alpha is not None:
@@ -167,3 +167,14 @@ def _load_image(image_path, force_rgb=False):
     # pylint: disable=no-member
     flag = cv2.IMREAD_COLOR if force_rgb else cv2.IMREAD_UNCHANGED
     return etai.read(image_path, flag=flag)
+
+
+def _to_classification(label):
+    if label is None:
+        return label
+
+    return fol.Classification(
+        label=label.label,
+        confidence=label.confidence,
+        **dict(label.iter_attributes()),
+    )

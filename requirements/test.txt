@@ -1,0 +1,6 @@
+open3d>=0.16.0
+itsdangerous==2.0.1
+werkzeug==2.0.3
+pytest==5.4.3
+pytest-cov==4.0.0
+twine>=3

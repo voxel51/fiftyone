@@ -17,14 +17,14 @@ models**
 <a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
 <a href="https://github.com/voxel51/fiftyone-examples">Examples</a> •
 <a href="https://medium.com/voxel51">Blog</a> •
-<a href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg">Community</a>
+<a href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ">Community</a>
 
 [![PyPI python](https://img.shields.io/pypi/pyversions/fiftyone)](https://pypi.org/project/fiftyone)
 [![PyPI version](https://badge.fury.io/py/fiftyone.svg)](https://pypi.org/project/fiftyone)
 [![Downloads](https://pepy.tech/badge/fiftyone)](https://pepy.tech/project/fiftyone)
 [![Build](https://github.com/voxel51/fiftyone/workflows/Build/badge.svg?branch=develop&event=push)](https://github.com/voxel51/fiftyone/actions?query=workflow%3ABuild)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg)
+[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ)
 [![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
 [![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
 [![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
@@ -51,7 +51,7 @@ failure modes, finding annotation mistakes, and much more!
 You can get involved by joining our Slack community, reading our blog on
 Medium, and following us on social media:
 
-[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg)
+[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ)
 [![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
 [![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white)](https://twitter.com/voxel51)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/voxel51)
@@ -131,7 +131,7 @@ to make adjustments. If you are working in Google Colab,
 
 You will need:
 
--   [Python](https://www.python.org) (3.6 or newer)
+-   [Python](https://www.python.org) (3.7 or newer)
 -   [Node.js](https://nodejs.org) - on Linux, we recommend using
     [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
 -   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can install
@@ -142,10 +142,10 @@ You will need:
     For example:
 
 ```shell
-# Ubuntu 18.04
+# Ubuntu
 sudo apt install libcurl4 openssl
 
-# Fedora 32
+# Fedora
 sudo dnf install libcurl openssl
 ```
 
@@ -156,17 +156,24 @@ We strongly recommend that you install FiftyOne in a
 to maintain a clean workspace. The install script is only supported in
 POSIX-based systems (e.g. Mac and Linux).
 
-1. Clone the repository:
+First, clone the repository:
 
 ```shell
-git clone --recursive https://github.com/voxel51/fiftyone
+git clone https://github.com/voxel51/fiftyone
 cd fiftyone
 ```
 
-2. Run the installation script:
+Then run the install script:
 
 ```shell
 bash install.bash
+```
+
+**NOTE:** If you run into issues importing FiftyOne, you may need to add the
+path to the cloned repository to your `PYTHONPATH`:
+
+```shell
+export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
 ```
 
 **NOTE:** The install script adds to your `nvm` settings in your `~/.bashrc` or
@@ -202,7 +209,7 @@ bash install.bash -d
 
 You can install from source in
 [Google Colab](https://colab.research.google.com) by running the following in a
-cell and then **RESTARTING THE RUNTIME**:
+cell and then **restarting the runtime**:
 
 ```shell
 %%shell
@@ -212,10 +219,33 @@ cd fiftyone
 bash install.bash
 ```
 
+### Docker installs
+
+Refer to
+[these instructions](https://voxel51.com/docs/fiftyone/environments/index.html#docker)
+to see how to build and run Docker images containing source or release builds
+of FiftyOne.
+
+### UI Development on Storybook
+
+Voxel51 is currently in the process of implementing a
+[Storybook](https://storybook.js.org/) which contains examples of its basic UI
+components. You can access the current storybook instances by running **yarn
+storybook** in **/app/packages/components**. While the storybook instance is
+running, any changes to the component will trigger a refresh in the storybook
+app.
+
+```shell
+%%shell
+
+cd /app/packages/components
+yarn storybook
+```
+
 ### Generating documentation
 
 See the
-[docs guide](https://github.com/voxel51/fiftyone/blob/develop/docs/docs_guide.md)
+[docs guide](https://github.com/voxel51/fiftyone/blob/develop/docs/README.md)
 for information on building and contributing to the documentation.
 
 ## Uninstallation

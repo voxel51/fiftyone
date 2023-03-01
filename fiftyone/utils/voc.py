@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -46,6 +46,7 @@ class VOCDetectionDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -92,7 +93,9 @@ class VOCDetectionDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -132,7 +135,6 @@ class VOCDetectionDatasetImporter(
         labels_path = self._labels_paths_map.get(uuid, None)
         if labels_path:
             # Labeled image
-
             annotation = load_voc_detection_annotations(labels_path)
 
             # Use image filename from annotation file if possible
@@ -142,6 +144,9 @@ class VOCDetectionDatasetImporter(
                 _uuid = os.path.splitext(os.path.basename(annotation.path))[0]
             else:
                 _uuid = None
+
+            if _uuid is not None:
+                _uuid = fou.normpath(_uuid)
 
             if _uuid not in self._image_paths_map:
                 _uuid = uuid
@@ -153,16 +158,12 @@ class VOCDetectionDatasetImporter(
             else:
                 raise ValueError("No image found for sample '%s'" % _uuid)
 
-            if annotation.metadata is None:
-                annotation.metadata = fom.ImageMetadata.build_for(image_path)
-
             image_metadata = annotation.metadata
-
             detections = annotation.to_detections(extra_attrs=self.extra_attrs)
         else:
             # Unlabeled image
             image_path = self._image_paths_map[uuid]
-            image_metadata = fom.ImageMetadata.build_for(image_path)
+            image_metadata = None
             detections = None
 
         return image_path, image_metadata, detections
@@ -180,25 +181,31 @@ class VOCDetectionDatasetImporter(
         return fol.Detections
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(
+        image_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
-            self._labels_paths_map = {
-                os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
-                for p in etau.list_files(self.labels_path, recursive=True)
+            labels_path = fou.normpath(self.labels_path)
+            labels_paths_map = {
+                os.path.splitext(p)[0]: os.path.join(labels_path, p)
+                for p in etau.list_files(labels_path, recursive=True)
+                if etau.has_extension(p, ".xml")
             }
         else:
-            self._labels_paths_map = {}
+            labels_paths_map = {}
 
-        uuids = set(self._labels_paths_map.keys())
+        uuids = set(labels_paths_map.keys())
 
         if self.include_all_data:
-            uuids.update(self._image_paths_map.keys())
+            uuids.update(image_paths_map.keys())
 
-        self._uuids = self._preprocess_list(sorted(uuids))
-        self._num_samples = len(self._uuids)
+        uuids = self._preprocess_list(sorted(uuids))
+
+        self._image_paths_map = image_paths_map
+        self._labels_paths_map = labels_paths_map
+        self._uuids = uuids
+        self._num_samples = len(uuids)
 
 
 class VOCDetectionDatasetExporter(
@@ -255,6 +262,14 @@ class VOCDetectionDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` and
+            ``labels_path`` to generate output paths for each exported image
+            and labels file. This argument allows for populating nested
+            subdirectories that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
         include_paths (True): whether to include the absolute paths to the
             images in the ``<path>`` elements of the exported XML
         image_format (None): the image format to use when writing in-memory
@@ -274,6 +289,7 @@ class VOCDetectionDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
         include_paths=True,
         image_format=None,
         extra_attrs=True,
@@ -286,7 +302,9 @@ class VOCDetectionDatasetExporter(
         )
 
         labels_path = self._parse_labels_path(
-            export_dir=export_dir, labels_path=labels_path, default="labels/",
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels/",
         )
 
         super().__init__(export_dir=export_dir)
@@ -294,6 +312,7 @@ class VOCDetectionDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
         self.include_paths = include_paths
         self.image_format = image_format
         self.extra_attrs = extra_attrs
@@ -314,6 +333,7 @@ class VOCDetectionDatasetExporter(
         self._media_exporter = foud.ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             default_ext=self.image_format,
         )
         self._media_exporter.setup()
@@ -321,33 +341,31 @@ class VOCDetectionDatasetExporter(
         etau.ensure_dir(self.labels_path)
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path, filename = self._media_exporter.export(image_or_path)
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
 
         if detections is None:
             return
 
-        out_anno_path = os.path.join(
-            self.labels_path, os.path.splitext(filename)[0] + ".xml"
+        out_labels_path = os.path.join(
+            self.labels_path, os.path.splitext(uuid)[0] + ".xml"
         )
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(image_or_path)
 
-        path = None
         if self.include_paths:
-            if out_image_path is not None:
-                path = out_image_path
-            elif etau.is_str(image_or_path):
-                path = image_or_path
+            path = out_image_path
+        else:
+            path = None
 
         annotation = VOCAnnotation.from_labeled_image(
             metadata,
             detections,
             path=path,
-            filename=filename,
+            filename=uuid,
             extra_attrs=self.extra_attrs,
         )
-        self._writer.write(annotation, out_anno_path)
+        self._writer.write(annotation, out_labels_path)
 
     def close(self, *args):
         self._media_exporter.close()
@@ -536,6 +554,7 @@ class VOCObject(object):
         # Handles CVAT exported attributes
         if "attributes" in d:
             cvat_attrs = d.pop("attributes", {}).pop("attribute", {})
+            cvat_attrs = _ensure_list(cvat_attrs)
             cvat_attrs = {a["name"]: a["value"] for a in cvat_attrs}
             d.update(cvat_attrs)
 
@@ -800,13 +819,14 @@ def _parse_attribute(value):
     except:
         pass
 
-    if value in {"True", "true"}:
-        return True
+    if etau.is_str(value):
+        if value in ("True", "true"):
+            return True
 
-    if value in {"False", "false"}:
-        return False
+        if value in ("False", "false"):
+            return False
 
-    if value == "None":
-        return None
+        if value in ("None", ""):
+            return None
 
     return value

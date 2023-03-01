@@ -1,7 +1,7 @@
 """
 FiftyOne dataset types.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -45,8 +45,7 @@ class UnlabeledDataset(Dataset):
 
 
 class UnlabeledImageDataset(UnlabeledDataset):
-    """Base type for datasets that represent an unlabeled collection of images.
-    """
+    """Base type for datasets that represent an unlabeled collection of images."""
 
     def get_dataset_importer_cls(self):
         """Returns the
@@ -72,8 +71,7 @@ class UnlabeledImageDataset(UnlabeledDataset):
 
 
 class UnlabeledVideoDataset(UnlabeledDataset):
-    """Base type for datasets that represent an unlabeled collection of videos.
-    """
+    """Base type for datasets that represent an unlabeled collection of videos."""
 
     def get_dataset_importer_cls(self):
         """Returns the
@@ -218,6 +216,30 @@ class VideoLabelsDataset(LabeledVideoDataset):
     pass
 
 
+class GroupDataset(Dataset):
+    """Base type for datasets that contain grouped samples of any type(s)."""
+
+    def get_dataset_importer_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.importers.GroupDatasetImporter` class for
+        importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.GroupDatasetImporter` class
+        """
+        return super().get_dataset_importer_cls()
+
+    def get_dataset_exporter_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.exporters.GroupDatasetExporter` class for
+        exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.GroupDatasetExporter` class
+        """
+        return super().get_dataset_exporter_cls()
+
+
 class ImageDirectory(UnlabeledImageDataset):
     """A directory of images.
 
@@ -254,6 +276,25 @@ class VideoDirectory(UnlabeledImageDataset):
         import fiftyone.utils.data as foud
 
         return foud.VideoDirectoryExporter
+
+
+class MediaDirectory(UnlabeledDataset):
+    """A directory of media files.
+
+    See :ref:`this page <MediaDirectory-import>` for importing datasets of this
+    type, and see :ref:`this page <MediaDirectory-export>` for exporting
+    datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.MediaDirectoryImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.MediaDirectoryExporter
 
 
 class FiftyOneImageClassificationDataset(ImageClassificationDataset):
@@ -448,63 +489,50 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated annotations
     saved in
     `Open Images format <https://storage.googleapis.com/openimages/web/download.html>`_.
-
-    Datasets of this type are read/written in the following format::
-
-        <dataset_dir>/
-            data/
-                <filename0>.<ext>
-                <filename1>.<ext>
-                ...
-            labels/
-                classifications.csv
-                detections.csv
-                relationships.csv
-                segmentations.csv
-                masks/
-                    <starting-char1>/
-                        <mask_filename0>.<ext>
-                        <mask_filename1>.<ext>
-                        ...
-                    ...
-            metadata/
-                attributes.csv
-                classes.csv
-                segmentation_classes.csv
-                hierarchy.json
-
-    The ``data`` directory and ``metadata/classes.csv`` files are always
-    required. Other labels and metadata files are only required if you wish to
-    load the corresponding label types:
-
-    -   Classifications: ``labels/classifications.csv``
-
-    -   Detections: ``labels/detections.csv``
-
-    -   Relationships: ``labels/relationships.csv``, ``metadata/attributes.csv``
-
-    -   Segmentations: ``labels/segmentations.csv``, ``labels/masks/``, and
-        ``metadata/segmentation_classes.csv``
-
-    The ``hierarchy.json`` file is only used when performing Open Images-style
-    detection evaluation.
-
-    See
-    `this page <https://storage.googleapis.com/openimages/web/download.html>`_
-    for a full specification of this dataset format.
-
-    .. note::
-
-        See :class:`fiftyone.utils.openimages.OpenImagesV6DatasetImporter` for
-        parameters that can be passed to methods like
-        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
-        customize the import of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
         import fiftyone.utils.openimages as fouo
 
         return fouo.OpenImagesV6DatasetImporter
+
+
+class OpenImagesV7Dataset(ImageDetectionDataset):
+    """A labeled dataset consisting of images and their associated annotations
+    saved in
+    `Open Images format <https://storage.googleapis.com/openimages/web/download.html>`_.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.openimages as fouo
+
+        return fouo.OpenImagesV7DatasetImporter
+
+
+class FIWDataset(Dataset):
+    """A labeled dataset consisting of images and their associated annotations
+    saved in
+    `Families in the Wild format <https://github.com/visionjo/pykinship#db-contents-and-structure>`_.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.fiw as fouf
+
+        return fouf.FIWDatasetImporter
+
+
+class OpenLABELImageDataset(ImageLabelsDataset):
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.openlabel as fouo
+
+        return fouo.OpenLABELImageDatasetImporter
+
+
+class OpenLABELVideoDataset(VideoLabelsDataset):
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.openlabel as fouo
+
+        return fouo.OpenLABELVideoDatasetImporter
 
 
 class YOLOv4Dataset(ImageDetectionDataset):
@@ -710,6 +738,17 @@ class DICOMDataset(ImageLabelsDataset):
         return foud.DICOMDatasetImporter
 
 
+class ActivityNetDataset(FiftyOneTemporalDetectionDataset):
+    """A video dataset composed of temporal activity detections from the
+    `ActivityNet dataset <http://activity-net.org/download.html>`_.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.activitynet as foua
+
+        return foua.ActivityNetDatasetImporter
+
+
 class GeoJSONDataset(LabeledDataset):
     """An image or video dataset whose geolocation data and optional properties
     are stored in `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
@@ -742,6 +781,26 @@ class GeoTIFFDataset(ImageLabelsDataset):
         import fiftyone.utils.geotiff as foug
 
         return foug.GeoTIFFDatasetImporter
+
+
+class CSVDataset(Dataset):
+    """A flexible CSV format that represents slice(s) of field values of a
+    dataset as columns of a CSV file.
+
+    See :ref:`this page <CSVDataset-import>` for importing datasets of this
+    type, and see :ref:`this page <CSVDataset-export>` for exporting
+    datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.csv as fouc
+
+        return fouc.CSVDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.csv as fouc
+
+        return fouc.CSVDatasetExporter
 
 
 class FiftyOneDataset(Dataset):
@@ -779,21 +838,26 @@ class LegacyFiftyOneDataset(Dataset):
                 <filename1>.<ext>
                 <filename2>.<ext>
                 ...
-            evaluations/
-                <eval_key1>.json
-                <eval_key2>.json
+            annotations/
+                <anno_key1>.json
+                <anno_key2>.json
                 ...
             brain/
                 <brain_key1>.json
                 <brain_key2>.json
                 ...
+            evaluations/
+                <eval_key1>.json
+                <eval_key2>.json
+                ...
 
     where ``metadata.json`` is a JSON file containing metadata associated with
     the dataset, ``samples.json`` is a JSON file containing a serialized
-    representation of the samples in the dataset, ``evaluations/`` contains any
-    serialized :class:`fiftyone.core.evaluations.EvaluationResults` for the
-    dataset, and ``brain/`` contains any serialized
-    :class:`fiftyone.core.brain.BrainResults` for the dataset.
+    representation of the samples in the dataset, ``annotations/`` contains any
+    serialized :class:`fiftyone.core.annotations.AnnotationResults`, ``brain/``
+    contains any serialized :class:`fiftyone.core.brain.BrainResults`, and
+    ``evaluations/`` contains any serialized
+    :class:`fiftyone.core.evaluations.EvaluationResults`.
 
     Video datasets have an additional ``frames/`` directory that contains a
     serialized representation of the frame labels for each video in the

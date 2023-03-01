@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -17,6 +17,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -46,6 +47,7 @@ class BDDDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -92,7 +94,9 @@ class BDDDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -166,22 +170,27 @@ class BDDDatasetImporter(
         }
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(
-            self.data_path, recursive=True
-        )
+        image_paths_map = self._load_data_map(self.data_path, recursive=True)
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
-            self._anno_dict_map = load_bdd_annotations(self.labels_path)
+            anno_dict_map = load_bdd_annotations(self.labels_path)
+            anno_dict_map = {
+                fou.normpath(k): v for k, v in anno_dict_map.items()
+            }
         else:
-            self._anno_dict_map = {}
+            anno_dict_map = {}
 
-        filenames = set(self._anno_dict_map.keys())
+        filenames = set(anno_dict_map.keys())
 
         if self.include_all_data:
-            filenames.update(self._image_paths_map.keys())
+            filenames.update(image_paths_map.keys())
 
-        self._filenames = self._preprocess_list(sorted(filenames))
-        self._num_samples = len(self._filenames)
+        filenames = self._preprocess_list(sorted(filenames))
+
+        self._image_paths_map = image_paths_map
+        self._anno_dict_map = anno_dict_map
+        self._filenames = filenames
+        self._num_samples = len(filenames)
 
     @staticmethod
     def _get_num_samples(dataset_dir):
@@ -243,6 +252,15 @@ class BDDDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` to
+            generate an output path for each exported image. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
+        abs_paths (False): whether to store absolute paths to the images in the
+            exported labels
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -260,6 +278,8 @@ class BDDDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        rel_dir=None,
+        abs_paths=False,
         image_format=None,
         extra_attrs=True,
     ):
@@ -281,6 +301,8 @@ class BDDDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.rel_dir = rel_dir
+        self.abs_paths = abs_paths
         self.image_format = image_format
         self.extra_attrs = extra_attrs
 
@@ -304,12 +326,13 @@ class BDDDatasetExporter(
         self._media_exporter = foud.ImageExporter(
             self.export_media,
             export_path=self.data_path,
+            rel_dir=self.rel_dir,
             default_ext=self.image_format,
         )
         self._media_exporter.setup()
 
     def export_sample(self, image_or_path, labels, metadata=None):
-        _, uuid = self._media_exporter.export(image_or_path)
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
 
         if labels is None:
             return  # unlabeled
@@ -323,8 +346,13 @@ class BDDDatasetExporter(
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(image_or_path)
 
+        if self.abs_paths:
+            name = out_image_path
+        else:
+            name = uuid
+
         annotation = _make_bdd_annotation(
-            labels, metadata, uuid, self.extra_attrs
+            labels, metadata, name, self.extra_attrs
         )
         self._annotations.append(annotation)
 
@@ -694,7 +722,11 @@ def _polyline_to_bdd(polyline, frame_size, extra_attrs):
             (round(width * x, 1), round(height * y, 1)) for (x, y) in points
         ]
         poly2d.append(
-            {"types": types, "closed": polyline.closed, "vertices": vertices,}
+            {
+                "types": types,
+                "closed": polyline.closed,
+                "vertices": vertices,
+            }
         )
 
     d = {

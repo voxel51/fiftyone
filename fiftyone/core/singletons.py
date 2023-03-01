@@ -1,7 +1,7 @@
 """
 FiftyOne singleton implementations.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -24,17 +24,23 @@ class DatasetSingleton(type):
         return cls
 
     def __call__(cls, name=None, _create=True, *args, **kwargs):
+        instance = cls._instances.pop(name, None)
+
         if (
             _create
-            or name not in cls._instances
-            or cls._instances[name].deleted
+            or instance is None
+            or instance.deleted
+            or instance.name is None
         ):
             instance = cls.__new__(cls)
             instance.__init__(name=name, _create=_create, *args, **kwargs)
             name = instance.name  # `__init__` may have changed `name`
-            cls._instances[name] = instance
+        else:
+            instance._update_last_loaded_at()
 
-        return cls._instances[name]
+        cls._instances[name] = instance
+
+        return instance
 
 
 class DocumentSingleton(type):
@@ -162,6 +168,7 @@ class SampleSingleton(DocumentSingleton):
         samples = cls._instances[collection_name]
 
         if sample_ids is not None:
+            sample_ids = set(sample_ids)
             for sample in samples.values():
                 if sample.id in sample_ids:
                     sample.reload(hard=hard)
@@ -181,6 +188,7 @@ class SampleSingleton(DocumentSingleton):
 
         samples = cls._instances[collection_name]
 
+        sample_ids = set(sample_ids)
         reset_ids = set()
         for sample in samples.values():
             if sample.id in sample_ids:
@@ -205,7 +213,6 @@ class SampleSingleton(DocumentSingleton):
 
         if sample_ids is not None:
             samples = cls._instances[collection_name]
-
             for sample_id in sample_ids:
                 sample = samples.pop(sample_id, None)
                 if sample is not None:
@@ -235,7 +242,7 @@ class FrameSingleton(DocumentSingleton):
         return cls
 
     def _register_instance(cls, obj):
-        cls._instances[obj._doc.collection_name][str(obj._sample_id)][
+        cls._instances[obj._doc.collection_name][obj.sample_id][
             obj.frame_number
         ] = obj
 
@@ -250,7 +257,7 @@ class FrameSingleton(DocumentSingleton):
     def _reload_instance(cls, obj):
         # pylint: disable=no-value-for-parameter
         cls._reload_doc(
-            obj._doc.collection_name, str(obj._sample_id), obj.frame_number
+            obj._doc.collection_name, obj.sample_id, obj.frame_number
         )
 
     def _get_instances(cls, collection_name, sample_id):
@@ -295,8 +302,7 @@ class FrameSingleton(DocumentSingleton):
                     frame._doc._data.pop(field_name, None)
 
     def _reload_doc(cls, collection_name, sample_id, frame_number, hard=False):
-        """Reloads the backing document for the given frame if it is in-memory.
-        """
+        """Reloads the backing document for the given frame if it is in-memory."""
         if collection_name not in cls._instances:
             return
 
@@ -320,7 +326,15 @@ class FrameSingleton(DocumentSingleton):
         samples = cls._instances[collection_name]
         frames = samples.get(sample_id, {})
 
+        if not frames:
+            return
+
+        if callable(frame_numbers):
+            frame_numbers = frame_numbers()
+
+        frame_numbers = set(frame_numbers)
         reset_fns = set()
+
         for frame_number, frame in frames.items():
             if frame_number in frame_numbers:
                 frame.reload(hard=hard)
@@ -345,6 +359,7 @@ class FrameSingleton(DocumentSingleton):
 
         samples = cls._instances[collection_name]
 
+        sample_ids = set(sample_ids)
         reset_ids = set()
         for sample_id, frames in samples.items():
             if sample_id in sample_ids:
@@ -371,6 +386,7 @@ class FrameSingleton(DocumentSingleton):
         samples = cls._instances[collection_name]
 
         if sample_ids is not None:
+            sample_ids = set(sample_ids)
             for sample_id in sample_ids:
                 frames = samples.get(sample_id, {})
                 for frame in frames.values():
@@ -401,9 +417,14 @@ class FrameSingleton(DocumentSingleton):
                 for frame in frames.values():
                     frame._reset_backing_doc()
 
-    def _reset_docs_for_sample(cls, collection_name, sample_id, frame_numbers):
+    def _reset_docs_for_sample(
+        cls, collection_name, sample_id, frame_numbers, keep=False
+    ):
         """Resets the backing documents for all in-memory frames with the given
         frame numbers attached to the specified sample.
+
+        When ``keep=True``, all frames whose frame numbers are **not** in
+        ``frame_numbers`` are reset instead.
         """
         if collection_name not in cls._instances:
             return
@@ -411,11 +432,56 @@ class FrameSingleton(DocumentSingleton):
         samples = cls._instances[collection_name]
         frames = samples.get(sample_id, {})
 
+        if not frames:
+            return
+
+        if callable(frame_numbers):
+            frame_numbers = frame_numbers()
+
+        frame_numbers = set(frame_numbers)
         reset_fns = set()
-        for frame_number, frame in frames.items():
-            if frame_number in frame_numbers:
-                reset_fns.add(frame_number)
-                frame._reset_backing_doc()
+
+        if keep:
+            for frame_number, frame in frames.items():
+                if frame_number not in frame_numbers:
+                    reset_fns.add(frame_number)
+                    frame._reset_backing_doc()
+        else:
+            for frame_number, frame in frames.items():
+                if frame_number in frame_numbers:
+                    reset_fns.add(frame_number)
+                    frame._reset_backing_doc()
 
         for frame_number in reset_fns:
             frames.pop(frame_number)
+
+    def _reset_docs_by_frame_id(cls, collection_name, frame_ids, keep=False):
+        """Resets the backing documents for all in-memory frames with the given
+        frame IDs.
+
+        When ``keep=True``, all frames whose IDs are **not** in ``frame_ids``
+        are reset instead.
+        """
+        if collection_name not in cls._instances:
+            return
+
+        samples = cls._instances[collection_name]
+
+        frame_ids = set(frame_ids)
+        reset = []
+
+        if keep:
+            for sample_id, frames in samples.items():
+                for fn, frame in frames.items():
+                    if frame.id not in frame_ids:
+                        frame._reset_backing_doc()
+                        reset.append((sample_id, fn))
+        else:
+            for sample_id, frames in samples.items():
+                for fn, frame in frames.items():
+                    if frame.id in frame_ids:
+                        frame._reset_backing_doc()
+                        reset.append((sample_id, fn))
+
+        for sample_id, fn in reset:
+            samples[sample_id].pop(fn)

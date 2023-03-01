@@ -1,7 +1,7 @@
 """
 Sample parsers.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -17,7 +17,7 @@ import fiftyone as fo
 import fiftyone.core.clips as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
-import fiftyone.core.sample as fos
+from fiftyone.core.sample import Sample
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
@@ -75,7 +75,7 @@ def add_images(dataset, samples, sample_parser, tags=None):
         else:
             metadata = None
 
-        return fos.Sample(filepath=image_path, metadata=metadata, tags=tags)
+        return Sample(filepath=image_path, metadata=metadata, tags=tags)
 
     try:
         num_samples = len(samples)
@@ -95,6 +95,7 @@ def add_labeled_images(
     label_field=None,
     tags=None,
     expand_schema=True,
+    dynamic=False,
 ):
     """Adds the given labeled images to the dataset.
 
@@ -116,14 +117,17 @@ def add_labeled_images(
             :class:`fiftyone.core.labels.Label` instance per sample, this
             argument specifies the name of the field to use; the default is
             ``"ground_truth"``. If the parser produces a dictionary of labels
-            per sample, this argument specifies a string prefix to prepend to
-            each label key; the default in this case is to directly use the
-            keys of the imported label dictionaries as field names
+            per sample, this argument can be either a string prefix to prepend
+            to each label key or a dict mapping label keys to field names; the
+            default in this case is to directly use the keys of the imported
+            label dictionaries as field names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         expand_schema (True): whether to dynamically add new sample fields
             encountered to the dataset schema. If False, an error is raised
             if a sample's schema is not a subset of the dataset schema
+        dynamic (False): whether to declare dynamic attributes of embedded
+            document fields that are encountered
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -143,7 +147,9 @@ def add_labeled_images(
             )
         )
 
-    if label_field:
+    if isinstance(label_field, dict):
+        label_key = lambda k: label_field.get(k, k)
+    elif label_field is not None:
         label_key = lambda k: label_field + "_" + k
     else:
         label_field = "ground_truth"
@@ -166,7 +172,7 @@ def add_labeled_images(
 
         label = sample_parser.get_label()
 
-        sample = fos.Sample(filepath=image_path, metadata=metadata, tags=tags)
+        sample = Sample(filepath=image_path, metadata=metadata, tags=tags)
 
         if isinstance(label, dict):
             sample.update_fields({label_key(k): v for k, v in label.items()})
@@ -193,7 +199,10 @@ def add_labeled_images(
 
     _samples = map(parse_sample, samples)
     return dataset.add_samples(
-        _samples, expand_schema=expand_schema, num_samples=num_samples
+        _samples,
+        expand_schema=expand_schema,
+        dynamic=dynamic,
+        num_samples=num_samples,
     )
 
 
@@ -241,7 +250,7 @@ def add_videos(dataset, samples, sample_parser, tags=None):
         else:
             metadata = None
 
-        return fos.Sample(filepath=video_path, metadata=metadata, tags=tags)
+        return Sample(filepath=video_path, metadata=metadata, tags=tags)
 
     try:
         num_samples = len(samples)
@@ -263,6 +272,7 @@ def add_labeled_videos(
     label_field=None,
     tags=None,
     expand_schema=True,
+    dynamic=False,
 ):
     """Adds the given labeled videos to the dataset.
 
@@ -283,14 +293,17 @@ def add_labeled_videos(
             :class:`fiftyone.core.labels.Label` instance per sample/frame, this
             argument specifies the name of the field to use; the default is
             ``"ground_truth"``. If the parser produces a dictionary of labels
-            per sample/frame, this argument specifies a string prefix to
-            prepend to each label key; the default in this case is to directly
-            use the keys of the imported label dictionaries as field names
+            per sample/frame, this argument can be either a string prefix to
+            prepend to each label key or a dict mapping label keys to field
+            names; the default in this case is to directly use the keys of the
+            imported label dictionaries as field names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         expand_schema (True): whether to dynamically add new sample fields
             encountered to the dataset schema. If False, an error is raised
             if a sample's schema is not a subset of the dataset schema
+        dynamic (False): whether to declare dynamic attributes of embedded
+            document fields that are encountered
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -304,7 +317,9 @@ def add_labeled_videos(
             )
         )
 
-    if label_field:
+    if isinstance(label_field, dict):
+        label_key = lambda k: label_field.get(k, k)
+    elif label_field is not None:
         label_key = lambda k: label_field + "_" + k
     else:
         label_field = "ground_truth"
@@ -328,7 +343,7 @@ def add_labeled_videos(
         label = sample_parser.get_label()
         frames = sample_parser.get_frame_labels()
 
-        sample = fos.Sample(filepath=video_path, metadata=metadata, tags=tags)
+        sample = Sample(filepath=video_path, metadata=metadata, tags=tags)
 
         if isinstance(label, dict):
             sample.update_fields({label_key(k): v for k, v in label.items()})
@@ -358,7 +373,10 @@ def add_labeled_videos(
 
     _samples = map(parse_sample, samples)
     return dataset.add_samples(
-        _samples, expand_schema=expand_schema, num_samples=num_samples
+        _samples,
+        expand_schema=expand_schema,
+        dynamic=dynamic,
+        num_samples=num_samples,
     )
 
 
@@ -543,6 +561,52 @@ class UnlabeledVideoSampleParser(SampleParser):
         )
 
 
+class UnlabeledMediaSampleParser(SampleParser):
+    """Interface for :class:`SampleParser` instances that parse unlabeled
+    media samples.
+
+    The general recipe for using :class:`UnlabeledMediaSampleParser` instances
+    is as follows::
+
+        sample_parser = UnlabeledMediaSampleParser(...)
+
+        for sample in samples:
+            sample_parser.with_sample(sample)
+            filepath = sample_parser.get_media_path()
+            metadata = sample_parser.get_metadata()
+    """
+
+    @property
+    def has_metadata(self):
+        """Whether this parser produces
+        :class:`fiftyone.core.metadata.Metadata` instances for samples that it
+        parses.
+        """
+        raise NotImplementedError("subclass must implement has_metadata")
+
+    def get_media_path(self):
+        """Returns the media path for the current sample.
+
+        Returns:
+            the path to the media on disk
+        """
+        raise NotImplementedError("subclass must implement get_media_path()")
+
+    def get_metadata(self):
+        """Returns the metadata for the current sample.
+
+        Returns:
+            a :class:`fiftyone.core.metadata.Metadata` instance
+        """
+        if not self.has_metadata:
+            raise ValueError(
+                "This '%s' does not provide metadata"
+                % etau.get_class_name(self)
+            )
+
+        raise NotImplementedError("subclass must implement get_metadata()")
+
+
 class ImageSampleParser(UnlabeledImageSampleParser):
     """Sample parser that parses unlabeled image samples.
 
@@ -588,6 +652,21 @@ class VideoSampleParser(UnlabeledVideoSampleParser):
         return False
 
     def get_video_path(self):
+        return self.current_sample
+
+
+class MediaSampleParser(UnlabeledMediaSampleParser):
+    """Sample parser that parses unlabeled media samples.
+
+    This implementation assumes that the provided sample is a path to a media
+    file on disk.
+    """
+
+    @property
+    def has_metadata(self):
+        return False
+
+    def get_media_path(self):
         return self.current_sample
 
 
@@ -909,7 +988,11 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
                     {
                         "label": <label-or-target>,
                         "confidence": <confidence>,
+                        "attributes": <optional-attributes>,
                     }
+
+            -   a :class:`fiftyone.core.labels.Classification` or
+                :class:`fiftyone.core.labels.Classifications` instance
 
     Args:
         classes (None): an optional list of class label strings. If provided,
@@ -940,6 +1023,9 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
     def _parse_label(self, target):
         if target is None:
             return None
+
+        if isinstance(target, (fol.Classification, fol.Classifications)):
+            return target
 
         is_list = isinstance(target, (list, tuple))
 
@@ -983,36 +1069,38 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         - ``image_or_path`` is either an image that can be converted to numpy
           format via ``np.asarray()`` or the path to an image on disk
 
-        - ``detections_or_path`` is either a list of detections in the
-          following format::
+        - ``detections_or_path`` can be any of the following:
 
-            [
-                {
-                    "<label_field>": <label-or-target>,
-                    "<bounding_box_field>": [
-                        <top-left-x>, <top-left-y>, <width>, <height>
-                    ],
-                    "<confidence_field>": <optional-confidence>,
-                    "<attributes_field>": {
-                        <optional-name>: <optional-value>,
+            -   None, for unlabeled images
+            -   a list of detections in the following format::
+
+                    [
+                        {
+                            "<label_field>": <label-or-target>,
+                            "<bounding_box_field>": [
+                                <top-left-x>, <top-left-y>, <width>, <height>
+                            ],
+                            "<confidence_field>": <optional-confidence>,
+                            "<attributes_field>": {
+                                <optional-name>: <optional-value>,
+                                ...
+                            }
+                        },
                         ...
-                    }
-                },
-                ...
-            ]
+                    ]
 
-          or the path to such a file on disk. For unlabeled images,
-          ``detections_or_path`` can be ``None``.
+                In the above, ``label-or-target`` is either a class ID
+                (if ``classes`` is provided) or a label string, and the bounding
+                box coordinates can either be relative coordinates in ``[0, 1]``
+                (if ``normalized == True``) or absolute pixels coordinates
+                (if ``normalized == False``). The confidence and attributes
+                fields are optional for each sample.
 
-          In the above, ``label-or-target`` is either a class ID
-          (if ``classes`` is provided) or a label string, and the bounding box
-          coordinates can either be relative coordinates in ``[0, 1]``
-          (if ``normalized == True``) or absolute pixels coordinates
-          (if ``normalized == False``). The confidence and attributes fields
-          are optional for each sample.
+                The input field names can be configured as necessary when
+                instantiating the parser.
 
-          The input field names can be configured as necessary when
-          instantiating the parser.
+            -   the path on disk to a file in the above format
+            -   a :class:`fiftyone.core.labels.Detections` instance
 
     Args:
         label_field ("label"): the name of the object label field in the
@@ -1073,8 +1161,11 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         if target is None:
             return None
 
+        if isinstance(target, fol.Detections):
+            return target
+
         if etau.is_str(target):
-            target = etas.load_json(target)
+            target = etas.read_json(target)
 
         return fol.Detections(
             detections=[self._parse_detection(obj, img=img) for obj in target]
@@ -1231,6 +1322,10 @@ class FiftyOneTemporalDetectionSampleParser(LabeledVideoSampleParser):
     def frame_labels_cls(self):
         return None
 
+    def with_sample(self, sample, metadata=None):
+        super().with_sample(sample)
+        self._current_metadata = metadata
+
     def get_video_path(self):
         return self.current_sample[0]
 
@@ -1246,6 +1341,9 @@ class FiftyOneTemporalDetectionSampleParser(LabeledVideoSampleParser):
 
         if labels is None:
             return None
+
+        if isinstance(labels, fol.TemporalDetections):
+            return labels
 
         detections = []
         for label_dict in labels:
@@ -1876,3 +1974,32 @@ class FiftyOneLabeledVideoSampleParser(
             frame_fcn_dict = frame_labels_fcn
 
         return frame_labels_dict, frame_fcn_dict
+
+
+class FiftyOneUnlabeledMediaSampleParser(MediaSampleParser):
+    """Parser for :class:`fiftyone.core.sample.Sample` instances that contain
+    unlabeled media.
+
+    Args:
+        compute_metadata (False): whether to compute
+            :class:`fiftyone.core.metadata.Metadata` instances on-the-fly if
+            :meth:`get_metadata` is called and no metadata is available
+    """
+
+    def __init__(self, compute_metadata=False):
+        super().__init__()
+        self.compute_metadata = compute_metadata
+
+    @property
+    def has_metadata(self):
+        return True
+
+    def get_media_path(self):
+        return self.current_sample.filepath
+
+    def get_metadata(self):
+        metadata = self.current_sample.metadata
+        if metadata is None and self.compute_metadata:
+            metadata = fom.Metadata.build_for(self.current_sample.filepath)
+
+        return metadata

@@ -2,7 +2,7 @@
 Utilities for working with the
 `Cityscapes dataset <https://www.cityscapes-dataset.com>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -42,7 +42,7 @@ def parse_cityscapes_dataset(
 ):
     """Parses the Cityscapes archive(s) in the specified directory and writes
     the requested splits in subdirectories of ``dataset_dir`` in
-    :class:`fiftyone.types.dataset_types.FiftyOneDataset` format.
+    :class:`fiftyone.types.FiftyOneDataset` format.
 
     The archives must have been manually downloaded into the directory before
     this method is called.

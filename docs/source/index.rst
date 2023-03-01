@@ -42,8 +42,8 @@ visualize datasets and interpret models faster and more effectively.
 .. raw:: html
 
   <div style="margin-top: 20px; margin-bottom: 20px">
-    <video controls muted poster="https://voxel51.com/images/fiftyone_poster.png" style="width: 100%;">
-      <source src="https://voxel51.com/images/fiftyone_long_sizzle.mp4" type="video/mp4">
+    <video controls muted poster="https://voxel51.com/images/fiftyone-poster-v2.png" style="width: 100%;">
+      <source src="https://voxel51.com/images/fiftyone_long_sizzle_light_bg.mp4" type="video/mp4">
     </video>
   </div>
 
@@ -82,6 +82,21 @@ learn how:
     :image_title: TensorFlow
 
 .. customimagelink::
+    :image_link: tutorials/detectron2.html
+    :image_src: https://voxel51.com/images/integrations/detectron2-128.png
+    :image_title: Detectron2
+
+.. customimagelink::
+    :image_link: tutorials/qdrant.html
+    :image_src: https://voxel51.com/images/integrations/qdrant-128.png
+    :image_title: Qdrant
+
+.. customimagelink::
+    :image_link: integrations/activitynet.html
+    :image_src: https://voxel51.com/images/integrations/activitynet-128.png
+    :image_title: ActivityNet
+
+.. customimagelink::
     :image_link: integrations/coco.html
     :image_src: https://voxel51.com/images/integrations/coco-128.png
     :image_title: COCO
@@ -112,7 +127,7 @@ learn how:
     :image_title: CVAT
 
 .. customimagelink::
-    :image_link: api/fiftyone.utils.labelbox.html
+    :image_link: integrations/labelbox.html
     :image_src: https://voxel51.com/images/integrations/labelbox-128.png
     :image_title: Labelbox
 
@@ -217,6 +232,8 @@ _____________
 The FiftyOne tool has three components: the Python library, the App, and the
 Brain.
 
+.. _fiftyone-library:
+
 :doc:`FiftyOne Library <user_guide/basics>`
 -------------------------------------------
 
@@ -302,6 +319,8 @@ Where should you go from here? You could...
   capabilities of FiftyOne
 * Explore :doc:`recipes <recipes/index>` for integrating FiftyOne into
   your current ML workflows
+* Check out the :doc:`cheat sheets <cheat_sheets/index>` for topics you may
+  want to master quickly
 * Consult the :doc:`user guide <user_guide/index>` for detailed instructions on
   how to accomplish various tasks with FiftyOne
 
@@ -322,9 +341,12 @@ or reach out to us at support@voxel51.com.
    Environments <environments/index>
    Tutorials <tutorials/index>
    Recipes <recipes/index>
+   Cheat Sheets <cheat_sheets/index>
    User Guide <user_guide/index>
+   FiftyOne Teams <teams/index>
    Integrations <integrations/index>
    Release Notes <release-notes>
-   CLI Documentation <cli/index>
    API Reference <api/fiftyone>
+   CLI Documentation <cli/index>
+   Plugin Documentation <plugins/index>
    FAQ <faq/index>

@@ -4,7 +4,7 @@ The FiftyOne Dataset Zoo.
 This package defines a collection of open source datasets made available for
 download via FiftyOne.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -23,18 +23,72 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-def list_zoo_datasets():
+def list_zoo_datasets(tags=None, source=None):
     """Returns the list of available datasets in the FiftyOne Dataset Zoo.
 
-    Returns:
-        a list of dataset names
-    """
-    datasets = set()
-    all_datasets = _get_zoo_datasets()
-    for d in all_datasets.values():
-        datasets |= d.keys()
+    Example usage::
 
-    return sorted(datasets)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        #
+        # List all zoo datasets
+        #
+
+        names = foz.list_zoo_datasets()
+        print(names)
+
+        #
+        # List all zoo datasets with (both of) the specified tags
+        #
+
+        names = foz.list_zoo_datasets(tags=["image", "detection"])
+        print(names)
+
+        #
+        # List all zoo datasets available via the given source
+        #
+
+        names = foz.list_zoo_datasets(source="torch")
+        print(names)
+
+    Args:
+        tags (None): only include datasets that have the specified tag or list
+            of tags
+        source (None): only include datasets available via the given source or
+            list of sources
+
+    Returns:
+        a sorted list of dataset names
+    """
+    if etau.is_str(source):
+        sources = [source]
+    elif source is not None:
+        sources = list(sources)
+    else:
+        sources, _ = _get_zoo_dataset_sources()
+
+    all_datasets = _get_zoo_datasets()
+
+    datasets = {}
+    for source in sources:
+        for name, zoo_dataset_cls in all_datasets.get(source, {}).items():
+            if name not in datasets:
+                datasets[name] = zoo_dataset_cls
+
+    if tags is not None:
+        if etau.is_str(tags):
+            tags = {tags}
+        else:
+            tags = set(tags)
+
+        datasets = {
+            name: zoo_dataset_cls
+            for name, zoo_dataset_cls in datasets.items()
+            if tags.issubset(zoo_dataset_cls().tags)
+        }
+
+    return sorted(datasets.keys())
 
 
 def list_downloaded_zoo_datasets(base_dir=None):
@@ -176,7 +230,7 @@ def load_zoo_dataset(
             with the same name if it exists
         overwrite (False): whether to overwrite any existing files if the
             dataset is to be downloaded
-        cleanup (None): whether to cleanup any temporary files generated during
+        cleanup (True): whether to cleanup any temporary files generated during
             download
         **kwargs: optional arguments to pass to the
             :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.
@@ -224,6 +278,12 @@ def load_zoo_dataset(
     importer_kwargs, unused_kwargs = fou.extract_kwargs_for_class(
         dataset_importer_cls, kwargs
     )
+
+    # Inject default importer kwargs, if any
+    if zoo_dataset.importer_kwargs:
+        for key, value in zoo_dataset.importer_kwargs.items():
+            if key not in importer_kwargs:
+                importer_kwargs[key] = value
 
     for key, value in unused_kwargs.items():
         if (
@@ -535,8 +595,7 @@ class ZooDatasetInfo(etas.Serializable):
 
     Args:
         zoo_dataset: the :class:`ZooDataset` instance for the dataset
-        dataset_type: the :class:`fiftyone.types.dataset_types.Dataset` type of
-            the dataset
+        dataset_type: the :class:`fiftyone.types.Dataset` type of the dataset
         num_samples: the total number of samples in all downloaded splits of
             the dataset
         downloaded_splits (None): a dict of :class:`ZooDatasetSplitInfo`
@@ -583,7 +642,7 @@ class ZooDatasetInfo(etas.Serializable):
     @property
     def dataset_type(self):
         """The fully-qualified class string of the
-        :class:`fiftyone.types.dataset_types.Dataset` type.
+        :class:`fiftyone.types.Dataset` type.
         """
         return etau.get_class_name(self._dataset_type)
 
@@ -603,11 +662,11 @@ class ZooDatasetInfo(etas.Serializable):
         return self._zoo_dataset
 
     def get_dataset_type(self):
-        """Returns the :class:`fiftyone.types.dataset_types.Dataset` type
-        instance for the dataset.
+        """Returns the :class:`fiftyone.types.Dataset` type instance for the
+        dataset.
 
         Returns:
-            a :class:`fiftyone.types.dataset_types.Dataset` instance
+            a :class:`fiftyone.types.Dataset` instance
         """
         return self._dataset_type
 
@@ -818,6 +877,13 @@ class ZooDataset(object):
         return self.supported_splits is not None
 
     @property
+    def has_patches(self):
+        """Whether the dataset has patches that may need to be applied to
+        already downloaded files.
+        """
+        return False
+
+    @property
     def supports_partial_downloads(self):
         """Whether the dataset supports downloading partial subsets of its
         splits.
@@ -830,6 +896,13 @@ class ZooDataset(object):
         by the user before the dataset can be loaded.
         """
         return False
+
+    @property
+    def importer_kwargs(self):
+        """A dict of default kwargs to pass to this dataset's
+        :class:`fiftyone.utils.data.importers.DatasetImporter`.
+        """
+        return {}
 
     def has_tag(self, tag):
         """Whether the dataset has the given tag.
@@ -947,7 +1020,6 @@ class ZooDataset(object):
                         "Invalid split '%s'; supported values are %s"
                         % (split, self.supported_splits)
                     )
-
         elif self.has_splits:
             splits = self.supported_splits
 
@@ -1078,8 +1150,8 @@ class ZooDataset(object):
         Returns:
             tuple of
 
-            -   dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
-                type of the dataset
+            -   dataset_type: the :class:`fiftyone.types.Dataset` type of the
+                dataset
             -   num_samples: the number of samples in the split. For datasets
                 that support partial downloads, this can be ``None``, which
                 indicates that all content was already downloaded
@@ -1087,6 +1159,19 @@ class ZooDataset(object):
         """
         raise NotImplementedError(
             "subclasses must implement _download_and_prepare()"
+        )
+
+    def _patch_if_necessary(self, dataset_dir, split):
+        """Internal method called when an already downloaded dataset may need
+        to be patched.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            split: the split to patch, or None if the dataset does not have
+                splits
+        """
+        raise NotImplementedError(
+            "subclasses must implement _patch_if_necessary()"
         )
 
     def _get_splits_to_download(
@@ -1115,6 +1200,9 @@ class ZooDataset(object):
         if split not in info.downloaded_splits:
             return False
 
+        if self.has_patches:
+            self._patch_if_necessary(dataset_dir, split)
+
         if self.supports_partial_downloads:
             return False
 
@@ -1136,6 +1224,9 @@ class ZooDataset(object):
 
         if info is None:
             return False
+
+        if self.has_patches:
+            self._patch_if_necessary(dataset_dir, None)
 
         if self.supports_partial_downloads:
             return False
@@ -1199,7 +1290,7 @@ def _migrate_zoo_dataset_info(d):
         migrated = True
 
     # @legacy dataset type names
-    _dt = "fiftyone.types.dataset_types"
+    _dt = "fiftyone.types"
     if dataset_type.endswith(".ImageClassificationDataset"):
         dataset_type = _dt + ".FiftyOneImageClassificationDataset"
         migrated = True

@@ -1,7 +1,7 @@
 """
 FiftyOne aggregation-related unit tests.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,9 +9,11 @@ from datetime import date, datetime, timedelta
 import math
 
 from bson import ObjectId
+import numpy as np
 import unittest
 
 import fiftyone as fo
+import fiftyone.core.fields as fof
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
@@ -53,10 +55,12 @@ class DatasetTests(unittest.TestCase):
         )
         s.save()
         self.assertEqual(
-            d.bounds("detections.detections.confidence"), (0, 1),
+            d.bounds("detections.detections.confidence"),
+            (0, 1),
         )
         self.assertEqual(
-            d.bounds(1 + F("detections.detections.confidence")), (1, 2),
+            d.bounds(1 + F("detections.detections.confidence")),
+            (1, 2),
         )
 
         d = fo.Dataset()
@@ -64,7 +68,8 @@ class DatasetTests(unittest.TestCase):
         s[1]["detection"] = fo.Detection(label="label", confidence=1)
         d.add_sample(s)
         self.assertEqual(
-            d.bounds("frames.detection.confidence"), (1, 1),
+            d.bounds("frames.detection.confidence"),
+            (1, 1),
         )
 
     @drop_datasets
@@ -142,6 +147,33 @@ class DatasetTests(unittest.TestCase):
             d.count_values("frames.classifications.classifications.label"),
             {"one": 1, "two": 2},
         )
+        self.assertEqual(
+            d.count_values(
+                F("frames.classifications.classifications.label").upper()
+            ),
+            {"ONE": 1, "TWO": 2},
+        )
+
+        self.assertEqual(
+            d.count_values("classifications.classifications[].label"),
+            {"one": 1, "two": 2},
+        )
+        self.assertEqual(
+            d.count_values(
+                F("classifications.classifications[].label").upper()
+            ),
+            {"ONE": 1, "TWO": 2},
+        )
+        self.assertEqual(
+            d.count_values("frames[].classifications.classifications[].label"),
+            {"one": 1, "two": 2},
+        )
+        self.assertEqual(
+            d.count_values(
+                F("frames[].classifications.classifications[].label").upper()
+            ),
+            {"ONE": 1, "TWO": 2},
+        )
 
     @drop_datasets
     def test_distinct(self):
@@ -216,6 +248,131 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(d.mean("numeric_field"), 2)
 
         self.assertAlmostEqual(d.mean(2.0 * (F("numeric_field") + 1)), 6.0)
+
+    @drop_datasets
+    def test_schema(self):
+        d = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="image1.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        foo="bar",
+                        hello=True,
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        hello=None,
+                    ),
+                ]
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="rabbit",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        foo=None,
+                    ),
+                    fo.Detection(
+                        label="squirrel",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        hello="there",
+                    ),
+                ]
+            ),
+        )
+
+        d.add_samples([sample1, sample2])
+
+        schema = d.schema("ground_truth.detections")
+
+        expected_schema = {
+            "id": fof.ObjectIdField,
+            "attributes": fof.DictField,
+            "foo": fof.StringField,
+            "hello": [fof.BooleanField, fof.StringField],
+            "bounding_box": fof.ListField,
+            "tags": fof.ListField,
+            "label": fof.StringField,
+        }
+
+        self.assertSetEqual(set(schema.keys()), set(expected_schema.keys()))
+        for key, ftype in expected_schema.items():
+            if isinstance(ftype, list):
+                fields = schema[key]
+                self.assertIsInstance(fields, list)
+                self.assertSetEqual(set(type(f) for f in fields), set(ftype))
+            else:
+                self.assertEqual(type(schema[key]), ftype)
+
+        schema = d.schema("ground_truth.detections", dynamic_only=True)
+
+        expected_schema = {
+            "foo": fof.StringField,
+            "hello": [fof.BooleanField, fof.StringField],
+        }
+
+        self.assertSetEqual(set(schema.keys()), set(expected_schema.keys()))
+        for key, ftype in expected_schema.items():
+            if isinstance(ftype, list):
+                fields = schema[key]
+                self.assertIsInstance(fields, list)
+                self.assertSetEqual(set(type(f) for f in fields), set(ftype))
+            else:
+                self.assertEqual(type(schema[key]), ftype)
+
+    @drop_datasets
+    def test_quantiles(self):
+        d = fo.Dataset()
+        d.add_sample_field("numeric_field", fo.IntField)
+        self.assertIsNone(d.quantiles("numeric_field", 0.5))
+        self.assertListEqual(d.quantiles("numeric_field", [0.5]), [None])
+
+        s = fo.Sample(filepath="image.jpeg", numeric_field=1)
+        d.add_sample(s)
+        self.assertAlmostEqual(d.quantiles("numeric_field", 0.5), 1)
+
+        s = fo.Sample(filepath="image2.jpeg", numeric_field=2)
+        d.add_sample(s)
+
+        q = np.linspace(0, 1, 11)
+
+        results1 = d.quantiles("numeric_field", q)
+
+        # only available in `numpy>=1.22`
+        # results2 = np.quantile([1, 2], q, method="inverted_cdf")
+        results2 = [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
+
+        self.assertEqual(len(results1), len(results2))
+        for r1, r2 in zip(results1, results2):
+            self.assertAlmostEqual(r1, r2)
+
+        results1 = d.quantiles(2.0 * (F("numeric_field") + 1), q)
+
+        # only available in `numpy>=1.22`
+        # results2 = np.quantile([4, 6], q, method="inverted_cdf")
+        results2 = [4, 4, 4, 4, 4, 4, 6, 6, 6, 6, 6]
+
+        self.assertEqual(len(results1), len(results2))
+        for r1, r2 in zip(results1, results2):
+            self.assertAlmostEqual(r1, r2)
+
+        with self.assertRaises(ValueError):
+            d.quantiles("numeric_field", "bad-value")
+
+        with self.assertRaises(ValueError):
+            d.quantiles("numeric_field", -1)
+
+        with self.assertRaises(ValueError):
+            d.quantiles("numeric_field", 2)
 
     @drop_datasets
     def test_std(self):
@@ -320,7 +477,8 @@ class DatasetTests(unittest.TestCase):
         )
 
         self.assertListEqual(
-            d.values(F("predictions.detections").length()), [2, 3, 2, 0, 0],
+            d.values(F("predictions.detections").length()),
+            [2, 3, 2, 0, 0],
         )
 
         self.assertListEqual(
@@ -439,6 +597,11 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(math.isnan(dataset.mean("float")))
         self.assertTrue(math.isnan(dataset.sum("float")))
         self.assertTrue(math.isnan(dataset.std("float")))
+        self.assertTrue(math.isnan(dataset.quantiles("float", 0)))
+        self.assertTrue(math.isnan(dataset.quantiles("float", 0.25)))
+        self.assertTrue(math.isinf(dataset.quantiles("float", 0.50)))
+        self.assertAlmostEqual(dataset.quantiles("float", 0.75), 1.0)
+        self.assertTrue(math.isinf(dataset.quantiles("float", 1)))
 
         counts, edges, other = dataset.histogram_values("float")
         self.assertEqual(other, 5)  # captures None, nan, inf
@@ -455,6 +618,10 @@ class DatasetTests(unittest.TestCase):
         self.assertAlmostEqual(dataset.mean("float", safe=True), 1.0)
         self.assertAlmostEqual(dataset.sum("float", safe=True), 1.0)
         self.assertAlmostEqual(dataset.std("float", safe=True), 0.0)
+
+        self.assertAlmostEqual(dataset.quantiles("float", 0, safe=True), 1.0)
+        self.assertAlmostEqual(dataset.quantiles("float", 1, safe=True), 1.0)
+        self.assertAlmostEqual(dataset.quantiles("float", 0.5, safe=True), 1.0)
 
     @drop_datasets
     def test_object_ids(self):
@@ -764,6 +931,200 @@ class DatasetTests(unittest.TestCase):
 
         results = dataset.values(fields)
         self.assertEqual(len(fields), len(results))
+
+    @drop_datasets
+    def test_video_frames(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample.frames[2] = fo.Frame()
+        sample.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="rabbit"),
+                    fo.Detection(label="squirrel"),
+                    fo.Detection(label="fox"),
+                ]
+            )
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        num_objs = F("frames").map(F("detections.detections").length())
+
+        values = dataset.values(num_objs)
+        self.assertListEqual(values, [[2, 0, 3]])
+
+        counts = dataset.count_values(num_objs)
+        self.assertDictEqual(counts, {2: 1, 3: 1, 0: 1})
+
+        max_objs = F("frames").map(F("detections.detections").length()).max()
+
+        values = dataset.values(max_objs)
+        self.assertListEqual(values, [3])
+
+        counts = dataset.count_values(max_objs)
+        self.assertDictEqual(counts, {3: 1})
+
+    @drop_datasets
+    def test_needs_frames(self):
+        sample1 = fo.Sample(filepath="video1.mp4", int=1)
+        sample1.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample1.frames[2] = fo.Frame()
+        sample1.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="rabbit"),
+                    fo.Detection(label="squirrel"),
+                    fo.Detection(label="fox"),
+                ]
+            )
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4", int=2)
+        sample2.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample2.frames[2] = fo.Frame()
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        expr1 = F("int") > 1.5
+        expr2 = F("frames").length() > 2
+
+        values = dataset.values(expr1)
+        self.assertListEqual(values, [False, True])
+
+        values = dataset.values(expr2)
+        self.assertListEqual(values, [True, False])
+
+        values = dataset.values(expr1 | expr2)
+        self.assertListEqual(values, [True, True])
+
+        values = dataset.values(expr1 & expr2)
+        self.assertListEqual(values, [False, False])
+
+    @drop_datasets
+    def test_serialize(self):
+        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+        aggregations = [
+            fo.Bounds("predictions.detections.confidence"),
+            fo.Count(),
+            fo.Count("predictions.detections"),
+            fo.CountValues("predictions.detections.label"),
+            fo.Distinct("predictions.detections.label"),
+            fo.FacetAggregations(
+                "predictions.detections",
+                [fo.CountValues("label"), fo.Bounds("confidence")],
+            ),
+            fo.HistogramValues(
+                "predictions.detections.confidence",
+                bins=50,
+                range=[0, 1],
+            ),
+            fo.Mean("predictions.detections[]", expr=bbox_area),
+            fo.Schema("predictions.detections"),
+            fo.Std("predictions.detections[]", expr=bbox_area),
+            fo.Sum("predictions.detections", expr=F().length()),
+            fo.Values("id"),
+        ]
+
+        agg_dicts = [a._serialize() for a in aggregations]
+        also_aggregations = [fo.Aggregation._from_dict(d) for d in agg_dicts]
+
+        self.assertListEqual(aggregations, also_aggregations)
+
+    @drop_datasets
+    def test_expr(self):
+        d = fo.Dataset()
+        d.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    predictions=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat", confidence=0.9),
+                            fo.Classification(label="dog", confidence=0.8),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="image2.jpg",
+                    predictions=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat", confidence=0.7),
+                            fo.Classification(label="rabbit", confidence=0.6),
+                            fo.Classification(
+                                label="squirrel", confidence=0.5
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="image3.jpg",
+                    predictions=fo.Classifications(
+                        classifications=[
+                            fo.Classification(
+                                label="elephant", confidence=0.4
+                            ),
+                            fo.Classification(),
+                        ]
+                    ),
+                ),
+                fo.Sample(filepath="image4.jpg", predictions=None),
+                fo.Sample(filepath="image5.jpg"),
+            ]
+        )
+
+        bounds = d.bounds("predictions.classifications.confidence")
+        self.assertAlmostEqual(bounds[0], 0.4)
+        self.assertAlmostEqual(bounds[1], 0.9)
+
+        bounds = d.bounds(
+            "predictions.classifications.confidence", expr=F() - 0.1
+        )
+        self.assertAlmostEqual(bounds[0], 0.3)
+        self.assertAlmostEqual(bounds[1], 0.8)
+
+        agg1 = fo.Bounds("predictions.classifications.confidence")
+        agg2 = fo.Bounds(
+            "predictions.classifications.confidence", expr=F() - 0.1
+        )
+        agg3 = fo.Distinct("predictions.classifications.label")
+        agg4 = fo.CountValues(F("filepath").ends_with("3.jpg"))
+        agg5 = fo.Distinct("filepath")
+        bounds1, bounds2, labels, counts, filepaths = d.aggregate(
+            [agg1, agg2, agg3, agg4, agg5]
+        )
+
+        self.assertAlmostEqual(bounds1[0], 0.4)
+        self.assertAlmostEqual(bounds1[1], 0.9)
+        self.assertAlmostEqual(bounds2[0], 0.3)
+        self.assertAlmostEqual(bounds2[1], 0.8)
+        self.assertEqual(len(labels), 5)
+        self.assertDictEqual(counts, {True: 1, False: 4})
+        self.assertEqual(len(filepaths), 5)
 
 
 if __name__ == "__main__":

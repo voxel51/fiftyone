@@ -1,0 +1,9 @@
+-r common.txt
+-r test.txt
+
+pydicom>=2.2.0
+shapely>=1.7.1
+tensorflow
+tensorflow-datasets
+torch
+torchvision

@@ -6,7 +6,7 @@ COCO Integration
 .. default-role:: code
 
 With support from the team behind the `COCO dataset <https://cocodataset.org>`_,
-we've made it easy to dowload, visualize, and evaluate on the COCO dataset
+we've made it easy to download, visualize, and evaluate on the COCO dataset
 natively in FiftyOne!
 
 .. note::
@@ -192,8 +192,8 @@ file containing COCO-formatted labels to work with:
 
     dataset = foz.load_zoo_dataset("quickstart")
 
-    # Give the dataset a classes list so it can be exported + imported
-    dataset.default_classes = dataset.distinct("ground_truth.detections.label")
+    # Classes list
+    classes = dataset.distinct("ground_truth.detections.label")
 
     # The directory in which the dataset's images are stored
     IMAGES_DIR = os.path.dirname(dataset.first().filepath)
@@ -203,6 +203,7 @@ file containing COCO-formatted labels to work with:
         dataset_type=fo.types.COCODetectionDataset,
         label_field="ground_truth",
         labels_path="/tmp/coco.json",
+        classes=classes,
     )
 
 Now we have a ``/tmp/coco.json`` file on disk containing COCO labels
@@ -268,7 +269,6 @@ dataset:
         data_path=IMAGES_DIR,
         labels_path="/tmp/coco.json",
         include_id=True,
-        label_field="",
     )
 
     # Verify that the class list for our dataset was imported
@@ -287,7 +287,7 @@ dataset:
         id:         fiftyone.core.fields.ObjectIdField
         filepath:   fiftyone.core.fields.StringField
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         coco_id:    fiftyone.core.fields.IntField
 
@@ -325,7 +325,8 @@ to add them to your dataset as follows:
     ]
 
     # Add COCO predictions to `predictions` field of dataset
-    fouc.add_coco_labels(coco_dataset, "predictions", predictions)
+    classes = coco_dataset.default_classes
+    fouc.add_coco_labels(coco_dataset, "predictions", predictions, classes)
 
     # Verify that predictions were added to two images
     print(coco_dataset.count("predictions"))  # 2

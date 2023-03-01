@@ -4,11 +4,12 @@
   rel="stylesheet"
 />
 <link
-  href="https://voxel51.com/vendor/font-awesome/css/font-awesome.min.css"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
   rel="stylesheet"
 />
 {% endblock %} {% block custom_header %}
 <div class="container-fluid header-holder tutorials-header" id="header-holder">
+  <!--
   <a class="banner" href="{{banner_link}}">
     <div>
       <span>
@@ -19,6 +20,7 @@
       >
     </div>
   </a>
+  -->
 
   <nav id="nav__main" class="nav__main">
     <div class="nav__main__logo">
@@ -29,63 +31,94 @@
       </a>
     </div>
 
+    <div class="nav__spacer desktop_only"></div>
+
     <div id="nav__main__mobilebutton--on">
       <a href="javascript:void(0);" onclick="navMobileButton()">
-        <i class="fa fa-bars"></i>
+        <i class="fa-solid fa-bars"></i>
       </a>
     </div>
 
     <div id="nav__main__mobilebutton--off">
       <a href="javascript:void(0);" onclick="navMobileButton()">
-        <i class="fa fa-times"></i>
+        <i class="fa-solid fa-times"></i>
       </a>
     </div>
 
     <div id="nav__main__items">
-      <div class="nav__item">
-        <a href="{{link_fiftyone}}">Product</a>
+
+      <div class="nav__item nav__dropdown">
+        <div class="nav__dropdown__trigger">FiftyOne</div>
+        <div class="nav__item nav__dropdown__menu has-arrows">
+          <div class="arrow-up--light-primary arrow-left20"></div>
+          <ul>
+            <li><a href="{{link_fiftyone}}">Open Source</a>
+            <li><a href="{{link_fiftyone_teams}}">FiftyOne Teams</a>
+          </ul>
+        </div>
       </div>
+
+      <div class="nav__item">
+        <a href="{{link_usecases}}">Use Cases</a>
+      </div>
+
+      <div class="nav__item">
+        <a href="{{link_voxel51_blog}}">Blog</a>
+      </div>
+
       <div class="nav__item">
         <a href="{{link_docs_fiftyone}}">Docs</a>
       </div>
-      <div class="nav__item">
-        <a href="{{link_voxel51_medium}}">Blog</a>
-      </div>
-      <div class="nav__item">
-        <a href="{{link_voxel51_slack}}">Community</a>
+
+      <div class="nav__item nav__dropdown">
+        <div class="nav__dropdown__trigger">Company</div>
+        <div class="nav__item nav__dropdown__menu has-arrows">
+          <div class="arrow-up--light-primary arrow-left20"></div>
+          <ul>
+            <li><a href="{{link_ourstory}}">About Us</a>
+            <li><a href="{{link_voxel51_jobs}}">Careers</a>
+          </ul>
+        </div>
       </div>
 
       <div class="nav__item mobile_only">
         <a href="{{link_voxel51_github}}fiftyone">GitHub</a>
       </div>
 
-      <div class="nav__item">
-        <a href="{{link_press}}">Press</a>
+      <div class="nav__item mobile_only">
+        <a href="{{link_voxel51_slack}}">Slack</a>
       </div>
+
 
       <div class="nav__item desktop_only" id="octocat">
-        &nbsp
-        <a href="{{link_voxel51_github}}fiftyone"
-          ><i class="fa fa-github fa-header-icon"></i
-        ></a>
+        <a href="{{link_voxel51_github}}fiftyone">
+          <i class="fa-brands fa-github">
+          </i>
+        </a>
+        &nbsp;
+        <a href="{{link_voxel51_slack}}">
+          <i class="fa-brands fa-slack">
+          </i>
+        </a>
       </div>
 
-      <div class="nav__spacer"></div>
-
-      <div class="nav__item nav__item--brand desktop_only" id="try-fiftyone">
+      <!--
+      <div class="nav__item nav__item--brand" id="try-fiftyone">
         <a class="button-secondary" href="{{link_fiftyone_quickstart}}"
           >Try FiftyOne!</a
         >
       </div>
+      -->
 
-      <div class="nav__item nav__item--brand desktop_only">
+      <div class="nav__item full_nav_only">
         <a
           class="button-primary"
-          href="https://voxel51.com/#teams-form"
+          href="https://voxel51.com/get-fiftyone-teams"
           target="_blank"
           >Have a team?</a
         >
       </div>
+
     </div>
   </nav>
 </div>
@@ -105,24 +138,33 @@ endblock %} {% block custom_footer %}
     <div class="footer__address">
       {{address_main_line1}}<br />
       {{address_main_line2}}
+      <br />
+      <br />
+      <a href="mailto:{{email_info}}">{{email_info}}</a>
     </div>
 
+    <!--
     <div class="footer__contact">
-      <a href="mailto:{{email_info}}">{{email_info}}</a><br />
-      {{phone_main}}
+      <a href="mailto:{{email_info}}">{{email_info}}</a>
     </div>
+    -->
 
     <div class="footer__links">
       <div class="footer__links--col2">
-        <p class="nav__item--brand">Product</p>
+        <p class="nav__item--brand">Products</p>
         <a href="{{link_fiftyone}}">FiftyOne</a>
-        <a href="{{link_fiftyone_tutorials}}">Tutorials</a>
-        <a href="{{link_fiftyone_examples}}">Examples</a>
+        <a href="{{link_fiftyone_teams}}">FiftyOne Teams</a>
+        <a href="{{link_usecases}}">Use Cases</a>
       </div>
       <div class="footer__links--col3">
         <p class="nav__item--brand">Resources</p>
+        <a href="{{link_voxel51_blog}}">Blog</a>
+        <a href="{{link_docs_fiftyone}}">Docs</a>
+        <a href="{{link_voxel51_github}}">GitHub</a>
+        <a href="{{link_voxel51_slack}}">Slack</a>
         <a href="{{link_ourstory}}">About Us</a>
-        <a href="{{link_voxel51_medium}}">Blog</a>
+
+        <a href="{{link_voxel51_jobs}}">Careers</a>
         <a href="{{link_press}}">Press</a>
       </div>
     </div>
@@ -131,22 +173,22 @@ endblock %} {% block custom_footer %}
       <ul class="list-inline">
         <li>
           <a href="{{link_voxel51_linkedin}}">
-            <i class="fa fa-linkedin"></i>
+            <i class="fa-brands fa-linkedin"></i>
           </a>
         </li>
         <li>
           <a href="{{link_voxel51_github}}">
-            <i class="fa fa-github"></i>
+            <i class="fa-brands fa-github"></i>
           </a>
         </li>
         <li>
           <a href="{{link_voxel51_twitter}}">
-            <i class="fa fa-twitter"></i>
+            <i class="fa-brands fa-twitter"></i>
           </a>
         </li>
         <li>
           <a href="{{link_voxel51_facebook}}">
-            <i class="fa fa-facebook"></i>
+            <i class="fa-brands fa-facebook"></i>
           </a>
         </li>
       </ul>
@@ -154,7 +196,7 @@ endblock %} {% block custom_footer %}
 
     <div class="footer__copyright">
       <ul class="list-inline">
-        <li>&copy; 2021 Voxel51 Inc.</li>
+        <li>&copy; 2023 Voxel51 Inc.</li>
         <li>
           <a href="{{link_privacypolicy}}">Privacy Policy</a>
         </li>
@@ -165,30 +207,6 @@ endblock %} {% block custom_footer %}
     </div>
   </div>
 </footer>
-
-<div class="modal" id="early-access">
-  <div class="modal-content">
-    <h2 class="text-primary-on-light">
-      Get&nbsp;<span
-        ><b class="text-secondary-on-dark">Fifty</b
-        ><b class="text-brand">One</b></span
-      >
-      for your team
-    </h2>
-    <p style="padding: 1.5rem 0">
-      FiftyOne is and will always be open source software that is freely
-      available to individual users, all 20,000 and counting. However, if you’re
-      part of a team, you may need more. That’s why we’ve begun deploying
-      team-based versions of FiftyOne with multi-user collaboration features to
-      early adopters.
-      <br />
-      <br />
-      Are you interested in a team-based deployment of FiftyOne? Let us know how
-      to contact you and our founders will reach out to make it happen!
-    </p>
-    <div id="early-access-form"></div>
-  </div>
-</div>
 
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script
@@ -203,19 +221,6 @@ endblock %} {% block custom_footer %}
   gtag("js", new Date());
 
   gtag("config", "UA-141773487-1");
-</script>
-<script
-  charset="utf-8"
-  type="text/javascript"
-  src="https://js.hsforms.net/forms/v2.js"
-></script>
-<script>
-  hbspt.forms.create({
-    region: "na1",
-    portalId: "4972700",
-    formId: "87aa5367-a8f1-4ed4-9e23-1fdf8448d807",
-    target: "#early-access-form",
-  });
 </script>
 <script>
   function open_modal(modal_id, modal_closer_id) {
@@ -242,5 +247,77 @@ endblock %} {% block custom_footer %}
       }
     };
   }
+</script>
+
+<!-- bigpicture.io -->
+<script>
+  !(function (e, t, i) {
+    var r = (e.bigPicture = e.bigPicture || []);
+    if (!r.initialized)
+      if (r.invoked)
+        e.console &&
+          console.error &&
+          console.error("BigPicture.io snippet included twice.");
+      else {
+        (r.invoked = !0),
+          (r.SNIPPET_VERSION = 1.5),
+          (r.handler = function (e) {
+            if (void 0 !== r.callback)
+              try {
+                return r.callback(e);
+              } catch (e) {}
+          }),
+          (r.eventList = ["mousedown", "mouseup", "click", "submit"]),
+          (r.methods = [
+            "track",
+            "identify",
+            "page",
+            "group",
+            "alias",
+            "integration",
+            "ready",
+            "intelReady",
+            "consentReady",
+            "on",
+            "off",
+          ]),
+          (r.factory = function (e) {
+            return function () {
+              var t = Array.prototype.slice.call(arguments);
+              return t.unshift(e), r.push(t), r;
+            };
+          });
+        for (var n = 0; n < r.methods.length; n++) {
+          var o = r.methods[n];
+          r[o] = r.factory(o);
+        }
+        r.getCookie = function (e) {
+          var i = ("; " + t.cookie).split("; " + e + "=");
+          return 2 == i.length && i.pop().split(";").shift();
+        };
+        var c = (r.isEditor = (function () {
+          try {
+            return (
+              e.self !== e.top &&
+              (new RegExp("app" + i, "ig").test(t.referrer) ||
+                "edit" == r.getCookie("_bpr_edit"))
+            );
+          } catch (e) {
+            return !1;
+          }
+        })());
+        r.init = function (n, o) {
+          if (((r.projectId = n), (r._config = o), !c))
+            for (var a = 0; a < r.eventList.length; a++)
+              e.addEventListener(r.eventList[a], r.handler, !0);
+          var s = t.createElement("script");
+          s.async = !0;
+          var d = c ? "/editor/editor" : "/public-" + n;
+          (s.src = "//cdn" + i + d + ".js"),
+            t.getElementsByTagName("head")[0].appendChild(s);
+        };
+      }
+  })(window, document, ".bigpicture.io");
+  bigPicture.init("1646");
 </script>
 {% endblock %}

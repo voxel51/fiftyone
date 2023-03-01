@@ -1,7 +1,6 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
-
 import * as common from "./common";
 import * as frame from "./frame";
 import * as image from "./image";
@@ -43,12 +42,6 @@ export const getFrameElements: GetElements<FrameState> = (
         node: common.ThumbnailSelectorElement,
       },
       {
-        node: common.JSONPanelElement,
-      },
-      {
-        node: common.HelpPanelElement,
-      },
-      {
         node: common.ControlsElement,
         children: [
           { node: frame.FrameNumberElement },
@@ -56,6 +49,7 @@ export const getFrameElements: GetElements<FrameState> = (
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
           { node: common.FullscreenButtonElement },
+          { node: common.ToggleOverlaysButtonElement },
           { node: common.JSONButtonElement },
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
@@ -110,12 +104,6 @@ export const getImageElements: GetElements<ImageState> = (
         node: common.ThumbnailSelectorElement,
       },
       {
-        node: common.JSONPanelElement,
-      },
-      {
-        node: common.HelpPanelElement,
-      },
-      {
         node: common.ControlsElement,
         children: [
           { node: frame.FrameNumberElement },
@@ -123,6 +111,7 @@ export const getImageElements: GetElements<ImageState> = (
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
           { node: common.FullscreenButtonElement },
+          { node: common.ToggleOverlaysButtonElement },
           { node: common.JSONButtonElement },
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
@@ -177,13 +166,7 @@ export const getVideoElements: GetElements<VideoState> = (
         node: common.ThumbnailSelectorElement,
       },
       {
-        node: common.JSONPanelElement,
-      },
-      {
         node: video.LoaderBar,
-      },
-      {
-        node: common.VideoHelpPanelElement,
       },
       {
         node: common.ControlsElement,
@@ -199,6 +182,7 @@ export const getVideoElements: GetElements<VideoState> = (
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
           { node: common.FullscreenButtonElement },
+          { node: common.ToggleOverlaysButtonElement },
           { node: common.JSONButtonElement },
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },

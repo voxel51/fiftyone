@@ -1,20 +1,21 @@
 """
 View stages.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from collections import defaultdict, OrderedDict
 import contextlib
 from copy import deepcopy
+import itertools
 import random
 import reprlib
+from tracemalloc import start
 import uuid
 import warnings
 
 from bson import ObjectId
-from deprecated import deprecated
 import numpy as np
 
 import eta.core.utils as etau
@@ -24,6 +25,7 @@ from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
+import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.core.odm.document import MongoEngineBaseDocument
@@ -31,10 +33,12 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 
-foc = fou.lazy_import("fiftyone.core.clips")
+focl = fou.lazy_import("fiftyone.core.clips")
+foc = fou.lazy_import("fiftyone.core.collections")
 fod = fou.lazy_import("fiftyone.core.dataset")
 fop = fou.lazy_import("fiftyone.core.patches")
-fov = fou.lazy_import("fiftyone.core.video")
+fov = fou.lazy_import("fiftyone.core.view")
+fovi = fou.lazy_import("fiftyone.core.video")
 foug = fou.lazy_import("fiftyone.utils.geojson")
 
 
@@ -49,6 +53,8 @@ class ViewStage(object):
     view stages are represented by a :class:`fiftyone.core.view.DatasetView`.
     """
 
+    # tricky: this becomes shadowed by an instance attribute when _serialize()
+    # is called
     _uuid = None
 
     def __str__(self):
@@ -66,6 +72,9 @@ class ViewStage(object):
 
         kwargs_str = ", ".join(kwargs_list)
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self._kwargs() == other._kwargs()
 
     @property
     def has_view(self):
@@ -133,6 +142,20 @@ class ViewStage(object):
 
         Returns:
             a list of fields, or ``None`` if no fields have been selected
+        """
+        return None
+
+    def get_media_type(self, sample_collection):
+        """Returns the media type outputted by this stage when applied to the
+        given collection, if and only if it is different from the input type.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            the media type, or ``None`` if the stage does not change the type
         """
         return None
 
@@ -204,12 +227,25 @@ class ViewStage(object):
         """
         return False
 
+    def _needs_group_slices(self, sample_collection):
+        """Whether the stage requires group slice(s) to be attached.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            None, or a list of group slices
+        """
+        return None
+
     def _serialize(self, include_uuid=True):
         """Returns a JSON dict representation of the :class:`ViewStage`.
 
         Args:
-            include_uuid (True): whether to include the stage's UUID in the JSON
-                representation
+            include_uuid (True): whether to include the stage's UUID in the
+                JSON representation
 
         Returns:
             a JSON dict
@@ -258,17 +294,139 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        uuid = d.get("_uuid", None)
-        stage = view_stage_cls(**{k: v for (k, v) in d["kwargs"]})
-        stage._uuid = uuid
+        stage = view_stage_cls(**dict(d["kwargs"]))
+        stage._uuid = d.get("_uuid", None)
         return stage
 
 
 class ViewStageError(Exception):
-    """An error raised when a problem with a :class:`ViewStage` is encountered.
-    """
+    """An error raised when a problem with a :class:`ViewStage` is encountered."""
 
     pass
+
+
+class Concat(ViewStage):
+    """Concatenates the contents of the given
+    :class:`fiftyone.core.collections.SampleCollection` to this collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        #
+        # Concatenate two views
+        #
+
+        view1 = dataset.match(F("uniqueness") < 0.2)
+        view2 = dataset.match(F("uniqueness") > 0.7)
+
+        stage = fo.Concat(view2)
+        view = view1.add_stage(stage)
+
+        print(view1)
+        print(view2)
+        print(view)
+
+        #
+        # Concatenate two patches views
+        #
+
+        gt_objects = dataset.to_patches("ground_truth")
+
+        patches1 = gt_objects[:50]
+        patches2 = gt_objects[-50:]
+
+        stage = fo.Concat(patches2)
+        patches = patches1.add_stage(stage)
+
+        print(patches1)
+        print(patches2)
+        print(patches)
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection` whose
+            contents to append to this collection
+    """
+
+    def __init__(self, samples):
+        samples, view = self._parse_params(samples)
+
+        self._samples = samples
+        self._view = view
+
+    @property
+    def samples(self):
+        """The :class:`fiftyone.core.collections.SampleCollection` whose
+        contents to append to this collection.
+        """
+        return self._view
+
+    def to_mongo(self, _):
+        return [
+            {
+                "$unionWith": {
+                    "coll": self._view._dataset._sample_collection_name,
+                    "pipeline": self._view._pipeline(
+                        detach_frames=True, detach_groups=True
+                    ),
+                }
+            }
+        ]
+
+    def validate(self, sample_collection):
+        if sample_collection._dataset != self._view._dataset:
+            if sample_collection._root_dataset == self._view._root_dataset:
+                raise ValueError(
+                    "When concatenating samples from generated views (e.g. "
+                    "patches or frames), all views must be derived from the "
+                    "same root generated view"
+                )
+            else:
+                raise ValueError(
+                    "Cannot concatenate samples from different datasets"
+                )
+
+    def _kwargs(self):
+        return [["samples", self._samples]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "samples", "type": "json", "placeholder": ""}]
+
+    def _parse_params(self, samples):
+        if not isinstance(samples, (foc.SampleCollection, dict)):
+            raise ValueError(
+                "`samples` must be a SampleCollection or a serialized "
+                "representation of one, but found %s" % samples
+            )
+
+        view = None
+
+        if isinstance(samples, foc.SampleCollection):
+            view = samples.view()
+            samples = None
+
+        if view is None:
+            view = self._load_view(samples)
+
+        if samples is None:
+            samples = self._serialize_view(view)
+
+        return samples, view
+
+    def _serialize_view(self, view):
+        return {
+            "dataset": view._root_dataset.name,
+            "stages": view._serialize(include_uuids=False),
+        }
+
+    def _load_view(self, d):
+        dataset = fod.load_dataset(d["dataset"])
+        return fov.DatasetView._build(dataset, d["stages"])
 
 
 class Exclude(ViewStage):
@@ -310,14 +468,21 @@ class Exclude(ViewStage):
             -   an iterable of sample IDs
             -   a :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.sample.SampleView`
-            -   an iterable of sample IDs
-            -   a :class:`fiftyone.core.collections.SampleCollection`
             -   an iterable of :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.sample.SampleView` instances
+            -   a :class:`fiftyone.core.collections.SampleCollection`
     """
 
     def __init__(self, sample_ids):
-        self._sample_ids = _get_sample_ids(sample_ids)
+        sample_ids, bools = _parse_sample_ids(sample_ids)
+
+        if bools:
+            raise ValueError(
+                "Excluding samples via boolean indexing is not supported; use "
+                "select() instead"
+            )
+
+        self._sample_ids = sample_ids
 
     @property
     def sample_ids(self):
@@ -404,9 +569,7 @@ class ExcludeBy(ViewStage):
         return self._values
 
     def to_mongo(self, sample_collection):
-        field_name, is_id_field, _ = sample_collection._handle_id_fields(
-            self._field
-        )
+        path, is_id_field, _ = sample_collection._handle_id_fields(self._field)
 
         if is_id_field:
             values = [
@@ -416,7 +579,7 @@ class ExcludeBy(ViewStage):
         else:
             values = self._values
 
-        return [{"$match": {field_name: {"$not": {"$in": values}}}}]
+        return [{"$match": {path: {"$not": {"$in": values}}}}]
 
     def _kwargs(self):
         return [["field", self._field], ["values", self._values]]
@@ -449,17 +612,23 @@ class ExcludeFields(ViewStage):
                 fo.Sample(
                     filepath="/path/to/image1.png",
                     ground_truth=fo.Classification(label="cat"),
-                    predictions=fo.Classification(label="cat", confidence=0.9),
+                    predictions=fo.Classification(
+                        label="cat",
+                        confidence=0.9,
+                        mood="surly",
+                    ),
                 ),
                 fo.Sample(
                     filepath="/path/to/image2.png",
                     ground_truth=fo.Classification(label="dog"),
-                    predictions=fo.Classification(label="dog", confidence=0.8),
+                    predictions=fo.Classification(
+                        label="dog",
+                        confidence=0.8,
+                        mood="happy",
+                    ),
                 ),
                 fo.Sample(
                     filepath="/path/to/image3.png",
-                    ground_truth=None,
-                    predictions=None,
                 ),
             ]
         )
@@ -471,8 +640,21 @@ class ExcludeFields(ViewStage):
         stage = fo.ExcludeFields("predictions")
         view = dataset.add_stage(stage)
 
+        #
+        # Exclude the `mood` attribute from all classifications in the
+        # `predictions` field
+        #
+
+        stage = fo.ExcludeFields("predictions.mood")
+        view = dataset.add_stage(stage)
+
+        #
+        # Exclude the `predictions` field from all samples
+        #
+
     Args:
-        field_names: a field name or iterable of field names to exclude
+        field_names: a field name or iterable of field names to exclude. May
+            contain ``embedded.field.name`` as well
     """
 
     def __init__(self, field_names, _allow_missing=False):
@@ -490,37 +672,66 @@ class ExcludeFields(ViewStage):
         return self._field_names
 
     def get_excluded_fields(self, sample_collection, frames=False):
-        if sample_collection.media_type == fom.VIDEO:
-            fields, frame_fields = fou.split_frame_fields(self.field_names)
-            return frame_fields if frames else fields
+        if frames:
+            return self._get_excluded_frame_fields(sample_collection)
 
-        return self.field_names
+        return self._get_excluded_fields(sample_collection)
+
+    def _get_excluded_fields(self, sample_collection, use_db_fields=False):
+        if sample_collection._contains_videos():
+            excluded_paths, _ = fou.split_frame_fields(self.field_names)
+        else:
+            excluded_paths = self.field_names
+
+        if use_db_fields:
+            return sample_collection._handle_db_fields(excluded_paths)
+
+        return excluded_paths
+
+    def _get_excluded_frame_fields(
+        self, sample_collection, use_db_fields=False
+    ):
+        if not sample_collection._contains_videos():
+            return None
+
+        _, excluded_paths = fou.split_frame_fields(self.field_names)
+
+        if use_db_fields:
+            return sample_collection._handle_db_fields(
+                excluded_paths, frames=True
+            )
+
+        return excluded_paths
 
     def to_mongo(self, sample_collection):
-        excluded_fields = self.get_excluded_fields(
-            sample_collection, frames=False
+        excluded_paths = self._get_excluded_fields(
+            sample_collection, use_db_fields=True
         )
 
-        excluded_frame_fields = [
-            sample_collection._FRAMES_PREFIX + f
-            for f in self.get_excluded_fields(sample_collection, frames=True)
-        ]
+        if sample_collection._contains_videos():
+            excluded_frame_paths = self._get_excluded_frame_fields(
+                sample_collection, use_db_fields=True
+            )
+            _merge_frame_paths(excluded_paths, excluded_frame_paths)
 
-        if excluded_frame_fields:
-            # Don't project on root `frames` and embedded fields
-            # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
-            excluded_fields = [f for f in excluded_fields if f != "frames"]
-            excluded_fields += excluded_frame_fields
-
-        if not excluded_fields:
+        if not excluded_paths:
             return []
 
-        return [{"$unset": excluded_fields}]
+        return [{"$unset": excluded_paths}]
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos():
+            return False
+
         return any(
             sample_collection._is_frame_field(f) for f in self.field_names
         )
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self.field_names)
 
     def _kwargs(self):
         return [
@@ -543,38 +754,52 @@ class ExcludeFields(ViewStage):
         if self._allow_missing:
             return
 
+        # Validate that all root fields exist
         # Using dataset here allows a field to be excluded multiple times
         sample_collection._dataset.validate_fields_exist(self.field_names)
 
-        if sample_collection.media_type == fom.VIDEO:
-            fields, frame_fields = fou.split_frame_fields(self.field_names)
+        if sample_collection._contains_videos():
+            paths, frame_paths = fou.split_frame_fields(self.field_names)
         else:
-            fields = self.field_names
-            frame_fields = None
+            paths = self.field_names
+            frame_paths = None
 
-        if fields:
-            default_fields = set(
-                sample_collection._get_default_sample_fields(
-                    include_private=True
+        if paths:
+            defaults = set()
+            for root, _paths in _parse_paths(paths).items():
+                default_fields = sample_collection._get_default_sample_fields(
+                    path=root, include_private=True
                 )
-            )
+                defaults.update(_paths & set(default_fields))
 
-            defaults = [f for f in fields if f in default_fields]
             if defaults:
                 raise ValueError("Cannot exclude default fields %s" % defaults)
 
-        if frame_fields:
-            default_frame_fields = set(
-                sample_collection._get_default_frame_fields(
-                    include_private=True
+        if frame_paths:
+            defaults = set()
+            for root, _paths in _parse_paths(frame_paths).items():
+                default_fields = sample_collection._get_default_frame_fields(
+                    path=root, include_private=True
                 )
-            )
+                defaults.update(_paths & set(default_fields))
 
-            defaults = [f for f in fields if f in default_frame_fields]
             if defaults:
                 raise ValueError(
                     "Cannot exclude default frame fields %s" % defaults
                 )
+
+
+def _parse_paths(paths):
+    d = defaultdict(set)
+
+    for path in paths:
+        if "." in path:
+            base = path.rsplit(".", 1)[0]
+            d[base].add(path)
+        else:
+            d[None].add(path)
+
+    return d
 
 
 class ExcludeFrames(ViewStage):
@@ -611,15 +836,15 @@ class ExcludeFrames(ViewStage):
                 :class:`fiftyone.core.frame.FrameView`
             -   an iterable of :class:`fiftyone.core.frame.Frame` or
                 :class:`fiftyone.core.frame.FrameView` instances
-            -   a :class:`fiftyone.core.collections.SampleCollection`, in which
-                case the frame IDs in the collection are used
+            -   a :class:`fiftyone.core.collections.SampleCollection` whose
+                frames to exclude
 
         omit_empty (True): whether to omit samples that have no frames after
             excluding the specified frames
     """
 
     def __init__(self, frame_ids, omit_empty=True):
-        self._frame_ids = _get_frame_ids(frame_ids)
+        self._frame_ids = _parse_frame_ids(frame_ids)
         self._omit_empty = omit_empty
 
     @property
@@ -670,6 +895,76 @@ class ExcludeFrames(ViewStage):
 
     def validate(self, sample_collection):
         fova.validate_video_collection(sample_collection)
+
+
+class ExcludeGroups(ViewStage):
+    """Excludes the groups with the given IDs from a grouped collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-groups")
+
+        #
+        # Exclude some specific groups by ID
+        #
+
+        view = dataset.take(2)
+        group_ids = view.values("group.id")
+
+        stage = fo.ExcludeGroups(group_ids)
+        other_groups = dataset.add_stage(stage)
+
+        assert len(set(group_ids) & set(other_groups.values("group.id"))) == 0
+
+    Args:
+        groups_ids: the groups to select. Can be any of the following:
+
+            -   a group ID
+            -   an iterable of group IDs
+            -   a :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView`
+            -   a group dict returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView` instances
+            -   an iterable of group dicts returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   a :class:`fiftyone.core.collections.SampleCollection`
+    """
+
+    def __init__(self, group_ids, ordered=False):
+        self._group_ids = _parse_group_ids(group_ids)
+
+    @property
+    def group_ids(self):
+        """The list of group IDs to exclude."""
+        return self._group_ids
+
+    def to_mongo(self, sample_collection):
+        id_path = sample_collection.group_field + "._id"
+        ids = [ObjectId(_id) for _id in self._group_ids]
+
+        return [{"$match": {id_path: {"$not": {"$in": ids}}}}]
+
+    def _kwargs(self):
+        return [["group_ids", self._group_ids]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "group_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,group,ids",
+            }
+        ]
+
+    def validate(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            raise ValueError("%s has no groups" % type(sample_collection))
 
 
 class ExcludeLabels(ViewStage):
@@ -905,6 +1200,9 @@ class ExcludeLabels(ViewStage):
         ]
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos():
+            return False
+
         if self._labels is not None:
             fields = self._labels_map.keys()
         elif self._fields is not None:
@@ -913,6 +1211,19 @@ class ExcludeLabels(ViewStage):
             fields = sample_collection._get_label_fields()
 
         return any(sample_collection._is_frame_field(f) for f in fields)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        if self._labels is not None:
+            fields = self._labels_map.keys()
+        elif self._fields is not None:
+            fields = self._fields
+        else:
+            fields = sample_collection._get_label_fields()
+
+        return sample_collection._get_group_slices(fields)
 
     def _make_labels_pipeline(self, sample_collection):
         pipeline = []
@@ -1067,18 +1378,36 @@ class Exists(ViewStage):
             self._field
         )
 
+        if is_frame_field and not field_name:
+            if self._bool:
+                expr = F("frames").length() > 0
+            else:
+                expr = F("frames").length() == 0
+
+            return [{"$match": {"$expr": expr.to_mongo()}}]
+
         if not is_frame_field:
             expr = F(field_name).exists(self._bool)
             return [{"$match": {"$expr": expr.to_mongo()}}]
 
-        expr = F("frames").filter(F(field_name).exists(self._bool))
-        return [
-            {"$set": {"frames": expr.to_mongo()}},
-            {"$match": {"$expr": (F("frames").length() > 0).to_mongo()}},
-        ]
+        if self._bool:
+            expr = F("frames").filter(F(field_name).exists()).length() > 0
+        else:
+            expr = F("frames").filter(F(field_name).exists()).length() == 0
+
+        return [{"$match": {"$expr": expr.to_mongo()}}]
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos():
+            return False
+
         return sample_collection._is_frame_field(self._field)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self._field)
 
     def _kwargs(self):
         return [["field", self._field], ["bool", self._bool]]
@@ -1214,7 +1543,16 @@ class FilterField(ViewStage):
         return new_field
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos():
+            return False
+
         return sample_collection._is_frame_field(self._field)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self._field)
 
     def _kwargs(self):
         return [
@@ -1262,18 +1600,20 @@ class FilterField(ViewStage):
 
 
 def _get_filter_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=True, prefix=""
+    filter_field,
+    new_field,
+    filter_arg,
+    only_matches=True,
 ):
-    cond = _get_field_mongo_filter(filter_arg, prefix=prefix + filter_field)
+    cond = _get_field_mongo_filter(filter_arg, prefix=filter_field)
 
     pipeline = [
         {
             "$set": {
-                prefix
-                + new_field: {
+                new_field: {
                     "$cond": {
                         "if": cond,
-                        "then": "$" + prefix + filter_field,
+                        "then": "$" + filter_field,
                         "else": None,
                     }
                 }
@@ -1282,7 +1622,7 @@ def _get_filter_field_pipeline(
     ]
 
     if only_matches:
-        match_expr = _get_field_only_matches_expr(prefix + new_field)
+        match_expr = _get_field_only_matches_expr(new_field)
         pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
     return pipeline
@@ -1293,11 +1633,12 @@ def _get_field_only_matches_expr(field):
 
 
 def _get_filter_frames_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=True, prefix=""
+    filter_field,
+    new_field,
+    filter_arg,
+    only_matches=True,
 ):
-    cond = _get_field_mongo_filter(
-        filter_arg, prefix="$frame." + prefix + filter_field
-    )
+    cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
 
     pipeline = [
         {
@@ -1310,13 +1651,10 @@ def _get_filter_frames_field_pipeline(
                             "$mergeObjects": [
                                 "$$frame",
                                 {
-                                    prefix
-                                    + new_field: {
+                                    new_field: {
                                         "$cond": {
                                             "if": cond,
-                                            "then": "$$frame."
-                                            + prefix
-                                            + filter_field,
+                                            "then": "$$frame." + filter_field,
                                             "else": None,
                                         }
                                     }
@@ -1330,7 +1668,7 @@ def _get_filter_frames_field_pipeline(
     ]
 
     if only_matches:
-        match_expr = _get_frames_field_only_matches_expr(prefix + new_field)
+        match_expr = _get_frames_field_only_matches_expr(new_field)
         pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
     return pipeline
@@ -1634,14 +1972,13 @@ class FilterLabels(ViewStage):
         only_matches=True,
         trajectories=False,
         _new_field=None,
-        _prefix="",
+        _validate=True,
     ):
         self._field = field
         self._filter = filter
         self._only_matches = only_matches
         self._trajectories = trajectories
         self._new_field = _new_field or field
-        self._prefix = _prefix
         self._labels_field = None
         self._is_frame_field = None
         self._is_labels_list_field = None
@@ -1720,7 +2057,6 @@ class FilterLabels(ViewStage):
             new_field,
             label_filter,
             only_matches=self._only_matches,
-            prefix=self._prefix,
         )
 
         pipeline.extend(filter_pipeline)
@@ -1767,7 +2103,16 @@ class FilterLabels(ViewStage):
         return new_field
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos():
+            return False
+
         return sample_collection._is_frame_field(self._labels_field)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self._labels_field)
 
     def _kwargs(self):
         return [
@@ -1808,16 +2153,18 @@ class FilterLabels(ViewStage):
 
 
 def _get_filter_list_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=True, prefix=""
+    filter_field,
+    new_field,
+    filter_arg,
+    only_matches=True,
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
     pipeline = [
         {
             "$set": {
-                prefix
-                + new_field: {
+                new_field: {
                     "$filter": {
-                        "input": "$" + prefix + filter_field,
+                        "input": "$" + filter_field,
                         "cond": cond,
                     }
                 }
@@ -1826,7 +2173,7 @@ def _get_filter_list_field_pipeline(
     ]
 
     if only_matches:
-        match_expr = _get_list_field_only_matches_expr(prefix + new_field)
+        match_expr = _get_list_field_only_matches_expr(new_field)
         pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
     return pipeline
@@ -1837,7 +2184,10 @@ def _get_list_field_only_matches_expr(field):
 
 
 def _get_filter_frames_list_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=True, prefix=""
+    filter_field,
+    new_field,
+    filter_arg,
+    only_matches=True,
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
     label_field, labels_list = new_field.split(".")[-2:]
@@ -1855,15 +2205,13 @@ def _get_filter_frames_list_field_pipeline(
                             "$mergeObjects": [
                                 "$$frame",
                                 {
-                                    prefix
-                                    + label_field: {
+                                    label_field: {
                                         "$mergeObjects": [
-                                            "$$frame." + prefix + old_field,
+                                            "$$frame." + old_field,
                                             {
                                                 labels_list: {
                                                     "$filter": {
                                                         "input": "$$frame."
-                                                        + prefix
                                                         + filter_field,
                                                         "cond": cond,
                                                     }
@@ -1881,9 +2229,7 @@ def _get_filter_frames_list_field_pipeline(
     ]
 
     if only_matches:
-        match_expr = _get_frames_list_field_only_matches_expr(
-            prefix + new_field
-        )
+        match_expr = _get_frames_list_field_only_matches_expr(new_field)
         pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
     return pipeline
@@ -1908,7 +2254,8 @@ def _get_trajectories_filter(sample_collection, field, filter_arg):
         filter_expr = (F("index") != None) & foe.ViewExpression(cond)
         reduce_expr = VALUE.extend(
             (F(path) != None).if_else(
-                F(path).filter(filter_expr).map(F("index")), [],
+                F(path).filter(filter_expr).map(F("index")),
+                [],
             )
         )
     elif issubclass(label_type, (fol.Detection, fol.Polyline, fol.Keypoint)):
@@ -1958,181 +2305,345 @@ def _get_list_field_mongo_filter(filter_arg):
     return filter_arg
 
 
-class _FilterListField(FilterField):
-    def _get_new_field(self, sample_collection):
-        new_field, _ = sample_collection._handle_frame_field(self._new_field)
-        return new_field
+class FilterKeypoints(ViewStage):
+    """Filters the individual :attr:`fiftyone.core.labels.Keypoint.points`
+    elements in the specified keypoints field of each sample in the
+    collection.
 
-    @property
-    def _filter_field(self):
-        raise NotImplementedError("subclasses must implement `_filter_field`")
+    .. note::
 
-    def get_filtered_fields(self, sample_collection, frames=False):
-        list_path, is_frame_field = sample_collection._handle_frame_field(
-            self._filter_field
+        Use :class:`FilterLabels` if you simply want to filter entire
+        :class:`fiftyone.core.labels.Keypoint` objects in a field.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    predictions=fo.Keypoints(
+                        keypoints=[
+                            fo.Keypoint(
+                                label="person",
+                                points=[(0.1, 0.1), (0.1, 0.9), (0.9, 0.9), (0.9, 0.1)],
+                                confidence=[0.7, 0.8, 0.95, 0.99],
+                            )
+                        ]
+                    )
+                ),
+                fo.Sample(filepath="/path/to/image2.png"),
+            ]
         )
 
-        if frames == is_frame_field:
-            return [list_path]
+        dataset.default_skeleton = fo.KeypointSkeleton(
+            labels=["nose", "left eye", "right eye", "left ear", "right ear"],
+            edges=[[0, 1, 2, 0], [0, 3], [0, 4]],
+        )
 
-        return None
+        #
+        # Only include keypoints in the `predictions` field whose
+        # `confidence` is greater than 0.9
+        #
+
+        stage = fo.FilterKeypoints("predictions", filter=F("confidence") > 0.9)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include keypoints in the `predictions` field with less than
+        # four points
+        #
+
+        stage = fo.FilterKeypoints("predictions", labels=["left eye", "right eye"])
+        view = dataset.add_stage(stage)
+
+    Args:
+        field: the :class:`fiftyone.core.labels.Keypoint` or
+            :class:`fiftyone.core.labels.Keypoints` field to filter
+        filter (None): a :class:`fiftyone.core.expressions.ViewExpression`
+            or `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean, like ``F("confidence") > 0.5`` or
+            ``F("occluded") == False``, to apply elementwise to the
+            specified field, which must be a list of same length as
+            :attr:`fiftyone.core.labels.Keypoint.points`
+        labels (None): a label or iterable of keypoint skeleton labels to keep
+        only_matches (True): whether to only include keypoints/samples with
+            at least one point after filtering (True) or include all
+            keypoints/samples (False)
+    """
+
+    def __init__(
+        self,
+        field,
+        filter=None,
+        labels=None,
+        only_matches=True,
+        _new_field=None,
+    ):
+        self._field = field
+        self._filter = filter
+        self._labels = labels
+        self._only_matches = only_matches
+        self._new_field = _new_field or field
+
+        self._filter_dict = None
+        self._filter_field = None
+        self._filter_expr = None
+
+        self._validate_params()
+
+    @property
+    def filter(self):
+        """The filter expression."""
+        return self._filter
+
+    @property
+    def labels(self):
+        """An iterable of keypoint skeleton labels to keep."""
+        return self._labels
+
+    @property
+    def only_matches(self):
+        """Whether to only include samples that match the filter."""
+        return self._only_matches
 
     def to_mongo(self, sample_collection):
-        filter_field, is_frame_field = sample_collection._handle_frame_field(
-            self._filter_field
+        label_type, root_path = sample_collection._get_label_field_path(
+            self._field
+        )
+
+        supported_types = (fol.Keypoint, fol.Keypoints)
+        if label_type not in supported_types:
+            raise ValueError(
+                "Field '%s' has type %s; expected %s"
+                % (self._field, label_type, supported_types)
+            )
+
+        is_list_field = issubclass(label_type, fol.Keypoints)
+        _, points_path = sample_collection._get_label_field_path(
+            self._field, "points"
         )
         new_field = self._get_new_field(sample_collection)
 
-        if is_frame_field:
-            _make_pipeline = _get_filter_frames_list_field_pipeline
+        pipeline = []
+
+        if self._new_field != self._field:
+            field, _ = sample_collection._handle_frame_field(self._field)
+            _pipeline, _ = sample_collection._make_set_field_pipeline(
+                self._new_field,
+                F(field),
+                allow_missing=True,
+                embedded_root=True,
+            )
+            pipeline.extend(_pipeline)
+
+        if self._filter_expr is not None:
+            filter_expr = (F(self._filter_field) != None).if_else(
+                F.zip(F("points"), F(self._filter_field)).map(
+                    (F()[1].apply(self._filter_expr)).if_else(
+                        F()[0],
+                        [float("nan"), float("nan")],
+                    )
+                ),
+                F("points"),
+            )
+
+            _pipeline, _ = sample_collection._make_set_field_pipeline(
+                points_path,
+                filter_expr,
+                embedded_root=True,
+                allow_missing=True,
+                new_field=self._new_field,
+            )
+            pipeline.extend(_pipeline)
+
+        if self._labels is not None:
+            skeleton = sample_collection.get_skeleton(self._field)
+            if skeleton is None:
+                raise ValueError(
+                    "No keypoint skeleton found for field '%s'" % self._field
+                )
+
+            if skeleton.labels is None:
+                raise ValueError(
+                    "Keypoint skeleton for field '%s' has no labels"
+                    % self._field
+                )
+
+            if etau.is_str(self._labels):
+                labels = {self._labels}
+            else:
+                labels = set(self._labels)
+
+            inds = [
+                idx
+                for idx, label in enumerate(skeleton.labels)
+                if label in labels
+            ]
+
+            labels_expr = F.enumerate(F("points")).map(
+                F()[0]
+                .is_in(inds)
+                .if_else(F()[1], [float("nan"), float("nan")])
+            )
+
+            _pipeline, _ = sample_collection._make_set_field_pipeline(
+                points_path,
+                labels_expr,
+                embedded_root=True,
+                allow_missing=True,
+                new_field=self._new_field,
+            )
+            pipeline.extend(_pipeline)
+
+        if self._only_matches:
+            # Remove Keypoint objects with no points after filtering
+            if is_list_field:
+                has_points = (
+                    F("points").filter(F()[0] != float("nan")).length() > 0
+                )
+                match_expr = F("keypoints").filter(has_points)
+            else:
+                field, _ = sample_collection._handle_frame_field(new_field)
+                has_points = (
+                    F(field + ".points")
+                    .filter(F()[0] != float("nan"))
+                    .length()
+                    > 0
+                )
+                match_expr = has_points.if_else(F(field), None)
+
+            _pipeline, _ = sample_collection._make_set_field_pipeline(
+                root_path,
+                match_expr,
+                embedded_root=True,
+                allow_missing=True,
+                new_field=self._new_field,
+            )
+            pipeline.extend(_pipeline)
+
+            # Remove samples with no Keypoint objects after filtering
+            match_expr = _get_label_field_only_matches_expr(
+                sample_collection, self._field, new_field=self._new_field
+            )
+
+            pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
+
+        return pipeline
+
+    def _get_new_field(self, sample_collection):
+        field, _ = sample_collection._handle_frame_field(self._field)
+        new_field, _ = sample_collection._handle_frame_field(self._new_field)
+
+        if "." in field:
+            return ".".join([new_field, field.split(".")[-1]])
+
+        return new_field
+
+    def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos():
+            return False
+
+        return sample_collection._is_frame_field(self._field)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self._field)
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["filter", self._filter_dict],
+            ["labels", self._labels],
+            ["only_matches", self._only_matches],
+        ]
+
+    def _validate_params(self):
+        if self._filter is None:
+            return
+
+        if isinstance(self._filter, foe.ViewExpression):
+            # note: $$expr is used here because that's what
+            # `ViewExpression.apply()` uses
+            filter_dict = self._filter.to_mongo(prefix="$$expr")
+        elif not isinstance(self._filter, dict):
+            raise ValueError(
+                "Filter must be a ViewExpression or a MongoDB aggregation "
+                "expression defining a filter; found '%s'" % self._filter
+            )
         else:
-            _make_pipeline = _get_filter_list_field_pipeline
+            filter_dict = self._filter
 
-        return _make_pipeline(
-            filter_field,
-            new_field,
-            self._filter,
-            only_matches=self._only_matches,
-        )
+        filter_field, d = _extract_filter_field(filter_dict)
 
-    def _get_mongo_filter(self):
-        return _get_list_field_mongo_filter(self._filter)
+        self._filter_dict = filter_dict
+        self._filter_field = filter_field
+        self._filter_expr = foe.ViewExpression(d)
 
-    def validate(self, sample_collection):
-        raise NotImplementedError("subclasses must implement `validate()`")
-
-
-@deprecated(reason="Use FilterLabels instead")
-class FilterClassifications(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Classification` elements in the
-    specified :class:`fiftyone.core.labels.Classifications` field of each
-    sample in a collection.
-
-    .. warning::
-
-        This class is deprecated and will be removed in a future release.
-        Use the drop-in replacement :class:`FilterLabels` instead.
-
-    Args:
-        field: the field to filter, which must be a
-            :class:`fiftyone.core.labels.Classifications`
-        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-        only_matches (True): whether to only include samples with at least
-            one classification after filtering (True) or include all samples
-            (False)
-    """
-
-    @property
-    def _filter_field(self):
-        return self.field + ".classifications"
-
-    def validate(self, sample_collection):
-        sample_collection.validate_field_type(
-            self.field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Classifications,
-        )
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "field", "type": "field|str"},
+            {
+                "name": "filter",
+                "type": "NoneType|json",
+                "placeholder": "filter",
+                "default": "None",
+            },
+            {
+                "name": "labels",
+                "type": "NoneType|list<str>|str",
+                "placeholder": "labels",
+                "default": "None",
+            },
+            {
+                "name": "only_matches",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "only matches (default=True)",
+            },
+        ]
 
 
-@deprecated(reason="Use FilterLabels instead")
-class FilterDetections(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Detection` elements in the
-    specified :class:`fiftyone.core.labels.Detections` field of each sample in
-    a collection.
+def _extract_filter_field(val):
+    field = None
 
-    .. warning::
+    # note: $$expr is used here because that's what `F.apply()` uses
+    if etau.is_str(val) and val.startswith("$$expr."):
+        val, field = val.split(".", 1)
 
-        This class is deprecated and will be removed in a future release.
-        Use the drop-in replacement :class:`FilterLabels` instead.
+    if isinstance(val, dict):
+        _val = {}
+        for k, v in val.items():
+            _field, _k = _extract_filter_field(k)
+            if _field is not None:
+                field = _field
 
-    Args:
-        field: the field to filter, which must be a
-            :class:`fiftyone.core.labels.Detections`
-        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-        only_matches (True): whether to only include samples with at least
-            one detection after filtering (True) or include all samples (False)
-    """
+            _field, _v = _extract_filter_field(v)
+            if _field is not None:
+                field = _field
 
-    @property
-    def _filter_field(self):
-        return self.field + ".detections"
+            _val[_k] = _v
 
-    def validate(self, sample_collection):
-        sample_collection.validate_field_type(
-            self.field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Detections,
-        )
+        return field, _val
 
+    if isinstance(val, list):
+        _val = []
+        for v in val:
+            _field, _v = _extract_filter_field(v)
+            if _field is not None:
+                field = _field
 
-@deprecated(reason="Use FilterLabels instead")
-class FilterPolylines(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Polyline` elements in the
-    specified :class:`fiftyone.core.labels.Polylines` field of each sample in a
-    collection.
+            _val.append(_v)
 
-    .. warning::
+        return field, _val
 
-        This class is deprecated and will be removed in a future release.
-        Use the drop-in replacement :class:`FilterLabels` instead.
-
-    Args:
-        field: the field to filter, which must be a
-            :class:`fiftyone.core.labels.Polylines`
-        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-        only_matches (True): whether to only include samples with at least
-            one polyline after filtering (True) or include all samples (False)
-    """
-
-    @property
-    def _filter_field(self):
-        return self.field + ".polylines"
-
-    def validate(self, sample_collection):
-        sample_collection.validate_field_type(
-            self.field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Polylines,
-        )
-
-
-@deprecated(reason="Use FilterLabels instead")
-class FilterKeypoints(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
-    specified :class:`fiftyone.core.labels.Keypoints` field of each sample in a
-    collection.
-
-    .. warning::
-
-        This class is deprecated and will be removed in a future release.
-        Use the drop-in replacement :class:`FilterLabels` instead.
-
-    Args:
-        field: the field to filter, which must be a
-            :class:`fiftyone.core.labels.Keypoints`
-        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-        only_matches (True): whether to only include samples with at least
-            one keypoint after filtering (True) or include all samples (False)
-    """
-
-    @property
-    def _filter_field(self):
-        return self.field + ".keypoints"
-
-    def validate(self, sample_collection):
-        sample_collection.validate_field_type(
-            self.field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Keypoints,
-        )
+    return field, val
 
 
 class _GeoStage(ViewStage):
@@ -2479,6 +2990,12 @@ class GroupBy(ViewStage):
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the value to group by
+        match_expr (None): an optional
+            :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that defines which groups to include in the output view. If
+            provided, this expression will be evaluated on the list of samples
+            in each group
         sort_expr (None): an optional
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -2488,8 +3005,15 @@ class GroupBy(ViewStage):
         reverse (False): whether to return the results in descending order
     """
 
-    def __init__(self, field_or_expr, sort_expr=None, reverse=False):
+    def __init__(
+        self,
+        field_or_expr,
+        match_expr=None,
+        sort_expr=None,
+        reverse=False,
+    ):
         self._field_or_expr = field_or_expr
+        self._match_expr = match_expr
         self._sort_expr = sort_expr
         self._reverse = reverse
 
@@ -2499,9 +3023,13 @@ class GroupBy(ViewStage):
         return self._field_or_expr
 
     @property
+    def match_expr(self):
+        """An expression to apply to select groups in the output view."""
+        return self._match_expr
+
+    @property
     def sort_expr(self):
-        """An expression defining how the sort the groups in the output view.
-        """
+        """An expression defining how the sort the groups in the output view."""
         return self._sort_expr
 
     @property
@@ -2511,6 +3039,7 @@ class GroupBy(ViewStage):
 
     def to_mongo(self, _):
         field_or_expr = self._get_mongo_field_or_expr()
+        match_expr = self._get_mongo_match_expr()
         sort_expr = self._get_mongo_sort_expr()
 
         if etau.is_str(field_or_expr):
@@ -2521,6 +3050,9 @@ class GroupBy(ViewStage):
         pipeline = [
             {"$group": {"_id": group_expr, "docs": {"$push": "$$ROOT"}}}
         ]
+
+        if match_expr is not None:
+            pipeline.append({"$match": match_expr})
 
         if sort_expr is not None:
             order = -1 if self._reverse else 1
@@ -2539,7 +3071,7 @@ class GroupBy(ViewStage):
         return pipeline
 
     def _needs_frames(self, sample_collection):
-        if sample_collection.media_type != fom.VIDEO:
+        if not sample_collection._contains_videos():
             return False
 
         field_or_expr = self._get_mongo_field_or_expr()
@@ -2547,7 +3079,18 @@ class GroupBy(ViewStage):
         if etau.is_str(field_or_expr):
             return sample_collection._is_frame_field(field_or_expr)
 
-        return _is_frames_expr(field_or_expr)
+        return foe.is_frames_expr(field_or_expr)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        field_or_expr = self._get_mongo_field_or_expr()
+
+        if etau.is_str(field_or_expr):
+            return sample_collection._get_group_slices(field_or_expr)
+
+        return foe.get_group_slices(field_or_expr)
 
     def _get_mongo_field_or_expr(self):
         if isinstance(self._field_or_expr, foe.ViewField):
@@ -2558,6 +3101,12 @@ class GroupBy(ViewStage):
 
         return self._field_or_expr
 
+    def _get_mongo_match_expr(self):
+        if isinstance(self._match_expr, foe.ViewExpression):
+            return self._match_expr.to_mongo(prefix="$docs")
+
+        return self._match_expr
+
     def _get_mongo_sort_expr(self):
         if isinstance(self._sort_expr, foe.ViewExpression):
             return self._sort_expr.to_mongo(prefix="$docs")
@@ -2567,6 +3116,7 @@ class GroupBy(ViewStage):
     def _kwargs(self):
         return [
             ["field_or_expr", self._get_mongo_field_or_expr()],
+            ["match_expr", self._get_mongo_match_expr()],
             ["sort_expr", self._get_mongo_sort_expr()],
             ["reverse", self._reverse],
         ]
@@ -2578,6 +3128,12 @@ class GroupBy(ViewStage):
                 "name": "field_or_expr",
                 "type": "field|str|json",
                 "placeholder": "field or expression",
+            },
+            {
+                "name": "match_expr",
+                "type": "NoneType|json",
+                "placeholder": "match expression",
+                "default": "None",
             },
             {
                 "name": "sort_expr",
@@ -2766,7 +3322,8 @@ class LimitLabels(ViewStage):
         root, leaf = self._labels_list_field.rsplit(".", 1)
 
         expr = (F() != None).if_else(
-            F().set_field(leaf, F(leaf)[:limit]), None,
+            F().set_field(leaf, F(leaf)[:limit]),
+            None,
         )
         pipeline, _ = sample_collection._make_set_field_pipeline(root, expr)
 
@@ -2774,6 +3331,12 @@ class LimitLabels(ViewStage):
 
     def _needs_frames(self, sample_collection):
         return self._is_frame_field
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self._field)
 
     def _kwargs(self):
         return [
@@ -2906,7 +3469,16 @@ class MapLabels(ViewStage):
         return pipeline
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos():
+            return False
+
         return sample_collection._is_frame_field(self._field)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self._field)
 
     def _kwargs(self):
         return [
@@ -3063,12 +3635,22 @@ class SetField(ViewStage):
         return self._pipeline
 
     def _needs_frames(self, sample_collection):
-        if sample_collection.media_type != fom.VIDEO:
+        if not sample_collection._contains_videos():
             return False
 
         is_frame_field = sample_collection._is_frame_field(self._field)
-        is_frame_expr = _is_frames_expr(self._get_mongo_expr())
+        is_frame_expr = foe.is_frames_expr(self._get_mongo_expr())
         return is_frame_field or is_frame_expr
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        group_slices = set()
+        group_slices.update(sample_collection._get_group_slices(self._field))
+        group_slices.update(foe.get_group_slices(self._get_mongo_expr()))
+
+        return list(group_slices)
 
     def _kwargs(self):
         return [
@@ -3233,10 +3815,16 @@ class Match(ViewStage):
         return [{"$match": self._get_mongo_expr()}]
 
     def _needs_frames(self, sample_collection):
-        if sample_collection.media_type != fom.VIDEO:
+        if not sample_collection._contains_videos():
             return False
 
-        return _is_frames_expr(self._get_mongo_expr())
+        return foe.is_frames_expr(self._get_mongo_expr())
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return foe.get_group_slices(self._get_mongo_expr())
 
     def _get_mongo_expr(self):
         if not isinstance(self._filter, foe.ViewExpression):
@@ -3257,6 +3845,264 @@ class Match(ViewStage):
     @classmethod
     def _params(cls):
         return [{"name": "filter", "type": "json", "placeholder": ""}]
+
+
+class SelectGroupSlices(ViewStage):
+    """Selects the samples in a group collection from the given slice(s).
+
+    The returned view is a flattened non-grouped view containing only the
+    slice(s) of interest.
+
+    .. note::
+
+        This stage performs a ``$lookup`` that pulls the requested slice(s) for
+        each sample in the input collection from the source dataset. As a
+        result, this stage always emits *unfiltered samples*.
+
+    Examples::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="ego")
+
+        group1 = fo.Group()
+        group2 = fo.Group()
+
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/left-image1.jpg",
+                    group=group1.element("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/video1.mp4",
+                    group=group1.element("ego"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/right-image1.jpg",
+                    group=group1.element("right"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/left-image2.jpg",
+                    group=group2.element("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/video2.mp4",
+                    group=group2.element("ego"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/right-image2.jpg",
+                    group=group2.element("right"),
+                ),
+            ]
+        )
+
+        #
+        # Retrieve the samples from the "ego" group slice
+        #
+
+        stage = fo.SelectGroupSlices("ego")
+        view = dataset.add_stage(stage)
+
+        #
+        # Retrieve the samples from the "left" or "right" group slices
+        #
+
+        stage = fo.SelectGroupSlices(["left", "right"])
+        view = dataset.add_stage(stage)
+
+        #
+        # Retrieve all image samples
+        #
+
+        stage = fo.SelectGroupSlices(media_type="image")
+        view = dataset.add_stage(stage)
+
+    Args:
+        slices (None): a group slice or iterable of group slices to select.
+            If neither argument is provided, a flattened list of all samples is
+            returned
+        media_type (None): a media type whose slice(s) to select
+    """
+
+    def __init__(self, slices=None, media_type=None, _allow_mixed=False):
+        self._slices = slices
+        self._media_type = media_type
+        self._allow_mixed = _allow_mixed
+
+    @property
+    def slices(self):
+        """The group slice(s) to select."""
+        return self._slices
+
+    @property
+    def media_type(self):
+        """The media type whose slices to select."""
+        return self._media_type
+
+    def to_mongo(self, sample_collection):
+        if isinstance(sample_collection, fod.Dataset) or (
+            isinstance(sample_collection, fov.DatasetView)
+            and len(sample_collection._stages) == 0
+        ):
+            return self._make_root_pipeline(sample_collection)
+
+        return self._make_pipeline(sample_collection)
+
+    def _make_root_pipeline(self, sample_collection):
+        group_path = sample_collection.group_field + ".name"
+        slices = self._get_slices(sample_collection)
+
+        if etau.is_container(slices):
+            return [{"$match": {"$expr": {"$in": ["$" + group_path, slices]}}}]
+
+        if slices is not None:
+            return [{"$match": {"$expr": {"$eq": ["$" + group_path, slices]}}}]
+
+        return []
+
+    def _make_pipeline(self, sample_collection):
+        group_field = sample_collection.group_field
+        id_field = group_field + "._id"
+        name_field = group_field + ".name"
+
+        slices = self._get_slices(sample_collection)
+        expr = F(id_field) == "$$group_id"
+        if isinstance(slices, list):
+            expr &= F(name_field).is_in(slices)
+        elif slices is not None:
+            expr &= F(name_field) == slices
+
+        return [
+            {"$project": {group_field: True}},
+            {
+                "$lookup": {
+                    "from": sample_collection._dataset._sample_collection_name,
+                    "let": {"group_id": "$" + id_field},
+                    "pipeline": [{"$match": {"$expr": expr.to_mongo()}}],
+                    "as": "groups",
+                }
+            },
+            {"$unwind": "$groups"},
+            {"$replaceRoot": {"newRoot": "$groups"}},
+        ]
+
+    def get_media_type(self, sample_collection):
+        group_field = sample_collection.group_field
+        group_media_types = sample_collection.group_media_types
+
+        slices = self._get_slices(sample_collection)
+
+        # All group slices
+        if slices is None:
+            media_types = set(group_media_types.values())
+
+            if len(media_types) > 1:
+                if self._allow_mixed:
+                    return fom.MIXED
+
+                raise ValueError(
+                    "Cannot select all groups when dataset contains multiple "
+                    "media types %s" % media_types
+                )
+
+            return next(iter(group_media_types.values()), None)
+
+        # Multiple group slices
+        if isinstance(slices, list):
+            media_types = set()
+
+            for _slice in slices:
+                if _slice not in group_media_types:
+                    raise ValueError(
+                        "%s has no group slice '%s'"
+                        % (type(sample_collection), _slice)
+                    )
+
+                media_types.add(group_media_types[_slice])
+
+            if len(media_types) > 1:
+                if self._allow_mixed:
+                    return fom.MIXED
+
+                raise ValueError(
+                    "Cannot select slices %s with different media types %s"
+                    % (slices, media_types)
+                )
+
+            return next(iter(media_types))
+
+        # One group slice
+        if slices not in group_media_types:
+            raise ValueError(
+                "%s has no group slice '%s'"
+                % (type(sample_collection), slices)
+            )
+
+        return group_media_types[slices]
+
+    def validate(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            raise ValueError("%s has no groups" % type(sample_collection))
+
+    def _get_slices(self, sample_collection):
+        if self._media_type is not None:
+            group_media_types = sample_collection.group_media_types
+            slices = [
+                slice_name
+                for slice_name, media_type in group_media_types.items()
+                if media_type == self._media_type
+            ]
+        else:
+            slices = self._slices
+
+        if not etau.is_container(slices):
+            return slices
+
+        slices = list(slices)
+
+        if len(slices) == 1:
+            return slices[0]
+
+        return slices
+
+    def _get_group_media_types(self, sample_collection):
+        group_media_types = sample_collection.group_media_types
+        slices = self._get_slices(sample_collection)
+
+        if etau.is_container(slices):
+            slices = set(slices)
+        elif slices is not None:
+            slices = {slices}
+        else:
+            slices = set(group_media_types.keys())
+
+        return {
+            slice_name: media_type
+            for slice_name, media_type in group_media_types.items()
+            if slice_name in slices
+        }
+
+    def _kwargs(self):
+        return [["slices", self._slices], ["media_type", self._media_type]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "slices",
+                "type": "NoneType|list<str>|str",
+                "placeholder": "slices (default=None)",
+                "default": "None",
+            },
+            {
+                "name": "media_type",
+                "type": "NoneType|str",
+                "placeholder": "media_type (default=None)",
+                "default": "None",
+            },
+        ]
 
 
 class MatchFrames(ViewStage):
@@ -3634,6 +4480,9 @@ class MatchLabels(ViewStage):
         return self._filter
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos():
+            return False
+
         if self._labels is not None:
             fields = self._labels_map.keys()
         elif self._fields is not None:
@@ -3642,6 +4491,19 @@ class MatchLabels(ViewStage):
             fields = sample_collection._get_label_fields()
 
         return any(sample_collection._is_frame_field(f) for f in fields)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        if self._labels is not None:
+            fields = self._labels_map.keys()
+        elif self._fields is not None:
+            fields = self._fields
+        else:
+            fields = sample_collection._get_label_fields()
+
+        return sample_collection._get_group_slices(fields)
 
     def _make_labels_pipeline(self, sample_collection):
         if self._bool:
@@ -3777,11 +4639,8 @@ def _replace_prefix(val, old, new):
 
 
 class MatchTags(ViewStage):
-    """Returns a view containing the samples in the collection that have (or do
-    not have) any of the given tag(s).
-
-    To match samples that must contain multiple tags, chain multiple
-    :class:`MatchTags` stages together.
+    """Returns a view containing the samples in the collection that have or
+    don't have any/all of the given tag(s).
 
     Examples::
 
@@ -3790,20 +4649,10 @@ class MatchTags(ViewStage):
         dataset = fo.Dataset()
         dataset.add_samples(
             [
-                fo.Sample(
-                    filepath="/path/to/image1.png",
-                    tags=["train"],
-                    ground_truth=fo.Classification(label="cat"),
-                ),
-                fo.Sample(
-                    filepath="/path/to/image2.png",
-                    tags=["test"],
-                    ground_truth=fo.Classification(label="cat"),
-                ),
-                fo.Sample(
-                    filepath="/path/to/image3.png",
-                    ground_truth=None,
-                ),
+                fo.Sample(filepath="image1.png", tags=["train"]),
+                fo.Sample(filepath="image2.png", tags=["test"]),
+                fo.Sample(filepath="image3.png", tags=["train", "test"]),
+                fo.Sample(filepath="image4.png"),
             ]
         )
 
@@ -3815,26 +4664,49 @@ class MatchTags(ViewStage):
         view = dataset.add_stage(stage)
 
         #
-        # Only include samples that have either the "test" or "train" tag
+        # Only include samples that do not have the "test" tag
+        #
+
+        stage = fo.MatchTags("test", bool=False)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples that have the "test" or "train" tags
         #
 
         stage = fo.MatchTags(["test", "train"])
         view = dataset.add_stage(stage)
 
         #
-        # Only include samples that do not have the "train" tag
+        # Only include samples that have the "test" and "train" tags
         #
 
-        stage = fo.MatchTags("train", bool=False)
+        stage = fo.MatchTags(["test", "train"], all=True)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples that do not have the "test" or "train" tags
+        #
+
+        stage = fo.MatchTags(["test", "train"], bool=False)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples that do not have the "test" and "train" tags
+        #
+
+        stage = fo.MatchTags(["test", "train"], bool=False, all=True)
         view = dataset.add_stage(stage)
 
     Args:
         tags: the tag or iterable of tags to match
         bool (None): whether to match samples that have (None or True) or do
             not have (False) the given tags
+        all (False): whether to match samples that have (or don't have) all
+            (True) or any (None or False) of the given tags
     """
 
-    def __init__(self, tags, bool=None):
+    def __init__(self, tags, bool=None, all=False):
         if etau.is_str(tags):
             tags = [tags]
         else:
@@ -3845,6 +4717,7 @@ class MatchTags(ViewStage):
 
         self._tags = tags
         self._bool = bool
+        self._all = all
 
     @property
     def tags(self):
@@ -3858,14 +4731,31 @@ class MatchTags(ViewStage):
         """
         return self._bool
 
+    @property
+    def all(self):
+        """Whether to match samples that have (or don't have) all (True) or any
+        (False) of the given tags.
+        """
+        return self._all
+
     def to_mongo(self, _):
         if self._bool:
+            if self._all:
+                # All of the tags
+                return [{"$match": {"tags": {"$all": self._tags}}}]
+
+            # Any of the tags
             return [{"$match": {"tags": {"$in": self._tags}}}]
 
+        if self._all:
+            # Not all of the tags
+            return [{"$match": {"tags": {"$not": {"$all": self._tags}}}}]
+
+        # Not any of the tags
         return [{"$match": {"tags": {"$nin": self._tags}}}]
 
     def _kwargs(self):
-        return [["tags", self._tags], ["bool", self._bool]]
+        return [["tags", self._tags], ["bool", self._bool], ["all", self._all]]
 
     @classmethod
     def _params(cls):
@@ -3880,6 +4770,12 @@ class MatchTags(ViewStage):
                 "type": "bool",
                 "default": "None",
                 "placeholder": "bool (default=None)",
+            },
+            {
+                "name": "all",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "all (default=False)",
             },
         ]
 
@@ -3986,8 +4882,18 @@ class Mongo(ViewStage):
         return self._pipeline
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos():
+            return False
+
         # The pipeline could be anything; always attach frames for videos
-        return sample_collection.media_type == fom.VIDEO
+        return True
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        # The pipeline could by anything; always attach all group slices
+        return list(sample_collection.group_media_types.keys())
 
     def _kwargs(self):
         return [["pipeline", self._pipeline]]
@@ -4023,19 +4929,22 @@ class Select(ViewStage):
 
             -   a sample ID
             -   an iterable of sample IDs
+            -   an iterable of booleans of same length as the collection
+                encoding which samples to select
             -   a :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.sample.SampleView`
-            -   an iterable of sample IDs
-            -   a :class:`fiftyone.core.collections.SampleCollection`
             -   an iterable of :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.sample.SampleView` instances
+            -   a :class:`fiftyone.core.collections.SampleCollection`
 
         ordered (False): whether to sort the samples in the returned view to
             match the order of the provided IDs
     """
 
     def __init__(self, sample_ids, ordered=False):
-        self._sample_ids = _get_sample_ids(sample_ids)
+        sample_ids, bools = _parse_sample_ids(sample_ids)
+        self._sample_ids = sample_ids
+        self._bools = bools
         self._ordered = ordered
 
     @property
@@ -4049,17 +4958,29 @@ class Select(ViewStage):
         return self._ordered
 
     def to_mongo(self, _):
+        if self._bools:
+            raise ValueError(
+                "`validate()` must be called before using this stage"
+            )
+
         ids = [ObjectId(_id) for _id in self._sample_ids]
 
-        if not self._ordered:
-            return [{"$match": {"_id": {"$in": ids}}}]
+        pipeline = [{"$match": {"_id": {"$in": ids}}}]
 
-        return [
-            {"$set": {"_select_order": {"$indexOfArray": [ids, "$_id"]}}},
-            {"$match": {"_select_order": {"$gt": -1}}},
-            {"$sort": {"_select_order": 1}},
-            {"$unset": "_select_order"},
-        ]
+        if self._ordered:
+            pipeline.extend(
+                [
+                    {
+                        "$set": {
+                            "_select_order": {"$indexOfArray": [ids, "$_id"]}
+                        }
+                    },
+                    {"$sort": {"_select_order": 1}},
+                    {"$unset": "_select_order"},
+                ]
+            )
+
+        return pipeline
 
     def _kwargs(self):
         return [["sample_ids", self._sample_ids], ["ordered", self._ordered]]
@@ -4079,6 +5000,13 @@ class Select(ViewStage):
                 "placeholder": "ordered (default=False)",
             },
         ]
+
+    def validate(self, sample_collection):
+        if self._bools:
+            ids = sample_collection.values("id")
+            selectors = self._sample_ids
+            self._sample_ids = list(itertools.compress(ids, selectors))
+            self._bools = False
 
 
 class SelectBy(ViewStage):
@@ -4153,9 +5081,7 @@ class SelectBy(ViewStage):
         return self._ordered
 
     def to_mongo(self, sample_collection):
-        field_name, is_id_field, _ = sample_collection._handle_id_fields(
-            self._field
-        )
+        path, is_id_field, _ = sample_collection._handle_id_fields(self._field)
 
         if is_id_field:
             values = [
@@ -4165,21 +5091,24 @@ class SelectBy(ViewStage):
         else:
             values = self._values
 
-        if not self._ordered:
-            return [{"$match": {field_name: {"$in": values}}}]
+        pipeline = [{"$match": {path: {"$in": values}}}]
 
-        return [
-            {
-                "$set": {
-                    "_select_order": {
-                        "$indexOfArray": [values, "$" + field_name]
-                    }
-                }
-            },
-            {"$match": {"_select_order": {"$gt": -1}}},
-            {"$sort": {"_select_order": 1}},
-            {"$unset": "_select_order"},
-        ]
+        if self._ordered:
+            pipeline.extend(
+                [
+                    {
+                        "$set": {
+                            "_select_order": {
+                                "$indexOfArray": [values, "$" + path]
+                            }
+                        }
+                    },
+                    {"$sort": {"_select_order": 1}},
+                    {"$unset": "_select_order"},
+                ]
+            )
+
+        return pipeline
 
     def _kwargs(self):
         return [
@@ -4221,17 +5150,30 @@ class SelectFields(ViewStage):
             [
                 fo.Sample(
                     filepath="/path/to/image1.png",
-                    numeric_field=1.0,
-                    numeric_list_field=[-1, 0, 1],
+                    uniqueness=1.0,
+                    ground_truth=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                mood="surly",
+                                age=51,
+                            ),
+                            fo.Detection(
+                                label="dog",
+                                bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                mood="happy",
+                                age=52,
+                            ),
+                        ]
+                    )
                 ),
                 fo.Sample(
                     filepath="/path/to/image2.png",
-                    numeric_field=-1.0,
-                    numeric_list_field=[-2, -1, 0, 1],
+                    uniqueness=0.0,
                 ),
                 fo.Sample(
                     filepath="/path/to/image3.png",
-                    numeric_field=None,
                 ),
             ]
         )
@@ -4244,15 +5186,24 @@ class SelectFields(ViewStage):
         view = dataset.add_stage(stage)
 
         #
-        # Include only the `numeric_field` field (and the default fields) on
-        # each sample
+        # Include only the `uniqueness` field (and the default fields) on each
+        # sample
         #
 
-        stage = fo.SelectFields("numeric_field")
+        stage = fo.SelectFields("uniqueness")
+        view = dataset.add_stage(stage)
+
+        #
+        # Include only the `mood` attribute (and the default attributes) of
+        # each `Detection` in the `ground_truth` field
+        #
+
+        stage = fo.SelectFields("ground_truth.detections.mood")
         view = dataset.add_stage(stage)
 
     Args:
-        field_names (None): a field name or iterable of field names to select
+        field_names (None): a field name or iterable of field names to select.
+            May contain ``embedded.field.name`` as well
     """
 
     def __init__(self, field_names=None, _allow_missing=False):
@@ -4270,71 +5221,100 @@ class SelectFields(ViewStage):
         return self._field_names or []
 
     def get_selected_fields(self, sample_collection, frames=False):
-        return self._get_selected_fields(
-            sample_collection, frames=frames, use_db_fields=False
-        )
+        if frames:
+            return self._get_selected_frame_fields(sample_collection)
+
+        return self._get_selected_fields(sample_collection)
+
+    def _get_selected_fields(self, sample_collection, use_db_fields=False):
+        selected_paths = set()
+        roots = {None}  # must always select default fields
+
+        if sample_collection._contains_videos():
+            selected_paths.add("frames")
+            paths, _ = fou.split_frame_fields(self.field_names)
+        else:
+            paths = self.field_names
+
+        for path in paths:
+            selected_paths.add(path)
+            roots.update(_get_roots(path))
+
+        for path in roots:
+            selected_paths.update(
+                sample_collection._get_default_sample_fields(
+                    path=path, include_private=True
+                )
+            )
+
+        _remove_path_collisions(selected_paths)
+        selected_paths = list(selected_paths)
+
+        if use_db_fields:
+            return sample_collection._handle_db_fields(selected_paths)
+
+        return selected_paths
+
+    def _get_selected_frame_fields(
+        self, sample_collection, use_db_fields=False
+    ):
+        if not sample_collection._contains_videos():
+            return None
+
+        selected_paths = set()
+        roots = {None}  # must always select default fields
+
+        _, paths = fou.split_frame_fields(self.field_names)
+        for path in paths:
+            selected_paths.add(path)
+            roots.update(_get_roots(path))
+
+        for path in roots:
+            selected_paths.update(
+                sample_collection._get_default_frame_fields(
+                    path=path, include_private=True
+                )
+            )
+
+        _remove_path_collisions(selected_paths)
+        selected_paths = list(selected_paths)
+
+        if use_db_fields:
+            return sample_collection._handle_db_fields(
+                selected_paths, frames=True
+            )
+
+        return selected_paths
 
     def to_mongo(self, sample_collection):
-        selected_fields = self._get_selected_fields(
-            sample_collection, frames=False, use_db_fields=True
+        selected_paths = self._get_selected_fields(
+            sample_collection, use_db_fields=True
         )
 
-        if sample_collection.media_type == fom.VIDEO:
-            selected_frame_fields = [
-                sample_collection._FRAMES_PREFIX + field
-                for field in self._get_selected_fields(
-                    sample_collection, frames=True, use_db_fields=True
-                )
-            ]
+        if sample_collection._contains_videos():
+            selected_frame_paths = self._get_selected_frame_fields(
+                sample_collection, use_db_fields=True
+            )
+            _merge_frame_paths(selected_paths, selected_frame_paths)
 
-            if selected_frame_fields:
-                # Don't project on root `frames` and embedded fields
-                # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
-                selected_fields = [f for f in selected_fields if f != "frames"]
-                selected_fields += selected_frame_fields
-
-        if not selected_fields:
+        if not selected_paths:
             return []
 
-        return [{"$project": {fn: True for fn in selected_fields}}]
-
-    def _get_selected_fields(
-        self, sample_collection, frames=False, use_db_fields=False
-    ):
-        if frames:
-            if sample_collection.media_type != fom.VIDEO:
-                return None
-
-            default_fields = sample_collection._get_default_frame_fields(
-                include_private=True, use_db_fields=use_db_fields
-            )
-
-            selected_fields = []
-            for field in self.field_names:
-                (
-                    field_name,
-                    is_frame_field,
-                ) = sample_collection._handle_frame_field(field)
-                if is_frame_field:
-                    selected_fields.append(field_name)
-        else:
-            default_fields = sample_collection._get_default_sample_fields(
-                include_private=True, use_db_fields=use_db_fields
-            )
-            if sample_collection.media_type == fom.VIDEO:
-                default_fields += ("frames",)
-
-            selected_fields = []
-            for field in self.field_names:
-                if not sample_collection._is_frame_field(field):
-                    selected_fields.append(field)
-
-        return list(set(selected_fields) | set(default_fields))
+        return [{"$project": {f: True for f in selected_paths}}]
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos():
+            return False
+
         return any(
             sample_collection._is_frame_field(f) for f in self.field_names
         )
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self.field_names)
 
     def _kwargs(self):
         return [
@@ -4359,6 +5339,11 @@ class SelectFields(ViewStage):
             return
 
         sample_collection.validate_fields_exist(self.field_names)
+
+
+def _get_roots(path):
+    chunks = path.split(".")
+    return {".".join(chunks[:i]) for i in range(1, len(chunks))}
 
 
 class SelectFrames(ViewStage):
@@ -4398,15 +5383,15 @@ class SelectFrames(ViewStage):
                 :class:`fiftyone.core.frame.FrameView`
             -   an iterable of :class:`fiftyone.core.frame.Frame` or
                 :class:`fiftyone.core.frame.FrameView` instances
-            -   a :class:`fiftyone.core.collections.SampleCollection`, in which
-                case the frame IDs in the collection are used
+            -   a :class:`fiftyone.core.collections.SampleCollection` whose
+                frames to select
 
         omit_empty (True): whether to omit samples that have no frames after
             selecting the specified frames
     """
 
     def __init__(self, frame_ids, omit_empty=True):
-        self._frame_ids = _get_frame_ids(frame_ids)
+        self._frame_ids = _parse_frame_ids(frame_ids)
         self._omit_empty = omit_empty
 
     @property
@@ -4457,6 +5442,112 @@ class SelectFrames(ViewStage):
 
     def validate(self, sample_collection):
         fova.validate_video_collection(sample_collection)
+
+
+class SelectGroups(ViewStage):
+    """Selects the groups with the given IDs from a grouped collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-groups")
+
+        #
+        # Select some specific groups by ID
+        #
+
+        group_ids = dataset.take(10).values("group.id")
+
+        stage = fo.SelectGroups(group_ids)
+        view = dataset.add_stage(stage)
+
+        assert set(view.values("group.id")) == set(group_ids)
+
+        stage = fo.SelectGroups(group_ids, ordered=True)
+        view = dataset.add_stage(stage)
+
+        assert view.values("group.id") == group_ids
+
+    Args:
+        groups_ids: the groups to select. Can be any of the following:
+
+            -   a group ID
+            -   an iterable of group IDs
+            -   a :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView`
+            -   a group dict returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView` instances
+            -   an iterable of group dicts returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   a :class:`fiftyone.core.collections.SampleCollection`
+
+        ordered (False): whether to sort the groups in the returned view to
+            match the order of the provided IDs
+    """
+
+    def __init__(self, group_ids, ordered=False):
+        self._group_ids = _parse_group_ids(group_ids)
+        self._ordered = ordered
+
+    @property
+    def group_ids(self):
+        """The list of group IDs to select."""
+        return self._group_ids
+
+    @property
+    def ordered(self):
+        """Whether to sort the groups in the same order as the IDs."""
+        return self._ordered
+
+    def to_mongo(self, sample_collection):
+        id_path = sample_collection.group_field + "._id"
+        ids = [ObjectId(_id) for _id in self._group_ids]
+
+        pipeline = [{"$match": {id_path: {"$in": ids}}}]
+
+        if self._ordered:
+            pipeline.extend(
+                [
+                    {
+                        "$set": {
+                            "_select_order": {
+                                "$indexOfArray": [ids, "$" + id_path]
+                            }
+                        }
+                    },
+                    {"$sort": {"_select_order": 1}},
+                    {"$unset": "_select_order"},
+                ]
+            )
+
+        return pipeline
+
+    def _kwargs(self):
+        return [["group_ids", self._group_ids], ["ordered", self._ordered]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "group_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,group,ids",
+            },
+            {
+                "name": "ordered",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "ordered (default=False)",
+            },
+        ]
+
+    def validate(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            raise ValueError("%s has no groups" % type(sample_collection))
 
 
 class SelectLabels(ViewStage):
@@ -4686,6 +5777,9 @@ class SelectLabels(ViewStage):
         ]
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos():
+            return False
+
         if self._labels is not None:
             fields = self._labels_map.keys()
         elif self._fields is not None:
@@ -4694,6 +5788,19 @@ class SelectLabels(ViewStage):
             fields = sample_collection._get_label_fields()
 
         return any(sample_collection._is_frame_field(f) for f in fields)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        if self._labels is not None:
+            fields = self._labels_map.keys()
+        elif self._fields is not None:
+            fields = self._fields
+        else:
+            fields = sample_collection._get_label_fields()
+
+        return sample_collection._get_group_slices(fields)
 
     def _make_labels_pipeline(self, sample_collection):
         pipeline = []
@@ -5054,7 +6161,7 @@ class SortBy(ViewStage):
         return pipeline
 
     def _needs_frames(self, sample_collection):
-        if sample_collection.media_type != fom.VIDEO:
+        if not sample_collection._contains_videos():
             return False
 
         field_or_expr = self._get_mongo_field_or_expr()
@@ -5067,9 +6174,27 @@ class SortBy(ViewStage):
             if etau.is_str(expr):
                 needs_frames |= sample_collection._is_frame_field(expr)
             else:
-                needs_frames |= _is_frames_expr(expr)
+                needs_frames |= foe.is_frames_expr(expr)
 
         return needs_frames
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        field_or_expr = self._get_mongo_field_or_expr()
+
+        if not isinstance(field_or_expr, list):
+            field_or_expr = [(field_or_expr, None)]
+
+        group_slices = set()
+        for expr, _ in field_or_expr:
+            if etau.is_str(expr):
+                group_slices.update(sample_collection._get_group_slices(expr))
+            else:
+                group_slices.update(foe.get_group_slices(expr))
+
+        return list(group_slices)
 
     def _get_mongo_field_or_expr(self):
         return _serialize_sort_expr(self._field_or_expr)
@@ -5172,6 +6297,9 @@ class SortBySimilarity(ViewStage):
         k (None): the number of matches to return. By default, the entire
             collection is sorted
         reverse (False): whether to sort by least similarity
+        dist_field (None): the name of a float field in which to store the
+            distance of each example to the specified query. The field is
+            created if necessary
         brain_key (None): the brain key of an existing
             :meth:`fiftyone.brain.compute_similarity` run on the dataset. If
             not specified, the dataset must have an applicable run, which will
@@ -5179,7 +6307,13 @@ class SortBySimilarity(ViewStage):
     """
 
     def __init__(
-        self, query_ids, k=None, reverse=False, brain_key=None, _state=None
+        self,
+        query_ids,
+        k=None,
+        reverse=False,
+        dist_field=None,
+        brain_key=None,
+        _state=None,
     ):
         if etau.is_str(query_ids):
             query_ids = [query_ids]
@@ -5189,6 +6323,7 @@ class SortBySimilarity(ViewStage):
         self._query_ids = query_ids
         self._k = k
         self._reverse = reverse
+        self._dist_field = dist_field
         self._brain_key = brain_key
         self._state = _state
         self._pipeline = None
@@ -5209,10 +6344,13 @@ class SortBySimilarity(ViewStage):
         return self._reverse
 
     @property
+    def dist_field(self):
+        """The field to store similarity distances, if any."""
+        return self._dist_field
+
+    @property
     def brain_key(self):
-        """The brain key of the
-        :class:`fiftyone.brain.similiarity.SimilarityResults` to use.
-        """
+        """The brain key of the similarity index to use."""
         return self._brain_key
 
     def to_mongo(self, _):
@@ -5229,6 +6367,7 @@ class SortBySimilarity(ViewStage):
             ["query_ids", self._query_ids],
             ["k", self._k],
             ["reverse", self._reverse],
+            ["dist_field", self._dist_field],
             ["brain_key", self._brain_key],
             ["_state", self._state],
         ]
@@ -5254,6 +6393,12 @@ class SortBySimilarity(ViewStage):
                 "placeholder": "reverse (default=False)",
             },
             {
+                "name": "dist_field",
+                "type": "NoneType|field|str",
+                "default": "None",
+                "placeholder": "dist_field (default=None)",
+            },
+            {
                 "name": "brain_key",
                 "type": "NoneType|str",
                 "default": "None",
@@ -5269,6 +6414,7 @@ class SortBySimilarity(ViewStage):
             "query_ids": self._query_ids,
             "k": self._k,
             "reverse": self._reverse,
+            "dist_field": self._dist_field,
             "brain_key": self._brain_key,
         }
 
@@ -5300,7 +6446,11 @@ class SortBySimilarity(ViewStage):
                 context.enter_context(results)  # pylint: disable=no-member
 
             return results.sort_by_similarity(
-                self._query_ids, k=self._k, reverse=self._reverse, _mongo=True
+                self._query_ids,
+                k=self._k,
+                reverse=self._reverse,
+                dist_field=self._dist_field,
+                _mongo=True,
             )
 
 
@@ -5487,6 +6637,11 @@ class ToPatches(ViewStage):
                 sample_collection, self._field, **kwargs
             )
 
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                patches_dataset.name = name
+
             state["name"] = patches_dataset.name
             self._state = state
         else:
@@ -5624,6 +6779,11 @@ class ToEvaluationPatches(ViewStage):
             eval_patches_dataset = fop.make_evaluation_patches_dataset(
                 sample_collection, self._eval_key, **kwargs
             )
+
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                eval_patches_dataset.name = name
 
             state["name"] = eval_patches_dataset.name
             self._state = state
@@ -5773,16 +6933,21 @@ class ToClips(ViewStage):
 
         if state != last_state or not fod.dataset_exists(name):
             kwargs = self._config or {}
-            clips_dataset = foc.make_clips_dataset(
+            clips_dataset = focl.make_clips_dataset(
                 sample_collection, self._field_or_expr, **kwargs
             )
+
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                clips_dataset.name = name
 
             state["name"] = clips_dataset.name
             self._state = state
         else:
             clips_dataset = fod.load_dataset(name)
 
-        return foc.ClipsView(sample_collection, self, clips_dataset)
+        return focl.ClipsView(sample_collection, self, clips_dataset)
 
     def _get_mongo_field_or_expr(self):
         if isinstance(self._field_or_expr, foe.ViewExpression):
@@ -5922,7 +7087,11 @@ class ToTrajectories(ViewStage):
     @classmethod
     def _params(self):
         return [
-            {"name": "field", "type": "field", "placeholder": "field",},
+            {
+                "name": "field",
+                "type": "field",
+                "placeholder": "field",
+            },
             {
                 "name": "config",
                 "type": "NoneType|json",
@@ -5936,22 +7105,73 @@ class ToTrajectories(ViewStage):
 class ToFrames(ViewStage):
     """Creates a view that contains one sample per frame in a video collection.
 
-    By default, samples will be generated for every frame of each video,
-    based on the total frame count of the video files, but this method is
-    highly customizable. Refer to
-    :meth:`fiftyone.core.video.make_frames_dataset` to see the available
-    configuration options.
+    The returned view will contain all frame-level fields and the ``tags`` of
+    each video as sample-level fields, as well as a ``sample_id`` field that
+    records the IDs of the parent sample for each frame.
+
+    By default, ``sample_frames`` is False and this method assumes that the
+    frames of the input collection have ``filepath`` fields populated pointing
+    to each frame image. Any frames without a ``filepath`` populated will be
+    omitted from the returned view.
+
+    When ``sample_frames`` is True, this method samples each video in the
+    collection into a directory of per-frame images and stores the filepaths in
+    the ``filepath`` frame field of the source dataset. By default, each folder
+    of images is written using the same basename as the input video. For
+    example, if ``frames_patt = "%%06d.jpg"``, then videos with the following
+    paths::
+
+        /path/to/video1.mp4
+        /path/to/video2.mp4
+        ...
+
+    would be sampled as follows::
+
+        /path/to/video1/
+            000001.jpg
+            000002.jpg
+            ...
+        /path/to/video2/
+            000001.jpg
+            000002.jpg
+            ...
+
+    However, you can use the optional ``output_dir`` and ``rel_dir`` parameters
+    to customize the location and shape of the sampled frame folders. For
+    example, if ``output_dir = "/tmp"`` and ``rel_dir = "/path/to"``, then
+    videos with the following paths::
+
+        /path/to/folderA/video1.mp4
+        /path/to/folderA/video2.mp4
+        /path/to/folderB/video3.mp4
+        ...
+
+    would be sampled as follows::
+
+        /tmp/folderA/
+            video1/
+                000001.jpg
+                000002.jpg
+                ...
+            video2/
+                000001.jpg
+                000002.jpg
+                ...
+        /tmp/folderB/
+            video3/
+                000001.jpg
+                000002.jpg
+                ...
+
+    By default, samples will be generated for every video frame at full
+    resolution, but this method provides a variety of parameters that can be
+    used to customize the sampling behavior.
 
     .. note::
 
-        Unless you have configured otherwise, creating frame views will
-        sample the necessary frames from the input video collection into
-        directories of per-frame images. **For large video datasets,
-        **this may take some time and require substantial disk space.**
-
-        Frames that have previously been sampled will not be resampled, so
-        creating frame views into the same dataset will become faster after the
-        frames have been sampled.
+        If this method is run multiple times with ``sample_frames`` set to
+        True, existing frames will not be resampled unless you set
+        ``force_sample`` to True.
 
     Examples::
 
@@ -5967,7 +7187,7 @@ class ToFrames(ViewStage):
         # Create a frames view for an entire video dataset
         #
 
-        stage = fo.ToFrames()
+        stage = fo.ToFrames(sample_frames=True)
         frames = dataset.add_stage(stage)
         print(frames)
 
@@ -5981,7 +7201,7 @@ class ToFrames(ViewStage):
         num_objects = F("detections.detections").length()
         view = dataset.match_frames(num_objects > 10)
 
-        stage = fo.ToFrames(max_fps=1, sparse=True)
+        stage = fo.ToFrames(max_fps=1)
         frames = view.add_stage(stage)
         print(frames)
 
@@ -6030,16 +7250,21 @@ class ToFrames(ViewStage):
 
         if state != last_state or not fod.dataset_exists(name):
             kwargs = self._config or {}
-            frames_dataset = fov.make_frames_dataset(
+            frames_dataset = fovi.make_frames_dataset(
                 sample_collection, **kwargs
             )
+
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                frames_dataset.name = name
 
             state["name"] = frames_dataset.name
             self._state = state
         else:
             frames_dataset = fod.load_dataset(name)
 
-        return fov.FramesView(sample_collection, self, frames_dataset)
+        return fovi.FramesView(sample_collection, self, frames_dataset)
 
     def _kwargs(self):
         return [
@@ -6060,52 +7285,86 @@ class ToFrames(ViewStage):
         ]
 
 
-def _get_sample_ids(samples_or_ids):
-    from fiftyone.core.collections import SampleCollection
+def _parse_sample_ids(arg):
+    if etau.is_str(arg):
+        return [arg], False
 
-    if etau.is_str(samples_or_ids):
-        return [samples_or_ids]
+    if isinstance(arg, (fos.Sample, fos.SampleView)):
+        return [arg.id], False
 
-    if isinstance(samples_or_ids, (fos.Sample, fos.SampleView)):
-        return [samples_or_ids.id]
+    if isinstance(arg, foc.SampleCollection):
+        return arg.values("id"), False
 
-    if isinstance(samples_or_ids, SampleCollection):
-        return samples_or_ids.values("id")
+    arg = list(arg)
 
-    if isinstance(samples_or_ids, np.ndarray):
-        return list(samples_or_ids)
+    if not arg:
+        return [], False
 
-    if not samples_or_ids:
+    if isinstance(arg[0], (fos.Sample, fos.SampleView)):
+        return [s.id for s in arg], False
+
+    if isinstance(arg[0], (bool, np.bool_)):
+        return arg, True
+
+    return arg, False
+
+
+def _parse_frame_ids(arg):
+    if etau.is_str(arg):
+        return [arg]
+
+    if isinstance(arg, (fofr.Frame, fofr.FrameView)):
+        return [arg.id]
+
+    if isinstance(arg, foc.SampleCollection):
+        return arg.values("frames.id", unwind=True)
+
+    arg = list(arg)
+
+    if not arg:
         return []
 
-    if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
-        return [s.id for s in samples_or_ids]
+    if isinstance(arg[0], (fofr.Frame, fofr.FrameView)):
+        return [s.id for s in arg]
 
-    return list(samples_or_ids)
+    return arg
 
 
-def _get_frame_ids(frames_or_ids):
-    from fiftyone.core.collections import SampleCollection
+def _parse_group_ids(arg):
+    if etau.is_str(arg):
+        return [arg]
 
-    if etau.is_str(frames_or_ids):
-        return [frames_or_ids]
+    if isinstance(arg, (dict, fos.Sample, fos.SampleView)):
+        return [_get_group_id(arg)]
 
-    if isinstance(frames_or_ids, (fofr.Frame, fofr.FrameView)):
-        return [frames_or_ids.id]
+    if isinstance(arg, foc.SampleCollection):
+        if arg.media_type != fom.GROUP:
+            raise ValueError("%s is not a grouped collection" % type(arg))
 
-    if isinstance(frames_or_ids, SampleCollection):
-        return frames_or_ids.values("frames.id", unwind=True)
+        return arg.values(arg.group_field + ".id")
 
-    if isinstance(frames_or_ids, np.ndarray):
-        return list(frames_or_ids)
+    arg = list(arg)
 
-    if not frames_or_ids:
+    if not arg:
         return []
 
-    if isinstance(next(iter(frames_or_ids)), (fofr.Frame, fofr.FrameView)):
-        return [s.id for s in frames_or_ids]
+    if isinstance(arg[0], (dict, fos.Sample, fos.SampleView)):
+        return [_get_group_id(a) for a in arg]
 
-    return list(frames_or_ids)
+    return arg
+
+
+def _get_group_id(sample_or_group):
+    if isinstance(sample_or_group, dict):
+        sample = next(iter(sample_or_group.values()))
+    else:
+        sample = sample_or_group
+
+    for field, value in sample.iter_fields():
+        if isinstance(value, fog.Group):
+            return value.id
+
+    raise ValueError("Sample '%s' has no group" % sample.id)
 
 
 def _get_rng(seed):
@@ -6144,6 +7403,31 @@ def _parse_labels_list_field(sample_collection, field_path):
     return path, is_frame_field
 
 
+def _remove_path_collisions(paths):
+    # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
+    roots = set()
+    for path in paths:
+        chunks = path.split(".")
+        for i in range(1, len(chunks)):
+            roots.add(".".join(chunks[:i]))
+
+    for root in roots:
+        paths.discard(root)
+
+
+def _merge_frame_paths(paths, frame_paths):
+    if not frame_paths:
+        return
+
+    try:
+        # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
+        paths.remove("frames")
+    except:
+        pass
+
+    paths.extend(["frames." + f for f in frame_paths])
+
+
 def _parse_labels(labels):
     sample_ids = set()
     labels_map = defaultdict(set)
@@ -6154,28 +7438,8 @@ def _parse_labels(labels):
     return sample_ids, labels_map
 
 
-def _is_frames_expr(val):
-    if etau.is_str(val):
-        return val == "$frames" or val.startswith("$frames.")
-
-    if isinstance(val, dict):
-        for k, v in val.items():
-            if _is_frames_expr(k):
-                return True
-
-            if _is_frames_expr(v):
-                return True
-
-    if isinstance(val, (list, tuple)):
-        for v in val:
-            if _is_frames_expr(v):
-                return True
-
-    return False
-
-
 def _get_label_field_only_matches_expr(
-    sample_collection, field, prefix="", new_field=None
+    sample_collection, field, new_field=None, prefix=""
 ):
     label_type = sample_collection._get_label_field_type(field)
     is_label_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
@@ -6272,7 +7536,12 @@ def _get_default_similarity_run(sample_collection):
                 % (sample_collection.dataset_name, gt_field, pred_field)
             )
     else:
+        # Try sample indexes first
         brain_keys = sample_collection._get_similarity_keys(patches_field=None)
+
+        # It's allowable to use a patches index too
+        if not brain_keys:
+            brain_keys = sample_collection._get_similarity_keys()
 
         if not brain_keys:
             raise ValueError(
@@ -6307,17 +7576,16 @@ _repr.maxother = 30
 
 # Simple registry for the server to grab available view stages
 _STAGES = [
+    Concat,
     Exclude,
     ExcludeBy,
     ExcludeFields,
     ExcludeFrames,
+    ExcludeGroups,
     ExcludeLabels,
     Exists,
     FilterField,
     FilterLabels,
-    FilterClassifications,
-    FilterDetections,
-    FilterPolylines,
     FilterKeypoints,
     GeoNear,
     GeoWithin,
@@ -6335,6 +7603,8 @@ _STAGES = [
     SelectBy,
     SelectFields,
     SelectFrames,
+    SelectGroups,
+    SelectGroupSlices,
     SelectLabels,
     SetField,
     Skip,
@@ -6352,8 +7622,9 @@ _STAGES = [
 # Registry of stages that promise to only reorder/select documents
 _STAGES_THAT_SELECT_OR_REORDER = {
     # View stages that only reorder documents
-    SortBy,
     GroupBy,
+    SortBy,
+    SortBySimilarity,
     Shuffle,
     # View stages that only select documents
     Exclude,
@@ -6363,12 +7634,10 @@ _STAGES_THAT_SELECT_OR_REORDER = {
     GeoWithin,
     Limit,
     Match,
-    MatchFrames,
     MatchLabels,
     MatchTags,
     Select,
     SelectBy,
     Skip,
-    SortBySimilarity,
     Take,
 }

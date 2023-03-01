@@ -1,7 +1,7 @@
 """
 Labels stored in dataset samples.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -14,8 +14,9 @@ import numpy as np
 
 import eta.core.frameutils as etaf
 import eta.core.image as etai
+import eta.core.utils as etau
 
-from fiftyone.core.odm.document import DynamicEmbeddedDocument
+from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -40,8 +41,6 @@ class Label(DynamicEmbeddedDocument):
     Label instances represent a logical collection of data associated with a
     particular task for a sample or frame in a dataset.
     """
-
-    meta = {"allow_inheritance": True}
 
     def iter_attributes(self):
         """Returns an iterator over the custom attributes of the label.
@@ -133,8 +132,6 @@ class Attribute(DynamicEmbeddedDocument):
         value (None): the attribute value
     """
 
-    meta = {"allow_inheritance": True}
-
     value = fof.Field()
 
 
@@ -191,10 +188,8 @@ class ListAttribute(Attribute):
 # @todo remove this in favor of dynamic-only attributes
 class _HasAttributesDict(Label):
     """Mixin for :class:`Label` classes that have an :attr:`attributes` field
-    that contains a dict of of :class:`Attribute` instances.
+    that contains a dict of :class:`Attribute` instances.
     """
-
-    meta = {"allow_inheritance": True}
 
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
@@ -320,19 +315,17 @@ class _HasID(Label):
     property, as well as a ``tags`` attribute.
     """
 
-    meta = {"allow_inheritance": True}
-
-    _id = fof.ObjectIdField(default=ObjectId, required=True, unique=True)
+    id = fof.ObjectIdField(
+        required=True,
+        unique=True,
+        default=lambda: str(ObjectId()),
+        db_field="_id",
+    )
     tags = fof.ListField(fof.StringField())
 
     @property
-    def id(self):
-        """The ID of the label."""
-        return str(self._id)
-
-    def _get_repr_fields(self):
-        # pylint: disable=no-member
-        return ("id",) + self._fields_ordered
+    def _id(self):
+        return ObjectId(self.id)
 
 
 class _HasLabelList(object):
@@ -354,8 +347,6 @@ class Regression(_HasID, Label):
         confidence (None): a confidence in ``[0, 1]`` for the regression
     """
 
-    meta = {"allow_inheritance": True}
-
     value = fof.FloatField()
     confidence = fof.FloatField()
 
@@ -368,8 +359,6 @@ class Classification(_HasID, Label):
         confidence (None): a confidence in ``[0, 1]`` for the classification
         logits (None): logits associated with the labels
     """
-
-    meta = {"allow_inheritance": True}
 
     label = fof.StringField()
     confidence = fof.FloatField()
@@ -385,13 +374,11 @@ class Classifications(_HasLabelList, Label):
 
     _LABEL_LIST_FIELD = "classifications"
 
-    meta = {"allow_inheritance": True}
-
     classifications = fof.ListField(fof.EmbeddedDocumentField(Classification))
     logits = fof.VectorField()
 
 
-class Detection(_HasID, _HasAttributesDict, Label):
+class Detection(_HasAttributesDict, _HasID, Label):
     """An object detection.
 
     Args:
@@ -409,8 +396,6 @@ class Detection(_HasID, _HasAttributesDict, Label):
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
-
-    meta = {"allow_inheritance": True}
 
     label = fof.StringField()
     bounding_box = fof.ListField(fof.FloatField())
@@ -434,11 +419,23 @@ class Detection(_HasID, _HasAttributesDict, Label):
         Returns:
             a :class:`Polyline`
         """
-        dobj = foue.to_detected_object(self)
+        dobj = foue.to_detected_object(self, extra_attrs=False)
         polyline = etai.convert_object_to_polygon(
             dobj, tolerance=tolerance, filled=filled
         )
-        return foue.from_polyline(polyline)
+
+        attributes = dict(self.iter_attributes())
+
+        return Polyline(
+            label=self.label,
+            points=polyline.points,
+            confidence=self.confidence,
+            index=self.index,
+            closed=polyline.closed,
+            filled=polyline.filled,
+            tags=self.tags,
+            **attributes,
+        )
 
     def to_segmentation(self, mask=None, frame_size=None, target=255):
         """Returns a :class:`Segmentation` representation of this instance.
@@ -449,12 +446,13 @@ class Detection(_HasID, _HasAttributesDict, Label):
         You must provide either ``mask`` or ``frame_size`` to use this method.
 
         Args:
-            mask (None): an optional 2D integer numpy array to use as an
-                initial mask to which to add this object
+            mask (None): an optional numpy array to use as an initial mask to
+                which to add this object
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            target (255): the pixel value to use to render the object
+            target (255): the pixel value or RGB hex string to use to render
+                the object
 
         Returns:
             a :class:`Segmentation`
@@ -491,6 +489,29 @@ class Detection(_HasID, _HasAttributesDict, Label):
 
         return sg.box(x, y, x + w, y + h)
 
+    @classmethod
+    def from_mask(cls, mask, label, **attributes):
+        """Creates a :class:`Detection` instance with its ``mask`` attribute
+        populated from the given full image mask.
+
+        The instance mask for the object is extracted by computing the bounding
+        rectangle of the non-zero values in the image mask.
+
+        Args:
+            mask: a boolean or 0/1 numpy array
+            label: the label string
+            **attributes: additional attributes for the :class:`Detection`
+
+        Returns:
+            a :class:`Detection`
+        """
+        if mask.ndim > 2:
+            mask = mask[:, :, 0]
+
+        bbox, mask = _parse_stuff_instance(mask.astype(bool))
+
+        return cls(label=label, bounding_box=bbox, mask=mask, **attributes)
+
 
 class Detections(_HasLabelList, Label):
     """A list of object detections in an image.
@@ -500,8 +521,6 @@ class Detections(_HasLabelList, Label):
     """
 
     _LABEL_LIST_FIELD = "detections"
-
-    meta = {"allow_inheritance": True}
 
     detections = fof.ListField(fof.EmbeddedDocumentField(Detection))
 
@@ -537,15 +556,16 @@ class Detections(_HasLabelList, Label):
         You must provide either ``mask`` or ``frame_size`` to use this method.
 
         Args:
-            mask (None): an optional 2D integer numpy array to use as an
-                initial mask to which to add objects
+            mask (None): an optional array to use as an initial mask to which
+                to add objects
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            mask_targets (None): a dict mapping integer pixel values to label
-                strings defining which object classes to render and which pixel
-                values to use for each class. If omitted, all objects are
-                rendered with pixel value 255
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                object classes to render and which pixel values to use for each
+                class. If omitted, all objects are rendered with pixel value
+                255
 
         Returns:
             a :class:`Segmentation`
@@ -573,7 +593,7 @@ class Detections(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Polyline(_HasID, _HasAttributesDict, Label):
+class Polyline(_HasAttributesDict, _HasID, Label):
     """A set of semantically related polylines or polygons.
 
     Args:
@@ -590,8 +610,6 @@ class Polyline(_HasID, _HasAttributesDict, Label):
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances for the polyline
     """
-
-    meta = {"allow_inheritance": True}
 
     label = fof.StringField()
     points = fof.PolylinePointsField()
@@ -620,7 +638,7 @@ class Polyline(_HasID, _HasAttributesDict, Label):
         Returns:
             a :class:`Detection`
         """
-        polyline = foue.to_polyline(self)
+        polyline = foue.to_polyline(self, extra_attrs=False)
         if mask_size is not None:
             bbox, mask = etai.render_bounding_box_and_mask(polyline, mask_size)
         else:
@@ -659,8 +677,8 @@ class Polyline(_HasID, _HasAttributesDict, Label):
         You must provide either ``mask`` or ``frame_size`` to use this method.
 
         Args:
-            mask (None): an optional 2D integer numpy array to use as an
-                initial mask to which to add objects
+            mask (None): an optional numpy array to use as an initial mask to
+                which to add objects
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
@@ -725,6 +743,30 @@ class Polyline(_HasID, _HasAttributesDict, Label):
 
         return sg.MultiLineString(points)
 
+    @classmethod
+    def from_mask(cls, mask, label, tolerance=2, **attributes):
+        """Creates a :class:`Polyline` instance with polygons describing the
+        non-zero region(s) of the given full image mask.
+
+        Args:
+            mask: a boolean or 0/1 numpy array
+            label: the label string
+            tolerance (2): a tolerance, in pixels, when generating approximate
+                polygons for each region. Typical values are 1-3 pixels
+            **attributes: additional attributes for the :class:`Polyline`
+
+        Returns:
+            a :class:`Polyline`
+        """
+        if mask.ndim > 2:
+            mask = mask[:, :, 0]
+
+        points = _get_polygons(mask.astype(bool), tolerance)
+
+        return cls(
+            label=label, points=points, filled=True, closed=True, **attributes
+        )
+
 
 class Polylines(_HasLabelList, Label):
     """A list of polylines or polygons in an image.
@@ -734,8 +776,6 @@ class Polylines(_HasLabelList, Label):
     """
 
     _LABEL_LIST_FIELD = "polylines"
-
-    meta = {"allow_inheritance": True}
 
     polylines = fof.ListField(fof.EmbeddedDocumentField(Polyline))
 
@@ -775,15 +815,16 @@ class Polylines(_HasLabelList, Label):
         You must provide either ``mask`` or ``frame_size`` to use this method.
 
         Args:
-            mask (None): an optional 2D integer numpy array to use as an
-                initial mask to which to add objects
+            mask (None): an optional numpy array to use as an initial mask to
+                which to add objects
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            mask_targets (None): a dict mapping integer pixel values to label
-                strings defining which object classes to render and which
-                pixel values to use for each class. If omitted, all objects are
-                rendered with pixel value 255
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                object classes to render and which pixel values to use for each
+                class. If omitted, all objects are rendered with pixel value
+                255
             thickness (1): the thickness, in pixels, at which to render
                 (non-filled) polylines
 
@@ -808,23 +849,21 @@ class Polylines(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Keypoint(_HasID, _HasAttributesDict, Label):
+class Keypoint(_HasAttributesDict, _HasID, Label):
     """A list of keypoints in an image.
 
     Args:
         label (None): a label for the points
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
-        confidence (None): a confidence in ``[0, 1]`` for the points
+        confidence (None): a list of confidences in ``[0, 1]`` for each point
         index (None): an index for the keypoints
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
 
-    meta = {"allow_inheritance": True}
-
     label = fof.StringField()
     points = fof.KeypointsField()
-    confidence = fof.FloatField()
+    confidence = fof.ListField(fof.FloatField(), null=True)
     index = fof.IntField()
 
     def to_shapely(self, frame_size=None):
@@ -856,22 +895,126 @@ class Keypoints(_HasLabelList, Label):
 
     _LABEL_LIST_FIELD = "keypoints"
 
-    meta = {"allow_inheritance": True}
-
     keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint))
 
 
-class Segmentation(_HasID, Label):
+class _HasMedia(object):
+    """Mixin for :class:`Label` classes that contain a media field."""
+
+    _MEDIA_FIELD = None
+
+
+class Segmentation(_HasID, _HasMedia, Label):
     """A semantic segmentation for an image.
 
+    Provide either the ``mask`` or ``mask_path`` argument to define the
+    segmentation.
+
     Args:
-        mask (None): a 2D numpy array with integer values encoding the semantic
+        mask (None): a numpy array with integer values encoding the semantic
             labels
+        mask_path (None): the path to the segmentation image on disk
     """
 
-    meta = {"allow_inheritance": True}
+    _MEDIA_FIELD = "mask_path"
 
     mask = fof.ArrayField()
+    mask_path = fof.StringField()
+
+    @property
+    def has_mask(self):
+        """Whether this instance has a mask."""
+        return self.mask is not None or self.mask_path is not None
+
+    def get_mask(self):
+        """Returns the segmentation mask for this instance.
+
+        Returns:
+            a numpy array, or ``None``
+        """
+        if self.mask is not None:
+            return self.mask
+
+        if self.mask_path is not None:
+            return _read_mask(self.mask_path)
+
+        return None
+
+    def import_mask(self, update=False):
+        """Imports this instance's mask from disk to its :attr:`mask`
+        attribute.
+
+        Args:
+            outpath: the path to write the map
+            update (False): whether to clear this instance's :attr:`mask_path`
+                attribute after importing
+        """
+        if self.mask_path is not None:
+            self.mask = _read_mask(self.mask_path)
+
+            if update:
+                self.mask_path = None
+
+    def export_mask(self, outpath, update=False):
+        """Exports this instance's mask to the given path.
+
+        Args:
+            outpath: the path to write the mask
+            update (False): whether to clear this instance's :attr:`mask`
+                attribute and set its :attr:`mask_path` attribute when
+                exporting in-database segmentations
+        """
+        if self.mask_path is not None:
+            etau.copy_file(self.mask_path, outpath)
+        else:
+            _write_mask(self.mask, outpath)
+
+            if update:
+                self.mask = None
+                self.mask_path = outpath
+
+    def transform_mask(self, targets_map, outpath=None, update=False):
+        """Transforms this instance's mask according to the provided targets
+        map.
+
+        This method can be used to transform between grayscale and RGB masks,
+        or it can be used to edit the pixel values or colors of a mask without
+        changing the number of channels.
+
+        Note that any pixel values not in ``targets_map`` will be zero in the
+        transformed mask.
+
+        Args:
+            targets_map: a dict mapping existing pixel values (2D masks) or RGB
+                hex strings (3D masks) to new pixel values or RGB hex strings.
+                You may convert between grayscale and RGB using this argument
+            outpath (None): an optional path to write the transformed mask on
+                disk
+            update (False): whether to save the transformed mask on this
+                instance
+
+        Returns:
+            the transformed mask
+        """
+        mask = self.get_mask()
+        if mask is None:
+            return
+
+        mask = _transform_mask(mask, targets_map)
+
+        if outpath is not None:
+            _write_mask(mask, outpath)
+
+            if update:
+                self.mask = None
+                self.mask_path = outpath
+        elif update:
+            if self.mask_path is not None:
+                _write_mask(mask, self.mask_path)
+            else:
+                self.mask = mask
+
+        return mask
 
     def to_detections(self, mask_targets=None, mask_types="stuff"):
         """Returns a :class:`Detections` representation of this instance with
@@ -884,9 +1027,10 @@ class Segmentation(_HasID, Label):
         per connected region of that class in the segmentation.
 
         Args:
-            mask_targets (None): a dict mapping integer pixel values to label
-                strings defining which classes to generate detections for. If
-                omitted, all labels are assigned to the integer pixel values
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                classes to generate detections for. If omitted, all labels are
+                assigned to their pixel values
             mask_types ("stuff"): whether the classes are ``"stuff"``
                 (amorphous regions of pixels) or ``"thing"`` (connected
                 regions, each representing an instance of the thing). Can be
@@ -894,8 +1038,8 @@ class Segmentation(_HasID, Label):
 
                 -   ``"stuff"`` if all classes are stuff classes
                 -   ``"thing"`` if all classes are thing classes
-                -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
-                    for each class
+                -   a dict mapping pixel values (2D masks) or RGB hex strings
+                    (3D masks) to ``"stuff"`` or ``"thing"`` for each class
 
         Returns:
             a :class:`Detections`
@@ -915,10 +1059,10 @@ class Segmentation(_HasID, Label):
         per connected region of that class.
 
         Args:
-            mask_targets (None): a dict mapping integer pixel values to label
-                strings defining which object classes to generate polylines
-                for. If omitted, all labels are assigned to the integer pixel
-                values
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                classes to generate detections for. If omitted, all labels are
+                assigned to their pixel values
             mask_types ("stuff"): whether the classes are ``"stuff"``
                 (amorphous regions of pixels) or ``"thing"`` (connected
                 regions, each representing an instance of the thing). Can be
@@ -926,8 +1070,8 @@ class Segmentation(_HasID, Label):
 
                 -   ``"stuff"`` if all classes are stuff classes
                 -   ``"thing"`` if all classes are thing classes
-                -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
-                    for each class
+                -   a dict mapping pixel values (2D masks) or RGB hex strings
+                    (3D masks) to ``"stuff"`` or ``"thing"`` for each class
             tolerance (2): a tolerance, in pixels, when generating approximate
                 polylines for each region. Typical values are 1-3 pixels
 
@@ -940,21 +1084,78 @@ class Segmentation(_HasID, Label):
         return Polylines(polylines=polylines)
 
 
-class Heatmap(_HasID, Label):
+class Heatmap(_HasID, _HasMedia, Label):
     """A heatmap for an image.
+
+    Provide either the ``map`` or ``map_path`` argument to define the heatmap.
 
     Args:
         map (None): a 2D numpy array
+        map_path (None): the path to the heatmap image on disk
         range (None): an optional ``[min, max]`` range of the map's values. If
             None is provided, ``[0, 1]`` will be assumed if ``map`` contains
-            floating point values, and ``[0, 255]`` will be assumed if ``map``
-            contains integer values
+            floating point values, ``[0, 255]`` will be assumed if ``map``
+            contains integer values, and the dtype of the image will be assumed
+            if ``map_path`` is used
     """
 
-    meta = {"allow_inheritance": True}
+    _MEDIA_FIELD = "map_path"
 
     map = fof.ArrayField()
+    map_path = fof.StringField()
     range = fof.HeatmapRangeField()
+
+    @property
+    def has_map(self):
+        """Whether this instance has a map."""
+        return self.map is not None or self.map_path is not None
+
+    def get_map(self):
+        """Returns the map array for this instance.
+
+        Returns:
+            a numpy array, or ``None``
+        """
+        if self.map is not None:
+            return self.map
+
+        if self.map_path is not None:
+            return _read_heatmap(self.map_path)
+
+        return None
+
+    def import_map(self, update=False):
+        """Imports this instance's map from disk to its :attr:`map` attribute.
+
+        Args:
+            outpath: the path to write the map
+            update (False): whether to clear this instance's :attr:`map_path`
+                attribute after importing
+        """
+        if self.map_path is not None:
+            self.map = _read_heatmap(self.map_path)
+
+            if update:
+                self.map_path = None
+
+    def export_map(self, outpath, update=False):
+        """Exports this instance's map to the given path.
+
+        Args:
+            outpath: the path to write the map
+            update (False): whether to clear this instance's :attr:`map` and
+                :attr:`range` attributes and set its :attr:`map_path` attribute
+                when exporting in-database heatmaps
+        """
+        if self.map_path is not None:
+            etau.copy_file(self.map_path, outpath)
+        else:
+            _write_heatmap(self.map, outpath, range=self.range)
+
+            if update:
+                self.map = None
+                self.map_path = outpath
+                self.range = None
 
 
 class TemporalDetection(_HasID, Label):
@@ -966,8 +1167,6 @@ class TemporalDetection(_HasID, Label):
         support (None): the ``[first, last]`` frame numbers, inclusive
         confidence (None): a confidence in ``[0, 1]`` for the detection
     """
-
-    meta = {"allow_inheritance": True}
 
     label = fof.StringField()
     support = fof.FrameSupportField()
@@ -1048,8 +1247,6 @@ class TemporalDetections(_HasLabelList, Label):
 
     _LABEL_LIST_FIELD = "detections"
 
-    meta = {"allow_inheritance": True}
-
     detections = fof.ListField(fof.EmbeddedDocumentField(TemporalDetection))
 
 
@@ -1073,8 +1270,6 @@ class GeoLocation(_HasID, Label):
             where the first outer list describes the boundary of the polygon
             and any remaining entries describe holes
     """
-
-    meta = {"allow_inheritance": True}
 
     point = fof.GeoPointField(auto_index=False)
     line = fof.GeoLineStringField(auto_index=False)
@@ -1113,8 +1308,6 @@ class GeoLocations(_HasID, Label):
         lines (None): a list of lines
         polygons (None): a list of polygons
     """
-
-    meta = {"allow_inheritance": True}
 
     points = fof.GeoMultiPointField(auto_index=False)
     lines = fof.GeoMultiLineStringField(auto_index=False)
@@ -1174,23 +1367,123 @@ _LABEL_LIST_TO_SINGLE_MAP = {
 }
 
 
+def _read_mask(mask_path):
+    # pylint: disable=no-member
+    return etai.read(mask_path, flag=cv2.IMREAD_UNCHANGED)
+
+
+def _write_mask(mask, mask_path):
+    mask = _mask_to_image(mask)
+    etai.write(mask, mask_path)
+
+
+def _transform_mask(in_mask, targets_map):
+    rgb_in = fof.is_rgb_mask_targets(targets_map)
+    rgb_out = fof.is_rgb_mask_targets({v: k for k, v in targets_map.items()})
+
+    if rgb_in:
+        if in_mask.ndim != 3:
+            raise ValueError(
+                "Cannot use RGB input targets to transform grayscale mask"
+            )
+
+        in_mask = _rgb_array_to_int(in_mask)
+        targets_map = {_hex_to_int(k): v for k, v in targets_map.items()}
+    else:
+        if in_mask.ndim == 3:
+            raise ValueError(
+                "Cannot use integer input targets to transform RGB mask"
+            )
+
+    if rgb_out:
+        targets_map = {k: _hex_to_int(v) for k, v in targets_map.items()}
+
+    if rgb_out:
+        dtype = int
+    elif max(targets_map.values(), default=0) > 255:
+        dtype = np.uint16
+    else:
+        dtype = np.uint8
+
+    out_mask = np.zeros_like(in_mask, dtype=dtype)
+    for in_val, out_val in targets_map.items():
+        out_mask[in_mask == in_val] = out_val
+
+    if rgb_out:
+        out_mask = _int_array_to_rgb(out_mask)
+
+    return out_mask
+
+
+def _mask_to_image(mask):
+    if mask.dtype in (np.uint8, np.uint16):
+        return mask
+
+    # Masks should contain integer values, so cast to the closest suitable
+    # unsigned type
+    if mask.max() <= 255:
+        return mask.astype(np.uint8)
+
+    return mask.astype(np.uint16)
+
+
+def _read_heatmap(map_path):
+    # pylint: disable=no-member
+    return etai.read(map_path, flag=cv2.IMREAD_UNCHANGED)
+
+
+def _write_heatmap(map, map_path, range):
+    map = _heatmap_to_image(map, range)
+    etai.write(map, map_path)
+
+
+def _heatmap_to_image(map, range):
+    if range is None:
+        if map.dtype in (np.uint8, np.uint16):
+            return map
+
+        range = (map.min(), map.max())
+    else:
+        range = tuple(range)
+
+    if map.dtype == np.uint8 and range == (0, 255):
+        return map
+
+    if map.dtype == np.uint16 and range == (0, 65535):
+        return map
+
+    map = (255.0 / (range[1] - range[0])) * ((map - range[0]))
+    return map.astype(np.uint8)
+
+
 def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
+    if mask_targets is not None:
+        is_rgb = fof.is_rgb_mask_targets(mask_targets)
+
     if mask is None:
         if frame_size is None:
             raise ValueError("Either `mask` or `frame_size` must be provided")
 
-        if mask_targets is not None and max(mask_targets) > 255:
+        if mask_targets is not None and not is_rgb and max(mask_targets) > 255:
             dtype = np.int
         else:
             dtype = np.uint8
 
         width, height = frame_size
-        mask = np.zeros((height, width), dtype=dtype)
+        if mask_targets is not None and is_rgb:
+            mask = np.zeros((height, width, 3), dtype=dtype)
+        else:
+            mask = np.zeros((height, width), dtype=dtype)
     else:
         height, width = mask.shape[:2]
 
     if mask_targets is not None:
-        labels_to_targets = {label: idx for idx, label in mask_targets.items()}
+        if is_rgb:
+            labels_to_targets = {
+                v: _hex_to_rgb(k) for k, v in mask_targets.items()
+            }
+        else:
+            labels_to_targets = {v: k for k, v in mask_targets.items()}
     else:
         labels_to_targets = None
 
@@ -1198,28 +1491,37 @@ def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
 
 
 def _render_instance(mask, detection, target):
-    dobj = foue.to_detected_object(detection)
+    dobj = foue.to_detected_object(detection, extra_attrs=False)
     obj_mask, offset = etai.render_instance_mask(
         dobj.mask, dobj.bounding_box, img=mask
     )
 
     x0, y0 = offset
     dh, dw = obj_mask.shape
+    target = np.asarray(target)
 
-    patch = mask[y0 : (y0 + dh), x0 : (x0 + dw)]
-    patch[obj_mask] = target
-    mask[y0 : (y0 + dh), x0 : (x0 + dw)] = patch
+    if mask.ndim == 3:
+        patch = mask[y0 : (y0 + dh), x0 : (x0 + dw), :]
+        if target.size == 3:
+            patch[obj_mask, :] = np.reshape(target, (1, 1, 3))
+        else:
+            patch[obj_mask, :] = target
+        mask[y0 : (y0 + dh), x0 : (x0 + dw), :] = patch
+    else:
+        patch = mask[y0 : (y0 + dh), x0 : (x0 + dw)]
+        patch[obj_mask] = target
+        mask[y0 : (y0 + dh), x0 : (x0 + dw)] = patch
 
 
 def _render_polyline(mask, polyline, target, thickness):
-    points = foue.to_polyline(polyline).coords_in(img=mask)
+    points = foue.to_polyline(polyline, extra_attrs=False).coords_in(img=mask)
     points = [np.array(shape, dtype=np.int32) for shape in points]
 
     if polyline.filled:
         # pylint: disable=no-member
-        mask = cv2.fillPoly(mask, points, target)
+        cv2.fillPoly(mask, points, target)
     else:
-        mask = cv2.polylines(  # pylint: disable=no-member
+        cv2.polylines(  # pylint: disable=no-member
             mask, points, polyline.closed, target, thickness=thickness
         )
 
@@ -1231,28 +1533,45 @@ def _segmentation_to_detections(segmentation, mask_targets, mask_types):
         default = mask_types
         mask_types = {}
 
-    mask = segmentation.mask
+    mask = segmentation.get_mask()
+    is_rgb = mask.ndim == 3
+
+    if is_rgb:
+        array_targets = np.unique(mask.reshape(-1, mask.shape[2]), axis=0)
+        targets = [_rgb_to_hex(t) for t in array_targets]
+    else:
+        targets = np.unique(mask)
+        array_targets = itertools.repeat(None)
 
     detections = []
-    for target in np.unique(mask):
-        if target == 0:
+    for target, array_target in zip(targets, array_targets):
+        if target in (0, "#000000"):
             continue  # skip background
 
         if mask_targets is not None:
             label = mask_targets.get(target, None)
+            if is_rgb and label is None:
+                label = mask_targets.get(target.upper(), None)
+
             if label is None:
                 continue  # skip unknown target
         else:
             label = str(target)
 
         label_type = mask_types.get(target, None)
+        if is_rgb and label_type is None:
+            label_type = mask_types.get(target.upper(), None)
+
         if label_type is None:
             if default is None:
                 continue  # skip unknown type
 
             label_type = default
 
-        label_mask = mask == target
+        if is_rgb:
+            label_mask = np.all(mask == array_target.reshape(1, 1, 3), axis=2)
+        else:
+            label_mask = mask == target
 
         if label_type == "stuff":
             instances = [_parse_stuff_instance(label_mask)]
@@ -1281,28 +1600,45 @@ def _segmentation_to_polylines(
         default = mask_types
         mask_types = {}
 
-    mask = segmentation.mask
+    mask = segmentation.get_mask()
+    is_rgb = mask.ndim == 3
+
+    if is_rgb:
+        array_targets = np.unique(mask.reshape(-1, mask.shape[2]), axis=0)
+        targets = [_rgb_to_hex(t) for t in targets]
+    else:
+        targets = np.unique(mask)
+        array_targets = itertools.repeat(None)
 
     polylines = []
-    for target in np.unique(mask):
-        if target == 0:
+    for target, array_target in zip(targets, array_targets):
+        if target in (0, "#000000"):
             continue  # skip background
 
         if mask_targets is not None:
             label = mask_targets.get(target, None)
+            if is_rgb and label is None:
+                label = mask_targets.get(target.upper(), None)
+
             if label is None:
                 continue  # skip unknown target
         else:
             label = str(target)
 
         label_type = mask_types.get(target, None)
+        if is_rgb and label is None:
+            label_type = mask_types.get(target.upper(), None)
+
         if label_type is None:
             if default is None:
                 continue  # skip unknown type
 
             label_type = default
 
-        label_mask = mask == target
+        if is_rgb:
+            label_mask = np.all(mask == array_target.reshape(1, 1, 3), axis=2)
+        else:
+            label_mask = mask == target
 
         polygons = _get_polygons(label_mask, tolerance)
 
@@ -1323,6 +1659,47 @@ def _segmentation_to_polylines(
             polylines.append(polyline)
 
     return polylines
+
+
+def _hex_to_rgb(hex_str):
+    r = int(hex_str[1:3], 16)
+    g = int(hex_str[3:5], 16)
+    b = int(hex_str[5:7], 16)
+    return np.array([r, g, b])
+
+
+def _rgb_to_hex(rgb):
+    return "#%02x%02x%02x" % tuple(rgb)
+
+
+def _hex_to_int(hex_str):
+    r = int(hex_str[1:3], 16)
+    g = int(hex_str[3:5], 16)
+    b = int(hex_str[5:7], 16)
+    return (r << 16) + (g << 8) + b
+
+
+def _int_to_hex(value):
+    r = (value >> 16) & 255
+    g = (value >> 8) & 255
+    b = value & 255
+    return "#%02x%02x%02x" % (r, g, b)
+
+
+def _rgb_array_to_int(mask):
+    return (
+        np.left_shift(mask[:, :, 0], 16, dtype=int)
+        + np.left_shift(mask[:, :, 1], 8, dtype=int)
+        + mask[:, :, 2]
+    )
+
+
+def _int_array_to_rgb(mask):
+    out_mask = np.empty((*mask.shape, 3), dtype=np.uint8)
+    out_mask[:, :, 0] = np.right_shift(mask, 16) & 255
+    out_mask[:, :, 1] = np.right_shift(mask, 8) & 255
+    out_mask[:, :, 2] = mask & 255
+    return out_mask
 
 
 def _parse_stuff_instance(mask):

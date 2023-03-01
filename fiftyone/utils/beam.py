@@ -1,7 +1,7 @@
 """
 `Apache Beam <https://beam.apache.org>`_ utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -186,16 +186,18 @@ def beam_merge(
     if kwargs.get("key_fcn", None) is None:
         tmp_dataset = fod.Dataset()
 
-        beam_import(
-            tmp_dataset,
-            samples,
-            parse_fcn=parse_fcn,
-            options=options,
-            verbose=verbose,
-        )
+        try:
+            beam_import(
+                tmp_dataset,
+                samples,
+                parse_fcn=parse_fcn,
+                options=options,
+                verbose=verbose,
+            )
 
-        dataset.merge_samples(tmp_dataset, **kwargs)
-        tmp_dataset.delete()
+            dataset.merge_samples(tmp_dataset, **kwargs)
+        finally:
+            tmp_dataset.delete()
 
         return
 
@@ -307,7 +309,9 @@ def beam_export(
         view_stages = None
 
     export_batch = ExportBatch(
-        dataset_name, view_stages=view_stages, render_kwargs=render_kwargs,
+        dataset_name,
+        view_stages=view_stages,
+        render_kwargs=render_kwargs,
     )
 
     n = len(sample_collection)

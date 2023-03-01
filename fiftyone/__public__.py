@@ -1,29 +1,35 @@
 """
 FiftyOne's public interface.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import fiftyone.core.config as foc
-import fiftyone.core.odm as foo
+import fiftyone.core.config as _foc
+import fiftyone.core.odm as _foo
 
-config = foc.load_config()
-annotation_config = foc.load_annotation_config()
-app_config = foc.load_app_config()
-foo.establish_db_conn(config)
+config = _foc.load_config()
+annotation_config = _foc.load_annotation_config()
+app_config = _foc.load_app_config()
+
+_foo.establish_db_conn(config)
 
 from .core.aggregations import (
+    Aggregation,
     Bounds,
     Count,
     CountValues,
     Distinct,
+    FacetAggregations,
     HistogramValues,
     Mean,
+    Quantiles,
+    Schema,
     Std,
     Sum,
     Values,
 )
+from .core.collections import SaveContext
 from .core.config import AppConfig
 from .core.dataset import (
     Dataset,
@@ -43,9 +49,11 @@ from .core.expressions import (
     VALUE,
 )
 from .core.fields import (
+    flatten_schema,
     ArrayField,
     BooleanField,
     ClassesField,
+    ColorField,
     DateField,
     DateTimeField,
     DictField,
@@ -62,16 +70,17 @@ from .core.fields import (
     GeoMultiLineStringField,
     GeoMultiPolygonField,
     IntField,
-    IntDictField,
     KeypointsField,
     ListField,
     ObjectIdField,
     PolylinePointsField,
+    ReferenceField,
     StringField,
-    TargetsField,
+    MaskTargetsField,
     VectorField,
 )
 from .core.frame import Frame
+from .core.groups import Group
 from .core.labels import (
     Label,
     Attribute,
@@ -95,6 +104,10 @@ from .core.labels import (
     GeoLocation,
     GeoLocations,
 )
+from .core.logging import (
+    get_logging_level,
+    set_logging_level,
+)
 from .core.metadata import (
     Metadata,
     ImageMetadata,
@@ -112,13 +125,21 @@ from .core.models import (
     ModelManagerConfig,
     ModelManager,
 )
+from .core.odm import (
+    DatasetAppConfig,
+    DynamicEmbeddedDocument,
+    EmbeddedDocument,
+    KeypointSkeleton,
+    SidebarGroupDocument,
+)
 from .core.plots import (
     plot_confusion_matrix,
     plot_pr_curve,
     plot_pr_curves,
     plot_roc_curve,
-    location_scatterplot,
+    lines,
     scatterplot,
+    location_scatterplot,
     Plot,
     ResponsivePlot,
     InteractivePlot,
@@ -128,18 +149,21 @@ from .core.plots import (
     NumericalHistogram,
 )
 from .core.sample import Sample
+from .core.spaces import (
+    Space,
+    Panel,
+)
 from .core.stages import (
+    Concat,
     Exclude,
     ExcludeBy,
     ExcludeFields,
     ExcludeFrames,
+    ExcludeGroups,
     ExcludeLabels,
     Exists,
     FilterField,
     FilterLabels,
-    FilterClassifications,
-    FilterDetections,
-    FilterPolylines,
     FilterKeypoints,
     Limit,
     LimitLabels,
@@ -157,6 +181,8 @@ from .core.stages import (
     SelectBy,
     SelectFields,
     SelectFrames,
+    SelectGroups,
+    SelectGroupSlices,
     SelectLabels,
     SetField,
     Skip,

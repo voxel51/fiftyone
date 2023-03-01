@@ -1,18 +1,19 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { SELECTION_TEXT } from "../../constants";
-import { BaseState } from "../../state";
+import { BaseState, Control, ControlEventKeyType } from "../../state";
 import { BaseElement, Events } from "../base";
 
-import { looker, lookerError, lookerFullscreen } from "./looker.module.css";
+import { looker, lookerError, lookerHighlight } from "./looker.module.css";
 
 export class LookerElement<State extends BaseState> extends BaseElement<
   State,
   HTMLDivElement
 > {
   private selection: boolean;
+  private highlight: boolean;
 
   getEvents(): Events<State> {
     return {
@@ -22,34 +23,56 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         }
 
         const e = event as KeyboardEvent;
-        update(({ SHORTCUTS, error }) => {
+        update((state) => {
+          const { SHORTCUTS, error, shouldHandleKeyEvents } = state;
           if (!error && e.key in SHORTCUTS) {
-            SHORTCUTS[e.key].action(update, dispatchEvent, e.key, e.shiftKey);
+            const matchedControl = SHORTCUTS[e.key] as Control;
+            const enabled =
+              shouldHandleKeyEvents || matchedControl.alwaysHandle;
+            if (enabled) {
+              matchedControl.action(update, dispatchEvent, e.key, e.shiftKey);
+            }
           }
 
           return {};
         });
       },
-      mouseenter: ({ update, dispatchEvent }) => {
-        dispatchEvent("mouseenter");
-        update(({ config: { thumbnail } }) => {
-          if (thumbnail) {
-            return { hovering: true };
+      keyup: ({ event, update, dispatchEvent }) => {
+        if (event.altKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
+
+        const e = event as KeyboardEvent;
+        update(({ SHORTCUTS, error, shouldHandleKeyEvents }) => {
+          if (!error && e.key in SHORTCUTS) {
+            const matchedControl = SHORTCUTS[e.key] as Control;
+            const enabled =
+              shouldHandleKeyEvents || matchedControl.alwaysHandle;
+            if (
+              enabled &&
+              matchedControl.eventKeyType === ControlEventKeyType.HOLD
+            ) {
+              matchedControl.afterAction(
+                update,
+                dispatchEvent,
+                e.key,
+                e.shiftKey
+              );
+            }
           }
-          return {
-            hovering: true,
-            showControls: true,
-          };
+
+          return {};
         });
       },
-      mouseleave: ({ update, dispatchEvent }) => {
-        dispatchEvent("mouseleave");
-        update({
-          hovering: false,
-          disableControls: false,
-          showControls: false,
-          showOptions: false,
-          panning: false,
+      mouseenter: ({ update }) => {
+        update({ hovering: true });
+      },
+      mousemove: ({ update, dispatchEvent }) => {
+        update((state) => {
+          !state.options.showControls &&
+            dispatchEvent("options", { showControls: true });
+
+          return {};
         });
       },
     };
@@ -66,21 +89,21 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     hovering,
     error,
     config: { thumbnail },
-    options: { fullscreen, inSelectionMode },
+    options: { highlight, inSelectionMode },
   }: Readonly<State>) {
     if (!thumbnail && hovering && this.element !== document.activeElement) {
       this.element.focus();
     }
 
-    if (error && !thumbnail) {
-      this.element.classList.add(lookerError);
+    if (highlight !== this.highlight) {
+      this.highlight = highlight;
+      highlight
+        ? this.element.classList.add(lookerHighlight)
+        : this.element.classList.remove(lookerHighlight);
     }
 
-    const fullscreenClass = this.element.classList.contains(lookerFullscreen);
-    if (fullscreen && !fullscreenClass) {
-      this.element.classList.add(lookerFullscreen);
-    } else if (!fullscreen && fullscreenClass) {
-      this.element.classList.remove(lookerFullscreen);
+    if (error && !thumbnail) {
+      this.element.classList.add(lookerError);
     }
 
     if (thumbnail && inSelectionMode !== this.selection) {

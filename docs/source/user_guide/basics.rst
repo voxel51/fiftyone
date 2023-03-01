@@ -11,6 +11,8 @@ This page provides a brief overview of FiftyOne's basic concepts.
    :alt: datasets-hero
    :align: center
 
+.. _basics-datasets:
+
 Datasets
 --------
 
@@ -80,10 +82,11 @@ obtain a desired subset of the samples.
     Tags:           []
     Sample fields:
         id:         fiftyone.core.fields.ObjectIdField
-        media_type: fiftyone.core.fields.StringField
         filepath:   fiftyone.core.fields.StringField
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+
+.. _basics-samples:
 
 Samples
 -------
@@ -109,6 +112,8 @@ store additional custom information about the sample.
 
    # A video sample
    sample = fo.Sample(filepath="/path/to/video.mp4")
+
+.. _basics-fields:
 
 Fields
 ------
@@ -151,9 +156,9 @@ Custom fields can contain any Python primitive data type:
 -   |ListField|: contains Python `list` instances
 -   |DictField|: contains Python `dict` instances
 
-The elements of list and dict fields may be homogenous or heterogenous, and may
-even contain nested lists and dicts. Fields can also contain more complex data
-types like :ref:`labels <using-labels>`.
+The elements of list and dict fields may be homogenous or heterogeneous, and
+may even contain nested lists and dicts. Fields can also contain more complex
+data types like :ref:`labels <using-labels>`.
 
 Fields can be dynamically created, modified, and deleted. When a new |Field| is
 assigned to a |Sample| in a |Dataset|, or a |Sample| with new fields is added
@@ -196,7 +201,7 @@ schema and thus accessible on all other samples in the dataset.
         id:        fiftyone.core.fields.ObjectIdField
         filepath:  fiftyone.core.fields.StringField
         tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         quality:   fiftyone.core.fields.FloatField
         keypoints: fiftyone.core.fields.ListField
         geo_json:  fiftyone.core.fields.DictField
@@ -214,6 +219,8 @@ the source media and exposed via the `media_type` attribute of the sample.
 .. custombutton::
     :button_text: Learn more about media types
     :button_link: using_datasets.html#using-media-type
+
+.. _basics-tags:
 
 Tags
 ----
@@ -239,6 +246,8 @@ like.
 
     print(sample.tags)
     # ["train", "my_favorite_samples"]
+
+.. _basics-metadata:
 
 Metadata
 --------
@@ -271,7 +280,7 @@ metadata about the source media of the sample.
         'id': '60302b9dca4a8b5f74e84f16',
         'media_type': 'image',
         'filepath': '/path/to/image.png',
-        'tags': BaseList([]),
+        'tags': [],
         'metadata': <ImageMetadata: {
             'size_bytes': 544559,
             'mime_type': 'image/png',
@@ -280,6 +289,8 @@ metadata about the source media of the sample.
             'num_channels': 3,
         }>,
     }>
+
+.. _basics-labels:
 
 Labels
 ------
@@ -339,20 +350,20 @@ Using FiftyOne's |Label| types enables you to visualize your labels in the
         'metadata': None,
         'weather': <Classification: {'label': 'sunny', 'confidence': None, 'logits': None}>,
         'animals': <Detections: {
-            'detections': BaseList([
+            'detections': [
                 <Detection: {
                     'label': 'cat',
-                    'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+                    'bounding_box': [0.5, 0.5, 0.4, 0.3],
                     'confidence': None,
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                 }>,
                 <Detection: {
                     'label': 'dog',
-                    'bounding_box': BaseList([0.2, 0.2, 0.2, 0.4]),
+                    'bounding_box': [0.2, 0.2, 0.2, 0.4],
                     'confidence': None,
-                    'attributes': BaseDict({}),
+                    'attributes': {},
                 }>,
-            ]),
+            ],
         }>,
     }>
 
@@ -387,6 +398,8 @@ datasets to perform the analysis that you need.
 .. image:: /images/cats-similar.png
    :alt: cats-similar
    :align: center
+
+.. _basics-aggregations:
 
 Aggregations
 ------------

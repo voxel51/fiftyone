@@ -1,35 +1,19 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { SCALE_FACTOR } from "../../constants";
 import {
   BaseState,
   Control,
+  ControlEventKeyType,
   ControlMap,
-  StateUpdate,
   VideoState,
 } from "../../state";
 import { clampScale } from "../../util";
-import { BaseElement, Events } from "../base";
 import { getFrameNumber } from "../util";
 
-import {
-  lookerHelpPanelItems,
-  lookerShortcutValue,
-  lookerShortcutTitle,
-  lookerShortcutDetail,
-} from "./actions.module.css";
-import {
-  lookerPanel,
-  lookerPanelContainer,
-  lookerPanelHeader,
-  lookerPanelVerticalContainer,
-  lookerPanelClose,
-  lookerPanelFlex,
-} from "./panel.module.css";
 import { dispatchTooltipEvent } from "./util";
-import closeIcon from "../../icons/close.svg";
 
 const readActions = <State extends BaseState>(
   actions: ControlMap<State>
@@ -54,12 +38,18 @@ const escape: Control = {
     update(
       ({
         hasDefaultZoom,
-        showHelp,
         showOptions,
-        options: { fullscreen: fullscreenSetting, showJSON, selectedLabels },
+        options: {
+          fullscreen: fullscreenSetting,
+          showJSON,
+          showHelp,
+          selectedLabels,
+        },
       }) => {
         if (showHelp) {
-          return { showHelp: false };
+          dispatchEvent("panels", { showHelp: "close" });
+          return {};
+          // return { options: {showHelp: false} };
         }
 
         if (showOptions) {
@@ -67,7 +57,7 @@ const escape: Control = {
         }
 
         if (showJSON) {
-          dispatchEvent("options", { showJSON: false });
+          dispatchEvent("panels", { showJSON: "close" });
           return { options: { showJSON: false } };
         }
 
@@ -98,14 +88,15 @@ export const controls: Control = {
   title: "Show controls",
   shortcut: "c",
   detail: "Show the conrols bar and navigation arrows",
-  action: (update) => {
-    update(({ config: { thumbnail }, showControls }) => {
+  action: (update, dispatchEvent) => {
+    update(({ config: { thumbnail }, options: { showControls } }) => {
       if (thumbnail) {
         return {};
       }
 
+      dispatchEvent("options", { showControls: !showControls });
+
       return {
-        showControls: !showControls,
         disableControls: showControls,
         showOptions: false,
       };
@@ -126,6 +117,7 @@ export const next: Control = {
   shortcut: "&#8594;",
   eventKeys: "ArrowRight",
   detail: "Go to the next sample",
+  alwaysHandle: true,
   action: (_, dispatchEvent) => {
     dispatchEvent("next");
   },
@@ -136,8 +128,40 @@ export const previous: Control = {
   shortcut: "&#8592;",
   eventKeys: "ArrowLeft",
   detail: "Go to the previous sample",
+  alwaysHandle: true,
   action: (_, dispatchEvent) => {
     dispatchEvent("previous");
+  },
+};
+
+export const toggleOverlays: Control = {
+  title: "Show/hide overlays",
+  shortcut: "shift",
+  eventKeys: "Shift",
+  eventKeyType: ControlEventKeyType.HOLD,
+  detail: "Toggles visibility of all overlays",
+  action: (update, dispatchEvent) => {
+    update(
+      ({ config: { thumbnail } }) =>
+        thumbnail ? {} : { options: { showOverlays: false } },
+      ({ config: { thumbnail }, options: { showOverlays } }) => {
+        if (!thumbnail) {
+          dispatchEvent("showOverlays", false);
+          dispatchEvent("tooltip", null);
+        }
+      }
+    );
+  },
+  afterAction: (update, dispatchEvent) => {
+    update(
+      ({ config: { thumbnail } }) =>
+        thumbnail ? {} : { options: { showOverlays: true } },
+      ({ config: { thumbnail }, options: { showOverlays } }) => {
+        if (!thumbnail) {
+          dispatchEvent("showOverlays", true);
+        }
+      }
+    );
   },
 };
 
@@ -187,17 +211,17 @@ export const help: Control = {
   shortcut: "?",
   detail: "Display this help window",
   action: (update, dispatchEvent) => {
-    update(({ showHelp, config: { thumbnail } }) => {
+    update(({ showHelp, SHORTCUTS, config: { thumbnail } }) => {
       if (thumbnail) {
         return {};
       }
 
-      if (!showHelp) {
-        dispatchEvent("options", { showJSON: false });
-        return { showHelp: true, options: { showJSON: false } };
-      }
+      dispatchEvent("panels", {
+        showHelp: "toggle",
+        SHORTCUTS,
+      });
 
-      return { showHelp: false };
+      return {};
     });
   },
 };
@@ -212,7 +236,7 @@ export const zoomIn: Control = {
       ({
         scale,
         windowBBox: [_, __, ww, wh],
-        config: { dimensions },
+        dimensions,
         pan: [px, py],
         options: { zoomPad },
       }) => {
@@ -247,7 +271,7 @@ export const zoomOut: Control = {
       ({
         scale,
         windowBBox: [_, __, ww, wh],
-        config: { dimensions },
+        dimensions,
         pan: [px, py],
         options: { zoomPad },
       }) => {
@@ -294,23 +318,25 @@ export const settings: Control = {
   title: "Settings",
   shortcut: "s",
   detail: "Toggle the settings panel",
-  action: (update) => {
-    update(({ showOptions, config: { thumbnail } }) => {
-      if (thumbnail) {
-        return {};
-      } else if (showOptions) {
-        return {
-          showOptions: false,
-          disableControls: false,
-        };
-      } else {
-        return {
-          disableControls: false,
-          showControls: true,
-          showOptions: true,
-        };
+  action: (update, dispatchEvent) => {
+    update(
+      ({ showOptions, config: { thumbnail }, options: { showControls } }) => {
+        if (thumbnail) {
+          return {};
+        } else if (showOptions) {
+          return {
+            showOptions: false,
+            disableControls: false,
+          };
+        } else {
+          !showControls && dispatchEvent("options", { showControls: true });
+          return {
+            disableControls: false,
+            showOptions: true,
+          };
+        }
       }
-    });
+    );
   },
 };
 
@@ -318,19 +344,19 @@ export const controlsToggle: Control = {
   title: "Controls",
   shortcut: "c",
   detail: "Toggle controls",
-  action: (update) => {
-    update(({ config: { thumbnail }, showControls }) => {
+  action: (update, dispatchEvent) => {
+    update(({ config: { thumbnail }, options: { showControls } }) => {
       if (thumbnail) {
         return {};
       } else if (showControls) {
+        dispatchEvent("options", { showControls: false });
         return {
-          showControls: false,
           disableControls: false,
         };
       } else {
+        dispatchEvent("options", { showControls: true });
         return {
           disableControls: false,
-          showControls: true,
         };
       }
     });
@@ -359,23 +385,7 @@ export const json: Control = {
   shortcut: "j",
   detail: "View JSON",
   action: (update, dispatchEvent) => {
-    let newJSON = null;
-    update(
-      ({ disableOverlays, config: { thumbnail }, options: { showJSON } }) => {
-        if (thumbnail) {
-          return {};
-        }
-
-        newJSON = disableOverlays ? false : !showJSON;
-
-        if (newJSON) {
-          return { showHelp: false, options: { showJSON: newJSON } };
-        }
-
-        return { options: { showJSON: false } };
-      }
-    );
-    newJSON !== null && dispatchEvent("options", { showJSON: newJSON });
+    dispatchEvent("panels", { showJSON: "toggle" });
   },
 };
 
@@ -395,6 +405,7 @@ export const COMMON = {
   fullscreen,
   json,
   wheel,
+  toggleOverlays,
 };
 
 export const COMMON_SHORTCUTS = readActions(COMMON);
@@ -404,6 +415,7 @@ export const nextFrame: Control<VideoState> = {
   eventKeys: [".", ">"],
   shortcut: ">",
   detail: "Seek to the next frame",
+  alwaysHandle: true,
   action: (update, dispatchEvent) => {
     update(
       ({
@@ -434,6 +446,7 @@ export const previousFrame: Control<VideoState> = {
   eventKeys: [",", "<"],
   shortcut: "<",
   detail: "Seek to the previous frame",
+  alwaysHandle: true,
   action: (update, dispatchEvent) => {
     update(
       ({
@@ -612,16 +625,16 @@ const videoEscape: Control<VideoState> = {
           };
         }
 
+        if (!hasDefaultZoom) {
+          return {
+            setZoom: true,
+          };
+        }
+
         if (frameNumber !== 1) {
           return {
             frameNumber: 1,
             playing: false,
-          };
-        }
-
-        if (!hasDefaultZoom) {
-          return {
-            setZoom: true,
           };
         }
 
@@ -654,139 +667,3 @@ export const VIDEO = {
 };
 
 export const VIDEO_SHORTCUTS = readActions(VIDEO);
-
-export class HelpPanelElement<State extends BaseState> extends BaseElement<
-  State
-> {
-  private showHelp?: boolean;
-  protected items?: HTMLDivElement;
-
-  getEvents(): Events<State> {
-    return {
-      click: ({ event, update }) => {
-        event.stopPropagation();
-        event.preventDefault();
-        update({ showHelp: false });
-      },
-      dblclick: ({ event }) => {
-        event.stopPropagation();
-        event.preventDefault();
-      },
-    };
-  }
-
-  createHTMLElement(update) {
-    return this.createHelpPanel(update, COMMON);
-  }
-
-  isShown({ thumbnail }: Readonly<State["config"]>) {
-    return !thumbnail;
-  }
-
-  renderSelf({ showHelp }: Readonly<State>) {
-    if (this.showHelp === showHelp) {
-      return this.element;
-    }
-    if (showHelp) {
-      this.element.style.opacity = "0.9";
-      this.element.style.display = "flex";
-    } else {
-      this.element.style.opacity = "0.0";
-      this.element.style.display = "none";
-    }
-    this.showHelp = showHelp;
-    return this.element;
-  }
-
-  protected createHelpPanel(
-    update: StateUpdate<State>,
-    controls: ControlMap<State>
-  ): HTMLElement {
-    const element = document.createElement("div");
-    const header = document.createElement("div");
-    header.innerText = "Help";
-    header.classList.add(lookerPanelHeader);
-    element.classList.add(lookerPanel);
-
-    const container = document.createElement("div");
-    container.classList.add(lookerPanelContainer);
-
-    const vContainer = document.createElement("div");
-    vContainer.classList.add(lookerPanelVerticalContainer);
-
-    vContainer.appendChild(element);
-
-    container.appendChild(vContainer);
-    const scroll = document.createElement("div");
-    scroll.classList.add(lookerPanelFlex);
-
-    const items = document.createElement("div");
-    items.classList.add(lookerHelpPanelItems);
-    this.items = items;
-
-    const close = document.createElement("img");
-    close.src = closeIcon;
-    close.classList.add(lookerPanelClose);
-    close.onclick = () => update({ showHelp: false });
-    element.appendChild(close);
-
-    const first = ["Wheel", "Esc"];
-
-    Object.values(controls)
-      .sort((a, b) =>
-        a.shortcut.length !== b.shortcut.length
-          ? first.includes(b.shortcut)
-            ? 1
-            : first.includes(a.shortcut)
-            ? -1
-            : b.shortcut.length - a.shortcut.length
-          : a.shortcut > b.shortcut
-          ? 1
-          : -1
-      )
-      .forEach(addItem(items));
-
-    scroll.appendChild(header);
-    scroll.appendChild(items);
-    element.append(scroll);
-
-    return container;
-  }
-}
-
-export class VideoHelpPanelElement extends HelpPanelElement<VideoState> {
-  createHTMLElement(update) {
-    let config = null;
-    update(({ config: _config }) => {
-      config = _config;
-      return {};
-    });
-
-    return this.createHelpPanel(
-      update,
-      Object.fromEntries(
-        Object.entries(VIDEO).filter(([k, v]) => !v.filter || v.filter(config))
-      )
-    );
-  }
-}
-
-const addItem = <State extends BaseState>(items: HTMLDivElement) => (
-  value: Control<State>
-) => {
-  const shortcut = document.createElement("div");
-  shortcut.classList.add(lookerShortcutValue);
-  shortcut.innerHTML = value.shortcut;
-
-  const title = document.createElement("div");
-  title.classList.add(lookerShortcutTitle);
-  title.innerText = value.title;
-
-  const detail = document.createElement("div");
-  detail.classList.add(lookerShortcutDetail);
-  detail.innerText = value.detail;
-
-  items.appendChild(shortcut);
-  items.appendChild(title);
-  items.appendChild(detail);
-};

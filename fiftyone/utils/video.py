@@ -1,11 +1,13 @@
 """
 Video utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import itertools
+import json
+import logging
 import os
 
 import eta.core.frameutils as etaf
@@ -15,10 +17,12 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
-import fiftyone.core.clips as foc
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+
+
+logger = logging.getLogger(__name__)
 
 
 def extract_clip(
@@ -84,15 +88,17 @@ def extract_clip(
 def reencode_videos(
     sample_collection,
     force_reencode=True,
+    media_field="filepath",
+    output_field=None,
+    output_dir=None,
+    rel_dir=None,
     delete_originals=False,
+    skip_failures=False,
     verbose=False,
-    **kwargs
+    **kwargs,
 ):
     """Re-encodes the videos in the sample collection as H.264 MP4s that can be
     visualized in the FiftyOne App.
-
-    The ``filepath`` of the samples are updated to point to the re-encoded
-    videos.
 
     By default, the re-encoding is performed via the following ``ffmpeg``
     command::
@@ -106,13 +112,37 @@ def reencode_videos(
     compression by passing keyword arguments for
     ``eta.core.video.FFmpeg(**kwargs)`` to this function.
 
+    .. note::
+
+        This method will not update the ``metadata`` field of the collection
+        after transforming. You can repopulate the ``metadata`` field if needed
+        by calling::
+
+            sample_collection.compute_metadata(overwrite=True)
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         force_reencode (True): whether to re-encode videos that are already
             MP4s
+        media_field ("filepath"): the input field containing the video paths to
+            transform
+        output_field (None): an optional field in which to store the paths to
+            the transformed videos. By default, ``media_field`` is updated
+            in-place
+        output_dir (None): an optional output directory in which to write the
+            transformed videos. If none is provided, the videos are updated
+            in-place
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each video. This
+            argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths
         delete_originals (False): whether to delete the original videos after
-            re-encoding
+            re-encoding. This parameter has no effect if the videos are being
+            updated in-place
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a video cannot be re-encoded
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
@@ -123,9 +153,14 @@ def reencode_videos(
         sample_collection,
         reencode=True,
         force_reencode=force_reencode,
+        media_field=media_field,
+        output_field=output_field,
+        output_dir=output_dir,
+        rel_dir=rel_dir,
         delete_originals=delete_originals,
+        skip_failures=skip_failures,
         verbose=verbose,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -139,15 +174,17 @@ def transform_videos(
     max_size=None,
     reencode=False,
     force_reencode=False,
+    media_field="filepath",
+    output_field=None,
+    output_dir=None,
+    rel_dir=None,
     delete_originals=False,
+    skip_failures=False,
     verbose=False,
-    **kwargs
+    **kwargs,
 ):
     """Transforms the videos in the sample collection according to the provided
     parameters using ``ffmpeg``.
-
-    The ``filepath`` of the samples are updated to point to the transformed
-    videos.
 
     In addition to the size and frame rate parameters, if ``reencode == True``,
     the following basic ``ffmpeg`` command structure is used to re-encode the
@@ -157,6 +194,14 @@ def transform_videos(
             -loglevel error -vsync 0 -i $INPUT_PATH \\
             -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p -vsync 0 -an \\
             $OUTPUT_PATH
+
+    .. note::
+
+        This method will not update the ``metadata`` field of the collection
+        after transforming. You can repopulate the ``metadata`` field if needed
+        by calling::
+
+            sample_collection.compute_metadata(overwrite=True)
 
     Args:
         sample_collection: a
@@ -179,8 +224,23 @@ def transform_videos(
         reencode (False): whether to re-encode the videos as H.264 MP4s
         force_reencode (False): whether to re-encode videos whose parameters
             already satisfy the specified values
+        media_field ("filepath"): the input field containing the video paths to
+            transform
+        output_field (None): an optional field in which to store the paths to
+            the transformed videos. By default, ``media_field`` is updated
+            in-place
+        output_dir (None): an optional output directory in which to write the
+            transformed videos. If none is provided, the videos are updated
+            in-place
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each video. This
+            argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths
         delete_originals (False): whether to delete the original videos after
             re-encoding
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a video cannot be transformed
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
@@ -197,9 +257,14 @@ def transform_videos(
         max_size=max_size,
         reencode=reencode,
         force_reencode=force_reencode,
+        media_field=media_field,
+        output_field=output_field,
+        output_dir=output_dir,
+        rel_dir=rel_dir,
         delete_originals=delete_originals,
+        skip_failures=skip_failures,
         verbose=verbose,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -214,18 +279,22 @@ def sample_videos(
     max_size=None,
     original_frame_numbers=True,
     force_sample=False,
+    save_filepaths=False,
+    media_field="filepath",
+    output_field=None,
+    output_dir=None,
+    rel_dir=None,
     delete_originals=False,
+    skip_failures=False,
     verbose=False,
-    **kwargs
+    **kwargs,
 ):
     """Samples the videos in the sample collection into directories of
     per-frame images according to the provided parameters using ``ffmpeg``.
 
-    The frames for each sample are stored in a directory with the same basename
-    as the input video with frame numbers/format specified by ``frames_patt``.
-
-    For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
-    following paths::
+    By default, each folder of images is written using the same basename as the
+    input video. For example, if ``frames_patt = "%%06d.jpg"``, then videos
+    with the following paths::
 
         /path/to/video1.mp4
         /path/to/video2.mp4
@@ -241,6 +310,33 @@ def sample_videos(
             000001.jpg
             000002.jpg
             ...
+
+    However, you can use the optional ``output_dir`` and ``rel_dir`` parameters
+    to customize the location and shape of the sampled frame folders. For
+    example, if ``output_dir = "/tmp"`` and ``rel_dir = "/path/to"``, then
+    videos with the following paths::
+
+        /path/to/folderA/video1.mp4
+        /path/to/folderA/video2.mp4
+        /path/to/folderB/video3.mp4
+        ...
+
+    would be sampled as follows::
+
+        /tmp/folderA/
+            video1/
+                000001.jpg
+                000002.jpg
+                ...
+            video2/
+                000001.jpg
+                000002.jpg
+                ...
+        /tmp/folderB/
+            video3/
+                000001.jpg
+                000002.jpg
+                ...
 
     Args:
         sample_collection: a
@@ -270,8 +366,26 @@ def sample_videos(
             the frames as 1, 2, ... (False)
         force_sample (False): whether to resample videos whose sampled frames
             already exist
+        save_filepaths (False): whether to save the sampled frame paths in the
+            ``output_field`` field of each frame of the input collection
+        media_field ("filepath"): the input field containing the video paths to
+            sample
+        output_field (None): an optional frame field in which to store the
+            paths to the sampled frames. By default, ``media_field`` is used
+        output_dir (None): an optional output directory in which to write the
+            sampled frames. By default, the frames are written in folders with
+            the same basename of each video
+        rel_dir (None): a relative directory to remove from the filepath of
+            each video, if possible. The path is converted to an absolute path
+            (if necessary) via :func:`fiftyone.core.utils.normalize_path`. This
+            argument can be used in conjunction with ``output_dir`` to cause
+            the sampled frames to be written in a nested directory structure
+            within ``output_dir`` matching the shape of the input video's
+            folder structure
         delete_originals (False): whether to delete the original videos after
             sampling
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a video cannot be sampled
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
@@ -290,9 +404,15 @@ def sample_videos(
         original_frame_numbers=original_frame_numbers,
         frames_patt=frames_patt,
         force_reencode=force_sample,
+        media_field=media_field,
+        output_field=output_field,
+        output_dir=output_dir,
+        rel_dir=rel_dir,
+        save_filepaths=save_filepaths,
         delete_originals=delete_originals,
+        skip_failures=skip_failures,
         verbose=verbose,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -323,7 +443,7 @@ def reencode_video(input_path, output_path, verbose=False, **kwargs):
         reencode=True,
         force_reencode=True,
         verbose=verbose,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -338,7 +458,7 @@ def transform_video(
     max_size=None,
     reencode=False,
     verbose=False,
-    **kwargs
+    **kwargs,
 ):
     """Transforms the video according to the provided parameters using
     ``ffmpeg``.
@@ -385,7 +505,7 @@ def transform_video(
         max_size=max_size,
         reencode=reencode,
         verbose=verbose,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -400,7 +520,7 @@ def sample_video(
     max_size=None,
     original_frame_numbers=True,
     verbose=False,
-    **kwargs
+    **kwargs,
 ):
     """Samples the video into a directory of per-frame images according to the
     provided parameters using ``ffmpeg``.
@@ -443,7 +563,7 @@ def sample_video(
         original_frame_numbers=original_frame_numbers,
         force_reencode=True,
         verbose=verbose,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -519,6 +639,53 @@ def sample_frames_uniform(
     return sample_frames
 
 
+def concat_videos(input_paths, output_path, verbose=False):
+    """Concatenates the given list of videos, in order, into a single video.
+
+    Args:
+        input_paths: a list of video paths
+        output_path: the path to write the output video
+        verbose (False): whether to log the ``ffmpeg`` command that is executed
+    """
+    with etau.TempDir() as tmp_dir:
+        input_list_path = os.path.join(tmp_dir, "input_list.txt")
+        with open(input_list_path, "w") as f:
+            f.write("\n".join(["file '%s'" % path for path in input_paths]))
+
+        in_opts = ["-f", "concat", "-safe", "0"]
+        out_opts = ["-c", "copy"]
+
+        with etav.FFmpeg(in_opts=in_opts, out_opts=out_opts) as ffmpeg:
+            ffmpeg.run(input_list_path, output_path, verbose=verbose)
+
+
+def exact_frame_count(input_path):
+    """Returns the exact number of frames in the video.
+
+    .. warning::
+
+        This method uses the ``-count_frames`` argument of ``ffprobe``, which
+        requires decoding the video and can be very slow.
+
+    Args:
+        input_path: the path to the video
+
+    Returns:
+        the number of frames in the video
+    """
+    opts = [
+        "-count_frames",
+        "-select_streams",
+        "v:0",
+        "-print_format",
+        "json",
+        "-show_streams",
+    ]
+    ffprobe = etav.FFprobe(opts=opts)
+    output = json.loads(ffprobe.run(input_path).decode())
+    return int(output["streams"][0]["nb_read_frames"])
+
+
 def _transform_videos(
     sample_collection,
     frames=None,
@@ -533,10 +700,21 @@ def _transform_videos(
     original_frame_numbers=True,
     reencode=False,
     force_reencode=False,
+    save_filepaths=False,
+    media_field="filepath",
+    output_field=None,
+    output_dir=None,
+    rel_dir=None,
     delete_originals=False,
+    skip_failures=False,
     verbose=False,
-    **kwargs
+    **kwargs,
 ):
+    if output_field is None:
+        output_field = media_field
+
+    diff_field = output_field != media_field
+
     if sample_frames:
         reencode = True
         if frames_patt is None:
@@ -544,31 +722,37 @@ def _transform_videos(
                 fo.config.default_sequence_idx + fo.config.default_image_ext
             )
 
-    view = sample_collection.select_fields()
+    view = sample_collection.select_fields(media_field)
 
     if frames is None:
         frames = itertools.repeat(None)
 
     with fou.ProgressBar(total=len(view)) as pb:
         for sample, _frames in pb(zip(view, frames)):
-            inpath = sample.filepath
+            inpath = sample[media_field]
+
+            _outpath = _get_outpath(
+                inpath, output_dir=output_dir, rel_dir=rel_dir
+            )
 
             if sample_frames:
-                outdir = os.path.splitext(inpath)[0]
-                outpath = os.path.join(outdir, frames_patt)
+                outpath = os.path.join(
+                    os.path.splitext(_outpath)[0], frames_patt
+                )
 
                 # If sampling was not forced and the first frame exists, assume
                 # that all frames exist
-                if not force_reencode and os.path.exists(outpath % 1):
+                fn = _frames[0] if _frames else 1
+                if not force_reencode and os.path.isfile(outpath % fn):
                     continue
             elif reencode:
-                root, ext = os.path.splitext(inpath)
+                root, ext = os.path.splitext(_outpath)
                 if ext.lower() != ".mp4":
                     outpath = root + ".mp4"
                 else:
-                    outpath = inpath
+                    outpath = _outpath
             else:
-                outpath = inpath
+                outpath = _outpath
 
             _transform_video(
                 inpath,
@@ -584,12 +768,36 @@ def _transform_videos(
                 reencode=reencode,
                 force_reencode=force_reencode,
                 delete_original=delete_originals,
+                skip_failures=skip_failures,
                 verbose=verbose,
-                **kwargs
+                **kwargs,
             )
 
-            if not sample_frames:
-                sample.filepath = outpath
+            if save_filepaths and sample_frames:
+                if _frames is None:
+                    try:
+                        if sample.metadata is None:
+                            sample.compute_metadata()
+
+                        _frames = range(
+                            1, sample.metadata.total_frame_count + 1
+                        )
+                    except Exception as e:
+                        if not skip_failures:
+                            raise
+
+                        _frames = []
+                        logger.warning(e)
+
+                for fn in _frames:
+                    frame_path = outpath % fn
+                    if os.path.isfile(frame_path):
+                        sample.frames[fn][output_field] = frame_path
+
+                sample.save()
+
+            if (diff_field or outpath != inpath) and not sample_frames:
+                sample[output_field] = outpath
                 sample.save()
 
 
@@ -608,11 +816,12 @@ def _transform_video(
     reencode=False,
     force_reencode=False,
     delete_original=False,
+    skip_failures=False,
     verbose=False,
-    **kwargs
+    **kwargs,
 ):
-    inpath = os.path.abspath(os.path.expanduser(inpath))
-    outpath = os.path.abspath(os.path.expanduser(outpath))
+    inpath = fou.normalize_path(inpath)
+    outpath = fou.normalize_path(outpath)
     in_ext = os.path.splitext(inpath)[1]
     out_ext = os.path.splitext(outpath)[1]
 
@@ -627,67 +836,85 @@ def _transform_video(
         min_fps = None
         max_fps = None
 
-    if (
-        fps is not None
-        or min_fps is not None
-        or max_fps is not None
-        or size is not None
-        or min_size is not None
-        or max_size is not None
-    ):
-        fps, size, _frames = _parse_parameters(
-            inpath,
-            fps,
-            min_fps,
-            max_fps,
-            size,
-            min_size,
-            max_size,
-            sample_frames,
-            original_frame_numbers,
+    did_transform = False
+
+    try:
+        if (
+            fps is not None
+            or min_fps is not None
+            or max_fps is not None
+            or size is not None
+            or min_size is not None
+            or max_size is not None
+        ):
+            fps, size, _frames = _parse_parameters(
+                inpath,
+                fps,
+                min_fps,
+                max_fps,
+                size,
+                min_size,
+                max_size,
+                sample_frames,
+                original_frame_numbers,
+            )
+
+            if frames is None:
+                frames = _frames
+
+        if reencode:
+            # Use default reencoding parameters from ``eta.core.video.FFmpeg``
+            kwargs["in_opts"] = None
+            kwargs["out_opts"] = None
+        else:
+            # No reencoding parameters
+            if "in_opts" not in kwargs:
+                kwargs["in_opts"] = []
+
+            if "out_opts" not in kwargs:
+                kwargs["out_opts"] = []
+
+        should_reencode = (
+            force_reencode
+            or fps is not None
+            or size is not None
+            or in_ext.lower() != out_ext.lower()
         )
 
-        if frames is None:
-            frames = _frames
+        if (inpath == outpath) and should_reencode:
+            _inpath = inpath
+            inpath = etau.make_unique_path(inpath, suffix="-original")
+            etau.move_file(_inpath, inpath)
 
-    if reencode:
-        # Use default reencoding parameters from ``eta.core.video.FFmpeg``
-        kwargs["in_opts"] = None
-        kwargs["out_opts"] = None
-    else:
-        # No reencoding parameters
-        if "in_opts" not in kwargs:
-            kwargs["in_opts"] = []
+        diff_path = inpath != outpath
 
-        if "out_opts" not in kwargs:
-            kwargs["out_opts"] = []
+        if frames is not None:
+            etav.sample_select_frames(
+                inpath, frames, output_patt=outpath, size=size, fast=True
+            )
+            did_transform = True
+        elif not etav.is_video_mime_type(outpath):
+            with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
+                ffmpeg.run(inpath, outpath, verbose=verbose)
 
-    should_reencode = (
-        force_reencode
-        or fps is not None
-        or size is not None
-        or in_ext.lower() != out_ext.lower()
-    )
+            did_transform = True
+        elif should_reencode:
+            with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
+                ffmpeg.run(inpath, outpath, verbose=verbose)
 
-    if (inpath == outpath) and should_reencode:
-        _inpath = inpath
-        inpath = etau.make_unique_path(inpath, suffix="-original")
-        etau.move_file(_inpath, inpath)
+            did_transform = True
+        elif diff_path:
+            etau.copy_file(inpath, outpath)
 
-    diff_path = inpath != outpath
+        if delete_original and diff_path:
+            etau.delete_file(inpath)
+    except Exception as e:
+        if not skip_failures:
+            raise
 
-    if frames is not None:
-        etav.sample_select_frames(
-            inpath, frames, output_patt=outpath, size=size, fast=True
-        )
-    elif should_reencode:
-        with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
-            ffmpeg.run(inpath, outpath, verbose=verbose)
-    elif diff_path:
-        etau.copy_file(inpath, outpath)
+        logger.warning(e)
 
-    if delete_original and diff_path:
-        etau.delete_file(inpath)
+    return did_transform
 
 
 def _parse_parameters(
@@ -701,11 +928,11 @@ def _parse_parameters(
     sample_frames,
     original_frame_numbers,
 ):
-    video_metadata = etav.VideoMetadata.build_for(video_path)
+    metadata = fom.VideoMetadata.build_for(video_path)
 
-    ifps = video_metadata.frame_rate
-    isize = video_metadata.frame_size
-    iframe_count = video_metadata.total_frame_count
+    ifps = metadata.frame_rate
+    isize = (metadata.frame_width, metadata.frame_height)
+    iframe_count = metadata.total_frame_count
 
     ofps = fps or -1
     min_fps = min_fps or -1
@@ -741,6 +968,7 @@ def _parse_parameters(
 
     if sample_frames and original_frame_numbers and ofps is not None:
         if ofps > ifps:
+            # pylint: disable=bad-string-format-type
             raise ValueError(
                 "Cannot maintain original frame numbers when requested frame "
                 "rate (%f) exceeds native frame rate (%f) of video '%s'"
@@ -754,3 +982,16 @@ def _parse_parameters(
         frames = None
 
     return ofps, osize, frames
+
+
+def _get_outpath(inpath, output_dir=None, rel_dir=None):
+    if output_dir is None:
+        return inpath
+
+    if rel_dir is not None:
+        rel_dir = fou.normalize_path(rel_dir)
+        filename = os.path.relpath(inpath, rel_dir)
+    else:
+        filename = os.path.basename(inpath)
+
+    return os.path.join(fou.normalize_path(output_dir), filename)

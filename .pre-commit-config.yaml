@@ -1,13 +1,13 @@
 repos:
   - repo: https://github.com/asottile/blacken-docs
-    rev: v1.6.0
+    rev: v1.12.0
     hooks:
       - id: blacken-docs
-        additional_dependencies: [black==19.10b0]
+        additional_dependencies: [black==21.12b0]
         args: ["-l 79"]
         exclude: ^docs/theme/|\.rst$
   - repo: https://github.com/ambv/black
-    rev: 19.10b0
+    rev: 22.3.0
     hooks:
       - id: black
         language_version: python3
@@ -31,8 +31,8 @@ repos:
         exclude: ^docs/ # *do* commit ipynb outputs in `docs/`
         entry: jupyter nbconvert --clear-output --ClearOutputPreprocessor.enabled=True
         args: ["--log-level=ERROR"]
-  - repo: https://github.com/prettier/prettier
-    rev: 2.0.5
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v2.6.2
     hooks:
       - id: prettier
         exclude: ^docs/theme/

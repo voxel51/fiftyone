@@ -5,8 +5,7 @@ Interactive Plots
 
 .. default-role:: code
 
-FiftyOne provides a powerful
-:mod:`fiftyone.core.plots <fiftyone.core.plots.base>` framework that contains
+FiftyOne provides a powerful :mod:`fiftyone.core.plots` framework that contains
 a variety of interactive plotting methods that enable you to visualize your
 datasets and uncover patterns that are not apparent from inspecting either the
 :ref:`raw media files <fiftyone-app>` or
@@ -139,37 +138,28 @@ below for your environment:
 
   .. group-tab:: Jupyter notebooks
 
-    To use interactive plots in Jupyter notebooks, ensure that you have the
-    ``notebook`` and ``ipywidgets`` packages installed:
+    To use interactive plots in Jupyter notebooks, ensure that you have
+    sufficiently new versions of the ``notebook`` and ``ipywidgets`` packages
+    installed:
 
     .. code-block:: shell
 
-        pip install "notebook>=5.3" "ipywidgets>=7.5"
+        pip install "notebook>=5.3" "ipywidgets>=7.5,<8"
 
   .. group-tab:: JupyterLab
 
-    To use interactive plots in JupyterLab, ensure that you have the
-    ``jupyterlab`` and ``ipywidgets`` packages installed:
+    To use interactive plots in JupyterLab, ensure that you have sufficiently
+    new versions of the ``jupyterlab`` and ``ipywidgets`` packages installed:
 
     .. code-block:: shell
 
-        pip install jupyterlab "ipywidgets>=7.5"
+        pip install "jupyterlab>=3" "ipywidgets>=7.6,<8"
 
-    In additional, you'll need to run the following commands to install the
-    required JupyterLab extensions:
-
-    .. code-block:: shell
-
-        jupyter labextension install jupyterlab-plotly@4.14.3
-        jupyter labextension install @jupyter-widgets/jupyterlab-manager plotlywidget@4.14.3
-        jupyter lab build
-
-    The above instructions assume that you have ``plotly==4.14.3`` installed.
-    If you have a different version (``pip show plotly``), substitute the
-    appropriate version number in the commands above.
-
-    If you run into any issues in JupyterLab, refer to
-    `this troubleshooting guide <https://plotly.com/python/troubleshooting>`_.
+    If you run into any issues in JupyterLab, especially if you are trying to
+    use JupyterLab 2.X rather than 3.0+, you may need to manually install the
+    `jupyterlab-plotly` extension. Refer to
+    `this troubleshooting guide <https://plotly.com/python/troubleshooting>`_
+    for more details.
 
 If you wish to use the ``matplotlib`` backend for any interactive plots, refer
 to :ref:`this section <matplotlib-in-notebooks>` for setup instructions.
@@ -295,7 +285,6 @@ notebook:
     # Compute 2D embeddings
     results = fob.compute_visualization(dataset, embeddings=images, seed=51)
 
-    # Launch the App
     session = fo.launch_app(dataset)
 
 .. code-block:: python
@@ -305,7 +294,6 @@ notebook:
     plot = results.visualize(labels="ground_truth.label")
     plot.show(height=720)
 
-    # Connect to session
     session.plots.attach(plot)
 
 To give a taste of the possible interactions, let's hide all zero digit images
@@ -371,6 +359,7 @@ contains |GeoLocation| data in its ``location`` field:
     from fiftyone import ViewField as F
 
     dataset = foz.load_zoo_dataset("quickstart-geo")
+    fob.compute_uniqueness(dataset)
 
     # A list of ``[longitude, latitude]`` coordinates
     locations = dataset.values("location.point.coordinates")
@@ -379,7 +368,7 @@ contains |GeoLocation| data in its ``location`` field:
     uniqueness = dataset.values("uniqueness")
 
     # The number of ground truth objects in each sample
-    num_objects = dataset.values("ground_truth", F("detections").length())
+    num_objects = dataset.values(F("ground_truth.detections").length())
 
     # Create scatterplot
     plot = fo.location_scatterplot(
@@ -448,11 +437,8 @@ notebook:
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart-geo")
-
-    # Index the dataset by visual uniqueness
     fob.compute_uniqueness(dataset)
 
-    # Launch the App
     session = fo.launch_app(dataset)
 
 .. code-block:: python
@@ -460,8 +446,8 @@ notebook:
 
     from fiftyone import ViewField as F
 
-    # The number of ground truth objects in each sample
-    num_objects = dataset.values("ground_truth", F("detections").length())
+    # Computes the number of ground truth objects in each sample
+    num_objects = F("ground_truth.detections").length()
 
     # Create the scatterplot
     plot = fo.location_scatterplot(
@@ -472,7 +458,6 @@ notebook:
     )
     plot.show(height=720)
 
-    # Connect to session
     session.plots.attach(plot)
 
 .. image:: /images/plots/location-scatterplot-interactive.gif
@@ -542,7 +527,6 @@ notebook:
         eval_key="eval",
     )
 
-    # Launch the App to explore
     session = fo.launch_app(dataset)
 
 .. code-block:: python
@@ -553,11 +537,70 @@ notebook:
     plot = results.plot_results(labels="weather", sizes="predictions.confidence")
     plot.show()
 
-    # Connect to session
     session.plots.attach(plot)
 
 .. image:: /images/plots/regression-evaluation.gif
    :alt: regression-evaluation
+   :align: center
+
+.. _line-plots:
+
+Line plots
+__________
+
+You can use :func:`lines() <fiftyone.core.plots.base.lines>` to generate
+interactive line plots whose points represent data associated with the samples,
+frames, or labels of a dataset. These plots can then be attached to App
+instances to interactively explore specific slices of your dataset based on
+their corresponding line data.
+
+The example below demonstrates using an interactive lines plot to view the
+frames of the :ref:`quickstart-video <dataset-zoo-quickstart-video>` dataset
+that contain the most vehicles. In this setup, you can lasso scatter points to
+select the corresponding frames in a :ref:`frames view <frame-views>` in the
+App.
+
+Each block in the example code below denotes a separate cell in a Jupyter
+notebook:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart-video").clone()
+
+    # Ensure dataset has sampled frames available so we can use frame selection
+    dataset.to_frames(sample_frames=True)
+
+    session = fo.launch_app(dataset)
+
+.. code-block:: python
+    :linenos:
+
+    view = dataset.filter_labels("frames.detections", F("label") == "vehicle")
+
+    # Plot the number of vehicles in each frame of a video dataset
+    plot = fo.lines(
+        x="frames.frame_number",
+        y=F("frames.detections.detections").length(),
+        labels="id",
+        samples=view,
+        xaxis_title="frame number",
+        yaxis_title="num vehicles",
+    )
+    plot.show()
+
+    # When points are selected in the plot, load the corresponding frames in
+    # frames views in the App
+    plot.selection_mode = "frames"
+
+    session.plots.attach(plot)
+
+.. image:: /images/plots/lines.gif
+   :alt: lines
    :align: center
 
 .. _confusion-matrix-plots:
@@ -614,7 +657,6 @@ notebook:
     counts = dataset.count_values("ground_truth.detections.label")
     classes = sorted(counts, key=counts.get, reverse=True)[:10]
 
-    # Launch App instance
     session = fo.launch_app(dataset)
 
 .. code-block:: python
@@ -624,12 +666,43 @@ notebook:
     plot = results.plot_confusion_matrix(classes=classes)
     plot.show(height=600)
 
-    # Connect to session
     session.plots.attach(plot)
 
 .. image:: /images/plots/detection-evaluation.gif
    :alt: detection-evaluation
    :align: center
+
+When you pass an `eval_key` to
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`,
+confusion matrices attached to App instances have a different default behavior:
+when you select cell(s), the corresponding
+:ref:`evaluation patches <evaluation-patches>` for the run are shown in the
+App. This allows you to visualize each TP, FP, and FN example in a fine-grained
+manner:
+
+.. code-block:: python
+    :linenos:
+
+    results = dataset.evaluate_detections(
+        "predictions", gt_field="ground_truth", eval_key="eval"
+    )
+
+.. code-block:: python
+    :linenos:
+
+    # Since these results have an `eval_key`, selecting cells in this plot will
+    # load evaluation patch views
+    plot = results.plot_confusion_matrix(classes=classes)
+    plot.show(height=600)
+
+    session.plots.attach(plot)
+
+.. image:: /images/plots/detection-evaluation-patches.gif
+   :alt: detection-evaluation-patches
+   :align: center
+
+If you prefer a different selection behavior, you can simply change the plot's
+:ref:`selection mode <plot-selection-modes>`.
 
 .. _view-plots:
 
@@ -668,11 +741,10 @@ notebook:
 
     # Define some interesting plots
     plot1 = fo.NumericalHistogram(F("metadata.size_bytes") / 1024, bins=50, xlabel="image size (KB)")
-    plot2 = fo.NumericalHistogram("predictions.detections.confidence", bins=50)
+    plot2 = fo.NumericalHistogram("predictions.detections.confidence", bins=50, range=[0, 1])
     plot3 = fo.CategoricalHistogram("ground_truth.detections.label", order="frequency")
     plot4 = fo.CategoricalHistogram("predictions.detections.label", order="frequency")
 
-    # Launch App instance
     session = fo.launch_app(dataset)
 
 .. code-block:: python
@@ -682,7 +754,6 @@ notebook:
     plot = fo.ViewGrid([plot1, plot2, plot3, plot4], init_view=dataset)
     plot.show(height=720)
 
-    # Connect to session
     session.plots.attach(plot)
 
 .. image:: /images/plots/view-plots.gif
@@ -731,7 +802,6 @@ to a |Session|:
 
     dataset = foz.load_zoo_dataset("quickstart-geo")
 
-    # Launch an App instance
     session = fo.launch_app(dataset)
 
     # Create a responsive location plot
@@ -898,6 +968,77 @@ cells in which they were defined and shown.
     :meth:`plot.freeze() <fiftyone.core.plots.base.ResponsivePlot.freeze>` are
     only appliclable when working in notebook contexts.
 
+.. _saving-plots:
+
+Saving plots
+____________
+
+You can use :meth:`plot.save() <fiftyone.core.plots.base.Plot.save>` to save
+any |InteractivePlot| or |ViewPlot| as a static image or HTML.
+
+Consult the documentation of your plot's
+:meth:`save() <fiftyone.core.plots.base.Plot.save>` method for details on
+configuring the export.
+
+For example, you can save a :ref:`histogram view plot <view-plots>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    plot = fo.CategoricalHistogram(
+        "ground_truth.detections.label",
+        order="frequency",
+        log=True,
+        init_view=dataset,
+    )
+
+    plot.save("./histogram.jpg", scale=2.0)
+
+.. image:: /images/plots/save-histogram.jpg
+   :alt: save-histogram
+   :align: center
+
+|br|
+Or you can save an :ref:`embedding scatterplot <embeddings-plots>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.brain as fob
+
+    results = fob.compute_visualization(dataset)
+
+    plot = results.visualize(labels="uniqueness", axis_equal=True)
+    plot.save("./embeddings.png", height=300, width=800)
+
+.. image:: /images/plots/save-embeddings.png
+   :alt: save-embeddings
+   :align: center
+
+|br|
+You can also save plots generated using the
+:ref:`matplotlib backend <plotting-backend>`:
+
+.. code-block:: python
+    :linenos:
+
+    plot = results.visualize(
+        labels="uniqueness",
+        backend="matplotlib",
+        ax_equal=True,
+        marker_size=5,
+    )
+    plot.save("./embeddings-matplotlib.png", dpi=200)
+
+.. image:: /images/plots/save-embeddings-matplotlib.png
+   :alt: save-embeddings-matplotlib
+   :align: center
+
 .. _plots-advanced:
 
 Advanced usage
@@ -944,24 +1085,35 @@ Plot selection modes
 --------------------
 
 When working with :ref:`scatterplots <embeddings-plots>` and
-:ref:`interactive heatmaps <confusion-matrix-plots>` that are linked to labels,
-you may prefer to see different views loaded in the App when you make a
-selection in the plot. For example, you may want to see the corresponding
-objects in a :ref:`patches view <object-patches-views>`, or you may wish to see
-the samples containing the objects but with all other labels also visible.
+:ref:`interactive heatmaps <confusion-matrix-plots>` that are linked to frames
+or labels, you may prefer to see different views loaded in the App when you
+make a selection in the plot. For example, you may want to see the
+corresponding objects in a :ref:`patches view <object-patches-views>`, or you
+may wish to see the samples containing the objects but with all other labels
+also visible.
 
 You can use the
 :meth:`selection_mode <fiftyone.core.plots.base.InteractivePlot.selection_mode>`
 property of |InteractivePlot| instances to change the behavior of App updates
 when selections are made in :ref:`connected plots <attaching-plots>`.
 
-The available options for
+When a plot is linked to frames, the available
 :meth:`selection_mode <fiftyone.core.plots.base.InteractivePlot.selection_mode>`
-are:
+options are:
+
+-   `"select"` (*default*): show video samples with labels only for the
+    selected frames
+-   `"match"`: show unfiltered video samples containing at least one selected
+    frame
+-   `"frames"`: show only the selected frames in a frames view
+
+Wehn a plot is linked to labels, the available
+:meth:`selection_mode <fiftyone.core.plots.base.InteractivePlot.selection_mode>`
+options are:
 
 -   `"patches"` (*default*): show the selected labels in a patches view
 -   `"select"`: show only the selected labels
--   `"match"`: show unfiltered samples containing the selected labels
+-   `"match"`: show unfiltered samples containing at least one selected label
 
 For example, by default, clicking on cells in a confusion matrix for a
 :ref:`detection evaluation <evaluating-detections-coco>` will show the
@@ -1073,8 +1225,7 @@ property of the plot:
 Plotting backend
 ----------------
 
-Most plotting methods in the
-:meth:`fiftyone.core.plots <fiftyone.core.plots.base>` module provide an
+Most plotting methods in the :meth:`fiftyone.core.plots` module provide an
 optional ``backend`` parameter that you can use to control the plotting backend
 used to render plots.
 

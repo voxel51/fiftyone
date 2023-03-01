@@ -11,9 +11,8 @@ FiftyOne Installation
 
 .. note::
 
-  FiftyOne is growing!
-  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
-  to learn about new features as they come out.
+    Need to collaborate on your datasets? Check out
+    :ref:`FiftyOne Teams <fiftyone-teams>`!
 
 .. _install-prereqs:
 
@@ -21,7 +20,7 @@ Prerequisites
 -------------
 
 You will need a working Python installation. FiftyOne currently requires
-**Python 3.6 - 3.9**.
+**Python 3.7 - 3.10**.
 
 On Linux, we recommended installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
@@ -57,6 +56,29 @@ environment by importing the `fiftyone` package:
 A successful installation of FiftyOne should result in no output when
 `fiftyone` is imported. See :ref:`this section <install-troubleshooting>` for
 install troubleshooting tips.
+
+If you want to work with video datasets, you'll also need to install
+`FFmpeg <https://ffmpeg.org>`_:
+
+.. tabs::
+
+  .. group-tab:: Linux
+
+    .. code-block:: shell
+
+        sudo apt install -y ffmpeg
+
+  .. group-tab:: macOS
+
+    .. code-block:: python
+
+        brew install ffmpeg
+
+  .. group-tab:: Windows
+
+    You can download a Windows build from
+    `here <https://ffmpeg.org/download.html#build-windows>`_. Unzip it and be
+    sure to add it to your path.
 
 .. _fiftyone-quickstart:
 
@@ -94,7 +116,7 @@ install as follows:
 
 .. code-block:: shell
 
-  pip install fiftyone[desktop]
+  pip install "fiftyone[desktop]"
 
 .. note::
 
@@ -123,13 +145,6 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
 
         pip install --upgrade pip setuptools wheel
         pip install fiftyone
-
-**Apple Silicon users**:
-
-- MongoDB does not yet provide a native build for Apple Silicon, so you must
-  follow :ref:`these instructions <configuring-mongodb-connection>` to
-  configure FiftyOne to use a MongoDB instance that you have installed
-  yourself.
 
 **Mac users:**
 
@@ -207,7 +222,7 @@ If you use the desktop App, you should also run:
 
 .. code-block:: shell
 
-   pip install fiftyone[desktop]
+   pip install "fiftyone[desktop]"
 
 to ensure that you have the proper version of the desktop App installed for
 your current FiftyOne version.
@@ -218,6 +233,13 @@ your current FiftyOne version.
   require database migrations after you upgrade. Rest assured, these migrations
   will be **automatically** performed on a per-dataset basis whenever you load
   a dataset for the first time in a newer version of FiftyOne.
+
+.. note::
+
+  If you are working with a
+  :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`, you
+  can use :ref:`database admin privileges <database-migrations>` to control
+  which clients are allowed to upgrade your FiftyOne deployment.
 
 .. _downgrading-fiftyone:
 
@@ -237,37 +259,31 @@ Here's the workflow for downgrading to an older version of FiftyOne:
 .. code-block:: shell
 
     # The version that you wish to downgrade to
-    VERSION=0.9.4  # for example
+    VERSION=0.15.1
 
     # Migrate the database
     fiftyone migrate --all -v $VERSION
 
-    # Optional: verify that your datasets were migrated
-    fiftyone migrate --info
-
     # Now install the older version of `fiftyone`
     pip install fiftyone==$VERSION
+
+    # Optional: verify that your datasets were migrated
+    fiftyone migrate --info
 
 If you are reading this after encountering an error resulting from downgrading
 your ``fiftyone`` package without first running
 :ref:`fiftyone migrate <cli-fiftyone-migrate>`, don't worry, you simply need to
 reinstall the newer version of FiftyOne and then follow these instructions.
 
-.. note::
-
-    The :ref:`fiftyone migrate <cli-fiftyone-migrate>` command was introduced
-    in FiftyOne v0.7.3. If you would like to downgrade from a FiftyOne version
-    prior to v0.7.3 (to a yet older version), then you will first need to
-    *upgrade* to v0.7.3 or later and then follow the instructions above.
+See :ref:`this page <troubleshooting-downgrades>` if you need to install
+FiftyOne v0.7.3 or earlier.
 
 .. note::
 
-    To install a FiftyOne version **prior to v0.7.0**, you must add an
-    ``--index`` option to ``pip install``:
-
-    .. code-block:: shell
-
-        pip install --index https://pypi.voxel51.com fiftyone==<version>
+  If you are working with a
+  :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`, you
+  can use :ref:`database admin privileges <database-migrations>` to control
+  which clients are allowed to downgrade your FiftyOne deployment.
 
 .. _uninstalling-fiftyone:
 
