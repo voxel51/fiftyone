@@ -61,9 +61,6 @@ export const groupSlices = selector<string[]>({
   key: "groupSlices",
   get: ({ get }) => {
     return get(groupMediaTypes)
-      .filter(
-        ({ mediaType }) => !["point_cloud", "point-cloud"].includes(mediaType)
-      )
       .map(({ name }) => name)
       .sort();
   },

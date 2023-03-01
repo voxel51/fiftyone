@@ -22,6 +22,15 @@ export interface Coloring {
   targets: string[];
 }
 
+export type OrthogrpahicProjectionMetadata = {
+  _cls: "OrthographicProjectionMetadata";
+  filepath: string;
+  height: number;
+  width: number;
+  min_bound: [number, number];
+  max_bound: [number, number];
+};
+
 export type Sample = {
   metadata: {
     width: number;
@@ -33,22 +42,13 @@ export type Sample = {
   tags: string[];
   _label_tags: string[];
   _media_type: "image" | "video" | "point-cloud";
-  /**
-   * orthographic projection metadata for pointcloud datasets
-   */
-  orthographic_projection_metadata?: {
-    _cls: "OrthographicProjectionMetadata";
-    filepath: string;
-    height: number;
-    width: number;
-    min_bound: [number, number];
-    max_bound: [number, number];
-  };
 } & {
   [labelKey: string]: {
     _cls: string;
     [field: string]: unknown;
   };
+} & {
+  [labelKey: string]: OrthogrpahicProjectionMetadata;
 };
 
 export interface LabelData {

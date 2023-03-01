@@ -205,24 +205,16 @@ export interface ProcessSample {
   uuid: string;
   sample: Sample & FrameSample;
   coloring: Coloring;
-  datasetDescriptors: {
-    isPointcloudDataset: boolean;
-  };
 }
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
-const processSample = ({
-  sample,
-  uuid,
-  coloring,
-  datasetDescriptors,
-}: ProcessSample) => {
+const processSample = ({ sample, uuid, coloring }: ProcessSample) => {
   mapId(sample);
 
   let bufferPromises = [];
 
-  if (datasetDescriptors.isPointcloudDataset) {
+  if (sample._media_type === "point-cloud") {
     process3DLabels(sample);
   } else {
     bufferPromises = [processLabels(sample, coloring)];

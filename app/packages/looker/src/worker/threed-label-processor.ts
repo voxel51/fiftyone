@@ -1,6 +1,6 @@
 import { DETECTIONS } from "@fiftyone/utilities";
 import { DetectionLabel } from "../overlays/detection";
-import { Sample } from "../state";
+import { OrthogrpahicProjectionMetadata, Sample } from "../state";
 import { mapId } from "./shared";
 
 type DetectionsLabel = {
@@ -54,7 +54,7 @@ const getScalingFactorForLabel = (
 // cache between sample id and inferred projection params
 const inferredParamsCache: Record<
   Sample["id"],
-  Sample["orthographic_projection_metadata"]
+  OrthogrpahicProjectionMetadata
 > = {};
 
 /**
@@ -109,13 +109,13 @@ const getInferredParamsForUndefinedProjection = (sample: Readonly<Sample>) => {
       maxX === Infinity ? 100 : maxX + padding,
       maxY === Infinity ? 100 : maxY + padding,
     ],
-  } as Sample["orthographic_projection_metadata"];
+  } as OrthogrpahicProjectionMetadata;
 
   return inferredParamsCache[sample.id];
 };
 
 const PainterFactory3D = (
-  orthographicProjectionParams: Sample["orthographic_projection_metadata"]
+  orthographicProjectionParams: OrthogrpahicProjectionMetadata
 ) => ({
   /**
    * Map over each detection label in the list impute bounding boxes parameters.
@@ -165,9 +165,13 @@ const PainterFactory3D = (
 const VALID_THREE_D_LABELS = new Set(["Detections", "Detection"]);
 
 export const process3DLabels = async (sample: Sample) => {
+  const orthographicProjectionField = Object.entries(sample)
+    .find((el) => el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata")
+    ?.at(0) as string;
+
   const painterFactory = PainterFactory3D(
-    sample.orthographic_projection_metadata
-      ? sample.orthographic_projection_metadata
+    orthographicProjectionField
+      ? sample[orthographicProjectionField]
       : getInferredParamsForUndefinedProjection(sample)
   );
 

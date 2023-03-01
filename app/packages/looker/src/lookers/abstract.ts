@@ -611,9 +611,6 @@ export abstract class AbstractLooker<
       method: "processSample",
       coloring: this.state.options.coloring,
       uuid: messageUUID,
-      datasetDescriptors: {
-        isPointcloudDataset: this.state.options.isPointcloudDataset,
-      },
     } as ProcessSample);
   }
 }
