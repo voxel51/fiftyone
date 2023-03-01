@@ -343,9 +343,6 @@ class SimpleEvaluation(SegmentationEvaluation):
             self.config,
             confusion_matrix,
             classes,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             missing=missing,
             backend=self,
         )
@@ -359,9 +356,6 @@ class SegmentationResults(BaseEvaluationResults):
         config: the :class:`SegmentationEvaluationConfig` used
         pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
-        eval_key (None): the evaluation key for the evaluation
-        gt_field (None): the name of the ground truth field
-        pred_field (None): the name of the predictions field
         missing (None): a missing (background) class
         backend (None): a :class:`SegmentationEvaluation` backend
     """
@@ -372,9 +366,6 @@ class SegmentationResults(BaseEvaluationResults):
         config,
         pixel_confusion_matrix,
         classes,
-        eval_key=None,
-        gt_field=None,
-        pred_field=None,
         missing=None,
         backend=None,
     ):
@@ -389,9 +380,6 @@ class SegmentationResults(BaseEvaluationResults):
             ytrue,
             ypred,
             weights=weights,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             classes=classes,
             missing=missing,
             backend=backend,
@@ -417,9 +405,6 @@ class SegmentationResults(BaseEvaluationResults):
             config,
             d["pixel_confusion_matrix"],
             d["classes"],
-            eval_key=d.get("eval_key", None),
-            gt_field=d.get("gt_field", None),
-            pred_field=d.get("pred_field", None),
             missing=d.get("missing", None),
             **kwargs,
         )

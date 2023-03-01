@@ -254,9 +254,6 @@ class SimpleEvaluation(ClassificationEvaluation):
             ytrue,
             ypred,
             confs=confs,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,
@@ -395,9 +392,6 @@ class TopKEvaluation(ClassificationEvaluation):
             ytrue,
             ypred,
             confs=confs,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,
@@ -585,9 +579,6 @@ class BinaryEvaluation(ClassificationEvaluation):
             ypred,
             confs,
             classes,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             backend=self,
@@ -651,9 +642,6 @@ class ClassificationResults(BaseEvaluationResults):
         ypred: a list of predicted labels
         confs (None): an optional list of confidences for the predictions
         weights (None): an optional list of sample weights
-        eval_key (None): the evaluation key of the evaluation
-        gt_field (None): the name of the ground truth field
-        pred_field (None): the name of the predictions field
         ytrue_ids (None): a list of IDs for the ground truth labels
         ypred_ids (None): a list of IDs for the predicted labels
         classes (None): the list of possible classes. If not provided, the
@@ -680,9 +668,6 @@ class BinaryClassificationResults(ClassificationResults):
         confs: a list of confidences for the predictions
         classes: the ``(neg_label, pos_label)`` label strings for the task
         weights (None): an optional list of sample weights
-        eval_key (None): the evaluation key of the evaluation
-        gt_field (None): the name of the ground truth field
-        pred_field (None): the name of the predictions field
         ytrue_ids (None): a list of IDs for the ground truth labels
         ypred_ids (None): a list of IDs for the predicted labels
         backend (None): a :class:`ClassificationEvaluation` backend
@@ -697,9 +682,6 @@ class BinaryClassificationResults(ClassificationResults):
         confs,
         classes,
         weights=None,
-        eval_key=None,
-        gt_field=None,
-        pred_field=None,
         ytrue_ids=None,
         ypred_ids=None,
         backend=None,
@@ -711,9 +693,6 @@ class BinaryClassificationResults(ClassificationResults):
             ypred,
             confs=confs,
             weights=weights,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,
@@ -835,9 +814,6 @@ class BinaryClassificationResults(ClassificationResults):
         confs = d["confs"]
         classes = d["classes"]
         weights = d.get("weights", None)
-        eval_key = d.get("eval_key", None)
-        gt_field = d.get("gt_field", None)
-        pred_field = d.get("pred_field", None)
         ytrue_ids = d.get("ytrue_ids", None)
         ypred_ids = d.get("ypred_ids", None)
         return cls(
@@ -848,9 +824,6 @@ class BinaryClassificationResults(ClassificationResults):
             confs,
             classes=classes,
             weights=weights,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             **kwargs,

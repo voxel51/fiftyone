@@ -369,9 +369,6 @@ class DetectionEvaluation(foe.EvaluationMethod):
             samples,
             self.config,
             matches,
-            eval_key=eval_key,
-            gt_field=self.config.gt_field,
-            pred_field=self.config.pred_field,
             classes=classes,
             missing=missing,
             backend=self,
@@ -467,9 +464,6 @@ class DetectionResults(BaseEvaluationResults):
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
             object
-        eval_key (None): the evaluation key for this evaluation
-        gt_field (None): the name of the ground truth field
-        pred_field (None): the name of the predictions field
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any unmatched objects are given
@@ -482,9 +476,6 @@ class DetectionResults(BaseEvaluationResults):
         samples,
         config,
         matches,
-        eval_key=None,
-        gt_field=None,
-        pred_field=None,
         classes=None,
         missing=None,
         backend=None,
@@ -507,9 +498,6 @@ class DetectionResults(BaseEvaluationResults):
             ytrue,
             ypred,
             confs=confs,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,
@@ -537,9 +525,6 @@ class DetectionResults(BaseEvaluationResults):
         if ypred_ids is None:
             ypred_ids = itertools.repeat(None)
 
-        eval_key = d.get("eval_key", None)
-        gt_field = d.get("gt_field", None)
-        pred_field = d.get("pred_field", None)
         classes = d.get("classes", None)
         missing = d.get("missing", None)
 
@@ -549,9 +534,6 @@ class DetectionResults(BaseEvaluationResults):
             samples,
             config,
             matches,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             classes=classes,
             missing=missing,
             **kwargs,

@@ -2112,16 +2112,6 @@ class AnnotationResults(foa.AnnotationResults):
     def __exit__(self, *args):
         self._backend.__exit__(*args)
 
-    @property
-    def config(self):
-        """The :class:`AnnotationBackendConfig` for these results."""
-        return self._config
-
-    @property
-    def backend(self):
-        """The :class:`AnnotationBackend` for these results."""
-        return self._backend
-
     def load_credentials(self, **kwargs):
         """Loads any credentials from the given keyword arguments or the
         FiftyOne annotation config.

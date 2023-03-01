@@ -25,9 +25,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
         ypred: a list of predicted labels
         confs (None): an optional list of confidences for the predictions
         weights (None): an optional list of sample weights
-        eval_key (None): the evaluation key of the evaluation
-        gt_field (None): the name of the ground truth field
-        pred_field (None): the name of the predictions field
         ytrue_ids (None): a list of IDs for the ground truth labels
         ypred_ids (None): a list of IDs for the predicted labels
         classes (None): the list of possible classes. If not provided, the
@@ -48,9 +45,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
         ypred,
         confs=None,
         weights=None,
-        eval_key=None,
-        gt_field=None,
-        pred_field=None,
         ytrue_ids=None,
         ypred_ids=None,
         classes=None,
@@ -68,9 +62,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
         self.ypred = np.asarray(ypred)
         self.confs = np.asarray(confs) if confs is not None else None
         self.weights = np.asarray(weights) if weights is not None else None
-        self.eval_key = eval_key
-        self.gt_field = gt_field
-        self.pred_field = pred_field
         self.ytrue_ids = (
             np.asarray(ytrue_ids) if ytrue_ids is not None else None
         )
@@ -278,10 +269,10 @@ class BaseEvaluationResults(foe.EvaluationResults):
             confusion_matrix,
             labels,
             ids=ids,
-            samples=self._samples,
-            eval_key=self.eval_key,
-            gt_field=self.gt_field,
-            pred_field=self.pred_field,
+            samples=self.samples,
+            eval_key=self.key,
+            gt_field=self.config.gt_field,
+            pred_field=self.config.pred_field,
             backend=backend,
             **kwargs,
         )
@@ -375,9 +366,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
         ypred = d["ypred"]
         confs = d.get("confs", None)
         weights = d.get("weights", None)
-        eval_key = d.get("eval_key", None)
-        gt_field = d.get("gt_field", None)
-        pred_field = d.get("pred_field", None)
         ytrue_ids = d.get("ytrue_ids", None)
         ypred_ids = d.get("ypred_ids", None)
         classes = d.get("classes", None)
@@ -389,9 +377,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
             ypred,
             confs=confs,
             weights=weights,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,

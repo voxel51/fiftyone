@@ -667,6 +667,28 @@ class RunResults(etas.Serializable):
         """The fully-qualified name of this :class:`RunResults` class."""
         return etau.get_class_name(self)
 
+    @property
+    def samples(self):
+        """The :class:`fiftyone.core.collections.SampleCollection` associated
+        with these results.
+        """
+        return self._samples
+
+    @property
+    def config(self):
+        """The :class:`RunConfig` for these results."""
+        return self._config
+
+    @property
+    def backend(self):
+        """The :class:`Run` for these results."""
+        return self._backend
+
+    @property
+    def key(self):
+        """The run key for these results."""
+        return self._key
+
     def _set_key(self, key):
         self._key = key
 
@@ -676,7 +698,9 @@ class RunResults(etas.Serializable):
         samples = self._samples
         key = self._key
 
+        # Only cache if the results are already cached
         cache = run.has_cached_run_results(samples, key)
+
         run.save_run_results(samples, key, self, overwrite=True, cache=cache)
 
     def attributes(self):
@@ -697,7 +721,7 @@ class RunResults(etas.Serializable):
             samples: the :class:`fiftyone.core.collections.SampleCollection`
                 for the run
             config: the :class:`RunConfig` for the run
-            key: the key for the run
+            key: the run key
 
         Returns:
             a :class:`RunResults`
