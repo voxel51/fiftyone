@@ -1,10 +1,9 @@
-import { useExternalLink as externalLink } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
 import React, { useCallback, useLayoutEffect, useState } from "react";
 import { atom, useRecoilCallback, useRecoilValue } from "recoil";
 
 import { SORT_BY_SIMILARITY } from "../../../utils/links";
-
+import { useExternalLink } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import { Button } from "../../utils";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
@@ -96,7 +95,10 @@ const SortBySimilarity = ({
       icon: "InfoIcon",
       arialLabel: "information",
       tooltipText: "Learn more about sorting by similarity",
-      onClick: () => externalLink(SORT_BY_SIMILARITY),
+      onClick: () => {
+        useExternalLink(SORT_BY_SIMILARITY);
+        window.open(SORT_BY_SIMILARITY, "_blank");
+      },
       sx: { color: "#0288d1" },
     },
     {
