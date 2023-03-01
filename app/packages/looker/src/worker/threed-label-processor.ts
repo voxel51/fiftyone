@@ -1,4 +1,5 @@
 import { DETECTIONS } from "@fiftyone/utilities";
+import { POINTCLOUD_OVERLAY_PADDING } from "../constants";
 import { DetectionLabel } from "../overlays/detection";
 import { OrthogrpahicProjectionMetadata, Sample } from "../state";
 import { mapId } from "./shared";
@@ -96,18 +97,24 @@ const getInferredParamsForUndefinedProjection = (sample: Readonly<Sample>) => {
     }
   }
 
-  const padding = 100;
-
   inferredParamsCache[sample.id] = {
-    width: minX === Infinity ? 512 : maxX - minX + padding,
-    height: minY === Infinity ? 512 : maxY - minY + padding,
+    width: minX === Infinity ? 512 : maxX - minX + POINTCLOUD_OVERLAY_PADDING,
+    height: minY === Infinity ? 512 : maxY - minY + POINTCLOUD_OVERLAY_PADDING,
     min_bound: [
-      minX === Infinity ? -100 : minX - padding,
-      minY === Infinity ? -100 : minY - padding,
+      minX === Infinity
+        ? -POINTCLOUD_OVERLAY_PADDING
+        : minX - POINTCLOUD_OVERLAY_PADDING,
+      minY === Infinity
+        ? -POINTCLOUD_OVERLAY_PADDING
+        : minY - POINTCLOUD_OVERLAY_PADDING,
     ],
     max_bound: [
-      maxX === Infinity ? 100 : maxX + padding,
-      maxY === Infinity ? 100 : maxY + padding,
+      maxX === Infinity
+        ? POINTCLOUD_OVERLAY_PADDING
+        : maxX + POINTCLOUD_OVERLAY_PADDING,
+      maxY === Infinity
+        ? POINTCLOUD_OVERLAY_PADDING
+        : maxY + POINTCLOUD_OVERLAY_PADDING,
     ],
   } as OrthogrpahicProjectionMetadata;
 
@@ -165,6 +172,7 @@ const PainterFactory3D = (
 const VALID_THREE_D_LABELS = new Set(["Detections", "Detection"]);
 
 export const process3DLabels = async (sample: Sample) => {
+  debugger;
   const orthographicProjectionField = Object.entries(sample)
     .find((el) => el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata")
     ?.at(0) as string;
