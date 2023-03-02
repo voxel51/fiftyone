@@ -91,17 +91,19 @@ async def paginate_samples(
     if media == fom.GROUP:
         media = view.group_media_types[view.group_slice]
 
+    # TODO: Remove this once we have a better way to handle large videos. This
+    # is a temporary fix to reduce the $lookup overhead for sample frames on
+    # full datasets.
+    support = (
+        [1, 1] if ((media == fom.VIDEO) and ~(len(view._stages) > 1)) else None
+    )
+
     if after is None:
         after = "-1"
 
     if int(after) > -1:
         view = view.skip(int(after) + 1)
 
-    # TODO: Remove this once we have a better way to handle large videos. This
-    # is a temporary fix to reduce the $lookup overhead for sample frames on full datasets.
-    support = (
-        [1, 1] if ((media == fom.VIDEO) and ~(len(view._stages) > 1)) else None
-    )
     pipeline = view._pipeline(
         attach_frames=True,
         detach_frames=False,
