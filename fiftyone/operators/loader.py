@@ -26,7 +26,7 @@ def register_module(filepath, mod):
         mod.register()
         REGISTERED_MODULES[filepath] = mod
         if filepath in FAILED_MODULES:
-            FAILED_MODULES.delete(filepath)
+            FAILED_MODULES.pop(filepath)
     except Exception as e:
         errors = [traceback.format_exc()]
         try:
