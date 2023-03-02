@@ -410,15 +410,7 @@ class SegmentationResults(BaseEvaluationResults):
         self.pixel_confusion_matrix = pixel_confusion_matrix
 
     def attributes(self):
-        return [
-            "cls",
-            "pixel_confusion_matrix",
-            "eval_key",
-            "gt_field",
-            "pred_field",
-            "classes",
-            "missing",
-        ]
+        return ["cls", "pixel_confusion_matrix", "classes", "missing"]
 
     @classmethod
     def _from_dict(cls, d, samples, config, **kwargs):
