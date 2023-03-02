@@ -106,7 +106,10 @@ const SortBySimilarity = React.memo(
         icon: "InfoIcon",
         arialLabel: "information",
         tooltipText: "Learn more about sorting by similarity",
-        onClick: () => useExternalLink(SORT_BY_SIMILARITY),
+        onClick: () => {
+          useExternalLink(SORT_BY_SIMILARITY);
+          window.open(SORT_BY_SIMILARITY, "_blank");
+        },
         sx: { color: "#0288d1" },
       },
       {
