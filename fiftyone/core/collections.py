@@ -3108,6 +3108,17 @@ class SampleCollection(object):
         """
         return foev.EvaluationMethod.list_runs(self)
 
+    def rename_evaluation(self, eval_key, new_eval_key):
+        """Replaces the key for the given evaluation with a new key.
+
+        Args:
+            eval_key: an evaluation key
+            new_anno_key: a new evaluation key
+        """
+        return foev.EvaluationMethod.update_run_key(
+            self, eval_key, new_eval_key
+        )
+
     def get_evaluation_info(self, eval_key):
         """Returns information about the evaluation with the given key on this
         collection.
@@ -3187,6 +3198,15 @@ class SampleCollection(object):
             a list of brain keys
         """
         return fob.BrainMethod.list_runs(self)
+
+    def rename_brain_run(self, brain_key, new_brain_key):
+        """Replaces the key for the given brain run with a new key.
+
+        Args:
+            brain_key: a brain key
+            new_brain_key: a new brain key
+        """
+        return fob.BrainMethod.update_run_key(self, brain_key, new_brain_key)
 
     def get_brain_info(self, brain_key):
         """Returns information about the brain method run with the given key on
@@ -7838,6 +7858,17 @@ class SampleCollection(object):
             a list of annotation keys
         """
         return foan.AnnotationMethod.list_runs(self)
+
+    def rename_annotation_run(self, anno_key, new_anno_key):
+        """Replaces the key for the given annotation run with a new key.
+
+        Args:
+            anno_key: an annotation key
+            new_anno_key: a new annotation key
+        """
+        return foan.AnnotationMethod.update_run_key(
+            self, anno_key, new_anno_key
+        )
 
     def get_annotation_info(self, anno_key):
         """Returns information about the annotation run with the given key on

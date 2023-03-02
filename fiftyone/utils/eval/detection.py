@@ -13,6 +13,7 @@ import numpy as np
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 from .base import BaseEvaluationResults
@@ -407,7 +408,30 @@ class DetectionEvaluation(foe.EvaluationMethod):
 
         return fields
 
+    def rename(self, samples, eval_key, new_eval_key):
+        dataset = samples._dataset
+
+        in_fields = self.get_fields(dataset, eval_key)
+        out_fields = self.get_fields(dataset, new_eval_key)
+
+        in_sample_fields, in_frame_fields = fou.split_frame_fields(in_fields)
+        out_sample_fields, out_frame_fields = fou.split_frame_fields(
+            out_fields
+        )
+
+        if in_sample_fields:
+            fields = {
+                i: o for i, o in zip(in_sample_fields, out_sample_fields)
+            }
+            dataset.rename_sample_fields(fields)
+
+        if in_frame_fields:
+            fields = {i: o for i, o in zip(in_frame_fields, out_frame_fields)}
+            dataset.rename_frame_fields(fields)
+
     def cleanup(self, samples, eval_key):
+        dataset = samples._dataset
+
         fields = [
             "%s_tp" % eval_key,
             "%s_fp" % eval_key,
@@ -415,8 +439,8 @@ class DetectionEvaluation(foe.EvaluationMethod):
         ]
 
         try:
-            pred_field, _ = samples._handle_frame_field(self.config.pred_field)
-            pred_type = samples._get_label_field_type(self.config.pred_field)
+            pred_field, _ = dataset._handle_frame_field(self.config.pred_field)
+            pred_type = dataset._get_label_field_type(self.config.pred_field)
             pred_key = "%s.%s.%s" % (
                 pred_field,
                 pred_type._LABEL_LIST_FIELD,
@@ -428,8 +452,8 @@ class DetectionEvaluation(foe.EvaluationMethod):
             pass
 
         try:
-            gt_field, _ = samples._handle_frame_field(self.config.gt_field)
-            gt_type = samples._get_label_field_type(self.config.gt_field)
+            gt_field, _ = dataset._handle_frame_field(self.config.gt_field)
+            gt_type = dataset._get_label_field_type(self.config.gt_field)
             gt_key = "%s.%s.%s" % (
                 gt_field,
                 gt_type._LABEL_LIST_FIELD,
@@ -440,14 +464,14 @@ class DetectionEvaluation(foe.EvaluationMethod):
             # Field no longer exists, nothing to cleanup
             pass
 
-        if samples._is_frame_field(self.config.pred_field):
-            samples._dataset.delete_sample_fields(
+        if dataset._is_frame_field(self.config.pred_field):
+            dataset.delete_sample_fields(
                 ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key],
                 error_level=1,
             )
-            samples._dataset.delete_frame_fields(fields, error_level=1)
+            dataset.delete_frame_fields(fields, error_level=1)
         else:
-            samples._dataset.delete_sample_fields(fields, error_level=1)
+            dataset.delete_sample_fields(fields, error_level=1)
 
     def _validate_run(self, samples, eval_key, existing_info):
         self._validate_fields_match(eval_key, "pred_field", existing_info)

@@ -2042,9 +2042,6 @@ class AnnotationBackend(foa.AnnotationMethod):
     def get_fields(self, samples, anno_key):
         return list(self.config.label_schema.keys())
 
-    def cleanup(self, samples, anno_key):
-        pass
-
 
 class AnnotationResults(foa.AnnotationResults):
     """Base class for storing the intermediate results of an annotation run

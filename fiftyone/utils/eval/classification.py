@@ -16,6 +16,7 @@ from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.plots as fop
+import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 from .base import BaseEvaluationResults
@@ -164,6 +165,27 @@ class ClassificationEvaluation(foe.EvaluationMethod):
             fields.append(samples._FRAMES_PREFIX + eval_key)
 
         return fields
+
+    def rename(self, samples, eval_key, new_eval_key):
+        dataset = samples._dataset
+
+        in_fields = self.get_fields(dataset, eval_key)
+        out_fields = self.get_fields(dataset, new_eval_key)
+
+        in_sample_fields, in_frame_fields = fou.split_frame_fields(in_fields)
+        out_sample_fields, out_frame_fields = fou.split_frame_fields(
+            out_fields
+        )
+
+        if in_sample_fields:
+            fields = {
+                i: o for i, o in zip(in_sample_fields, out_sample_fields)
+            }
+            dataset.rename_sample_fields(fields)
+
+        if in_frame_fields:
+            fields = {i: o for i, o in zip(in_frame_fields, out_frame_fields)}
+            dataset.rename_frame_fields(fields)
 
     def cleanup(self, samples, eval_key):
         dataset = samples._dataset

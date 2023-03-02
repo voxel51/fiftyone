@@ -164,6 +164,15 @@ class Run(Configurable):
         """
         pass
 
+    def ensure_usage_requirements(self):
+        """Ensures that any necessary packages to use existing results for this
+        run are installed.
+
+        Runs should respect ``fiftyone.config.requirement_error_level`` when
+        handling errors.
+        """
+        pass
+
     def get_fields(self, samples, key):
         """Gets the fields that were involved in the given run.
 
@@ -174,7 +183,17 @@ class Run(Configurable):
         Returns:
             a list of fields
         """
-        raise NotImplementedError("subclass must implement get_fields()")
+        return []
+
+    def rename(self, samples, key, new_key):
+        """Performs any necessary operations required to rename this run's key.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            key: a run key
+            new_key: a new run key
+        """
+        pass
 
     def cleanup(self, samples, key):
         """Cleans up the results of the run with the given key from the
@@ -184,7 +203,7 @@ class Run(Configurable):
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
         """
-        raise NotImplementedError("subclass must implement cleanup()")
+        pass
 
     def register_run(self, samples, key, overwrite=True):
         """Registers a run of this method under the given key on the given
@@ -305,6 +324,44 @@ class Run(Configurable):
         dataset_doc = samples._root_dataset._doc
         run_docs = getattr(dataset_doc, cls._runs_field())
         return sorted(run_docs.keys())
+
+    @classmethod
+    def update_run_key(cls, samples, key, new_key):
+        """Replaces the key for the given run with a new key.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            key: a run key
+            new_key: a new run key
+        """
+        try:
+            # Execute rename() method
+            run_info = cls.get_run_info(samples, key)
+            run = run_info.config.build()
+            run.rename(samples, key, new_key)
+        except Exception as e:
+            logger.warning(
+                "Failed to run rename() for the %s with key '%s': %s",
+                cls._run_str(),
+                key,
+                str(e),
+            )
+
+        dataset = samples._root_dataset
+
+        # Update run doc
+        run_docs = getattr(dataset._doc, cls._runs_field())
+        run_doc = run_docs.pop(key)
+        run_doc.key = new_key
+        run_docs[new_key] = run_doc
+        run_doc.save()
+        dataset._doc.save()
+
+        # Update results cache
+        results_cache = getattr(dataset, cls._results_cache_field())
+        run_results = results_cache.pop(key, None)
+        if run_results is not None:
+            results_cache[new_key] = run_results
 
     @classmethod
     def get_run_info(cls, samples, key):
@@ -592,20 +649,21 @@ class Run(Configurable):
         run_doc = cls._get_run_doc(samples, key)
 
         try:
-            # Cleanup after run, if possible
+            # Excute cleanup() method
             run_info = cls.get_run_info(samples, key)
             run = run_info.config.build()
             run.cleanup(samples, key)
-        except:
+        except Exception as e:
             logger.warning(
-                "Unable to run cleanup() for the %s with key '%s'",
+                "Failed to run cleanup() for the %s with key '%s': %s",
                 cls._run_str(),
                 key,
+                str(e),
             )
 
         dataset = samples._root_dataset
 
-        # Delete run from dataset doc
+        # Delete run from dataset
         run_docs = getattr(dataset._doc, cls._runs_field())
         run_docs.pop(key, None)
         results_cache = getattr(dataset, cls._results_cache_field())
@@ -653,9 +711,7 @@ class RunResults(etas.Serializable):
     def __init__(self, samples, config, backend=None):
         if backend is None:
             backend = config.build()
-
-            # @todo distinguish between build and query-time requirements
-            backend.ensure_requirements()
+            backend.ensure_usage_requirements()
 
         self._samples = samples
         self._config = config
