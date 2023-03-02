@@ -16,7 +16,7 @@ import * as fos from "@fiftyone/state";
 import { deferrer, stringifyObj } from "@fiftyone/state";
 
 const Grid: React.FC<{}> = () => {
-  const id = useMemo(() => uuid(), []);
+  const [id] = React.useState(() => uuid());
   const store = fos.useLookerStore();
   const expandSample = useExpandSample(store);
   const initialized = useRef(false);
@@ -33,7 +33,8 @@ const Grid: React.FC<{}> = () => {
 
   const isModalOpen = Boolean(useRecoilValue(fos.modal));
 
-  const flashlight = useMemo(() => {
+  // create flashlight only one time
+  const [flashlight] = React.useState(() => {
     const flashlight = new Flashlight<number>({
       horizontal: false,
       initialRequestKey: 1,
@@ -84,15 +85,7 @@ const Grid: React.FC<{}> = () => {
     });
 
     return flashlight;
-  }, [
-    createLooker,
-    expandSample,
-    pager,
-    resize,
-    store.lookers,
-    store.samples,
-    threshold,
-  ]);
+  });
 
   useEffect(
     deferred(() => {
