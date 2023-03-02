@@ -1,5 +1,6 @@
 import { atom, selectorFamily } from "recoil";
 import {
+  PanelsCloseEffect,
   PanelStateParameter,
   PanelStatePartialParameter,
   SpaceNodeJSON,
@@ -86,6 +87,8 @@ export const previousTabsGroupAtom = atom<HTMLElement | null>({
   key: "previousTabsGroupAtom",
   default: null,
 });
+
+export const panelsCloseEffect: PanelsCloseEffect = {};
 
 function getStateAtom(local?: boolean) {
   return local ? panelsLocalStateAtom : panelsStateAtom;

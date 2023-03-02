@@ -1,4 +1,4 @@
-import { Loading } from "@fiftyone/components";
+import { Loading, useTheme } from "@fiftyone/components";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { AppSample as Sample } from "@fiftyone/state";
@@ -22,6 +22,7 @@ import {
   Screenshot,
   SetPointSizeButton,
   SetViewButton,
+  SliceSelector,
   ViewHelp,
   ViewJSON,
 } from "./action-bar";
@@ -41,12 +42,13 @@ import {
   PolyLineProps,
 } from "./overlays";
 import { PointCloudMesh } from "./renderables";
-import { colorByAtom, currentActionAtom, currentPointSizeAtom } from "./state";
+import { currentActionAtom, currentPointSizeAtom, shadeByAtom } from "./state";
 
 type View = "pov" | "top";
 
 export type Looker3dProps = {
   api: {
+    dataset: fos.State.Dataset;
     mediaField: string;
     mediaFieldValue: string;
     src: string;
@@ -69,7 +71,7 @@ export const Looker3d = (props: Looker3dProps) => {
   );
 };
 
-const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
+const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
   const settings = fop.usePluginSettings<Looker3dPluginSettings>(
     "3d",
     defaultPluginSettings
@@ -87,6 +89,11 @@ const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
   const { coloring } = recoil.useRecoilValue(
     fos.lookerOptions({ withFilter: true, modal })
+  );
+
+  const isRgbPresent = useMemo(
+    () => Boolean(points.geometry.attributes?.color),
+    [points]
   );
 
   useEffect(() => {
@@ -129,7 +136,7 @@ const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
     [onSelectLabel, sample]
   );
 
-  const colorBy = recoil.useRecoilValue(colorByAtom);
+  const colorBy = recoil.useRecoilValue(shadeByAtom);
   const pointSize = recoil.useRecoilValue(currentPointSizeAtom);
 
   const onChangeView = useCallback(
@@ -259,6 +266,15 @@ const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
     onChangeView("top");
   }, [onChangeView, cameraRef, controlsRef]);
 
+  const hasMultiplePcdSlices = useMemo(
+    () =>
+      dataset.groupMediaTypes.filter((g) => g.mediaType === "point_cloud")
+        .length > 1,
+    [dataset]
+  );
+
+  const theme = useTheme();
+
   return (
     <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
       <Canvas onClick={() => setAction(null)}>
@@ -302,13 +318,14 @@ const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
           ))}
         <PointCloudMesh
           minZ={minZ}
-          colorBy={colorBy}
+          shadeBy={colorBy}
           pointSize={pointSize}
           points={points}
           rotation={pcRotation}
           onLoad={(boundingBox) => {
             setPointCloudBounds(boundingBox);
           }}
+          defaultShadingColor={theme.text.primary}
         />
         <axesHelper />
       </Canvas>
@@ -317,9 +334,10 @@ const Looker3dCore = ({ api: { sample, src } }: Looker3dProps) => {
           onMouseEnter={() => (hoveringRef.current = true)}
           onMouseLeave={() => (hoveringRef.current = false)}
         >
+          {hasMultiplePcdSlices && <SliceSelector dataset={dataset} />}
           <ActionsBar>
             <SetPointSizeButton />
-            <ChooseColorSpace />
+            <ChooseColorSpace isRgbPresent={isRgbPresent} />
             <SetViewButton
               onChangeView={onChangeView}
               view={"top"}

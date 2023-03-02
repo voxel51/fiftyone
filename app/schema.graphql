@@ -358,6 +358,7 @@ type PointCloudSample implements Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!
+  aspectRatio: Float!
 }
 
 type Query {

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { fetchExtendedStage } from "./fetch";
@@ -8,25 +8,23 @@ export default function useExtendedStageEffect() {
   const datasetName = useRecoilValue(fos.datasetName);
   const view = useRecoilValue(fos.view);
   const [loadedPlot] = usePanelStatePartial("loadedPlot", null, true);
-  const [overrideStage, setOverrideStage] = useRecoilState(
+  const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage
   );
-  const [extendedSelection, setExtendedSelection] = useRecoilState(
-    fos.extendedSelection
-  );
+  const { selection } = useRecoilValue(fos.extendedSelection);
 
   useEffect(() => {
-    if (loadedPlot && Array.isArray(extendedSelection)) {
+    if (loadedPlot && Array.isArray(selection)) {
       fetchExtendedStage({
         datasetName,
         view,
         patchesField: loadedPlot.patches_field,
-        selection: extendedSelection,
+        selection,
       }).then((res) => {
         setOverrideStage({
           [res._cls]: res.kwargs,
         });
       });
     }
-  }, [datasetName, loadedPlot?.patches_field, view, extendedSelection]);
+  }, [datasetName, loadedPlot?.patches_field, view, selection]);
 }
