@@ -66,7 +66,7 @@ const Arrow = styled.span<{ isRight?: boolean }>`
   left: ${(props) => (props.isRight ? "initial" : "0.75rem")};
   z-index: 99999;
   padding: 0.75rem;
-  bottom: 33vh;
+  bottom: 40vh;
   width: 3rem;
   height: 3rem;
   background-color: var(--joy-palette-background-button);

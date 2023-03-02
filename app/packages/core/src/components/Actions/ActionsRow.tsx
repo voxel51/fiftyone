@@ -30,6 +30,7 @@ import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
@@ -87,12 +88,14 @@ const Patches = () => {
 
 const hasSimilarityKeys = selectorFamily<boolean, boolean>({
   key: "hasSimilarityKeys",
-  get: (modal) => ({ get }) => {
-    if (modal) {
-      return true;
-    }
-    return Boolean(get(fos.selectedSamples).size);
-  },
+  get:
+    (modal) =>
+    ({ get }) => {
+      if (modal) {
+        return true;
+      }
+      return Boolean(get(fos.selectedSamples).size);
+    },
 });
 
 const Similarity = ({ modal }: { modal: boolean }) => {
@@ -298,32 +301,33 @@ const SaveFilters = () => {
   const setView = useSetView(true, false, onComplete);
 
   const saveFilters = useRecoilCallback(
-    ({ snapshot, set }) => async () => {
-      const loading = await snapshot.getPromise(fos.savingFilters);
-      const selected = await snapshot.getPromise(fos.selectedSamples);
+    ({ snapshot, set }) =>
+      async () => {
+        const loading = await snapshot.getPromise(fos.savingFilters);
+        const selected = await snapshot.getPromise(fos.selectedSamples);
 
-      if (loading) {
-        return;
-      }
+        if (loading) {
+          return;
+        }
 
-      set(fos.savingFilters, true);
-      if (selected.size > 0) {
-        setView(
-          (v) => [
-            ...v,
-            {
-              _cls: "fiftyone.core.stages.Select",
-              kwargs: [["sample_ids", [...selected]]],
-            },
-          ],
-          undefined,
-          undefined,
-          true
-        );
-      } else {
-        setView((v) => v);
-      }
-    },
+        set(fos.savingFilters, true);
+        if (selected.size > 0) {
+          setView(
+            (v) => [
+              ...v,
+              {
+                _cls: "fiftyone.core.stages.Select",
+                kwargs: [["sample_ids", [...selected]]],
+              },
+            ],
+            undefined,
+            undefined,
+            true
+          );
+        } else {
+          setView((v) => v);
+        }
+      },
     []
   );
 
