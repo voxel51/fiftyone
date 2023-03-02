@@ -361,6 +361,7 @@ class Run(Configurable):
         results_cache = getattr(dataset, cls._results_cache_field())
         run_results = results_cache.pop(key, None)
         if run_results is not None:
+            run_results._set_key(new_key)
             results_cache[new_key] = run_results
 
     @classmethod

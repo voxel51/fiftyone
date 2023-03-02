@@ -251,15 +251,14 @@ class SimpleEvaluation(RegressionEvaluation):
             _ids = ids
 
         results = RegressionResults(
+            samples,
+            self.config,
             _ytrue,
             _ypred,
             confs=_confs,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ids=_ids,
             missing=missing,
-            samples=samples,
+            backend=self,
         )
 
         if eval_key is None:
@@ -305,6 +304,8 @@ class RegressionResults(foe.EvaluationResults):
     """Class that stores the results of a regression evaluation.
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`RegressionEvaluationConfig` used
         ytrue: a list of ground truth values
         ypred: a list of predicted values
         confs (None): an optional list of confidences for the predictions
@@ -315,22 +316,22 @@ class RegressionResults(foe.EvaluationResults):
             regressions
         missing (None): a missing value. Any None-valued regressions are
             given this value for results purposes
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        backend (None): a :class:`RegressionEvaluation` backend
     """
 
     def __init__(
         self,
+        samples,
+        config,
         ytrue,
         ypred,
         confs=None,
-        eval_key=None,
-        gt_field=None,
-        pred_field=None,
         ids=None,
         missing=None,
-        samples=None,
+        backend=None,
     ):
+        super().__init__(samples, config, backend=backend)
+
         ytrue, ypred, confs, ids = _parse_values(
             ytrue, ypred, confs, ids, missing=missing
         )
@@ -338,13 +339,8 @@ class RegressionResults(foe.EvaluationResults):
         self.ytrue = ytrue
         self.ypred = ypred
         self.confs = confs
-        self.eval_key = eval_key
-        self.gt_field = gt_field
-        self.pred_field = pred_field
         self.ids = ids
         self.missing = missing
-
-        self._samples = samples
 
     def metrics(self, weights=None):
         """Computes various popular regression metrics for the results.
@@ -458,12 +454,12 @@ class RegressionResults(foe.EvaluationResults):
         return fop.plot_regressions(
             self.ytrue,
             self.ypred,
-            samples=self._samples,
+            samples=self.samples,
             ids=self.ids,
             labels=labels,
             sizes=sizes,
-            gt_field=self.gt_field,
-            pred_field=self.pred_field,
+            gt_field=self.config.gt_field,
+            pred_field=self.config.pred_field,
             backend=backend,
             **kwargs,
         )
@@ -473,21 +469,16 @@ class RegressionResults(foe.EvaluationResults):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         confs = d.get("confs", None)
-        eval_key = d.get("eval_key", None)
-        gt_field = d.get("gt_field", None)
-        pred_field = d.get("pred_field", None)
         ids = d.get("ids", None)
         missing = d.get("missing", None)
         return cls(
+            samples,
+            config,
             ytrue,
             ypred,
             confs=confs,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ids=ids,
             missing=missing,
-            samples=samples,
             **kwargs,
         )
 
