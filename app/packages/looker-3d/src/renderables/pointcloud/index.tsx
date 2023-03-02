@@ -10,8 +10,9 @@ import {
 } from "./shaders";
 
 type PointCloudMeshArgs = {
+  defaultShadingColor: string;
   shadeBy: ShadeBy;
-  pointSize: number;
+  pointSize: string;
   points: THREE.Points;
   rotation: [number, number, number];
   minZ: number | null | undefined;
@@ -37,6 +38,7 @@ const ShadingGradients: Gradients = [
 ];
 
 export const PointCloudMesh = ({
+  defaultShadingColor,
   minZ,
   shadeBy,
   pointSize,
@@ -75,7 +77,7 @@ export const PointCloudMesh = ({
   }
 
   const pointsMaterial = useMemo(() => {
-    const customShaderNormalizedPointSize = pointSize * 100;
+    const customShaderNormalizedPointSize = Number(pointSize) * 100;
 
     if (shadeBy === "height") {
       return (
@@ -102,8 +104,13 @@ export const PointCloudMesh = ({
       return <RgbShader pointSize={customShaderNormalizedPointSize} />;
     }
 
-    return <pointsMaterial color={"white"} size={pointSize / 10} />;
-  }, [colorMinMax, shadeBy, minZ, pointSize, boundingBox]);
+    return (
+      <pointsMaterial
+        color={defaultShadingColor}
+        size={Number(pointSize) / 10}
+      />
+    );
+  }, [colorMinMax, shadeBy, minZ, pointSize, boundingBox, defaultShadingColor]);
 
   return (
     <primitive

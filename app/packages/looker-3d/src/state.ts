@@ -1,4 +1,5 @@
 import { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
+import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { atom } from "recoil";
 
 export const ACTION_SHADE_BY = "colorBy";
@@ -36,26 +37,10 @@ export const SHADE_BY_CHOICES: { label: string; value: ShadeBy }[] = [
   { label: "None", value: SHADE_BY_NONE },
 ];
 
-// recoil effect that syncs state with local storage
-const getLocalStorageEffectFor =
-  (key: string) =>
-  ({ setSelf, onSet }) => {
-    const value = localStorage.getItem(key);
-    if (value != null) setSelf(value);
-
-    onSet((newValue, _oldValue, isReset) => {
-      if (isReset) {
-        localStorage.removeItem(key);
-      } else {
-        localStorage.setItem(key, newValue);
-      }
-    });
-  };
-
 export const shadeByAtom = atom<ShadeBy>({
   key: "shadeBy",
   default: SHADE_BY_HEIGHT,
-  effects: [getLocalStorageEffectFor("shadeBy")],
+  effects: [getBrowserStorageEffectForKey("shadeBy")],
 });
 
 export const currentActionAtom = atom<Actions>({
@@ -66,7 +51,7 @@ export const currentActionAtom = atom<Actions>({
 export const currentPointSizeAtom = atom<string>({
   key: "pointSize",
   default: "1",
-  effects: [getLocalStorageEffectFor("pointSize")],
+  effects: [getBrowserStorageEffectForKey("pointSize")],
 });
 
 export const pointSizeRangeAtom = atom<Range>({

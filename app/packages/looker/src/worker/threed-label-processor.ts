@@ -142,7 +142,6 @@ const PainterFactory3D = (
       min_bound,
       max_bound,
     } = orthographicProjectionParams;
-
     const [xmin, ymin] = min_bound;
     const [xmax, ymax] = max_bound;
 
