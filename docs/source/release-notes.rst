@@ -927,7 +927,7 @@ Core
   be used to save plots as static images
 - Added support for populating query distances on a dataset when using
   :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-  to query by visual similarity
+  to query by similarity
 - Added a
   :func:`instances_to_polylines() <fiftyone.utils.labels.instances_to_polylines>`
   utility that converts instance segmentations to |Polylines| format
@@ -1865,9 +1865,9 @@ App
 
 - Added a `Patches` action for easy switching to object/evaluation patches
   views. See :ref:`this page <app-object-patches>` for usage details
-- Added a `Sort by similarity` action that enables sorting by visual similarity
-  to the selected samples/patches. See
-  :ref:`this page <app-similarity>` for usage details
+- Added a `Sort by similarity` action that enables sorting by similarity to the
+  selected samples/patches. See :ref:`this page <app-similarity>` for usage
+  details
 - Added a zoom slider in the top right of the sample grid that adjusts the tile
   size of the sample grid
 - Added the ability to clear filters for entire field groups, e.g. `Labels` and
@@ -1882,7 +1882,7 @@ App
 Brain
 
 - Added a :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
-  method for indexing samples and object patches by visual similarity. See
+  method for indexing samples and object patches by similarity. See
   :ref:`this page <brain-similarity>` for usage details
 
 Core
