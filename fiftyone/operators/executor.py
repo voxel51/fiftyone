@@ -51,9 +51,15 @@ class ExecutionContext:
         )
 
     @property
+    def selected(self):
+        return self.request_params.get("selected", [])
+
+    @property
     def dataset(self):
         dataset_name = self.request_params.get("dataset_name", None)
-        return fo.load_dataset(dataset_name)
+        d = fo.load_dataset(dataset_name)
+        print(d)
+        return d
 
     @property
     def dataset_name(self):
