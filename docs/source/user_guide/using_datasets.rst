@@ -399,8 +399,8 @@ You can also configure the default loading behavior of the
 .. code-block:: python
     :linenos:
 
-    # Set the default sidebar mode to "fast"
-    dataset.app_config.sidebar_mode = "fast"
+    # Set the default sidebar mode to "best"
+    dataset.app_config.sidebar_mode = "best"
     dataset.save()  # must save after edits
 
     session = fo.launch_app(dataset)
