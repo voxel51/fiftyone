@@ -683,6 +683,7 @@ method supports all of the following task types:
 -   :ref:`Instance segmentations <instance-segmentation>`
 -   :ref:`Polygon detection <polylines>`
 -   :ref:`Temporal detections <temporal-detection>`
+-   :ref:`3D detections <3d-detections>`
 
 The only difference between each task type is in how the IoU between objects is
 calculated. Specifically, for instance segmentations and polygons, IoUs are
