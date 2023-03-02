@@ -1,4 +1,9 @@
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import {
+  FrameLooker,
+  ImageLooker,
+  PcdLooker,
+  VideoLooker,
+} from "@fiftyone/looker";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   getMimeType,
@@ -9,9 +14,9 @@ import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue } from "recoil";
 import { mainGroupSample, selectedMediaField } from "../recoil";
 
-import { selectedSamples, SampleData } from "../recoil/atoms";
+import { SampleData, selectedSamples } from "../recoil/atoms";
 import * as schemaAtoms from "../recoil/schema";
-import { datasetName } from "../recoil/selectors";
+import { datasetName, mediaTypeSelector } from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
@@ -32,6 +37,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(datasetName);
   const mediaField = useRecoilValue(selectedMediaField(isModal));
+  const mediaType = useRecoilValue(mediaTypeSelector);
 
   const fieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
@@ -42,18 +48,38 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
 
   const create = useCallback(
     ({ frameNumber, frameRate, sample, urls }: SampleData): T => {
-      const video = getMimeType(sample).startsWith("video/");
       let constructor:
         | typeof FrameLooker
         | typeof ImageLooker
+        | typeof PcdLooker
         | typeof VideoLooker = ImageLooker;
-      if (video && (isFrame || isPatch)) {
-        constructor = FrameLooker;
+
+      const mimeType = getMimeType(sample);
+
+      if (mimeType !== null) {
+        const isVideo = mimeType.startsWith("video/");
+
+        if (isVideo && (isFrame || isPatch)) {
+          constructor = FrameLooker;
+        }
+
+        if (isVideo) {
+          constructor = VideoLooker;
+        }
+
+        // checking for pcd extension instead of media_type because this also applies for group slices
+        if (urls.filepath.endsWith(".pcd")) {
+          constructor = PcdLooker;
+        }
+      } else {
+        constructor = ImageLooker;
       }
 
-      if (video) {
-        constructor = VideoLooker;
-      }
+      const sampleMediaFilePath =
+        constructor === PcdLooker &&
+        "orthographic_projection_metadata" in sample
+          ? (sample["orthographic_projection_metadata"]["filepath"] as string)
+          : urls[mediaField];
 
       const config: ReturnType<T["getInitialState"]>["config"] = {
         fieldSchema: {
@@ -70,7 +96,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
         frameNumber: constructor === FrameLooker ? frameNumber : undefined,
         frameRate,
         sampleId: sample._id,
-        src: getSampleSrc(urls[mediaField]),
+        src: getSampleSrc(sampleMediaFilePath),
         support: isClip ? sample.support : undefined,
         thumbnail,
         dataset,
@@ -104,6 +130,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
       highlight,
       selected,
       view,
+      mediaType,
     ]
   );
   const createLookerRef = useRef<(data: SampleData) => T>(create);

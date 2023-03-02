@@ -1,7 +1,7 @@
 """
 Aggregations.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1096,7 +1096,7 @@ class FacetAggregations(Aggregation):
         data = {}
         for key, agg in self._aggregations.items():
             try:
-                data[key] = agg.parse_result(d[self._get_key(agg)][0])
+                data[key] = agg.parse_result(d[self._get_key(key, agg)][0])
             except:
                 data[key] = agg.default_result()
 
@@ -1116,20 +1116,23 @@ class FacetAggregations(Aggregation):
         self._path = path
 
         facets = {}
-        for agg in self._aggregations.values():
-            facets[self._get_key(agg)] = []
-            for stage in agg.to_mongo(
+        for key, agg in self._aggregations.items():
+            facets[self._get_key(key, agg)] = agg.to_mongo(
                 sample_collection, context=self.field_name
-            ):
-                facets[self._get_key(agg)].append(stage)
+            )
 
         pipeline += [{"$facet": facets}]
 
         return pipeline
 
     @staticmethod
-    def _get_key(agg):
-        return agg.field_name.replace(".", "_") + "_" + agg.__class__.__name__
+    def _get_key(key, agg):
+        return (
+            agg.field_name.replace(".", "_")
+            + "_"
+            + agg.__class__.__name__
+            + str(key)
+        )
 
     @staticmethod
     def _parse_aggregations(field_name, aggregations):
@@ -2309,6 +2312,7 @@ class Values(Aggregation):
         _allow_missing=False,
         _big_result=True,
         _raw=False,
+        _field=None,
     ):
         super().__init__(field_or_expr, expr=expr)
         self._missing_value = missing_value
@@ -2317,8 +2321,9 @@ class Values(Aggregation):
         self._big_result = _big_result
         self._raw = _raw
 
-        self._field_type = None
+        self._field = None
         self._big_field = None
+        self._manual_field = _field
         self._num_list_fields = None
 
     def _kwargs(self):
@@ -2395,8 +2400,8 @@ class Values(Aggregation):
             context=context,
         )
 
+        self._field = self._manual_field or field
         self._big_field = big_field
-        self._field = field
         self._num_list_fields = len(list_fields)
 
         pipeline.extend(
@@ -2546,6 +2551,7 @@ def _parse_field_and_expr(
             expr,
             embedded_root=embedded_root,
             allow_missing=allow_missing,
+            context=context,
         )
     else:
         pipeline = []
@@ -2575,12 +2581,12 @@ def _parse_field_and_expr(
         if is_frame_field:
             context = ".".join(context.split(".")[1:])
 
-        unwind_list_fields = list(
-            filter(lambda f: not context.startswith(f), unwind_list_fields)
-        )
-        other_list_fields = list(
-            filter(lambda f: not context.startswith(f), other_list_fields)
-        )
+        unwind_list_fields = [
+            f for f in unwind_list_fields if not context.startswith(f)
+        ]
+        other_list_fields = [
+            f for f in other_list_fields if not context.startswith(f)
+        ]
 
     if keep_top_level:
         if is_frame_field:

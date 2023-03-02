@@ -25,12 +25,11 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
-import { useTheme } from "@fiftyone/components";
+import { useTheme, PillButton } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
-import { PillButton } from "../utils";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
@@ -41,11 +40,12 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
   get: ({ get }) => {
     const hasFiltersValue = get(fos.hasFilters(false));
-    const extendedSelectionList = get(fos.extendedSelection);
+    const { selection } = get(fos.extendedSelection);
     const selectedSampleSet = get(fos.selectedSamples);
+    const isSimilarityOn = get(fos.similarityParameters);
 
     const isExtendedSelectionOn =
-      extendedSelectionList && extendedSelectionList.length > 0;
+      (selection && selection.length > 0) || isSimilarityOn;
 
     return (
       isExtendedSelectionOn || hasFiltersValue || selectedSampleSet.size > 0
@@ -303,11 +303,29 @@ const SaveFilters = () => {
     ({ snapshot, set }) =>
       async () => {
         const loading = await snapshot.getPromise(fos.savingFilters);
+        const selected = await snapshot.getPromise(fos.selectedSamples);
+
         if (loading) {
           return;
         }
+
         set(fos.savingFilters, true);
-        setView((v) => v);
+        if (selected.size > 0) {
+          setView(
+            (v) => [
+              ...v,
+              {
+                _cls: "fiftyone.core.stages.Select",
+                kwargs: [["sample_ids", [...selected]]],
+              },
+            ],
+            undefined,
+            undefined,
+            true
+          );
+        } else {
+          setView((v) => v);
+        }
       },
     []
   );

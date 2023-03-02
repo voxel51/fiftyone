@@ -1,16 +1,14 @@
 """
 FiftyOne Server /sort route
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from dataclasses import asdict
+
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
-
-import fiftyone.core.dataset as fod
-import fiftyone.core.fields as fof
-import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
 import fiftyone.server.events as fose
@@ -24,34 +22,25 @@ class Sort(HTTPEndpoint):
         dataset_name = data.get("dataset", None)
         filters = data.get("filters", {})
         stages = data.get("view", None)
-        extended = data.get("extended", None)
-        dist_field = data.get("dist_field", None)
+        subscription = data.get("subscription", None)
+        fosv.get_view(
+            dataset_name,
+            stages=stages,
+            filters=filters,
+            extended_stages={
+                "fiftyone.core.stages.SortBySimilarity": data["extended"]
+            },
+        )
+        state = fose.get_state()
+        state.selected = []
 
-        dataset = fod.load_dataset(dataset_name)
-
-        changed = False
-        if dist_field and not dataset.get_field(dist_field):
-            dataset.add_sample_field(dist_field, fof.FloatField)
-            changed = True
-
-        fosv.get_view(dataset_name, stages=stages, filters=filters)
-
-        state = fose.get_state().copy()
-        view = fosv.get_view(dataset_name, stages=stages, filters=filters)
-        state.dataset = view._dataset
-
-        if isinstance(view, fov.DatasetView):
-            state.view = view
-        else:
-            view = None
-
+        await fose.dispatch_event(subscription, fose.StateUpdate(state))
         return {
-            "dataset": await serialize_dataset(
-                dataset_name=dataset_name,
-                serialized_view=stages,
-                view_name=view.name,
-            )
-            if changed
-            else None,
-            "state": state.serialize(),
+            "dataset": asdict(
+                await serialize_dataset(
+                    dataset_name=dataset_name,
+                    serialized_view=stages,
+                )
+            ),
+            "state": state,
         }

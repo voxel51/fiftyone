@@ -1,7 +1,7 @@
 """
 FiftyOne singleton implementations.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -24,18 +24,21 @@ class DatasetSingleton(type):
         return cls
 
     def __call__(cls, name=None, _create=True, *args, **kwargs):
+        instance = cls._instances.pop(name, None)
+
         if (
             _create
-            or name not in cls._instances
-            or cls._instances[name].deleted
+            or instance is None
+            or instance.deleted
+            or instance.name is None
         ):
             instance = cls.__new__(cls)
             instance.__init__(name=name, _create=_create, *args, **kwargs)
             name = instance.name  # `__init__` may have changed `name`
-            cls._instances[name] = instance
         else:
-            instance = cls._instances[name]
             instance._update_last_loaded_at()
+
+        cls._instances[name] = instance
 
         return instance
 

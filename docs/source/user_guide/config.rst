@@ -327,12 +327,14 @@ You must also add `?authSource=admin` to your database URI:
 
     mongodb://[username:password@]host[:port]/?authSource=admin
 
+.. _using-a-different-mongodb-version:
+
 Using a different MongoDB version
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 FiftyOne is designed for **MongoDB v4.4 or later**.
 
-If you wish to connect FiftyOne to a MongoDB database whose version is no
+If you wish to connect FiftyOne to a MongoDB database whose version is not
 explicitly supported, you will also need to set the `database_validation`
 property of your FiftyOne config to `False` to suppress a runtime error that
 will otherwise occur.
@@ -900,7 +902,7 @@ App config.
 
 Plugins that you can configure include:
 
--   The builtin :ref:`Map tab <app-map-tab>`
+-   The builtin :ref:`Map panel <app-map-panel>`
 -   The builtin :ref:`3D visualizer <3d-visualizer-config>`
 -   Any :ref:`custom plugins <app-plugins>` that you've registered
 

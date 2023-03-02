@@ -1,7 +1,7 @@
 """
 Dataset exporters.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -35,6 +35,7 @@ import fiftyone.utils.patches as foup
 from .parsers import (
     FiftyOneLabeledImageSampleParser,
     FiftyOneUnlabeledImageSampleParser,
+    FiftyOneUnlabeledMediaSampleParser,
     FiftyOneLabeledVideoSampleParser,
     FiftyOneUnlabeledVideoSampleParser,
     ImageSampleParser,
@@ -282,6 +283,11 @@ def export_samples(
             compute_metadata=True, export_media=_export_media, **clips_kwargs
         )
 
+    elif isinstance(dataset_exporter, UnlabeledMediaDatasetExporter):
+        sample_parser = FiftyOneUnlabeledMediaSampleParser(
+            compute_metadata=True
+        )
+
     elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
         if found_patches:
             # Export labeled image patches
@@ -420,6 +426,14 @@ def write_dataset(
         (UnlabeledVideoDatasetExporter, LabeledVideoDatasetExporter),
     ):
         _write_video_dataset(
+            dataset_exporter,
+            samples,
+            sample_parser,
+            num_samples=num_samples,
+            sample_collection=sample_collection,
+        )
+    elif isinstance(dataset_exporter, UnlabeledMediaDatasetExporter):
+        _write_unlabeled_dataset(
             dataset_exporter,
             samples,
             sample_parser,
@@ -938,6 +952,40 @@ def _write_video_dataset(
                     )
 
 
+def _write_unlabeled_dataset(
+    dataset_exporter,
+    samples,
+    sample_parser,
+    num_samples=None,
+    sample_collection=None,
+):
+    with fou.ProgressBar(total=num_samples) as pb:
+        with dataset_exporter:
+            if sample_collection is not None:
+                dataset_exporter.log_collection(sample_collection)
+
+            for sample in pb(samples):
+                sample_parser.with_sample(sample)
+
+                # Parse media
+                filepath = sample_parser.get_media_path()
+
+                # Parse metadata
+                if dataset_exporter.requires_metadata:
+                    if sample_parser.has_metadata:
+                        metadata = sample_parser.get_metadata()
+                    else:
+                        metadata = None
+
+                    if metadata is None:
+                        metadata = fom.Metadata.build_for(filepath)
+                else:
+                    metadata = None
+
+                # Export sample
+                dataset_exporter.export_sample(filepath, metadata=metadata)
+
+
 class ExportPathsMixin(object):
     """Mixin for :class:`DatasetExporter` classes that provides convenience
     methods for parsing the ``data_path``, ``labels_path``, and
@@ -1438,6 +1486,37 @@ class UnlabeledVideoDatasetExporter(DatasetExporter):
             metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
                 instance for the sample. Only required when
                 :meth:`requires_video_metadata` is ``True``
+        """
+        raise NotImplementedError("subclass must implement export_sample()")
+
+
+class UnlabeledMediaDatasetExporter(DatasetExporter):
+    """Interface for exporting datasets of unlabeled samples.
+
+    See :ref:`this page <writing-a-custom-dataset-exporter>` for information
+    about implementing/using dataset exporters.
+
+    Args:
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
+    """
+
+    @property
+    def requires_metadata(self):
+        """Whether this exporter requires
+        :class:`fiftyone.core.metadata.Metadata` instances for each sample
+        being exported.
+        """
+        raise NotImplementedError("subclass must implement requires_metadata")
+
+    def export_sample(self, filepath, metadata=None):
+        """Exports the given sample to the dataset.
+
+        Args:
+            filepath: a media path
+            metadata (None): a :class:`fiftyone.core.metadata.Metadata`
+                instance for the sample. Only required when
+                :meth:`requires_metadata` is ``True``
         """
         raise NotImplementedError("subclass must implement export_sample()")
 
@@ -2269,6 +2348,66 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
 
     def export_sample(self, video_path, metadata=None):
         self._media_exporter.export(video_path)
+
+    def close(self, *args):
+        self._media_exporter.close()
+
+
+class MediaDirectoryExporter(UnlabeledMediaDatasetExporter):
+    """Exporter that writes a directory of media files of arbitrary type to
+    disk.
+
+    See :ref:`this page <MediaDirectory-export>` for format details.
+
+    The filenames of the input media files will be maintained in the export
+    directory, unless a name conflict would occur, in which case an index of
+    the form ``"-%d" % count`` is appended to the base filename.
+
+    Args:
+        export_dir: the directory to write the export
+        export_media (None): defines how to export the raw media contained
+            in the dataset. The supported values are:
+
+            -   ``True`` (default): copy all media files into the export
+                directory
+            -   ``"move"``: move media files into the export directory
+            -   ``"symlink"``: create symlinks to each media file in the export
+                directory
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each output file. This
+            identifier is joined with ``export_dir`` to generate an output path
+            for each exported media. This argument allows for populating nested
+            subdirectories that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
+    """
+
+    def __init__(self, export_dir, export_media=None, rel_dir=None):
+        if export_media is None:
+            export_media = True
+
+        super().__init__(export_dir=export_dir)
+
+        self.export_media = export_media
+        self.rel_dir = rel_dir
+
+        self._media_exporter = None
+
+    @property
+    def requires_metadata(self):
+        return False
+
+    def setup(self):
+        self._media_exporter = MediaExporter(
+            self.export_media,
+            export_path=self.export_dir,
+            rel_dir=self.rel_dir,
+            supported_modes=(True, "move", "symlink"),
+        )
+        self._media_exporter.setup()
+
+    def export_sample(self, filepath, metadata=None):
+        self._media_exporter.export(filepath)
 
     def close(self, *args):
         self._media_exporter.close()

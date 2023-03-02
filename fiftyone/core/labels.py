@@ -1,7 +1,7 @@
 """
 Labels stored in dataset samples.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -188,7 +188,7 @@ class ListAttribute(Attribute):
 # @todo remove this in favor of dynamic-only attributes
 class _HasAttributesDict(Label):
     """Mixin for :class:`Label` classes that have an :attr:`attributes` field
-    that contains a dict of of :class:`Attribute` instances.
+    that contains a dict of :class:`Attribute` instances.
     """
 
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
@@ -1538,7 +1538,7 @@ def _segmentation_to_detections(segmentation, mask_targets, mask_types):
 
     if is_rgb:
         array_targets = np.unique(mask.reshape(-1, mask.shape[2]), axis=0)
-        targets = [_rgb_to_hex(t) for t in targets]
+        targets = [_rgb_to_hex(t) for t in array_targets]
     else:
         targets = np.unique(mask)
         array_targets = itertools.repeat(None)

@@ -1,7 +1,7 @@
 """
 Dataset runs framework.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -462,11 +462,12 @@ class Run(Configurable):
         """
         dataset = samples._root_dataset
 
-        results_cache = getattr(dataset, cls._results_cache_field())
+        if cache:
+            results_cache = getattr(dataset, cls._results_cache_field())
 
-        # Returned cached results if available
-        if key in results_cache:
-            return results_cache[key]
+            # Returned cached results if available
+            if key in results_cache:
+                return results_cache[key]
 
         run_doc = cls._get_run_doc(samples, key)
 

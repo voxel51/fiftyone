@@ -1,10 +1,11 @@
+import * as fos from "@fiftyone/state";
+import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
+import * as _ from "lodash";
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
-import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
 import * as recoil from "recoil";
-import * as fos from "@fiftyone/state";
-import * as _ from "lodash";
-import { State } from "@fiftyone/state";
+import * as foc from "@fiftyone/components";
+import * as fou from "@fiftyone/utilities";
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
@@ -12,6 +13,8 @@ declare global {
     ReactDOM: any;
     recoil: any;
     __fos__: any;
+    __foc__: any;
+    __fou__: any;
   }
 }
 
@@ -21,6 +24,8 @@ if (typeof window !== "undefined") {
   window.ReactDOM = ReactDOM;
   window.recoil = recoil;
   window.__fos__ = fos;
+  window.__foc__ = foc;
+  window.__fou__ = fou;
 }
 
 function usingRegistry() {
@@ -159,12 +164,29 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
   );
 }
 
+/**
+ * The type of plugin component.
+ *
+ * - `Panel` - A panel that can be added to `@fiftyone/spaces`
+ * - `Plot` - **deprecated** - A plot that can be added as a panel
+ * - `Visualizer` - Visualizes sample data
+ */
 export enum PluginComponentType {
   Visualizer,
   Plot,
+  Panel,
 }
 
 type PluginActivator = (props: any) => boolean;
+
+type PanelOptions = {
+  allowDuplicates?: boolean;
+  TabIndicator?: React.ComponentType;
+};
+
+type PluginComponentProps<T> = T & {
+  panelNode?: unknown;
+};
 
 /**
  * A plugin registration.
@@ -177,17 +199,19 @@ export interface PluginComponentRegistration<T extends {} = {}> {
   /**
    * The optional label of the plugin to display to the user
    */
-  label?: string;
+  label: string;
+  Icon?: React.ComponentType;
   /**
    * The React component to render
    */
-  component: FunctionComponent<T>;
+  component: FunctionComponent<PluginComponentProps<T>>;
   /** The plugin type */
   type: PluginComponentType;
   /**
    * A function that returns true if the plugin should be active
    */
   activator: PluginActivator;
+  panelOptions?: PanelOptions;
 }
 
 const DEFAULT_ACTIVATOR = () => true;
@@ -220,6 +244,10 @@ class PluginComponentRegistry {
       !this.data.has(name),
       `${name} is already a registered Plugin Component`
     );
+    warn(
+      registration.type === PluginComponentType.Plot,
+      `${name} is a Plot Plugin Component. This is deprecated. Please use "Panel" instead.`
+    );
     this.data.set(name, registration);
   }
   unregister(name: string): boolean {
@@ -246,14 +274,17 @@ export function usePluginSettings<T>(
 ): T {
   const dataset = recoil.useRecoilValue(fos.dataset);
   const appConfig = recoil.useRecoilValue(fos.config);
-  const datasetPlugins = _.get(dataset, "appConfig.plugins", {});
-  const appConfigPlugins = _.get(appConfig, "plugins", {});
 
-  const settings = _.merge<T | {}, Partial<T>, Partial<T>>(
-    { ...defaults },
-    _.get(appConfigPlugins, pluginName, {}),
-    _.get(datasetPlugins, pluginName, {})
-  );
+  const settings = useMemo(() => {
+    const datasetPlugins = _.get(dataset, "appConfig.plugins", {});
+    const appConfigPlugins = _.get(appConfig, "plugins", {});
+
+    return _.merge<T | {}, Partial<T>, Partial<T>>(
+      { ...defaults },
+      _.get(appConfigPlugins, pluginName, {}),
+      _.get(datasetPlugins, pluginName, {})
+    );
+  }, [dataset, appConfig, pluginName, defaults]);
 
   return settings as T;
 }

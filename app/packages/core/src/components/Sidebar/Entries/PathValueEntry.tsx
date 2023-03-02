@@ -218,7 +218,7 @@ const Loadable = ({ path }: { path: string }) => {
   const { ftype } = useRecoilValue(fos.field(path));
   const color = useRecoilValue(fos.pathColor({ path, modal: true }));
   const timeZone = useRecoilValue(fos.timeZone);
-  const formatted = format({ ftype, value, timeZone });
+  const formatted = format({ ftype, value, timeZone })?.toString();
 
   return <div style={none ? { color } : {}}>{none ? "None" : formatted}</div>;
 };

@@ -21,15 +21,13 @@ import {
   noDistributionPathsData,
 } from "@fiftyone/state";
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
-import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 const Container = styled.div`
   ${scrollbarStyles}
   overflow-y: hidden;
-  overflow-x: scroll;
+  overflow-x: auto;
   width: 100%;
   height: 100%;
-  padding-left: 1rem;
 `;
 
 const LIMIT = 200;
@@ -268,25 +266,25 @@ const DistributionsContainer = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
   width: 100%;
-  height: calc(100% - 3rem);
+  height: calc(100% - 4.5rem);
   ${scrollbarStyles}
 `;
 
-const Distributions = ({ group }: { group: string }) => {
+const Distributions = ({
+  group,
+  style,
+}: {
+  group: string;
+  style?: React.CSSProperties;
+}) => {
   const paths = useRecoilValue(distributionPaths(group));
   const noData = useRecoilValueLoadable(noDistributionPathsData(group));
 
   if (noData.state === "hasError") throw noData.contents;
   return noData.state === "hasValue" ? (
     !noData.contents ? (
-      <Suspense
-        fallback={
-          <Loading>
-            <LoadingDots text="Loading" />
-          </Loading>
-        }
-      >
-        <DistributionsContainer>
+      <Suspense fallback={<Loading ellipsisAnimation>Loading</Loading>}>
+        <DistributionsContainer style={style}>
           {paths.map((path) => {
             return <DistributionRenderer key={path} path={path} />;
           })}
@@ -296,9 +294,7 @@ const Distributions = ({ group }: { group: string }) => {
       <Loading>No data</Loading>
     )
   ) : (
-    <Loading>
-      <LoadingDots text="Loading" />
-    </Loading>
+    <Loading ellipsisAnimation>Loading</Loading>
   );
 };
 

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { SCALE_FACTOR } from "../../constants";
@@ -21,7 +21,7 @@ const readActions = <State extends BaseState>(
   return Object.fromEntries(
     Object.entries(actions).reduce((acc, [_, v]) => {
       if (Array.isArray(v.eventKeys)) {
-        return [...acc, [v.eventKeys[0], v]];
+        return [...acc, ...v.eventKeys.map((key) => [key, v])];
       }
 
       return [...acc, [v.eventKeys || v.shortcut, v]];

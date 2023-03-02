@@ -9,6 +9,7 @@ import { useRecoilValue } from "recoil";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
+import Sample3d from "./Sample3d";
 import { ErrorBoundary, HelpPanel, JSONPanel } from "@fiftyone/components";
 
 const ModalWrapper = styled.div`
@@ -62,7 +63,7 @@ const SampleModal = () => {
       ) => void
     ) => {
       switch (entry.kind) {
-        case fos.EntryKind.PATH:
+        case fos.EntryKind.PATH: {
           const isTag = entry.path.startsWith("tags.");
           const isLabelTag = entry.path.startsWith("_label_tags.");
           const isLabel = labelPaths.includes(entry.path);
@@ -121,7 +122,8 @@ const SampleModal = () => {
             ),
             disabled: isTag || isLabelTag || isOther,
           };
-        case fos.EntryKind.GROUP:
+        }
+        case fos.EntryKind.GROUP: {
           const isTags = entry.name === "tags";
           const isLabelTags = entry.name === "label tags";
 
@@ -150,6 +152,7 @@ const SampleModal = () => {
               ),
             disabled: false,
           };
+        }
         case fos.EntryKind.EMPTY:
           return {
             children: (
@@ -183,6 +186,7 @@ const SampleModal = () => {
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isGroup = useRecoilValue(fos.isGroup);
+  const isPcd = useRecoilValue(fos.isPointcloudDataset);
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
 
@@ -195,13 +199,13 @@ const SampleModal = () => {
         <Container style={{ ...screen, zIndex: 10001 }}>
           <ContentColumn>
             <ErrorBoundary onReset={() => {}}>
-              {isGroup ? <Group /> : <Sample />}
+              {isGroup ? <Group /> : isPcd ? <Sample3d /> : <Sample />}
               {jsonPanel.isOpen && (
                 <JSONPanel
                   containerRef={jsonPanel.containerRef}
-                  jsonHTML={jsonPanel.jsonHTML}
                   onClose={() => jsonPanel.close()}
                   onCopy={() => jsonPanel.copy()}
+                  json={jsonPanel.json}
                 />
               )}
               {helpPanel.isOpen && (

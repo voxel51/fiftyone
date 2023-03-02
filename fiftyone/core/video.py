@@ -1,7 +1,7 @@
 """
 Video frame views.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -685,7 +685,7 @@ def make_frames_dataset(
             "pre-populate the `filepath` field on the frames of your video "
             "collection or pass `sample_frames=True` to this method to "
             "perform the sampling. See "
-            "https://voxel51.com/docs/fiftyone/user_guide/using_views.html#frame-views "
+            "https://docs.voxel51.com/user_guide/using_views.html#frame-views "
             "for more information."
         )
 

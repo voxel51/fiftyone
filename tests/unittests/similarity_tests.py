@@ -1,7 +1,7 @@
 """
 FiftyOne visual similarity-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -38,7 +38,7 @@ class SimilarityTests(unittest.TestCase):
         fob.compute_similarity(
             dataset,
             embeddings=embeddings,
-            brain_key="image_similarity",
+            brain_key="img_sim",
         )
 
         query_id = dataset.first().id
@@ -54,9 +54,7 @@ class SimilarityTests(unittest.TestCase):
 
         self.assertEqual(len(view3), 4)
 
-        view4 = dataset.sort_by_similarity(
-            query_id, brain_key="image_similarity"
-        )
+        view4 = dataset.sort_by_similarity(query_id, brain_key="img_sim")
 
         self.assertEqual(view1.values("id"), view4.values("id"))
 
@@ -98,14 +96,12 @@ class SimilarityTests(unittest.TestCase):
             dataset,
             patches_field="ground_truth",
             embeddings=embeddings,
-            brain_key="object_similarity",
+            brain_key="obj_sim",
         )
 
         query_id = dataset.first().ground_truth.detections[0].id
 
-        view = dataset.sort_by_similarity(
-            query_id, k=3, brain_key="object_similarity"
-        )
+        view = dataset.sort_by_similarity(query_id, k=3, brain_key="obj_sim")
 
         self.assertEqual(view.count("ground_truth.detections"), 3)
 
@@ -122,9 +118,7 @@ class SimilarityTests(unittest.TestCase):
 
         self.assertEqual(len(view3), 4)
 
-        view4 = patches.sort_by_similarity(
-            query_id, brain_key="object_similarity"
-        )
+        view4 = patches.sort_by_similarity(query_id, brain_key="obj_sim")
 
         self.assertEqual(view1.values("id"), view4.values("id"))
 

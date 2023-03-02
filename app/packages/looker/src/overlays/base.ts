@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { getColor } from "@fiftyone/utilities";
@@ -41,6 +41,7 @@ export interface SelectData {
 }
 
 export interface RegularLabel extends BaseLabel {
+  _id?: string;
   label?: string;
   confidence?: number | NONFINITE;
 }

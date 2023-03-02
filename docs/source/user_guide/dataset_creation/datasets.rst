@@ -207,6 +207,8 @@ refer to the corresponding dataset format when reading the dataset from disk.
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`VideoDirectory <VideoDirectory-import>`                                         | A directory of videos.                                                             |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`MediaDirectory <MediaDirectory-import>`                                         | A directory of media files.                                                        |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneImageClassificationDataset <FiftyOneImageClassificationDataset-import>` | A labeled dataset consisting of images and their associated classification labels  |
     |                                                                                       | in a simple JSON format.                                                           |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -263,6 +265,9 @@ refer to the corresponding dataset format when reading the dataset from disk.
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`BDDDataset <BDDDataset-import>`                                                 | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                                       | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`CSVDataset <CSVDataset-import>`                                                 | A labeled dataset consisting of images or videos and their associated field values |
+    |                                                                                       | stored as columns of a CSV file.                                                   |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`DICOMDataset <DICOMDataset-import>`                                             | An image dataset whose image data and optional properties are stored in            |
     |                                                                                       | `DICOM format <https://en.wikipedia.org/wiki/DICOM>`_.                             |
@@ -455,6 +460,94 @@ You can create a FiftyOne dataset from a directory of videos as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.VideoDirectory
+
+.. _MediaDirectory-import:
+
+MediaDirectory
+--------------
+
+The :class:`fiftyone.types.MediaDirectory` type represents a directory of media
+files.
+
+Datasets of this type are read in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        <filename1>.<ext>
+        <filename2>.<ext>
+
+.. note::
+
+    All files must have the same media type (image, video, point cloud, etc.)
+
+By default, the dataset may contain nested subfolders of media files, which are
+recursively listed.
+
+.. note::
+
+    See :class:`MediaDirectoryImporter <fiftyone.utils.data.importers.MediaDirectoryImporter>`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
+You can create a FiftyOne dataset from a directory of media files as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        dataset_dir = "/path/to/media-dir"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.MediaDirectory,
+            name=name,
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code:: shell
+
+      NAME=my-dataset
+      DATASET_DIR=/path/to/media-dir
+
+      # Create the dataset
+      fiftyone datasets create \
+          --name $NAME \
+          --dataset-dir $DATASET_DIR \
+          --type fiftyone.types.MediaDirectory
+
+      # View summary info about the dataset
+      fiftyone datasets info $NAME
+
+      # Print the first few samples in the dataset
+      fiftyone datasets head $NAME
+
+    To view a directory of media in the FiftyOne App without creating
+    a persistent FiftyOne dataset, you can execute:
+
+    .. code-block:: shell
+
+        DATASET_DIR=/path/to/media-dir
+
+        # View the dataset in the App
+        fiftyone app view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.MediaDirectory
 
 .. _FiftyOneImageClassificationDataset-import:
 
@@ -4203,6 +4296,163 @@ directory containing the corresponding media files by providing the
 
     If the `name` key of your labels contains absolute paths to the source
     media, then you can omit the `data_path` parameter from the example above.
+
+.. _CSVDataset-import:
+
+CSVDataset
+----------
+
+The :class:`fiftyone.types.CSVDataset` type represents a dataset consisting
+of images or videos and their associated field values stored as columns of a
+CSV file.
+
+Datasets of this type are read in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+        labels.csv
+
+where `labels.csv` is a CSV file in the following format:
+
+.. code-block:: text
+
+    field1,field2,field3,...
+    value1,value2,value3,...
+    value1,value2,value3,...
+    ...
+
+One sample will be generated per row in the CSV file (excluding the header
+row).
+
+One column of the CSV file must contain media paths, which may be either:
+
+-   filenames or relative paths to media files in ``data/``
+-   absolute paths to media files
+
+By default it is assumed that a ``filepath`` column exists and contains the
+media paths, but you can customize this via the optional ``media_field``
+parameter.
+
+By default all columns are loaded as string fields, but you can provide the
+optional ``fields`` parameter to select a subset of columns to load or provide
+custom parsing functions for each field, as demonstrated below.
+
+.. note::
+
+    See :class:`CSVDatasetImporter <fiftyone.utils.csv.CSVDatasetImporter>`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
+You can create a FiftyOne dataset from a CSV dataset stored in the above
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        dataset_dir = "/path/to/csv-dataset"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.CSVDataset,
+            name=name,
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATASET_DIR=/path/to/csv-dataset
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.CSVDataset
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
+
+    To view a CSV dataset stored in the above format in the FiftyOne App
+    without creating a persistent FiftyOne dataset, you can execute:
+
+    .. code-block:: shell
+
+        DATASET_DIR=/path/to/csv-dataset
+
+        # View the dataset in the App
+        fiftyone app view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.CSVDataset
+
+If your CSV file contains absolute media paths, then you can directly specify
+the path to the CSV file itself by providing the `labels_path` parameter.
+
+Additionally, you can use the `fields` parameter to customize how each field is
+parsed, as demonstrated below:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        labels_path = "/path/to/labels.csv"
+
+        fields = {
+            "filepath": None,  # load as strings
+            "tags": lambda v: v.strip("").split(","),
+            "float_field": lambda v: float(v),
+            "weather": lambda v: fo.Classification(label=v) if v else None,
+        }
+
+        # Import CSV file with absolute media paths and custom field parsers
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.CSVDataset,
+            labels_path=labels_path,
+            fields=fields,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/to/labels.csv
+
+        # Import CSV file with absolute media paths
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.CSVDataset \
+            --kwargs labels_path=$LABELS_PATH
 
 .. _DICOMDataset-import:
 

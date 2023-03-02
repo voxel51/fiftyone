@@ -5,8 +5,6 @@ FiftyOne Recipes
 
 .. default-role:: code
 
-Welcome to FiftyOne recipes!
-
 FiftyOne turbocharges your current workflows, transforming hours of scripting
 into minutes so that you can focus on your models. Browse the recipes below to
 see how you can leverage FiftyOne to enhance key parts of your machine learning
@@ -36,13 +34,6 @@ workflows.
     <div class="list">
 
 .. Add recipe cards below
-
-.. customcarditem::
-    :header: pandas vs FiftyOne
-    :description: See how to translate common pandas queries into FiftyOne's query syntax for computer vision.
-    :link: pandas_vs_fiftyone.html
-    :image: ../_static/images/recipes/pandas_vs_fiftyone.png
-    :tags: Cheat-Sheets,Dataset-Curation
 
 .. customcarditem::
     :header: Creating views and using view expressions
@@ -145,7 +136,6 @@ workflows.
    :maxdepth: 1
    :hidden:
 
-   pandas vs FiftyOne <pandas_vs_fiftyone>
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
    Removing duplicate objects <remove_duplicate_annos.ipynb>

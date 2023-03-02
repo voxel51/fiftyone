@@ -1,7 +1,7 @@
 """
 Session plot manager.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -233,7 +233,7 @@ class PlotManager(object):
                 "Plots must be subclasses of %s; but found %s. You may be "
                 "working in an environment that does not support "
                 "interactivity.\n\nSee "
-                "https://voxel51.com/docs/fiftyone/user_guide/plots.html#overview "
+                "https://docs.voxel51.com/user_guide/plots.html#overview "
                 "for more information" % (ResponsivePlot, type(plot))
             )
 

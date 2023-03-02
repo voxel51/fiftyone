@@ -336,7 +336,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             }}
           >
             <ExternalLink
-              href={`https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`}
+              href={`https://docs.voxel51.com/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`}
               style={{ maxHeight: "1rem", width: "1rem", display: "block" }}
             >
               <Help

@@ -5,7 +5,7 @@ import {
   groupSlices,
   useSetGroupSlice,
 } from "@fiftyone/state";
-import React from "react";
+import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 
 const Slice: React.FC<{ value: string; className: string }> = ({ value }) => {
@@ -16,6 +16,15 @@ const GroupSlice: React.FC = () => {
   const slice = useRecoilValue(groupSlice(false));
   const defaultSlice = useRecoilValue(defaultGroupSlice);
   const setSlice = useSetGroupSlice();
+  const groupSlicesValue = useRecoilValue(groupSlices);
+
+  const useSearch = useCallback(
+    (search: string) => {
+      const values = groupSlicesValue.filter((name) => name.includes(search));
+      return { values, total: values.length };
+    },
+    [groupSlicesValue]
+  );
 
   return (
     <Selector
@@ -28,12 +37,7 @@ const GroupSlice: React.FC = () => {
       onSelect={setSlice}
       overflow={true}
       placeholder={"slice"}
-      useSearch={(search) => {
-        const values = useRecoilValue(groupSlices).filter((name) =>
-          name.includes(search)
-        );
-        return { values, total: values.length };
-      }}
+      useSearch={useSearch}
       value={slice || defaultSlice}
     />
   );

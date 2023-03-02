@@ -1,7 +1,7 @@
 """
 Dataset views.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -504,7 +504,13 @@ class DatasetView(foc.SampleCollection):
 
         return make_sample
 
-    def iter_groups(self, progress=False, autosave=False, batch_size=None):
+    def iter_groups(
+        self,
+        group_slices=None,
+        progress=False,
+        autosave=False,
+        batch_size=None,
+    ):
         """Returns an iterator over the groups in the view.
 
         Examples::
@@ -542,6 +548,7 @@ class DatasetView(foc.SampleCollection):
                     sample["test"] = make_label()
 
         Args:
+            group_slices (None): an optional subset of group slices to load
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
             autosave (False): whether to automatically save changes to samples
@@ -558,7 +565,7 @@ class DatasetView(foc.SampleCollection):
             raise ValueError("%s does not contain groups" % type(self))
 
         with contextlib.ExitStack() as exit_context:
-            groups = self._iter_groups()
+            groups = self._iter_groups(group_slices=group_slices)
 
             if progress:
                 pb = fou.ProgressBar(total=len(self))
@@ -576,7 +583,7 @@ class DatasetView(foc.SampleCollection):
                     for sample in group.values():
                         save_context.save(sample)
 
-    def _iter_groups(self):
+    def _iter_groups(self, group_slices=None):
         make_sample = self._make_sample_fcn()
         index = 0
 
@@ -585,7 +592,9 @@ class DatasetView(foc.SampleCollection):
         group = {}
 
         try:
-            for d in self._aggregate(groups_only=True, detach_frames=True):
+            for d in self._aggregate(
+                detach_frames=True, groups_only=True, group_slices=group_slices
+            ):
                 sample = make_sample(d)
 
                 group_id = sample[group_field].id
@@ -612,14 +621,15 @@ class DatasetView(foc.SampleCollection):
             # The cursor has timed out so we yield from a new one after
             # skipping to the last offset
             view = self.skip(index)
-            for group in view._iter_groups():
+            for group in view._iter_groups(group_slices=group_slices):
                 yield group
 
-    def get_group(self, group_id):
+    def get_group(self, group_id, group_slices=None):
         """Returns a dict containing the samples for the given group ID.
 
         Args:
             group_id: a group ID
+            group_slices (None): an optional subset of group slices to load
 
         Returns:
             a dict mapping group names to
@@ -640,7 +650,7 @@ class DatasetView(foc.SampleCollection):
         view = self.match(foe.ViewField(id_field) == ObjectId(group_id))
 
         try:
-            return next(iter(view._iter_groups()))
+            return next(iter(view._iter_groups(group_slices=group_slices)))
         except StopIteration:
             raise KeyError(
                 "No group found with ID '%s' in field '%s'"
@@ -1167,8 +1177,8 @@ class DatasetView(foc.SampleCollection):
         support=None,
         group_slice=None,
         group_slices=None,
-        groups_only=False,
         detach_groups=False,
+        groups_only=False,
         manual_group_select=False,
         post_pipeline=None,
     ):
@@ -1272,10 +1282,6 @@ class DatasetView(foc.SampleCollection):
 
         # Insert group lookup pipline if needed
         if _attach_groups_idx is not None:
-            if group_slices:
-                _group_slices.update(group_slices)
-
-            group_slices = None
             _pipeline = self._dataset._attach_groups_pipeline(
                 group_slices=_group_slices
             )
@@ -1301,8 +1307,8 @@ class DatasetView(foc.SampleCollection):
             media_type=media_type,
             group_slice=group_slice,
             group_slices=group_slices,
-            groups_only=groups_only,
             detach_groups=detach_groups,
+            groups_only=groups_only,
             manual_group_select=manual_group_select,
             post_pipeline=post_pipeline,
         )
@@ -1317,8 +1323,8 @@ class DatasetView(foc.SampleCollection):
         support=None,
         group_slice=None,
         group_slices=None,
-        groups_only=False,
         detach_groups=False,
+        groups_only=False,
         manual_group_select=False,
         post_pipeline=None,
     ):
@@ -1331,8 +1337,8 @@ class DatasetView(foc.SampleCollection):
             support=support,
             group_slice=group_slice,
             group_slices=group_slices,
-            groups_only=groups_only,
             detach_groups=detach_groups,
+            groups_only=groups_only,
             manual_group_select=manual_group_select,
             post_pipeline=post_pipeline,
         )
@@ -1581,11 +1587,6 @@ def make_optimized_select_view(
             sample_ids, ordered=ordered
         )
     else:
-        if view.media_type == fom.GROUP and not select_groups:
-            optimized_view = optimized_view.select_group_slices(
-                _allow_mixed=True
-            )
-
         optimized_view = optimized_view.select(sample_ids, ordered=ordered)
         if view.media_type == fom.GROUP and select_groups:
             optimized_view = optimized_view.select_group_slices(

@@ -1,12 +1,13 @@
 """
 FiftyOne dataset-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from copy import deepcopy, copy
 from datetime import date, datetime
+import gc
 import os
 import unittest
 
@@ -4275,7 +4276,54 @@ class DynamicFieldTests(unittest.TestCase):
 
 class CustomEmbeddedDocumentTests(unittest.TestCase):
     @drop_datasets
-    def test_custom_embedded_documents(self):
+    def test_custom_embedded_documents_on_the_fly(self):
+        dataset = fo.Dataset()
+
+        dataset.add_sample_field(
+            "camera_info",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        # This tests that we've handled a mongoengine reference error that used
+        # to occur before we explicitly accounted for it
+        gc.collect()
+
+        dataset.add_sample_field("camera_info.camera_id", fo.StringField)
+
+        self.assertIn(
+            "camera_info.camera_id", dataset.get_field_schema(flat=True)
+        )
+
+        sample1 = fo.Sample(
+            filepath="/path/to/image1.jpg",
+            camera_info=fo.DynamicEmbeddedDocument(
+                camera_id="123456789",
+                quality=51.0,
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath="/path/to/image2.jpg",
+            camera_info=fo.DynamicEmbeddedDocument(camera_id="123456789"),
+        )
+
+        dataset.add_samples([sample1, sample2], dynamic=True)
+
+        self.assertIn(
+            "camera_info.quality", dataset.get_field_schema(flat=True)
+        )
+
+        dataset.set_values(
+            "camera_info.description", ["foo", "bar"], dynamic=True
+        )
+
+        self.assertIn(
+            "camera_info.description", dataset.get_field_schema(flat=True)
+        )
+
+    @drop_datasets
+    def test_custom_embedded_document_classes(self):
         sample = fo.Sample(
             filepath="/path/to/image.png",
             camera_info=_CameraInfo(

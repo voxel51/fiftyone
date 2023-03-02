@@ -1,8 +1,9 @@
 import { atom, atomFamily, useRecoilCallback } from "recoil";
 
-import { Sample, RGB } from "@fiftyone/looker/src/state";
+import { Sample } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
+import { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -42,6 +43,26 @@ export const useRefresh = () => {
     []
   );
 };
+
+// recoil effect that syncs state with local storage
+export const getBrowserStorageEffectForKey =
+  (key: string, props?: { sessionStorage: boolean }) =>
+  ({ setSelf, onSet }) => {
+    const storage = props?.sessionStorage
+      ? window.sessionStorage
+      : window.localStorage;
+
+    const value = storage.getItem(key);
+    if (value != null) setSelf(value);
+
+    onSet((newValue, _oldValue, isReset) => {
+      if (isReset) {
+        storage.removeItem(key);
+      } else {
+        storage.setItem(key, newValue);
+      }
+    });
+  };
 
 export const modal = atom<ModalSample | null>({
   key: "modal",
@@ -110,6 +131,7 @@ export const loading = atom<boolean>({
   default: false,
 });
 
+// labels: whether label tag or sample tag
 export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   {
     key: "tagging",
@@ -132,6 +154,7 @@ export const selectedViewName = atom<string>({
   default: null,
 });
 
+// only used in extended view, for tagging purpose
 export const selectedLabels = atom<State.SelectedLabelMap>({
   key: "selectedLabels",
   default: {},
@@ -142,6 +165,12 @@ export const selectedSamples = atom<Set<string>>({
   default: new Set(),
 });
 
+export const selectedSampleObjects = atom<Map<String, Sample>>({
+  key: "selectedSampleObjects",
+  default: new Map(),
+});
+
+// only used in extended view, for tagging purpose
 export const hiddenLabels = atom<State.SelectedLabelMap>({
   key: "hiddenLabels",
   default: {},
@@ -199,8 +228,12 @@ export const sidebarOverride = atom<string>({
   default: null,
 });
 
-export const extendedSelection = atom<string[]>({
+export const extendedSelection = atom<{ selection: string[]; scope?: string }>({
   key: "extendedSelection",
+  default: { selection: null },
+});
+export const extendedSelectionOverrideStage = atom<any>({
+  key: "extendedSelectionOverrideStage",
   default: null,
 });
 
@@ -232,17 +265,7 @@ export const lookerPanels = atom({
 export const theme = atom<"dark" | "light">({
   key: "theme",
   default: "dark",
-  effects: [
-    ({ setSelf, onSet }) => {
-      const muiModeKey = "mui-mode";
-      const muiMode = localStorage.getItem(muiModeKey) as "light" | "dark";
-      if (muiMode != null) setSelf(muiMode);
-      onSet((newValue, oldValue, isReset) => {
-        if (isReset) localStorage.removeItem(muiModeKey);
-        else localStorage.setItem(muiModeKey, newValue);
-      });
-    },
-  ],
+  effects: [getBrowserStorageEffectForKey("mui-mode")],
 });
 
 export const canEditSavedViews = atom({
@@ -258,4 +281,21 @@ export const compactLayout = atom({
 export const readOnly = atom({
   key: "readOnly",
   default: false,
+});
+
+export const sessionSpaces = atom<SpaceNodeJSON>({
+  key: "sessionSpaces",
+  default: {
+    id: "root",
+    children: [
+      {
+        id: "default-samples-node",
+        children: [],
+        type: "Samples",
+        pinned: true,
+      },
+    ],
+    type: "panel-container",
+    activeChild: "default-samples-node",
+  },
 });

@@ -1,0 +1,16 @@
+body {
+  --joy-palette-background-header: hsl(200, 0%, 15%);
+  --joy-palette-background-body: hsl(200, 0%, 15%);
+  --joy-palette-background-level2: hsl(200, 0%, 10%);
+  --joy-palette-background-button: hsl(200, 0%, 20%);
+  --joy-palette-text-primary: hsl(200, 0%, 100%);
+  --joy-palette-text-secondary: hsl(200, 0%, 70%);
+  --joy-palette-background-level3: hsl(200, 0%, 5%);
+
+  padding: 0;
+  margin: 0;
+  background: #1a1a1a;
+  color: #fff;
+  font-family: "Palanquin", sans-serif;
+  font-size: 14px;
+}

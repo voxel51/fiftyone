@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { Overlay } from "./overlays/base";
@@ -22,17 +22,37 @@ export interface Coloring {
   targets: string[];
 }
 
-export interface Sample {
+export type OrthogrpahicProjectionMetadata = {
+  _cls: "OrthographicProjectionMetadata";
+  filepath: string;
+  height: number;
+  width: number;
+  min_bound: [number, number];
+  max_bound: [number, number];
+};
+
+export type GenericLabel = {
+  [labelKey: string]:
+    | {
+        _cls: string;
+        [field: string]: unknown;
+      }
+    | OrthogrpahicProjectionMetadata;
+  // todo: add other label types
+};
+
+export type Sample = {
   metadata: {
     width: number;
     height: number;
+    mime_type?: string;
   };
   id: string;
-  media_type: "image" | "video" | "point-cloud";
   filepath: string;
   tags: string[];
   _label_tags: string[];
-}
+  _media_type: "image" | "video" | "point-cloud";
+} & GenericLabel;
 
 export interface LabelData {
   labelId: string;
@@ -122,6 +142,7 @@ interface BaseOptions {
   defaultSkeleton?: KeypointSkeleton;
   skeletons: { [key: string]: KeypointSkeleton };
   showSkeletons: boolean;
+  isPointcloudDataset: boolean;
   pointFilter: (path: string, point: Point) => boolean;
   thumbnailTitle?: (sample: any) => string;
 }
@@ -153,6 +174,8 @@ export interface VideoConfig extends BaseConfig {
   support?: [number, number];
 }
 
+export interface PcdConfig extends BaseConfig {}
+
 export interface FrameOptions extends BaseOptions {
   useFrameNumber: boolean;
   zoom: boolean;
@@ -169,6 +192,8 @@ export interface VideoOptions extends BaseOptions {
   useFrameNumber: boolean;
   volume: number;
 }
+
+export interface PcdOptions extends BaseOptions {}
 
 export interface TooltipOverlay {
   color: string;
@@ -254,6 +279,12 @@ export interface VideoState extends BaseState {
   lockedToSupport: boolean;
 }
 
+export interface PcdState extends BaseState {
+  config: PcdConfig;
+  options: PcdOptions;
+  SHORTCUTS: Readonly<ControlMap<PcdState>>;
+}
+
 export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
 };
@@ -334,6 +365,10 @@ export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   playbackRate: 1,
   useFrameNumber: false,
   volume: 0,
+};
+
+export const DEFAULT_PCD_OPTIONS: PcdOptions = {
+  ...DEFAULT_BASE_OPTIONS,
 };
 
 export interface FrameSample {

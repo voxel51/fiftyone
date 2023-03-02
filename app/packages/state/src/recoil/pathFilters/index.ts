@@ -5,6 +5,7 @@ import {
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
   LABELS,
+  LIST_FIELD,
   OBJECT_ID_FIELD,
   STRING_FIELD,
   VALID_PRIMITIVE_TYPES,
@@ -17,7 +18,7 @@ import * as selectors from "../selectors";
 import { State } from "../types";
 import { boolean } from "./boolean";
 import { numeric } from "./numeric";
-import { string } from "./string";
+import { string, listString } from "./string";
 
 export * from "./boolean";
 export * from "./numeric";
@@ -51,6 +52,10 @@ const primitiveFilter = selectorFamily<
         return get(string({ modal, path }));
       }
 
+      if ([LIST_FIELD].includes(ftype)) {
+        return get(listString({ modal, path }));
+      }
+
       return (value) => true;
     },
   cachePolicy_UNSTABLE: {
@@ -58,10 +63,8 @@ const primitiveFilter = selectorFamily<
   },
 });
 
-export const pathFilter = selectorFamily<
-  (path: string, value: any) => boolean,
-  boolean
->({
+export type PathFilterSelector = (path: string, value: unknown) => boolean;
+export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
   key: "pathFilter",
   get:
     (modal) =>
@@ -76,6 +79,7 @@ export const pathFilter = selectorFamily<
         if (path.startsWith("_")) return f;
 
         const field = get(schemaAtoms.field(path));
+        const isKeypoints = path.includes("keypoints");
 
         if (field && LABELS.includes(field.embeddedDocType)) {
           const expandedPath = get(schemaAtoms.expandPath(path));
@@ -91,11 +95,13 @@ export const pathFilter = selectorFamily<
               primitiveFilter({ modal, path: `${expandedPath}.${name}` })
             );
 
-            return (value: any) =>
-              filter(value[name === "id" ? "id" : dbField || name]);
+            return (value: unknown) =>
+              isKeypoints && typeof value[name] === "object" // keypoints ListFields
+                ? () => true
+                : filter(value[name === "id" ? "id" : dbField || name]);
           });
 
-          f[path] = (value: any) => {
+          f[path] = (value: unknown) => {
             if (hidden.has(value.id)) {
               return false;
             }
