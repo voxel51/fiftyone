@@ -333,6 +333,7 @@ export function useOperatorExecutor(name) {
   const [needsOutput, setNeedsOutput] = useRecoilState(
     operatorExecutionNeedsOutputState
   );
+  const selectedSamples = useRecoilValue(fos.selectedSamples);
   const { operator } = getLocalOrRemoteOperator(name);
   const hooks = operator.useHooks();
 
@@ -360,6 +361,7 @@ export function useOperatorExecutor(name) {
           extended,
           filters,
           state,
+          selectedSamples
         },
         hooks
       );
