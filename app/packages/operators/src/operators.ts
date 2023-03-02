@@ -1,17 +1,17 @@
 import { getFetchFunction, ServerError } from "@fiftyone/utilities";
 import * as types from "./types";
-import {CallbackInterface} from 'recoil'
-import * as fos from '@fiftyone/state'
+import { CallbackInterface } from "recoil";
+import * as fos from "@fiftyone/state";
 import { useState } from "react";
 
+import copyToClipboard from "copy-to-clipboard";
 
 export class ExecutionContext {
   public state: CallbackInterface;
-  ;
   constructor(
     public params: Map<string, any> = new Map(),
     _currentContext: any,
-    public hooks: {[key: string]: any} = {}
+    public hooks: { [key: string]: any } = {}
   ) {
     this.state = _currentContext.state;
   }
@@ -22,21 +22,26 @@ function isObjWithContent(obj: any) {
 }
 
 class OperatorResult {
-  constructor(public operator: Operator, public result: any = {}, public error: any) {}
+  constructor(
+    public operator: Operator,
+    public result: any = {},
+    public error: any
+  ) {}
   hasOutputContent() {
     return isObjWithContent(this.result) || isObjWithContent(this.error);
   }
   getTriggers() {
     if (isObjWithContent(this.result)) {
-      const triggerProps = this.operator.definition.outputs.filter(p => p.type === types.Trigger)
-
+      const triggerProps = this.operator.definition.outputs.filter(
+        (p) => p.type === types.Trigger
+      );
     }
   }
   toJSON() {
     return {
       result: this.result,
-      error: this.error
-    }
+      error: this.error,
+    };
   }
 }
 
@@ -61,8 +66,6 @@ class OperatorDefinition {
   }
 }
 
-
-
 export class Operator {
   public definition: OperatorDefinition;
   constructor(public name: string, description: string) {
@@ -73,7 +76,10 @@ export class Operator {
     return this.definition.inputs.properties.length > 0;
   }
   needsOutput(result: OperatorResult) {
-    if (this.definition.outputs.properties.length > 0 && result.hasOutputContent()) {
+    if (
+      this.definition.outputs.properties.length > 0 &&
+      result.hasOutputContent()
+    ) {
       return true;
     }
     if (result.error) {
@@ -115,7 +121,6 @@ export function registerOperator(operator: Operator) {
   localRegistry.register(operator);
 }
 
-
 export async function loadOperatorsFromServer() {
   try {
     const { operators, errors } = await getFetchFunction()("GET", "/operators");
@@ -123,7 +128,7 @@ export async function loadOperatorsFromServer() {
     for (const operator of operatorInstances) {
       remoteRegistry.register(operator);
     }
-    const errorFiles = errors && Object.keys(errors) || [];
+    const errorFiles = (errors && Object.keys(errors)) || [];
     if (errorFiles.length > 0) {
       for (const file of errorFiles) {
         const fileErrors = errors[file];
@@ -136,18 +141,17 @@ export async function loadOperatorsFromServer() {
   } catch (e) {
     if (e instanceof ServerError) {
       const errorBody = e.bodyResponse;
-      if (errorBody && errorBody.kind === 'Server Error') {
+      if (errorBody && errorBody.kind === "Server Error") {
         console.error("Error loading operators from server:");
         console.error(errorBody.stack);
       } else {
-        console.error("Unknown error loading operators from server", errorBody)
+        console.error("Unknown error loading operators from server", errorBody);
       }
     } else {
-      console.error(e)
-      throw e
+      console.error(e);
+      throw e;
     }
   }
-
 }
 
 export function useLocalOperators() {}
@@ -180,22 +184,33 @@ export function listLocalAndRemoteOperators() {
   };
 }
 
-export async function executeOperator(operatorName, params, currentContext, hooks) {
+export async function executeOperator(
+  operatorName,
+  params,
+  currentContext,
+  hooks
+) {
   const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
 
   const ctx = new ExecutionContext(params, currentContext, hooks);
   let result;
   let error;
   if (isRemote) {
-    const serverResult = await getFetchFunction()("POST", "/operators/execute", {
-      operator_name: operatorName,
-      params: params,
-      dataset_name: currentContext.datasetName,
-      extended: currentContext.extended,
-      view: currentContext.view,
-      filters: currentContext.filters,
-      selected: currentContext.selectedSamples ? Array.from(currentContext.selectedSamples) : []
-    });
+    const serverResult = await getFetchFunction()(
+      "POST",
+      "/operators/execute",
+      {
+        operator_name: operatorName,
+        params: params,
+        dataset_name: currentContext.datasetName,
+        extended: currentContext.extended,
+        view: currentContext.view,
+        filters: currentContext.filters,
+        selected: currentContext.selectedSamples
+          ? Array.from(currentContext.selectedSamples)
+          : [],
+      }
+    );
     result = serverResult.result;
     error = serverResult.error;
   } else {
@@ -215,12 +230,11 @@ class ReloadSamples extends Operator {
   constructor() {
     super("reload_samples", "Reload samples from the dataset");
   }
-  async execute({state}: ExecutionContext) {
+  async execute({ state }: ExecutionContext) {
     const refresherTick = await state.snapshot.getPromise(fos.refresher);
     state.set(fos.refresher, refresherTick + 1);
   }
 }
-
 
 class ClearSelectedSamples extends Operator {
   constructor() {
@@ -228,17 +242,45 @@ class ClearSelectedSamples extends Operator {
   }
   useHooks(): {} {
     return {
-      setSelected: fos.useSetSelected()
-    }
+      setSelected: fos.useSetSelected(),
+    };
   }
-  async execute({state, hooks}: ExecutionContext) {
+  async execute({ state, hooks }: ExecutionContext) {
     // needs to mutate the server / session
     hooks.setSelected([]);
     state.reset(fos.selectedSamples);
   }
 }
 
+class CopyViewAsJSON extends Operator {
+  constructor() {
+    super("copy_view_as_json", "Copy view as JSON");
+  }
+  async execute({ state }: ExecutionContext) {
+    const view = await state.snapshot.getPromise(fos.view);
+    const json = JSON.stringify(view, null, 2);
+    copyToClipboard(json);
+  }
+}
+
+class ViewFromJSON extends Operator {
+  constructor() {
+    super("view_from_json", "Create view from clipboard");
+  }
+  async execute({ state }: ExecutionContext) {
+    const text = await navigator.clipboard.readText();
+    try {
+      const view = JSON.parse(text);
+      state.set(fos.view, view);
+    } catch (e) {
+      console.error("Error parsing JSON", e);
+    }
+  }
+}
+
 export function registerBuiltInOperators() {
+  registerOperator(new CopyViewAsJSON());
+  registerOperator(new ViewFromJSON());
   registerOperator(new ReloadSamples());
   registerOperator(new ClearSelectedSamples());
 }
@@ -247,6 +289,3 @@ export async function loadOperators() {
   registerBuiltInOperators();
   await loadOperatorsFromServer();
 }
-
-
-
