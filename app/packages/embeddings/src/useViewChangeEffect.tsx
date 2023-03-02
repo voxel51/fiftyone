@@ -40,9 +40,14 @@ export function useViewChangeEffect() {
       .catch((err) => setLoadingPlotError(err))
       .then((res) => {
         if (!res || !res.index_size) {
-          warnings.add(`Failed to fetch embeddings for the current view.`);
+          if (res?.index_size === 0) {
+            warnings.add(`No samples in the current view.`);
+          } else {
+            warnings.add(`Failed to fetch embeddings for the current view.`);
+          }
           return;
         }
+
         const notUsed = res.index_size - res.available_count;
         const missing = res.missing_count;
         const total = res.index_size;
