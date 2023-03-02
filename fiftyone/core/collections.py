@@ -5387,7 +5387,7 @@ class SampleCollection(object):
 
         Args:
             field_names (None): a field name or iterable of field names to
-                select. My contain ``embedded.field.name`` as well
+                select. May contain ``embedded.field.name`` as well
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -5857,14 +5857,13 @@ class SampleCollection(object):
 
     @view_stage
     def sort_by_similarity(
-        self, query_ids, k=None, reverse=False, dist_field=None, brain_key=None
+        self, query, k=None, reverse=False, dist_field=None, brain_key=None
     ):
-        """Sorts the samples in the collection by visual similiarity to a
-        specified set of query ID(s).
+        """Sorts the collection by similiarity to a specified query.
 
         In order to use this stage, you must first use
         :meth:`fiftyone.brain.compute_similarity` to index your dataset by
-        visual similiarity.
+        similiarity.
 
         Examples::
 
@@ -5874,22 +5873,49 @@ class SampleCollection(object):
 
             dataset = foz.load_zoo_dataset("quickstart")
 
-            fob.compute_similarity(dataset, brain_key="similarity")
+            fob.compute_similarity(
+                dataset, model="clip-vit-base32-torch", brain_key="clip"
+            )
 
             #
-            # Sort the samples by their visual similarity to the first sample
-            # in the dataset
+            # Sort samples by their similarity to a sample by its ID
             #
 
             query_id = dataset.first().id
-            view = dataset.sort_by_similarity(query_id)
+
+            view = dataset.sort_by_similarity(query_id, k=5)
+
+            #
+            # Sort samples by their similarity to a manually computed vector
+            #
+
+            model = foz.load_zoo_model("clip-vit-base32-torch")
+            embeddings = dataset.take(2, seed=51).compute_embeddings(model)
+            query = embeddings.mean(axis=0)
+
+            view = dataset.sort_by_similarity(query, k=5)
+
+            #
+            # Sort samples by their similarity to a text prompt
+            #
+
+            query = "kites high in the air"
+
+            view = dataset.sort_by_similarity(query, k=5)
 
         Args:
-            query_ids: an ID or iterable of query IDs. These may be sample IDs
-                or label IDs depending on ``brain_key``
+            query: the query, which can be any of the following:
+
+                -   an ID or iterable of IDs
+                -   a ``num_dims`` vector or ``num_queries x num_dims`` array
+                    of vectors
+                -   a prompt or iterable of prompts (if supported by the index)
+
             k (None): the number of matches to return. By default, the entire
                 collection is sorted
-            reverse (False): whether to sort by least similarity
+            reverse (False): whether to sort by least similarity (True) or
+                greatest similarity (False). Some backends may not support
+                least similarity
             dist_field (None): the name of a float field in which to store the
                 distance of each example to the specified query. The field is
                 created if necessary
@@ -5903,7 +5929,7 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.SortBySimilarity(
-                query_ids,
+                query,
                 k=k,
                 reverse=reverse,
                 dist_field=dist_field,

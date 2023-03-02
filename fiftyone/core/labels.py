@@ -188,7 +188,7 @@ class ListAttribute(Attribute):
 # @todo remove this in favor of dynamic-only attributes
 class _HasAttributesDict(Label):
     """Mixin for :class:`Label` classes that have an :attr:`attributes` field
-    that contains a dict of of :class:`Attribute` instances.
+    that contains a dict of :class:`Attribute` instances.
     """
 
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
