@@ -290,11 +290,15 @@ const FilterableEntry = React.memo(
     const sampleTagsLoadable = useRecoilValueLoadable(
       sampleTagCounts({ modal, extended: false })
     );
-    if (labelTagsLoadable.state !== "hasValue") return null;
-    if (sampleTagsLoadable.state !== "hasValue") return null;
 
-    const allLabelTags = Object.keys(labelTagsLoadable.contents);
-    const allTags = Object.keys(sampleTagsLoadable.contents);
+    const allLabelTags =
+      labelTagsLoadable.state !== "hasValue"
+        ? []
+        : Object.keys(labelTagsLoadable.contents);
+    const allTags =
+      sampleTagsLoadable.state !== "hasValue"
+        ? []
+        : Object.keys(sampleTagsLoadable.contents);
 
     const hidden = modal ? useHidden(path) : null;
     const onClickShow = (e) => {
