@@ -420,13 +420,11 @@ class DetectionEvaluation(foe.EvaluationMethod):
         )
 
         if in_sample_fields:
-            fields = {
-                i: o for i, o in zip(in_sample_fields, out_sample_fields)
-            }
+            fields = dict(zip(in_sample_fields, out_sample_fields))
             dataset.rename_sample_fields(fields)
 
         if in_frame_fields:
-            fields = {i: o for i, o in zip(in_frame_fields, out_frame_fields)}
+            fields = dict(zip(in_frame_fields, out_frame_fields))
             dataset.rename_frame_fields(fields)
 
     def cleanup(self, samples, eval_key):

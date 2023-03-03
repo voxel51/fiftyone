@@ -670,7 +670,7 @@ class Run(Configurable):
         run_doc = cls._get_run_doc(samples, key)
 
         try:
-            # Excute cleanup() method
+            # Execute cleanup() method
             run_info = cls.get_run_info(samples, key)
             run = run_info.config.build()
             run.cleanup(samples, key)
