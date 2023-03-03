@@ -111,7 +111,7 @@ export const noneCount = selectorFamily<
       const isListField = schema.ftype.includes("ListField");
       return isListField
         ? 0
-        : (get(count({ ...params, path: parent })) as number) - data.count;
+        : (get(count({ ...params, path: parent })) as number) - data?.count;
     },
 });
 
@@ -354,7 +354,7 @@ export const counts = selectorFamily({
 
       const data = get(aggregation(params));
 
-      if (data.values) {
+      if (data?.values) {
         return Object.fromEntries(
           data.values.map(({ count, value }) => [value, count])
         );

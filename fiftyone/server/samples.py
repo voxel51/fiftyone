@@ -84,10 +84,16 @@ async def paginate_samples(
 
     root_view = fosv.get_view(dataset, stages=stages)
     frame_filters = [
-        s._filter for s in root_view._stages if s._needs_frames(root_view)
+        getattr(s, "_filter", None)
+        for s in view._stages
+        if s._needs_frames(view)
     ]
+    # for s in root_view._stages:
+
     # Hacky way to fix aggregation stage when switching root to frames collection
-    frame_filters = [str(s).replace("$this.", "") for s in frame_filters]
+    frame_filters = [
+        str(s).replace("$this.", "") for s in frame_filters if s is not None
+    ]
 
     media = view.media_type
     if media == fom.MIXED:
