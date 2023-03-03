@@ -94,9 +94,8 @@ async def paginate_samples(
     # TODO: Remove this once we have a better way to handle large videos. This
     # is a temporary fix to reduce the $lookup overhead for sample frames on
     # full datasets.
-    support = (
-        [1, 1] if ((media == fom.VIDEO) and ~(len(view._stages) > 1)) else None
-    )
+    full_lookup = media == fom.VIDEO and (filters or stages or extended_stages)
+    support = [1, 1] if not full_lookup else None
 
     if after is None:
         after = "-1"
