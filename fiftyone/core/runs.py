@@ -349,6 +349,11 @@ class Run(Configurable):
             key: a run key
             new_key: a new run key
         """
+        if new_key in cls.list_runs(samples):
+            raise ValueError(
+                "A %s with key '%s' already exists" % (cls._run_str(), new_key)
+            )
+
         try:
             # Execute rename() method
             run_info = cls.get_run_info(samples, key)
