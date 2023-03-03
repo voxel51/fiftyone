@@ -90,6 +90,7 @@ class SimilarityTests(unittest.TestCase):
 
         dataset.delete_brain_runs()
         self.assertEqual(dataset.list_brain_runs(), [])
+        self.assertIsNone(results.key)
 
     @drop_datasets
     def test_image_similarity(self):

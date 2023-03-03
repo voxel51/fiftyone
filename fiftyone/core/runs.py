@@ -688,7 +688,9 @@ class Run(Configurable):
         run_docs = getattr(dataset._doc, cls._runs_field())
         run_docs.pop(key, None)
         results_cache = getattr(dataset, cls._results_cache_field())
-        results_cache.pop(key, None)
+        run_results = results_cache.pop(key, None)
+        if run_results is not None:
+            run_results._set_key(None)
 
         # Must manually delete run result, which is stored via GridFS
         if run_doc.results:
