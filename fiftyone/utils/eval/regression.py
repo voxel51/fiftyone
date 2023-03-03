@@ -19,6 +19,7 @@ import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.plots as fop
+import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 
@@ -163,12 +164,33 @@ class RegressionEvaluation(foe.EvaluationMethod):
 
         return fields
 
+    def rename(self, samples, eval_key, new_eval_key):
+        dataset = samples._dataset
+
+        in_fields = self.get_fields(dataset, eval_key)
+        out_fields = self.get_fields(dataset, new_eval_key)
+
+        in_sample_fields, in_frame_fields = fou.split_frame_fields(in_fields)
+        out_sample_fields, out_frame_fields = fou.split_frame_fields(
+            out_fields
+        )
+
+        if in_sample_fields:
+            fields = dict(zip(in_sample_fields, out_sample_fields))
+            dataset.rename_sample_fields(fields)
+
+        if in_frame_fields:
+            fields = dict(zip(in_frame_fields, out_frame_fields))
+            dataset.rename_frame_fields(fields)
+
     def cleanup(self, samples, eval_key):
+        dataset = samples._dataset
+
         fields = [eval_key]
 
-        samples._dataset.delete_sample_fields(fields, error_level=1)
-        if samples._is_frame_field(self.config.gt_field):
-            samples._dataset.delete_frame_fields(fields, error_level=1)
+        dataset.delete_sample_fields(fields, error_level=1)
+        if dataset._is_frame_field(self.config.gt_field):
+            dataset.delete_frame_fields(fields, error_level=1)
 
     def _validate_run(self, samples, eval_key, existing_info):
         self._validate_fields_match(eval_key, "pred_field", existing_info)
