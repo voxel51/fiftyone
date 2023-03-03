@@ -10,6 +10,7 @@ import {
   selectorFamily,
   useRecoilState,
   useRecoilValue,
+  useRecoilValueLoadable,
 } from "recoil";
 import Color from "color";
 
@@ -283,13 +284,16 @@ const FilterableEntry = React.memo(
     const [activeLabelTags, setActiveLabelTags] = useRecoilState(
       fos.activeLabelTags(modal)
     );
-    const labelTagsResult = useRecoilValue(
+    const labelTagsLoadable = useRecoilValueLoadable(
       labelTagCounts({ modal, extended: false })
     );
     const sampleTagsResult = useRecoilValue(
       sampleTagCounts({ modal, extended: false })
     );
-    const allLabelTags = Object.keys(labelTagsResult);
+    const allLabelTags =
+      labelTagsLoadable.state == "hasValue"
+        ? Object.keys(labelTagsLoadable.contents)
+        : [];
     const allTags = Object.keys(sampleTagsResult);
 
     const hidden = modal ? useHidden(path) : null;
