@@ -359,6 +359,12 @@ export const sidebarGroups = selectorFamily<
       if (!groups.length) return [];
 
       const groupNames = groups.map(({ name }) => name);
+
+      // if the data migration did not happen, we want to make sure the frontend still renders in the new format
+      if (groupNames.includes("_label_tags")) {
+        groups = groups.filter(({ name }) => name !== "_label_tags");
+      }
+
       const tagGroupIndex = groupNames.indexOf("tags");
       groups[tagGroupIndex].paths = ["_label_tags", "tags"];
 
