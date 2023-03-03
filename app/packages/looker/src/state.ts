@@ -130,8 +130,6 @@ interface BaseOptions {
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   smoothMasks: boolean;
-  hasNext: boolean;
-  hasPrevious: boolean;
   fullscreen: boolean;
   zoomPad: number;
   selected: boolean;
@@ -331,8 +329,6 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
     targets: ["#000000"],
   },
   smoothMasks: true,
-  hasNext: false,
-  hasPrevious: false,
   fullscreen: false,
   zoomPad: 0.2,
   selected: false,

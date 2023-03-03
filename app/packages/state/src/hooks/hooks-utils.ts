@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import ResizeObserver from "resize-observer-polyfill";
 import { toCamelCase } from "@fiftyone/utilities";
+import ResizeObserver from "resize-observer-polyfill";
 
 import { State, StateResolver, transformDataset, useStateUpdate } from "../";
 

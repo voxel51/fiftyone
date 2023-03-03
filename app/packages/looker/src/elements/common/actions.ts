@@ -112,28 +112,6 @@ export const wheel: Control = {
   action: () => null,
 };
 
-export const next: Control = {
-  title: "Next sample",
-  shortcut: "&#8594;",
-  eventKeys: "ArrowRight",
-  detail: "Go to the next sample",
-  alwaysHandle: true,
-  action: (_, dispatchEvent) => {
-    dispatchEvent("next");
-  },
-};
-
-export const previous: Control = {
-  title: "Previous sample",
-  shortcut: "&#8592;",
-  eventKeys: "ArrowLeft",
-  detail: "Go to the previous sample",
-  alwaysHandle: true,
-  action: (_, dispatchEvent) => {
-    dispatchEvent("previous");
-  },
-};
-
 export const toggleOverlays: Control = {
   title: "Show/hide overlays",
   shortcut: "shift",
@@ -391,8 +369,6 @@ export const json: Control = {
 
 export const COMMON = {
   escape,
-  next,
-  previous,
   rotateNext,
   rotatePrevious,
   help,
